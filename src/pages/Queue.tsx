@@ -13,31 +13,61 @@ const Queue = () => {
     lastName: "",
     phoneNumber: "",
   });
+  const [errors, setErrors] = useState({
+    businessUsername: "",
+    firstName: "",
+    lastName: "",
+    phoneNumber: "",
+  });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const { toast } = useToast();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [name]: value
     }));
+    if (errors[name as keyof typeof errors]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const newErrors = {
+      businessUsername: "",
+      firstName: "",
+      lastName: "",
+      phoneNumber: "",
+    };
     
-    // Simulate joining queue - in real app, this would add to queue and send notifications
-    toast({
-      title: "Successfully joined the queue!",
-      description: "You'll receive a text when it's your turn.",
-    });
+    if (!formData.businessUsername) newErrors.businessUsername = "Business username is required";
+    if (!formData.firstName) newErrors.firstName = "First name is required";
+    if (!formData.lastName) newErrors.lastName = "Last name is required";
+    if (!formData.phoneNumber) newErrors.phoneNumber = "Phone number is required";
     
-    setIsSubmitted(true);
+    setErrors(newErrors);
+    
+    const hasErrors = Object.values(newErrors).some(error => error !== "");
+    if (!hasErrors) {
+      toast({
+        title: "Successfully joined the queue!",
+        description: "You'll receive a text when it's your turn.",
+      });
+      setIsSubmitted(true);
+    }
   };
 
   const handleJoinAnother = () => {
     setIsSubmitted(false);
     setFormData({
+      businessUsername: "",
+      firstName: "",
+      lastName: "",
+      phoneNumber: "",
+    });
+    setErrors({
       businessUsername: "",
       firstName: "",
       lastName: "",
@@ -102,8 +132,10 @@ const Queue = () => {
                 placeholder="e.g., maxbarbershop"
                 value={formData.businessUsername}
                 onChange={handleChange}
+                className={errors.businessUsername ? "border-destructive focus:ring-destructive" : ""}
                 required
               />
+              {errors.businessUsername && <p className="text-sm text-destructive">{errors.businessUsername}</p>}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -114,8 +146,10 @@ const Queue = () => {
                   placeholder="John"
                   value={formData.firstName}
                   onChange={handleChange}
+                  className={errors.firstName ? "border-destructive focus:ring-destructive" : ""}
                   required
                 />
+                {errors.firstName && <p className="text-sm text-destructive">{errors.firstName}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name</Label>
@@ -125,8 +159,10 @@ const Queue = () => {
                   placeholder="Doe"
                   value={formData.lastName}
                   onChange={handleChange}
+                  className={errors.lastName ? "border-destructive focus:ring-destructive" : ""}
                   required
                 />
+                {errors.lastName && <p className="text-sm text-destructive">{errors.lastName}</p>}
               </div>
             </div>
             <div className="space-y-2">
@@ -138,8 +174,10 @@ const Queue = () => {
                 placeholder="(555) 123-4567"
                 value={formData.phoneNumber}
                 onChange={handleChange}
+                className={errors.phoneNumber ? "border-destructive focus:ring-destructive" : ""}
                 required
               />
+              {errors.phoneNumber && <p className="text-sm text-destructive">{errors.phoneNumber}</p>}
             </div>
             <Button type="submit" className="w-full" variant="success">
               Join Queue

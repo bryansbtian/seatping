@@ -247,46 +247,121 @@ const LandingPage = () => {
             </h2>
           </div>
           
-          <Card className="max-w-md mx-auto shadow-2xl border-2 border-primary">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl">Mini Plan</CardTitle>
-              <div className="text-4xl font-bold text-success">
-                $9<span className="text-lg text-muted-foreground">/month</span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 bg-success rounded-full"></span>
-                  <span>200 SMS credits monthly</span>
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <Card className="shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
+              <CardHeader className="text-center">
+                <CardTitle className="text-xl">Starter</CardTitle>
+                <div className="text-3xl font-bold text-success">
+                  $9<span className="text-lg text-muted-foreground">/month</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 bg-success rounded-full"></span>
-                  <span>Unlimited on-premises customers</span>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
+                    <span>100 SMS credits monthly</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
+                    <span>Up to 50 customers/day</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
+                    <span>Basic queue management</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
+                    <span>Email support</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 bg-success rounded-full"></span>
-                  <span>Real-time queue management</span>
+                
+                <Button className="w-full" size="lg" asChild>
+                  <Link to="/signup">Start Free Trial</Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-2xl border-2 border-primary bg-card/80 backdrop-blur-sm">
+              <CardHeader className="text-center">
+                <Badge className="mx-auto mb-2 bg-primary text-primary-foreground">Most Popular</Badge>
+                <CardTitle className="text-xl">Professional</CardTitle>
+                <div className="text-3xl font-bold text-success">
+                  $29<span className="text-lg text-muted-foreground">/month</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 bg-success rounded-full"></span>
-                  <span>Basic analytics</span>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
+                    <span>500 SMS credits monthly</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
+                    <span>Unlimited customers</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
+                    <span>Advanced analytics</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
+                    <span>Priority support</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
+                    <span>Custom branding</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 bg-success rounded-full"></span>
-                  <span>Email support</span>
+                
+                <Button className="w-full" size="lg" asChild>
+                  <Link to="/signup">Start Free Trial</Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
+              <CardHeader className="text-center">
+                <CardTitle className="text-xl">Enterprise</CardTitle>
+                <div className="text-3xl font-bold text-success">
+                  $99<span className="text-lg text-muted-foreground">/month</span>
                 </div>
-              </div>
-              
-              <Button className="w-full" size="lg" asChild>
-                <Link to="/signup">Start 14-Day Free Trial</Link>
-              </Button>
-              
-              <p className="text-center text-sm text-muted-foreground">
-                ⭐ Start free, cancel anytime, no card required
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
+                    <span>Unlimited SMS credits</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
+                    <span>Multiple locations</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
+                    <span>API access</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
+                    <span>White-label solution</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 bg-success rounded-full"></span>
+                    <span>24/7 phone support</span>
+                  </div>
+                </div>
+                
+                <Button className="w-full" size="lg" asChild>
+                  <Link to="/signup">Contact Sales</Link>
+                </Button>
+              </CardContent>
+            </Card>
+            
+            <div className="md:col-span-3 text-center mt-6">
+              <p className="text-muted-foreground">
+                ⭐ All plans include 14-day free trial • No credit card required • Cancel anytime
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </section>
 

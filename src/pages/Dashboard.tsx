@@ -59,7 +59,7 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="shadow-lg border-0 bg-gradient-to-br from-success/10 to-success/5">
             <CardHeader className="pb-2">
               <CardDescription>Total Served Today</CardDescription>
@@ -85,13 +85,6 @@ const Dashboard = () => {
             <CardHeader className="pb-2">
               <CardDescription>Walk-aways</CardDescription>
               <CardTitle className="text-2xl text-destructive">{todayStats.walkAways}</CardTitle>
-            </CardHeader>
-          </Card>
-          
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5">
-            <CardHeader className="pb-2">
-              <CardDescription>Revenue</CardDescription>
-              <CardTitle className="text-2xl text-yellow-600">${todayStats.revenue}</CardTitle>
             </CardHeader>
           </Card>
         </div>

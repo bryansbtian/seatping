@@ -15,33 +15,60 @@ const Signup = () => {
     password: "",
     confirmPassword: "",
   });
+  const [errors, setErrors] = useState({
+    businessName: "",
+    ownerName: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+  });
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [name]: value
     }));
+    if (errors[name as keyof typeof errors]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match",
-        variant: "destructive",
-      });
-      return;
+    const newErrors = {
+      businessName: "",
+      ownerName: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+    };
+    
+    if (!formData.businessName) newErrors.businessName = "Business name is required";
+    if (!formData.ownerName) newErrors.ownerName = "Owner name is required";
+    if (!formData.email) newErrors.email = "Email is required";
+    if (!formData.phone) newErrors.phone = "Phone number is required";
+    if (!formData.password) newErrors.password = "Password is required";
+    if (!formData.confirmPassword) newErrors.confirmPassword = "Please confirm your password";
+    
+    if (formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords don't match";
     }
     
-    // Simulate signup - in real app, this would create account in backend
-    toast({
-      title: "Account created successfully!",
-      description: "Welcome to QueuePro. Setting up your dashboard...",
-    });
-    navigate("/dashboard");
+    setErrors(newErrors);
+    
+    const hasErrors = Object.values(newErrors).some(error => error !== "");
+    if (!hasErrors) {
+      toast({
+        title: "Account created successfully!",
+        description: "Welcome to QueuePro. Setting up your dashboard...",
+      });
+      navigate("/dashboard");
+    }
   };
 
   return (
@@ -65,8 +92,10 @@ const Signup = () => {
                 placeholder="Your business name"
                 value={formData.businessName}
                 onChange={handleChange}
+                className={errors.businessName ? "border-destructive focus:ring-destructive" : ""}
                 required
               />
+              {errors.businessName && <p className="text-sm text-destructive">{errors.businessName}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="ownerName">Owner Name</Label>
@@ -76,8 +105,10 @@ const Signup = () => {
                 placeholder="Your full name"
                 value={formData.ownerName}
                 onChange={handleChange}
+                className={errors.ownerName ? "border-destructive focus:ring-destructive" : ""}
                 required
               />
+              {errors.ownerName && <p className="text-sm text-destructive">{errors.ownerName}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -88,8 +119,10 @@ const Signup = () => {
                 placeholder="your@email.com"
                 value={formData.email}
                 onChange={handleChange}
+                className={errors.email ? "border-destructive focus:ring-destructive" : ""}
                 required
               />
+              {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number</Label>
@@ -100,8 +133,10 @@ const Signup = () => {
                 placeholder="(555) 123-4567"
                 value={formData.phone}
                 onChange={handleChange}
+                className={errors.phone ? "border-destructive focus:ring-destructive" : ""}
                 required
               />
+              {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -112,8 +147,10 @@ const Signup = () => {
                 placeholder="Create a strong password"
                 value={formData.password}
                 onChange={handleChange}
+                className={errors.password ? "border-destructive focus:ring-destructive" : ""}
                 required
               />
+              {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
@@ -124,8 +161,10 @@ const Signup = () => {
                 placeholder="Confirm your password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
+                className={errors.confirmPassword ? "border-destructive focus:ring-destructive" : ""}
                 required
               />
+              {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword}</p>}
             </div>
             <Button type="submit" className="w-full">
               Create Account
