@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 import { CheckCircle } from "@mynaui/icons-react";
 import Header from "@/components/Header";
 import heroImage from "@/assets/hero-image.jpg";
+import Footer from "@/components/Footer";
 
 const LandingPage = () => {
   const features = [
@@ -112,7 +113,7 @@ const LandingPage = () => {
                   <Link to="/signup">Start Free Trial</Link>
                 </Button>
                 <Button size="lg" variant="outline" asChild>
-                  <Link to="#demo">Watch Demo</Link>
+                  <Link to="/demo">Watch Demo</Link>
                 </Button>
               </div>
             </div>
@@ -301,7 +302,7 @@ const LandingPage = () => {
                 <ul className="space-y-3 text-muted-foreground">
                   <li className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5" />
-                    <span>SMS when it’s your turn</span>
+                    <span>SMS when it's your turn</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5" />
@@ -374,7 +375,7 @@ const LandingPage = () => {
               <CardHeader className="text-center">
                 <CardTitle className="text-xl">Starter</CardTitle>
                 <div className="text-3xl font-bold text-success">
-                  Rp 149.000
+                  Rp 449.000
                   <span className="text-lg text-muted-foreground">/month</span>
                 </div>
               </CardHeader>
@@ -407,7 +408,7 @@ const LandingPage = () => {
                 </Badge>
                 <CardTitle className="text-xl">Professional</CardTitle>
                 <div className="text-3xl font-bold text-success">
-                  Rp 479.000
+                  Rp 979.000
                   <span className="text-lg text-muted-foreground">/month</span>
                 </div>
               </CardHeader>
@@ -435,9 +436,9 @@ const LandingPage = () => {
 
             <Card className="shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
               <CardHeader className="text-center">
-                <CardTitle className="text-xl">Enterprise</CardTitle>
+                <CardTitle className="text-xl">Custom</CardTitle>
                 <div className="text-3xl font-bold text-success">
-                  Rp 1.299.000
+                  Custom
                   <span className="text-lg text-muted-foreground">/month</span>
                 </div>
               </CardHeader>
@@ -445,20 +446,20 @@ const LandingPage = () => {
                 <div className="space-y-3 mb-0 md:mb-10">
                   <div className="flex items-center gap-3">
                     <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>7 Locations</span>
+                    <span>Custom Locations</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>Unlimited SMS Credits</span>
+                    <span>Custom SMS Credits</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>Unlimited Customers Credits</span>
+                    <span>Custom Customers Credits</span>
                   </div>
                 </div>
 
                 <Button className="w-full" size="lg" asChild>
-                  <Link to="/signup">Start Free Trial</Link>
+                  <Link to="/sales">Contact Sales</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -484,13 +485,14 @@ const LandingPage = () => {
               Start your free trial today. No credit card required.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" asChild>
+              <Button variant="outline" size="lg" asChild>
                 <Link to="/signup">Start Free Trial</Link>
               </Button>
             </div>
           </div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 };

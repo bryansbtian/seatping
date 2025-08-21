@@ -12,12 +12,12 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
 const Signup = () => {
   const [formData, setFormData] = useState({
     businessName: "",
     businessUsername: "",
-    address: "",
     email: "",
     phone: "",
     password: "",
@@ -27,7 +27,6 @@ const Signup = () => {
   const [errors, setErrors] = useState({
     businessName: "",
     businessUsername: "",
-    address: "",
     email: "",
     phone: "",
     password: "",
@@ -53,7 +52,6 @@ const Signup = () => {
     const newErrors = {
       businessName: "",
       businessUsername: "",
-      address: "",
       email: "",
       phone: "",
       password: "",
@@ -64,7 +62,6 @@ const Signup = () => {
       newErrors.businessName = "Business name is required";
     if (!formData.businessUsername)
       newErrors.businessUsername = "Business username is required";
-    if (!formData.address) newErrors.address = "Address is required";
     if (!formData.email) newErrors.email = "Email is required";
     if (!formData.phone) newErrors.phone = "Phone number is required";
     if (!formData.password) newErrors.password = "Password is required";
@@ -94,8 +91,6 @@ const Signup = () => {
   return (
     <>
       <Header />
-
-      {/* Page content */}
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 py-8 pt-24">
         <Card className="w-full max-w-md shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
           <CardHeader className="text-center">
@@ -152,31 +147,6 @@ const Signup = () => {
                     {errors.businessUsername}
                   </p>
                 )}
-              </div>
-
-              {/* Address (map selection) */}
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  placeholder="Select from map"
-                  value={formData.address}
-                  onChange={handleChange}
-                  className={
-                    errors.address
-                      ? "border-destructive focus:ring-destructive"
-                      : ""
-                  }
-                  required
-                />
-                {errors.address && (
-                  <p className="text-sm text-destructive">{errors.address}</p>
-                )}
-                {/* Placeholder for map widget */}
-                <div className="mt-2 h-40 w-full rounded-md border bg-muted flex items-center justify-center text-muted-foreground">
-                  [ Map integration here ]
-                </div>
               </div>
 
               {/* Email */}
@@ -278,13 +248,14 @@ const Signup = () => {
               <p className="text-sm text-muted-foreground">
                 Already have an account?{" "}
                 <Link to="/login" className="text-primary hover:underline">
-                  Sign in
+                  Log In
                 </Link>
               </p>
             </div>
           </CardContent>
         </Card>
       </div>
+      <Footer />
     </>
   );
 };

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -105,13 +106,14 @@ const Login = () => {
               <p className="text-sm text-muted-foreground">
                 Don't have an account?{" "}
                 <Link to="/signup" className="text-primary hover:underline">
-                  Sign up
+                  Sign Up
                 </Link>
               </p>
             </div>
           </CardContent>
         </Card>
       </div>
+      <Footer />
     </>
   );
 };
