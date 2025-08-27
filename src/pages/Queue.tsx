@@ -12,20 +12,32 @@ import {
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useNavigate } from "react-router-dom";
+import { api } from "@/lib/api";
 
 const Queue = () => {
   const [businessUsername, setBusinessUsername] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleNext = (e: React.FormEvent) => {
+  const handleNext = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = businessUsername.trim().replace(/^@/, "");
     if (!clean) {
       setError("Business username is required");
       return;
     }
-    navigate(`/queue/${clean}`);
+    try {
+      const check = await api(
+        `/auth/exists?username=${encodeURIComponent(clean)}`
+      );
+      if (!check?.exists) {
+        setError("That business username does not exist");
+        return;
+      }
+      navigate(`/queue/${clean}`);
+    } catch (err: any) {
+      setError(err?.message || "Unable to verify business username");
+    }
   };
 
   return (

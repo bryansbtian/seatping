@@ -323,46 +323,8 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Business Types */}
-      <section className="py-16 px-4 bg-muted/30">
-        <div className="container mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Built for Businesses That Value Walk-Ins
-            </h2>
-            <p className="text-xl text-muted-foreground">
-              See your exact business transformation
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {businessTypes.map((business, index) => (
-              <Card
-                key={index}
-                className="shadow-lg border-0 hover:scale-105 transition-transform duration-300"
-              >
-                <CardHeader className="text-center">
-                  <div className="text-4xl mb-4">{business.icon}</div>
-                  <CardTitle className="text-lg">{business.title}</CardTitle>
-                  <CardDescription className="text-sm">
-                    "{business.description}"
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="text-center space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-destructive">{business.before}</span>
-                    <span>→</span>
-                    <span className="text-success">{business.after}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Pricing */}
-      <section id="pricing" className="py-16 px-4">
+      <section id="pricing" className="py-16 px-4 bg-muted/30">
         <div className="container mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
@@ -475,7 +437,7 @@ const LandingPage = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-16 px-4 bg-muted/30">
+      <section className="py-16 px-4">
         <div className="container mx-auto text-center">
           <div className="max-w-2xl mx-auto space-y-6">
             <h2 className="text-3xl md:text-4xl font-bold">

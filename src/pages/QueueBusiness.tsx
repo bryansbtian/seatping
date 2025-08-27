@@ -41,6 +41,7 @@ export default function QueueBusiness() {
     address: "",
     firstName: "",
     lastName: "",
+    numGuests: 1,
     phoneNumber: "", // required only when wait_anywhere
     waitingPreference: "on_premises" as "on_premises" | "wait_anywhere",
   });
@@ -130,6 +131,8 @@ export default function QueueBusiness() {
     if (!form.address) newErrors.address = "Address is required";
     if (!form.firstName) newErrors.firstName = "First name is required";
     if (!form.lastName) newErrors.lastName = "Last name is required";
+    if (!form.numGuests || form.numGuests < 1)
+      newErrors.numGuests = "Number of guests must be at least 1";
     setErrors(newErrors);
     if (Object.keys(newErrors).length) return;
     setStep(3);
@@ -315,6 +318,34 @@ export default function QueueBusiness() {
                   </div>
                 </div>
 
+                {/* Number of guests */}
+                <div className="space-y-2">
+                  <Label htmlFor="numGuests">Number of Guests</Label>
+                  <Input
+                    id="numGuests"
+                    name="numGuests"
+                    type="number"
+                    min={1}
+                    value={form.numGuests}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        numGuests: Number(e.target.value),
+                      }))
+                    }
+                    className={
+                      errors.numGuests
+                        ? "border-destructive focus:ring-destructive"
+                        : ""
+                    }
+                  />
+                  {errors.numGuests && (
+                    <p className="text-sm text-destructive">
+                      {errors.numGuests}
+                    </p>
+                  )}
+                </div>
+
                 <div className="flex gap-2">
                   <Button
                     type="button"
@@ -444,6 +475,9 @@ export default function QueueBusiness() {
                   </p>
                   <p>
                     <strong>Name:</strong> {form.firstName} {form.lastName}
+                  </p>
+                  <p>
+                    <strong>Guests:</strong> {form.numGuests}
                   </p>
                 </div>
 
@@ -590,6 +624,9 @@ export default function QueueBusiness() {
                   </p>
                   <p>
                     <strong>Name:</strong> {form.firstName} {form.lastName}
+                  </p>
+                  <p>
+                    <strong>Guests:</strong> {form.numGuests}
                   </p>
                   <p>
                     <strong>Preference:</strong>{" "}

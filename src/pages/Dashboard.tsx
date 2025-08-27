@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,11 +20,29 @@ interface QueueCustomer {
 
 const Dashboard = () => {
   const [queueData] = useState<QueueCustomer[]>([
-    { id: '1', name: 'John Smith', phone: '(555) 123-4567', joinedAt: new Date(Date.now() - 10 * 60000), estimatedWait: 15 },
-    { id: '2', name: 'Sarah Johnson', phone: '(555) 987-6543', joinedAt: new Date(Date.now() - 5 * 60000), estimatedWait: 25 },
-    { id: '3', name: 'Mike Davis', phone: '(555) 555-1234', joinedAt: new Date(Date.now() - 2 * 60000), estimatedWait: 35 },
+    {
+      id: "1",
+      name: "John Smith",
+      phone: "(555) 123-4567",
+      joinedAt: new Date(Date.now() - 10 * 60000),
+      estimatedWait: 15,
+    },
+    {
+      id: "2",
+      name: "Sarah Johnson",
+      phone: "(555) 987-6543",
+      joinedAt: new Date(Date.now() - 5 * 60000),
+      estimatedWait: 25,
+    },
+    {
+      id: "3",
+      name: "Mike Davis",
+      phone: "(555) 555-1234",
+      joinedAt: new Date(Date.now() - 2 * 60000),
+      estimatedWait: 35,
+    },
   ]);
-  
+
   const [todayStats] = useState({
     totalServed: 16,
     currentQueue: 3,
@@ -34,7 +58,7 @@ const Dashboard = () => {
       title: "Customer notified!",
       description: `${customer.name} has been texted and is being called.`,
     });
-    
+
     // In real app, this would:
     // 1. Send SMS to customer
     // 2. Send email to business
@@ -44,7 +68,9 @@ const Dashboard = () => {
 
   const formatTime = (date: Date) => {
     const now = new Date();
-    const diffMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    const diffMinutes = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60)
+    );
     return `${diffMinutes}m ago`;
   };
 
@@ -55,7 +81,9 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-success bg-clip-text text-transparent mb-2">
             Business Dashboard
           </h1>
-          <p className="text-muted-foreground">Welcome back! Here's your queue status for today.</p>
+          <p className="text-muted-foreground">
+            Welcome back! Here's your queue status for today.
+          </p>
         </div>
 
         {/* Stats Cards */}
@@ -63,28 +91,36 @@ const Dashboard = () => {
           <Card className="shadow-lg border-0 bg-gradient-to-br from-success/10 to-success/5">
             <CardHeader className="pb-2">
               <CardDescription>Total Served Today</CardDescription>
-              <CardTitle className="text-2xl text-success">{todayStats.totalServed}</CardTitle>
+              <CardTitle className="text-2xl text-success">
+                {todayStats.totalServed}
+              </CardTitle>
             </CardHeader>
           </Card>
-          
+
           <Card className="shadow-lg border-0 bg-gradient-to-br from-primary/10 to-primary/5">
             <CardHeader className="pb-2">
               <CardDescription>Current Queue</CardDescription>
-              <CardTitle className="text-2xl text-primary">{todayStats.currentQueue}</CardTitle>
+              <CardTitle className="text-2xl text-primary">
+                {todayStats.currentQueue}
+              </CardTitle>
             </CardHeader>
           </Card>
-          
+
           <Card className="shadow-lg border-0">
             <CardHeader className="pb-2">
               <CardDescription>Avg Wait Time</CardDescription>
-              <CardTitle className="text-2xl">{todayStats.avgWaitTime}min</CardTitle>
+              <CardTitle className="text-2xl">
+                {todayStats.avgWaitTime}min
+              </CardTitle>
             </CardHeader>
           </Card>
-          
+
           <Card className="shadow-lg border-0 bg-gradient-to-br from-destructive/10 to-destructive/5">
             <CardHeader className="pb-2">
               <CardDescription>Walk-aways</CardDescription>
-              <CardTitle className="text-2xl text-destructive">{todayStats.walkAways}</CardTitle>
+              <CardTitle className="text-2xl text-destructive">
+                {todayStats.walkAways}
+              </CardTitle>
             </CardHeader>
           </Card>
         </div>
@@ -108,7 +144,10 @@ const Dashboard = () => {
             ) : (
               <div className="space-y-4">
                 {queueData.map((customer, index) => (
-                  <div key={customer.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div
+                    key={customer.id}
+                    className="flex items-center justify-between p-4 bg-muted/50 rounded-lg"
+                  >
                     <div className="flex items-center gap-4">
                       <div className="w-8 h-8 bg-gradient-to-r from-primary to-primary-glow rounded-full flex items-center justify-center text-white font-semibold">
                         {index + 1}
@@ -116,7 +155,8 @@ const Dashboard = () => {
                       <div>
                         <h3 className="font-semibold">{customer.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {customer.phone} • Joined {formatTime(customer.joinedAt)}
+                          {customer.phone} • Joined{" "}
+                          {formatTime(customer.joinedAt)}
                         </p>
                       </div>
                     </div>
@@ -124,7 +164,7 @@ const Dashboard = () => {
                       <Badge variant="outline">
                         ~{customer.estimatedWait}min wait
                       </Badge>
-                      <Button 
+                      <Button
                         variant={index === 0 ? "success" : "outline"}
                         onClick={() => handleCallNext(customer)}
                       >
@@ -137,39 +177,6 @@ const Dashboard = () => {
             )}
           </CardContent>
         </Card>
-
-        {/* Quick Actions */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="shadow-lg border-0">
-            <CardHeader>
-              <CardTitle className="text-lg">Queue Settings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" className="w-full mb-2">Pause Queue</Button>
-              <Button variant="outline" className="w-full">Clear Queue</Button>
-            </CardContent>
-          </Card>
-          
-          <Card className="shadow-lg border-0">
-            <CardHeader>
-              <CardTitle className="text-lg">Notifications</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" className="w-full mb-2">SMS Settings</Button>
-              <Button variant="outline" className="w-full">Email Settings</Button>
-            </CardContent>
-          </Card>
-          
-          <Card className="shadow-lg border-0">
-            <CardHeader>
-              <CardTitle className="text-lg">Analytics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" className="w-full mb-2">View Reports</Button>
-              <Button variant="outline" className="w-full">Export Data</Button>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );

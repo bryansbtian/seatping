@@ -14,6 +14,11 @@ model User {
   email     String   @unique
   phone     String
   password  String
+  plan      String   @default("Starter")
+  locations Json     @default("[]")
+  trial     Boolean  @default(true)
+  trialDurationDays Int @default(7)
+  maxLocations Int   @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

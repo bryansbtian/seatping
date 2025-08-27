@@ -13,29 +13,44 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { api } from "@/lib/api";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
+  const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState({ email: "", password: "" });
+  const [errors, setErrors] = useState({ emailOrUsername: "", password: "" });
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newErrors = { email: "", password: "" };
-
-    if (!email) newErrors.email = "Email is required";
+    const newErrors = { emailOrUsername: "", password: "" };
+    if (!emailOrUsername)
+      newErrors.emailOrUsername = "Email or username is required";
     if (!password) newErrors.password = "Password is required";
-
     setErrors(newErrors);
+    if (newErrors.emailOrUsername || newErrors.password) return;
 
-    if (email && password) {
+    try {
+      setLoading(true);
+      const res = await api("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ emailOrUsername, password }),
+      });
       toast({
         title: "Login successful!",
-        description: "Welcome back to SeatPing",
+        description: `Welcome back, ${res.user.name}`,
       });
-      navigate("/dashboard");
+      navigate("/business/dashboard");
+    } catch (err: any) {
+      toast({
+        title: "Login failed",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -53,26 +68,21 @@ const Login = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="emailOrUsername">Email or Username</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
+                  id="emailOrUsername"
+                  value={emailOrUsername}
                   onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (errors.email)
-                      setErrors((prev) => ({ ...prev, email: "" }));
+                    setEmailOrUsername(e.target.value);
+                    if (errors.emailOrUsername)
+                      setErrors((p) => ({ ...p, emailOrUsername: "" }));
                   }}
-                  className={
-                    errors.email
-                      ? "border-destructive focus:ring-destructive"
-                      : ""
-                  }
                   required
                 />
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
+                {errors.emailOrUsername && (
+                  <p className="text-sm text-destructive">
+                    {errors.emailOrUsername}
+                  </p>
                 )}
               </div>
               <div className="space-y-2">
@@ -80,26 +90,20 @@ const Login = () => {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
                     if (errors.password)
-                      setErrors((prev) => ({ ...prev, password: "" }));
+                      setErrors((p) => ({ ...p, password: "" }));
                   }}
-                  className={
-                    errors.password
-                      ? "border-destructive focus:ring-destructive"
-                      : ""
-                  }
                   required
                 />
                 {errors.password && (
                   <p className="text-sm text-destructive">{errors.password}</p>
                 )}
               </div>
-              <Button type="submit" className="w-full">
-                Sign In
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
             <div className="mt-6 text-center">
