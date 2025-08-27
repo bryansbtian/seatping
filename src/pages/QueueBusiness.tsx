@@ -13,16 +13,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
 
-/** Placeholder API call to get addresses for this business */
-async function fetchAddressesForBusiness(username: string): Promise<string[]> {
+/** API call to get addresses for this business */
+async function fetchAddressesForBusiness(username: string): Promise<Array<{address: string, businessName: string}>> {
   if (!username) return [];
-  await new Promise((r) => setTimeout(r, 150));
-  return [
-    `${username} HQ — 123 Main St, Jakarta`,
-    `${username} Branch — 45 Sunset Rd, Jakarta`,
-    `${username} Mall Kiosk — Podomoro City, Jakarta`,
-  ];
+  try {
+    const response = await api(`/auth/business/${username}/addresses`);
+    return response.addresses || [];
+  } catch (error) {
+    console.error("Failed to fetch addresses:", error);
+    return [];
+  }
 }
 
 type Step = 2 | 3 | 4 | 5;
@@ -34,16 +36,19 @@ export default function QueueBusiness() {
 
   const [step, setStep] = useState<Step>(2);
 
-  const [addresses, setAddresses] = useState<string[]>([]);
+  const [addresses, setAddresses] = useState<Array<{address: string, businessName: string}>>([]);
   const [loadingAddresses, setLoadingAddresses] = useState(false);
+  const [businessName, setBusinessName] = useState("");
+  const [joiningQueue, setJoiningQueue] = useState(false);
 
   const [form, setForm] = useState({
     address: "",
     firstName: "",
     lastName: "",
-    numGuests: 1,
+    numGuests: "1",
     phoneNumber: "", // required only when wait_anywhere
     waitingPreference: "on_premises" as "on_premises" | "wait_anywhere",
+    joinedAt: "", // Will be set when customer joins queue
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -74,28 +79,64 @@ export default function QueueBusiness() {
       try {
         const list = await fetchAddressesForBusiness(businessUsername);
         setAddresses(list);
+        if (list.length > 0) {
+          setBusinessName(list[0].businessName);
+        } else {
+          // No locations found for this business
+          toast({
+            title: "No locations found",
+            description: "This business doesn't have any locations set up yet.",
+            variant: "destructive",
+          });
+          navigate("/queue");
+        }
+      } catch (error) {
+        toast({
+          title: "Error loading business",
+          description: "Failed to load business information. Please try again.",
+          variant: "destructive",
+        });
+        navigate("/queue");
       } finally {
         setLoadingAddresses(false);
       }
     })();
-  }, [businessUsername, navigate]);
+  }, [businessUsername, navigate, toast]);
 
-  // Simulate queue moving on Status step → when 0, go to Step 5
+  // Check if customer has been admitted by the business - more frequent checking for real-time updates
   useEffect(() => {
-    if (step !== 4) return;
-    const tick = setInterval(() => {
-      setPeopleAhead((n) => {
-        if (n <= 1) {
-          clearInterval(tick);
-          // Move to "It's your turn" screen
+    if (step !== 4) return; // Only check when on step 4 (Queue status)
+    
+    const customerId = `${form.firstName}${form.lastName}${form.joinedAt}`;
+    if (!customerId || !form.joinedAt) return;
+    
+    const checkAdmissionStatus = async () => {
+      try {
+        const response = await api(`/auth/business/${businessUsername}/queue/${customerId}/status`);
+        if (response.admitted) {
+          // Customer has been admitted by the business
           setStep(5);
-          return 0;
+          toast({
+            title: "You've been admitted!",
+            description: "The business has called you. Please proceed to your turn.",
+          });
         }
-        return n - 1;
-      });
-    }, 8000);
-    return () => clearInterval(tick);
-  }, [step]);
+      } catch (error) {
+        // Silently handle errors - customer might not be found if they just joined
+        console.log("Checking admission status...");
+      }
+    };
+
+    // Check admission status every 2 seconds when on step 4 for real-time updates
+    const interval = setInterval(checkAdmissionStatus, 2000);
+    
+    // Also check immediately
+    checkAdmissionStatus();
+
+    return () => clearInterval(interval);
+  }, [step, businessUsername, form.firstName, form.lastName, form.joinedAt, toast]);
+
+
 
   // Start countdown for Step 5
   useEffect(() => {
@@ -131,7 +172,8 @@ export default function QueueBusiness() {
     if (!form.address) newErrors.address = "Address is required";
     if (!form.firstName) newErrors.firstName = "First name is required";
     if (!form.lastName) newErrors.lastName = "Last name is required";
-    if (!form.numGuests || form.numGuests < 1)
+    const numGuests = parseInt(form.numGuests);
+    if (isNaN(numGuests) || numGuests < 1)
       newErrors.numGuests = "Number of guests must be at least 1";
     setErrors(newErrors);
     if (Object.keys(newErrors).length) return;
@@ -139,7 +181,7 @@ export default function QueueBusiness() {
   };
 
   // Step 3 → Step 4
-  const nextFromStep3 = (e: React.FormEvent) => {
+  const nextFromStep3 = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
     if (form.waitingPreference === "wait_anywhere" && !form.phoneNumber) {
@@ -148,17 +190,46 @@ export default function QueueBusiness() {
     setErrors(newErrors);
     if (Object.keys(newErrors).length) return;
 
-    toast({
-      title: "You're in the queue!",
-      description:
-        form.waitingPreference === "wait_anywhere"
-          ? `We'll text you at ${form.phoneNumber} when it's almost your turn.`
-          : "Stay nearby — we'll call your name on site.",
-    });
+    setJoiningQueue(true);
+    try {
+              // Add customer to the queue in the database
+        const response = await api(`/auth/business/${businessUsername}/queue`, {
+          method: "POST",
+          body: JSON.stringify({
+            address: form.address,
+            firstName: form.firstName,
+            lastName: form.lastName,
+            numGuests: parseInt(form.numGuests),
+            phoneNumber: form.phoneNumber,
+            waitingPreference: form.waitingPreference,
+          }),
+        });
 
-    // Seed placeholders for the status step
-    setPeopleAhead(2); // example: after joining, there are 2 ahead
-    setStep(4);
+      if (response.success) {
+        // Set the joinedAt timestamp for admission status checking
+        setForm(prev => ({ ...prev, joinedAt: response.customer.joinedAt }));
+        
+        toast({
+          title: "You're in the queue!",
+          description:
+            form.waitingPreference === "wait_anywhere"
+              ? `We'll text you at ${form.phoneNumber} when it's almost your turn.`
+              : "Stay nearby — we'll call your name on site.",
+        });
+
+        // Set the actual position from the database
+        setPeopleAhead(Math.max(0, response.position - 1)); // people ahead = position - 1
+        setStep(4);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Failed to join queue",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setJoiningQueue(false);
+    }
   };
 
   // UPDATED: Always show a catchy toast when switching; if phone missing, prompt + focus
@@ -214,7 +285,7 @@ export default function QueueBusiness() {
         <Card className="w-full max-w-xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
-              @{businessUsername}
+              {businessName || `@${businessUsername}`}
             </CardTitle>
             <CardDescription>
               {step === 2 && "Enter your details"}
@@ -248,11 +319,11 @@ export default function QueueBusiness() {
                           ? "Loading addresses..."
                           : "Select an address"}
                       </option>
-                      {addresses.map((a) => (
-                        <option key={a} value={a}>
-                          {a}
-                        </option>
-                      ))}
+                                              {addresses.map((a) => (
+                          <option key={a.address} value={a.address}>
+                            {a.businessName} - {a.address}
+                          </option>
+                        ))}
                     </select>
                     <svg
                       className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500"
@@ -324,13 +395,13 @@ export default function QueueBusiness() {
                   <Input
                     id="numGuests"
                     name="numGuests"
-                    type="number"
-                    min={1}
+                    type="text"
+                    placeholder="1"
                     value={form.numGuests}
                     onChange={(e) =>
                       setForm((p) => ({
                         ...p,
-                        numGuests: Number(e.target.value),
+                        numGuests: e.target.value,
                       }))
                     }
                     className={
@@ -449,8 +520,8 @@ export default function QueueBusiness() {
                     >
                       Back
                     </Button>
-                    <Button type="submit" className="flex-1">
-                      Next
+                    <Button type="submit" className="flex-1" disabled={joiningQueue}>
+                      {joiningQueue ? "Joining..." : "Next"}
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground text-center">
@@ -468,7 +539,7 @@ export default function QueueBusiness() {
                     Queue Details
                   </p>
                   <p>
-                    <strong>Business:</strong> @{businessUsername}
+                    <strong>Business:</strong> {businessName || `@${businessUsername}`}
                   </p>
                   <p>
                     <strong>Address:</strong> {form.address}
@@ -477,7 +548,7 @@ export default function QueueBusiness() {
                     <strong>Name:</strong> {form.firstName} {form.lastName}
                   </p>
                   <p>
-                    <strong>Guests:</strong> {form.numGuests}
+                    <strong>Guests:</strong> {parseInt(form.numGuests)}
                   </p>
                 </div>
 
@@ -489,6 +560,9 @@ export default function QueueBusiness() {
                   <div className="text-sm text-muted-foreground">
                     There {peopleAhead === 1 ? "is" : "are"} {peopleAhead}{" "}
                     {peopleAhead === 1 ? "person" : "people"} ahead of you
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    🔄 Actively checking for admission status...
                   </div>
                 </div>
 
@@ -617,7 +691,7 @@ export default function QueueBusiness() {
                 <div className="p-4 bg-muted rounded-lg text-left">
                   <p className="text-sm text-muted-foreground mb-2">Details</p>
                   <p>
-                    <strong>Business:</strong> @{businessUsername}
+                    <strong>Business:</strong> {businessName || `@${businessUsername}`}
                   </p>
                   <p>
                     <strong>Address:</strong> {form.address}
@@ -626,7 +700,7 @@ export default function QueueBusiness() {
                     <strong>Name:</strong> {form.firstName} {form.lastName}
                   </p>
                   <p>
-                    <strong>Guests:</strong> {form.numGuests}
+                    <strong>Guests:</strong> {parseInt(form.numGuests)}
                   </p>
                   <p>
                     <strong>Preference:</strong>{" "}

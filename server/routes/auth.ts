@@ -247,4 +247,217 @@ router.get("/me", requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * GET /auth/business/:username/addresses
+ * Returns: { addresses: Array<{address: string, businessName: string}> }
+ */
+router.get("/business/:username/addresses", async (req, res) => {
+  try {
+    const username = String(req.params.username || "").trim();
+    if (!username)
+      return res.status(400).json({ error: "username is required" });
+    
+    const user = await prisma.user.findUnique({ 
+      where: { username },
+      select: { name: true, locations: true }
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+
+    const locations = ((user as any).locations as any[]) || [];
+    const addresses = locations.map((location: any) => ({
+      address: location.address,
+      businessName: (user as any).name
+    }));
+
+    return res.json({ addresses });
+  } catch (err: any) {
+    console.error("[auth] get business addresses error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * POST /auth/business/:username/queue
+ * Body: { address, firstName, lastName, numGuests, phoneNumber, waitingPreference }
+ * Adds customer to the queue for a specific location
+ */
+router.post("/business/:username/queue", async (req, res) => {
+  try {
+    const username = String(req.params.username || "").trim();
+    if (!username)
+      return res.status(400).json({ error: "username is required" });
+    
+    const { address, firstName, lastName, numGuests, phoneNumber, waitingPreference } = req.body || {};
+    
+    if (!address || !firstName || !lastName || !numGuests || !waitingPreference) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    if (waitingPreference === "wait_anywhere" && !phoneNumber) {
+      return res.status(400).json({ error: "Phone number is required for Wait Anywhere" });
+    }
+
+    const user = await prisma.user.findUnique({ 
+      where: { username },
+      select: { id: true, name: true, locations: true }
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+
+    const locations = ((user as any).locations as any[]) || [];
+    const locationIndex = locations.findIndex((loc: any) => loc.address === address);
+    
+    if (locationIndex === -1) {
+      return res.status(404).json({ error: "Location not found" });
+    }
+
+    const customer = {
+      firstName,
+      lastName,
+      numGuests: Number(numGuests),
+      phoneNumber: phoneNumber || "",
+      waitingPreference,
+      joinedAt: new Date().toISOString(),
+      position: (locations[locationIndex].queue || []).length + 1
+    };
+
+    // Add customer to the queue
+    locations[locationIndex].queue = [...(locations[locationIndex].queue || []), customer];
+
+    // Update the business with the new queue
+    await prisma.user.update({
+      where: { id: (user as any).id },
+      data: { locations: locations as any }
+    });
+
+    return res.json({ 
+      success: true, 
+      customer,
+      position: customer.position,
+      businessName: (user as any).name
+    });
+  } catch (err: any) {
+    console.error("[auth] add to queue error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * GET /auth/business/:username/queue/:customerId/status
+ * Returns: { admitted: boolean, position?: number, message?: string }
+ * Checks if a specific customer has been admitted
+ */
+router.get("/business/:username/queue/:customerId/status", async (req, res) => {
+  try {
+    const username = String(req.params.username || "").trim();
+    const customerId = String(req.params.customerId || "").trim();
+    
+    if (!username || !customerId) {
+      return res.status(400).json({ error: "username and customerId are required" });
+    }
+
+    const user = await prisma.user.findUnique({ 
+      where: { username },
+      select: { id: true, name: true, locations: true }
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+
+    const locations = ((user as any).locations as any[]) || [];
+    
+    // Find the customer in any location's queue
+    let customerFound = false;
+    let customerPosition = 0;
+    let customerLocation = null;
+    
+    for (const location of locations) {
+      const queue = location.queue || [];
+      const customerIndex = queue.findIndex((c: any) => 
+        c.firstName + c.lastName + c.joinedAt === customerId
+      );
+      
+      if (customerIndex !== -1) {
+        customerFound = true;
+        customerPosition = customerIndex + 1;
+        customerLocation = location;
+        break;
+      }
+    }
+
+    if (!customerFound) {
+      return res.json({ 
+        admitted: false, 
+        message: "Customer not found in queue" 
+      });
+    }
+
+    // Check if customer is still in queue (not admitted)
+    if (customerLocation && (customerLocation as any).queue && 
+        (customerLocation as any).queue.some((c: any) => 
+          c.firstName + c.lastName + c.joinedAt === customerId
+        )) {
+      return res.json({ 
+        admitted: false, 
+        position: customerPosition,
+        message: "Customer is still waiting in queue" 
+      });
+    }
+
+    // Customer has been admitted (removed from queue)
+    return res.json({ 
+      admitted: true, 
+      message: "Customer has been admitted" 
+    });
+
+  } catch (err: any) {
+    console.error("[auth] check customer status error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * PUT /auth/me (protected)
+ * Body: { locations } - Updates user locations
+ */
+router.put("/me", requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).auth.sub as string;
+    const { locations } = req.body || {};
+    
+    if (!locations || !Array.isArray(locations)) {
+      return res.status(400).json({ error: "locations array is required" });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: { locations: locations as any },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        username: true,
+        phone: true,
+        plan: true,
+        trial: true,
+        trialDurationDays: true,
+        maxLocations: true,
+        locations: true,
+        createdAt: true,
+      },
+    });
+    
+    return res.json({ user: updated });
+  } catch (err: any) {
+    console.error("[auth] update me error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
 export default router;

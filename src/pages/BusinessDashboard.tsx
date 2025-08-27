@@ -14,26 +14,25 @@ import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const BusinessDashboard = () => {
-  const queueData = [] as Array<{
-    id: string;
-    name: string;
-    phone: string;
-    joinedAt: Date;
-    estimatedWait: number;
-  }>;
-  const todayStats = {
-    totalServed: 0,
-    currentQueue: 0,
-    avgWaitTime: 15,
-    successRate: 0,
-  };
-
   const [me, setMe] = useState<any | null>(null);
   const [selectedLocationIndex, setSelectedLocationIndex] = useState(0);
+  const [loading, setLoading] = useState(false);
   const locations = (me?.locations as any[]) || [];
   const maxLocations = me?.maxLocations ?? 1;
   const onTrial = me?.trial ?? true;
   const { toast } = useToast();
+
+  // Get current location and queue
+  const currentLocation = locations[selectedLocationIndex];
+  const queueData = currentLocation?.queue || [];
+  
+  // Calculate real-time statistics
+  const todayStats = {
+    totalServed: 0, // This could be enhanced to track served customers
+    currentQueue: queueData.length,
+    avgWaitTime: 15, // This could be calculated from actual data
+    successRate: 100, // This could be calculated from actual data
+  };
 
   useEffect(() => {
     (async () => {
@@ -43,6 +42,113 @@ const BusinessDashboard = () => {
       } catch {}
     })();
   }, []);
+
+  // Auto-refresh queue data every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await api("/auth/me");
+        setMe(res.user);
+      } catch {}
+    }, 10000); // Refresh every 10 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Function to admit a customer (remove from queue)
+  const admitCustomer = async (customerIndex: number) => {
+    if (!currentLocation) return;
+    
+    setLoading(true);
+    try {
+      const updatedQueue = [...queueData];
+      const admittedCustomer = updatedQueue.splice(customerIndex, 1)[0];
+      
+      // Update the locations array with the new queue
+      const updatedLocations = [...locations];
+      updatedLocations[selectedLocationIndex] = {
+        ...currentLocation,
+        queue: updatedQueue
+      };
+
+      // Update the user data
+      const updated = await api("/auth/me", {
+        method: "PUT",
+        body: JSON.stringify({
+          locations: updatedLocations
+        }),
+      });
+      
+      setMe(updated.user);
+      
+      toast({
+        title: "Customer admitted",
+        description: `${admittedCustomer.firstName} ${admittedCustomer.lastName} has been admitted.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to admit customer",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to remove a customer from queue (without admitting)
+  const removeCustomer = async (customerIndex: number) => {
+    if (!currentLocation) return;
+    
+    setLoading(true);
+    try {
+      const updatedQueue = [...queueData];
+      const removedCustomer = updatedQueue.splice(customerIndex, 1)[0];
+      
+      // Update the locations array with the new queue
+      const updatedLocations = [...locations];
+      updatedLocations[selectedLocationIndex] = {
+        ...currentLocation,
+        queue: updatedQueue
+      };
+
+      // Update the user data
+      const updated = await api("/auth/me", {
+        method: "PUT",
+        body: JSON.stringify({
+          locations: updatedLocations
+        }),
+      });
+      
+      setMe(updated.user);
+      
+      toast({
+        title: "Customer removed",
+        description: `${removedCustomer.firstName} ${removedCustomer.lastName} has been removed from the queue.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to remove customer",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format time since customer joined
+  const formatTimeSince = (joinedAt: string) => {
+    const joined = new Date(joinedAt);
+    const now = new Date();
+    const diffMs = now.getTime() - joined.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    return `${diffHours}h ${diffMins % 60}m ago`;
+  };
 
   return (
     <>
@@ -209,7 +315,7 @@ const BusinessDashboard = () => {
             <Card className="shadow-lg border-0">
               <CardHeader className="pb-2">
                 <CardDescription>Currently Waiting</CardDescription>
-                <CardTitle className="text-2xl">0</CardTitle>
+                <CardTitle className="text-2xl">{todayStats.currentQueue}</CardTitle>
               </CardHeader>
             </Card>
             <Card className="shadow-lg border-0">
@@ -242,17 +348,91 @@ const BusinessDashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 Queue Management{" "}
-                <Badge variant="secondary">{queueData.length} customers</Badge>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        const res = await api("/auth/me");
+                        setMe(res.user);
+                        toast({
+                          title: "Queue refreshed",
+                          description: "Queue data has been updated.",
+                        });
+                      } catch (error: any) {
+                        toast({
+                          title: "Failed to refresh",
+                          description: error.message || "Please try again.",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    disabled={loading}
+                  >
+                    Refresh
+                  </Button>
+                  <Badge variant="secondary">{queueData.length} customers</Badge>
+                </div>
               </CardTitle>
-              <CardDescription>No customers in queue</CardDescription>
+              <CardDescription>
+                {currentLocation ? `Managing queue for: ${currentLocation.address}` : "No location selected"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border p-6 text-sm text-muted-foreground">
-                Keep the momentum going with a paid plan.{" "}
-                <Button className="ml-2" size="sm" variant="success">
-                  Upgrade to Grow
-                </Button>
-              </div>
+              {queueData.length === 0 ? (
+                <div className="rounded-md border p-6 text-sm text-muted-foreground text-center">
+                  No customers in queue at this location.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {queueData.map((customer: any, index: number) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-4 border rounded-lg bg-card"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Badge variant="outline" className="text-xs">
+                            #{index + 1}
+                          </Badge>
+                          <span className="font-medium">
+                            {customer.firstName} {customer.lastName}
+                          </span>
+                          <Badge variant="secondary" className="text-xs">
+                            {customer.numGuests} {customer.numGuests === 1 ? 'guest' : 'guests'}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <div>Joined: {formatTimeSince(customer.joinedAt)}</div>
+                          <div>Preference: {customer.waitingPreference === 'on_premises' ? 'Stay on Premises' : 'Wait Anywhere'}</div>
+                          {customer.phoneNumber && (
+                            <div>Phone: {customer.phoneNumber}</div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 ml-4">
+                        <Button
+                          size="sm"
+                          variant="success"
+                          onClick={() => admitCustomer(index)}
+                          disabled={loading}
+                        >
+                          Admit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => removeCustomer(index)}
+                          disabled={loading}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
