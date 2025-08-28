@@ -16,7 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 
 /** API call to get addresses for this business */
-async function fetchAddressesForBusiness(username: string): Promise<Array<{address: string, businessName: string}>> {
+async function fetchAddressesForBusiness(
+  username: string
+): Promise<Array<{ address: string; businessName: string }>> {
   if (!username) return [];
   try {
     const response = await api(`/auth/business/${username}/addresses`);
@@ -36,7 +38,9 @@ export default function QueueBusiness() {
 
   const [step, setStep] = useState<Step>(2);
 
-  const [addresses, setAddresses] = useState<Array<{address: string, businessName: string}>>([]);
+  const [addresses, setAddresses] = useState<
+    Array<{ address: string; businessName: string }>
+  >([]);
   const [loadingAddresses, setLoadingAddresses] = useState(false);
   const [businessName, setBusinessName] = useState("");
   const [joiningQueue, setJoiningQueue] = useState(false);
@@ -106,19 +110,35 @@ export default function QueueBusiness() {
   // Check if customer has been admitted by the business - more frequent checking for real-time updates
   useEffect(() => {
     if (step !== 4) return; // Only check when on step 4 (Queue status)
-    
+
     const customerId = `${form.firstName}${form.lastName}${form.joinedAt}`;
     if (!customerId || !form.joinedAt) return;
-    
+
     const checkAdmissionStatus = async () => {
       try {
-        const response = await api(`/auth/business/${businessUsername}/queue/${customerId}/status`);
-        if (response.admitted) {
+        const response = await api(
+          `/auth/business/${businessUsername}/queue/${customerId}/status`
+        );
+
+        if (response.removed) {
+          // Customer has been removed from the queue by the business
+          toast({
+            title: "Removed from queue",
+            description:
+              "You have been removed from the queue by the business.",
+            variant: "destructive",
+          });
+          // Redirect back to queue selection after a short delay
+          setTimeout(() => {
+            navigate("/queue");
+          }, 2000);
+        } else if (response.admitted) {
           // Customer has been admitted by the business
           setStep(5);
           toast({
             title: "You've been admitted!",
-            description: "The business has called you. Please proceed to your turn.",
+            description:
+              "The business has called you. Please proceed to your turn.",
           });
         }
       } catch (error) {
@@ -129,14 +149,19 @@ export default function QueueBusiness() {
 
     // Check admission status every 2 seconds when on step 4 for real-time updates
     const interval = setInterval(checkAdmissionStatus, 2000);
-    
+
     // Also check immediately
     checkAdmissionStatus();
 
     return () => clearInterval(interval);
-  }, [step, businessUsername, form.firstName, form.lastName, form.joinedAt, toast]);
-
-
+  }, [
+    step,
+    businessUsername,
+    form.firstName,
+    form.lastName,
+    form.joinedAt,
+    toast,
+  ]);
 
   // Start countdown for Step 5
   useEffect(() => {
@@ -169,7 +194,7 @@ export default function QueueBusiness() {
   const nextFromStep2 = (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
-    if (!form.address) newErrors.address = "Address is required";
+    if (!form.address) newErrors.address = "Location is required";
     if (!form.firstName) newErrors.firstName = "First name is required";
     if (!form.lastName) newErrors.lastName = "Last name is required";
     const numGuests = parseInt(form.numGuests);
@@ -192,23 +217,23 @@ export default function QueueBusiness() {
 
     setJoiningQueue(true);
     try {
-              // Add customer to the queue in the database
-        const response = await api(`/auth/business/${businessUsername}/queue`, {
-          method: "POST",
-          body: JSON.stringify({
-            address: form.address,
-            firstName: form.firstName,
-            lastName: form.lastName,
-            numGuests: parseInt(form.numGuests),
-            phoneNumber: form.phoneNumber,
-            waitingPreference: form.waitingPreference,
-          }),
-        });
+      // Add customer to the queue in the database
+      const response = await api(`/auth/business/${businessUsername}/queue`, {
+        method: "POST",
+        body: JSON.stringify({
+          address: form.address,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          numGuests: parseInt(form.numGuests),
+          phoneNumber: form.phoneNumber,
+          waitingPreference: form.waitingPreference,
+        }),
+      });
 
       if (response.success) {
         // Set the joinedAt timestamp for admission status checking
-        setForm(prev => ({ ...prev, joinedAt: response.customer.joinedAt }));
-        
+        setForm((prev) => ({ ...prev, joinedAt: response.customer.joinedAt }));
+
         toast({
           title: "You're in the queue!",
           description:
@@ -300,7 +325,7 @@ export default function QueueBusiness() {
               <form onSubmit={nextFromStep2} className="space-y-4">
                 {/* Address (no map) */}
                 <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
+                  <Label htmlFor="address">Location</Label>
                   <div className="relative">
                     <select
                       id="address"
@@ -317,13 +342,13 @@ export default function QueueBusiness() {
                       <option value="" disabled>
                         {loadingAddresses
                           ? "Loading addresses..."
-                          : "Select an address"}
+                          : "Select a Location"}
                       </option>
-                                              {addresses.map((a) => (
-                          <option key={a.address} value={a.address}>
-                            {a.businessName} - {a.address}
-                          </option>
-                        ))}
+                      {addresses.map((a) => (
+                        <option key={a.address} value={a.address}>
+                          {a.businessName} - {a.address}
+                        </option>
+                      ))}
                     </select>
                     <svg
                       className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500"
@@ -520,7 +545,11 @@ export default function QueueBusiness() {
                     >
                       Back
                     </Button>
-                    <Button type="submit" className="flex-1" disabled={joiningQueue}>
+                    <Button
+                      type="submit"
+                      className="flex-1"
+                      disabled={joiningQueue}
+                    >
                       {joiningQueue ? "Joining..." : "Next"}
                     </Button>
                   </div>
@@ -539,7 +568,8 @@ export default function QueueBusiness() {
                     Queue Details
                   </p>
                   <p>
-                    <strong>Business:</strong> {businessName || `@${businessUsername}`}
+                    <strong>Business:</strong>{" "}
+                    {businessName || `@${businessUsername}`}
                   </p>
                   <p>
                     <strong>Address:</strong> {form.address}
@@ -560,9 +590,6 @@ export default function QueueBusiness() {
                   <div className="text-sm text-muted-foreground">
                     There {peopleAhead === 1 ? "is" : "are"} {peopleAhead}{" "}
                     {peopleAhead === 1 ? "person" : "people"} ahead of you
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-2">
-                    🔄 Actively checking for admission status...
                   </div>
                 </div>
 
@@ -691,7 +718,8 @@ export default function QueueBusiness() {
                 <div className="p-4 bg-muted rounded-lg text-left">
                   <p className="text-sm text-muted-foreground mb-2">Details</p>
                   <p>
-                    <strong>Business:</strong> {businessName || `@${businessUsername}`}
+                    <strong>Business:</strong>{" "}
+                    {businessName || `@${businessUsername}`}
                   </p>
                   <p>
                     <strong>Address:</strong> {form.address}

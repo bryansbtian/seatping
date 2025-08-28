@@ -12,6 +12,34 @@ import { LoginSchema, SignUpSchema } from "../lib/validation";
 
 const router = Router();
 
+// Utility function to get credits based on plan
+function getCreditsForPlan(plan: string) {
+  switch (plan) {
+    case "Starter":
+      return { smsCredits: 200, customerCredits: 50 }; // SMS refilled monthly, Customers refilled daily
+    case "Professional":
+      return { smsCredits: 500, customerCredits: 100 }; // SMS refilled monthly, Customers refilled daily
+    case "Custom":
+      return { smsCredits: 5000, customerCredits: 1000 };
+    default:
+      return { smsCredits: 200, customerCredits: 50 }; // Default to Starter
+  }
+}
+
+// Utility function to initialize a location with credits
+function initializeLocationWithCredits(address: string, plan: string) {
+  const credits = getCreditsForPlan(plan);
+  return {
+    address,
+    queue: [],
+    admittedCustomers: [],
+    removedCustomers: [],
+    smsCredits: credits.smsCredits,
+    customerCredits: credits.customerCredits,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 /**
  * GET /auth/exists?username=foo
  * Returns: { exists: boolean }
@@ -54,12 +82,11 @@ router.post("/locations", requireAuth, async (req, res) => {
         .json({ error: `Max locations reached (${maxLocations})` });
     }
 
-    const newLocation = {
+    // Create new location with proper credits based on plan
+    const newLocation = initializeLocationWithCredits(
       address,
-      queue: [],
-      smsCredits: 0,
-      customerCredits: 0,
-    };
+      (user as any).plan
+    );
 
     const updated = await prisma.user.update({
       where: { id: userId },
@@ -74,6 +101,7 @@ router.post("/locations", requireAuth, async (req, res) => {
         trial: true,
         trialDurationDays: true,
         maxLocations: true,
+        planStartedAt: true,
         locations: true,
         createdAt: true,
       },
@@ -115,6 +143,8 @@ router.post("/signup", async (req, res) => {
 
     // Set defaults based on plan
     const maxLocations = plan === "Professional" ? 3 : 1;
+    const planCredits = getCreditsForPlan(plan);
+
     const user = await prisma.user.create({
       data: {
         name,
@@ -127,6 +157,7 @@ router.post("/signup", async (req, res) => {
         trial: true,
         trialDurationDays: 7,
         maxLocations,
+        planStartedAt: new Date(),
       },
       select: {
         id: true,
@@ -138,6 +169,7 @@ router.post("/signup", async (req, res) => {
         trial: true,
         trialDurationDays: true,
         maxLocations: true,
+        planStartedAt: true,
         createdAt: true,
       },
     });
@@ -235,6 +267,7 @@ router.get("/me", requireAuth, async (req, res) => {
         trial: true,
         trialDurationDays: true,
         maxLocations: true,
+        planStartedAt: true,
         locations: true,
         createdAt: true,
       },
@@ -256,12 +289,12 @@ router.get("/business/:username/addresses", async (req, res) => {
     const username = String(req.params.username || "").trim();
     if (!username)
       return res.status(400).json({ error: "username is required" });
-    
-    const user = await prisma.user.findUnique({ 
+
+    const user = await prisma.user.findUnique({
       where: { username },
-      select: { name: true, locations: true }
+      select: { name: true, locations: true },
     });
-    
+
     if (!user) {
       return res.status(404).json({ error: "Business not found" });
     }
@@ -269,7 +302,7 @@ router.get("/business/:username/addresses", async (req, res) => {
     const locations = ((user as any).locations as any[]) || [];
     const addresses = locations.map((location: any) => ({
       address: location.address,
-      businessName: (user as any).name
+      businessName: (user as any).name,
     }));
 
     return res.json({ addresses });
@@ -289,31 +322,65 @@ router.post("/business/:username/queue", async (req, res) => {
     const username = String(req.params.username || "").trim();
     if (!username)
       return res.status(400).json({ error: "username is required" });
-    
-    const { address, firstName, lastName, numGuests, phoneNumber, waitingPreference } = req.body || {};
-    
-    if (!address || !firstName || !lastName || !numGuests || !waitingPreference) {
+
+    const {
+      address,
+      firstName,
+      lastName,
+      numGuests,
+      phoneNumber,
+      waitingPreference,
+    } = req.body || {};
+
+    if (
+      !address ||
+      !firstName ||
+      !lastName ||
+      !numGuests ||
+      !waitingPreference
+    ) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
     if (waitingPreference === "wait_anywhere" && !phoneNumber) {
-      return res.status(400).json({ error: "Phone number is required for Wait Anywhere" });
+      return res
+        .status(400)
+        .json({ error: "Phone number is required for Wait Anywhere" });
     }
 
-    const user = await prisma.user.findUnique({ 
+    const user = await prisma.user.findUnique({
       where: { username },
-      select: { id: true, name: true, locations: true }
+      select: {
+        id: true,
+        name: true,
+        locations: true,
+      },
     });
-    
+
     if (!user) {
       return res.status(404).json({ error: "Business not found" });
     }
 
     const locations = ((user as any).locations as any[]) || [];
-    const locationIndex = locations.findIndex((loc: any) => loc.address === address);
-    
+    const locationIndex = locations.findIndex(
+      (loc: any) => loc.address === address
+    );
+
     if (locationIndex === -1) {
       return res.status(404).json({ error: "Location not found" });
+    }
+
+    const location = locations[locationIndex];
+
+    // Check if location has enough SMS credits for wait anywhere customers
+    if (waitingPreference === "wait_anywhere") {
+      const locationSmsCredits = location.smsCredits || 0;
+      if (locationSmsCredits <= 0) {
+        return res.status(400).json({
+          error:
+            "This location has insufficient SMS credits for Wait Anywhere service",
+        });
+      }
     }
 
     const customer = {
@@ -323,23 +390,43 @@ router.post("/business/:username/queue", async (req, res) => {
       phoneNumber: phoneNumber || "",
       waitingPreference,
       joinedAt: new Date().toISOString(),
-      position: (locations[locationIndex].queue || []).length + 1
+      position: (location.queue || []).length + 1,
     };
 
     // Add customer to the queue
-    locations[locationIndex].queue = [...(locations[locationIndex].queue || []), customer];
+    location.queue = [...(location.queue || []), customer];
 
-    // Update the business with the new queue
+    // Calculate credit deductions for queue joining
+    let smsCreditsToDeduct = 0;
+
+    // Deduct SMS credit from location when customer joins with "wait_anywhere" preference
+    if (waitingPreference === "wait_anywhere") {
+      smsCreditsToDeduct = 1;
+      location.smsCredits = Math.max(
+        0,
+        (location.smsCredits || 0) - smsCreditsToDeduct
+      );
+    }
+
+    // Update the locations array
+    locations[locationIndex] = location;
+
+    // Update the business with the new queue and credit deductions
     await prisma.user.update({
       where: { id: (user as any).id },
-      data: { locations: locations as any }
+      data: {
+        locations: locations as any,
+      },
     });
 
-    return res.json({ 
-      success: true, 
+    return res.json({
+      success: true,
       customer,
       position: customer.position,
-      businessName: (user as any).name
+      businessName: (user as any).name,
+      creditsDeducted: {
+        smsCredits: smsCreditsToDeduct,
+      },
     });
   } catch (err: any) {
     console.error("[auth] add to queue error:", err?.message || err);
@@ -349,78 +436,317 @@ router.post("/business/:username/queue", async (req, res) => {
 
 /**
  * GET /auth/business/:username/queue/:customerId/status
- * Returns: { admitted: boolean, position?: number, message?: string }
- * Checks if a specific customer has been admitted
+ * Returns: { admitted: boolean, removed: boolean, position?: number, message?: string }
+ * Checks if a specific customer has been admitted or removed
  */
 router.get("/business/:username/queue/:customerId/status", async (req, res) => {
   try {
     const username = String(req.params.username || "").trim();
     const customerId = String(req.params.customerId || "").trim();
-    
+
     if (!username || !customerId) {
-      return res.status(400).json({ error: "username and customerId are required" });
+      return res
+        .status(400)
+        .json({ error: "username and customerId are required" });
     }
 
-    const user = await prisma.user.findUnique({ 
+    const user = await prisma.user.findUnique({
       where: { username },
-      select: { id: true, name: true, locations: true }
+      select: { id: true, name: true, locations: true },
     });
-    
+
     if (!user) {
       return res.status(404).json({ error: "Business not found" });
     }
 
     const locations = ((user as any).locations as any[]) || [];
-    
-    // Find the customer in any location's queue
+
+    // First check if customer is still in queue
     let customerFound = false;
     let customerPosition = 0;
-    let customerLocation = null;
-    
+
     for (const location of locations) {
       const queue = location.queue || [];
-      const customerIndex = queue.findIndex((c: any) => 
-        c.firstName + c.lastName + c.joinedAt === customerId
+      const customerIndex = queue.findIndex(
+        (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
       );
-      
+
       if (customerIndex !== -1) {
         customerFound = true;
         customerPosition = customerIndex + 1;
-        customerLocation = location;
         break;
       }
     }
 
-    if (!customerFound) {
-      return res.json({ 
-        admitted: false, 
-        message: "Customer not found in queue" 
-      });
-    }
-
-    // Check if customer is still in queue (not admitted)
-    if (customerLocation && (customerLocation as any).queue && 
-        (customerLocation as any).queue.some((c: any) => 
-          c.firstName + c.lastName + c.joinedAt === customerId
-        )) {
-      return res.json({ 
-        admitted: false, 
+    if (customerFound) {
+      // Customer is still in queue (waiting)
+      return res.json({
+        admitted: false,
+        removed: false,
         position: customerPosition,
-        message: "Customer is still waiting in queue" 
+        message: "Customer is still waiting in queue",
       });
     }
 
-    // Customer has been admitted (removed from queue)
-    return res.json({ 
-      admitted: true, 
-      message: "Customer has been admitted" 
-    });
+    // Customer not in queue - check if they were admitted or removed
+    for (const location of locations) {
+      // Check admitted customers
+      const admittedCustomers = location.admittedCustomers || [];
+      const admittedCustomer = admittedCustomers.find(
+        (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
+      );
 
+      if (admittedCustomer) {
+        return res.json({
+          admitted: true,
+          removed: false,
+          message: "Customer has been admitted",
+        });
+      }
+
+      // Check removed customers
+      const removedCustomers = location.removedCustomers || [];
+      const removedCustomer = removedCustomers.find(
+        (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
+      );
+
+      if (removedCustomer) {
+        return res.json({
+          admitted: false,
+          removed: true,
+          message: "Customer has been removed from queue",
+        });
+      }
+    }
+
+    // Customer not found anywhere - might be a new customer or error
+    return res.json({
+      admitted: false,
+      removed: false,
+      message: "Customer not found",
+    });
   } catch (err: any) {
     console.error("[auth] check customer status error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
   }
 });
+
+/**
+ * POST /auth/business/:username/queue/:customerId/admit (protected)
+ * Admits a customer from the queue (they go to Step 5)
+ */
+router.post(
+  "/business/:username/queue/:customerId/admit",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const userId = (req as any).auth.sub as string;
+      const username = String(req.params.username || "").trim();
+      const customerId = String(req.params.customerId || "").trim();
+
+      if (!username || !customerId) {
+        return res
+          .status(400)
+          .json({ error: "username and customerId are required" });
+      }
+
+      // Verify the business user owns this username
+      const user = await prisma.user.findFirst({
+        where: { id: userId, username },
+        select: {
+          id: true,
+          name: true,
+          locations: true,
+        },
+      });
+
+      if (!user) {
+        return res
+          .status(404)
+          .json({ error: "Business not found or access denied" });
+      }
+
+      const locations = ((user as any).locations as any[]) || [];
+      let customerFound = false;
+      let admittedCustomer = null;
+      let locationIndex = -1;
+
+      // Find and remove the customer from queue, marking as admitted
+      for (let i = 0; i < locations.length; i++) {
+        const queue = locations[i].queue || [];
+        const customerIndex = queue.findIndex(
+          (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
+        );
+
+        if (customerIndex !== -1) {
+          admittedCustomer = queue[customerIndex];
+          locationIndex = i;
+
+          // Check if location has enough customer credits
+          const locationCustomerCredits = locations[i].customerCredits || 0;
+          if (locationCustomerCredits <= 0) {
+            return res.status(400).json({
+              error:
+                "This location has insufficient customer credits. Please upgrade your plan.",
+            });
+          }
+
+          // Mark customer as admitted and remove from queue
+          admittedCustomer.status = "admitted";
+          admittedCustomer.admittedAt = new Date().toISOString();
+
+          // Store in a separate admitted customers list
+          if (!locations[i].admittedCustomers) {
+            locations[i].admittedCustomers = [];
+          }
+          locations[i].admittedCustomers.push(admittedCustomer);
+
+          // Remove from queue
+          locations[i].queue.splice(customerIndex, 1);
+          customerFound = true;
+          break;
+        }
+      }
+
+      if (!customerFound) {
+        return res.status(404).json({ error: "Customer not found in queue" });
+      }
+
+      // Calculate credit deductions
+      let smsCreditsToDeduct = 0;
+      let customerCreditsToDeduct = 1; // Always deduct 1 customer credit when admitting
+
+      // Check if customer has "wait anywhere" preference - deduct SMS credit too
+      if (
+        admittedCustomer &&
+        admittedCustomer.waitingPreference === "wait_anywhere"
+      ) {
+        smsCreditsToDeduct = 1;
+      }
+
+      // Deduct credits from the specific location
+      const location = locations[locationIndex];
+      location.customerCredits = Math.max(
+        0,
+        (location.customerCredits || 0) - customerCreditsToDeduct
+      );
+
+      if (smsCreditsToDeduct > 0) {
+        location.smsCredits = Math.max(
+          0,
+          (location.smsCredits || 0) - smsCreditsToDeduct
+        );
+      }
+
+      // Update locations array
+      locations[locationIndex] = location;
+
+      // Update the business data with credit deductions
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          locations: locations as any,
+        },
+      });
+
+      return res.json({
+        success: true,
+        customer: admittedCustomer,
+        message: "Customer has been admitted",
+        creditsDeducted: {
+          customerCredits: customerCreditsToDeduct,
+          smsCredits: smsCreditsToDeduct,
+        },
+      });
+    } catch (err: any) {
+      console.error("[auth] admit customer error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+/**
+ * DELETE /auth/business/:username/queue/:customerId (protected)
+ * Removes a customer from the queue (they get kicked out)
+ */
+router.delete(
+  "/business/:username/queue/:customerId",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const userId = (req as any).auth.sub as string;
+      const username = String(req.params.username || "").trim();
+      const customerId = String(req.params.customerId || "").trim();
+
+      if (!username || !customerId) {
+        return res
+          .status(400)
+          .json({ error: "username and customerId are required" });
+      }
+
+      // Verify the business user owns this username
+      const user = await prisma.user.findFirst({
+        where: { id: userId, username },
+        select: { id: true, name: true, locations: true },
+      });
+
+      if (!user) {
+        return res
+          .status(404)
+          .json({ error: "Business not found or access denied" });
+      }
+
+      const locations = ((user as any).locations as any[]) || [];
+      let customerFound = false;
+      let removedCustomer = null;
+
+      // Find and remove the customer from queue, marking as removed
+      for (let i = 0; i < locations.length; i++) {
+        const queue = locations[i].queue || [];
+        const customerIndex = queue.findIndex(
+          (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
+        );
+
+        if (customerIndex !== -1) {
+          removedCustomer = queue[customerIndex];
+          // Mark customer as removed
+          removedCustomer.status = "removed";
+          removedCustomer.removedAt = new Date().toISOString();
+
+          // Store in a separate removed customers list
+          if (!locations[i].removedCustomers) {
+            locations[i].removedCustomers = [];
+          }
+          locations[i].removedCustomers.push(removedCustomer);
+
+          // Remove from queue
+          locations[i].queue.splice(customerIndex, 1);
+          customerFound = true;
+          break;
+        }
+      }
+
+      if (!customerFound) {
+        return res.status(404).json({ error: "Customer not found in queue" });
+      }
+
+      // Update the business data
+      await prisma.user.update({
+        where: { id: userId },
+        data: { locations: locations as any },
+      });
+
+      return res.json({
+        success: true,
+        customer: removedCustomer,
+        message: "Customer has been removed from queue",
+      });
+    } catch (err: any) {
+      console.error("[auth] remove customer error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  }
+);
 
 /**
  * PUT /auth/me (protected)
@@ -430,14 +756,45 @@ router.put("/me", requireAuth, async (req, res) => {
   try {
     const userId = (req as any).auth.sub as string;
     const { locations } = req.body || {};
-    
+
     if (!locations || !Array.isArray(locations)) {
       return res.status(400).json({ error: "locations array is required" });
     }
 
+    // Get current user to access plan information
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { plan: true, locations: true },
+    });
+
+    if (!currentUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const currentLocations = ((currentUser as any).locations as any[]) || [];
+
+    // Process locations to ensure new ones have credits
+    const processedLocations = locations.map((location: any) => {
+      // Check if this is a new location (doesn't exist in current locations)
+      const existingLocation = currentLocations.find(
+        (loc: any) => loc.address === location.address
+      );
+
+      if (existingLocation) {
+        // Keep existing location with all its data
+        return existingLocation;
+      } else {
+        // New location - initialize with credits based on plan
+        return initializeLocationWithCredits(
+          location.address,
+          (currentUser as any).plan
+        );
+      }
+    });
+
     const updated = await prisma.user.update({
       where: { id: userId },
-      data: { locations: locations as any },
+      data: { locations: processedLocations as any },
       select: {
         id: true,
         name: true,
@@ -452,7 +809,7 @@ router.put("/me", requireAuth, async (req, res) => {
         createdAt: true,
       },
     });
-    
+
     return res.json({ user: updated });
   } catch (err: any) {
     console.error("[auth] update me error:", err?.message || err);

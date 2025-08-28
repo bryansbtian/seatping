@@ -9,6 +9,21 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { CheckCircle } from "@mynaui/icons-react";
+import {
+  Clock,
+  Smartphone,
+  Bell,
+  ClipboardList,
+  Star,
+  Utensils,
+  Scissors,
+  Sparkles,
+  Building2,
+  Building,
+  User,
+  QrCode,
+  Users,
+} from "lucide-react";
 import Header from "@/components/Header";
 import heroImage from "@/assets/hero-image.jpg";
 import Footer from "@/components/Footer";
@@ -16,17 +31,17 @@ import Footer from "@/components/Footer";
 const LandingPage = () => {
   const features = [
     {
-      icon: "⏱️",
+      icon: <Clock className="w-8 h-8 text-blue-600" />,
       title: "Set up in 2 minutes",
       description: "Quick setup with no hardware needed",
     },
     {
-      icon: "📱",
+      icon: <Smartphone className="w-8 h-8 text-blue-600" />,
       title: "Works on any phone",
       description: "No app downloads required",
     },
     {
-      icon: "🔔",
+      icon: <Bell className="w-8 h-8 text-blue-600" />,
       title: "Smart notifications",
       description: "SMS alerts when ready",
     },
@@ -34,28 +49,28 @@ const LandingPage = () => {
 
   const businessTypes = [
     {
-      icon: "🍴",
+      icon: <Utensils className="w-8 h-8 text-orange-600" />,
       title: "Restaurants",
       description: "Handle lunch rush without the stress",
       before: "Line chaos",
       after: "Smooth flow",
     },
     {
-      icon: "✂️",
+      icon: <Scissors className="w-8 h-8 text-purple-600" />,
       title: "Barbershops",
       description: "Turn Saturday chaos into extra revenue",
       before: "8 walk-aways",
       after: "0 walk-aways",
     },
     {
-      icon: "💅",
+      icon: <Sparkles className="w-8 h-8 text-pink-600" />,
       title: "Nail Salons",
       description: "Fill dead afternoon slots with morning overflow",
       before: "2hr waits",
       after: "45min waits",
     },
     {
-      icon: "🏥",
+      icon: <Building2 className="w-8 h-8 text-green-600" />,
       title: "Walk-in Clinics",
       description: "Clear your waiting room, keep patients happy",
       before: "15 in lobby",
@@ -65,19 +80,19 @@ const LandingPage = () => {
 
   const steps = [
     {
-      icon: "👤",
+      icon: <User className="w-8 h-8 text-blue-600" />,
       title: "Sign Up & Get QR",
       description: "Create account in seconds",
       time: "1 min",
     },
     {
-      icon: "📋",
+      icon: <QrCode className="w-8 h-8 text-blue-600" />,
       title: "Display QR Code",
       description: "Print and post at entrance",
       time: "1 min",
     },
     {
-      icon: "🔔",
+      icon: <Bell className="w-8 h-8 text-blue-600" />,
       title: "Notify Customer",
       description: "One tap when ready",
       time: "1 tap",
@@ -138,7 +153,7 @@ const LandingPage = () => {
                 key={index}
                 className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-2 sm:gap-3"
               >
-                <span className="text-2xl">{feature.icon}</span>
+                <div className="flex-shrink-0">{feature.icon}</div>
                 <div>
                   <p className="font-semibold">{feature.title}</p>
                   <p className="text-sm text-muted-foreground">
@@ -215,7 +230,7 @@ const LandingPage = () => {
                 className="shadow-lg border rounded-2xl hover:scale-105 hover:shadow-xl transition-transform duration-300"
               >
                 <CardHeader className="text-center">
-                  <div className="text-4xl mb-4">{step.icon}</div>
+                  <div className="mb-4 flex justify-center">{step.icon}</div>
                   <CardTitle className="text-lg">{step.title}</CardTitle>
                   <CardDescription className="text-sm">
                     {step.description}
@@ -251,7 +266,9 @@ const LandingPage = () => {
             {/* Left card */}
             <Card className="shadow-lg border rounded-2xl hover:scale-105 hover:shadow-xl transition-transform duration-300">
               <CardHeader className="text-center">
-                <div className="text-4xl mb-4">🏬</div>
+                <div className="mb-4 flex justify-center">
+                  <Building className="w-10 h-10 text-blue-600" />
+                </div>
                 <CardTitle className="text-xl">Stay Inside</CardTitle>
                 <CardDescription>
                   Great for visitors who prefer to wait in-store.
@@ -292,7 +309,9 @@ const LandingPage = () => {
             {/* Right card */}
             <Card className="shadow-lg border rounded-2xl hover:scale-105 hover:shadow-xl transition-transform duration-300">
               <CardHeader className="text-center">
-                <div className="text-4xl mb-4">📱</div>
+                <div className="mb-4 flex justify-center">
+                  <Smartphone className="w-10 h-10 text-blue-600" />
+                </div>
                 <CardTitle className="text-xl">Step Out Nearby</CardTitle>
                 <CardDescription>
                   Perfect for guests who want flexibility.
@@ -428,8 +447,9 @@ const LandingPage = () => {
 
             <div className="md:col-span-3 text-center mt-6">
               <p className="text-muted-foreground">
-                ⭐ All plans include 14-day free trial • No credit card required
-                • Cancel anytime
+                <Star className="w-4 h-4 inline-block mr-1 text-yellow-500" />{" "}
+                All plans include 14-day free trial • No credit card required •
+                Cancel anytime
               </p>
             </div>
           </div>

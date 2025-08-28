@@ -1,5 +1,3 @@
-import Footer from "@/components/Footer";
-import BusinessHeader from "@/components/BusinessHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,6 +10,17 @@ import {
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import BusinessHeader from "@/components/BusinessHeader";
+import {
+  Users,
+  Clock,
+  TrendingUp,
+  Star,
+  RefreshCw,
+  Calendar,
+  ChevronDown,
+} from "lucide-react";
+import Footer from "@/components/Footer";
 
 const BusinessDashboard = () => {
   const [me, setMe] = useState<any | null>(null);
@@ -19,20 +28,73 @@ const BusinessDashboard = () => {
   const [loading, setLoading] = useState(false);
   const locations = (me?.locations as any[]) || [];
   const maxLocations = me?.maxLocations ?? 1;
-  const onTrial = me?.trial ?? true;
+  const onTrial = me?.trial === true;
   const { toast } = useToast();
 
   // Get current location and queue
   const currentLocation = locations[selectedLocationIndex];
   const queueData = currentLocation?.queue || [];
-  
+
   // Calculate real-time statistics
-  const todayStats = {
-    totalServed: 0, // This could be enhanced to track served customers
-    currentQueue: queueData.length,
-    avgWaitTime: 15, // This could be calculated from actual data
-    successRate: 100, // This could be calculated from actual data
+  const calculateStats = () => {
+    if (!currentLocation) {
+      return {
+        totalServed: 0,
+        currentQueue: 0,
+        avgWaitTime: 0,
+        successRate: 0,
+      };
+    }
+
+    const admittedCustomers = currentLocation.admittedCustomers || [];
+    const removedCustomers = currentLocation.removedCustomers || [];
+    const currentQueue = queueData.length;
+
+    // Filter for today's customers
+    const today = new Date().toDateString();
+    const todayAdmitted = admittedCustomers.filter((customer: any) => {
+      const admittedDate = new Date(customer.admittedAt);
+      return admittedDate.toDateString() === today;
+    });
+
+    const todayRemoved = removedCustomers.filter((customer: any) => {
+      const removedDate = new Date(customer.removedAt);
+      return removedDate.toDateString() === today;
+    });
+
+    // Calculate average wait time (admitted customers only)
+    let totalWaitTime = 0;
+    let waitTimeCount = 0;
+
+    todayAdmitted.forEach((customer: any) => {
+      if (customer.joinedAt && customer.admittedAt) {
+        const joinTime = new Date(customer.joinedAt).getTime();
+        const admitTime = new Date(customer.admittedAt).getTime();
+        const waitTime = (admitTime - joinTime) / (1000 * 60); // Convert to minutes
+        totalWaitTime += waitTime;
+        waitTimeCount++;
+      }
+    });
+
+    const avgWaitTime =
+      waitTimeCount > 0 ? Math.round(totalWaitTime / waitTimeCount) : 0;
+
+    // Calculate success rate (admitted / (admitted + removed))
+    const totalProcessed = todayAdmitted.length + todayRemoved.length;
+    const successRate =
+      totalProcessed > 0
+        ? Math.round((todayAdmitted.length / totalProcessed) * 100)
+        : 100;
+
+    return {
+      totalServed: todayAdmitted.length,
+      currentQueue,
+      avgWaitTime,
+      successRate,
+    };
   };
+
+  const todayStats = calculateStats();
 
   useEffect(() => {
     (async () => {
@@ -55,35 +117,27 @@ const BusinessDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Function to admit a customer (remove from queue)
+  // Function to admit a customer (they go to Step 5)
   const admitCustomer = async (customerIndex: number) => {
     if (!currentLocation) return;
-    
+
     setLoading(true);
     try {
-      const updatedQueue = [...queueData];
-      const admittedCustomer = updatedQueue.splice(customerIndex, 1)[0];
-      
-      // Update the locations array with the new queue
-      const updatedLocations = [...locations];
-      updatedLocations[selectedLocationIndex] = {
-        ...currentLocation,
-        queue: updatedQueue
-      };
+      const customer = queueData[customerIndex];
+      const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
 
-      // Update the user data
-      const updated = await api("/auth/me", {
-        method: "PUT",
-        body: JSON.stringify({
-          locations: updatedLocations
-        }),
+      // Call the new admit endpoint
+      await api(`/auth/business/${me?.username}/queue/${customerId}/admit`, {
+        method: "POST",
       });
-      
+
+      // Refresh the business data
+      const updated = await api("/auth/me");
       setMe(updated.user);
-      
+
       toast({
         title: "Customer admitted",
-        description: `${admittedCustomer.firstName} ${admittedCustomer.lastName} has been admitted.`,
+        description: `${customer.firstName} ${customer.lastName} has been admitted and will proceed to their turn.`,
       });
     } catch (error: any) {
       toast({
@@ -96,35 +150,27 @@ const BusinessDashboard = () => {
     }
   };
 
-  // Function to remove a customer from queue (without admitting)
+  // Function to remove a customer from queue (they get kicked out)
   const removeCustomer = async (customerIndex: number) => {
     if (!currentLocation) return;
-    
+
     setLoading(true);
     try {
-      const updatedQueue = [...queueData];
-      const removedCustomer = updatedQueue.splice(customerIndex, 1)[0];
-      
-      // Update the locations array with the new queue
-      const updatedLocations = [...locations];
-      updatedLocations[selectedLocationIndex] = {
-        ...currentLocation,
-        queue: updatedQueue
-      };
+      const customer = queueData[customerIndex];
+      const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
 
-      // Update the user data
-      const updated = await api("/auth/me", {
-        method: "PUT",
-        body: JSON.stringify({
-          locations: updatedLocations
-        }),
+      // Call the new remove endpoint
+      await api(`/auth/business/${me?.username}/queue/${customerId}`, {
+        method: "DELETE",
       });
-      
+
+      // Refresh the business data
+      const updated = await api("/auth/me");
       setMe(updated.user);
-      
+
       toast({
         title: "Customer removed",
-        description: `${removedCustomer.firstName} ${removedCustomer.lastName} has been removed from the queue.`,
+        description: `${customer.firstName} ${customer.lastName} has been removed from the queue.`,
       });
     } catch (error: any) {
       toast({
@@ -143,212 +189,196 @@ const BusinessDashboard = () => {
     const now = new Date();
     const diffMs = now.getTime() - joined.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    
+
     if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
     const diffHours = Math.floor(diffMins / 60);
     return `${diffHours}h ${diffMins % 60}m ago`;
   };
 
+  // Get current date
+  const getCurrentDate = () => {
+    const now = new Date();
+    return now.toLocaleDateString("en-US", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
   return (
     <>
       <BusinessHeader />
-      <div className="min-h-screen pt-20 bg-gradient-to-br from-primary/5 via-background to-success/5">
+      <div className="min-h-screen pt-20 bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="container mx-auto px-4 py-8">
-          {onTrial && (
+          {/* Trial Upgrade Banner */}
+          {me && onTrial && (
             <div className="mb-6">
-              <div className="rounded-md bg-primary/10 border p-4 flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium">
-                    You're on a free trial!
+              <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
+                  <div>
+                    <h3 className="text-lg md:text-xl font-bold">
+                      You're on a Free Trial!
+                    </h3>
+                    <p className="text-sm md:text-base opacity-90">
+                      Upgrade now to unlock unlimited locations and premium
+                      features
+                    </p>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {me?.trialDurationDays ?? 7} days total trial
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      className="border-white text-white hover:bg-white hover:text-blue-600"
+                      onClick={() => (window.location.href = "/payments")}
+                    >
+                      Upgrade Now
+                    </Button>
                   </div>
                 </div>
-                <Button size="sm" variant="success">
-                  Upgrade to Full Access
-                </Button>
               </div>
             </div>
           )}
 
-          {/* Locations dropdown + add */}
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            {locations.length > 0 ? (
-              <>
-                <select
-                  className="border rounded px-3 py-2 min-w-56"
-                  // if the current index is out of range (e.g., after a delete), fall back to 0
-                  value={
-                    selectedLocationIndex >= 0 &&
-                    selectedLocationIndex < locations.length
-                      ? selectedLocationIndex
-                      : 0
-                  }
-                  onChange={(e) =>
-                    setSelectedLocationIndex(Number(e.target.value))
-                  }
-                >
-                  {/* Optional: show a non-selectable label at the top */}
-                  <option disabled>Choose a location…</option>
-                  {locations.map((loc, idx) => (
-                    <option key={idx} value={idx}>
-                      {loc?.address || `Location ${idx + 1}`}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    if (locations.length >= maxLocations) {
-                      toast({
-                        title: "Limit reached",
-                        description: `You have reached the maximum locations (${maxLocations}).`,
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-                    const address = prompt(
-                      "Enter new location address:"
-                    )?.trim();
-                    if (!address) return;
-                    try {
-                      const updated = await api("/auth/locations", {
-                        method: "POST",
-                        body: JSON.stringify({ address }),
-                      });
-                      setMe(updated.user);
-                      setSelectedLocationIndex(
-                        updated.user.locations.length - 1
-                      );
-                    } catch (e: any) {
-                      toast({
-                        title: "Failed to add location",
-                        description: e?.message || "Please try again.",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                >
-                  Add Location
-                </Button>
-              </>
-            ) : (
-              <>
-                <div className="text-sm text-muted-foreground">
-                  No locations yet. Add your first one:
+          {/* Dashboard Header */}
+          <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
+            <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold text-gray-800">
+                  Hello {me?.name || "Business Owner"}!
+                </h1>
+                <p className="text-gray-600 text-sm md:text-base">
+                  Here is your daily statistic
+                </p>
+                {currentLocation && (
+                  <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                      Customer Credits: {currentLocation?.customerCredits || 0}
+                    </span>
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                      SMS Credits: {currentLocation?.smsCredits || 0}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-y-0 md:space-x-4">
+                <div className="flex items-center space-x-2">
+                  <Calendar size={16} className="text-gray-400" />
+                  <span className="text-sm text-gray-600">
+                    {getCurrentDate()}
+                  </span>
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    if (locations.length >= maxLocations) {
-                      toast({
-                        title: "Limit reached",
-                        description: `You have reached the maximum locations (${maxLocations}).`,
-                        variant: "destructive",
-                      });
-                      return;
+
+                {/* Location Selector */}
+                <div className="relative">
+                  <select
+                    className="appearance-none bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto"
+                    value={selectedLocationIndex}
+                    onChange={(e) =>
+                      setSelectedLocationIndex(Number(e.target.value))
                     }
-                    const address = prompt(
-                      "Enter new location address:"
-                    )?.trim();
-                    if (!address) return;
-                    try {
-                      const updated = await api("/auth/locations", {
-                        method: "POST",
-                        body: JSON.stringify({ address }),
-                      });
-                      setMe(updated.user);
-                      setSelectedLocationIndex(
-                        updated.user.locations.length - 1
-                      );
-                    } catch (e: any) {
-                      toast({
-                        title: "Failed to add location",
-                        description: e?.message || "Please try again.",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                >
-                  Add Location
-                </Button>
-              </>
-            )}
+                  >
+                    {locations.length > 0 ? (
+                      locations.map((loc, idx) => (
+                        <option key={idx} value={idx}>
+                          {loc?.address || `Location ${idx + 1}`}
+                        </option>
+                      ))
+                    ) : (
+                      <option value={0}>No locations</option>
+                    )}
+                  </select>
+                  <ChevronDown
+                    size={16}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <Card className="mb-6 border-0 shadow-xl">
-            <CardHeader className="flex items-center justify-between flex-row">
-              <div>
-                <CardTitle>100% retention</CardTitle>
-                <CardDescription>
-                  Set average ticket value for ROI insights
-                </CardDescription>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
+            <Card className="p-4 md:p-6 bg-white rounded-xl shadow-sm border-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-xs md:text-sm">
+                    Total Queue
+                  </p>
+                  <p className="text-2xl md:text-3xl font-bold text-gray-800">
+                    {todayStats.currentQueue}
+                  </p>
+                </div>
+                <div className="p-2 md:p-3 bg-blue-100 rounded-full">
+                  <Users className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
+                </div>
               </div>
-              <Button variant="outline">Settings</Button>
-            </CardHeader>
-          </Card>
+            </Card>
 
-          <Card className="mb-8 border-0 shadow-xl">
-            <CardHeader className="flex items-center justify-between flex-row">
-              <div>
-                <CardTitle>Your Optimization Journey</CardTitle>
-                <CardDescription>20% complete</CardDescription>
+            <Card className="p-4 md:p-6 bg-white rounded-xl shadow-sm border-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-xs md:text-sm">
+                    Avg Wait Time
+                  </p>
+                  <p className="text-2xl md:text-3xl font-bold text-gray-800">
+                    {todayStats.avgWaitTime}m
+                  </p>
+                </div>
+                <div className="p-2 md:p-3 bg-green-100 rounded-full">
+                  <Clock className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
+                </div>
               </div>
-              <Button variant="outline">Settings</Button>
-            </CardHeader>
-            <CardContent>
-              <div className="h-2 w-full bg-muted rounded">
-                <div
-                  className="h-2 bg-primary rounded"
-                  style={{ width: "20%" }}
-                />
-              </div>
-              <div className="text-xs text-muted-foreground mt-2">
-                Next milestone (+10%): Set your average ticket value in Settings
-              </div>
-            </CardContent>
-          </Card>
+            </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <Card className="shadow-lg border-0">
-              <CardHeader className="pb-2">
-                <CardDescription>Currently Waiting</CardDescription>
-                <CardTitle className="text-2xl">{todayStats.currentQueue}</CardTitle>
-              </CardHeader>
+            <Card className="p-4 md:p-6 bg-white rounded-xl shadow-sm border-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-xs md:text-sm">
+                    Served Today
+                  </p>
+                  <p className="text-2xl md:text-3xl font-bold text-gray-800">
+                    {todayStats.totalServed}
+                  </p>
+                </div>
+                <div className="p-2 md:p-3 bg-orange-100 rounded-full">
+                  <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-orange-600" />
+                </div>
+              </div>
             </Card>
-            <Card className="shadow-lg border-0">
-              <CardHeader className="pb-2">
-                <CardDescription>Average Wait Time</CardDescription>
-                <CardTitle className="text-2xl">
-                  {todayStats.avgWaitTime}m
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="shadow-lg border-0">
-              <CardHeader className="pb-2">
-                <CardDescription>Served Today</CardDescription>
-                <CardTitle className="text-2xl">
-                  {todayStats.totalServed}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="shadow-lg border-0">
-              <CardHeader className="pb-2">
-                <CardDescription>Success Rate</CardDescription>
-                <CardTitle className="text-2xl">
-                  {todayStats.successRate}%
-                </CardTitle>
-              </CardHeader>
+
+            <Card className="p-4 md:p-6 bg-white rounded-xl shadow-sm border-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-xs md:text-sm">
+                    Success Rate
+                  </p>
+                  <p className="text-2xl md:text-3xl font-bold text-gray-800">
+                    {todayStats.successRate}%
+                  </p>
+                </div>
+                <div className="p-2 md:p-3 bg-purple-100 rounded-full">
+                  <Star className="w-5 h-5 md:w-6 md:h-6 text-purple-600" />
+                </div>
+              </div>
             </Card>
           </div>
 
-          <Card className="shadow-2xl border-0">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Queue Management{" "}
-                <div className="flex items-center gap-2">
+          {/* Queue Management */}
+          <Card className="bg-white rounded-xl shadow-sm border-0">
+            <CardHeader className="border-b border-gray-100 p-4 md:p-6">
+              <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
+                <div>
+                  <CardTitle className="text-lg md:text-xl text-gray-800">
+                    Queue Management
+                  </CardTitle>
+                  <CardDescription className="text-gray-600 text-sm">
+                    {currentLocation
+                      ? `Managing queue for: ${currentLocation.address}`
+                      : "No location selected"}
+                  </CardDescription>
+                </div>
+                <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-y-0 md:space-x-3">
                   <Button
                     size="sm"
                     variant="outline"
@@ -369,52 +399,71 @@ const BusinessDashboard = () => {
                       }
                     }}
                     disabled={loading}
+                    className="flex items-center space-x-2 w-full md:w-auto"
                   >
-                    Refresh
+                    <RefreshCw size={16} />
+                    <span>Refresh</span>
                   </Button>
-                  <Badge variant="secondary">{queueData.length} customers</Badge>
+                  <Badge
+                    variant="secondary"
+                    className="bg-blue-100 text-blue-700 text-center md:text-left"
+                  >
+                    {queueData.length}{" "}
+                    {queueData.length === 1 ? "customer" : "customers"}
+                  </Badge>
                 </div>
-              </CardTitle>
-              <CardDescription>
-                {currentLocation ? `Managing queue for: ${currentLocation.address}` : "No location selected"}
-              </CardDescription>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 md:p-6">
               {queueData.length === 0 ? (
-                <div className="rounded-md border p-6 text-sm text-muted-foreground text-center">
-                  No customers in queue at this location.
+                <div className="text-center py-8 md:py-12">
+                  <Users className="w-10 h-10 md:w-12 md:h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 text-sm md:text-base">
+                    No customers in queue at this location.
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 md:space-y-4">
                   {queueData.map((customer: any, index: number) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-4 border rounded-lg bg-card"
+                      className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Badge variant="outline" className="text-xs">
-                            #{index + 1}
-                          </Badge>
-                          <span className="font-medium">
-                            {customer.firstName} {customer.lastName}
-                          </span>
-                          <Badge variant="secondary" className="text-xs">
-                            {customer.numGuests} {customer.numGuests === 1 ? 'guest' : 'guests'}
-                          </Badge>
+                      <div className="flex items-center space-x-3 md:space-x-4">
+                        <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm md:text-base">
+                          {index + 1}
                         </div>
-                        <div className="text-sm text-muted-foreground space-y-1">
-                          <div>Joined: {formatTimeSince(customer.joinedAt)}</div>
-                          <div>Preference: {customer.waitingPreference === 'on_premises' ? 'Stay on Premises' : 'Wait Anywhere'}</div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-800 text-sm md:text-base">
+                            {customer.firstName} {customer.lastName}
+                          </h3>
+                          <div className="flex flex-col space-y-1 md:flex-row md:items-center md:space-y-0 md:space-x-4 text-xs md:text-sm text-gray-600">
+                            <span>
+                              Joined: {formatTimeSince(customer.joinedAt)}
+                            </span>
+                            <span className="hidden md:inline">•</span>
+                            <span>
+                              {customer.numGuests}{" "}
+                              {customer.numGuests === 1 ? "guest" : "guests"}
+                            </span>
+                            <span className="hidden md:inline">•</span>
+                            <span>
+                              {customer.waitingPreference === "on_premises"
+                                ? "Stay on Premises"
+                                : "Wait Anywhere"}
+                            </span>
+                          </div>
                           {customer.phoneNumber && (
-                            <div>Phone: {customer.phoneNumber}</div>
+                            <p className="text-xs md:text-sm text-gray-500 mt-1">
+                              Phone: {customer.phoneNumber}
+                            </p>
                           )}
                         </div>
                       </div>
-                      <div className="flex gap-2 ml-4">
+                      <div className="flex items-center space-x-2 md:space-x-3 ml-11 md:ml-0">
                         <Button
                           size="sm"
-                          variant="success"
+                          className="bg-green-600 hover:bg-green-700 text-white flex-1 md:flex-none"
                           onClick={() => admitCustomer(index)}
                           disabled={loading}
                         >
@@ -425,6 +474,7 @@ const BusinessDashboard = () => {
                           variant="outline"
                           onClick={() => removeCustomer(index)}
                           disabled={loading}
+                          className="flex-1 md:flex-none"
                         >
                           Remove
                         </Button>
