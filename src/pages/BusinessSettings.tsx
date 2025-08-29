@@ -23,7 +23,7 @@ import { useEffect, useState, useRef } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import BusinessHeader from "@/components/BusinessHeader";
-import { MapPin, Plus, Trash2, Calendar, QrCode, Download } from "lucide-react";
+import { MapPin, Plus, Trash2, Calendar, QrCode, Download, Clock } from "lucide-react";
 import QRCode from "qrcode";
 import Footer from "@/components/Footer";
 
@@ -33,11 +33,69 @@ const BusinessSettings = () => {
   const [newLocationAddress, setNewLocationAddress] = useState("");
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [showQrCode, setShowQrCode] = useState(false);
+  const [trialTimeLeft, setTrialTimeLeft] = useState<{ days: number; hours: number; minutes: number } | null>(null);
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+  const trialCountdownRef = useRef<NodeJS.Timeout | null>(null);
   const locations = (me?.locations as any[]) || [];
   const maxLocations = me?.maxLocations ?? 1;
   const onTrial = me?.trial === true;
   const { toast } = useToast();
+
+  // Calculate trial time remaining
+  const calculateTrialTimeLeft = () => {
+    if (!me || !me.trial || !me.createdAt || !me.trialDurationDays) {
+      return null;
+    }
+
+    const createdAt = new Date(me.createdAt);
+    const trialDurationDays = me.trialDurationDays || 7;
+    const trialEndDate = new Date(createdAt.getTime() + (trialDurationDays * 24 * 60 * 60 * 1000));
+    const now = new Date();
+    const timeLeft = trialEndDate.getTime() - now.getTime();
+
+    if (timeLeft <= 0) {
+      return null; // Trial has expired
+    }
+
+    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+
+    return { days, hours, minutes };
+  };
+
+  // Update trial countdown
+  useEffect(() => {
+    if (trialCountdownRef.current) {
+      clearInterval(trialCountdownRef.current);
+    }
+
+    if (me && me.trial) {
+      // Calculate initial time left
+      setTrialTimeLeft(calculateTrialTimeLeft());
+
+      // Update countdown every minute
+      trialCountdownRef.current = setInterval(() => {
+        const timeLeft = calculateTrialTimeLeft();
+        setTrialTimeLeft(timeLeft);
+        
+        // If trial has expired, clear the interval
+        if (!timeLeft) {
+          if (trialCountdownRef.current) {
+            clearInterval(trialCountdownRef.current);
+          }
+        }
+      }, 60000); // Update every minute
+    } else {
+      setTrialTimeLeft(null);
+    }
+
+    return () => {
+      if (trialCountdownRef.current) {
+        clearInterval(trialCountdownRef.current);
+      }
+    };
+  }, [me]);
 
   useEffect(() => {
     (async () => {
@@ -184,32 +242,69 @@ const BusinessSettings = () => {
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="container mx-auto px-4 py-8">
-          {/* Trial Upgrade Banner */}
+          {/* Trial Banner Logic */}
           {me && onTrial && (
-            <div className="mb-6">
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
-                  <div>
-                    <h3 className="text-lg md:text-xl font-bold">
-                      You're on a Free Trial!
-                    </h3>
-                    <p className="text-sm md:text-base opacity-90">
-                      Upgrade now to unlock unlimited locations and premium
-                      features
-                    </p>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button
-                      variant="outline"
-                      className="border-white text-white hover:bg-white hover:text-blue-600"
-                      onClick={() => (window.location.href = "/payments")}
-                    >
-                      Upgrade Now
-                    </Button>
+            <>
+              {/* Trial Expired Banner - Shows when trial has expired (0 credits) */}
+              {locations.length > 0 && locations.some((location: any) => location.smsCredits === 0 && location.customerCredits === 0) ? (
+                <div className="mb-6">
+                  <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
+                      <div>
+                        <h3 className="text-lg md:text-xl font-bold">
+                          ⚠️ Trial Expired
+                        </h3>
+                        <p className="text-sm md:text-base opacity-90">
+                          Your trial has expired. Upgrade to continue using SeatPing with full features.
+                        </p>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          variant="outline"
+                          className="border-white text-white hover:bg-white hover:text-red-600"
+                          onClick={() => (window.location.href = "/payments")}
+                        >
+                          Upgrade Now
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              ) : (
+                /* Trial Active Banner - Shows when trial is still active */
+                <div className="mb-6">
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
+                      <div>
+                        <h3 className="text-lg md:text-xl font-bold">
+                          You're on a Free Trial!
+                        </h3>
+                        <p className="text-sm md:text-base opacity-90">
+                          Upgrade now to unlock unlimited locations and premium features
+                        </p>
+                        {trialTimeLeft && (
+                          <div className="mt-2 flex items-center space-x-2 text-blue-100">
+                            <Clock className="w-4 h-4" />
+                            <span className="text-sm font-medium">
+                              Trial expires in: {trialTimeLeft.days}d {trialTimeLeft.hours}h {trialTimeLeft.minutes}m
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          variant="outline"
+                          className="border-white text-white hover:bg-white hover:text-blue-600"
+                          onClick={() => (window.location.href = "/payments")}
+                        >
+                          Upgrade Now
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Change Plans Banner */}

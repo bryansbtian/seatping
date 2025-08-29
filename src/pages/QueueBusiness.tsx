@@ -44,6 +44,7 @@ export default function QueueBusiness() {
   const [loadingAddresses, setLoadingAddresses] = useState(false);
   const [businessName, setBusinessName] = useState("");
   const [joiningQueue, setJoiningQueue] = useState(false);
+  const [hasLeftQueue, setHasLeftQueue] = useState(false);
 
   const [form, setForm] = useState({
     address: "",
@@ -109,7 +110,7 @@ export default function QueueBusiness() {
 
   // Check if customer has been admitted by the business - more frequent checking for real-time updates
   useEffect(() => {
-    if (step !== 4) return; // Only check when on step 4 (Queue status)
+    if (step !== 4 || hasLeftQueue) return; // Only check when on step 4 (Queue status) and haven't left
 
     const customerId = `${form.firstName}${form.lastName}${form.joinedAt}`;
     if (!customerId || !form.joinedAt) return;
@@ -121,13 +122,23 @@ export default function QueueBusiness() {
         );
 
         if (response.removed) {
-          // Customer has been removed from the queue by the business
-          toast({
-            title: "Removed from queue",
-            description:
-              "You have been removed from the queue by the business.",
-            variant: "destructive",
-          });
+          // Check if customer left themselves or was removed by business
+          if (response.status === "left") {
+            // Customer left the queue themselves - this shouldn't happen here
+            // since they should have already navigated away after clicking "Leave Queue"
+            toast({
+              title: "You left the queue",
+              description: "You have left the queue.",
+            });
+          } else {
+            // Customer has been removed from the queue by the business
+            toast({
+              title: "Removed from queue",
+              description:
+                "You have been removed from the queue by the business.",
+              variant: "destructive",
+            });
+          }
           // Redirect back to queue selection after a short delay
           setTimeout(() => {
             navigate("/queue");
@@ -161,6 +172,7 @@ export default function QueueBusiness() {
     form.lastName,
     form.joinedAt,
     toast,
+    hasLeftQueue,
   ]);
 
   // Start countdown for Step 5
@@ -295,9 +307,40 @@ export default function QueueBusiness() {
     }
   };
 
-  const leaveQueue = () => {
-    toast({ title: "You left the queue" });
-    navigate("/queue");
+  const leaveQueue = async () => {
+    // Set flag to prevent status checking from running
+    setHasLeftQueue(true);
+    
+    if (!form.joinedAt) {
+      // If customer hasn't joined queue yet, just navigate away
+      toast({ title: "You left the queue" });
+      navigate("/queue");
+      return;
+    }
+
+    try {
+      const customerId = `${form.firstName}${form.lastName}${form.joinedAt}`;
+      
+      // Call API to remove customer from queue
+      await api(`/auth/business/${businessUsername}/queue/${customerId}/leave`, {
+        method: "POST",
+      });
+
+      toast({ 
+        title: "You left the queue",
+        description: "You have been removed from the queue."
+      });
+      navigate("/queue");
+    } catch (error: any) {
+      console.error("Failed to leave queue:", error);
+      toast({
+        title: "Error leaving queue",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+      // Still navigate away even if API call fails
+      navigate("/queue");
+    }
   };
 
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");

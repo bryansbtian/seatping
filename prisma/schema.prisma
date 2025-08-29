@@ -19,7 +19,7 @@ model User {
   trial     Boolean  @default(true)
   trialDurationDays Int @default(7)
   maxLocations Int   @default(1)
-  planStartedAt DateTime @default(now())
+  planStartedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

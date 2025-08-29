@@ -9,36 +9,18 @@ import {
   requireAuth,
 } from "../lib/auth";
 import { LoginSchema, SignUpSchema } from "../lib/validation";
+import { 
+  isTrialExpired, 
+  getCreditsForLocation, 
+  enforceTrialExpiration,
+  createLocationWithTrialEnforcement,
+  checkAndRefillMonthlyCredits,
+  handlePlanPurchase
+} from "../lib/trial";
 
 const router = Router();
 
-// Utility function to get credits based on plan
-function getCreditsForPlan(plan: string) {
-  switch (plan) {
-    case "Starter":
-      return { smsCredits: 200, customerCredits: 50 }; // SMS refilled monthly, Customers refilled daily
-    case "Professional":
-      return { smsCredits: 500, customerCredits: 100 }; // SMS refilled monthly, Customers refilled daily
-    case "Custom":
-      return { smsCredits: 5000, customerCredits: 1000 };
-    default:
-      return { smsCredits: 200, customerCredits: 50 }; // Default to Starter
-  }
-}
-
-// Utility function to initialize a location with credits
-function initializeLocationWithCredits(address: string, plan: string) {
-  const credits = getCreditsForPlan(plan);
-  return {
-    address,
-    queue: [],
-    admittedCustomers: [],
-    removedCustomers: [],
-    smsCredits: credits.smsCredits,
-    customerCredits: credits.customerCredits,
-    createdAt: new Date().toISOString(),
-  };
-}
+// Note: Old utility functions replaced with trial-enforced versions in ../lib/trial.ts
 
 /**
  * GET /auth/exists?username=foo
@@ -82,10 +64,10 @@ router.post("/locations", requireAuth, async (req, res) => {
         .json({ error: `Max locations reached (${maxLocations})` });
     }
 
-    // Create new location with proper credits based on plan
-    const newLocation = initializeLocationWithCredits(
-      address,
-      (user as any).plan
+    // Create new location with proper credits based on plan and trial status
+    const newLocation = createLocationWithTrialEnforcement(
+      user,
+      address
     );
 
     const updated = await prisma.user.update({
@@ -143,7 +125,6 @@ router.post("/signup", async (req, res) => {
 
     // Set defaults based on plan
     const maxLocations = plan === "Professional" ? 3 : 1;
-    const planCredits = getCreditsForPlan(plan);
 
     const user = await prisma.user.create({
       data: {
@@ -157,7 +138,7 @@ router.post("/signup", async (req, res) => {
         trial: true,
         trialDurationDays: 7,
         maxLocations,
-        planStartedAt: new Date(),
+        planStartedAt: null, // Will be set when user actually starts a plan
       },
       select: {
         id: true,
@@ -255,6 +236,13 @@ router.post("/logout", (_req, res) => {
 router.get("/me", requireAuth, async (req, res) => {
   try {
     const userId = (req as any).auth.sub as string;
+    
+    // Enforce trial expiration before returning user data
+    await enforceTrialExpiration(userId);
+    
+    // Check and refill monthly credits if needed
+    await checkAndRefillMonthlyCredits(userId);
+    
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -514,7 +502,10 @@ router.get("/business/:username/queue/:customerId/status", async (req, res) => {
         return res.json({
           admitted: false,
           removed: true,
-          message: "Customer has been removed from queue",
+          status: removedCustomer.status || "removed", // "removed" or "left"
+          message: removedCustomer.status === "left" 
+            ? "Customer has left the queue" 
+            : "Customer has been removed from queue",
         });
       }
     }
@@ -749,6 +740,85 @@ router.delete(
 );
 
 /**
+ * POST /auth/business/:username/queue/:customerId/leave
+ * Allows a customer to leave the queue themselves
+ */
+router.post(
+  "/business/:username/queue/:customerId/leave",
+  async (req, res) => {
+    try {
+      const username = String(req.params.username || "").trim();
+      const customerId = String(req.params.customerId || "").trim();
+
+      if (!username || !customerId) {
+        return res
+          .status(400)
+          .json({ error: "username and customerId are required" });
+      }
+
+      // Find the business user
+      const user = await prisma.user.findFirst({
+        where: { username },
+        select: { id: true, name: true, locations: true },
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: "Business not found" });
+      }
+
+      const locations = ((user as any).locations as any[]) || [];
+      let customerFound = false;
+      let removedCustomer = null;
+
+      // Find and remove the customer from queue
+      for (let i = 0; i < locations.length; i++) {
+        const queue = locations[i].queue || [];
+        const customerIndex = queue.findIndex(
+          (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
+        );
+
+        if (customerIndex !== -1) {
+          removedCustomer = queue[customerIndex];
+          // Mark customer as left (not removed by business)
+          removedCustomer.status = "left";
+          removedCustomer.leftAt = new Date().toISOString();
+
+          // Store in a separate removed customers list
+          if (!locations[i].removedCustomers) {
+            locations[i].removedCustomers = [];
+          }
+          locations[i].removedCustomers.push(removedCustomer);
+
+          // Remove from queue
+          locations[i].queue.splice(customerIndex, 1);
+          customerFound = true;
+          break;
+        }
+      }
+
+      if (!customerFound) {
+        return res.status(404).json({ error: "Customer not found in queue" });
+      }
+
+      // Update the business data
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { locations: locations as any },
+      });
+
+      return res.json({
+        success: true,
+        customer: removedCustomer,
+        message: "You have left the queue",
+      });
+    } catch (err: any) {
+      console.error("[auth] customer leave queue error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+/**
  * PUT /auth/me (protected)
  * Body: { locations } - Updates user locations
  */
@@ -761,10 +831,13 @@ router.put("/me", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "locations array is required" });
     }
 
+    // Enforce trial expiration before processing updates
+    await enforceTrialExpiration(userId);
+
     // Get current user to access plan information
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { plan: true, locations: true },
+      select: { plan: true, locations: true, trial: true, trialDurationDays: true, createdAt: true },
     });
 
     if (!currentUser) {
@@ -784,10 +857,10 @@ router.put("/me", requireAuth, async (req, res) => {
         // Keep existing location with all its data
         return existingLocation;
       } else {
-        // New location - initialize with credits based on plan
-        return initializeLocationWithCredits(
-          location.address,
-          (currentUser as any).plan
+        // New location - initialize with credits based on plan and trial status
+        return createLocationWithTrialEnforcement(
+          currentUser,
+          location.address
         );
       }
     });
@@ -813,6 +886,53 @@ router.put("/me", requireAuth, async (req, res) => {
     return res.json({ user: updated });
   } catch (err: any) {
     console.error("[auth] update me error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * POST /auth/purchase-plan (protected)
+ * Body: { plan }
+ * Handles plan purchase and credit refill
+ */
+router.post("/purchase-plan", requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).auth.sub as string;
+    const { plan } = req.body || {};
+
+    if (!plan || typeof plan !== "string") {
+      return res.status(400).json({ error: "plan is required" });
+    }
+
+    // Handle plan purchase
+    await handlePlanPurchase(userId, plan);
+
+    // Get updated user data
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        username: true,
+        phone: true,
+        plan: true,
+        trial: true,
+        trialDurationDays: true,
+        maxLocations: true,
+        planStartedAt: true,
+        locations: true,
+        createdAt: true,
+      },
+    });
+
+    return res.json({ 
+      success: true,
+      user,
+      message: `Successfully upgraded to ${plan} plan`
+    });
+  } catch (err: any) {
+    console.error("[auth] purchase plan error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
   }
 });

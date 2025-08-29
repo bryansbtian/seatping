@@ -7,7 +7,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import BusinessHeader from "@/components/BusinessHeader";
@@ -26,6 +26,8 @@ const BusinessDashboard = () => {
   const [me, setMe] = useState<any | null>(null);
   const [selectedLocationIndex, setSelectedLocationIndex] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [trialTimeLeft, setTrialTimeLeft] = useState<{ days: number; hours: number; minutes: number } | null>(null);
+  const trialCountdownRef = useRef<NodeJS.Timeout | null>(null);
   const locations = (me?.locations as any[]) || [];
   const maxLocations = me?.maxLocations ?? 1;
   const onTrial = me?.trial === true;
@@ -43,6 +45,7 @@ const BusinessDashboard = () => {
         currentQueue: 0,
         avgWaitTime: 0,
         successRate: 0,
+        leftToday: 0,
       };
     }
 
@@ -58,9 +61,15 @@ const BusinessDashboard = () => {
     });
 
     const todayRemoved = removedCustomers.filter((customer: any) => {
-      const removedDate = new Date(customer.removedAt);
+      const removedDate = new Date(customer.removedAt || customer.leftAt);
       return removedDate.toDateString() === today;
     });
+
+    // Count customers who left today (not removed by business)
+    const leftToday = removedCustomers.filter((customer: any) => {
+      const leftDate = new Date(customer.leftAt);
+      return leftDate.toDateString() === today;
+    }).length;
 
     // Calculate average wait time (admitted customers only)
     let totalWaitTime = 0;
@@ -91,10 +100,67 @@ const BusinessDashboard = () => {
       currentQueue,
       avgWaitTime,
       successRate,
+      leftToday,
     };
   };
 
   const todayStats = calculateStats();
+
+  // Calculate trial time remaining
+  const calculateTrialTimeLeft = () => {
+    if (!me || !me.trial || !me.createdAt || !me.trialDurationDays) {
+      return null;
+    }
+
+    const createdAt = new Date(me.createdAt);
+    const trialDurationDays = me.trialDurationDays || 7;
+    const trialEndDate = new Date(createdAt.getTime() + (trialDurationDays * 24 * 60 * 60 * 1000));
+    const now = new Date();
+    const timeLeft = trialEndDate.getTime() - now.getTime();
+
+    if (timeLeft <= 0) {
+      return null; // Trial has expired
+    }
+
+    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+
+    return { days, hours, minutes };
+  };
+
+  // Update trial countdown
+  useEffect(() => {
+    if (trialCountdownRef.current) {
+      clearInterval(trialCountdownRef.current);
+    }
+
+    if (me && me.trial) {
+      // Calculate initial time left
+      setTrialTimeLeft(calculateTrialTimeLeft());
+
+      // Update countdown every minute
+      trialCountdownRef.current = setInterval(() => {
+        const timeLeft = calculateTrialTimeLeft();
+        setTrialTimeLeft(timeLeft);
+        
+        // If trial has expired, clear the interval
+        if (!timeLeft) {
+          if (trialCountdownRef.current) {
+            clearInterval(trialCountdownRef.current);
+          }
+        }
+      }, 60000); // Update every minute
+    } else {
+      setTrialTimeLeft(null);
+    }
+
+    return () => {
+      if (trialCountdownRef.current) {
+        clearInterval(trialCountdownRef.current);
+      }
+    };
+  }, [me]);
 
   useEffect(() => {
     (async () => {
@@ -211,32 +277,69 @@ const BusinessDashboard = () => {
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="container mx-auto px-4 py-8">
-          {/* Trial Upgrade Banner */}
+          {/* Trial Banner Logic */}
           {me && onTrial && (
-            <div className="mb-6">
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
-                  <div>
-                    <h3 className="text-lg md:text-xl font-bold">
-                      You're on a Free Trial!
-                    </h3>
-                    <p className="text-sm md:text-base opacity-90">
-                      Upgrade now to unlock unlimited locations and premium
-                      features
-                    </p>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button
-                      variant="outline"
-                      className="border-white text-white hover:bg-white hover:text-blue-600"
-                      onClick={() => (window.location.href = "/payments")}
-                    >
-                      Upgrade Now
-                    </Button>
+            <>
+              {/* Trial Expired Banner - Shows when trial has expired (0 credits) */}
+              {currentLocation && (currentLocation.smsCredits === 0 && currentLocation.customerCredits === 0) ? (
+                <div className="mb-6">
+                  <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
+                      <div>
+                        <h3 className="text-lg md:text-xl font-bold">
+                          ⚠️ Trial Expired
+                        </h3>
+                        <p className="text-sm md:text-base opacity-90">
+                          Your trial has expired. Upgrade to continue using SeatPing with full features.
+                        </p>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          variant="outline"
+                          className="border-white text-white hover:bg-white hover:text-red-600"
+                          onClick={() => (window.location.href = "/payments")}
+                        >
+                          Upgrade Now
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              ) : (
+                /* Trial Active Banner - Shows when trial is still active */
+                <div className="mb-6">
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
+                      <div>
+                        <h3 className="text-lg md:text-xl font-bold">
+                          You're on a Free Trial!
+                        </h3>
+                        <p className="text-sm md:text-base opacity-90">
+                          Upgrade now to unlock unlimited locations and premium features
+                        </p>
+                        {trialTimeLeft && (
+                          <div className="mt-2 flex items-center space-x-2 text-blue-100">
+                            <Clock className="w-4 h-4" />
+                            <span className="text-sm font-medium">
+                              Trial expires in: {trialTimeLeft.days}d {trialTimeLeft.hours}h {trialTimeLeft.minutes}m
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          variant="outline"
+                          className="border-white text-white hover:bg-white hover:text-blue-600"
+                          onClick={() => (window.location.href = "/payments")}
+                        >
+                          Upgrade Now
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Dashboard Header */}
@@ -298,7 +401,7 @@ const BusinessDashboard = () => {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-6">
             <Card className="p-4 md:p-6 bg-white rounded-xl shadow-sm border-0">
               <div className="flex items-center justify-between">
                 <div>
@@ -359,6 +462,22 @@ const BusinessDashboard = () => {
                 </div>
                 <div className="p-2 md:p-3 bg-purple-100 rounded-full">
                   <Star className="w-5 h-5 md:w-6 md:h-6 text-purple-600" />
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-4 md:p-6 bg-white rounded-xl shadow-sm border-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-xs md:text-sm">
+                    Left Today
+                  </p>
+                  <p className="text-2xl md:text-3xl font-bold text-gray-800">
+                    {todayStats.leftToday}
+                  </p>
+                </div>
+                <div className="p-2 md:p-3 bg-orange-100 rounded-full">
+                  <Users className="w-5 h-5 md:w-6 md:h-6 text-orange-600" />
                 </div>
               </div>
             </Card>
@@ -485,6 +604,77 @@ const BusinessDashboard = () => {
               )}
             </CardContent>
           </Card>
+
+          {/* Recently Left Customers */}
+          {currentLocation?.removedCustomers && currentLocation.removedCustomers.length > 0 && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="w-5 h-5" />
+                  <span>Recently Left Customers</span>
+                </CardTitle>
+                <CardDescription>
+                  Customers who have left the queue recently
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 md:p-6">
+                <div className="space-y-3 md:space-y-4">
+                  {currentLocation.removedCustomers
+                    .slice(-5) // Show last 5 customers
+                    .map((customer: any, index: number) => (
+                      <div
+                        key={index}
+                        className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-center space-x-3 md:space-x-4">
+                          <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm md:text-base ${
+                            customer.status === 'left' 
+                              ? 'bg-orange-500' 
+                              : 'bg-red-500'
+                          }`}>
+                            {customer.status === 'left' ? '👋' : '❌'}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-800 text-sm md:text-base">
+                              {customer.firstName} {customer.lastName}
+                            </h3>
+                            <div className="flex flex-col space-y-1 md:flex-row md:items-center md:space-y-0 md:space-x-4 text-xs md:text-sm text-gray-600">
+                              <span>
+                                {customer.status === 'left' ? 'Left' : 'Removed'}: {formatTimeSince(customer.leftAt || customer.removedAt)}
+                              </span>
+                              <span className="hidden md:inline">•</span>
+                              <span>
+                                {customer.numGuests}{" "}
+                                {customer.numGuests === 1 ? "guest" : "guests"}
+                              </span>
+                              <span className="hidden md:inline">•</span>
+                              <span>
+                                {customer.waitingPreference === "on_premises"
+                                  ? "Stay on Premises"
+                                  : "Wait Anywhere"}
+                              </span>
+                            </div>
+                            {customer.phoneNumber && (
+                              <p className="text-xs md:text-sm text-gray-500 mt-1">
+                                Phone: {customer.phoneNumber}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="ml-11 md:ml-0">
+                          <Badge
+                            variant={customer.status === 'left' ? 'secondary' : 'destructive'}
+                            className="text-xs"
+                          >
+                            {customer.status === 'left' ? 'Left Queue' : 'Removed by Business'}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
       <Footer />
