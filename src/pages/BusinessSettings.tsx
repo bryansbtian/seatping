@@ -38,7 +38,14 @@ const BusinessSettings = () => {
   const trialCountdownRef = useRef<NodeJS.Timeout | null>(null);
   const locations = (me?.locations as any[]) || [];
   const maxLocations = me?.maxLocations ?? 1;
-  const onTrial = me?.trial === true;
+  // Check if account is still in trial period (≤ 7 days old)
+  const onTrial = me && (() => {
+    const createdAt = new Date(me.createdAt);
+    const trialDurationDays = me.trialDurationDays || 7;
+    const trialEndDate = new Date(createdAt.getTime() + (trialDurationDays * 24 * 60 * 60 * 1000));
+    const now = new Date();
+    return now <= trialEndDate;
+  })();
   const { toast } = useToast();
 
   // Calculate trial time remaining
@@ -284,7 +291,6 @@ const BusinessSettings = () => {
                         </p>
                         {trialTimeLeft && (
                           <div className="mt-2 flex items-center space-x-2 text-blue-100">
-                            <Clock className="w-4 h-4" />
                             <span className="text-sm font-medium">
                               Trial expires in: {trialTimeLeft.days}d {trialTimeLeft.hours}h {trialTimeLeft.minutes}m
                             </span>
@@ -307,6 +313,33 @@ const BusinessSettings = () => {
             </>
           )}
 
+          {/* Show upgrade banner for users who are not on trial but have 0 credits */}
+          {me && !onTrial && locations.length > 0 && locations.some((location: any) => location.smsCredits === 0 && location.customerCredits === 0) && (
+            <div className="mb-6">
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
+                  <div>
+                    <h3 className="text-lg md:text-xl font-bold">
+                      ⚠️ No Credits Available
+                    </h3>
+                    <p className="text-sm md:text-base opacity-90">
+                      You have no credits available. Please contact support or upgrade your plan.
+                    </p>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      className="border-white text-white hover:bg-white hover:text-orange-600"
+                      onClick={() => (window.location.href = "/plan-change")}
+                    >
+                      Change Plan
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Change Plans Banner */}
           {me && !onTrial && (
             <div className="mb-6">
@@ -325,7 +358,7 @@ const BusinessSettings = () => {
                       variant="outline"
                       size="sm"
                       className="border-white text-white hover:bg-white hover:text-gray-700 text-xs md:text-sm"
-                      onClick={() => (window.location.href = "/payments")}
+                      onClick={() => (window.location.href = "/plan-change")}
                     >
                       Change Plan
                     </Button>

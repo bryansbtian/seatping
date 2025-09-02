@@ -19,6 +19,8 @@ model User {
   trial     Boolean  @default(true)
   trialDurationDays Int @default(7)
   maxLocations Int   @default(1)
+  baseCustomerCredits Int @default(50)
+  baseSMSCredits Int @default(200)
   planStartedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

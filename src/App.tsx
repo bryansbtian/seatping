@@ -18,6 +18,8 @@ import Sales from "./pages/Sales";
 import Demo from "./pages/Demo";
 import Help from "./pages/Help";
 import QueueBusiness from "./pages/QueueBusiness";
+import Payments from "./pages/Payments";
+import PlanChange from "./pages/PlanChange";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +66,22 @@ const App = () => (
             element={
               <RequireAuth>
                 <BusinessSettings />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/payments"
+            element={
+              <RequireAuth>
+                <Payments />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/plan-change"
+            element={
+              <RequireAuth>
+                <PlanChange />
               </RequireAuth>
             }
           />

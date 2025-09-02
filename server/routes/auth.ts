@@ -12,6 +12,7 @@ import { LoginSchema, SignUpSchema } from "../lib/validation";
 import { 
   isTrialExpired, 
   getCreditsForLocation, 
+  getCreditsForPlan,
   enforceTrialExpiration,
   createLocationWithTrialEnforcement,
   checkAndRefillMonthlyCredits,
@@ -125,6 +126,7 @@ router.post("/signup", async (req, res) => {
 
     // Set defaults based on plan
     const maxLocations = plan === "Professional" ? 3 : 1;
+    const baseCredits = getCreditsForPlan(plan);
 
     const user = await prisma.user.create({
       data: {
@@ -138,6 +140,8 @@ router.post("/signup", async (req, res) => {
         trial: true,
         trialDurationDays: 7,
         maxLocations,
+        baseSMSCredits: baseCredits.smsCredits,
+        baseCustomerCredits: baseCredits.customerCredits,
         planStartedAt: null, // Will be set when user actually starts a plan
       },
       select: {
@@ -150,6 +154,8 @@ router.post("/signup", async (req, res) => {
         trial: true,
         trialDurationDays: true,
         maxLocations: true,
+        baseSMSCredits: true,
+        baseCustomerCredits: true,
         planStartedAt: true,
         createdAt: true,
       },

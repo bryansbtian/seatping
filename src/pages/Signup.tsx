@@ -1,13 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import {
-  Card as UCard,
-  CardContent as UCardContent,
-  CardHeader as UCardHeader,
-  CardTitle as UCardTitle,
-  CardDescription as UCardDescription,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -40,10 +33,6 @@ const Signup = () => {
     confirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<"form" | "plan">("form");
-  const [selectedPlan, setSelectedPlan] = useState<"Starter" | "Professional">(
-    "Starter"
-  );
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -91,25 +80,20 @@ const Signup = () => {
     setErrors(newErrors);
     if (Object.values(newErrors).some(Boolean)) return;
 
-    // Move to plan selection step instead of immediate signup
-    if (step === "form") {
-      setStep("plan");
-      return;
-    }
-
     try {
       setLoading(true);
-      // map fields to API payload
+      // map fields to API payload - automatically assign Starter plan for free trial
       const payload = {
         name: formData.businessName,
         username: formData.businessUsername,
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
+        plan: "Starter", // Always Starter plan for free trial
       };
       const res = await api("/auth/signup", {
         method: "POST",
-        body: JSON.stringify({ ...payload, plan: selectedPlan }),
+        body: JSON.stringify(payload),
       });
 
       toast({
@@ -143,195 +127,112 @@ const Signup = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {step === "form" && (
-                <>
-                  {/* Business Name */}
-                  <div className="space-y-2">
-                    <Label htmlFor="businessName">Business Name</Label>
-                    <Input
-                      id="businessName"
-                      name="businessName"
-                      value={formData.businessName}
-                      onChange={handleChange}
-                      required
-                    />
-                    {errors.businessName && (
-                      <p className="text-sm text-destructive">
-                        {errors.businessName}
-                      </p>
-                    )}
-                  </div>
-                  {/* Business Username */}
-                  <div className="space-y-2">
-                    <Label htmlFor="businessUsername">Business Username</Label>
-                    <Input
-                      id="businessUsername"
-                      name="businessUsername"
-                      value={formData.businessUsername}
-                      onChange={handleChange}
-                      required
-                    />
-                    {errors.businessUsername && (
-                      <p className="text-sm text-destructive">
-                        {errors.businessUsername}
-                      </p>
-                    )}
-                  </div>
-                  {/* Email */}
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                    />
-                    {errors.email && (
-                      <p className="text-sm text-destructive">{errors.email}</p>
-                    )}
-                  </div>
-                  {/* Phone */}
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      required
-                    />
-                    {errors.phone && (
-                      <p className="text-sm text-destructive">{errors.phone}</p>
-                    )}
-                  </div>
-                  {/* Password */}
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      required
-                    />
-                    {errors.password && (
-                      <p className="text-sm text-destructive">
-                        {errors.password}
-                      </p>
-                    )}
-                  </div>
-                  {/* Confirm Password */}
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <Input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      required
-                    />
-                    {errors.confirmPassword && (
-                      <p className="text-sm text-destructive">
-                        {errors.confirmPassword}
-                      </p>
-                    )}
-                  </div>
-                </>
-              )}
+              {/* Business Name */}
+              <div className="space-y-2">
+                <Label htmlFor="businessName">Business Name</Label>
+                <Input
+                  id="businessName"
+                  name="businessName"
+                  value={formData.businessName}
+                  onChange={handleChange}
+                  required
+                />
+                {errors.businessName && (
+                  <p className="text-sm text-destructive">
+                    {errors.businessName}
+                  </p>
+                )}
+              </div>
+              
+              {/* Business Username */}
+              <div className="space-y-2">
+                <Label htmlFor="businessUsername">Business Username</Label>
+                <Input
+                  id="businessUsername"
+                  name="businessUsername"
+                  value={formData.businessUsername}
+                  onChange={handleChange}
+                  required
+                />
+                {errors.businessUsername && (
+                  <p className="text-sm text-destructive">
+                    {errors.businessUsername}
+                  </p>
+                )}
+              </div>
+              
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                />
+                {errors.email && (
+                  <p className="text-sm text-destructive">{errors.email}</p>
+                )}
+              </div>
+              
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  required
+                />
+                {errors.phone && (
+                  <p className="text-sm text-destructive">{errors.phone}</p>
+                )}
+              </div>
+              
+              {/* Password */}
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                />
+                {errors.password && (
+                  <p className="text-sm text-destructive">
+                    {errors.password}
+                  </p>
+                )}
+              </div>
+              
+              {/* Confirm Password */}
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                />
+                {errors.confirmPassword && (
+                  <p className="text-sm text-destructive">
+                    {errors.confirmPassword}
+                  </p>
+                )}
+              </div>
 
-              {step === "plan" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <UCard
-                      className={`shadow-xl cursor-pointer ${
-                        selectedPlan === "Starter"
-                          ? "border-2 border-primary"
-                          : "border-0"
-                      }`}
-                      onClick={() => setSelectedPlan("Starter")}
-                    >
-                      <UCardHeader className="text-center">
-                        <UCardTitle>Starter</UCardTitle>
-                        <UCardDescription>
-                          Rp 449.000{" "}
-                          <span className="text-muted-foreground">/month</span>
-                        </UCardDescription>
-                      </UCardHeader>
-                      <UCardContent>
-                        <ul className="space-y-2 text-sm">
-                          <li>• 1 Location</li>
-                          <li>• 200 SMS/Month</li>
-                          <li>• 50 Customers/Day</li>
-                        </ul>
-                        <div className="mt-4">
-                          <Button
-                            type="button"
-                            className="w-full"
-                            onClick={() => setSelectedPlan("Starter")}
-                          >
-                            Select
-                          </Button>
-                        </div>
-                      </UCardContent>
-                    </UCard>
 
-                    <UCard
-                      className={`shadow-xl cursor-pointer ${
-                        selectedPlan === "Professional"
-                          ? "border-2 border-primary"
-                          : "border-0"
-                      }`}
-                      onClick={() => setSelectedPlan("Professional")}
-                    >
-                      <UCardHeader className="text-center">
-                        <UCardTitle>Professional</UCardTitle>
-                        <UCardDescription>
-                          Rp 979.000{" "}
-                          <span className="text-muted-foreground">/month</span>
-                        </UCardDescription>
-                      </UCardHeader>
-                      <UCardContent>
-                        <ul className="space-y-2 text-sm">
-                          <li>• 3 Locations</li>
-                          <li>• 500 SMS/Month</li>
-                          <li>• 100 Customers/Day</li>
-                        </ul>
-                        <div className="mt-4">
-                          <Button
-                            type="button"
-                            className="w-full"
-                            onClick={() => setSelectedPlan("Professional")}
-                          >
-                            Select
-                          </Button>
-                        </div>
-                      </UCardContent>
-                    </UCard>
-                  </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setStep("form")}
-                    >
-                      Back
-                    </Button>
-                  </div>
-                </div>
-              )}
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading
-                  ? "Creating..."
-                  : step === "form"
-                  ? "Next"
-                  : "Create Account"}
+                {loading ? "Creating..." : "Start Free Trial"}
               </Button>
             </form>
 

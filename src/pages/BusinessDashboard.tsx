@@ -30,7 +30,14 @@ const BusinessDashboard = () => {
   const trialCountdownRef = useRef<NodeJS.Timeout | null>(null);
   const locations = (me?.locations as any[]) || [];
   const maxLocations = me?.maxLocations ?? 1;
-  const onTrial = me?.trial === true;
+  // Check if account is still in trial period (≤ 7 days old)
+  const onTrial = me && (() => {
+    const createdAt = new Date(me.createdAt);
+    const trialDurationDays = me.trialDurationDays || 7;
+    const trialEndDate = new Date(createdAt.getTime() + (trialDurationDays * 24 * 60 * 60 * 1000));
+    const now = new Date();
+    return now <= trialEndDate;
+  })();
   const { toast } = useToast();
 
   // Get current location and queue
@@ -319,7 +326,6 @@ const BusinessDashboard = () => {
                         </p>
                         {trialTimeLeft && (
                           <div className="mt-2 flex items-center space-x-2 text-blue-100">
-                            <Clock className="w-4 h-4" />
                             <span className="text-sm font-medium">
                               Trial expires in: {trialTimeLeft.days}d {trialTimeLeft.hours}h {trialTimeLeft.minutes}m
                             </span>
@@ -340,6 +346,33 @@ const BusinessDashboard = () => {
                 </div>
               )}
             </>
+          )}
+
+          {/* Show upgrade banner for users who are not on trial but have 0 credits */}
+          {me && !onTrial && currentLocation && (currentLocation.smsCredits === 0 && currentLocation.customerCredits === 0) && (
+            <div className="mb-6">
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
+                <div>
+                    <h3 className="text-lg md:text-xl font-bold">
+                      ⚠️ No Credits Available
+                    </h3>
+                    <p className="text-sm md:text-base opacity-90">
+                      You have no credits available. Please contact support or upgrade your plan.
+                    </p>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      className="border-white text-white hover:bg-white hover:text-orange-600"
+                      onClick={() => (window.location.href = "/plan-change")}
+                    >
+                      Change Plan
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Dashboard Header */}
@@ -374,23 +407,23 @@ const BusinessDashboard = () => {
 
                 {/* Location Selector */}
                 <div className="relative">
-                  <select
+                <select
                     className="appearance-none bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto"
                     value={selectedLocationIndex}
-                    onChange={(e) =>
-                      setSelectedLocationIndex(Number(e.target.value))
-                    }
-                  >
+                  onChange={(e) =>
+                    setSelectedLocationIndex(Number(e.target.value))
+                  }
+                >
                     {locations.length > 0 ? (
                       locations.map((loc, idx) => (
-                        <option key={idx} value={idx}>
-                          {loc?.address || `Location ${idx + 1}`}
-                        </option>
+                    <option key={idx} value={idx}>
+                      {loc?.address || `Location ${idx + 1}`}
+                    </option>
                       ))
                     ) : (
                       <option value={0}>No locations</option>
                     )}
-                  </select>
+                </select>
                   <ChevronDown
                     size={16}
                     className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
@@ -404,7 +437,7 @@ const BusinessDashboard = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-6">
             <Card className="p-4 md:p-6 bg-white rounded-xl shadow-sm border-0">
               <div className="flex items-center justify-between">
-                <div>
+              <div>
                   <p className="text-gray-600 text-xs md:text-sm">
                     Total Queue
                   </p>
@@ -416,21 +449,21 @@ const BusinessDashboard = () => {
                   <Users className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
                 </div>
               </div>
-            </Card>
+          </Card>
 
             <Card className="p-4 md:p-6 bg-white rounded-xl shadow-sm border-0">
               <div className="flex items-center justify-between">
-                <div>
+              <div>
                   <p className="text-gray-600 text-xs md:text-sm">
                     Avg Wait Time
                   </p>
                   <p className="text-2xl md:text-3xl font-bold text-gray-800">
                     {todayStats.avgWaitTime}m
                   </p>
-                </div>
+              </div>
                 <div className="p-2 md:p-3 bg-green-100 rounded-full">
                   <Clock className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
-                </div>
+              </div>
               </div>
             </Card>
 
@@ -490,7 +523,7 @@ const BusinessDashboard = () => {
                 <div>
                   <CardTitle className="text-lg md:text-xl text-gray-800">
                     Queue Management
-                  </CardTitle>
+              </CardTitle>
                   <CardDescription className="text-gray-600 text-sm">
                     {currentLocation
                       ? `Managing queue for: ${currentLocation.address}`
@@ -596,8 +629,8 @@ const BusinessDashboard = () => {
                           className="flex-1 md:flex-none"
                         >
                           Remove
-                        </Button>
-                      </div>
+                </Button>
+              </div>
                     </div>
                   ))}
                 </div>
