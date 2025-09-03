@@ -18,6 +18,8 @@ import {
   checkAndRefillMonthlyCredits,
   handlePlanPurchase
 } from "../lib/trial";
+import { sendPasswordResetEmail, sendEmail } from "../lib/email";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -939,6 +941,161 @@ router.post("/purchase-plan", requireAuth, async (req, res) => {
     });
   } catch (err: any) {
     console.error("[auth] purchase plan error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * POST /auth/forgot-password
+ * Body: { email }
+ * Sends password reset email
+ */
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ error: "email is required" });
+    }
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      select: { id: true, email: true, name: true }
+    });
+
+    if (!user) {
+      // Don't reveal if email exists or not for security
+      return res.json({ 
+        success: true, 
+        message: "If an account with that email exists, a password reset link has been sent." 
+      });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Store reset token in database
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetToken,
+        resetTokenExpiry,
+      },
+    });
+
+    // Send password reset email
+    const emailSent = await sendPasswordResetEmail(user.email, resetToken);
+    
+    if (!emailSent) {
+      return res.status(500).json({ error: "Failed to send email" });
+    }
+
+    return res.json({ 
+      success: true, 
+      message: "If an account with that email exists, a password reset link has been sent." 
+    });
+  } catch (err: any) {
+    console.error("[auth] forgot password error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * POST /auth/reset-password
+ * Body: { token, newPassword }
+ * Resets password using reset token
+ */
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, newPassword } = req.body || {};
+    
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: "token and newPassword are required" });
+    }
+
+    if (typeof newPassword !== "string" || newPassword.length < 8) {
+      return res.status(400).json({ error: "Password must be at least 8 characters" });
+    }
+
+    // Find user with valid reset token
+    const user = await prisma.user.findFirst({
+      where: {
+        resetToken: token,
+        resetTokenExpiry: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: "Invalid or expired reset token" });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password and clear reset token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetToken: null,
+        resetTokenExpiry: null,
+      },
+    });
+
+    return res.json({ 
+      success: true, 
+      message: "Password has been reset successfully" 
+    });
+  } catch (err: any) {
+    console.error("[auth] reset password error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * POST /auth/test-email (for debugging)
+ * Body: { email }
+ * Sends a test email to verify SMTP configuration
+ */
+router.post("/test-email", async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ error: "email is required" });
+    }
+
+    console.log('[TEST-EMAIL] Testing email configuration...');
+    
+    const testHtml = `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2>Test Email from SeatPing</h2>
+        <p>This is a test email to verify SMTP configuration.</p>
+        <p>If you receive this, email is working correctly!</p>
+        <p>Time: ${new Date().toISOString()}</p>
+      </div>
+    `;
+
+    const emailSent = await sendEmail({
+      to: email,
+      subject: 'SeatPing Email Test',
+      html: testHtml,
+    });
+    
+    if (emailSent) {
+      return res.json({ 
+        success: true, 
+        message: "Test email sent successfully" 
+      });
+    } else {
+      return res.status(500).json({ error: "Failed to send test email" });
+    }
+  } catch (err: any) {
+    console.error("[auth] test email error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
   }
 });
