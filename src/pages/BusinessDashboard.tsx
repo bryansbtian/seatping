@@ -285,10 +285,16 @@ const BusinessDashboard = () => {
       <div className="min-h-screen pt-20 bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="container mx-auto px-4 py-8">
           {/* Trial Banner Logic */}
-          {me && onTrial && (
+          {me && me.trial === true && (
             <>
-              {/* Trial Expired Banner - Shows when trial has expired (0 credits) */}
-              {currentLocation && (currentLocation.smsCredits === 0 && currentLocation.customerCredits === 0) ? (
+              {/* Trial Expired Banner - Shows when trial has expired (account > 7 days old) */}
+              {(() => {
+                const createdAt = new Date(me.createdAt);
+                const trialDurationDays = me.trialDurationDays || 7;
+                const trialEndDate = new Date(createdAt.getTime() + (trialDurationDays * 24 * 60 * 60 * 1000));
+                const now = new Date();
+                return now > trialEndDate;
+              })() ? (
                 <div className="mb-6">
                   <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
@@ -349,7 +355,7 @@ const BusinessDashboard = () => {
           )}
 
           {/* Show upgrade banner for users who are not on trial but have 0 credits */}
-          {me && !onTrial && currentLocation && (currentLocation.smsCredits === 0 && currentLocation.customerCredits === 0) && (
+          {me && me.trial === false && currentLocation && (currentLocation.smsCredits === 0 && currentLocation.customerCredits === 0) && (
             <div className="mb-6">
               <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
