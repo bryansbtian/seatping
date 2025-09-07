@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRouter from "./routes/auth";
+import adminRouter from "./routes/admin";
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use((req, _res, next) => {
 });
 
 app.use("/auth", authRouter); // <-- must be mounted at /auth
+app.use("/admin", adminRouter); // <-- admin routes
 
 const PORT = Number(process.env.PORT || 4000);
 app.listen(PORT, () => {

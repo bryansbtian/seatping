@@ -22,6 +22,7 @@ import Help from "./pages/Help";
 import QueueBusiness from "./pages/QueueBusiness";
 import Payments from "./pages/Payments";
 import PlanChange from "./pages/PlanChange";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,7 @@ const App = () => (
               </RequireAuth>
             }
           />
+          <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
