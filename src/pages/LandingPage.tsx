@@ -356,7 +356,7 @@ const LandingPage = () => {
               <CardHeader className="text-center">
                 <CardTitle className="text-xl">Starter</CardTitle>
                 <div className="text-3xl font-bold text-success">
-                  Rp 449.000
+                  $30
                   <span className="text-lg text-muted-foreground">/month</span>
                 </div>
               </CardHeader>
@@ -389,7 +389,7 @@ const LandingPage = () => {
                 </Badge>
                 <CardTitle className="text-xl">Professional</CardTitle>
                 <div className="text-3xl font-bold text-success">
-                  Rp 979.000
+                  $65
                   <span className="text-lg text-muted-foreground">/month</span>
                 </div>
               </CardHeader>

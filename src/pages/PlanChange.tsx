@@ -117,11 +117,11 @@ const PlanChange = () => {
   const getPlanPrice = (plan: string) => {
     switch (plan) {
       case "Starter":
-        return "Rp 449.000";
+        return "$30";
       case "Professional":
-        return "Rp 979.000";
+        return "$60";
       default:
-        return "Rp 449.000";
+        return "$30";
     }
   };
 

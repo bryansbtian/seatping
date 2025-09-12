@@ -16,20 +16,55 @@ import { useToast } from "@/hooks/use-toast";
 import BusinessHeader from "@/components/BusinessHeader";
 import Footer from "@/components/Footer";
 import { api } from "@/lib/api";
-import { CreditCard, Edit, Clock } from "lucide-react";
+import { CreditCard, Edit, Clock, Calendar, DollarSign } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
+
+// Stripe pricing plans configuration
+const PRICING_PLANS = {
+  "Starter Monthly": {
+    name: "Starter Monthly",
+    price: 30,
+    interval: "month",
+    stripeUrl: "https://buy.stripe.com/test_bJe7sLcTN6t5fMJ9PJbfO07",
+    stripePriceId: "price_1S5GXlDHwj4NMuGRzrNP0h6Y",
+    features: ["• 1 Location", "• 200 SMS/Month", "• 50 Customers/Day"],
+    savings: null
+  },
+  "Starter Yearly": {
+    name: "Starter Yearly", 
+    price: 250,
+    interval: "year",
+    stripeUrl: "https://buy.stripe.com/test_6oU14n4nh8Bd2ZXd1VbfO06",
+    stripePriceId: "price_1S5GisDHwj4NMuGRvS2GIgze",
+    features: ["• 1 Location", "• 200 SMS/Month", "• 50 Customers/Day"],
+    savings: "Save $110/year"
+  },
+  "Professional Monthly": {
+    name: "Professional Monthly",
+    price: 65,
+    interval: "month", 
+    stripeUrl: "https://buy.stripe.com/test_aFacN54nhg3FcAx6DxbfO08",
+    stripePriceId: "price_1S5GaEDHwj4NMuGRnRGHxklm",
+    features: ["• 3 Locations", "• 500 SMS/Month", "• 100 Customers/Day"],
+    savings: null
+  },
+  "Professional Yearly": {
+    name: "Professional Yearly",
+    price: 550,
+    interval: "year",
+    stripeUrl: "https://buy.stripe.com/test_eVq00jg5ZdVxeIFaTNbfO09", 
+    stripePriceId: "price_1S5Gn4DHwj4NMuGR4yoViRmE",
+    features: ["• 3 Locations", "• 500 SMS/Month", "• 100 Customers/Day"],
+    savings: "Save $230/year"
+  }
+};
 
 const Payments = () => {
   const [me, setMe] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState("card");
-  const [formData, setFormData] = useState({
-    cardholderName: "",
-    cardNumber: "",
-    expiryMonth: "",
-    expiryYear: "",
-    cvv: "",
-  });
+  const [selectedBilling, setSelectedBilling] = useState<"monthly" | "yearly">("monthly");
+  const [paymentMethod, setPaymentMethod] = useState("stripe");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -44,17 +79,12 @@ const Payments = () => {
         const res = await api("/auth/me");
         setMe(res.user);
         // Set current plan as selected by default
-        setSelectedPlan(res.user.plan || "Starter");
+        setSelectedPlan(res.user.plan || "Starter Monthly");
       } catch (error) {
         console.error("Failed to fetch user data:", error);
       }
     })();
   }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
 
   const handlePlanChange = (plan: string) => {
     // For trial users, they can select any plan
@@ -68,6 +98,25 @@ const Payments = () => {
       return;
     }
     setSelectedPlan(plan);
+  };
+
+  const getAvailablePlans = () => {
+    const plans = [];
+    if (selectedBilling === "monthly") {
+      plans.push("Starter Monthly", "Professional Monthly");
+    } else {
+      plans.push("Starter Yearly", "Professional Yearly");
+    }
+    return plans;
+  };
+
+  const getCurrentPlanKey = () => {
+    if (currentPlan === "Starter") {
+      return selectedBilling === "monthly" ? "Starter Monthly" : "Starter Yearly";
+    } else if (currentPlan === "Professional") {
+      return selectedBilling === "monthly" ? "Professional Monthly" : "Professional Yearly";
+    }
+    return "Starter Monthly";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,79 +140,40 @@ const Payments = () => {
       return;
     }
 
-    if (paymentMethod === "card") {
-      if (!formData.cardholderName || !formData.cardNumber || !formData.expiryMonth || !formData.expiryYear || !formData.cvv) {
-        toast({
-          title: "Payment Details Required",
-          description: "Please fill in all payment details.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
     setLoading(true);
     try {
-      // Here you would integrate with your payment processor
-      // For now, we'll simulate a successful payment
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const planData = PRICING_PLANS[selectedPlan as keyof typeof PRICING_PLANS];
       
-      // Update user's plan
-      await api("/auth/purchase-plan", {
-        method: "POST",
-        body: JSON.stringify({ plan: selectedPlan }),
-      });
+      if (!planData) {
+        throw new Error("Invalid plan selected");
+      }
 
+      // Open Stripe Checkout in a new tab
+      window.open(planData.stripeUrl, '_blank');
+      
+      // Reset loading state after opening the tab
+      setLoading(false);
+      
       toast({
-        title: "Payment Successful!",
-        description: `Your plan has been upgraded to ${selectedPlan}.`,
+        title: "Checkout Opened",
+        description: "Stripe checkout has been opened in a new tab. Complete your payment there.",
         variant: "default",
       });
-
-      // Redirect to dashboard
-      navigate("/business/dashboard");
+      
     } catch (error) {
       toast({
         title: "Payment Failed",
         description: "There was an error processing your payment. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
 
-  const getPlanPrice = (plan: string) => {
-    switch (plan) {
-      case "Starter":
-        return "Rp 449.000";
-      case "Professional":
-        return "Rp 979.000";
-      default:
-        return "Rp 449.000";
-    }
+  const isCurrentPlan = (plan: string) => {
+    const currentPlanKey = getCurrentPlanKey();
+    return plan === currentPlanKey;
   };
-
-  const getPlanFeatures = (plan: string) => {
-    switch (plan) {
-      case "Starter":
-        return [
-          "• 1 Location",
-          "• 200 SMS/Month",
-          "• 50 Customers/Day",
-        ];
-      case "Professional":
-        return [
-          "• 3 Locations",
-          "• 500 SMS/Month",
-          "• 100 Customers/Day",
-        ];
-      default:
-        return [];
-    }
-  };
-
-  const isCurrentPlan = (plan: string) => plan === currentPlan;
 
   return (
     <>
@@ -172,16 +182,37 @@ const Payments = () => {
         <div className="max-w-4xl mx-auto">
           <Card className="shadow-xl rounded-xl border-0">
             <CardHeader className="text-center px-4 sm:px-6 lg:px-8">
-              <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-bold">Payment Options</CardTitle>
+              <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-bold">Choose Your Plan</CardTitle>
+              
+              {/* Billing Toggle */}
+              <div className="flex items-center justify-center space-x-4 mt-6">
+                <span className={`text-sm font-medium ${selectedBilling === "monthly" ? "text-gray-900" : "text-gray-500"}`}>
+                  Monthly
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedBilling(selectedBilling === "monthly" ? "yearly" : "monthly")}
+                  className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      selectedBilling === "yearly" ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <span className={`text-sm font-medium ${selectedBilling === "yearly" ? "text-gray-900" : "text-gray-500"}`}>
+                  Yearly
+                </span>
+                {selectedBilling === "yearly" && (
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
+                    Save up to 17%
+                  </span>
+                )}
+              </div>
+
               {selectedPlan && (
-                <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4 text-gray-600">
-                  <span className="text-sm sm:text-base text-center">Plan - {selectedPlan} {getPlanPrice(selectedPlan)}/month</span>
-                  
-                </div>
-              )}
-              {selectedPlan && (
-                <CardDescription className="text-base sm:text-lg font-semibold text-center">
-                  Total - {getPlanPrice(selectedPlan)}/month
+                <CardDescription className="text-base sm:text-lg font-semibold text-center mt-4">
+                  Total - ${PRICING_PLANS[selectedPlan as keyof typeof PRICING_PLANS]?.price}/{PRICING_PLANS[selectedPlan as keyof typeof PRICING_PLANS]?.interval}
                 </CardDescription>
               )}
             </CardHeader>
@@ -193,58 +224,69 @@ const Payments = () => {
                     {onTrial ? "Upgrade Your Trial" : "Select Your Plan"}
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                    {["Starter", "Professional"].map((plan) => (
-                      <Card
-                        key={plan}
-                        className={`shadow-xl cursor-pointer transition-all ${
-                          !onTrial && isCurrentPlan(plan)
-                            ? "border-2 border-gray-300 bg-gray-50 opacity-60"
-                            : selectedPlan === plan
-                            ? "border-2 border-blue-500 bg-blue-50 shadow-2xl"
-                            : "border-2 border-transparent hover:border-primary hover:shadow-2xl"
-                        }`}
-                        onClick={() => handlePlanChange(plan)}
-                      >
-                        <CardHeader className="text-center px-4 sm:px-6">
-                          <CardTitle className={`text-base sm:text-lg ${!onTrial && isCurrentPlan(plan) ? "text-gray-500" : ""}`}>
-                            {plan}
-                            {!onTrial && isCurrentPlan(plan) && (
-                              <span className="block text-xs sm:text-sm text-gray-400 mt-1">
-                                Current Plan
-                              </span>
-                            )}
-                            {selectedPlan === plan && !(!onTrial && isCurrentPlan(plan)) && (
-                              <span className="block text-xs sm:text-sm text-blue-600 mt-1 font-medium">
-                                Selected
-                              </span>
-                            )}
-                          </CardTitle>
-                          <CardDescription className={`text-sm sm:text-base ${!onTrial && isCurrentPlan(plan) ? "text-gray-400" : ""}`}>
-                            {getPlanPrice(plan)}{" "}
-                            <span className="text-muted-foreground">/month</span>
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="px-4 sm:px-6">
-                          <ul className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
-                            {getPlanFeatures(plan).map((feature, index) => (
-                              <li key={index} className={!onTrial && isCurrentPlan(plan) ? "text-gray-400" : ""}>
-                                {feature}
-                              </li>
-                            ))}
-                          </ul>
-                          <div className="mt-3 sm:mt-4">
-                            <Button
-                              type="button"
-                              className="w-full text-sm sm:text-base py-2 sm:py-3"
-                              disabled={!onTrial && isCurrentPlan(plan)}
-                              variant={!onTrial && isCurrentPlan(plan) ? "outline" : selectedPlan === plan ? "default" : "outline"}
-                            >
-                              {!onTrial && isCurrentPlan(plan) ? "Current Plan" : selectedPlan === plan ? "Selected" : "Select"}
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    {getAvailablePlans().map((planKey) => {
+                      const plan = PRICING_PLANS[planKey as keyof typeof PRICING_PLANS];
+                      const isCurrent = isCurrentPlan(planKey);
+                      const isSelected = selectedPlan === planKey;
+                      
+                      return (
+                        <Card
+                          key={planKey}
+                          className={`shadow-xl cursor-pointer transition-all ${
+                            !onTrial && isCurrent
+                              ? "border-2 border-gray-300 bg-gray-50 opacity-60"
+                              : isSelected
+                              ? "border-2 border-blue-500 bg-blue-50 shadow-2xl"
+                              : "border-2 border-transparent hover:border-primary hover:shadow-2xl"
+                          }`}
+                          onClick={() => handlePlanChange(planKey)}
+                        >
+                          <CardHeader className="text-center px-4 sm:px-6">
+                            <CardTitle className={`text-base sm:text-lg ${!onTrial && isCurrent ? "text-gray-500" : ""}`}>
+                              {plan.name.replace(" Monthly", "").replace(" Yearly", "")}
+                              {!onTrial && isCurrent && (
+                                <span className="block text-xs sm:text-sm text-gray-400 mt-1">
+                                  Current Plan
+                                </span>
+                              )}
+                              {isSelected && !(!onTrial && isCurrent) && (
+                                <span className="block text-xs sm:text-sm text-blue-600 mt-1 font-medium">
+                                  Selected
+                                </span>
+                              )}
+                            </CardTitle>
+                            <CardDescription className={`text-sm sm:text-base ${!onTrial && isCurrent ? "text-gray-400" : ""}`}>
+                              ${plan.price}
+                              <span className="text-muted-foreground">/{plan.interval}</span>
+                              {plan.savings && (
+                                <span className="block text-xs text-green-600 font-medium mt-1">
+                                  {plan.savings}
+                                </span>
+                              )}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="px-4 sm:px-6">
+                            <ul className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
+                              {plan.features.map((feature, index) => (
+                                <li key={index} className={!onTrial && isCurrent ? "text-gray-400" : ""}>
+                                  {feature}
+                                </li>
+                              ))}
+                            </ul>
+                            <div className="mt-3 sm:mt-4">
+                              <Button
+                                type="button"
+                                className="w-full text-sm sm:text-base py-2 sm:py-3"
+                                disabled={!onTrial && isCurrent}
+                                variant={!onTrial && isCurrent ? "outline" : isSelected ? "default" : "outline"}
+                              >
+                                {!onTrial && isCurrent ? "Current Plan" : isSelected ? "Selected" : "Select"}
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                   
                   {/* Plan Change Link for Existing Subscribers */}
@@ -267,124 +309,26 @@ const Payments = () => {
                 {/* Payment Method Selection */}
                 <div className="space-y-4">
                   <h3 className="text-base sm:text-lg font-semibold text-gray-800">Payment Method</h3>
-                  <RadioGroup
-                    value={paymentMethod}
-                    onValueChange={setPaymentMethod}
-                    className="space-y-3"
-                  >
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <RadioGroupItem value="card" id="card" className="text-green-600" />
-                      <div className="flex-1">
-                        <Label htmlFor="card" className="text-sm sm:text-base font-medium text-green-800">
-                          Credit & Debit cards
-                        </Label>
-                        <p className="text-xs sm:text-sm text-green-600">
-                          Transaction fee may apply
-                        </p>
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                        <CreditCard className="w-4 h-4 text-white" />
                       </div>
-                      <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                      <div className="flex-1">
+                        <Label className="text-sm sm:text-base font-medium text-blue-800">
+                          Credit Card
+                        </Label>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
                         <span className="text-xs bg-blue-600 text-white px-2 sm:px-3 py-1 rounded-md font-medium">VISA</span>
                         <span className="text-xs bg-red-500 text-white px-2 sm:px-3 py-1 rounded-md font-medium">MasterCard</span>
-                        <span className="text-xs bg-blue-700 text-white px-2 sm:px-3 py-1 rounded-md font-medium">Maestro</span>
-                      </div>
-                    </div>
-
-
-                  </RadioGroup>
-                </div>
-
-                {/* Credit Card Form */}
-                {paymentMethod === "card" && (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                      <div className="space-y-2 sm:space-y-3">
-                        <Label htmlFor="cardholderName" className="text-sm sm:text-base text-gray-700 font-medium">Cardholder Name</Label>
-                        <Input
-                          id="cardholderName"
-                          name="cardholderName"
-                          placeholder="Enter cardholder name"
-                          value={formData.cardholderName}
-                          onChange={handleChange}
-                          className="border-gray-300 focus:border-green-500 focus:ring-green-500 text-sm sm:text-base"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2 sm:space-y-3">
-                        <Label htmlFor="cardNumber" className="text-sm sm:text-base text-gray-700 font-medium">Card Number</Label>
-                        <div className="relative">
-                          <Input
-                            id="cardNumber"
-                            name="cardNumber"
-                            placeholder="1234 5678 9012 3456"
-                            value={formData.cardNumber}
-                            onChange={handleChange}
-                            maxLength={19}
-                            className="border-gray-300 focus:border-green-500 focus:ring-green-500 pr-16 text-sm sm:text-base"
-                            required
-                          />
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded font-medium">VISA</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                      <div className="space-y-2 sm:space-y-3">
-                        <Label htmlFor="expiryMonth" className="text-sm sm:text-base text-gray-700 font-medium">End Date</Label>
-                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                          <select
-                            name="expiryMonth"
-                            value={formData.expiryMonth}
-                            onChange={(e) => setFormData(prev => ({ ...prev, expiryMonth: e.target.value }))}
-                            className="px-2 sm:px-3 py-2 border border-gray-300 rounded-md focus:border-green-500 focus:ring-green-500 text-sm sm:text-base"
-                            required
-                          >
-                            <option value="">mm</option>
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                              <option key={month} value={month.toString().padStart(2, '0')}>
-                                {month.toString().padStart(2, '0')}
-                              </option>
-                            ))}
-                          </select>
-                          <select
-                            name="expiryYear"
-                            value={formData.expiryYear}
-                            onChange={(e) => setFormData(prev => ({ ...prev, expiryYear: e.target.value }))}
-                            className="px-2 sm:px-3 py-2 border border-gray-300 rounded-md focus:border-green-500 focus:ring-green-500 text-sm sm:text-base"
-                            required
-                          >
-                            <option value="">yyyy</option>
-                            {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i).map(year => (
-                              <option key={year} value={year}>{year}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      <div className="space-y-2 sm:space-y-3">
-                        <Label htmlFor="cvv" className="text-sm sm:text-base text-gray-700 font-medium">CVV</Label>
-                        <div className="flex items-center space-x-2 sm:space-x-3">
-                          <Input
-                            id="cvv"
-                            name="cvv"
-                            placeholder="123"
-                            value={formData.cvv}
-                            onChange={handleChange}
-                            maxLength={4}
-                            className="w-20 sm:w-24 border-gray-300 focus:border-green-500 focus:ring-green-500 text-sm sm:text-base"
-                            required
-                          />
-                          <div className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm text-gray-500">
-                            <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-gray-200 flex items-center justify-center">
-                              <span className="text-xs">i</span>
-                            </div>
-                            <span>3 digits</span>
-                          </div>
-                        </div>
+                        <span className="text-xs bg-blue-700 text-white px-2 sm:px-3 py-1 rounded-md font-medium">AMEX</span>
+                        <span className="text-xs bg-gray-800 text-white px-2 sm:px-3 py-1 rounded-md font-medium">Discover</span>
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
+
 
                 {/* Terms and Conditions */}
                 <div className="flex items-start space-x-2 sm:space-x-3 pt-2">
@@ -413,27 +357,15 @@ const Payments = () => {
                 {/* Pay Now Button */}
                 <Button
                   type="submit"
-                  className="w-full bg-red-600 hover:bg-red-700 text-white py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-lg mt-4 sm:mt-6"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-lg mt-4 sm:mt-6"
                   disabled={loading || !selectedPlan || !acceptTerms}
                 >
-                  {loading ? "Processing..." : "Pay Now ≫"}
+                  {loading ? "Processing..." : "Checkout"}
                 </Button>
               </form>
 
 
 
-              {/* Trial Banner */}
-              {onTrial && (
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-3 sm:p-4 text-white text-center">
-                  <div className="flex items-center justify-center space-x-2 mb-2">
-                    <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="text-sm sm:text-base font-semibold">Free Trial Active</span>
-                  </div>
-                  <p className="text-xs sm:text-sm opacity-90">
-                    Upgrade now to unlock premium features and remove trial limitations
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>

@@ -23,6 +23,7 @@ import QueueBusiness from "./pages/QueueBusiness";
 import Payments from "./pages/Payments";
 import PlanChange from "./pages/PlanChange";
 import Admin from "./pages/Admin";
+import PaymentSuccess from "./pages/PaymentSuccess";
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,7 @@ const App = () => (
             }
           />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
