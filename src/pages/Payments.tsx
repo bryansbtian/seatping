@@ -17,7 +17,6 @@ import BusinessHeader from "@/components/BusinessHeader";
 import Footer from "@/components/Footer";
 import { api } from "@/lib/api";
 import { CreditCard, Edit, Clock, Calendar, DollarSign } from "lucide-react";
-import { loadStripe } from "@stripe/stripe-js";
 
 // Stripe pricing plans configuration
 const PRICING_PLANS = {
@@ -119,6 +118,9 @@ const Payments = () => {
     return "Starter Monthly";
   };
 
+  // Support id or _id coming from /auth/me
+  const getUserId = (u: any) => (u?.id ?? u?._id ?? null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -140,26 +142,33 @@ const Payments = () => {
       return;
     }
 
+    const userId = getUserId(me);
+    if (!userId) {
+      toast({
+        title: "Session Error",
+        description: "We couldn’t find your account id. Please sign in again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const planData = PRICING_PLANS[selectedPlan as keyof typeof PRICING_PLANS];
-      
-      if (!planData) {
-        throw new Error("Invalid plan selected");
-      }
+      if (!planData) throw new Error("Invalid plan selected");
+
+      // Append client_reference_id (and optional prefilled_email) to Payment Link
+      const url = new URL(planData.stripeUrl);
+      url.searchParams.set("client_reference_id", String(userId)); // maps purchase to your DB user regardless of payer email
+      if (me?.email) url.searchParams.set("prefilled_email", String(me.email)); // optional UX helper
 
       // Open Stripe Checkout in a new tab
-      window.open(planData.stripeUrl, '_blank');
-      
-      // Reset loading state after opening the tab
+      window.open(url.toString(), "_blank");
+
+      // Immediately redirect this tab to dashboard
+      navigate("/business/dashboard");
+
       setLoading(false);
-      
-      toast({
-        title: "Checkout Opened",
-        description: "Stripe checkout has been opened in a new tab. Complete your payment there.",
-        variant: "default",
-      });
-      
     } catch (error) {
       toast({
         title: "Payment Failed",
@@ -329,7 +338,6 @@ const Payments = () => {
                   </div>
                 </div>
 
-
                 {/* Terms and Conditions */}
                 <div className="flex items-start space-x-2 sm:space-x-3 pt-2">
                   <Checkbox
@@ -363,9 +371,6 @@ const Payments = () => {
                   {loading ? "Processing..." : "Checkout"}
                 </Button>
               </form>
-
-
-
             </CardContent>
           </Card>
         </div>
