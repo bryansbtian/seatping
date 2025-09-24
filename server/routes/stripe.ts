@@ -101,6 +101,36 @@ async function applyPlanToUser(userId: string, plan: PlanName, setStartTime: boo
       trial: result.trial,
       planStartedAt: result.planStartedAt 
     });
+
+    // After updating the user's plan and base credits, update existing locations' credits
+    try {
+      const userWithLocations = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { locations: true, baseSMSCredits: true, baseCustomerCredits: true },
+      });
+
+      const locations = ((userWithLocations as any)?.locations as any[]) || [];
+      if (locations.length > 0) {
+        const updatedLocations = locations.map((location: any) => ({
+          ...location,
+          smsCredits: (userWithLocations as any)?.baseSMSCredits || 0,
+          customerCredits: (userWithLocations as any)?.baseCustomerCredits || 0,
+        }));
+
+        await prisma.user.update({
+          where: { id: userId },
+          data: { locations: updatedLocations as any },
+        });
+
+        console.log(
+          `[stripe] ✅ Updated ${locations.length} existing locations with base credits (SMS=${(userWithLocations as any)?.baseSMSCredits}, Customers=${(userWithLocations as any)?.baseCustomerCredits})`
+        );
+      } else {
+        console.log("[stripe] No existing locations to update for this user");
+      }
+    } catch (locErr: any) {
+      console.error("[stripe] ⚠️ Failed to update locations with base credits:", locErr?.message || locErr);
+    }
     return result;
     
   } catch (error: any) {
