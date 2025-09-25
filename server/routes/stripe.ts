@@ -191,6 +191,9 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
   const sig = req.headers["stripe-signature"] as string | undefined;
   const whsec = process.env.STRIPE_WEBHOOK_SECRET;
 
+  console.log("=".repeat(80));
+  console.log("🚨 STRIPE WEBHOOK RECEIVED 🚨");
+  console.log("=".repeat(80));
   console.log("[stripe] 🎯 Webhook received:", {
     hasSignature: !!sig,
     hasSecret: !!whsec,
@@ -221,6 +224,24 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
     id: event.id,
     created: new Date(event.created * 1000).toISOString()
   });
+
+  // Add specific logging for subscription events
+  if (event.type.includes("subscription")) {
+    console.log("[stripe] 🔍 Subscription event details:", {
+      type: event.type,
+      id: event.id,
+      data: JSON.stringify(event.data, null, 2)
+    });
+  }
+
+  // Add specific logging for invoice events
+  if (event.type.includes("invoice")) {
+    console.log("[stripe] 🔍 Invoice event details:", {
+      type: event.type,
+      id: event.id,
+      data: JSON.stringify(event.data, null, 2)
+    });
+  }
 
   try {
     switch (event.type) {
@@ -305,16 +326,30 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
           subscriptionId: sub.id,
           customerId,
           status: sub.status,
-          currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString()
+          currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
+          currentPeriodStart: new Date(sub.current_period_start * 1000).toISOString()
         });
 
+        console.log("[stripe] 🔍 Looking up user by customerId:", customerId);
         const user = await prisma.user.findFirst({ where: { customerId } });
         if (!user) {
           console.warn("[stripe] ⚠️ no user for customerId on subscription.*", { customerId });
+          // Let's also try to find users without customerId to debug
+          const allUsers = await prisma.user.findMany({ 
+            select: { id: true, email: true, customerId: true, plan: true, trial: true },
+            take: 5 
+          });
+          console.log("[stripe] 🔍 Sample users in database:", allUsers);
           break;
         }
 
-        console.log("[stripe] Found user for subscription:", { userId: user.id, email: user.email });
+        console.log("[stripe] ✅ Found user for subscription:", { 
+          userId: user.id, 
+          email: user.email, 
+          currentPlan: user.plan,
+          currentTrial: user.trial,
+          currentPlanStartedAt: user.planStartedAt
+        });
 
         const priceId = sub.items.data[0]?.price?.id;
         let plan = priceIdToPlan(priceId);
@@ -330,14 +365,84 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
           break;
         }
 
-        const setStartTime = user.plan !== plan; // refresh start when plan changes
-        console.log("[stripe] Plan comparison:", { currentPlan: user.plan, newPlan: plan, willSetStartTime: setStartTime });
+        // Determine if we should set start time:
+        // - For new subscriptions (created event)
+        // - When plan changes (upgrade/downgrade)
+        // - When user was in trial and now has a paid plan
+        const isNewSubscription = event.type === "customer.subscription.created";
+        const isPlanChange = user.plan !== plan;
+        const isTrialToPaid = user.trial === true;
+        
+        const setStartTime = isNewSubscription || isPlanChange || isTrialToPaid;
+        
+        console.log("[stripe] Subscription update analysis:", { 
+          isNewSubscription,
+          isPlanChange,
+          isTrialToPaid,
+          currentPlan: user.plan, 
+          newPlan: plan, 
+          willSetStartTime: setStartTime,
+          subscriptionStatus: sub.status
+        });
         
         try {
           await applyPlanToUser(user.id, plan, setStartTime);
-          console.log("[stripe] ✅ Subscription plan applied");
+          console.log("[stripe] ✅ Subscription plan applied successfully", {
+            userId: user.id,
+            oldPlan: user.plan,
+            newPlan: plan,
+            setStartTime,
+            eventType: event.type
+          });
         } catch (error) {
           console.error("[stripe] ❌ Failed to apply subscription plan:", error);
+        }
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        const sub = event.data.object as Stripe.Subscription;
+        const customerId = sub.customer as string;
+        
+        console.log("[stripe] 🗑️ Subscription cancelled:", {
+          subscriptionId: sub.id,
+          customerId,
+          status: sub.status,
+          cancelledAt: sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null
+        });
+
+        const user = await prisma.user.findFirst({ where: { customerId } });
+        if (!user) {
+          console.warn("[stripe] ⚠️ no user for customerId on subscription deletion", { customerId });
+          break;
+        }
+
+        console.log("[stripe] Found user for cancelled subscription:", { 
+          userId: user.id, 
+          email: user.email, 
+          currentPlan: user.plan
+        });
+
+        // When subscription is cancelled, we should:
+        // 1. Keep the user's current plan and credits until the end of the billing period
+        // 2. Set trial to true so they can continue using the service until expiry
+        // 3. Don't reset planStartedAt as they should keep their current benefits
+        
+        try {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              trial: true, // Mark as trial so they can continue until period end
+              updatedAt: new Date(),
+            },
+          });
+          
+          console.log("[stripe] ✅ User marked as trial after subscription cancellation", {
+            userId: user.id,
+            email: user.email
+          });
+        } catch (error) {
+          console.error("[stripe] ❌ Failed to update user after subscription cancellation:", error);
         }
         break;
       }
@@ -351,33 +456,86 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
           invoiceId: invoice.id,
           customerId,
           amount: invoice.amount_paid,
-          subscriptionId: invoice.subscription
+          subscriptionId: invoice.subscription,
+          billingReason: invoice.billing_reason
         });
         
+        console.log("[stripe] 🔍 Looking up user by customerId for invoice:", customerId);
         const user = await prisma.user.findFirst({ where: { customerId } });
         if (!user) {
           console.warn("[stripe] ⚠️ no user for invoice customerId", { customerId });
           break;
         }
 
-        const priceId = invoice.lines.data[0]?.price?.id;
-        const plan = priceIdToPlan(priceId);
+        // For subscription updates, we need to get the plan from the subscription
+        let plan: PlanName | null = null;
+        let priceId = invoice.lines.data[0]?.price?.id;
+        
+        console.log("[stripe] 🔍 Invoice line items:", {
+          lineItemsCount: invoice.lines.data.length,
+          firstLineItem: invoice.lines.data[0],
+          priceId: priceId
+        });
+
+        // Try to get plan from price ID first
+        if (priceId) {
+          plan = priceIdToPlan(priceId);
+          console.log("[stripe] 🔍 Plan from price ID:", { priceId, plan });
+        }
+
+        // If no plan from price ID and this is a subscription update, get it from the subscription
+        if (!plan && invoice.subscription && invoice.billing_reason === "subscription_update") {
+          console.log("[stripe] 🔍 Getting plan from subscription for update");
+          try {
+            const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+            const subPriceId = subscription.items.data[0]?.price?.id;
+            plan = priceIdToPlan(subPriceId);
+            console.log("[stripe] 🔍 Plan from subscription:", { subPriceId, plan });
+          } catch (subError) {
+            console.error("[stripe] ❌ Failed to retrieve subscription:", subError);
+          }
+        }
+
         if (!plan) {
-          console.warn("[stripe] ⚠️ invoice payment but unknown plan", { priceId, invoiceId: invoice.id });
+          console.warn("[stripe] ⚠️ invoice payment but unknown plan", { 
+            priceId, 
+            invoiceId: invoice.id, 
+            billingReason: invoice.billing_reason,
+            subscriptionId: invoice.subscription 
+          });
           break;
         }
 
-        const setStartTime = user.plan !== plan || user.trial === true;
-        console.log("[stripe] Invoice plan update:", { 
+        // For invoice payments, we should:
+        // - Set start time if user was in trial
+        // - Set start time if plan changed
+        // - Don't set start time for regular renewals
+        const isTrialToPaid = user.trial === true;
+        const isPlanChange = user.plan !== plan;
+        const isRenewal = invoice.billing_reason === "subscription_cycle";
+        
+        const setStartTime = isTrialToPaid || isPlanChange;
+        
+        console.log("[stripe] Invoice payment analysis:", { 
           currentPlan: user.plan, 
           newPlan: plan, 
           currentTrial: user.trial,
+          billingReason: invoice.billing_reason,
+          isTrialToPaid,
+          isPlanChange,
+          isRenewal,
           willSetStartTime: setStartTime 
         });
         
         try {
           await applyPlanToUser(user.id, plan, setStartTime);
-          console.log("[stripe] ✅ Invoice plan applied");
+          console.log("[stripe] ✅ Invoice plan applied successfully", {
+            userId: user.id,
+            oldPlan: user.plan,
+            newPlan: plan,
+            setStartTime,
+            billingReason: invoice.billing_reason
+          });
         } catch (error) {
           console.error("[stripe] ❌ Failed to apply invoice plan:", error);
         }
@@ -389,7 +547,9 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
         break;
     }
 
-    console.log("[stripe] ✅ Webhook processed successfully");
+    console.log("=".repeat(80));
+    console.log("✅ WEBHOOK PROCESSED SUCCESSFULLY:", event.type);
+    console.log("=".repeat(80));
     return res.json({ received: true });
   } catch (e: any) {
     console.error("[stripe] ❌ Handler error:", {
@@ -509,5 +669,59 @@ router.get("/dev/env-check", async (req, res) => {
 
 // quick health
 router.get("/ping", (_req, res) => res.json({ ok: true }));
+
+// Test webhook endpoint
+router.post("/test-webhook", express.json(), (req, res) => {
+  console.log("🧪 TEST WEBHOOK CALLED:", req.body);
+  res.json({ received: true, body: req.body });
+});
+
+// Test database connection and user lookup
+router.get("/test-db", async (req, res) => {
+  try {
+    console.log("🧪 TESTING DATABASE CONNECTION");
+    const userCount = await prisma.user.count();
+    const users = await prisma.user.findMany({ 
+      select: { id: true, email: true, customerId: true, plan: true, trial: true },
+      take: 3 
+    });
+    
+    console.log("🧪 DATABASE TEST RESULTS:", { userCount, users });
+    res.json({ 
+      success: true, 
+      userCount, 
+      users,
+      message: "Database connection working" 
+    });
+  } catch (error: any) {
+    console.error("🧪 DATABASE TEST FAILED:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Manual test for applyPlanToUser function
+router.post("/test-apply-plan", express.json(), async (req, res) => {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(403).json({ error: "Disabled in production" });
+  }
+  
+  const { userId, plan } = req.body as { userId?: string; plan?: PlanName };
+  if (!userId || !plan || !["Starter", "Professional"].includes(plan)) {
+    return res.status(400).json({ error: "Usage: { userId, plan: 'Starter' | 'Professional' }" });
+  }
+  
+  try {
+    console.log("🧪 MANUAL TEST: Applying plan", { userId, plan });
+    const result = await applyPlanToUser(userId, plan, true);
+    console.log("🧪 MANUAL TEST: Plan applied successfully", result);
+    res.json({ success: true, result });
+  } catch (error: any) {
+    console.error("🧪 MANUAL TEST: Failed to apply plan:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 export default router;
