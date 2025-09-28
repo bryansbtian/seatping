@@ -1,73 +1,220 @@
-# Welcome to your Lovable project
+# SeatPing - Queue Management System
 
-## Project info
+A modern queue management system for businesses to manage customer wait times and notifications.
 
-**URL**: https://lovable.dev/projects/0509dd86-7385-4cf5-a110-87d41897cd5a
+## Project Overview
 
-## How can I edit this code?
+SeatPing is a full-stack application that allows businesses to:
+- Create and manage virtual queues for their locations
+- Send SMS notifications to customers about their queue status
+- Handle customer admissions and removals
+- Manage subscription plans with different credit limits
+- Process payments through Stripe integration
 
-There are several ways of editing your application.
+## Project Structure
 
-**Use Lovable**
+```
+seat-ping/
+├── 📁 public/                     # Static assets
+│   ├── favicon.ico               # Site favicon
+│   ├── placeholder.svg           # Default placeholder image
+│   └── robots.txt                # SEO robots file
+│
+├── 📁 src/                       # Frontend React application
+│   ├── 📁 components/            # Reusable UI components
+│   │   ├── 📁 ui/               # shadcn/ui components
+│   │   │   ├── button.tsx       # Button component
+│   │   │   ├── card.tsx         # Card component
+│   │   │   ├── dialog.tsx       # Modal dialog component
+│   │   │   ├── input.tsx        # Input field component
+│   │   │   └── ...              # Other UI components
+│   │   ├── BusinessHeader.tsx   # Business dashboard header
+│   │   ├── Footer.tsx           # Site footer
+│   │   └── Header.tsx           # Main site header
+│   │
+│   ├── 📁 hooks/                # Custom React hooks
+│   │   ├── use-mobile.tsx       # Mobile detection hook
+│   │   └── use-toast.ts         # Toast notification hook
+│   │
+│   ├── 📁 lib/                  # Utility libraries
+│   │   ├── api.ts              # API client functions
+│   │   └── utils.ts            # General utility functions
+│   │
+│   ├── 📁 pages/                # Page components
+│   │   ├── Admin.tsx           # Admin dashboard
+│   │   ├── BusinessDashboard.tsx # Business owner dashboard
+│   │   ├── BusinessSettings.tsx  # Business settings page
+│   │   ├── Dashboard.tsx       # User dashboard
+│   │   ├── Demo.tsx            # Demo page
+│   │   ├── Feedback.tsx        # Feedback form
+│   │   ├── Index.tsx           # Home page
+│   │   ├── LandingPage.tsx     # Marketing landing page
+│   │   ├── Login.tsx           # User login
+│   │   ├── Payments.tsx        # Payment/pricing page
+│   │   ├── PaymentSuccess.tsx  # Payment success page
+│   │   ├── Queue.tsx           # Customer queue view
+│   │   ├── QueueBusiness.tsx   # Business queue management
+│   │   ├── Sales.tsx           # Sales page
+│   │   ├── Signup.tsx          # User registration
+│   │   └── ...                 # Other pages
+│   │
+│   ├── App.tsx                 # Main app component
+│   ├── App.css                 # Global app styles
+│   ├── index.css               # Global CSS imports
+│   ├── main.tsx                # React app entry point
+│   └── vite-env.d.ts           # Vite type definitions
+│
+├── 📁 server/                   # Backend Node.js/Express server
+│   ├── 📁 lib/                 # Server utility libraries
+│   │   ├── auth.ts             # Authentication utilities
+│   │   ├── email.ts            # Email sending functionality
+│   │   ├── prisma.ts           # Database connection
+│   │   ├── trial.ts            # Trial management logic
+│   │   └── validation.ts       # Input validation schemas
+│   │
+│   ├── 📁 routes/              # API route handlers
+│   │   ├── admin.ts            # Admin API endpoints
+│   │   ├── auth.ts             # Authentication endpoints
+│   │   └── stripe.ts           # Stripe payment webhooks
+│   │
+│   └── index.ts                # Server entry point
+│
+├── 📁 prisma/                  # Database schema and migrations
+│   └── schema.prisma           # Prisma database schema
+│
+├── 📄 Configuration Files
+│   ├── components.json         # shadcn/ui configuration
+│   ├── eslint.config.js        # ESLint configuration
+│   ├── package.json            # Node.js dependencies
+│   ├── postcss.config.js       # PostCSS configuration
+│   ├── tailwind.config.ts      # Tailwind CSS configuration
+│   ├── tsconfig.json           # TypeScript configuration
+│   └── vite.config.ts          # Vite build configuration
+│
+└── 📄 Other Files
+    ├── bun.lockb               # Bun package lock file
+    ├── node_modules/           # Node.js dependencies
+    └── README.md               # This file
+```
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/0509dd86-7385-4cf5-a110-87d41897cd5a) and start prompting.
+## Key Features & Components
 
-Changes made via Lovable will be committed automatically to this repo.
+### 🎯 **Core Functionality**
+- **Queue Management**: Virtual queue system for businesses
+- **SMS Notifications**: Automated customer notifications via SMS
+- **Subscription Plans**: Starter and Professional tiers with different limits
+- **Payment Processing**: Stripe integration for subscription billing
+- **Trial System**: 7-day free trial for new users
 
-**Use your preferred IDE**
+### 🏗️ **Architecture**
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+#### **Frontend (React + TypeScript)**
+- **Vite**: Fast build tool and development server
+- **shadcn/ui**: Modern, accessible UI component library
+- **Tailwind CSS**: Utility-first CSS framework
+- **React Router**: Client-side routing
+- **Custom Hooks**: Reusable state management logic
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+#### **Backend (Node.js + Express)**
+- **Express.js**: Web framework for API routes
+- **Prisma**: Database ORM with MongoDB
+- **Stripe**: Payment processing and webhooks
+- **JWT**: Authentication token management
+- **bcrypt**: Password hashing
 
-Follow these steps:
+#### **Database (MongoDB)**
+- **User Management**: User accounts, plans, and trial status
+- **Location Data**: Business locations and queue information
+- **Credit System**: SMS and customer credit tracking
+- **Subscription Data**: Plan details and billing information
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+### 🔧 **Development Tools**
+- **TypeScript**: Type-safe JavaScript
+- **ESLint**: Code linting and formatting
+- **PostCSS**: CSS processing
+- **Hot Reload**: Instant development feedback
+
+## Getting Started
+
+### Prerequisites
+- Node.js (v18 or higher)
+- npm or yarn
+- MongoDB database
+- Stripe account (for payments)
+
+### Installation
+
+```bash
+# Clone the repository
 git clone <YOUR_GIT_URL>
+cd seat-ping
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Install dependencies
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your database and Stripe credentials
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Environment Variables
+```env
+DATABASE_URL = "mongodb+srv://bryansusanto22:1234567890@seatping.8vb3kgu.mongodb.net/development"
+JWT_SECRET="9b6d0d5ad98e9d18"
+JWT_EXPIRES_IN="7d"
+CLIENT_ORIGIN="http://localhost:5173"
+PORT=4000
+FRONTEND_URL="http://localhost:8082"
+EMAIL_PASSWORD="fnwn cftn ztih tqeg"
+STRIPE_SECRET_KEY=sk_test_51S5GNxDHwj4NMuGRfnUiYltsWRgdwa9Qwap6cQRAULbb3E6nyjiijMZxKUYw3BH9nvacbvpDjemMOaNJX1Aw7SHc00730Tc7r2
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_51S5GNxDHwj4NMuGR922ZKFpTDTVcgc4BNCXIQQpIgCrNORF031V7g4VbJWOvdLjAwq3gDrClgB7aDUQr3DTcaKG700JNVq16O4
+STRIPE_WEBHOOK_SECRET=whsec_677ae84e417b410289acaf7d39ecc6b636c898c4923c0d19f1a8ef829c282fc5
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## API Endpoints
 
-**Use GitHub Codespaces**
+### Authentication
+- `POST /auth/signup` - User registration
+- `POST /auth/login` - User login
+- `POST /auth/forgot-password` - Password reset request
+- `POST /auth/reset-password` - Password reset confirmation
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Business Management
+- `GET /admin/users` - Get all users (admin)
+- `POST /admin/users/:id/plan` - Update user plan (admin)
+- `GET /business/dashboard` - Business dashboard data
+- `POST /business/locations` - Add new location
+- `PUT /business/locations/:id` - Update location
 
-## What technologies are used for this project?
+### Payments
+- `POST /stripe/create-checkout-session` - Create payment session
+- `POST /stripe/webhook` - Stripe webhook handler
+- `GET /stripe/test-db` - Database connection test (dev)
 
-This project is built with:
+## Database Schema
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/0509dd86-7385-4cf5-a110-87d41897cd5a) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### User Model
+```typescript
+{
+  id: string              // Unique user ID
+  name: string            // User's full name
+  username: string        // Unique username
+  email: string           // User's email
+  phone: string           // User's phone number
+  password: string        // Hashed password
+  customerId: string      // Stripe customer ID
+  plan: string            // Current subscription plan
+  locations: Array        // User's business locations
+  trial: boolean          // Trial status
+  trialDurationDays: number // Trial length
+  maxLocations: number    // Maximum allowed locations
+  baseCustomerCredits: number // Monthly customer credits
+  baseSMSCredits: number  // Monthly SMS credits
+  planStartedAt: Date     // Plan start date
+  createdAt: Date         // Account creation date
+  updatedAt: Date         // Last update date
+}
+```
