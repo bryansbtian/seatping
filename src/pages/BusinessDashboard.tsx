@@ -115,12 +115,12 @@ const BusinessDashboard = () => {
 
   // Calculate trial time remaining
   const calculateTrialTimeLeft = () => {
-    if (!me || !me.trial || !me.createdAt || !me.trialDurationDays) {
+    if (!me || !me.trial || !me.createdAt) {
       return null;
     }
 
     const createdAt = new Date(me.createdAt);
-    const trialDurationDays = me.trialDurationDays || 7;
+    const trialDurationDays = typeof me.trialDurationDays === 'number' ? me.trialDurationDays : 7;
     const trialEndDate = new Date(createdAt.getTime() + (trialDurationDays * 24 * 60 * 60 * 1000));
     const now = new Date();
     const timeLeft = trialEndDate.getTime() - now.getTime();
@@ -167,6 +167,29 @@ const BusinessDashboard = () => {
         clearInterval(trialCountdownRef.current);
       }
     };
+  }, [me]);
+
+  useEffect(() => {
+    if (me && me.trial) {
+      const createdAt = new Date(me.createdAt);
+      const trialDurationDays = me.trialDurationDays || 0;
+      const trialEndDate = new Date(createdAt.getTime() + (trialDurationDays * 24 * 60 * 60 * 1000));
+      const now = new Date();
+      const isExpired = now > trialEndDate;
+
+      if (isExpired) {
+        const updatedLocations = me.locations.map((location: any) => ({
+          ...location,
+          customerCredits: 0,
+          smsCredits: 0,
+        }));
+
+        setMe((prevMe: any) => ({
+          ...prevMe,
+          locations: updatedLocations,
+        }));
+      }
+    }
   }, [me]);
 
   useEffect(() => {
@@ -290,7 +313,7 @@ const BusinessDashboard = () => {
               {/* Trial Expired Banner - Shows when trial has expired (account > 7 days old) */}
               {(() => {
                 const createdAt = new Date(me.createdAt);
-                const trialDurationDays = me.trialDurationDays || 7;
+                const trialDurationDays = typeof me.trialDurationDays === 'number' ? me.trialDurationDays : 7;
                 const trialEndDate = new Date(createdAt.getTime() + (trialDurationDays * 24 * 60 * 60 * 1000));
                 const now = new Date();
                 return now > trialEndDate;

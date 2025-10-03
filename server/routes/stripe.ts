@@ -417,6 +417,29 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
         break;
       }
 
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        console.log("customer.subscription.deleted", JSON.stringify(subscription, null, 2));
+        const customerId = subscription.customer as string;
+        const user = await prisma.user.findFirst({ where: { customerId } });
+
+        if (user) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              plan: "Starter",
+              trial: true,
+              trialDurationDays: 0,
+              baseCustomerCredits: PLAN_RULES.Starter.baseCustomerCredits,
+              baseSMSCredits: PLAN_RULES.Starter.baseSMSCredits,
+              maxLocations: PLAN_RULES.Starter.maxLocations,
+            },
+          });
+        }
+
+        break;
+      }
+
       case "invoice.paid": {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = invoice.customer as string;

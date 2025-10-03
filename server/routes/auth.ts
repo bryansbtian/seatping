@@ -612,16 +612,7 @@ router.post(
       }
 
       // Calculate credit deductions
-      let smsCreditsToDeduct = 0;
       let customerCreditsToDeduct = 1; // Always deduct 1 customer credit when admitting
-
-      // Check if customer has "wait anywhere" preference - deduct SMS credit too
-      if (
-        admittedCustomer &&
-        admittedCustomer.waitingPreference === "wait_anywhere"
-      ) {
-        smsCreditsToDeduct = 1;
-      }
 
       // Deduct credits from the specific location
       const location = locations[locationIndex];
@@ -629,13 +620,6 @@ router.post(
         0,
         (location.customerCredits || 0) - customerCreditsToDeduct
       );
-
-      if (smsCreditsToDeduct > 0) {
-        location.smsCredits = Math.max(
-          0,
-          (location.smsCredits || 0) - smsCreditsToDeduct
-        );
-      }
 
       // Update locations array
       locations[locationIndex] = location;
@@ -654,7 +638,7 @@ router.post(
         message: "Customer has been admitted",
         creditsDeducted: {
           customerCredits: customerCreditsToDeduct,
-          smsCredits: smsCreditsToDeduct,
+          smsCredits: 0, // No SMS credits deducted on admit
         },
       });
     } catch (err: any) {

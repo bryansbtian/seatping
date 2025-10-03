@@ -10,7 +10,7 @@ export function isTrialExpired(user: any): boolean {
   // Trial expires when account is more than 7 days old, regardless of trial field
   // trial = false means user purchased a plan, NOT that trial expired
   const createdAt = new Date(user.createdAt);
-  const trialDurationDays = user.trialDurationDays || 7;
+  const trialDurationDays = typeof user.trialDurationDays === 'number' ? user.trialDurationDays : 7;
   const trialEndDate = new Date(createdAt.getTime() + (trialDurationDays * 24 * 60 * 60 * 1000));
   const now = new Date();
 
