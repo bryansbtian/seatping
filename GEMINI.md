@@ -232,3 +232,49 @@ STRIPE_WEBHOOK_SECRET=whsec_677ae84e417b410289acaf7d39ecc6b636c898c4923c0d19f1a8
   updatedAt: Date; // Last update date
 }
 ```
+
+Example of Working Stripe Webhook Usage for managing plans: (this is using a button, which in my case is called (located in E:\Projects\SeatPing\seat-ping\src\pages\BusinessSettings.tsx):
+
+````
+<Button
+                      variant="outline"
+                      size="sm"
+                      className="border-white text-white hover:bg-white hover:text-gray-700 text-xs md:text-sm"
+                      onClick={() => (window.location.href = BILLING_PORTAL_URL)}
+                    >
+                      Manage Subscription
+                    </Button>
+```)
+
+```javascript
+"use client";
+
+import { useSession, signIn } from "next-auth/react";
+
+// Customer portal link
+const customerPortalLink =
+  "https://billing.stripe.com/p/login/test_dR68yq9NZaay7sI144";
+
+const ButtonCustomerPortal = () => {
+  const { data: session, status } = useSession();
+
+  if (status === "authenticated") {
+    return (
+      <a
+        href={customerPortalLink + "?prefilled_email=" + session.user?.email}
+        className="btn"
+      >
+        Billing
+      </a>
+    );
+  }
+
+  return (
+    <button className="btn" onClick={signIn}>
+      Login
+    </button>
+  );
+};
+
+export default ButtonCustomerPortal;
+````
