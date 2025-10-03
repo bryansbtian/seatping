@@ -150,37 +150,37 @@ async function applyPlanToUser(
         },
       });
 
-      const locations = ((userWithLocations as any)?.locations as any[]) || [];
+      const locations = (userWithLocations?.locations as { address: string; queue: string[] }[]) || [];
       if (locations.length > 0) {
-        const updatedLocations = locations.map((location: any) => ({
+        const updatedLocations = locations.map((location: { address: string; queue: string[] }) => ({
           ...location,
-          smsCredits: (userWithLocations as any)?.baseSMSCredits || 0,
-          customerCredits: (userWithLocations as any)?.baseCustomerCredits || 0,
+          smsCredits: userWithLocations?.baseSMSCredits || 0,
+          customerCredits: userWithLocations?.baseCustomerCredits || 0,
         }));
 
         await prisma.user.update({
           where: { id: userId },
-          data: { locations: updatedLocations as any },
+          data: { locations: updatedLocations as { address: string; queue: string[] }[] },
         });
 
         console.log(
           `[stripe] ✅ Updated ${
             locations.length
           } existing locations with base credits (SMS=${
-            (userWithLocations as any)?.baseSMSCredits
-          }, Customers=${(userWithLocations as any)?.baseCustomerCredits})`
+            userWithLocations?.baseSMSCredits
+          }, Customers=${userWithLocations?.baseCustomerCredits})`
         );
       } else {
         console.log("[stripe] No existing locations to update for this user");
       }
-    } catch (locErr: any) {
+    } catch (locErr: Error) {
       console.error(
         "[stripe] ⚠️ Failed to update locations with base credits:",
         locErr?.message || locErr
       );
     }
     return result;
-  } catch (error: any) {
+  } catch (error: Error) {
     console.error("[stripe] ❌ Failed to update user:", {
       userId,
       plan,
@@ -238,7 +238,7 @@ router.post("/create-checkout-session", express.json(), async (req, res) => {
       url: session.url,
     });
     return res.json({ url: session.url });
-  } catch (err: any) {
+  } catch (err: Error) {
     console.error(
       "[stripe] ❌ create-checkout-session failed:",
       err?.message || err
@@ -275,7 +275,7 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, whsec);
     console.log("[stripe] ✅ Webhook signature verified");
-  } catch (err: any) {
+  } catch (err: Error) {
     console.error(
       "[stripe] ❌ Signature verification failed:",
       err?.message || err
@@ -321,12 +321,12 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
         });
 
         // Use your own id, not email
-        const userId =
-          session.client_reference_id || (session.metadata as any)?.userId;
+        const userId: string | null =
+          session.client_reference_id || (session.metadata as { userId: string })?.userId;
         console.log("[stripe] session user identification:", {
           userId,
           client_reference_id: session.client_reference_id,
-          metaUserId: (session.metadata as any)?.userId,
+          metaUserId: (session.metadata as { userId: string })?.userId,
         });
 
         if (!userId) {
@@ -358,7 +358,7 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
 
         // Derive plan (prefer metadata, else inspect line item price/product)
         let plan: PlanName | null =
-          normalizePlanName((session.metadata as any)?.plan) || null;
+          normalizePlanName((session.metadata as { plan: PlanName })?.plan) || null;
         console.log("[stripe] Plan from metadata:", plan);
 
         if (!plan) {
@@ -389,7 +389,7 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
           try {
             await applyPlanToUser(userId, plan, true); // first activation → set planStartedAt
             console.log("[stripe] ✅ Plan applied successfully");
-          } catch (error) {
+          } catch (error: Error) {
             console.error("[stripe] ❌ Failed to apply plan:", error);
           }
         } else {
@@ -400,173 +400,28 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
         break;
       }
 
-      case "customer.subscription.created":
       case "customer.subscription.updated": {
-        const sub = event.data.object as Stripe.Subscription;
-        const customerId = sub.customer as string;
-
-        console.log("[stripe] 📋 Subscription event:", {
-          type: event.type,
-          subscriptionId: sub.id,
-          customerId,
-          status: sub.status,
-          currentPeriodEnd: new Date(
-            sub.current_period_end * 1000
-          ).toISOString(),
-          currentPeriodStart: new Date(
-            sub.current_period_start * 1000
-          ).toISOString(),
-        });
-
-        console.log("[stripe] 🔍 Looking up user by customerId:", customerId);
+        const subscription = event.data.object as Stripe.Subscription;
+        console.log("customer.subscription.updated", JSON.stringify(subscription, null, 2));
+        const customerId = subscription.customer as string;
         const user = await prisma.user.findFirst({ where: { customerId } });
-        if (!user) {
-          console.warn("[stripe] ⚠️ no user for customerId on subscription.*", {
-            customerId,
-          });
-          // Let's also try to find users without customerId to debug
-          const allUsers = await prisma.user.findMany({
-            select: {
-              id: true,
-              email: true,
-              customerId: true,
-              plan: true,
-              trial: true,
-            },
-            take: 5,
-          });
-          console.log("[stripe] 🔍 Sample users in database:", allUsers);
-          break;
-        }
 
-        console.log("[stripe] ✅ Found user for subscription:", {
-          userId: user.id,
-          email: user.email,
-          currentPlan: user.plan,
-          currentTrial: user.trial,
-          currentPlanStartedAt: user.planStartedAt,
-        });
-
-        const priceId = sub.items.data[0]?.price?.id;
-        let plan = priceIdToPlan(priceId);
-        if (!plan) {
-          // optional: try product name if price mapping not set
-          const price = sub.items.data[0]?.price;
-          if (price && typeof price.product !== "string") {
-            plan = normalizePlanName(price.product?.name);
+        if (user) {
+          const priceId = subscription.items.data[0]?.price.id;
+          const plan = priceIdToPlan(priceId);
+          if (plan) {
+            await applyPlanToUser(user.id, plan, true);
           }
         }
-        if (!plan) {
-          console.warn("[stripe] ⚠️ subscription.* unknown plan", {
-            priceId,
-            subscriptionId: sub.id,
-          });
-          break;
-        }
 
-        // Determine if we should set start time:
-        // - For new subscriptions (created event)
-        // - When plan changes (upgrade/downgrade)
-        // - When user was in trial and now has a paid plan
-        const isNewSubscription =
-          event.type === "customer.subscription.created";
-        const isPlanChange = user.plan !== plan;
-        const isTrialToPaid = user.trial === true;
-
-        const setStartTime = isNewSubscription || isPlanChange || isTrialToPaid;
-
-        console.log("[stripe] Subscription update analysis:", {
-          isNewSubscription,
-          isPlanChange,
-          isTrialToPaid,
-          currentPlan: user.plan,
-          newPlan: plan,
-          willSetStartTime: setStartTime,
-          subscriptionStatus: sub.status,
-        });
-
-        try {
-          await applyPlanToUser(user.id, plan, setStartTime);
-          console.log("[stripe] ✅ Subscription plan applied successfully", {
-            userId: user.id,
-            oldPlan: user.plan,
-            newPlan: plan,
-            setStartTime,
-            eventType: event.type,
-          });
-        } catch (error) {
-          console.error(
-            "[stripe] ❌ Failed to apply subscription plan:",
-            error
-          );
-        }
         break;
       }
 
-      case "customer.subscription.deleted": {
-        const sub = event.data.object as Stripe.Subscription;
-        const customerId = sub.customer as string;
-
-        console.log("[stripe] 🗑️ Subscription cancelled:", {
-          subscriptionId: sub.id,
-          customerId,
-          status: sub.status,
-          cancelledAt: sub.canceled_at
-            ? new Date(sub.canceled_at * 1000).toISOString()
-            : null,
-        });
-
-        const user = await prisma.user.findFirst({ where: { customerId } });
-        if (!user) {
-          console.warn(
-            "[stripe] ⚠️ no user for customerId on subscription deletion",
-            { customerId }
-          );
-          break;
-        }
-
-        console.log("[stripe] Found user for cancelled subscription:", {
-          userId: user.id,
-          email: user.email,
-          currentPlan: user.plan,
-        });
-
-        // When subscription is cancelled, we should:
-        // 1. Keep the user's current plan and credits until the end of the billing period
-        // 2. Set trial to true so they can continue using the service until expiry
-        // 3. Don't reset planStartedAt as they should keep their current benefits
-
-        try {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              trial: true, // Mark as trial so they can continue until period end
-              updatedAt: new Date(),
-            },
-          });
-
-          console.log(
-            "[stripe] ✅ User marked as trial after subscription cancellation",
-            {
-              userId: user.id,
-              email: user.email,
-            }
-          );
-        } catch (error) {
-          console.error(
-            "[stripe] ❌ Failed to update user after subscription cancellation:",
-            error
-          );
-        }
-        break;
-      }
-
-      case "invoice.payment_succeeded": {
-        // Fallback: ensure trial is OFF if session/subscription events were missed
+      case "invoice.paid": {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = invoice.customer as string;
 
-        console.log("[stripe] 💰 Invoice payment succeeded:", {
+        console.log("[stripe] 💰 Invoice paid:", {
           invoiceId: invoice.id,
           customerId,
           amount: invoice.amount_paid,
@@ -574,10 +429,6 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
           billingReason: invoice.billing_reason,
         });
 
-        console.log(
-          "[stripe] 🔍 Looking up user by customerId for invoice:",
-          customerId
-        );
         const user = await prisma.user.findFirst({ where: { customerId } });
         if (!user) {
           console.warn("[stripe] ⚠️ no user for invoice customerId", {
@@ -586,89 +437,17 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
           break;
         }
 
-        // For subscription updates, we need to get the plan from the subscription
-        let plan: PlanName | null = null;
-        let priceId = invoice.lines.data[0]?.price?.id;
+        const priceId = invoice.lines.data[0]?.price?.id;
+        const plan = priceIdToPlan(priceId);
 
-        console.log("[stripe] 🔍 Invoice line items:", {
-          lineItemsCount: invoice.lines.data.length,
-          firstLineItem: invoice.lines.data[0],
-          priceId: priceId,
-        });
-
-        // Try to get plan from price ID first
-        if (priceId) {
-          plan = priceIdToPlan(priceId);
-          console.log("[stripe] 🔍 Plan from price ID:", { priceId, plan });
-        }
-
-        // If no plan from price ID and this is a subscription update, get it from the subscription
-        if (
-          !plan &&
-          invoice.subscription &&
-          invoice.billing_reason === "subscription_update"
-        ) {
-          console.log("[stripe] 🔍 Getting plan from subscription for update");
-          try {
-            const subscription = await stripe.subscriptions.retrieve(
-              invoice.subscription as string
-            );
-            const subPriceId = subscription.items.data[0]?.price?.id;
-            plan = priceIdToPlan(subPriceId);
-            console.log("[stripe] 🔍 Plan from subscription:", {
-              subPriceId,
-              plan,
-            });
-          } catch (subError) {
-            console.error(
-              "[stripe] ❌ Failed to retrieve subscription:",
-              subError
-            );
-          }
-        }
-
-        if (!plan) {
-          console.warn("[stripe] ⚠️ invoice payment but unknown plan", {
+        if (plan) {
+          console.log("[stripe] 🎯 Applying plan from invoice:", plan, "to user:", user.id);
+          await applyPlanToUser(user.id, plan, true);
+        } else {
+          console.warn("[stripe] ⚠️ invoice paid but plan unknown", {
             priceId,
             invoiceId: invoice.id,
-            billingReason: invoice.billing_reason,
-            subscriptionId: invoice.subscription,
           });
-          break;
-        }
-
-        // For invoice payments, we should:
-        // - Set start time if user was in trial
-        // - Set start time if plan changed
-        // - Don't set start time for regular renewals
-        const isTrialToPaid = user.trial === true;
-        const isPlanChange = user.plan !== plan;
-        const isRenewal = invoice.billing_reason === "subscription_cycle";
-
-        const setStartTime = isTrialToPaid || isPlanChange;
-
-        console.log("[stripe] Invoice payment analysis:", {
-          currentPlan: user.plan,
-          newPlan: plan,
-          currentTrial: user.trial,
-          billingReason: invoice.billing_reason,
-          isTrialToPaid,
-          isPlanChange,
-          isRenewal,
-          willSetStartTime: setStartTime,
-        });
-
-        try {
-          await applyPlanToUser(user.id, plan, setStartTime);
-          console.log("[stripe] ✅ Invoice plan applied successfully", {
-            userId: user.id,
-            oldPlan: user.plan,
-            newPlan: plan,
-            setStartTime,
-            billingReason: invoice.billing_reason,
-          });
-        } catch (error) {
-          console.error("[stripe] ❌ Failed to apply invoice plan:", error);
         }
         break;
       }
@@ -682,7 +461,7 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
     console.log("✅ WEBHOOK PROCESSED SUCCESSFULLY:", event.type);
     console.log("=".repeat(80));
     return res.json({ received: true });
-  } catch (e: any) {
+  } catch (e: Error) {
     console.error("[stripe] ❌ Handler error:", {
       message: e?.message,
       stack: e?.stack,
@@ -710,7 +489,7 @@ router.post("/dev/apply", express.json(), async (req, res) => {
     console.log("[stripe] DEV: Applying plan manually:", { userId, plan });
     await applyPlanToUser(userId, plan, true);
     return res.json({ ok: true, userId, plan });
-  } catch (e: any) {
+  } catch (e: Error) {
     console.error("[stripe] DEV: Manual apply failed:", e?.message || e);
     return res.status(500).json({ error: e?.message || "update failed" });
   }
@@ -749,7 +528,7 @@ router.post("/dev/apply-by-email", express.json(), async (req, res) => {
     });
     await applyPlanToUser(user.id, plan, true);
     return res.json({ ok: true, userId: user.id, email: user.email, plan });
-  } catch (e: any) {
+  } catch (e: Error) {
     console.error("[stripe] DEV: apply-by-email failed:", e?.message || e);
     return res.status(500).json({ error: e?.message || "update failed" });
   }
@@ -782,7 +561,7 @@ router.get("/dev/db-test", async (req, res) => {
 
     console.log("[stripe] DEV: Database test result:", result);
     res.json(result);
-  } catch (error: any) {
+  } catch (error: Error) {
     console.error("[stripe] DEV: Database test failed:", error);
     res.status(500).json({ error: error.message });
   }
@@ -838,7 +617,7 @@ router.get("/test-db", async (req, res) => {
       users,
       message: "Database connection working",
     });
-  } catch (error: any) {
+  } catch (error: Error) {
     console.error("🧪 DATABASE TEST FAILED:", error);
     res.status(500).json({
       success: false,
@@ -865,7 +644,7 @@ router.post("/test-apply-plan", express.json(), async (req, res) => {
     const result = await applyPlanToUser(userId, plan, true);
     console.log("🧪 MANUAL TEST: Plan applied successfully", result);
     res.json({ success: true, result });
-  } catch (error: any) {
+  } catch (error: Error) {
     console.error("🧪 MANUAL TEST: Failed to apply plan:", error);
     res.status(500).json({ success: false, error: error.message });
   }

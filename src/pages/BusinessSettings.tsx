@@ -30,8 +30,27 @@ import Footer from "@/components/Footer";
 
 const BILLING_PORTAL_URL = "https://billing.stripe.com/p/login/test_aFa3cvcTN7x98khge7bfO00";
 
+interface Location {
+  address: string;
+  queue: string[];
+  smsCredits: number;
+  customerCredits: number;
+}
+
+interface User {
+  name: string;
+  username: string;
+  email: string;
+  plan: string;
+  locations: Location[];
+  maxLocations: number;
+  trial: boolean;
+  trialDurationDays: number;
+  createdAt: string;
+}
+
 const BusinessSettings = () => {
-  const [me, setMe] = useState<any | null>(null);
+  const [me, setMe] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [newLocationAddress, setNewLocationAddress] = useState("");
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
@@ -41,7 +60,7 @@ const BusinessSettings = () => {
   const trialCountdownRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
-  const locations = (me?.locations as any[]) || [];
+  const locations: Location[] = me?.locations || [];
   const maxLocations = me?.maxLocations ?? 1;
 
   const onTrial = me && (() => {
@@ -53,21 +72,21 @@ const BusinessSettings = () => {
   })();
 
   // Calculate trial time remaining
-  const calculateTrialTimeLeft = () => {
-    if (!me || !me.trial || !me.createdAt || !me.trialDurationDays) return null;
-    const createdAt = new Date(me.createdAt);
-    const trialDurationDays = me.trialDurationDays || 7;
-    const trialEndDate = new Date(createdAt.getTime() + (trialDurationDays * 24 * 60 * 60 * 1000));
-    const now = new Date();
-    const timeLeft = trialEndDate.getTime() - now.getTime();
-    if (timeLeft <= 0) return null;
-    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-    return { days, hours, minutes };
-  };
-
   useEffect(() => {
+    const calculateTrialTimeLeft = () => {
+      if (!me || !me.trial || !me.createdAt || !me.trialDurationDays) return null;
+      const createdAt = new Date(me.createdAt);
+      const trialDurationDays = me.trialDurationDays || 7;
+      const trialEndDate = new Date(createdAt.getTime() + (trialDurationDays * 24 * 60 * 60 * 1000));
+      const now = new Date();
+      const timeLeft = trialEndDate.getTime() - now.getTime();
+      if (timeLeft <= 0) return null;
+      const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+      return { days, hours, minutes };
+    };
+
     if (trialCountdownRef.current) clearInterval(trialCountdownRef.current);
     if (me && me.trial) {
       setTrialTimeLeft(calculateTrialTimeLeft());
@@ -84,7 +103,9 @@ const BusinessSettings = () => {
 
   useEffect(() => {
     (async () => {
-      try { const res = await api("/auth/me"); setMe(res.user); } catch {}
+      try { const res = await api("/auth/me"); setMe(res.user); } catch {
+        // ignore errors
+      }
     })();
   }, []);
 
@@ -107,7 +128,7 @@ const BusinessSettings = () => {
       setMe(updated.user);
       setNewLocationAddress("");
       toast({ title: "Location added", description: "New location has been added successfully." });
-    } catch (e: any) {
+    } catch (e: Error) {
       toast({ title: "Failed to add location", description: e?.message || "Please try again.", variant: "destructive" });
     } finally { setLoading(false); }
   };
@@ -120,7 +141,7 @@ const BusinessSettings = () => {
       const updated = await api("/auth/me", { method: "PUT", body: JSON.stringify({ locations: updatedLocations }) });
       setMe(updated.user);
       toast({ title: "Location removed", description: "Location has been removed successfully." });
-    } catch (e: any) {
+    } catch (e: Error) {
       toast({ title: "Failed to remove location", description: e?.message || "Please try again.", variant: "destructive" });
     } finally { setLoading(false); }
   };
@@ -156,7 +177,7 @@ const BusinessSettings = () => {
       <div className="min-h-screen pt-20 bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="container mx-auto px-4 py-8">
           {/* Trial banners */}
-          {me && me.trial === true && (
+          {me && me.trial === true && me.trialDurationDays > 0 && (
             <>
               {(() => {
                 const createdAt = new Date(me.createdAt);
@@ -208,7 +229,7 @@ const BusinessSettings = () => {
           )}
 
           {/* No credits banner */}
-          {me && me.trial === false && locations.length > 0 && locations.some((location: any) => location.smsCredits === 0 && location.customerCredits === 0) && (
+          {me && !me.trial && locations.length > 0 && locations.some((location: Location) => location.smsCredits === 0 && location.customerCredits === 0) && (
             <div className="mb-6">
               <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
@@ -231,7 +252,7 @@ const BusinessSettings = () => {
           )}
 
           {/* Manage subscription banner */}
-          {me && me.trial === false && (
+          {me && me.trial === false && me.trialDurationDays !== 0 && (
             <div className="mb-6">
               <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-xl shadow-lg p-3 md:p-4 text-white">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
@@ -247,6 +268,30 @@ const BusinessSettings = () => {
                       onClick={() => (window.location.href = BILLING_PORTAL_URL)}
                     >
                       Manage Subscription
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Expired trial banner */}
+          {me && me.trial === true && me.trialDurationDays === 0 && (
+            <div className="mb-6">
+              <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg p-3 md:p-4 text-white">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                  <div>
+                    <h4 className="text-sm md:text-base font-semibold">Your trial has expired</h4>
+                    <p className="text-xs md:text-sm opacity-80">Please upgrade to a paid plan to continue using our service.</p>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-white text-white hover:bg-white hover:text-gray-700 text-xs md:text-sm"
+                      onClick={() => (window.location.href = "/payments")}
+                    >
+                      Upgrade
                     </Button>
                   </div>
                 </div>
@@ -385,7 +430,7 @@ const BusinessSettings = () => {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {locations.map((location: any, index: number) => (
+                      {locations.map((location: Location, index: number) => (
                         <div key={index} className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg">
                           <div className="flex items-center space-x-3">
                             <MapPin className="w-4 h-4 md:w-5 md:h-5 text-gray-400 flex-shrink-0" />
