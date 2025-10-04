@@ -23,39 +23,41 @@ import { CreditCard } from "lucide-react";
 const PRICING_PLANS = {
   "Starter Monthly": {
     name: "Starter Monthly",
-    price: 30,
+    price: 10,
     interval: "month",
     features: ["• 1 Location", "• 200 SMS/Month", "• 50 Customers/Day"],
-    savings: null
+    savings: null,
   },
   "Starter Yearly": {
     name: "Starter Yearly",
-    price: 250,
+    price: 95,
     interval: "year",
     features: ["• 1 Location", "• 200 SMS/Month", "• 50 Customers/Day"],
-    savings: "Save $110/year"
+    savings: "Save $25/year",
   },
   "Professional Monthly": {
     name: "Professional Monthly",
-    price: 65,
+    price: 25,
     interval: "month",
     features: ["• 3 Locations", "• 500 SMS/Month", "• 100 Customers/Day"],
-    savings: null
+    savings: null,
   },
   "Professional Yearly": {
     name: "Professional Yearly",
-    price: 550,
+    price: 240,
     interval: "year",
     features: ["• 3 Locations", "• 500 SMS/Month", "• 100 Customers/Day"],
-    savings: "Save $230/year"
-  }
+    savings: "Save $60/year",
+  },
 };
 
 const Payments = () => {
   const [me, setMe] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>("");
-  const [selectedBilling, setSelectedBilling] = useState<"monthly" | "yearly">("monthly");
+  const [selectedBilling, setSelectedBilling] = useState<"monthly" | "yearly">(
+    "monthly"
+  );
   const [acceptTerms, setAcceptTerms] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -94,30 +96,46 @@ const Payments = () => {
 
   const getCurrentPlanKey = () => {
     if (currentPlan === "Starter") {
-      return selectedBilling === "monthly" ? "Starter Monthly" : "Starter Yearly";
+      return selectedBilling === "monthly"
+        ? "Starter Monthly"
+        : "Starter Yearly";
     } else if (currentPlan === "Professional") {
-      return selectedBilling === "monthly" ? "Professional Monthly" : "Professional Yearly";
+      return selectedBilling === "monthly"
+        ? "Professional Monthly"
+        : "Professional Yearly";
     }
     return "Starter Monthly";
   };
 
-  const getUserId = (u: any) => (u?.id ?? u?._id ?? null);
+  const getUserId = (u: any) => u?.id ?? u?._id ?? null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!selectedPlan) {
-      toast({ title: "Plan Selection Required", description: "Please select a plan to continue.", variant: "destructive" });
+      toast({
+        title: "Plan Selection Required",
+        description: "Please select a plan to continue.",
+        variant: "destructive",
+      });
       return;
     }
     if (!acceptTerms) {
-      toast({ title: "Terms Acceptance Required", description: "Please accept the terms and conditions to continue.", variant: "destructive" });
+      toast({
+        title: "Terms Acceptance Required",
+        description: "Please accept the terms and conditions to continue.",
+        variant: "destructive",
+      });
       return;
     }
 
     const userId = getUserId(me);
     if (!userId) {
-      toast({ title: "Session Error", description: "We couldn’t find your account id. Please sign in again.", variant: "destructive" });
+      toast({
+        title: "Session Error",
+        description: "We couldn’t find your account id. Please sign in again.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -145,7 +163,11 @@ const Payments = () => {
       setLoading(false);
     } catch (error) {
       console.error(error);
-      toast({ title: "Payment Failed", description: "There was an error starting checkout. Please try again.", variant: "destructive" });
+      toast({
+        title: "Payment Failed",
+        description: "There was an error starting checkout. Please try again.",
+        variant: "destructive",
+      });
       setLoading(false);
     }
   };
@@ -159,12 +181,22 @@ const Payments = () => {
         <div className="max-w-4xl mx-auto">
           <Card className="shadow-xl rounded-xl border-0">
             <CardHeader className="text-center">
-              <CardTitle className="text-3xl lg:text-4xl font-bold">Choose Your Plan</CardTitle>
+              <CardTitle className="text-3xl lg:text-4xl font-bold">
+                Choose Your Plan
+              </CardTitle>
 
               {selectedPlan && (
                 <CardDescription className="text-lg font-semibold mt-4">
-                  Total - ${PRICING_PLANS[selectedPlan as keyof typeof PRICING_PLANS]?.price}/
-                  {PRICING_PLANS[selectedPlan as keyof typeof PRICING_PLANS]?.interval}
+                  Total - $
+                  {
+                    PRICING_PLANS[selectedPlan as keyof typeof PRICING_PLANS]
+                      ?.price
+                  }
+                  /
+                  {
+                    PRICING_PLANS[selectedPlan as keyof typeof PRICING_PLANS]
+                      ?.interval
+                  }
                 </CardDescription>
               )}
             </CardHeader>
@@ -173,21 +205,48 @@ const Payments = () => {
               <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Billing toggle */}
                 <div className="flex items-center justify-center space-x-4">
-                  <span className={`text-sm font-medium ${selectedBilling === "monthly" ? "text-gray-900" : "text-gray-500"}`}>Monthly</span>
+                  <span
+                    className={`text-sm font-medium ${
+                      selectedBilling === "monthly"
+                        ? "text-gray-900"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    Monthly
+                  </span>
                   <button
                     type="button"
-                    onClick={() => setSelectedBilling(selectedBilling === "monthly" ? "yearly" : "monthly")}
+                    onClick={() =>
+                      setSelectedBilling(
+                        selectedBilling === "monthly" ? "yearly" : "monthly"
+                      )
+                    }
                     className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200"
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white ${selectedBilling === "yearly" ? "translate-x-6" : "translate-x-1"}`} />
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white ${
+                        selectedBilling === "yearly"
+                          ? "translate-x-6"
+                          : "translate-x-1"
+                      }`}
+                    />
                   </button>
-                  <span className={`text-sm font-medium ${selectedBilling === "yearly" ? "text-gray-900" : "text-gray-500"}`}>Yearly</span>
+                  <span
+                    className={`text-sm font-medium ${
+                      selectedBilling === "yearly"
+                        ? "text-gray-900"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    Yearly
+                  </span>
                 </div>
 
                 {/* Plan cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {getAvailablePlans().map((planKey) => {
-                    const plan = PRICING_PLANS[planKey as keyof typeof PRICING_PLANS];
+                    const plan =
+                      PRICING_PLANS[planKey as keyof typeof PRICING_PLANS];
                     const isCurrent = isCurrentPlan(planKey);
                     const isSelected = selectedPlan === planKey;
 
@@ -204,23 +263,50 @@ const Payments = () => {
                         onClick={() => handlePlanChange(planKey)}
                       >
                         <CardHeader className="text-center">
-                          <CardTitle className={`text-lg ${!onTrial && isCurrent ? "text-gray-500" : ""}`}>
-                            {plan.name.replace(" Monthly", "").replace(" Yearly", "")}
-                            {!onTrial && isCurrent && <span className="block text-sm text-gray-400 mt-1">Current Plan</span>}
+                          <CardTitle
+                            className={`text-lg ${
+                              !onTrial && isCurrent ? "text-gray-500" : ""
+                            }`}
+                          >
+                            {plan.name
+                              .replace(" Monthly", "")
+                              .replace(" Yearly", "")}
+                            {!onTrial && isCurrent && (
+                              <span className="block text-sm text-gray-400 mt-1">
+                                Current Plan
+                              </span>
+                            )}
                             {isSelected && !(!onTrial && isCurrent) && (
-                              <span className="block text-sm text-blue-600 mt-1 font-medium">Selected</span>
+                              <span className="block text-sm text-blue-600 mt-1 font-medium">
+                                Selected
+                              </span>
                             )}
                           </CardTitle>
-                          <CardDescription className={`text-base ${!onTrial && isCurrent ? "text-gray-400" : ""}`}>
+                          <CardDescription
+                            className={`text-base ${
+                              !onTrial && isCurrent ? "text-gray-400" : ""
+                            }`}
+                          >
                             ${plan.price}
-                            <span className="text-muted-foreground">/{plan.interval}</span>
-                            {plan.savings && <span className="block text-xs text-green-600 font-medium mt-1">{plan.savings}</span>}
+                            <span className="text-muted-foreground">
+                              /{plan.interval}
+                            </span>
+                            {plan.savings && (
+                              <span className="block text-xs text-green-600 font-medium mt-1">
+                                {plan.savings}
+                              </span>
+                            )}
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
                           <ul className="space-y-2 text-sm">
                             {plan.features.map((feature, i) => (
-                              <li key={i} className={!onTrial && isCurrent ? "text-gray-400" : ""}>
+                              <li
+                                key={i}
+                                className={
+                                  !onTrial && isCurrent ? "text-gray-400" : ""
+                                }
+                              >
                                 {feature}
                               </li>
                             ))}
@@ -230,9 +316,19 @@ const Payments = () => {
                               type="button"
                               className="w-full"
                               disabled={!onTrial && isCurrent}
-                              variant={!onTrial && isCurrent ? "outline" : isSelected ? "default" : "outline"}
+                              variant={
+                                !onTrial && isCurrent
+                                  ? "outline"
+                                  : isSelected
+                                  ? "default"
+                                  : "outline"
+                              }
                             >
-                              {!onTrial && isCurrent ? "Current Plan" : isSelected ? "Selected" : "Select"}
+                              {!onTrial && isCurrent
+                                ? "Current Plan"
+                                : isSelected
+                                ? "Selected"
+                                : "Select"}
                             </Button>
                           </div>
                         </CardContent>
@@ -243,25 +339,54 @@ const Payments = () => {
 
                 {/* Payment method + terms */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-800">Payment Method</h3>
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    Payment Method
+                  </h3>
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center space-x-3">
                     <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                       <CreditCard className="w-4 h-4 text-white" />
                     </div>
-                    <Label className="text-base font-medium text-blue-800">Credit Card (Stripe)</Label>
+                    <Label className="text-base font-medium text-blue-800">
+                      Credit Card
+                    </Label>
                   </div>
                 </div>
 
                 <div className="flex items-start space-x-3">
-                  <Checkbox id="terms" checked={acceptTerms} onCheckedChange={(c) => setAcceptTerms(c as boolean)} />
-                  <Label htmlFor="terms" className="text-sm text-gray-700">
-                    I accept the{" "}
-                    <a href="/terms" className="text-primary hover:underline">terms</a> and{" "}
-                    <a href="/policy" className="text-primary hover:underline">privacy policy</a>.
-                  </Label>
+                  <label
+                    htmlFor="terms"
+                    className="flex items-center gap-3 cursor-pointer select-none"
+                  >
+                    <Checkbox
+                      id="terms"
+                      checked={acceptTerms}
+                      onCheckedChange={(c) => setAcceptTerms(c as boolean)}
+                      className="h-5 w-5 shrink-0"
+                    />
+                    <span className="text-sm text-gray-700 leading-6">
+                      By proceeding, I acknowledge that I have read and agree to
+                      SeatPing’s{" "}
+                      <a href="/terms" className="text-primary hover:underline">
+                        Terms of Service
+                      </a>{" "}
+                      and{" "}
+                      <a
+                        href="/policy"
+                        className="text-primary hover:underline"
+                      >
+                        Privacy Policy
+                      </a>
+                      , and I consent to the processing of my information as
+                      described therein.
+                    </span>
+                  </label>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={loading || !selectedPlan || !acceptTerms}>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={loading || !selectedPlan || !acceptTerms}
+                >
                   {loading ? "Processing..." : "Checkout"}
                 </Button>
               </form>

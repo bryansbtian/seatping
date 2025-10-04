@@ -3,6 +3,7 @@ import express from "express";
 import Stripe from "stripe";
 // ⬇️ Adjust this import to your project structure if needed (e.g., "../prisma" or "../lib/prisma")
 import { prisma } from "../lib/prisma";
+import { sendPlanChangeEmail, sendSubscriptionCancellationEmail } from "../lib/email";
 
 const router = express.Router();
 
@@ -22,13 +23,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const PRICE_IDS = {
   "Starter Monthly":
     process.env.STRIPE_PRICE_STARTER_MONTHLY ??
-    "price_1S5GXlDHwj4NMuGRzrNP0h6Y",
+    "price_1SEZpZDHwj4NMuGRF47HyAQQ",
   "Starter Yearly":
-    process.env.STRIPE_PRICE_STARTER_YEARLY ?? "price_1S5GisDHwj4NMuGRvS2GIgze",
+    process.env.STRIPE_PRICE_STARTER_YEARLY ?? "price_1SEZrNDHwj4NMuGR1cZEJREy",
   "Professional Monthly":
-    process.env.STRIPE_PRICE_PRO_MONTHLY ?? "price_1S5GaEDHwj4NMuGRnRGHxklm",
+    process.env.STRIPE_PRICE_PRO_MONTHLY ?? "price_1SEZrlDHwj4NMuGRJKbFthwJ",
   "Professional Yearly":
-    process.env.STRIPE_PRICE_PRO_YEARLY ?? "price_1S5Gn4DHwj4NMuGR4yoViRmE",
+    process.env.STRIPE_PRICE_PRO_YEARLY ?? "price_1SEZs8DHwj4NMuGRC7G1ndkN",
 } as const;
 
 type PlanName = "Starter" | "Professional";
@@ -387,7 +388,10 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
         if (plan) {
           console.log("[stripe] 🎯 Applying plan:", plan, "to user:", userId);
           try {
-            await applyPlanToUser(userId, plan, true); // first activation → set planStartedAt
+            const user = await applyPlanToUser(userId, plan, true); // first activation → set planStartedAt
+            if (user && user.email) {
+              await sendPlanChangeEmail(user.email, plan);
+            }
             console.log("[stripe] ✅ Plan applied successfully");
           } catch (error: Error) {
             console.error("[stripe] ❌ Failed to apply plan:", error);
@@ -411,6 +415,9 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
           const plan = priceIdToPlan(priceId);
           if (plan) {
             await applyPlanToUser(user.id, plan, true);
+            if (user.email) {
+              await sendPlanChangeEmail(user.email, plan);
+            }
           }
         }
 
@@ -435,6 +442,9 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
               maxLocations: PLAN_RULES.Starter.maxLocations,
             },
           });
+          if (user.email) {
+            await sendSubscriptionCancellationEmail(user.email);
+          }
         }
 
         break;

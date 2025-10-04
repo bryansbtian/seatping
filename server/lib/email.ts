@@ -87,7 +87,7 @@ export const sendPasswordResetEmail = async (email: string, resetToken: string):
       </div>
       
       <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
-        <p>© 2024 SeatPing. All rights reserved.</p>
+        <p>© 2025 SeatPing. All rights reserved.</p>
       </div>
     </div>
   `;
@@ -98,3 +98,68 @@ export const sendPasswordResetEmail = async (email: string, resetToken: string):
     html,
   });
 };
+
+export const sendPlanChangeEmail = async (email: string, newPlan: string): Promise<boolean> => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">Subscription Plan Update</p>
+      </div>
+      
+      <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+        <h2 style="color: #333; margin-bottom: 20px;">Your Plan Has Been Updated</h2>
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          Your SeatPing subscription has been successfully updated to the <strong>${newPlan}</strong> plan.
+        </p>
+        
+        <p style="color: #666; font-size: 14px; margin-top: 25px;">
+          You can view your subscription details and manage your account in your business dashboard.
+        </p>
+      </div>
+      
+      <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+        <p>© 2025 SeatPing. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: 'Your SeatPing Subscription Has Been Updated',
+    html,
+  });
+};
+
+export const sendSubscriptionCancellationEmail = async (email: string): Promise<boolean> => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #d32f2f 0%, #c2185b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">Subscription Canceled</p>
+      </div>
+      
+      <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+        <h2 style="color: #333; margin-bottom: 20px;">Your Subscription Has Been Canceled</h2>
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          Your SeatPing subscription has been successfully canceled. We're sorry to see you go.
+        </p>
+        
+        <p style="color: #666; font-size: 14px; margin-top: 25px;">
+          If you have any feedback, please let us know. You can resubscribe at any time from your dashboard.
+        </p>
+      </div>
+      
+      <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+        <p>© 2025 SeatPing. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: 'Your SeatPing Subscription Has Been Canceled',
+    html,
+  });
+};
+
