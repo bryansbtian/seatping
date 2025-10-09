@@ -57,6 +57,7 @@ export default function QueueBusiness() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [queueToken, setQueueToken] = useState<string | null>(null);
 
   // Status placeholders
   const [peopleAhead, setPeopleAhead] = useState(3); // example: user is #4 initially
@@ -74,11 +75,13 @@ export default function QueueBusiness() {
   // NEW: ref to focus Step 4 phone input when needed
   const phoneStatusRef = useRef<HTMLInputElement | null>(null);
 
+  // Restore queue state from localStorage on mount
   useEffect(() => {
     if (!businessUsername) {
       navigate("/queue");
       return;
     }
+
     (async () => {
       setLoadingAddresses(true);
       try {
@@ -94,6 +97,62 @@ export default function QueueBusiness() {
             variant: "destructive",
           });
           navigate("/queue");
+          return;
+        }
+
+        // Check for existing queue session in localStorage
+        const storageKey = `queue_${businessUsername}`;
+        const savedToken = localStorage.getItem(storageKey);
+
+        if (savedToken) {
+          // Restore queue state from backend using token
+          try {
+            const response = await api(
+              `/auth/business/${businessUsername}/queue/token/${savedToken}/status`
+            );
+
+            if (response.customer && !response.removed) {
+              // Restore customer data and show appropriate step
+              setQueueToken(savedToken);
+              setForm({
+                address: response.address || response.customer.address || "",
+                firstName: response.customer.firstName || "",
+                lastName: response.customer.lastName || "",
+                numGuests: String(response.customer.numGuests || 1),
+                phoneNumber: response.customer.phoneNumber || "",
+                waitingPreference: response.customer.waitingPreference || "on_premises",
+                joinedAt: response.customer.joinedAt || "",
+              });
+              setBusinessName(response.businessName || list[0].businessName);
+
+              if (response.admitted) {
+                setStep(5); // Customer admitted
+                toast({
+                  title: "Welcome back!",
+                  description: "You've been admitted. Please proceed to your turn.",
+                });
+              } else {
+                setStep(4); // Still in queue
+                setPeopleAhead(Math.max(0, (response.position || 1) - 1));
+                toast({
+                  title: "Queue restored",
+                  description: "Your queue position has been restored.",
+                });
+              }
+            } else if (response.removed) {
+              // Queue session ended
+              localStorage.removeItem(storageKey);
+              toast({
+                title: "Queue session ended",
+                description: response.message || "Your queue session has ended.",
+                variant: "destructive",
+              });
+            }
+          } catch (error) {
+            // Token expired or invalid - clear it
+            localStorage.removeItem(storageKey);
+            console.log("Failed to restore queue state:", error);
+          }
         }
       } catch (error) {
         toast({
@@ -112,16 +171,29 @@ export default function QueueBusiness() {
   useEffect(() => {
     if (step !== 4 || hasLeftQueue) return; // Only check when on step 4 (Queue status) and haven't left
 
-    const customerId = `${form.firstName}${form.lastName}${form.joinedAt}`;
-    if (!customerId || !form.joinedAt) return;
-
+    // Use token-based status check if token exists, otherwise fall back to customerId
     const checkAdmissionStatus = async () => {
       try {
-        const response = await api(
-          `/auth/business/${businessUsername}/queue/${customerId}/status`
-        );
+        let response;
+        if (queueToken) {
+          // Use token-based endpoint for better reliability
+          response = await api(
+            `/auth/business/${businessUsername}/queue/token/${queueToken}/status`
+          );
+        } else {
+          // Fallback to customerId-based endpoint
+          const customerId = `${form.firstName}${form.lastName}${form.joinedAt}`;
+          if (!customerId || !form.joinedAt) return;
+          response = await api(
+            `/auth/business/${businessUsername}/queue/${customerId}/status`
+          );
+        }
 
         if (response.removed) {
+          // Clear localStorage token
+          const storageKey = `queue_${businessUsername}`;
+          localStorage.removeItem(storageKey);
+
           // Check if customer left themselves or was removed by business
           if (response.status === "left") {
             // Customer left the queue themselves - this shouldn't happen here
@@ -151,6 +223,9 @@ export default function QueueBusiness() {
             description:
               "The business has called you. Please proceed to your turn.",
           });
+        } else if (response.position) {
+          // Update position if it changed
+          setPeopleAhead(Math.max(0, response.position - 1));
         }
       } catch (error) {
         // Silently handle errors - customer might not be found if they just joined
@@ -171,8 +246,10 @@ export default function QueueBusiness() {
     form.firstName,
     form.lastName,
     form.joinedAt,
+    queueToken,
     toast,
     hasLeftQueue,
+    navigate,
   ]);
 
   // Start countdown for Step 5
@@ -246,6 +323,13 @@ export default function QueueBusiness() {
         // Set the joinedAt timestamp for admission status checking
         setForm((prev) => ({ ...prev, joinedAt: response.customer.joinedAt }));
 
+        // Save queue token to localStorage for persistence
+        const storageKey = `queue_${businessUsername}`;
+        if (response.queueToken) {
+          setQueueToken(response.queueToken);
+          localStorage.setItem(storageKey, response.queueToken);
+        }
+
         toast({
           title: "You're in the queue!",
           description:
@@ -310,7 +394,11 @@ export default function QueueBusiness() {
   const leaveQueue = async () => {
     // Set flag to prevent status checking from running
     setHasLeftQueue(true);
-    
+
+    // Clear localStorage token
+    const storageKey = `queue_${businessUsername}`;
+    localStorage.removeItem(storageKey);
+
     if (!form.joinedAt) {
       // If customer hasn't joined queue yet, just navigate away
       toast({ title: "You left the queue" });
@@ -320,13 +408,13 @@ export default function QueueBusiness() {
 
     try {
       const customerId = `${form.firstName}${form.lastName}${form.joinedAt}`;
-      
+
       // Call API to remove customer from queue
       await api(`/auth/business/${businessUsername}/queue/${customerId}/leave`, {
         method: "POST",
       });
 
-      toast({ 
+      toast({
         title: "You left the queue",
         description: "You have been removed from the queue."
       });

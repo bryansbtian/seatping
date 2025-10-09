@@ -1,3 +1,4 @@
+import twilio from "twilio";
 // server/routes/auth.ts
 import { Router } from "express";
 import bcrypt from "bcrypt";
@@ -379,6 +380,9 @@ router.post("/business/:username/queue", async (req, res) => {
       }
     }
 
+    // Generate a unique queue token for customer persistence
+    const queueToken = crypto.randomBytes(16).toString('hex');
+
     const customer = {
       firstName,
       lastName,
@@ -387,6 +391,7 @@ router.post("/business/:username/queue", async (req, res) => {
       waitingPreference,
       joinedAt: new Date().toISOString(),
       position: (location.queue || []).length + 1,
+      queueToken, // Store token with customer data
     };
 
     // Add customer to the queue
@@ -394,15 +399,6 @@ router.post("/business/:username/queue", async (req, res) => {
 
     // Calculate credit deductions for queue joining
     let smsCreditsToDeduct = 0;
-
-    // Deduct SMS credit from location when customer joins with "wait_anywhere" preference
-    if (waitingPreference === "wait_anywhere") {
-      smsCreditsToDeduct = 1;
-      location.smsCredits = Math.max(
-        0,
-        (location.smsCredits || 0) - smsCreditsToDeduct
-      );
-    }
 
     // Update the locations array
     locations[locationIndex] = location;
@@ -420,12 +416,113 @@ router.post("/business/:username/queue", async (req, res) => {
       customer,
       position: customer.position,
       businessName: (user as any).name,
+      queueToken, // Return token to frontend for persistence
       creditsDeducted: {
         smsCredits: smsCreditsToDeduct,
       },
     });
   } catch (err: any) {
     console.error("[auth] add to queue error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * GET /auth/business/:username/queue/token/:queueToken/status
+ * Returns: { admitted: boolean, removed: boolean, position?: number, customer?: object, message?: string }
+ * Checks customer status by queue token (for persistence after browser refresh)
+ */
+router.get("/business/:username/queue/token/:queueToken/status", async (req, res) => {
+  try {
+    const username = String(req.params.username || "").trim();
+    const queueToken = String(req.params.queueToken || "").trim();
+
+    if (!username || !queueToken) {
+      return res
+        .status(400)
+        .json({ error: "username and queueToken are required" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { username },
+      select: { id: true, name: true, locations: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+
+    const locations = ((user as any).locations as any[]) || [];
+
+    // Check if customer is still in queue by token
+    for (const location of locations) {
+      const queue = location.queue || [];
+      const customerIndex = queue.findIndex(
+        (c: any) => c.queueToken === queueToken
+      );
+
+      if (customerIndex !== -1) {
+        const customer = queue[customerIndex];
+        return res.json({
+          admitted: false,
+          removed: false,
+          position: customerIndex + 1,
+          customer,
+          address: location.address,
+          businessName: (user as any).name,
+          message: "Customer is still waiting in queue",
+        });
+      }
+    }
+
+    // Customer not in queue - check if they were admitted or removed
+    for (const location of locations) {
+      // Check admitted customers
+      const admittedCustomers = location.admittedCustomers || [];
+      const admittedCustomer = admittedCustomers.find(
+        (c: any) => c.queueToken === queueToken
+      );
+
+      if (admittedCustomer) {
+        return res.json({
+          admitted: true,
+          removed: false,
+          customer: admittedCustomer,
+          address: location.address,
+          businessName: (user as any).name,
+          message: "Customer has been admitted",
+        });
+      }
+
+      // Check removed customers
+      const removedCustomers = location.removedCustomers || [];
+      const removedCustomer = removedCustomers.find(
+        (c: any) => c.queueToken === queueToken
+      );
+
+      if (removedCustomer) {
+        return res.json({
+          admitted: false,
+          removed: true,
+          status: removedCustomer.status || "removed",
+          customer: removedCustomer,
+          address: location.address,
+          businessName: (user as any).name,
+          message: removedCustomer.status === "left"
+            ? "Customer has left the queue"
+            : "Customer has been removed from queue",
+        });
+      }
+    }
+
+    // Customer not found anywhere
+    return res.json({
+      admitted: false,
+      removed: false,
+      message: "Queue session not found or expired",
+    });
+  } catch (err: any) {
+    console.error("[auth] check customer status by token error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
   }
 });
@@ -594,6 +691,51 @@ router.post(
           admittedCustomer.status = "admitted";
           admittedCustomer.admittedAt = new Date().toISOString();
 
+          // Send SMS notification to customer when admitted
+          console.log("Admitting customer:", admittedCustomer);
+          console.log("Customer phone number:", admittedCustomer.phoneNumber);
+
+          // Send SMS to any customer who has a phone number
+          if (admittedCustomer.phoneNumber && admittedCustomer.phoneNumber.trim() !== "") {
+            try {
+              const accountSid = process.env.TWILIO_ACCOUNT_SID;
+              const authToken = process.env.TWILIO_AUTH_TOKEN;
+              const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+
+              if (!accountSid || !authToken || !twilioPhoneNumber) {
+                console.error('Missing Twilio credentials:', {
+                  hasAccountSid: !!accountSid,
+                  hasAuthToken: !!authToken,
+                  hasTwilioPhone: !!twilioPhoneNumber
+                });
+                throw new Error('Twilio credentials not configured');
+              }
+
+              const client = twilio(accountSid, authToken);
+
+              // Format phone number to E.164 format (add +1 if missing country code)
+              let formattedPhone = admittedCustomer.phoneNumber.trim();
+              if (!formattedPhone.startsWith('+')) {
+                // Assume US number if no country code
+                formattedPhone = '+1' + formattedPhone.replace(/\D/g, '');
+              }
+
+              const businessName = (user as any).name || "The business";
+              const message = await client.messages.create({
+                body: `Good news! It's your turn at ${businessName}. Please proceed to the host within the next 5 minutes. Thank you for using SeatPing!`,
+                from: twilioPhoneNumber,
+                to: formattedPhone
+              });
+              console.log("SMS notification sent successfully:", message.sid, "to", formattedPhone);
+            } catch (error: any) {
+              console.error('Failed to send SMS notification:', error?.message || error);
+              // Don't fail the admission if SMS fails - just log the error
+            }
+          } else {
+            console.log("No phone number provided - skipping SMS notification");
+          }
+
+
           // Store in a separate admitted customers list
           if (!locations[i].admittedCustomers) {
             locations[i].admittedCustomers = [];
@@ -613,6 +755,7 @@ router.post(
 
       // Calculate credit deductions
       let customerCreditsToDeduct = 1; // Always deduct 1 customer credit when admitting
+      let smsCreditsToDeduct = 0; // Initialize SMS credits to deduct
 
       // Deduct credits from the specific location
       const location = locations[locationIndex];
@@ -620,6 +763,15 @@ router.post(
         0,
         (location.customerCredits || 0) - customerCreditsToDeduct
       );
+
+      // Deduct SMS credit if customer opted for it
+      if (admittedCustomer.waitingPreference === "wait_anywhere") {
+        smsCreditsToDeduct = 1;
+        location.smsCredits = Math.max(
+          0,
+          (location.smsCredits || 0) - smsCreditsToDeduct
+        );
+      }
 
       // Update locations array
       locations[locationIndex] = location;
@@ -638,7 +790,7 @@ router.post(
         message: "Customer has been admitted",
         creditsDeducted: {
           customerCredits: customerCreditsToDeduct,
-          smsCredits: 0, // No SMS credits deducted on admit
+          smsCredits: smsCreditsToDeduct,
         },
       });
     } catch (err: any) {
