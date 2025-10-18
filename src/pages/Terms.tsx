@@ -333,10 +333,10 @@ const Terms = () => {
               <p className="text-muted-foreground">
                 Questions about these Terms? Email us at{" "}
                 <a
-                  href="mailto:help@seatping.com"
+                  href="mailto:bryan.susanto@seatping.biz"
                   className="underline font-medium"
                 >
-                  help@seatping.com
+                  bryan.susanto@seatping.biz
                 </a>
                 .
               </p>

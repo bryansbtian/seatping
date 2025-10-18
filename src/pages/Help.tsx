@@ -92,10 +92,10 @@ const Help = () => {
             <p className="text-muted-foreground">
               Still need help? Contact us anytime at{" "}
               <a
-                href="mailto:help@seatping.com"
+                href="mailto:bryan.susanto@seatping.biz"
                 className="underline font-medium"
               >
-                help@seatping.com
+                bryan.susanto@seatping.biz
               </a>
             </p>
           </div>

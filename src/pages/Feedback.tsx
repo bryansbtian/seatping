@@ -93,19 +93,41 @@ const Feedback = () => {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
-    // TODO: send to your backend
-    // await fetch("/api/feedback", { method: "POST", body: JSON.stringify(formData) })
+    try {
+      const response = await fetch("/feedback/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-    toast({
-      title: "Thanks for your feedback!",
-      description:
-        "We've received your message and will get back to you if needed.",
-    });
-    navigate("/");
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Thanks for your feedback!",
+          description:
+            "We've received your message and will get back to you if needed.",
+        });
+        navigate("/");
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to submit feedback. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit feedback. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

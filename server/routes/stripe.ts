@@ -57,7 +57,7 @@ const PLAN_RULES: Record<
   },
 };
 
-const APP_ORIGIN = process.env.APP_ORIGIN ?? "http://localhost:8080";
+const APP_ORIGIN = process.env.APP_ORIGIN ?? "https://www.seatping.biz";
 
 // ---------- helpers ----------
 const priceIdToPlan = (priceId?: string | null): PlanName | null => {

@@ -103,14 +103,36 @@ const Sales = () => {
     e.preventDefault();
     if (!validate()) return;
 
-    // TODO: POST to backend (e.g., /api/sales)
-    // await fetch("/api/sales", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(formData) });
+    try {
+      const response = await fetch("/sales/inquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-    toast({
-      title: "Thanks! Our sales team will reach out.",
-      description: "We've received your custom plan request.",
-    });
-    navigate("/");
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Thanks! Our sales team will reach out.",
+          description: "We've received your custom plan request.",
+        });
+        navigate("/");
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to submit inquiry. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error submitting sales inquiry:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit inquiry. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

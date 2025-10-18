@@ -9,12 +9,14 @@ import cookieParser from "cookie-parser";
 import authRouter from "./routes/auth";
 import adminRouter from "./routes/admin";
 import stripeRouter from "./routes/stripe";
+import salesRouter from "./routes/sales";
+import feedbackRouter from "./routes/feedback";
 
 const app = express();
 
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN ?? "http://localhost:8080",
+    origin: process.env.CLIENT_ORIGIN ?? "https://www.seatping.biz",
     credentials: true,
   })
 );
@@ -34,6 +36,8 @@ app.use((req, _res, next) => {
 
 app.use("/auth", authRouter);
 app.use("/admin", adminRouter);
+app.use("/sales", salesRouter);
+app.use("/feedback", feedbackRouter);
 
 const PORT = Number(process.env.PORT || 4000);
 app.listen(PORT, () => {

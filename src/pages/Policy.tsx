@@ -108,8 +108,8 @@ const Policy = () => {
                 providers to operate the Services:
               </p>
               <ul className="ml-6 list-disc text-muted-foreground text-sm sm:text-base">
-                <li>xxx (for payments & subscriptions)</li>
-                <li>xxx (for communications)</li>
+                <li>Stripe (for payments & subscriptions)</li>
+                <li>Twilio (for communications)</li>
                 <li>Analytics providers (aggregated usage analytics)</li>
                 <li>Service providers under confidentiality obligations</li>
                 <li>
@@ -208,10 +208,10 @@ const Policy = () => {
                 If you have questions or requests regarding this policy, contact
                 us at{" "}
                 <a
-                  href="mailto:help@seatping.com"
+                  href="mailto:bryan.susanto@seatping.biz"
                   className="underline font-medium"
                 >
-                  help@seatping.com
+                  bryan.susanto@seatping.biz
                 </a>
                 .
               </p>
