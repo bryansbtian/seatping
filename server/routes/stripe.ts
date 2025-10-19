@@ -45,14 +45,14 @@ const PLAN_RULES: Record<
 > = {
   Starter: {
     plan: "Starter",
-    baseCustomerCredits: 50,
-    baseSMSCredits: 200,
+    baseCustomerCredits: 300,
+    baseSMSCredits: 300,
     maxLocations: 1,
   },
   Professional: {
     plan: "Professional",
-    baseCustomerCredits: 100,
-    baseSMSCredits: 500,
+    baseCustomerCredits: 1500,
+    baseSMSCredits: 1500,
     maxLocations: 3,
   },
 };

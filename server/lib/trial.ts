@@ -30,11 +30,26 @@ export function shouldRefillMonthlyCredits(user: any): boolean {
 
   const planStartedAt = new Date(user.planStartedAt);
   const now = new Date();
-  const monthsSincePlanStart = (now.getFullYear() - planStartedAt.getFullYear()) * 12 + 
-    (now.getMonth() - planStartedAt.getMonth());
 
-  // Check if it's been at least 1 month since plan started
-  return monthsSincePlanStart >= 1;
+  // Calculate the day of month when the billing cycle resets (based on planStartedAt)
+  const billingDayOfMonth = planStartedAt.getDate();
+
+  // Calculate the next billing date from planStartedAt
+  let nextBillingDate = new Date(planStartedAt);
+  nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+
+  // Keep advancing the billing date until we find the next one after now
+  while (nextBillingDate <= now) {
+    nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+  }
+
+  // Calculate the previous billing date (one month before next)
+  const previousBillingDate = new Date(nextBillingDate);
+  previousBillingDate.setMonth(previousBillingDate.getMonth() - 1);
+
+  // Check if we've passed a billing cycle since planStartedAt
+  // Credits should refill if now >= previousBillingDate and planStartedAt < previousBillingDate
+  return now >= previousBillingDate && planStartedAt < previousBillingDate;
 }
 
 /**
@@ -45,11 +60,11 @@ export function shouldRefillMonthlyCredits(user: any): boolean {
 export function getCreditsForPlan(plan: string): { smsCredits: number; customerCredits: number } {
   switch (plan) {
     case "Starter":
-      return { smsCredits: 200, customerCredits: 50 };
+      return { smsCredits: 300, customerCredits: 300 };
     case "Professional":
-      return { smsCredits: 500, customerCredits: 100 };
+      return { smsCredits: 1500, customerCredits: 1500 };
     default:
-      return { smsCredits: 200, customerCredits: 50 };
+      return { smsCredits: 300, customerCredits: 300 };
   }
 }
 
@@ -181,35 +196,46 @@ export function createLocationWithTrialEnforcement(user: any, address: string): 
 
 /**
  * Refill credits for all locations based on user's base credits
+ * Also updates planStartedAt to mark the start of the new billing cycle
  * @param userId - The user ID
  * @param plan - The plan name
  */
 export async function refillCreditsForPlan(userId: string, plan: string): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { 
+    select: {
       locations: true,
       baseSMSCredits: true,
       baseCustomerCredits: true,
+      planStartedAt: true,
     },
   });
 
   if (!user) return;
 
   const locations = ((user as any).locations as any[]) || [];
-  
+
   const updatedLocations = locations.map((location: any) => ({
     ...location,
     smsCredits: user.baseSMSCredits || 0,
     customerCredits: user.baseCustomerCredits || 0,
   }));
 
+  // Calculate the new planStartedAt (advance by one month from current planStartedAt)
+  const currentPlanStartedAt = user.planStartedAt ? new Date(user.planStartedAt) : new Date();
+  const newPlanStartedAt = new Date(currentPlanStartedAt);
+  newPlanStartedAt.setMonth(newPlanStartedAt.getMonth() + 1);
+
   await prisma.user.update({
     where: { id: userId },
-    data: { locations: updatedLocations as any },
+    data: {
+      locations: updatedLocations as any,
+      planStartedAt: newPlanStartedAt, // Update to next billing cycle
+    },
   });
 
   console.log(`[CREDITS] Refilled credits for user ${userId} with base credits: SMS=${user.baseSMSCredits}, Customers=${user.baseCustomerCredits}`);
+  console.log(`[CREDITS] Updated planStartedAt from ${currentPlanStartedAt.toISOString()} to ${newPlanStartedAt.toISOString()}`);
 }
 
 /**

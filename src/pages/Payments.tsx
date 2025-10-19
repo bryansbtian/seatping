@@ -23,31 +23,31 @@ import { CreditCard } from "lucide-react";
 const PRICING_PLANS = {
   "Starter Monthly": {
     name: "Starter Monthly",
-    price: 10,
+    price: 19,
     interval: "month",
-    features: ["• 1 Location", "• 200 SMS/Month", "• 50 Customers/Day"],
+    features: ["• 1 Location", "• 300 SMS/Month", "• 300 Customers/Month"],
     savings: null,
   },
   "Starter Yearly": {
     name: "Starter Yearly",
-    price: 95,
+    price: 190,
     interval: "year",
-    features: ["• 1 Location", "• 200 SMS/Month", "• 50 Customers/Day"],
-    savings: "Save $25/year",
+    features: ["• 1 Location", "• 300 SMS/Month", "• 300 Customers/Month"],
+    savings: "Save $38/year",
   },
   "Professional Monthly": {
     name: "Professional Monthly",
-    price: 25,
+    price: 49,
     interval: "month",
-    features: ["• 3 Locations", "• 500 SMS/Month", "• 100 Customers/Day"],
+    features: ["• 3 Locations", "• 1500 SMS/Month", "• 1500 Customers/Month"],
     savings: null,
   },
   "Professional Yearly": {
     name: "Professional Yearly",
-    price: 240,
+    price: 490,
     interval: "year",
-    features: ["• 3 Locations", "• 500 SMS/Month", "• 100 Customers/Day"],
-    savings: "Save $60/year",
+    features: ["• 3 Locations", "• 1500 SMS/Month", "• 1500 Customers/Month"],
+    savings: "Save $98/year",
   },
 };
 

@@ -356,7 +356,7 @@ const LandingPage = () => {
               <CardHeader className="text-center">
                 <CardTitle className="text-xl">Starter</CardTitle>
                 <div className="text-3xl font-bold text-success">
-                  $10
+                  $19
                   <span className="text-lg text-muted-foreground">/month</span>
                 </div>
               </CardHeader>
@@ -368,11 +368,11 @@ const LandingPage = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>200 SMS/Month</span>
+                    <span>300 SMS/Month</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>50 Customers/Day</span>
+                    <span>300 Customers/Month</span>
                   </div>
                 </div>
 
@@ -389,7 +389,7 @@ const LandingPage = () => {
                 </Badge>
                 <CardTitle className="text-xl">Professional</CardTitle>
                 <div className="text-3xl font-bold text-success">
-                  $25
+                  $49
                   <span className="text-lg text-muted-foreground">/month</span>
                 </div>
               </CardHeader>
@@ -401,11 +401,11 @@ const LandingPage = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>500 SMS/Month</span>
+                    <span>1500 SMS/Month</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>100 Customers/Day</span>
+                    <span>1500 Customers/Month</span>
                   </div>
                 </div>
 

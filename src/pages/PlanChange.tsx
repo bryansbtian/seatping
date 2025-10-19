@@ -117,11 +117,11 @@ const PlanChange = () => {
   const getPlanPrice = (plan: string) => {
     switch (plan) {
       case "Starter":
-        return "$30";
+        return "$19";
       case "Professional":
-        return "$60";
+        return "$49";
       default:
-        return "$30";
+        return "$19";
     }
   };
 
@@ -130,14 +130,14 @@ const PlanChange = () => {
       case "Starter":
         return [
           "• 1 Location",
-          "• 200 SMS/Month",
-          "• 50 Customers/Day",
+          "• 300 SMS/Month",
+          "• 300 Customers/Month",
         ];
       case "Professional":
         return [
           "• 3 Locations",
-          "• 500 SMS/Month",
-          "• 100 Customers/Day",
+          "• 1500 SMS/Month",
+          "• 1500 Customers/Month",
         ];
       default:
         return [];
