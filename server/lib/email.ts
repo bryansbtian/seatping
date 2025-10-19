@@ -18,6 +18,7 @@ export interface EmailOptions {
   to: string;
   subject: string;
   html: string;
+  from?: string; // Optional custom sender email
 }
 
 export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
@@ -31,7 +32,7 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
     });
 
     const mailOptions = {
-      from: 'bryansusanto22@gmail.com',
+      from: options.from || 'bryansusanto22@gmail.com',
       to: options.to,
       subject: options.subject,
       html: options.html,
@@ -96,6 +97,7 @@ export const sendPasswordResetEmail = async (email: string, resetToken: string):
     to: email,
     subject: 'Reset Your SeatPing Password',
     html,
+    from: 'bryan.susanto@seatping.biz', // Use business email for password resets
   });
 };
 

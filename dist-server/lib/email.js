@@ -22,7 +22,7 @@ export const sendEmail = async (options) => {
             user: transporter.options.auth?.user
         });
         const mailOptions = {
-            from: 'bryansusanto22@gmail.com',
+            from: options.from || 'bryansusanto22@gmail.com',
             to: options.to,
             subject: options.subject,
             html: options.html,
@@ -84,6 +84,7 @@ export const sendPasswordResetEmail = async (email, resetToken) => {
         to: email,
         subject: 'Reset Your SeatPing Password',
         html,
+        from: 'bryan.susanto@seatping.biz', // Use business email for password resets
     });
 };
 export const sendPlanChangeEmail = async (email, newPlan) => {
