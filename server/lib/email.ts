@@ -2,12 +2,12 @@ import nodemailer from "nodemailer";
 
 // Create a transporter using SMTP
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
+  host: "smtp.porkbun.com", // Porkbun SMTP server for custom domain email
   port: 587,
-  secure: false, // true for 465, false for other ports
+  secure: false, // true for 465, false for other ports (587 uses STARTTLS)
   auth: {
-    user: "bryan.susanto@seatping.biz", // Must be the actual Gmail account for SMTP auth
-    pass: process.env.EMAIL_PASSWORD || "your-app-password-here", // Use app password for Gmail
+    user: "bryan.susanto@seatping.biz", // Custom domain email address
+    pass: process.env.EMAIL_PASSWORD || "your-app-password-here", // Email password
   },
   tls: {
     rejectUnauthorized: false,
