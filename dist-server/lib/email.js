@@ -1,52 +1,51 @@
 import nodemailer from "nodemailer";
 // Create a transporter using SMTP
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: "bryan.susanto@seatping.biz",
-    pass: process.env.EMAIL_PASSWORD || "your-app-password-here", // Use app password for Gmail
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+        user: "bryansusanto22@gmail.com", // Must be the actual Gmail account for SMTP auth
+        pass: process.env.EMAIL_PASSWORD || "your-app-password-here", // Use app password for Gmail
+    },
+    tls: {
+        rejectUnauthorized: false,
+    },
 });
 export const sendEmail = async (options) => {
-  try {
-    console.log("[EMAIL] Attempting to send email to:", options.to);
-    console.log("[EMAIL] Using transporter config:", {
-      host: transporter.options.host,
-      port: transporter.options.port,
-      secure: transporter.options.secure,
-      user: transporter.options.auth?.user,
-    });
-    const mailOptions = {
-      from: options.from || "bryan.susanto@seatping.biz",
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-    };
-    console.log("[EMAIL] Mail options prepared, sending...");
-    const info = await transporter.sendMail(mailOptions);
-    console.log("[EMAIL] Email sent successfully:", info.messageId);
-    console.log("[EMAIL] Response:", info);
-    return true;
-  } catch (error) {
-    console.error("[EMAIL] Error sending email:", error);
-    console.error("[EMAIL] Error details:", {
-      message: error?.message,
-      code: error?.code,
-      command: error?.command,
-    });
-    return false;
-  }
+    try {
+        console.log("[EMAIL] Attempting to send email to:", options.to);
+        console.log("[EMAIL] Using transporter config:", {
+            host: transporter.options.host,
+            port: transporter.options.port,
+            secure: transporter.options.secure,
+            user: transporter.options.auth?.user,
+        });
+        const mailOptions = {
+            from: options.from || "bryan.susanto@seatping.biz",
+            to: options.to,
+            subject: options.subject,
+            html: options.html,
+        };
+        console.log("[EMAIL] Mail options prepared, sending...");
+        const info = await transporter.sendMail(mailOptions);
+        console.log("[EMAIL] Email sent successfully:", info.messageId);
+        console.log("[EMAIL] Response:", info);
+        return true;
+    }
+    catch (error) {
+        console.error("[EMAIL] Error sending email:", error);
+        console.error("[EMAIL] Error details:", {
+            message: error?.message,
+            code: error?.code,
+            command: error?.command,
+        });
+        return false;
+    }
 };
 export const sendPasswordResetEmail = async (email, resetToken) => {
-  const resetUrl = `${
-    process.env.FRONTEND_URL || "https://www.seatping.biz"
-  }/reset?token=${resetToken}`;
-  const html = `
+    const resetUrl = `${process.env.FRONTEND_URL || "https://www.seatping.biz"}/reset?token=${resetToken}`;
+    const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
         <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
@@ -81,15 +80,15 @@ export const sendPasswordResetEmail = async (email, resetToken) => {
       </div>
     </div>
   `;
-  return sendEmail({
-    to: email,
-    subject: "Reset Your SeatPing Password",
-    html,
-    from: "bryan.susanto@seatping.biz", // Use business email for password resets
-  });
+    return sendEmail({
+        to: email,
+        subject: "Reset Your SeatPing Password",
+        html,
+        from: "bryan.susanto@seatping.biz", // Use business email for password resets
+    });
 };
 export const sendPlanChangeEmail = async (email, newPlan) => {
-  const html = `
+    const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
         <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
@@ -112,14 +111,14 @@ export const sendPlanChangeEmail = async (email, newPlan) => {
       </div>
     </div>
   `;
-  return sendEmail({
-    to: email,
-    subject: "Your SeatPing Subscription Has Been Updated",
-    html,
-  });
+    return sendEmail({
+        to: email,
+        subject: "Your SeatPing Subscription Has Been Updated",
+        html,
+    });
 };
 export const sendSubscriptionCancellationEmail = async (email) => {
-  const html = `
+    const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #d32f2f 0%, #c2185b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
         <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
@@ -142,41 +141,41 @@ export const sendSubscriptionCancellationEmail = async (email) => {
       </div>
     </div>
   `;
-  return sendEmail({
-    to: email,
-    subject: "Your SeatPing Subscription Has Been Canceled",
-    html,
-  });
+    return sendEmail({
+        to: email,
+        subject: "Your SeatPing Subscription Has Been Canceled",
+        html,
+    });
 };
 export const sendFeedbackEmail = async (data) => {
-  const feedbackTypeLabels = {
-    bug: "Bug / Something Broken",
-    ux: "UX / Usability Issue",
-    feature: "Feature Request",
-    billing: "Pricing / Billing",
-    other: "Other",
-  };
-  const severityLabels = {
-    low: "Low",
-    medium: "Medium",
-    high: "High",
-  };
-  // Determine severity color and emoji
-  const getSeverityStyle = (severity) => {
-    switch (severity) {
-      case "high":
-        return { color: "#d32f2f", emoji: "🔴", label: "High Priority" };
-      case "medium":
-        return { color: "#f57c00", emoji: "🟡", label: "Medium Priority" };
-      case "low":
-        return { color: "#388e3c", emoji: "🟢", label: "Low Priority" };
-      default:
-        return { color: "#666", emoji: "", label: "" };
-    }
-  };
-  const severityStyle = getSeverityStyle(data.severity);
-  const isIssue = ["bug", "ux", "billing"].includes(data.feedbackType);
-  const html = `
+    const feedbackTypeLabels = {
+        bug: "Bug / Something Broken",
+        ux: "UX / Usability Issue",
+        feature: "Feature Request",
+        billing: "Pricing / Billing",
+        other: "Other",
+    };
+    const severityLabels = {
+        low: "Low",
+        medium: "Medium",
+        high: "High",
+    };
+    // Determine severity color and emoji
+    const getSeverityStyle = (severity) => {
+        switch (severity) {
+            case "high":
+                return { color: "#d32f2f", emoji: "🔴", label: "High Priority" };
+            case "medium":
+                return { color: "#f57c00", emoji: "🟡", label: "Medium Priority" };
+            case "low":
+                return { color: "#388e3c", emoji: "🟢", label: "Low Priority" };
+            default:
+                return { color: "#666", emoji: "", label: "" };
+        }
+    };
+    const severityStyle = getSeverityStyle(data.severity);
+    const isIssue = ["bug", "ux", "billing"].includes(data.feedbackType);
+    const html = `
     <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
         <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
@@ -184,17 +183,15 @@ export const sendFeedbackEmail = async (data) => {
       </div>
 
       <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
-        ${
-          isIssue && data.severity
-            ? `
+        ${isIssue && data.severity
+        ? `
         <div style="background: ${severityStyle.color}15; border-left: 4px solid ${severityStyle.color}; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
           <p style="margin: 0; color: ${severityStyle.color}; font-weight: bold; font-size: 16px;">
             ${severityStyle.emoji} ${severityStyle.label}
           </p>
         </div>
         `
-            : ""
-        }
+        : ""}
 
         <h2 style="color: #333; margin-bottom: 20px;">${data.subject}</h2>
 
@@ -203,24 +200,16 @@ export const sendFeedbackEmail = async (data) => {
           <table style="width: 100%; border-collapse: collapse;">
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold; width: 180px;">Type:</td>
-              <td style="padding: 8px 0; color: #333;">${
-                feedbackTypeLabels[data.feedbackType] || data.feedbackType
-              }</td>
+              <td style="padding: 8px 0; color: #333;">${feedbackTypeLabels[data.feedbackType] || data.feedbackType}</td>
             </tr>
-            ${
-              isIssue && data.severity
-                ? `
+            ${isIssue && data.severity
+        ? `
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold;">Severity:</td>
-              <td style="padding: 8px 0; color: ${
-                severityStyle.color
-              }; font-weight: bold;">${
-                    severityLabels[data.severity] || data.severity
-                  }</td>
+              <td style="padding: 8px 0; color: ${severityStyle.color}; font-weight: bold;">${severityLabels[data.severity] || data.severity}</td>
             </tr>
             `
-                : ""
-            }
+        : ""}
           </table>
         </div>
 
@@ -233,38 +222,30 @@ export const sendFeedbackEmail = async (data) => {
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold;">Email:</td>
-              <td style="padding: 8px 0; color: #333;"><a href="mailto:${
-                data.email
-              }" style="color: #667eea;">${data.email}</a></td>
+              <td style="padding: 8px 0; color: #333;"><a href="mailto:${data.email}" style="color: #667eea;">${data.email}</a></td>
             </tr>
-            ${
-              data.businessName
-                ? `
+            ${data.businessName
+        ? `
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold;">Business:</td>
               <td style="padding: 8px 0; color: #333;">${data.businessName}</td>
             </tr>
             `
-                : ""
-            }
-            ${
-              data.phone
-                ? `
+        : ""}
+            ${data.phone
+        ? `
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold;">Phone:</td>
               <td style="padding: 8px 0; color: #333;">${data.phone}</td>
             </tr>
             `
-                : ""
-            }
+        : ""}
           </table>
         </div>
 
         <div style="background: white; padding: 20px; border-radius: 8px;">
           <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Message</h3>
-          <p style="color: #333; line-height: 1.6; white-space: pre-wrap;">${
-            data.message
-          }</p>
+          <p style="color: #333; line-height: 1.6; white-space: pre-wrap;">${data.message}</p>
         </div>
       </div>
 
@@ -273,29 +254,27 @@ export const sendFeedbackEmail = async (data) => {
       </div>
     </div>
   `;
-  return sendEmail({
-    to: "bryan.susanto@seatping.biz",
-    subject: `Feedback [${feedbackTypeLabels[data.feedbackType]}]: ${
-      data.subject
-    }`,
-    html,
-  });
+    return sendEmail({
+        to: "bryan.susanto@seatping.biz",
+        subject: `Feedback [${feedbackTypeLabels[data.feedbackType]}]: ${data.subject}`,
+        html,
+    });
 };
 export const sendSalesInquiryEmail = async (data) => {
-  const useCaseLabels = {
-    restaurant: "Restaurant / F&B",
-    clinic: "Clinic / Healthcare",
-    retail: "Retail / Service",
-    salon: "Salon / Beauty",
-    other: "Other",
-  };
-  const budgetLabels = {
-    low: "Entry",
-    mid: "Mid",
-    high: "Enterprise",
-    not_sure: "Not Sure Yet",
-  };
-  const html = `
+    const useCaseLabels = {
+        restaurant: "Restaurant / F&B",
+        clinic: "Clinic / Healthcare",
+        retail: "Retail / Service",
+        salon: "Salon / Beauty",
+        other: "Other",
+    };
+    const budgetLabels = {
+        low: "Entry",
+        mid: "Mid",
+        high: "Enterprise",
+        not_sure: "Not Sure Yet",
+    };
+    const html = `
     <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
         <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
@@ -312,92 +291,74 @@ export const sendSalesInquiryEmail = async (data) => {
               <td style="padding: 8px 0; color: #666; font-weight: bold; width: 180px;">Business Name:</td>
               <td style="padding: 8px 0; color: #333;">${data.businessName}</td>
             </tr>
-            ${
-              data.businessWebsite
-                ? `
+            ${data.businessWebsite
+        ? `
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold;">Website:</td>
               <td style="padding: 8px 0; color: #333;"><a href="${data.businessWebsite}" style="color: #667eea;">${data.businessWebsite}</a></td>
             </tr>
             `
-                : ""
-            }
+        : ""}
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold;">Contact Name:</td>
               <td style="padding: 8px 0; color: #333;">${data.contactName}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold;">Email:</td>
-              <td style="padding: 8px 0; color: #333;"><a href="mailto:${
-                data.workEmail
-              }" style="color: #667eea;">${data.workEmail}</a></td>
+              <td style="padding: 8px 0; color: #333;"><a href="mailto:${data.workEmail}" style="color: #667eea;">${data.workEmail}</a></td>
             </tr>
-            ${
-              data.phone
-                ? `
+            ${data.phone
+        ? `
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold;">Phone:</td>
               <td style="padding: 8px 0; color: #333;">${data.phone}</td>
             </tr>
             `
-                : ""
-            }
+        : ""}
           </table>
         </div>
 
         <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
           <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Requirements</h3>
           <table style="width: 100%; border-collapse: collapse;">
-            ${
-              data.locations
-                ? `
+            ${data.locations
+        ? `
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold; width: 180px;">Locations:</td>
               <td style="padding: 8px 0; color: #333;">${data.locations}</td>
             </tr>
             `
-                : ""
-            }
-            ${
-              data.smsPerMonth
-                ? `
+        : ""}
+            ${data.smsPerMonth
+        ? `
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold;">SMS / Month:</td>
               <td style="padding: 8px 0; color: #333;">${data.smsPerMonth}</td>
             </tr>
             `
-                : ""
-            }
-            ${
-              data.customersPerDay
-                ? `
+        : ""}
+            ${data.customersPerDay
+        ? `
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold;">Customers / Day:</td>
               <td style="padding: 8px 0; color: #333;">${data.customersPerDay}</td>
             </tr>
             `
-                : ""
-            }
+        : ""}
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold;">Use Case:</td>
-              <td style="padding: 8px 0; color: #333;">${
-                useCaseLabels[data.useCase] || data.useCase
-              }</td>
+              <td style="padding: 8px 0; color: #333;">${useCaseLabels[data.useCase] || data.useCase}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold;">Budget Range:</td>
-              <td style="padding: 8px 0; color: #333;">${
-                budgetLabels[data.budget] || data.budget
-              }</td>
+              <td style="padding: 8px 0; color: #333;">${budgetLabels[data.budget] || data.budget}</td>
             </tr>
           </table>
         </div>
 
         <div style="background: white; padding: 20px; border-radius: 8px;">
           <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Message</h3>
-          <p style="color: #333; line-height: 1.6; white-space: pre-wrap;">${
-            data.message
-          }</p>
+          <p style="color: #333; line-height: 1.6; white-space: pre-wrap;">${data.message}</p>
         </div>
       </div>
 
@@ -406,9 +367,9 @@ export const sendSalesInquiryEmail = async (data) => {
       </div>
     </div>
   `;
-  return sendEmail({
-    to: "bryan.susanto@seatping.biz",
-    subject: `Sales Inquiry: ${data.subject} - ${data.businessName}`,
-    html,
-  });
+    return sendEmail({
+        to: "bryan.susanto@seatping.biz",
+        subject: `Sales Inquiry: ${data.subject} - ${data.businessName}`,
+        html,
+    });
 };
