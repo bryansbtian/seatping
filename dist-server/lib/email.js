@@ -1,62 +1,51 @@
 import nodemailer from 'nodemailer';
-
 // Create a transporter using SMTP
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: 'bryansusanto22@gmail.com',
-    pass: process.env.EMAIL_PASSWORD || 'your-app-password-here', // Use app password for Gmail
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+        user: 'bryansusanto22@gmail.com',
+        pass: process.env.EMAIL_PASSWORD || 'your-app-password-here', // Use app password for Gmail
+    },
+    tls: {
+        rejectUnauthorized: false
+    }
 });
-
-export interface EmailOptions {
-  to: string;
-  subject: string;
-  html: string;
-}
-
-export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
-  try {
-    console.log('[EMAIL] Attempting to send email to:', options.to);
-    console.log('[EMAIL] Using transporter config:', {
-      host: (transporter.options as any).host,
-      port: (transporter.options as any).port,
-      secure: (transporter.options as any).secure,
-      user: (transporter.options as any).auth?.user
-    });
-
-    const mailOptions = {
-      from: 'bryansusanto22@gmail.com',
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-    };
-
-    console.log('[EMAIL] Mail options prepared, sending...');
-    const info = await transporter.sendMail(mailOptions);
-    console.log('[EMAIL] Email sent successfully:', info.messageId);
-    console.log('[EMAIL] Response:', info);
-    return true;
-  } catch (error: any) {
-    console.error('[EMAIL] Error sending email:', error);
-    console.error('[EMAIL] Error details:', {
-      message: error?.message,
-      code: error?.code,
-      command: error?.command
-    });
-    return false;
-  }
+export const sendEmail = async (options) => {
+    try {
+        console.log('[EMAIL] Attempting to send email to:', options.to);
+        console.log('[EMAIL] Using transporter config:', {
+            host: transporter.options.host,
+            port: transporter.options.port,
+            secure: transporter.options.secure,
+            user: transporter.options.auth?.user
+        });
+        const mailOptions = {
+            from: 'bryansusanto22@gmail.com',
+            to: options.to,
+            subject: options.subject,
+            html: options.html,
+        };
+        console.log('[EMAIL] Mail options prepared, sending...');
+        const info = await transporter.sendMail(mailOptions);
+        console.log('[EMAIL] Email sent successfully:', info.messageId);
+        console.log('[EMAIL] Response:', info);
+        return true;
+    }
+    catch (error) {
+        console.error('[EMAIL] Error sending email:', error);
+        console.error('[EMAIL] Error details:', {
+            message: error?.message,
+            code: error?.code,
+            command: error?.command
+        });
+        return false;
+    }
 };
-
-export const sendPasswordResetEmail = async (email: string, resetToken: string): Promise<boolean> => {
-  const resetUrl = `${process.env.FRONTEND_URL || 'https://www.seatping.biz'}/reset?token=${resetToken}`;
-  
-  const html = `
+export const sendPasswordResetEmail = async (email, resetToken) => {
+    const resetUrl = `${process.env.FRONTEND_URL || 'https://www.seatping.biz'}/reset?token=${resetToken}`;
+    const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
         <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
@@ -91,16 +80,14 @@ export const sendPasswordResetEmail = async (email: string, resetToken: string):
       </div>
     </div>
   `;
-
-  return sendEmail({
-    to: email,
-    subject: 'Reset Your SeatPing Password',
-    html,
-  });
+    return sendEmail({
+        to: email,
+        subject: 'Reset Your SeatPing Password',
+        html,
+    });
 };
-
-export const sendPlanChangeEmail = async (email: string, newPlan: string): Promise<boolean> => {
-  const html = `
+export const sendPlanChangeEmail = async (email, newPlan) => {
+    const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
         <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
@@ -123,16 +110,14 @@ export const sendPlanChangeEmail = async (email: string, newPlan: string): Promi
       </div>
     </div>
   `;
-
-  return sendEmail({
-    to: email,
-    subject: 'Your SeatPing Subscription Has Been Updated',
-    html,
-  });
+    return sendEmail({
+        to: email,
+        subject: 'Your SeatPing Subscription Has Been Updated',
+        html,
+    });
 };
-
-export const sendSubscriptionCancellationEmail = async (email: string): Promise<boolean> => {
-  const html = `
+export const sendSubscriptionCancellationEmail = async (email) => {
+    const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #d32f2f 0%, #c2185b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
         <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
@@ -155,73 +140,41 @@ export const sendSubscriptionCancellationEmail = async (email: string): Promise<
       </div>
     </div>
   `;
-
-  return sendEmail({
-    to: email,
-    subject: 'Your SeatPing Subscription Has Been Canceled',
-    html,
-  });
+    return sendEmail({
+        to: email,
+        subject: 'Your SeatPing Subscription Has Been Canceled',
+        html,
+    });
 };
-
-export interface SalesInquiryData {
-  businessName: string;
-  businessWebsite?: string;
-  contactName: string;
-  workEmail: string;
-  phone?: string;
-  locations?: string;
-  smsPerMonth?: string;
-  customersPerDay?: string;
-  useCase: string;
-  budget: string;
-  subject: string;
-  message: string;
-}
-
-export interface FeedbackData {
-  name: string;
-  email: string;
-  businessName?: string;
-  phone?: string;
-  feedbackType: string;
-  subject: string;
-  message: string;
-  severity?: string;
-}
-
-export const sendFeedbackEmail = async (data: FeedbackData): Promise<boolean> => {
-  const feedbackTypeLabels: Record<string, string> = {
-    bug: 'Bug / Something Broken',
-    ux: 'UX / Usability Issue',
-    feature: 'Feature Request',
-    billing: 'Pricing / Billing',
-    other: 'Other'
-  };
-
-  const severityLabels: Record<string, string> = {
-    low: 'Low',
-    medium: 'Medium',
-    high: 'High'
-  };
-
-  // Determine severity color and emoji
-  const getSeverityStyle = (severity?: string) => {
-    switch (severity) {
-      case 'high':
-        return { color: '#d32f2f', emoji: '🔴', label: 'High Priority' };
-      case 'medium':
-        return { color: '#f57c00', emoji: '🟡', label: 'Medium Priority' };
-      case 'low':
-        return { color: '#388e3c', emoji: '🟢', label: 'Low Priority' };
-      default:
-        return { color: '#666', emoji: '', label: '' };
-    }
-  };
-
-  const severityStyle = getSeverityStyle(data.severity);
-  const isIssue = ['bug', 'ux', 'billing'].includes(data.feedbackType);
-
-  const html = `
+export const sendFeedbackEmail = async (data) => {
+    const feedbackTypeLabels = {
+        bug: 'Bug / Something Broken',
+        ux: 'UX / Usability Issue',
+        feature: 'Feature Request',
+        billing: 'Pricing / Billing',
+        other: 'Other'
+    };
+    const severityLabels = {
+        low: 'Low',
+        medium: 'Medium',
+        high: 'High'
+    };
+    // Determine severity color and emoji
+    const getSeverityStyle = (severity) => {
+        switch (severity) {
+            case 'high':
+                return { color: '#d32f2f', emoji: '🔴', label: 'High Priority' };
+            case 'medium':
+                return { color: '#f57c00', emoji: '🟡', label: 'Medium Priority' };
+            case 'low':
+                return { color: '#388e3c', emoji: '🟢', label: 'Low Priority' };
+            default:
+                return { color: '#666', emoji: '', label: '' };
+        }
+    };
+    const severityStyle = getSeverityStyle(data.severity);
+    const isIssue = ['bug', 'ux', 'billing'].includes(data.feedbackType);
+    const html = `
     <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
         <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
@@ -292,31 +245,27 @@ export const sendFeedbackEmail = async (data: FeedbackData): Promise<boolean> =>
       </div>
     </div>
   `;
-
-  return sendEmail({
-    to: 'bryan.susanto@seatping.biz',
-    subject: `Feedback [${feedbackTypeLabels[data.feedbackType]}]: ${data.subject}`,
-    html,
-  });
+    return sendEmail({
+        to: 'bryan.susanto@seatping.biz',
+        subject: `Feedback [${feedbackTypeLabels[data.feedbackType]}]: ${data.subject}`,
+        html,
+    });
 };
-
-export const sendSalesInquiryEmail = async (data: SalesInquiryData): Promise<boolean> => {
-  const useCaseLabels: Record<string, string> = {
-    restaurant: 'Restaurant / F&B',
-    clinic: 'Clinic / Healthcare',
-    retail: 'Retail / Service',
-    salon: 'Salon / Beauty',
-    other: 'Other'
-  };
-
-  const budgetLabels: Record<string, string> = {
-    low: 'Entry',
-    mid: 'Mid',
-    high: 'Enterprise',
-    not_sure: 'Not Sure Yet'
-  };
-
-  const html = `
+export const sendSalesInquiryEmail = async (data) => {
+    const useCaseLabels = {
+        restaurant: 'Restaurant / F&B',
+        clinic: 'Clinic / Healthcare',
+        retail: 'Retail / Service',
+        salon: 'Salon / Beauty',
+        other: 'Other'
+    };
+    const budgetLabels = {
+        low: 'Entry',
+        mid: 'Mid',
+        high: 'Enterprise',
+        not_sure: 'Not Sure Yet'
+    };
+    const html = `
     <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
         <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
@@ -399,11 +348,9 @@ export const sendSalesInquiryEmail = async (data: SalesInquiryData): Promise<boo
       </div>
     </div>
   `;
-
-  return sendEmail({
-    to: 'bryan.susanto@seatping.biz',
-    subject: `Sales Inquiry: ${data.subject} - ${data.businessName}`,
-    html,
-  });
+    return sendEmail({
+        to: 'bryan.susanto@seatping.biz',
+        subject: `Sales Inquiry: ${data.subject} - ${data.businessName}`,
+        html,
+    });
 };
-

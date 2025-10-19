@@ -174,19 +174,19 @@ async function applyPlanToUser(
       } else {
         console.log("[stripe] No existing locations to update for this user");
       }
-    } catch (locErr: Error) {
+    } catch (locErr: any) {
       console.error(
         "[stripe] ⚠️ Failed to update locations with base credits:",
         locErr?.message || locErr
       );
     }
     return result;
-  } catch (error: Error) {
+  } catch (error: any) {
     console.error("[stripe] ❌ Failed to update user:", {
       userId,
       plan,
-      error: error.message,
-      stack: error.stack,
+      error: error?.message,
+      stack: error?.stack,
     });
     throw error;
   }
@@ -239,7 +239,7 @@ router.post("/create-checkout-session", express.json(), async (req, res) => {
       url: session.url,
     });
     return res.json({ url: session.url });
-  } catch (err: Error) {
+  } catch (err: any) {
     console.error(
       "[stripe] ❌ create-checkout-session failed:",
       err?.message || err
@@ -276,7 +276,7 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, whsec);
     console.log("[stripe] ✅ Webhook signature verified");
-  } catch (err: Error) {
+  } catch (err: any) {
     console.error(
       "[stripe] ❌ Signature verification failed:",
       err?.message || err
@@ -393,7 +393,7 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
               await sendPlanChangeEmail(user.email, plan);
             }
             console.log("[stripe] ✅ Plan applied successfully");
-          } catch (error: Error) {
+          } catch (error: any) {
             console.error("[stripe] ❌ Failed to apply plan:", error);
           }
         } else {
@@ -458,7 +458,7 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
           invoiceId: invoice.id,
           customerId,
           amount: invoice.amount_paid,
-          subscriptionId: invoice.subscription,
+          subscriptionId: (invoice as any).subscription,
           billingReason: invoice.billing_reason,
         });
 
@@ -470,7 +470,7 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
           break;
         }
 
-        const priceId = invoice.lines.data[0]?.price?.id;
+        const priceId = (invoice.lines.data[0] as any)?.price?.id;
         const plan = priceIdToPlan(priceId);
 
         if (plan) {
@@ -494,7 +494,7 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
     console.log("✅ WEBHOOK PROCESSED SUCCESSFULLY:", event.type);
     console.log("=".repeat(80));
     return res.json({ received: true });
-  } catch (e: Error) {
+  } catch (e: any) {
     console.error("[stripe] ❌ Handler error:", {
       message: e?.message,
       stack: e?.stack,
@@ -522,7 +522,7 @@ router.post("/dev/apply", express.json(), async (req, res) => {
     console.log("[stripe] DEV: Applying plan manually:", { userId, plan });
     await applyPlanToUser(userId, plan, true);
     return res.json({ ok: true, userId, plan });
-  } catch (e: Error) {
+  } catch (e: any) {
     console.error("[stripe] DEV: Manual apply failed:", e?.message || e);
     return res.status(500).json({ error: e?.message || "update failed" });
   }
@@ -561,7 +561,7 @@ router.post("/dev/apply-by-email", express.json(), async (req, res) => {
     });
     await applyPlanToUser(user.id, plan, true);
     return res.json({ ok: true, userId: user.id, email: user.email, plan });
-  } catch (e: Error) {
+  } catch (e: any) {
     console.error("[stripe] DEV: apply-by-email failed:", e?.message || e);
     return res.status(500).json({ error: e?.message || "update failed" });
   }
@@ -594,9 +594,9 @@ router.get("/dev/db-test", async (req, res) => {
 
     console.log("[stripe] DEV: Database test result:", result);
     res.json(result);
-  } catch (error: Error) {
+  } catch (error: any) {
     console.error("[stripe] DEV: Database test failed:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error?.message });
   }
 });
 
@@ -650,11 +650,11 @@ router.get("/test-db", async (req, res) => {
       users,
       message: "Database connection working",
     });
-  } catch (error: Error) {
+  } catch (error: any) {
     console.error("🧪 DATABASE TEST FAILED:", error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: error?.message,
     });
   }
 });
@@ -677,9 +677,9 @@ router.post("/test-apply-plan", express.json(), async (req, res) => {
     const result = await applyPlanToUser(userId, plan, true);
     console.log("🧪 MANUAL TEST: Plan applied successfully", result);
     res.json({ success: true, result });
-  } catch (error: Error) {
+  } catch (error: any) {
     console.error("🧪 MANUAL TEST: Failed to apply plan:", error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: error?.message });
   }
 });
 
