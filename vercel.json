@@ -1,0 +1,49 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["dist/**", "dist-server/**"]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/auth/(.*)",
+      "dest": "/dist-server/index.js"
+    },
+    {
+      "src": "/admin/(.*)",
+      "dest": "/dist-server/index.js"
+    },
+    {
+      "src": "/stripe/(.*)",
+      "dest": "/dist-server/index.js"
+    },
+    {
+      "src": "/sales/(.*)",
+      "dest": "/dist-server/index.js"
+    },
+    {
+      "src": "/feedback/(.*)",
+      "dest": "/dist-server/index.js"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/dist/assets/$1"
+    },
+    {
+      "src": "/(.*\\.(ico|png|jpg|jpeg|svg|css|js))",
+      "dest": "/dist/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/dist/index.html"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
