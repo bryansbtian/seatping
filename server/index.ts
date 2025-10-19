@@ -8,11 +8,11 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 // your existing imports...
-import authRouter from "./routes/auth";
-import adminRouter from "./routes/admin";
-import stripeRouter from "./routes/stripe";
-import salesRouter from "./routes/sales";
-import feedbackRouter from "./routes/feedback";
+import authRouter from "./routes/auth.js";
+import adminRouter from "./routes/admin.js";
+import stripeRouter from "./routes/stripe.js";
+import salesRouter from "./routes/sales.js";
+import feedbackRouter from "./routes/feedback.js";
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);

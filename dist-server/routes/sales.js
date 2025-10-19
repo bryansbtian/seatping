@@ -1,5 +1,5 @@
 import express from 'express';
-import { sendSalesInquiryEmail } from '../lib/email';
+import { sendSalesInquiryEmail } from '../lib/email.js';
 const router = express.Router();
 router.post('/inquiry', express.json(), async (req, res) => {
     try {

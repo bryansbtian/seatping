@@ -2,8 +2,8 @@
 import express from "express";
 import Stripe from "stripe";
 // ⬇️ Adjust this import to your project structure if needed (e.g., "../prisma" or "../lib/prisma")
-import { prisma } from "../lib/prisma";
-import { sendPlanChangeEmail, sendSubscriptionCancellationEmail } from "../lib/email";
+import { prisma } from "../lib/prisma.js";
+import { sendPlanChangeEmail, sendSubscriptionCancellationEmail } from "../lib/email.js";
 const router = express.Router();
 // 🔒 Require a SECRET key (sk_...). Crash early if misconfigured.
 if (!process.env.STRIPE_SECRET_KEY ||

@@ -2,24 +2,24 @@ import twilio from "twilio";
 // server/routes/auth.ts
 import { Router } from "express";
 import bcrypt from "bcrypt";
-import { prisma } from "../lib/prisma";
+import { prisma } from "../lib/prisma.js";
 import {
   signJwt,
   setAuthCookie,
   clearAuthCookie,
   requireAuth,
-} from "../lib/auth";
-import { LoginSchema, SignUpSchema } from "../lib/validation";
-import { 
-  isTrialExpired, 
-  getCreditsForLocation, 
+} from "../lib/auth.js";
+import { LoginSchema, SignUpSchema } from "../lib/validation.js";
+import {
+  isTrialExpired,
+  getCreditsForLocation,
   getCreditsForPlan,
   enforceTrialExpiration,
   createLocationWithTrialEnforcement,
   checkAndRefillMonthlyCredits,
   handlePlanPurchase
-} from "../lib/trial";
-import { sendPasswordResetEmail, sendEmail } from "../lib/email";
+} from "../lib/trial.js";
+import { sendPasswordResetEmail, sendEmail } from "../lib/email.js";
 import crypto from "crypto";
 
 const router = Router();

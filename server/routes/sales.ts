@@ -1,5 +1,5 @@
 import express from 'express';
-import { sendSalesInquiryEmail, SalesInquiryData } from '../lib/email';
+import { sendSalesInquiryEmail, SalesInquiryData } from '../lib/email.js';
 
 const router = express.Router();
 

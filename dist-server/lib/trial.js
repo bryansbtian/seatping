@@ -1,5 +1,5 @@
 // server/lib/trial.ts
-import { prisma } from "./prisma";
+import { prisma } from "./prisma.js";
 /**
  * Check if a user's trial has expired
  * @param user - The user object from database

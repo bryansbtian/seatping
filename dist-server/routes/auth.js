@@ -2,11 +2,11 @@ import twilio from "twilio";
 // server/routes/auth.ts
 import { Router } from "express";
 import bcrypt from "bcrypt";
-import { prisma } from "../lib/prisma";
-import { signJwt, setAuthCookie, clearAuthCookie, requireAuth, } from "../lib/auth";
-import { LoginSchema, SignUpSchema } from "../lib/validation";
-import { getCreditsForPlan, enforceTrialExpiration, createLocationWithTrialEnforcement, checkAndRefillMonthlyCredits, handlePlanPurchase } from "../lib/trial";
-import { sendPasswordResetEmail, sendEmail } from "../lib/email";
+import { prisma } from "../lib/prisma.js";
+import { signJwt, setAuthCookie, clearAuthCookie, requireAuth, } from "../lib/auth.js";
+import { LoginSchema, SignUpSchema } from "../lib/validation.js";
+import { getCreditsForPlan, enforceTrialExpiration, createLocationWithTrialEnforcement, checkAndRefillMonthlyCredits, handlePlanPurchase } from "../lib/trial.js";
+import { sendPasswordResetEmail, sendEmail } from "../lib/email.js";
 import crypto from "crypto";
 const router = Router();
 // Note: Old utility functions replaced with trial-enforced versions in ../lib/trial.ts

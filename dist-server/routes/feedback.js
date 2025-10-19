@@ -1,5 +1,5 @@
 import express from 'express';
-import { sendFeedbackEmail } from '../lib/email';
+import { sendFeedbackEmail } from '../lib/email.js';
 const router = express.Router();
 router.post('/submit', express.json(), async (req, res) => {
     try {

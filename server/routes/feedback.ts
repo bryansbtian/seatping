@@ -1,5 +1,5 @@
 import express from 'express';
-import { sendFeedbackEmail, FeedbackData } from '../lib/email';
+import { sendFeedbackEmail, FeedbackData } from '../lib/email.js';
 
 const router = express.Router();
 
