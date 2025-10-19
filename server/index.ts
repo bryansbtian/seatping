@@ -57,6 +57,12 @@ if (process.env.NODE_ENV === "production") {
 }
 
 const PORT = Number(process.env.PORT || 4000);
-app.listen(PORT, () => {
-  console.log(`[api] listening on http://localhost:${PORT}`);
-});
+
+// Only start the server if not in serverless environment
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    console.log(`[api] listening on http://localhost:${PORT}`);
+  });
+}
+
+export default app;

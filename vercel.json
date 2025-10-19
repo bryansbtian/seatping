@@ -1,49 +1,38 @@
 {
-  "version": 2,
-  "builds": [
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install && npx prisma generate",
+  "devCommand": "npm run dev",
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["dist/**", "dist-server/**"]
-      }
+      "source": "/auth/(.*)",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/admin/(.*)",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/stripe/(.*)",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/sales/(.*)",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/feedback/(.*)",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
-  "routes": [
-    {
-      "src": "/auth/(.*)",
-      "dest": "/dist-server/index.js"
-    },
-    {
-      "src": "/admin/(.*)",
-      "dest": "/dist-server/index.js"
-    },
-    {
-      "src": "/stripe/(.*)",
-      "dest": "/dist-server/index.js"
-    },
-    {
-      "src": "/sales/(.*)",
-      "dest": "/dist-server/index.js"
-    },
-    {
-      "src": "/feedback/(.*)",
-      "dest": "/dist-server/index.js"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "/dist/assets/$1"
-    },
-    {
-      "src": "/(.*\\.(ico|png|jpg|jpeg|svg|css|js))",
-      "dest": "/dist/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/dist/index.html"
+  "functions": {
+    "api/server.ts": {
+      "memory": 1024,
+      "maxDuration": 10
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
   }
 }

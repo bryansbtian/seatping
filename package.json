@@ -88,6 +88,7 @@
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
     "@types/stripe": "^8.0.416",
+    "@vercel/node": "^5.4.0",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.2.1",
