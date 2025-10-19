@@ -5,27 +5,27 @@
   "devCommand": "npm run dev",
   "rewrites": [
     {
-      "source": "/auth/(.*)",
+      "source": "/auth/:path*",
       "destination": "/api/server"
     },
     {
-      "source": "/admin/(.*)",
+      "source": "/admin/:path*",
       "destination": "/api/server"
     },
     {
-      "source": "/stripe/(.*)",
+      "source": "/stripe/:path*",
       "destination": "/api/server"
     },
     {
-      "source": "/sales/(.*)",
+      "source": "/sales/:path*",
       "destination": "/api/server"
     },
     {
-      "source": "/feedback/(.*)",
+      "source": "/feedback/:path*",
       "destination": "/api/server"
     },
     {
-      "source": "/(.*)",
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ],
