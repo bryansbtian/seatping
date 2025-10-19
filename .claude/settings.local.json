@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install --save-dev @vercel/node)"
+      "Bash(npm install --save-dev @vercel/node)",
+      "Bash(npm install express@^4.21.2)",
+      "Bash(npm install --save-dev @types/express@^4.17.21)",
+      "Bash(npm run build)"
     ],
     "deny": [],
     "ask": []
