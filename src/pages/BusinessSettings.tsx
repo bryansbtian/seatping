@@ -29,7 +29,7 @@ import QRCode from "qrcode";
 import Footer from "@/components/Footer";
 
 const BILLING_PORTAL_URL =
-  "https://billing.stripe.com/p/login/test_aFa3cvcTN7x98khge7bfO00";
+  "https://billing.stripe.com/p/login/test_6oU14m5UU8zW4l5bmHcIE00";
 
 interface Location {
   address: string;

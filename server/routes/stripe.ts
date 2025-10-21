@@ -3,7 +3,10 @@ import express from "express";
 import Stripe from "stripe";
 // ⬇️ Adjust this import to your project structure if needed (e.g., "../prisma" or "../lib/prisma")
 import { prisma } from "../lib/prisma.js";
-import { sendPlanChangeEmail, sendSubscriptionCancellationEmail } from "../lib/email.js";
+import {
+  sendPlanChangeEmail,
+  sendSubscriptionCancellationEmail,
+} from "../lib/email.js";
 
 const router = express.Router();
 
@@ -23,13 +26,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const PRICE_IDS = {
   "Starter Monthly":
     process.env.STRIPE_PRICE_STARTER_MONTHLY ??
-    "price_1SEZpZDHwj4NMuGRF47HyAQQ",
+    "price_1SKp2dALbq0s7SXl1V3ikmyI",
   "Starter Yearly":
-    process.env.STRIPE_PRICE_STARTER_YEARLY ?? "price_1SEZrNDHwj4NMuGR1cZEJREy",
+    process.env.STRIPE_PRICE_STARTER_YEARLY ?? "price_1SKp2dALbq0s7SXlGbKp3Ivg",
   "Professional Monthly":
-    process.env.STRIPE_PRICE_PRO_MONTHLY ?? "price_1SEZrlDHwj4NMuGRJKbFthwJ",
+    process.env.STRIPE_PRICE_PRO_MONTHLY ?? "price_1SKoytALbq0s7SXlUt8FlC7z",
   "Professional Yearly":
-    process.env.STRIPE_PRICE_PRO_YEARLY ?? "price_1SEZs8DHwj4NMuGRC7G1ndkN",
+    process.env.STRIPE_PRICE_PRO_YEARLY ?? "price_1SKox3ALbq0s7SXlBXVKT9tM",
 } as const;
 
 type PlanName = "Starter" | "Professional";
@@ -151,25 +154,32 @@ async function applyPlanToUser(
         },
       });
 
-      const locations = (userWithLocations?.locations as { address: string; queue: string[] }[]) || [];
+      const locations =
+        (userWithLocations?.locations as {
+          address: string;
+          queue: string[];
+        }[]) || [];
       if (locations.length > 0) {
-        const updatedLocations = locations.map((location: { address: string; queue: string[] }) => ({
-          ...location,
-          smsCredits: userWithLocations?.baseSMSCredits || 0,
-          customerCredits: userWithLocations?.baseCustomerCredits || 0,
-        }));
+        const updatedLocations = locations.map(
+          (location: { address: string; queue: string[] }) => ({
+            ...location,
+            smsCredits: userWithLocations?.baseSMSCredits || 0,
+            customerCredits: userWithLocations?.baseCustomerCredits || 0,
+          })
+        );
 
         await prisma.user.update({
           where: { id: userId },
-          data: { locations: updatedLocations as { address: string; queue: string[] }[] },
+          data: {
+            locations: updatedLocations as {
+              address: string;
+              queue: string[];
+            }[],
+          },
         });
 
         console.log(
-          `[stripe] ✅ Updated ${
-            locations.length
-          } existing locations with base credits (SMS=${
-            userWithLocations?.baseSMSCredits
-          }, Customers=${userWithLocations?.baseCustomerCredits})`
+          `[stripe] ✅ Updated ${locations.length} existing locations with base credits (SMS=${userWithLocations?.baseSMSCredits}, Customers=${userWithLocations?.baseCustomerCredits})`
         );
       } else {
         console.log("[stripe] No existing locations to update for this user");
@@ -323,7 +333,8 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
 
         // Use your own id, not email
         const userId: string | null =
-          session.client_reference_id || (session.metadata as { userId: string })?.userId;
+          session.client_reference_id ||
+          (session.metadata as { userId: string })?.userId;
         console.log("[stripe] session user identification:", {
           userId,
           client_reference_id: session.client_reference_id,
@@ -359,7 +370,8 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
 
         // Derive plan (prefer metadata, else inspect line item price/product)
         let plan: PlanName | null =
-          normalizePlanName((session.metadata as { plan: PlanName })?.plan) || null;
+          normalizePlanName((session.metadata as { plan: PlanName })?.plan) ||
+          null;
         console.log("[stripe] Plan from metadata:", plan);
 
         if (!plan) {
@@ -406,7 +418,10 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
 
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log("customer.subscription.updated", JSON.stringify(subscription, null, 2));
+        console.log(
+          "customer.subscription.updated",
+          JSON.stringify(subscription, null, 2)
+        );
         const customerId = subscription.customer as string;
         const user = await prisma.user.findFirst({ where: { customerId } });
 
@@ -426,7 +441,10 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log("customer.subscription.deleted", JSON.stringify(subscription, null, 2));
+        console.log(
+          "customer.subscription.deleted",
+          JSON.stringify(subscription, null, 2)
+        );
         const customerId = subscription.customer as string;
         const user = await prisma.user.findFirst({ where: { customerId } });
 
@@ -474,7 +492,12 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
         const plan = priceIdToPlan(priceId);
 
         if (plan) {
-          console.log("[stripe] 🎯 Applying plan from invoice:", plan, "to user:", user.id);
+          console.log(
+            "[stripe] 🎯 Applying plan from invoice:",
+            plan,
+            "to user:",
+            user.id
+          );
           await applyPlanToUser(user.id, plan, true);
         } else {
           console.warn("[stripe] ⚠️ invoice paid but plan unknown", {
