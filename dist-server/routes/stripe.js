@@ -183,7 +183,7 @@ router.post("/create-checkout-session", express.json(), async (req, res) => {
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${APP_ORIGIN}/business/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${APP_ORIGIN}/pricing`,
+      cancel_url: `${APP_ORIGIN}/payments`,
       client_reference_id: String(userId), // ← maps regardless of payer email
       metadata: { plan: planName, userId: userId }, // ← webhook reads this (no guessing)
       allow_promotion_codes: true,
