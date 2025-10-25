@@ -52,6 +52,7 @@ export default function QueueBusiness() {
     lastName: "",
     numGuests: "1",
     phoneNumber: "", // required only when wait_anywhere
+    countryCode: "+1", // default to US
     waitingPreference: "on_premises" as "on_premises" | "wait_anywhere",
     joinedAt: "", // Will be set when customer joins queue
   });
@@ -120,6 +121,7 @@ export default function QueueBusiness() {
                 lastName: response.customer.lastName || "",
                 numGuests: String(response.customer.numGuests || 1),
                 phoneNumber: response.customer.phoneNumber || "",
+                countryCode: response.customer.countryCode || "+1",
                 waitingPreference: response.customer.waitingPreference || "on_premises",
                 joinedAt: response.customer.joinedAt || "",
               });
@@ -315,6 +317,7 @@ export default function QueueBusiness() {
           lastName: form.lastName,
           numGuests: parseInt(form.numGuests),
           phoneNumber: form.phoneNumber,
+          countryCode: form.countryCode,
           waitingPreference: form.waitingPreference,
         }),
       });
@@ -334,7 +337,7 @@ export default function QueueBusiness() {
           title: "You're in the queue!",
           description:
             form.waitingPreference === "wait_anywhere"
-              ? `We'll text you at ${form.phoneNumber} when it's almost your turn.`
+              ? `We'll text you at ${form.countryCode} ${form.phoneNumber} when it's almost your turn.`
               : "Stay nearby — we'll call your name on site.",
         });
 
@@ -386,7 +389,7 @@ export default function QueueBusiness() {
     } else {
       toast({
         title: "Switched to Wait Anywhere!",
-        description: `We'll text you at ${form.phoneNumber} when it's almost your turn.`,
+        description: `We'll text you at ${form.countryCode} ${form.phoneNumber} when it's almost your turn.`,
       });
     }
   };
@@ -645,19 +648,60 @@ export default function QueueBusiness() {
                 {form.waitingPreference === "wait_anywhere" && (
                   <div className="space-y-2">
                     <Label htmlFor="phoneNumber">Phone Number</Label>
-                    <Input
-                      id="phoneNumber"
-                      name="phoneNumber"
-                      type="tel"
-                      placeholder="(555) 123-4567"
-                      value={form.phoneNumber}
-                      onChange={handleChange}
-                      className={
-                        errors.phoneNumber
-                          ? "border-destructive focus:ring-destructive"
-                          : ""
-                      }
-                    />
+                    <div className="flex gap-2">
+                      <select
+                        name="countryCode"
+                        value={form.countryCode}
+                        onChange={handleChange}
+                        className="w-24 rounded-md border bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="+1">🇺🇸 +1</option>
+                        <option value="+44">🇬🇧 +44</option>
+                        <option value="+91">🇮🇳 +91</option>
+                        <option value="+86">🇨🇳 +86</option>
+                        <option value="+81">🇯🇵 +81</option>
+                        <option value="+49">🇩🇪 +49</option>
+                        <option value="+33">🇫🇷 +33</option>
+                        <option value="+39">🇮🇹 +39</option>
+                        <option value="+34">🇪🇸 +34</option>
+                        <option value="+61">🇦🇺 +61</option>
+                        <option value="+64">🇳🇿 +64</option>
+                        <option value="+52">🇲🇽 +52</option>
+                        <option value="+55">🇧🇷 +55</option>
+                        <option value="+27">🇿🇦 +27</option>
+                        <option value="+82">🇰🇷 +82</option>
+                        <option value="+7">🇷🇺 +7</option>
+                        <option value="+31">🇳🇱 +31</option>
+                        <option value="+46">🇸🇪 +46</option>
+                        <option value="+47">🇳🇴 +47</option>
+                        <option value="+45">🇩🇰 +45</option>
+                        <option value="+41">🇨🇭 +41</option>
+                        <option value="+32">🇧🇪 +32</option>
+                        <option value="+43">🇦🇹 +43</option>
+                        <option value="+351">🇵🇹 +351</option>
+                        <option value="+48">🇵🇱 +48</option>
+                        <option value="+90">🇹🇷 +90</option>
+                        <option value="+62">🇮🇩 +62</option>
+                        <option value="+63">🇵🇭 +63</option>
+                        <option value="+65">🇸🇬 +65</option>
+                        <option value="+66">🇹🇭 +66</option>
+                        <option value="+60">🇲🇾 +60</option>
+                        <option value="+84">🇻🇳 +84</option>
+                      </select>
+                      <Input
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        type="tel"
+                        placeholder="5551234567"
+                        value={form.phoneNumber}
+                        onChange={handleChange}
+                        className={
+                          errors.phoneNumber
+                            ? "border-destructive focus:ring-destructive flex-1"
+                            : "flex-1"
+                        }
+                      />
+                    </div>
                     {errors.phoneNumber && (
                       <p className="text-sm text-destructive">
                         {errors.phoneNumber}
@@ -781,20 +825,61 @@ export default function QueueBusiness() {
                   {form.waitingPreference === "wait_anywhere" && (
                     <div className="space-y-2">
                       <Label htmlFor="phoneNumber_status">Phone Number</Label>
-                      <Input
-                        id="phoneNumber_status"
-                        name="phoneNumber"
-                        type="tel"
-                        placeholder="(555) 123-4567"
-                        value={form.phoneNumber}
-                        onChange={handleChange}
-                        ref={phoneStatusRef} // focus target
-                        className={
-                          errors.phoneNumber
-                            ? "border-destructive focus:ring-destructive"
-                            : ""
-                        }
-                      />
+                      <div className="flex gap-2">
+                        <select
+                          name="countryCode"
+                          value={form.countryCode}
+                          onChange={handleChange}
+                          className="w-24 rounded-md border bg-background px-3 py-2 text-sm"
+                        >
+                          <option value="+1">🇺🇸 +1</option>
+                          <option value="+44">🇬🇧 +44</option>
+                          <option value="+91">🇮🇳 +91</option>
+                          <option value="+86">🇨🇳 +86</option>
+                          <option value="+81">🇯🇵 +81</option>
+                          <option value="+49">🇩🇪 +49</option>
+                          <option value="+33">🇫🇷 +33</option>
+                          <option value="+39">🇮🇹 +39</option>
+                          <option value="+34">🇪🇸 +34</option>
+                          <option value="+61">🇦🇺 +61</option>
+                          <option value="+64">🇳🇿 +64</option>
+                          <option value="+52">🇲🇽 +52</option>
+                          <option value="+55">🇧🇷 +55</option>
+                          <option value="+27">🇿🇦 +27</option>
+                          <option value="+82">🇰🇷 +82</option>
+                          <option value="+7">🇷🇺 +7</option>
+                          <option value="+31">🇳🇱 +31</option>
+                          <option value="+46">🇸🇪 +46</option>
+                          <option value="+47">🇳🇴 +47</option>
+                          <option value="+45">🇩🇰 +45</option>
+                          <option value="+41">🇨🇭 +41</option>
+                          <option value="+32">🇧🇪 +32</option>
+                          <option value="+43">🇦🇹 +43</option>
+                          <option value="+351">🇵🇹 +351</option>
+                          <option value="+48">🇵🇱 +48</option>
+                          <option value="+90">🇹🇷 +90</option>
+                          <option value="+62">🇮🇩 +62</option>
+                          <option value="+63">🇵🇭 +63</option>
+                          <option value="+65">🇸🇬 +65</option>
+                          <option value="+66">🇹🇭 +66</option>
+                          <option value="+60">🇲🇾 +60</option>
+                          <option value="+84">🇻🇳 +84</option>
+                        </select>
+                        <Input
+                          id="phoneNumber_status"
+                          name="phoneNumber"
+                          type="tel"
+                          placeholder="5551234567"
+                          value={form.phoneNumber}
+                          onChange={handleChange}
+                          ref={phoneStatusRef} // focus target
+                          className={
+                            errors.phoneNumber
+                              ? "border-destructive focus:ring-destructive flex-1"
+                              : "flex-1"
+                          }
+                        />
+                      </div>
                       {errors.phoneNumber && (
                         <p className="text-sm text-destructive">
                           {errors.phoneNumber}

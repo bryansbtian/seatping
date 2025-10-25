@@ -326,6 +326,7 @@ router.post("/business/:username/queue", async (req, res) => {
       lastName,
       numGuests,
       phoneNumber,
+      countryCode,
       waitingPreference,
     } = req.body || {};
 
@@ -388,6 +389,7 @@ router.post("/business/:username/queue", async (req, res) => {
       lastName,
       numGuests: Number(numGuests),
       phoneNumber: phoneNumber || "",
+      countryCode: countryCode || "+1", // Store country code, default to +1
       waitingPreference,
       joinedAt: new Date().toISOString(),
       position: (location.queue || []).length + 1,
@@ -713,12 +715,12 @@ router.post(
 
               const client = twilio(accountSid, authToken);
 
-              // Format phone number to E.164 format (add +1 if missing country code)
-              let formattedPhone = admittedCustomer.phoneNumber.trim();
-              if (!formattedPhone.startsWith('+')) {
-                // Assume US number if no country code
-                formattedPhone = '+1' + formattedPhone.replace(/\D/g, '');
-              }
+              // Format phone number to E.164 format using the stored country code
+              const customerCountryCode = admittedCustomer.countryCode || "+1";
+              let phoneDigitsOnly = admittedCustomer.phoneNumber.trim().replace(/\D/g, '');
+
+              // Construct full phone number with country code
+              let formattedPhone = customerCountryCode + phoneDigitsOnly;
 
               const businessName = (user as any).name || "The business";
               const message = await client.messages.create({
