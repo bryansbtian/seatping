@@ -1,24 +1,18 @@
-// server/routes/stripe.ts  (adjust the path/filename to match your project)
 import express from "express";
 import Stripe from "stripe";
-// ⬇️ Adjust this import to your project structure if needed (e.g., "../prisma" or "../lib/prisma")
 import { prisma } from "../lib/prisma.js";
 import {
   sendPlanChangeEmail,
   sendSubscriptionCancellationEmail,
 } from "../lib/email.js";
 const router = express.Router();
-// 🔒 Require a SECRET key (sk_...). Crash early if misconfigured.
 if (
   !process.env.STRIPE_SECRET_KEY ||
   !process.env.STRIPE_SECRET_KEY.startsWith("sk_")
 ) {
   throw new Error("Invalid STRIPE_SECRET_KEY (must start with sk_)");
 }
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  // apiVersion: "2024-06-20", // optional
-});
-// ===== Price IDs (env wins; defaults fall back to what you shared) =====
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {});
 const PRICE_IDS = {
   "Starter Monthly":
     process.env.STRIPE_PRICE_STARTER_MONTHLY ??
@@ -45,7 +39,6 @@ const PLAN_RULES = {
   },
 };
 const APP_ORIGIN = process.env.APP_ORIGIN ?? "https://www.seatping.biz";
-// ---------- helpers ----------
 const priceIdToPlan = (priceId) => {
   if (!priceId) return null;
   console.log("[stripe] Looking up plan for priceId:", priceId);
@@ -75,7 +68,6 @@ async function applyPlanToUser(userId, plan, setStartTime) {
   const r = PLAN_RULES[plan];
   console.log("[stripe] applying plan", { userId, plan, setStartTime, ...r });
   try {
-    // Check if user exists first
     console.log("[stripe] Checking if user exists:", userId);
     const existingUser = await prisma.user.findUnique({
       where: { id: userId },
@@ -95,7 +87,7 @@ async function applyPlanToUser(userId, plan, setStartTime) {
       baseCustomerCredits: r.baseCustomerCredits,
       baseSMSCredits: r.baseSMSCredits,
       maxLocations: r.maxLocations,
-      trial: false, // 🔒 ensure trial is OFF
+      trial: false,
       ...(setStartTime ? { planStartedAt: new Date() } : {}),
       updatedAt: new Date(),
     };
@@ -111,7 +103,6 @@ async function applyPlanToUser(userId, plan, setStartTime) {
       trial: result.trial,
       planStartedAt: result.planStartedAt,
     });
-    // After updating the user's plan and base credits, update existing locations' credits
     try {
       const userWithLocations = await prisma.user.findUnique({
         where: { id: userId },
@@ -158,7 +149,6 @@ async function applyPlanToUser(userId, plan, setStartTime) {
 function planKeyToPlan(name) {
   return name.startsWith("Professional") ? "Professional" : "Starter";
 }
-// ---------- Create Checkout Session (frontend calls this) ----------
 router.post("/create-checkout-session", express.json(), async (req, res) => {
   try {
     console.log("[stripe] Creating checkout session with body:", req.body);
@@ -184,8 +174,8 @@ router.post("/create-checkout-session", express.json(), async (req, res) => {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${APP_ORIGIN}/business/dashboard?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${APP_ORIGIN}/payments`,
-      client_reference_id: String(userId), // ← maps regardless of payer email
-      metadata: { plan: planName, userId: userId }, // ← webhook reads this (no guessing)
+      client_reference_id: String(userId),
+      metadata: { plan: planName, userId: userId },
       allow_promotion_codes: true,
     });
     console.log("[stripe] ✅ Checkout session created:", {
@@ -201,7 +191,6 @@ router.post("/create-checkout-session", express.json(), async (req, res) => {
     return res.status(500).json({ error: "Failed to create checkout session" });
   }
 });
-// ---------- Webhook (must be mounted BEFORE any express.json()) ----------
 router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
   const whsec = process.env.STRIPE_WEBHOOK_SECRET;
@@ -238,7 +227,6 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
     id: event.id,
     created: new Date(event.created * 1000).toISOString(),
   });
-  // Add specific logging for subscription events
   if (event.type.includes("subscription")) {
     console.log("[stripe] 🔍 Subscription event details:", {
       type: event.type,
@@ -246,7 +234,6 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
       data: JSON.stringify(event.data, null, 2),
     });
   }
-  // Add specific logging for invoice events
   if (event.type.includes("invoice")) {
     console.log("[stripe] 🔍 Invoice event details:", {
       type: event.type,
@@ -266,7 +253,6 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
           customerId: session.customer,
           metadata: session.metadata,
         });
-        // Use your own id, not email
         const userId = session.client_reference_id || session.metadata?.userId;
         console.log("[stripe] session user identification:", {
           userId,
@@ -279,7 +265,6 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
           });
           break;
         }
-        // Save customerId so portal updates work later
         const customerId = session.customer || undefined;
         if (customerId) {
           console.log(
@@ -298,7 +283,6 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
             console.error("[stripe] ❌ Failed to save customer ID:", error);
           }
         }
-        // Derive plan (prefer metadata, else inspect line item price/product)
         let plan = normalizePlanName(session.metadata?.plan) || null;
         console.log("[stripe] Plan from metadata:", plan);
         if (!plan) {
@@ -323,7 +307,7 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
         if (plan) {
           console.log("[stripe] 🎯 Applying plan:", plan, "to user:", userId);
           try {
-            const user = await applyPlanToUser(userId, plan, true); // first activation → set planStartedAt
+            const user = await applyPlanToUser(userId, plan, true);
             if (user && user.email) {
               await sendPlanChangeEmail(user.email, plan);
             }
@@ -437,8 +421,6 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
     return res.json({ received: true });
   }
 });
-// ---------- DEV HELPERS ----------
-// Manually apply by userId (ObjectId string)
 router.post("/dev/apply", express.json(), async (req, res) => {
   if (process.env.NODE_ENV === "production") {
     return res.status(403).json({ error: "Disabled in production" });
@@ -458,7 +440,6 @@ router.post("/dev/apply", express.json(), async (req, res) => {
     return res.status(500).json({ error: e?.message || "update failed" });
   }
 });
-// ✅ DEV-ONLY: apply plan by email (no IDs). Disabled in production.
 router.post("/dev/apply-by-email", express.json(), async (req, res) => {
   if (process.env.NODE_ENV === "production") {
     return res.status(403).json({ error: "Disabled in production" });
@@ -471,7 +452,6 @@ router.post("/dev/apply-by-email", express.json(), async (req, res) => {
   }
   try {
     console.log("[stripe] DEV: Applying plan by email:", { email, plan });
-    // case-insensitive email match
     const user = await prisma.user.findFirst({
       where: { email: { equals: email.trim(), mode: "insensitive" } },
     });
@@ -491,7 +471,6 @@ router.post("/dev/apply-by-email", express.json(), async (req, res) => {
     return res.status(500).json({ error: e?.message || "update failed" });
   }
 });
-// Database connection test
 router.get("/dev/db-test", async (req, res) => {
   if (process.env.NODE_ENV === "production") {
     return res.status(403).json({ error: "Disabled in production" });
@@ -520,7 +499,6 @@ router.get("/dev/db-test", async (req, res) => {
     res.status(500).json({ error: error?.message });
   }
 });
-// Environment check
 router.get("/dev/env-check", async (req, res) => {
   if (process.env.NODE_ENV === "production") {
     return res.status(403).json({ error: "Disabled in production" });
@@ -535,14 +513,11 @@ router.get("/dev/env-check", async (req, res) => {
   console.log("[stripe] DEV: Environment check:", envCheck);
   res.json(envCheck);
 });
-// quick health
 router.get("/ping", (_req, res) => res.json({ ok: true }));
-// Test webhook endpoint
 router.post("/test-webhook", express.json(), (req, res) => {
   console.log("🧪 TEST WEBHOOK CALLED:", req.body);
   res.json({ received: true, body: req.body });
 });
-// Test database connection and user lookup
 router.get("/test-db", async (req, res) => {
   try {
     console.log("🧪 TESTING DATABASE CONNECTION");
@@ -572,7 +547,6 @@ router.get("/test-db", async (req, res) => {
     });
   }
 });
-// Manual test for applyPlanToUser function
 router.post("/test-apply-plan", express.json(), async (req, res) => {
   if (process.env.NODE_ENV === "production") {
     return res.status(403).json({ error: "Disabled in production" });

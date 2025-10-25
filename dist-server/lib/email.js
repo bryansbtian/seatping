@@ -1,12 +1,11 @@
 import nodemailer from "nodemailer";
-// Create a transporter using SMTP
 const transporter = nodemailer.createTransport({
-  host: "smtp.porkbun.com", // Porkbun SMTP server for custom domain email
+  host: "smtp.porkbun.com",
   port: 587,
-  secure: false, // true for 465, false for other ports (587 uses STARTTLS)
+  secure: false,
   auth: {
-    user: "bryan.susanto@seatping.biz", // Custom domain email address
-    pass: process.env.EMAIL_PASSWORD || "your-app-password-here", // Email password
+    user: "bryan.susanto@seatping.biz",
+    pass: process.env.EMAIL_PASSWORD || "your-app-password-here",
   },
   tls: {
     rejectUnauthorized: false,
@@ -85,7 +84,7 @@ export const sendPasswordResetEmail = async (email, resetToken) => {
     to: email,
     subject: "Reset Your SeatPing Password",
     html,
-    from: "bryan.susanto@seatping.biz", // Use business email for password resets
+    from: "bryan.susanto@seatping.biz",
   });
 };
 export const sendPlanChangeEmail = async (email, newPlan) => {
@@ -161,7 +160,6 @@ export const sendFeedbackEmail = async (data) => {
     medium: "Medium",
     high: "High",
   };
-  // Determine severity color and emoji
   const getSeverityStyle = (severity) => {
     switch (severity) {
       case "high":

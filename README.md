@@ -169,21 +169,6 @@ npx prisma db push
 npm run dev
 ```
 
-### Environment Variables
-
-```env
-DATABASE_URL = "mongodb+srv://bryansusanto22:1234567890@seatping.8vb3kgu.mongodb.net/development"
-JWT_SECRET="9b6d0d5ad98e9d18"
-JWT_EXPIRES_IN="7d"
-CLIENT_ORIGIN="http://localhost:5173"
-PORT=4000
-FRONTEND_URL="http://localhost:8082"
-EMAIL_PASSWORD="fnwn cftn ztih tqeg"
-STRIPE_SECRET_KEY=sk_test_51S5GNxDHwj4NMuGRfnUiYltsWRgdwa9Qwap6cQRAULbb3E6nyjiijMZxKUYw3BH9nvacbvpDjemMOaNJX1Aw7SHc00730Tc7r2
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_51S5GNxDHwj4NMuGR922ZKFpTDTVcgc4BNCXIQQpIgCrNORF031V7g4VbJWOvdLjAwq3gDrClgB7aDUQr3DTcaKG700JNVq16O4
-STRIPE_WEBHOOK_SECRET=whsec_677ae84e417b410289acaf7d39ecc6b636c898c4923c0d19f1a8ef829c282fc5
-```
-
 ## API Endpoints
 
 ### Authentication
