@@ -328,6 +328,7 @@ router.post("/business/:username/queue", async (req, res) => {
       phoneNumber,
       countryCode,
       waitingPreference,
+      smsConsent,
     } = req.body || {};
 
     if (
@@ -344,6 +345,12 @@ router.post("/business/:username/queue", async (req, res) => {
       return res
         .status(400)
         .json({ error: "Phone number is required for Wait Anywhere" });
+    }
+
+    if (waitingPreference === "wait_anywhere" && !smsConsent) {
+      return res
+        .status(400)
+        .json({ error: "SMS consent is required for Wait Anywhere" });
     }
 
     const user = await prisma.user.findUnique({
@@ -391,6 +398,7 @@ router.post("/business/:username/queue", async (req, res) => {
       phoneNumber: phoneNumber || "",
       countryCode: countryCode || "+1", // Store country code, default to +1
       waitingPreference,
+      smsConsent: smsConsent || false, // Store SMS consent for compliance
       joinedAt: new Date().toISOString(),
       position: (location.queue || []).length + 1,
       queueToken, // Store token with customer data
