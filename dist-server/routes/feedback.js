@@ -1,5 +1,5 @@
 import express from 'express';
-import { sendFeedbackEmail } from '../lib/email.js';
+import { sendFeedbackEmail, sendFeedbackConfirmationEmail } from '../lib/email.js';
 import { prisma } from '../lib/prisma.js';
 const router = express.Router();
 // Helper function to generate unique ticket number
@@ -71,6 +71,16 @@ router.post('/submit', express.json(), async (req, res) => {
             },
         });
         console.log('[feedback] ✅ Ticket created:', ticket.ticketNumber);
+        // Send confirmation email to user
+        console.log('[feedback] Sending confirmation email to user...');
+        const confirmationSent = await sendFeedbackConfirmationEmail(data.email, data.name, ticket.ticketNumber, data.subject);
+        if (confirmationSent) {
+            console.log('[feedback] ✅ Confirmation email sent to user');
+        }
+        else {
+            console.error('[feedback] ⚠️ Failed to send confirmation email to user');
+            // Note: We don't fail the request if confirmation email fails
+        }
         return res.json({
             success: true,
             message: 'Feedback submitted successfully',

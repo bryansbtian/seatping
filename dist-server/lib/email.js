@@ -11,37 +11,63 @@ const transporter = nodemailer.createTransport({
     tls: {
         rejectUnauthorized: false,
     },
+    // Increase timeouts for serverless environments
+    connectionTimeout: 30000, // 30 seconds
+    greetingTimeout: 30000, // 30 seconds
+    socketTimeout: 60000, // 60 seconds
+    // Disable pooling for serverless (create new connection each time)
+    pool: false,
+    // Add debug logging
+    logger: false,
+    debug: false,
 });
-export const sendEmail = async (options) => {
-    try {
-        console.log("[EMAIL] Attempting to send email to:", options.to);
-        console.log("[EMAIL] Using transporter config:", {
-            host: transporter.options.host,
-            port: transporter.options.port,
-            secure: transporter.options.secure,
-            user: transporter.options.auth?.user,
-        });
-        const mailOptions = {
-            from: options.from || "bryan.susanto@seatping.biz",
-            to: options.to,
-            subject: options.subject,
-            html: options.html,
-        };
-        console.log("[EMAIL] Mail options prepared, sending...");
-        const info = await transporter.sendMail(mailOptions);
-        console.log("[EMAIL] Email sent successfully:", info.messageId);
-        console.log("[EMAIL] Response:", info);
-        return true;
+export const sendEmail = async (options, retries = 2) => {
+    let lastError = null;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            if (attempt > 0) {
+                console.log(`[EMAIL] Retry attempt ${attempt}/${retries} for:`, options.to);
+                // Wait before retrying (exponential backoff)
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            }
+            else {
+                console.log("[EMAIL] Attempting to send email to:", options.to);
+            }
+            console.log("[EMAIL] Using transporter config:", {
+                host: transporter.options.host,
+                port: transporter.options.port,
+                secure: transporter.options.secure,
+                user: transporter.options.auth?.user,
+                connectionTimeout: transporter.options.connectionTimeout,
+            });
+            const mailOptions = {
+                from: options.from || "bryan.susanto@seatping.biz",
+                to: options.to,
+                subject: options.subject,
+                html: options.html,
+            };
+            console.log("[EMAIL] Mail options prepared, sending...");
+            const info = await transporter.sendMail(mailOptions);
+            console.log("[EMAIL] Email sent successfully:", info.messageId);
+            console.log("[EMAIL] Response:", info);
+            return true;
+        }
+        catch (error) {
+            lastError = error;
+            console.error(`[EMAIL] Error sending email (attempt ${attempt + 1}/${retries + 1}):`, error?.message);
+            console.error("[EMAIL] Error details:", {
+                message: error?.message,
+                code: error?.code,
+                command: error?.command,
+                responseCode: error?.responseCode,
+            });
+            // If this is the last attempt, log the final failure
+            if (attempt === retries) {
+                console.error("[EMAIL] All retry attempts failed. Final error:", lastError);
+            }
+        }
     }
-    catch (error) {
-        console.error("[EMAIL] Error sending email:", error);
-        console.error("[EMAIL] Error details:", {
-            message: error?.message,
-            code: error?.code,
-            command: error?.command,
-        });
-        return false;
-    }
+    return false;
 };
 export const sendPasswordResetEmail = async (email, resetToken) => {
     const resetUrl = `${process.env.FRONTEND_URL || "https://www.seatping.biz"}/reset?token=${resetToken}`;
@@ -85,6 +111,57 @@ export const sendPasswordResetEmail = async (email, resetToken) => {
         subject: "Reset Your SeatPing Password",
         html,
         from: "bryan.susanto@seatping.biz", // Use business email for password resets
+    });
+};
+export const sendPasswordChangeConfirmationEmail = async (email, name) => {
+    const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">Password Successfully Changed</p>
+      </div>
+
+      <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+        <h2 style="color: #333; margin-bottom: 20px;">Password Changed Successfully</h2>
+        ${name ? `<p style="color: #666; line-height: 1.6; margin-bottom: 25px;">Hi ${name},</p>` : ''}
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          Your SeatPing account password has been successfully changed. You can now use your new password to log in to your account.
+        </p>
+
+        <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #4caf50;">
+          <p style="margin: 0; color: #2e7d32; font-weight: bold;">Your account is secure</p>
+          <p style="margin: 10px 0 0 0; color: #2e7d32; font-size: 14px;">
+            Your password was changed successfully. If you made this change, no further action is needed.
+          </p>
+        </div>
+
+        <div style="background: #fff3e0; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #ff9800;">
+          <p style="margin: 0; color: #e65100; font-weight: bold;">Didn't make this change?</p>
+          <p style="margin: 10px 0 0 0; color: #e65100; font-size: 14px;">
+            If you did not change your password, please contact our support team immediately at <a href="mailto:bryan.susanto@seatping.biz" style="color: #e65100;">bryan.susanto@seatping.biz</a>
+          </p>
+        </div>
+
+        <p style="color: #666; font-size: 14px; margin-top: 25px;">
+          For security reasons, make sure to:
+        </p>
+        <ul style="color: #666; line-height: 1.8; margin: 10px 0; padding-left: 20px;">
+          <li>Use a strong, unique password</li>
+          <li>Never share your password with anyone</li>
+          <li>Change your password regularly</li>
+        </ul>
+      </div>
+
+      <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+        <p>© 2025 SeatPing. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+    return sendEmail({
+        to: email,
+        subject: "Your SeatPing Password Has Been Changed",
+        html,
+        from: "bryan.susanto@seatping.biz",
     });
 };
 export const sendPlanChangeEmail = async (email, newPlan) => {
@@ -276,24 +353,6 @@ export const sendRegistrationConfirmationEmail = async (email, name, username, p
           Thank you for signing up for SeatPing! Your account has been successfully created and you're ready to start managing your queue.
         </p>
 
-        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #667eea;">
-          <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Your Account Details</h3>
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 8px 0; color: #666; font-weight: bold; width: 140px;">Username:</td>
-              <td style="padding: 8px 0; color: #333;">${username}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; color: #666; font-weight: bold;">Email:</td>
-              <td style="padding: 8px 0; color: #333;">${email}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; color: #666; font-weight: bold;">Plan:</td>
-              <td style="padding: 8px 0; color: #333;">${plan}</td>
-            </tr>
-          </table>
-        </div>
-
         <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #4caf50;">
           <p style="margin: 0; color: #2e7d32; font-weight: bold;">Your 7-day free trial has started!</p>
           <p style="margin: 10px 0 0 0; color: #2e7d32; font-size: 14px;">
@@ -449,5 +508,147 @@ export const sendSalesInquiryEmail = async (data) => {
         to: "bryan.susanto@seatping.biz",
         subject: `Sales Inquiry: ${data.subject} - ${data.businessName}`,
         html,
+    });
+};
+// Send confirmation email to user who submitted feedback
+export const sendFeedbackConfirmationEmail = async (userEmail, userName, ticketNumber, subject) => {
+    const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">Feedback Received</p>
+      </div>
+
+      <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+        <h2 style="color: #333; margin-bottom: 20px;">Thank you for your feedback!</h2>
+
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          Hi ${userName},
+        </p>
+
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          We've received your feedback and created a ticket for you. Our team will review it and get back to you as soon as possible.
+        </p>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #667eea;">
+          <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Your Ticket Details</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold; width: 140px;">Ticket ID:</td>
+              <td style="padding: 8px 0; color: #333; font-weight: bold; font-size: 16px;">${ticketNumber}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Subject:</td>
+              <td style="padding: 8px 0; color: #333;">${subject}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Status:</td>
+              <td style="padding: 8px 0; color: #333;">Open</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
+          <p style="margin: 0; color: #1565c0; font-weight: bold;">Please save your ticket ID</p>
+          <p style="margin: 10px 0 0 0; color: #1565c0; font-size: 14px;">
+            You can use this ticket ID (${ticketNumber}) to reference your feedback if you need to follow up with us.
+          </p>
+        </div>
+
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          We appreciate you taking the time to help us improve SeatPing. Your input is valuable to us!
+        </p>
+
+        <p style="color: #666; font-size: 14px; margin-top: 25px;">
+          If you have any questions or need immediate assistance, please don't hesitate to reach out to us at <a href="mailto:bryan.susanto@seatping.biz" style="color: #667eea;">bryan.susanto@seatping.biz</a>.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+        <p>© 2025 SeatPing. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+    return sendEmail({
+        to: userEmail,
+        subject: `Feedback Received - Ticket ${ticketNumber}`,
+        html,
+        from: "bryan.susanto@seatping.biz",
+    });
+};
+// Send confirmation email to user who submitted sales inquiry
+export const sendSalesInquiryConfirmationEmail = async (userEmail, contactName, ticketNumber, subject) => {
+    const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">Sales Inquiry Received</p>
+      </div>
+
+      <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+        <h2 style="color: #333; margin-bottom: 20px;">Thank you for your interest!</h2>
+
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          Hi ${contactName},
+        </p>
+
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          We've received your sales inquiry and created a ticket for you. Our sales team will review your request and get back to you within 24 hours.
+        </p>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #667eea;">
+          <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Your Ticket Details</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold; width: 140px;">Ticket ID:</td>
+              <td style="padding: 8px 0; color: #333; font-weight: bold; font-size: 16px;">${ticketNumber}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Subject:</td>
+              <td style="padding: 8px 0; color: #333;">${subject}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Status:</td>
+              <td style="padding: 8px 0; color: #333;">Open</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
+          <p style="margin: 0; color: #1565c0; font-weight: bold;">Please save your ticket ID</p>
+          <p style="margin: 10px 0 0 0; color: #1565c0; font-size: 14px;">
+            You can use this ticket ID (${ticketNumber}) to reference your inquiry if you need to follow up with us.
+          </p>
+        </div>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+          <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px; font-size: 18px;">What Happens Next?</h3>
+          <ul style="color: #666; line-height: 1.8; margin: 0; padding-left: 20px;">
+            <li>Our sales team will review your requirements</li>
+            <li>We'll prepare a customized solution for your business</li>
+            <li>You'll receive a detailed proposal within 24 hours</li>
+            <li>We can schedule a call to discuss your needs further</li>
+          </ul>
+        </div>
+
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          We're excited about the opportunity to work with you and help your business succeed with SeatPing!
+        </p>
+
+        <p style="color: #666; font-size: 14px; margin-top: 25px;">
+          If you have any questions or need immediate assistance, please don't hesitate to reach out to us at <a href="mailto:bryan.susanto@seatping.biz" style="color: #667eea;">bryan.susanto@seatping.biz</a>.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+        <p>© 2025 SeatPing. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+    return sendEmail({
+        to: userEmail,
+        subject: `Sales Inquiry Received - Ticket ${ticketNumber}`,
+        html,
+        from: "bryan.susanto@seatping.biz",
     });
 };

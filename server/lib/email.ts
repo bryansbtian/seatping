@@ -12,7 +12,16 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false,
   },
-});
+  // Increase timeouts for serverless environments
+  connectionTimeout: 30000, // 30 seconds
+  greetingTimeout: 30000, // 30 seconds
+  socketTimeout: 60000, // 60 seconds
+  // Disable pooling for serverless (create new connection each time)
+  pool: false,
+  // Add debug logging
+  logger: false,
+  debug: false,
+} as any);
 
 export interface EmailOptions {
   to: string;
@@ -21,37 +30,57 @@ export interface EmailOptions {
   from?: string; // Optional custom sender email
 }
 
-export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
-  try {
-    console.log("[EMAIL] Attempting to send email to:", options.to);
-    console.log("[EMAIL] Using transporter config:", {
-      host: (transporter.options as any).host,
-      port: (transporter.options as any).port,
-      secure: (transporter.options as any).secure,
-      user: (transporter.options as any).auth?.user,
-    });
+export const sendEmail = async (options: EmailOptions, retries = 2): Promise<boolean> => {
+  let lastError: any = null;
 
-    const mailOptions = {
-      from: options.from || "bryan.susanto@seatping.biz",
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-    };
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`[EMAIL] Retry attempt ${attempt}/${retries} for:`, options.to);
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      } else {
+        console.log("[EMAIL] Attempting to send email to:", options.to);
+      }
 
-    console.log("[EMAIL] Mail options prepared, sending...");
-    const info = await transporter.sendMail(mailOptions);
-    console.log("[EMAIL] Email sent successfully:", info.messageId);
-    console.log("[EMAIL] Response:", info);
-    return true;
-  } catch (error: any) {
-    console.error("[EMAIL] Error sending email:", error);
-    console.error("[EMAIL] Error details:", {
-      message: error?.message,
-      code: error?.code,
-      command: error?.command,
-    });
-    return false;
+      console.log("[EMAIL] Using transporter config:", {
+        host: (transporter.options as any).host,
+        port: (transporter.options as any).port,
+        secure: (transporter.options as any).secure,
+        user: (transporter.options as any).auth?.user,
+        connectionTimeout: (transporter.options as any).connectionTimeout,
+      });
+
+      const mailOptions = {
+        from: options.from || "bryan.susanto@seatping.biz",
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+      };
+
+      console.log("[EMAIL] Mail options prepared, sending...");
+      const info = await transporter.sendMail(mailOptions);
+      console.log("[EMAIL] Email sent successfully:", info.messageId);
+      console.log("[EMAIL] Response:", info);
+      return true;
+    } catch (error: any) {
+      lastError = error;
+      console.error(`[EMAIL] Error sending email (attempt ${attempt + 1}/${retries + 1}):`, error?.message);
+      console.error("[EMAIL] Error details:", {
+        message: error?.message,
+        code: error?.code,
+        command: error?.command,
+        responseCode: error?.responseCode,
+      });
+
+      // If this is the last attempt, log the final failure
+      if (attempt === retries) {
+        console.error("[EMAIL] All retry attempts failed. Final error:", lastError);
+      }
+    }
   }
+
+  return false;
 };
 
 export const sendPasswordResetEmail = async (

@@ -6,7 +6,7 @@ import { prisma } from "../lib/prisma.js";
 import { signJwt, setAuthCookie, clearAuthCookie, requireAuth, } from "../lib/auth.js";
 import { LoginSchema, SignUpSchema } from "../lib/validation.js";
 import { getCreditsForPlan, enforceTrialExpiration, createLocationWithTrialEnforcement, checkAndRefillMonthlyCredits, handlePlanPurchase } from "../lib/trial.js";
-import { sendPasswordResetEmail, sendEmail, sendRegistrationConfirmationEmail } from "../lib/email.js";
+import { sendPasswordResetEmail, sendEmail, sendRegistrationConfirmationEmail, sendPasswordChangeConfirmationEmail } from "../lib/email.js";
 import crypto from "crypto";
 const router = Router();
 // Note: Old utility functions replaced with trial-enforced versions in ../lib/trial.ts
@@ -991,6 +991,10 @@ router.post("/reset-password", async (req, res) => {
                 resetToken: null,
                 resetTokenExpiry: null,
             },
+        });
+        // Send password change confirmation email
+        sendPasswordChangeConfirmationEmail(user.email, user.name).catch((err) => {
+            console.error("[auth] Failed to send password change confirmation email:", err);
         });
         return res.json({
             success: true,
