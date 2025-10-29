@@ -17,11 +17,15 @@
       "destination": "/api/server"
     },
     {
-      "source": "/sales/:path*",
+      "source": "/api/sales/:path*",
       "destination": "/api/server"
     },
     {
-      "source": "/feedback/:path*",
+      "source": "/api/feedback/:path*",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/tickets/:path*",
       "destination": "/api/server"
     },
     {
