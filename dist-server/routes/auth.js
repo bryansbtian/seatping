@@ -1,4 +1,4 @@
-import twilio from "twilio";
+import Telnyx from "telnyx";
 // server/routes/auth.ts
 import { Router } from "express";
 import bcrypt from "bcrypt";
@@ -6,7 +6,7 @@ import { prisma } from "../lib/prisma.js";
 import { signJwt, setAuthCookie, clearAuthCookie, requireAuth, } from "../lib/auth.js";
 import { LoginSchema, SignUpSchema } from "../lib/validation.js";
 import { getCreditsForPlan, enforceTrialExpiration, createLocationWithTrialEnforcement, checkAndRefillMonthlyCredits, handlePlanPurchase } from "../lib/trial.js";
-import { sendPasswordResetEmail, sendEmail } from "../lib/email.js";
+import { sendPasswordResetEmail, sendEmail, sendRegistrationConfirmationEmail } from "../lib/email.js";
 import crypto from "crypto";
 const router = Router();
 // Note: Old utility functions replaced with trial-enforced versions in ../lib/trial.ts
@@ -142,6 +142,19 @@ router.post("/signup", async (req, res) => {
             email: user.email,
             username: user.username,
             createdAt: user.createdAt,
+        });
+        // Send registration confirmation email (don't wait for it)
+        sendRegistrationConfirmationEmail(user.email, user.name, user.username, user.plan || 'Starter')
+            .then((sent) => {
+            if (sent) {
+                console.log('[auth] Registration confirmation email sent to:', user.email);
+            }
+            else {
+                console.error('[auth] Failed to send registration confirmation email to:', user.email);
+            }
+        })
+            .catch((err) => {
+            console.error('[auth] Error sending registration confirmation email:', err);
         });
         const token = signJwt({ sub: user.id });
         setAuthCookie(res, token);
@@ -582,30 +595,28 @@ router.post("/business/:username/queue/:customerId/admit", requireAuth, async (r
                 // Send SMS to any customer who has a phone number
                 if (admittedCustomer.phoneNumber && admittedCustomer.phoneNumber.trim() !== "") {
                     try {
-                        const accountSid = process.env.TWILIO_ACCOUNT_SID;
-                        const authToken = process.env.TWILIO_AUTH_TOKEN;
-                        const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
-                        if (!accountSid || !authToken || !twilioPhoneNumber) {
-                            console.error('Missing Twilio credentials:', {
-                                hasAccountSid: !!accountSid,
-                                hasAuthToken: !!authToken,
-                                hasTwilioPhone: !!twilioPhoneNumber
+                        const telnyxApiKey = process.env.TELNYX_API_KEY;
+                        const telnyxPhoneNumber = process.env.TELNYX_PHONE_NUMBER;
+                        if (!telnyxApiKey || !telnyxPhoneNumber) {
+                            console.error('Missing Telnyx credentials:', {
+                                hasApiKey: !!telnyxApiKey,
+                                hasTelnyxPhone: !!telnyxPhoneNumber
                             });
-                            throw new Error('Twilio credentials not configured');
+                            throw new Error('Telnyx credentials not configured');
                         }
-                        const client = twilio(accountSid, authToken);
+                        const telnyx = new Telnyx({ apiKey: telnyxApiKey });
                         // Format phone number to E.164 format using the stored country code
                         const customerCountryCode = admittedCustomer.countryCode || "+1";
                         let phoneDigitsOnly = admittedCustomer.phoneNumber.trim().replace(/\D/g, '');
                         // Construct full phone number with country code
                         let formattedPhone = customerCountryCode + phoneDigitsOnly;
                         const businessName = user.name || "The business";
-                        const message = await client.messages.create({
-                            body: `Good news! It's your turn at ${businessName}. Please proceed to the host within the next 5 minutes. Thank you for using SeatPing!`,
-                            from: twilioPhoneNumber,
-                            to: formattedPhone
+                        const message = await telnyx.messages.send({
+                            from: telnyxPhoneNumber,
+                            to: formattedPhone,
+                            text: `Good news! It's your turn at ${businessName}. Please proceed to the host within the next 5 minutes. Thank you for using SeatPing!`,
                         });
-                        console.log("SMS notification sent successfully:", message.sid, "to", formattedPhone);
+                        console.log("SMS notification sent successfully:", message.data?.id, "to", formattedPhone);
                     }
                     catch (error) {
                         console.error('Failed to send SMS notification:', error?.message || error);
@@ -1029,6 +1040,54 @@ router.post("/test-email", async (req, res) => {
     catch (err) {
         console.error("[auth] test email error:", err?.message || err);
         return res.status(500).json({ error: "Server error" });
+    }
+});
+/**
+ * POST /auth/telnyx/webhook
+ * Handles Telnyx webhook events for SMS delivery status
+ */
+router.post("/telnyx/webhook", async (req, res) => {
+    try {
+        const event = req.body;
+        console.log('[TELNYX-WEBHOOK] Received event:', {
+            type: event.data?.event_type,
+            messageId: event.data?.payload?.id,
+            timestamp: new Date().toISOString()
+        });
+        // Handle different event types
+        if (event.data?.event_type === 'message.sent') {
+            console.log('[TELNYX-WEBHOOK] Message sent:', {
+                messageId: event.data.payload.id,
+                to: event.data.payload.to?.[0]?.phone_number,
+                from: event.data.payload.from?.phone_number,
+            });
+        }
+        else if (event.data?.event_type === 'message.delivered') {
+            console.log('[TELNYX-WEBHOOK] Message delivered:', {
+                messageId: event.data.payload.id,
+                to: event.data.payload.to?.[0]?.phone_number,
+            });
+        }
+        else if (event.data?.event_type === 'message.sending_failed') {
+            console.error('[TELNYX-WEBHOOK] Message failed:', {
+                messageId: event.data.payload.id,
+                to: event.data.payload.to?.[0]?.phone_number,
+                errors: event.data.payload.errors,
+            });
+        }
+        else if (event.data?.event_type === 'message.finalized') {
+            console.log('[TELNYX-WEBHOOK] Message finalized:', {
+                messageId: event.data.payload.id,
+                status: event.data.payload.to?.[0]?.status,
+            });
+        }
+        // Always respond with 200 to acknowledge receipt
+        return res.json({ received: true });
+    }
+    catch (err) {
+        console.error('[TELNYX-WEBHOOK] Error processing webhook:', err?.message || err);
+        // Still return 200 to prevent retries
+        return res.json({ received: true });
     }
 });
 export default router;

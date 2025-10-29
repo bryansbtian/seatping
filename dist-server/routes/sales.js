@@ -1,6 +1,26 @@
 import express from 'express';
 import { sendSalesInquiryEmail } from '../lib/email.js';
+import { prisma } from '../lib/prisma.js';
 const router = express.Router();
+// Helper function to generate unique ticket number
+const generateTicketNumber = async (type) => {
+    const date = new Date();
+    const dateStr = date.toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD
+    // Get count of tickets created today for this type
+    const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+    const count = await prisma.ticket.count({
+        where: {
+            type: type.toLowerCase(),
+            createdAt: {
+                gte: startOfDay,
+                lte: endOfDay,
+            },
+        },
+    });
+    const ticketNum = String(count + 1).padStart(4, '0');
+    return `${type}-${dateStr}-${ticketNum}`;
+};
 router.post('/inquiry', express.json(), async (req, res) => {
     try {
         console.log('[sales] Received sales inquiry:', req.body);
@@ -18,14 +38,41 @@ router.post('/inquiry', express.json(), async (req, res) => {
         }
         console.log('[sales] Sending sales inquiry email...');
         const emailSent = await sendSalesInquiryEmail(data);
-        if (emailSent) {
-            console.log('[sales] ✅ Sales inquiry email sent successfully');
-            return res.json({ success: true, message: 'Sales inquiry submitted successfully' });
-        }
-        else {
+        if (!emailSent) {
             console.error('[sales] ❌ Failed to send sales inquiry email');
             return res.status(500).json({ error: 'Failed to send inquiry email' });
         }
+        console.log('[sales] ✅ Sales inquiry email sent successfully');
+        // Create ticket in database
+        console.log('[sales] Creating ticket...');
+        const ticketNumber = await generateTicketNumber('SALES');
+        const ticket = await prisma.ticket.create({
+            data: {
+                ticketNumber,
+                type: 'sales',
+                status: 'open',
+                subject: data.subject,
+                senderName: data.contactName,
+                senderEmail: data.workEmail,
+                senderPhone: data.phone,
+                businessName: data.businessName,
+                data: data,
+                messages: [
+                    {
+                        sender: data.contactName,
+                        message: data.message,
+                        timestamp: new Date().toISOString(),
+                        isTeamResponse: false,
+                    },
+                ],
+            },
+        });
+        console.log('[sales] ✅ Ticket created:', ticket.ticketNumber);
+        return res.json({
+            success: true,
+            message: 'Sales inquiry submitted successfully',
+            ticketNumber: ticket.ticketNumber,
+        });
     }
     catch (error) {
         console.error('[sales] ❌ Error processing sales inquiry:', error);

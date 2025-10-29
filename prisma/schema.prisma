@@ -14,8 +14,8 @@ model User {
   email     String   @unique
   phone     String
   password  String
-  customerId        String?  @unique
-  plan              String?         
+  customerId        String?
+  plan              String?
   locations         Json     @default("[]")
   trial             Boolean  @default(true)
   trialDurationDays Int      @default(7)
@@ -29,4 +29,27 @@ model User {
   updatedAt         DateTime @updatedAt
 
   @@map("users")
+}
+
+model Ticket {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  ticketNumber  String   @unique
+  type          String   // "sales" or "feedback"
+  status        String   @default("open") // "open", "in_progress", "closed"
+  priority      String?  // "low", "medium", "high"
+  subject       String
+  senderName    String
+  senderEmail   String
+  senderPhone   String?
+  businessName  String?
+  data          Json     // Store full request data (SalesInquiryData or FeedbackData)
+  messages      Json     @default("[]") // Array of {sender, message, timestamp, isTeamResponse}
+  assignedTo    String?  // Name of team member handling ticket
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("tickets")
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
 }

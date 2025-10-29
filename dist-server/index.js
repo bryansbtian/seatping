@@ -11,6 +11,7 @@ import adminRouter from "./routes/admin.js";
 import stripeRouter from "./routes/stripe.js";
 import salesRouter from "./routes/sales.js";
 import feedbackRouter from "./routes/feedback.js";
+import ticketsRouter from "./routes/tickets.js";
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,8 +32,9 @@ app.use((req, _res, next) => {
 });
 app.use("/auth", authRouter);
 app.use("/admin", adminRouter);
-app.use("/sales", salesRouter);
-app.use("/feedback", feedbackRouter);
+app.use("/api/sales", salesRouter);
+app.use("/api/feedback", feedbackRouter);
+app.use("/tickets", ticketsRouter);
 // Serve static files from the React app in production
 if (process.env.NODE_ENV === "production") {
     const distPath = path.join(__dirname, "../dist");

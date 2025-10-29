@@ -271,11 +271,24 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
                 if (customerId) {
                     console.log("[stripe] Saving customer ID:", customerId, "for user:", userId);
                     try {
-                        await prisma.user.update({
-                            where: { id: userId },
-                            data: { customerId },
+                        // Check if another user already has this customerId
+                        const existingUser = await prisma.user.findFirst({
+                            where: {
+                                customerId,
+                                id: { not: userId }, // Exclude current user
+                            },
                         });
-                        console.log("[stripe] ✅ Customer ID saved");
+                        if (existingUser) {
+                            console.error("[stripe] ❌ CustomerId already exists for another user:", existingUser.id);
+                            // Don't save duplicate customerId
+                        }
+                        else {
+                            await prisma.user.update({
+                                where: { id: userId },
+                                data: { customerId },
+                            });
+                            console.log("[stripe] ✅ Customer ID saved");
+                        }
                     }
                     catch (error) {
                         console.error("[stripe] ❌ Failed to save customer ID:", error);

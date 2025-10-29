@@ -98,7 +98,7 @@ const Feedback = () => {
     if (!validate()) return;
 
     try {
-      const response = await fetch("/feedback/submit", {
+      const response = await fetch("/api/feedback/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

@@ -447,8 +447,8 @@ const LandingPage = () => {
 
             <div className="md:col-span-3 text-center mt-6">
               <p className="text-muted-foreground">
-                <Star className="w-4 h-4 inline-block mr-1 text-yellow-500" />{" "}
-                All plans include 14-day free trial • No credit card required •
+                <Star className="w-4 h-4 inline-block mr-1 text-yellow-500 relative -top-[2px]" />{" "}
+                All plans include 7-day free trial • No credit card required •
                 Cancel anytime
               </p>
             </div>

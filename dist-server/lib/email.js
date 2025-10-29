@@ -160,15 +160,15 @@ export const sendFeedbackEmail = async (data) => {
         medium: "Medium",
         high: "High",
     };
-    // Determine severity color and emoji
+    // Determine severity color and label
     const getSeverityStyle = (severity) => {
         switch (severity) {
             case "high":
-                return { color: "#d32f2f", emoji: "🔴", label: "High Priority" };
+                return { color: "#d32f2f", emoji: "", label: "High Priority" };
             case "medium":
-                return { color: "#f57c00", emoji: "🟡", label: "Medium Priority" };
+                return { color: "#f57c00", emoji: "", label: "Medium Priority" };
             case "low":
-                return { color: "#388e3c", emoji: "🟢", label: "Low Priority" };
+                return { color: "#388e3c", emoji: "", label: "Low Priority" };
             default:
                 return { color: "#666", emoji: "", label: "" };
         }
@@ -187,7 +187,7 @@ export const sendFeedbackEmail = async (data) => {
         ? `
         <div style="background: ${severityStyle.color}15; border-left: 4px solid ${severityStyle.color}; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
           <p style="margin: 0; color: ${severityStyle.color}; font-weight: bold; font-size: 16px;">
-            ${severityStyle.emoji} ${severityStyle.label}
+            ${severityStyle.label}
           </p>
         </div>
         `
@@ -258,6 +258,84 @@ export const sendFeedbackEmail = async (data) => {
         to: "bryan.susanto@seatping.biz",
         subject: `Feedback [${feedbackTypeLabels[data.feedbackType]}]: ${data.subject}`,
         html,
+    });
+};
+export const sendRegistrationConfirmationEmail = async (email, name, username, plan) => {
+    const dashboardUrl = `${process.env.FRONTEND_URL || "https://www.seatping.biz"}/business`;
+    const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="margin: 0; font-size: 28px;">Welcome to SeatPing!</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">Your account is ready to go</p>
+      </div>
+
+      <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+        <h2 style="color: #333; margin-bottom: 20px;">Hi ${name},</h2>
+
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          Thank you for signing up for SeatPing! Your account has been successfully created and you're ready to start managing your queue.
+        </p>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #667eea;">
+          <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Your Account Details</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold; width: 140px;">Username:</td>
+              <td style="padding: 8px 0; color: #333;">${username}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Email:</td>
+              <td style="padding: 8px 0; color: #333;">${email}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Plan:</td>
+              <td style="padding: 8px 0; color: #333;">${plan}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #4caf50;">
+          <p style="margin: 0; color: #2e7d32; font-weight: bold;">Your 7-day free trial has started!</p>
+          <p style="margin: 10px 0 0 0; color: #2e7d32; font-size: 14px;">
+            Enjoy full access to all features during your trial period.
+          </p>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${dashboardUrl}"
+             style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; display: inline-block; font-weight: bold; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+            Go to Dashboard
+          </a>
+        </div>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; margin-top: 25px;">
+          <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Getting Started</h3>
+          <ul style="color: #666; line-height: 1.8; margin: 0; padding-left: 20px;">
+            <li>Set up your business location and details</li>
+            <li>Customize your queue settings</li>
+            <li>Start adding customers to your queue</li>
+            <li>Send SMS notifications to keep customers informed</li>
+          </ul>
+        </div>
+
+        <p style="color: #666; font-size: 14px; margin-top: 25px;">
+          If you have any questions or need help getting started, feel free to reach out to us. We're here to help!
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+        <p>© 2025 SeatPing. All rights reserved.</p>
+        <p style="margin-top: 10px;">
+          <a href="${process.env.FRONTEND_URL || "https://www.seatping.biz"}/feedback" style="color: #667eea; text-decoration: none;">Contact Support</a>
+        </p>
+      </div>
+    </div>
+  `;
+    return sendEmail({
+        to: email,
+        subject: "Welcome to SeatPing - Your Account is Ready!",
+        html,
+        from: "bryan.susanto@seatping.biz",
     });
 };
 export const sendSalesInquiryEmail = async (data) => {

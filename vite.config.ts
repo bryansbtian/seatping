@@ -21,6 +21,18 @@ export default defineConfig(({ mode }) => ({
         target: "http://localhost:4000",
         changeOrigin: true,
       },
+      "/api/feedback": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
+      "/api/sales": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
+      "/tickets": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(

@@ -104,7 +104,7 @@ const Sales = () => {
     if (!validate()) return;
 
     try {
-      const response = await fetch("/sales/inquiry", {
+      const response = await fetch("/api/sales/inquiry", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
