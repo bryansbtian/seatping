@@ -568,3 +568,159 @@ export const sendSalesInquiryEmail = async (
     html,
   });
 };
+
+// Send confirmation email to user who submitted feedback
+export const sendFeedbackConfirmationEmail = async (
+  userEmail: string,
+  userName: string,
+  ticketNumber: string,
+  subject: string
+): Promise<boolean> => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">Feedback Received</p>
+      </div>
+
+      <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+        <h2 style="color: #333; margin-bottom: 20px;">Thank you for your feedback!</h2>
+
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          Hi ${userName},
+        </p>
+
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          We've received your feedback and created a ticket for you. Our team will review it and get back to you as soon as possible.
+        </p>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #667eea;">
+          <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Your Ticket Details</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold; width: 140px;">Ticket ID:</td>
+              <td style="padding: 8px 0; color: #333; font-weight: bold; font-size: 16px;">${ticketNumber}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Subject:</td>
+              <td style="padding: 8px 0; color: #333;">${subject}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Status:</td>
+              <td style="padding: 8px 0; color: #333;">Open</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
+          <p style="margin: 0; color: #1565c0; font-weight: bold;">Please save your ticket ID</p>
+          <p style="margin: 10px 0 0 0; color: #1565c0; font-size: 14px;">
+            You can use this ticket ID (${ticketNumber}) to reference your feedback if you need to follow up with us.
+          </p>
+        </div>
+
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          We appreciate you taking the time to help us improve SeatPing. Your input is valuable to us!
+        </p>
+
+        <p style="color: #666; font-size: 14px; margin-top: 25px;">
+          If you have any questions or need immediate assistance, please don't hesitate to reach out to us at <a href="mailto:bryan.susanto@seatping.biz" style="color: #667eea;">bryan.susanto@seatping.biz</a>.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+        <p>© 2025 SeatPing. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: userEmail,
+    subject: `Feedback Received - Ticket ${ticketNumber}`,
+    html,
+    from: "bryan.susanto@seatping.biz",
+  });
+};
+
+// Send confirmation email to user who submitted sales inquiry
+export const sendSalesInquiryConfirmationEmail = async (
+  userEmail: string,
+  contactName: string,
+  ticketNumber: string,
+  subject: string
+): Promise<boolean> => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">Sales Inquiry Received</p>
+      </div>
+
+      <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+        <h2 style="color: #333; margin-bottom: 20px;">Thank you for your interest!</h2>
+
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          Hi ${contactName},
+        </p>
+
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          We've received your sales inquiry and created a ticket for you. Our sales team will review your request and get back to you within 24 hours.
+        </p>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #667eea;">
+          <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Your Ticket Details</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold; width: 140px;">Ticket ID:</td>
+              <td style="padding: 8px 0; color: #333; font-weight: bold; font-size: 16px;">${ticketNumber}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Subject:</td>
+              <td style="padding: 8px 0; color: #333;">${subject}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Status:</td>
+              <td style="padding: 8px 0; color: #333;">Open</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
+          <p style="margin: 0; color: #1565c0; font-weight: bold;">Please save your ticket ID</p>
+          <p style="margin: 10px 0 0 0; color: #1565c0; font-size: 14px;">
+            You can use this ticket ID (${ticketNumber}) to reference your inquiry if you need to follow up with us.
+          </p>
+        </div>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+          <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px; font-size: 18px;">What Happens Next?</h3>
+          <ul style="color: #666; line-height: 1.8; margin: 0; padding-left: 20px;">
+            <li>Our sales team will review your requirements</li>
+            <li>We'll prepare a customized solution for your business</li>
+            <li>You'll receive a detailed proposal within 24 hours</li>
+            <li>We can schedule a call to discuss your needs further</li>
+          </ul>
+        </div>
+
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          We're excited about the opportunity to work with you and help your business succeed with SeatPing!
+        </p>
+
+        <p style="color: #666; font-size: 14px; margin-top: 25px;">
+          If you have any questions or need immediate assistance, please don't hesitate to reach out to us at <a href="mailto:bryan.susanto@seatping.biz" style="color: #667eea;">bryan.susanto@seatping.biz</a>.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+        <p>© 2025 SeatPing. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: userEmail,
+    subject: `Sales Inquiry Received - Ticket ${ticketNumber}`,
+    html,
+    from: "bryan.susanto@seatping.biz",
+  });
+};

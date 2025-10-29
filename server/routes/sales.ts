@@ -1,5 +1,5 @@
 import express from 'express';
-import { sendSalesInquiryEmail, SalesInquiryData } from '../lib/email.js';
+import { sendSalesInquiryEmail, sendSalesInquiryConfirmationEmail, SalesInquiryData } from '../lib/email.js';
 import { prisma } from '../lib/prisma.js';
 
 const router = express.Router();
@@ -83,6 +83,23 @@ router.post('/inquiry', express.json(), async (req, res) => {
     });
 
     console.log('[sales] ✅ Ticket created:', ticket.ticketNumber);
+
+    // Send confirmation email to user
+    console.log('[sales] Sending confirmation email to user...');
+    const confirmationSent = await sendSalesInquiryConfirmationEmail(
+      data.workEmail,
+      data.contactName,
+      ticket.ticketNumber,
+      data.subject
+    );
+
+    if (confirmationSent) {
+      console.log('[sales] ✅ Confirmation email sent to user');
+    } else {
+      console.error('[sales] ⚠️ Failed to send confirmation email to user');
+      // Note: We don't fail the request if confirmation email fails
+    }
+
     return res.json({
       success: true,
       message: 'Sales inquiry submitted successfully',
