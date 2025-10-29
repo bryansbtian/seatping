@@ -19,7 +19,7 @@ import {
   checkAndRefillMonthlyCredits,
   handlePlanPurchase
 } from "../lib/trial.js";
-import { sendPasswordResetEmail, sendEmail, sendRegistrationConfirmationEmail } from "../lib/email.js";
+import { sendPasswordResetEmail, sendEmail, sendRegistrationConfirmationEmail, sendPasswordChangeConfirmationEmail } from "../lib/email.js";
 import crypto from "crypto";
 
 const router = Router();
@@ -1203,9 +1203,14 @@ router.post("/reset-password", async (req, res) => {
       },
     });
 
-    return res.json({ 
-      success: true, 
-      message: "Password has been reset successfully" 
+    // Send password change confirmation email
+    sendPasswordChangeConfirmationEmail(user.email, user.name).catch((err) => {
+      console.error("[auth] Failed to send password change confirmation email:", err);
+    });
+
+    return res.json({
+      success: true,
+      message: "Password has been reset successfully"
     });
   } catch (err: any) {
     console.error("[auth] reset password error:", err?.message || err);

@@ -106,6 +106,62 @@ export const sendPasswordResetEmail = async (
   });
 };
 
+export const sendPasswordChangeConfirmationEmail = async (
+  email: string,
+  name?: string
+): Promise<boolean> => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">Password Successfully Changed</p>
+      </div>
+
+      <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+        <h2 style="color: #333; margin-bottom: 20px;">Password Changed Successfully</h2>
+        ${name ? `<p style="color: #666; line-height: 1.6; margin-bottom: 25px;">Hi ${name},</p>` : ''}
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          Your SeatPing account password has been successfully changed. You can now use your new password to log in to your account.
+        </p>
+
+        <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #4caf50;">
+          <p style="margin: 0; color: #2e7d32; font-weight: bold;">Your account is secure</p>
+          <p style="margin: 10px 0 0 0; color: #2e7d32; font-size: 14px;">
+            Your password was changed successfully. If you made this change, no further action is needed.
+          </p>
+        </div>
+
+        <div style="background: #fff3e0; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #ff9800;">
+          <p style="margin: 0; color: #e65100; font-weight: bold;">Didn't make this change?</p>
+          <p style="margin: 10px 0 0 0; color: #e65100; font-size: 14px;">
+            If you did not change your password, please contact our support team immediately at <a href="mailto:bryan.susanto@seatping.biz" style="color: #e65100;">bryan.susanto@seatping.biz</a>
+          </p>
+        </div>
+
+        <p style="color: #666; font-size: 14px; margin-top: 25px;">
+          For security reasons, make sure to:
+        </p>
+        <ul style="color: #666; line-height: 1.8; margin: 10px 0; padding-left: 20px;">
+          <li>Use a strong, unique password</li>
+          <li>Never share your password with anyone</li>
+          <li>Change your password regularly</li>
+        </ul>
+      </div>
+
+      <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+        <p>© 2025 SeatPing. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "Your SeatPing Password Has Been Changed",
+    html,
+    from: "bryan.susanto@seatping.biz",
+  });
+};
+
 export const sendPlanChangeEmail = async (
   email: string,
   newPlan: string
@@ -365,24 +421,6 @@ export const sendRegistrationConfirmationEmail = async (
         <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
           Thank you for signing up for SeatPing! Your account has been successfully created and you're ready to start managing your queue.
         </p>
-
-        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #667eea;">
-          <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Your Account Details</h3>
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 8px 0; color: #666; font-weight: bold; width: 140px;">Username:</td>
-              <td style="padding: 8px 0; color: #333;">${username}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; color: #666; font-weight: bold;">Email:</td>
-              <td style="padding: 8px 0; color: #333;">${email}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; color: #666; font-weight: bold;">Plan:</td>
-              <td style="padding: 8px 0; color: #333;">${plan}</td>
-            </tr>
-          </table>
-        </div>
 
         <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #4caf50;">
           <p style="margin: 0; color: #2e7d32; font-weight: bold;">Your 7-day free trial has started!</p>
