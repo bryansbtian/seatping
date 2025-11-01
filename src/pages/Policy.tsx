@@ -109,7 +109,7 @@ const Policy = () => {
               </p>
               <ul className="ml-6 list-disc text-muted-foreground text-sm sm:text-base">
                 <li>Stripe (for payments & subscriptions)</li>
-                <li>Twilio (for communications)</li>
+                <li>Telnyx (for communications)</li>
                 <li>Analytics providers (aggregated usage analytics)</li>
                 <li>Service providers under confidentiality obligations</li>
                 <li>
