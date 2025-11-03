@@ -57,7 +57,8 @@ export default function QueueBusiness() {
     countryCode: "+1", // default to US
     waitingPreference: "on_premises" as "on_premises" | "wait_anywhere",
     joinedAt: "", // Will be set when customer joins queue
-    smsConsent: false, // required when wait_anywhere
+    smsConsent: false, // required when wait_anywhere - transactional messages
+    smsMarketingConsent: false, // optional - marketing messages
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -129,6 +130,8 @@ export default function QueueBusiness() {
                   response.customer.waitingPreference || "on_premises",
                 joinedAt: response.customer.joinedAt || "",
                 smsConsent: response.customer.smsConsent || false,
+                smsMarketingConsent:
+                  response.customer.smsMarketingConsent || false,
               });
               setBusinessName(response.businessName || list[0].businessName);
 
@@ -311,7 +314,15 @@ export default function QueueBusiness() {
       newErrors.phoneNumber = "Phone number is required for Wait Anywhere";
     }
     if (form.waitingPreference === "wait_anywhere" && !form.smsConsent) {
-      newErrors.smsConsent = "You must agree to receive text messages";
+      newErrors.smsConsent =
+        "You must agree to receive transactional text messages";
+    }
+    if (
+      form.waitingPreference === "wait_anywhere" &&
+      !form.smsMarketingConsent
+    ) {
+      newErrors.smsMarketingConsent =
+        "You must agree to receive marketing text messages";
     }
     setErrors(newErrors);
     if (Object.keys(newErrors).length) return;
@@ -330,6 +341,7 @@ export default function QueueBusiness() {
           countryCode: form.countryCode,
           waitingPreference: form.waitingPreference,
           smsConsent: form.smsConsent,
+          smsMarketingConsent: form.smsMarketingConsent,
         }),
       });
 
@@ -369,7 +381,10 @@ export default function QueueBusiness() {
 
   // UPDATED: Always show a catchy toast when switching; if phone missing, prompt + focus
   const changePreferenceOnStatus = (pref: "on_premises" | "wait_anywhere") => {
-    if (pref === "wait_anywhere" && (!form.phoneNumber || !form.smsConsent)) {
+    if (
+      pref === "wait_anywhere" &&
+      (!form.phoneNumber || !form.smsConsent || !form.smsMarketingConsent)
+    ) {
       // ensure the phone field appears
       setForm((p) => ({ ...p, waitingPreference: "wait_anywhere" }));
       const newErrors: Record<string, string> = {};
@@ -378,7 +393,12 @@ export default function QueueBusiness() {
           "Phone number is required if you want to wait anywhere";
       }
       if (!form.smsConsent) {
-        newErrors.smsConsent = "You must agree to receive text messages";
+        newErrors.smsConsent =
+          "You must agree to receive transactional text messages";
+      }
+      if (!form.smsMarketingConsent) {
+        newErrors.smsMarketingConsent =
+          "You must agree to receive marketing text messages";
       }
       setErrors((p) => ({ ...p, ...newErrors }));
 
@@ -387,7 +407,7 @@ export default function QueueBusiness() {
         title: "Almost there!",
         description: !form.phoneNumber
           ? "Add your phone number so we can text you when it's nearly your turn"
-          : "Please agree to receive text messages to continue",
+          : "Please agree to both consent checkboxes to continue",
       });
 
       // focus the phone field if missing
@@ -397,7 +417,12 @@ export default function QueueBusiness() {
       return;
     }
 
-    setErrors((p) => ({ ...p, phoneNumber: "", smsConsent: "" }));
+    setErrors((p) => ({
+      ...p,
+      phoneNumber: "",
+      smsConsent: "",
+      smsMarketingConsent: "",
+    }));
     setForm((p) => ({ ...p, waitingPreference: pref }));
 
     if (pref === "on_premises") {
@@ -676,40 +701,10 @@ export default function QueueBusiness() {
                           name="countryCode"
                           value={form.countryCode}
                           onChange={handleChange}
-                          className="w-24 rounded-md border bg-background pl-3 pr-7 py-2 text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%23666%22%20d%3D%22M10.293%203.293%206%207.586%201.707%203.293A1%201%200%2000.293%204.707l5%205a1%201%200%20001.414%200l5-5a1%201%200%2000-1.414-1.414z%22%2F%3E%3C%2Fsvg%3E')] bg-[center_right_0.5rem] bg-no-repeat"
+                          disabled
+                          className="w-24 rounded-md border bg-background pl-3 pr-7 py-2 text-sm appearance-none opacity-60 cursor-not-allowed"
                         >
                           <option value="+1">🇺🇸 +1</option>
-                          <option value="+44">🇬🇧 +44</option>
-                          <option value="+91">🇮🇳 +91</option>
-                          <option value="+86">🇨🇳 +86</option>
-                          <option value="+81">🇯🇵 +81</option>
-                          <option value="+49">🇩🇪 +49</option>
-                          <option value="+33">🇫🇷 +33</option>
-                          <option value="+39">🇮🇹 +39</option>
-                          <option value="+34">🇪🇸 +34</option>
-                          <option value="+61">🇦🇺 +61</option>
-                          <option value="+64">🇳🇿 +64</option>
-                          <option value="+52">🇲🇽 +52</option>
-                          <option value="+55">🇧🇷 +55</option>
-                          <option value="+27">🇿🇦 +27</option>
-                          <option value="+82">🇰🇷 +82</option>
-                          <option value="+7">🇷🇺 +7</option>
-                          <option value="+31">🇳🇱 +31</option>
-                          <option value="+46">🇸🇪 +46</option>
-                          <option value="+47">🇳🇴 +47</option>
-                          <option value="+45">🇩🇰 +45</option>
-                          <option value="+41">🇨🇭 +41</option>
-                          <option value="+32">🇧🇪 +32</option>
-                          <option value="+43">🇦🇹 +43</option>
-                          <option value="+351">🇵🇹 +351</option>
-                          <option value="+48">🇵🇱 +48</option>
-                          <option value="+90">🇹🇷 +90</option>
-                          <option value="+62">🇮🇩 +62</option>
-                          <option value="+63">🇵🇭 +63</option>
-                          <option value="+65">🇸🇬 +65</option>
-                          <option value="+66">🇹🇭 +66</option>
-                          <option value="+60">🇲🇾 +60</option>
-                          <option value="+84">🇻🇳 +84</option>
                         </select>
                         <Input
                           id="phoneNumber"
@@ -732,36 +727,106 @@ export default function QueueBusiness() {
                       )}
                     </div>
 
-                    {/* SMS Consent Checkbox */}
-                    <div className="flex items-start gap-2">
-                      <Checkbox
-                        id="smsConsent"
-                        checked={form.smsConsent}
-                        onCheckedChange={(checked) =>
-                          setForm((p) => ({
-                            ...p,
-                            smsConsent: checked as boolean,
-                          }))
-                        }
-                        className={cn(
-                          errors.smsConsent ? "border-destructive" : "",
-                          "mt-1.5 flex-shrink-0"
-                        )}
-                      />
-                      <div className="flex-1">
-                        <label
-                          htmlFor="smsConsent"
-                          className="text-sm leading-5 cursor-pointer"
-                        >
-                          I agree to receive text messages from{" "}
-                          {businessName || "this business"} for queue
-                          notifications. Message and data rates may apply.
-                        </label>
-                        {errors.smsConsent && (
-                          <p className="text-sm text-destructive mt-1">
-                            {errors.smsConsent}
-                          </p>
-                        )}
+                    {/* SMS Consent Checkboxes */}
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          id="smsConsent"
+                          checked={form.smsConsent}
+                          onCheckedChange={(checked) => {
+                            setForm((p) => ({
+                              ...p,
+                              smsConsent: checked as boolean,
+                            }));
+                            if (errors.smsConsent)
+                              setErrors((p) => ({ ...p, smsConsent: "" }));
+                          }}
+                          className={cn(
+                            errors.smsConsent ? "border-destructive" : "",
+                            "mt-1.5 flex-shrink-0"
+                          )}
+                        />
+                        <div className="flex-1">
+                          <label
+                            htmlFor="smsConsent"
+                            className="text-sm leading-5 cursor-pointer"
+                          >
+                            By checking this box and submitting this form, you
+                            consent to receive transactional text messages for
+                            queue notifications from SeatPing. Reply STOP to opt
+                            out. Reply HELP for help. Standard message and data
+                            rates may apply. Message frequency may vary. View
+                            our{" "}
+                            <a href="/terms" className="underline text-primary">
+                              Terms and Conditions
+                            </a>
+                            . View our{" "}
+                            <a
+                              href="/policy"
+                              className="underline text-primary"
+                            >
+                              Privacy Policy
+                            </a>
+                            .
+                          </label>
+                          {errors.smsConsent && (
+                            <p className="text-sm text-destructive mt-1">
+                              {errors.smsConsent}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          id="smsMarketingConsent"
+                          checked={form.smsMarketingConsent}
+                          onCheckedChange={(checked) => {
+                            setForm((p) => ({
+                              ...p,
+                              smsMarketingConsent: checked as boolean,
+                            }));
+                            if (errors.smsMarketingConsent)
+                              setErrors((p) => ({
+                                ...p,
+                                smsMarketingConsent: "",
+                              }));
+                          }}
+                          className={cn(
+                            errors.smsMarketingConsent
+                              ? "border-destructive"
+                              : "",
+                            "mt-1.5 flex-shrink-0"
+                          )}
+                        />
+                        <div className="flex-1">
+                          <label
+                            htmlFor="smsMarketingConsent"
+                            className="text-sm leading-5 cursor-pointer"
+                          >
+                            By checking this box and submitting this form, you
+                            consent to receive text messages for marketing from
+                            SeatPing. Reply STOP to opt out. Reply HELP for
+                            help. Message and data rates may apply. Message
+                            frequency may vary. View our{" "}
+                            <a href="/terms" className="underline text-primary">
+                              Terms and Conditions
+                            </a>
+                            . View our{" "}
+                            <a
+                              href="/policy"
+                              className="underline text-primary"
+                            >
+                              Privacy Policy
+                            </a>
+                            .
+                          </label>
+                          {errors.smsMarketingConsent && (
+                            <p className="text-sm text-destructive mt-1">
+                              {errors.smsMarketingConsent}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </>
@@ -888,40 +953,10 @@ export default function QueueBusiness() {
                             name="countryCode"
                             value={form.countryCode}
                             onChange={handleChange}
-                            className="w-24 rounded-md border bg-background pl-3 pr-7 py-2 text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%23666%22%20d%3D%22M10.293%203.293%206%207.586%201.707%203.293A1%201%200%2000.293%204.707l5%205a1%201%200%20001.414%200l5-5a1%201%200%2000-1.414-1.414z%22%2F%3E%3C%2Fsvg%3E')] bg-[center_right_0.5rem] bg-no-repeat"
+                            disabled
+                            className="w-24 rounded-md border bg-background pl-3 pr-7 py-2 text-sm appearance-none opacity-60 cursor-not-allowed"
                           >
                             <option value="+1">🇺🇸 +1</option>
-                            <option value="+44">🇬🇧 +44</option>
-                            <option value="+91">🇮🇳 +91</option>
-                            <option value="+86">🇨🇳 +86</option>
-                            <option value="+81">🇯🇵 +81</option>
-                            <option value="+49">🇩🇪 +49</option>
-                            <option value="+33">🇫🇷 +33</option>
-                            <option value="+39">🇮🇹 +39</option>
-                            <option value="+34">🇪🇸 +34</option>
-                            <option value="+61">🇦🇺 +61</option>
-                            <option value="+64">🇳🇿 +64</option>
-                            <option value="+52">🇲🇽 +52</option>
-                            <option value="+55">🇧🇷 +55</option>
-                            <option value="+27">🇿🇦 +27</option>
-                            <option value="+82">🇰🇷 +82</option>
-                            <option value="+7">🇷🇺 +7</option>
-                            <option value="+31">🇳🇱 +31</option>
-                            <option value="+46">🇸🇪 +46</option>
-                            <option value="+47">🇳🇴 +47</option>
-                            <option value="+45">🇩🇰 +45</option>
-                            <option value="+41">🇨🇭 +41</option>
-                            <option value="+32">🇧🇪 +32</option>
-                            <option value="+43">🇦🇹 +43</option>
-                            <option value="+351">🇵🇹 +351</option>
-                            <option value="+48">🇵🇱 +48</option>
-                            <option value="+90">🇹🇷 +90</option>
-                            <option value="+62">🇮🇩 +62</option>
-                            <option value="+63">🇵🇭 +63</option>
-                            <option value="+65">🇸🇬 +65</option>
-                            <option value="+66">🇹🇭 +66</option>
-                            <option value="+60">🇲🇾 +60</option>
-                            <option value="+84">🇻🇳 +84</option>
                           </select>
                           <Input
                             id="phoneNumber_status"
@@ -945,36 +980,112 @@ export default function QueueBusiness() {
                         )}
                       </div>
 
-                      {/* SMS Consent Checkbox */}
-                      <div className="flex items-start gap-2">
-                        <Checkbox
-                          id="smsConsent_status"
-                          checked={form.smsConsent}
-                          onCheckedChange={(checked) =>
-                            setForm((p) => ({
-                              ...p,
-                              smsConsent: checked as boolean,
-                            }))
-                          }
-                          className={cn(
-                            errors.smsConsent ? "border-destructive" : "",
-                            "mt-1.5 flex-shrink-0"
-                          )}
-                        />
-                        <div className="flex-1">
-                          <label
-                            htmlFor="smsConsent_status"
-                            className="text-sm leading-5 cursor-pointer"
-                          >
-                            I agree to receive text messages from{" "}
-                            {businessName || "this business"} for queue
-                            notifications. Message and data rates may apply.
-                          </label>
-                          {errors.smsConsent && (
-                            <p className="text-sm text-destructive mt-1">
-                              {errors.smsConsent}
-                            </p>
-                          )}
+                      {/* SMS Consent Checkboxes */}
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-2">
+                          <Checkbox
+                            id="smsConsent_status"
+                            checked={form.smsConsent}
+                            onCheckedChange={(checked) => {
+                              setForm((p) => ({
+                                ...p,
+                                smsConsent: checked as boolean,
+                              }));
+                              if (errors.smsConsent)
+                                setErrors((p) => ({ ...p, smsConsent: "" }));
+                            }}
+                            className={cn(
+                              errors.smsConsent ? "border-destructive" : "",
+                              "mt-1.5 flex-shrink-0"
+                            )}
+                          />
+                          <div className="flex-1">
+                            <label
+                              htmlFor="smsConsent_status"
+                              className="text-sm leading-5 cursor-pointer"
+                            >
+                              By checking this box and submitting this form, you
+                              consent to receive transactional text messages for
+                              queue notifications from SeatPing. Reply STOP to
+                              opt out. Reply HELP for help. Standard message and
+                              data rates may apply. Message frequency may vary.
+                              View our{" "}
+                              <a
+                                href="/terms"
+                                className="underline text-primary"
+                              >
+                                Terms and Conditions
+                              </a>
+                              . View our{" "}
+                              <a
+                                href="/policy"
+                                className="underline text-primary"
+                              >
+                                Privacy Policy
+                              </a>
+                              .
+                            </label>
+                            {errors.smsConsent && (
+                              <p className="text-sm text-destructive mt-1">
+                                {errors.smsConsent}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2">
+                          <Checkbox
+                            id="smsMarketingConsent_status"
+                            checked={form.smsMarketingConsent}
+                            onCheckedChange={(checked) => {
+                              setForm((p) => ({
+                                ...p,
+                                smsMarketingConsent: checked as boolean,
+                              }));
+                              if (errors.smsMarketingConsent)
+                                setErrors((p) => ({
+                                  ...p,
+                                  smsMarketingConsent: "",
+                                }));
+                            }}
+                            className={cn(
+                              errors.smsMarketingConsent
+                                ? "border-destructive"
+                                : "",
+                              "mt-1.5 flex-shrink-0"
+                            )}
+                          />
+                          <div className="flex-1">
+                            <label
+                              htmlFor="smsMarketingConsent_status"
+                              className="text-sm leading-5 cursor-pointer"
+                            >
+                              By checking this box and submitting this form, you
+                              consent to receive text messages for marketing
+                              from SeatPing. Reply STOP to opt out. Reply HELP
+                              for help. Message and data rates may apply.
+                              Message frequency may vary. View our{" "}
+                              <a
+                                href="/terms"
+                                className="underline text-primary"
+                              >
+                                Terms and Conditions
+                              </a>
+                              . View our{" "}
+                              <a
+                                href="/policy"
+                                className="underline text-primary"
+                              >
+                                Privacy Policy
+                              </a>
+                              .
+                            </label>
+                            {errors.smsMarketingConsent && (
+                              <p className="text-sm text-destructive mt-1">
+                                {errors.smsMarketingConsent}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </>
