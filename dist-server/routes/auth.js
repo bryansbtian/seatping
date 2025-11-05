@@ -349,48 +349,9 @@ router.post("/business/:username/queue", async (req, res) => {
         };
         // Add customer to the queue
         location.queue = [...(location.queue || []), customer];
-        // Calculate credit deductions for queue joining
-        let smsCreditsToDeduct = 0;
-        // Send SMS confirmation when customer joins the queue (if they provided phone number and consent)
-        if (customer.phoneNumber && customer.phoneNumber.trim() !== "" && customer.smsConsent) {
-            try {
-                const telnyxApiKey = process.env.TELNYX_API_KEY;
-                const telnyxPhoneNumber = process.env.TELNYX_PHONE_NUMBER;
-                if (!telnyxApiKey || !telnyxPhoneNumber) {
-                    console.error('Missing Telnyx credentials:', {
-                        hasApiKey: !!telnyxApiKey,
-                        hasTelnyxPhone: !!telnyxPhoneNumber
-                    });
-                    throw new Error('Telnyx credentials not configured');
-                }
-                const telnyx = new Telnyx({ apiKey: telnyxApiKey });
-                // Format phone number to E.164 format using the stored country code
-                const customerCountryCode = customer.countryCode || "+1";
-                let phoneDigitsOnly = customer.phoneNumber.trim().replace(/\D/g, '');
-                // Construct full phone number with country code
-                let formattedPhone = customerCountryCode + phoneDigitsOnly;
-                const businessName = user.name || "the business";
-                const message = await telnyx.messages.send({
-                    from: telnyxPhoneNumber,
-                    to: formattedPhone,
-                    text: `You've successfully joined the queue at ${businessName}! You are #${customer.position} in line. We'll notify you when it's your turn. Thank you for using SeatPing!`,
-                });
-                console.log("Queue join SMS confirmation sent successfully:", message.data?.id, "to", formattedPhone);
-                // Deduct SMS credit for the confirmation message
-                smsCreditsToDeduct = 1;
-                location.smsCredits = (location.smsCredits || 0) - 1;
-            }
-            catch (error) {
-                console.error('Failed to send queue join SMS confirmation:', error?.message || error);
-                // Don't fail the queue joining if SMS fails - just log the error
-            }
-        }
-        else {
-            console.log("No phone number or SMS consent - skipping queue join SMS confirmation");
-        }
         // Update the locations array
         locations[locationIndex] = location;
-        // Update the business with the new queue and credit deductions
+        // Update the business with the new queue
         await prisma.user.update({
             where: { id: user.id },
             data: {
@@ -403,9 +364,6 @@ router.post("/business/:username/queue", async (req, res) => {
             position: customer.position,
             businessName: user.name,
             queueToken, // Return token to frontend for persistence
-            creditsDeducted: {
-                smsCredits: smsCreditsToDeduct,
-            },
         });
     }
     catch (err) {
@@ -629,8 +587,9 @@ router.post("/business/:username/queue/:customerId/admit", requireAuth, async (r
                 // Send SMS notification to customer when admitted
                 console.log("Admitting customer:", admittedCustomer);
                 console.log("Customer phone number:", admittedCustomer.phoneNumber);
-                // Send SMS to any customer who has a phone number
-                if (admittedCustomer.phoneNumber && admittedCustomer.phoneNumber.trim() !== "") {
+                console.log("Customer waiting preference:", admittedCustomer.waitingPreference);
+                // Send SMS only to customers who chose "wait_anywhere"
+                if (admittedCustomer.waitingPreference === "wait_anywhere" && admittedCustomer.phoneNumber && admittedCustomer.phoneNumber.trim() !== "") {
                     try {
                         const telnyxApiKey = process.env.TELNYX_API_KEY;
                         const telnyxPhoneNumber = process.env.TELNYX_PHONE_NUMBER;
@@ -661,7 +620,7 @@ router.post("/business/:username/queue/:customerId/admit", requireAuth, async (r
                     }
                 }
                 else {
-                    console.log("No phone number provided - skipping SMS notification");
+                    console.log("Customer chose 'on_premises' or no phone number - skipping SMS notification");
                 }
                 // Store in a separate admitted customers list
                 if (!locations[i].admittedCustomers) {
