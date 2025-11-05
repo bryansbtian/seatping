@@ -707,6 +707,7 @@ router.post(
           // Mark customer as admitted and remove from queue
           admittedCustomer.status = "admitted";
           admittedCustomer.admittedAt = new Date().toISOString();
+          admittedCustomer.finalStatus = "pending"; // Track if customer arrived or was a no-show
 
           // Send SMS notification to customer when admitted
           console.log("Admitting customer:", admittedCustomer);
@@ -811,6 +812,152 @@ router.post(
       });
     } catch (err: any) {
       console.error("[auth] admit customer error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+/**
+ * POST /auth/business/:username/admitted/:customerId/confirm-arrival (protected)
+ * Marks an admitted customer as arrived/confirmed
+ */
+router.post(
+  "/business/:username/admitted/:customerId/confirm-arrival",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const userId = (req as any).auth.sub as string;
+      const username = String(req.params.username || "").trim();
+      const customerId = String(req.params.customerId || "").trim();
+
+      if (!username || !customerId) {
+        return res
+          .status(400)
+          .json({ error: "username and customerId are required" });
+      }
+
+      // Verify the business user owns this username
+      const user = await prisma.user.findFirst({
+        where: { id: userId, username },
+        select: { id: true, locations: true },
+      });
+
+      if (!user) {
+        return res
+          .status(404)
+          .json({ error: "Business not found or access denied" });
+      }
+
+      const locations = ((user as any).locations as any[]) || [];
+      let customerFound = false;
+
+      // Find the admitted customer and update their finalStatus
+      for (let i = 0; i < locations.length; i++) {
+        const admittedCustomers = locations[i].admittedCustomers || [];
+        const customerIndex = admittedCustomers.findIndex(
+          (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
+        );
+
+        if (customerIndex !== -1) {
+          admittedCustomers[customerIndex].finalStatus = "arrived";
+          admittedCustomers[customerIndex].confirmedAt = new Date().toISOString();
+          locations[i].admittedCustomers = admittedCustomers;
+          customerFound = true;
+          break;
+        }
+      }
+
+      if (!customerFound) {
+        return res.status(404).json({ error: "Admitted customer not found" });
+      }
+
+      // Update the business data
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          locations: locations as any,
+        },
+      });
+
+      return res.json({
+        success: true,
+        message: "Customer arrival confirmed",
+      });
+    } catch (err: any) {
+      console.error("[auth] confirm arrival error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+/**
+ * POST /auth/business/:username/admitted/:customerId/mark-no-show (protected)
+ * Marks an admitted customer as no-show
+ */
+router.post(
+  "/business/:username/admitted/:customerId/mark-no-show",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const userId = (req as any).auth.sub as string;
+      const username = String(req.params.username || "").trim();
+      const customerId = String(req.params.customerId || "").trim();
+
+      if (!username || !customerId) {
+        return res
+          .status(400)
+          .json({ error: "username and customerId are required" });
+      }
+
+      // Verify the business user owns this username
+      const user = await prisma.user.findFirst({
+        where: { id: userId, username },
+        select: { id: true, locations: true },
+      });
+
+      if (!user) {
+        return res
+          .status(404)
+          .json({ error: "Business not found or access denied" });
+      }
+
+      const locations = ((user as any).locations as any[]) || [];
+      let customerFound = false;
+
+      // Find the admitted customer and update their finalStatus
+      for (let i = 0; i < locations.length; i++) {
+        const admittedCustomers = locations[i].admittedCustomers || [];
+        const customerIndex = admittedCustomers.findIndex(
+          (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
+        );
+
+        if (customerIndex !== -1) {
+          admittedCustomers[customerIndex].finalStatus = "no_show";
+          admittedCustomers[customerIndex].noShowMarkedAt = new Date().toISOString();
+          locations[i].admittedCustomers = admittedCustomers;
+          customerFound = true;
+          break;
+        }
+      }
+
+      if (!customerFound) {
+        return res.status(404).json({ error: "Admitted customer not found" });
+      }
+
+      // Update the business data
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          locations: locations as any,
+        },
+      });
+
+      return res.json({
+        success: true,
+        message: "Customer marked as no-show",
+      });
+    } catch (err: any) {
+      console.error("[auth] mark no-show error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
     }
   }

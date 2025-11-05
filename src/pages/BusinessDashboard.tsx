@@ -48,6 +48,7 @@ const BusinessDashboard = () => {
     minutes: number;
   } | null>(null);
   const trialCountdownRef = useRef<NodeJS.Timeout | null>(null);
+  const [timerTick, setTimerTick] = useState(0); // For updating countdown timers
   const locations = (me?.locations as any[]) || [];
   const maxLocations = me?.maxLocations ?? 1;
   // Check if account is still in trial period (≤ 7 days old)
@@ -91,6 +92,16 @@ const BusinessDashboard = () => {
       return admittedDate.toDateString() === today;
     });
 
+    // Filter out no-shows from served count
+    const todayServed = todayAdmitted.filter((customer: any) => {
+      return customer.finalStatus !== "no_show";
+    });
+
+    // Count no-shows from admitted customers
+    const todayNoShows = todayAdmitted.filter((customer: any) => {
+      return customer.finalStatus === "no_show";
+    }).length;
+
     const todayRemoved = removedCustomers.filter((customer: any) => {
       const removedDate = new Date(customer.removedAt || customer.leftAt);
       return removedDate.toDateString() === today;
@@ -102,11 +113,11 @@ const BusinessDashboard = () => {
       return leftDate.toDateString() === today;
     }).length;
 
-    // Calculate average wait time (admitted customers only)
+    // Calculate average wait time (served customers only, excluding no-shows)
     let totalWaitTime = 0;
     let waitTimeCount = 0;
 
-    todayAdmitted.forEach((customer: any) => {
+    todayServed.forEach((customer: any) => {
       if (customer.joinedAt && customer.admittedAt) {
         const joinTime = new Date(customer.joinedAt).getTime();
         const admitTime = new Date(customer.admittedAt).getTime();
@@ -119,19 +130,19 @@ const BusinessDashboard = () => {
     const avgWaitTime =
       waitTimeCount > 0 ? Math.round(totalWaitTime / waitTimeCount) : 0;
 
-    // Calculate success rate (admitted / (admitted + removed))
-    const totalProcessed = todayAdmitted.length + todayRemoved.length;
+    // Calculate success rate (served / (served + no-shows + removed))
+    const totalProcessed = todayServed.length + todayNoShows + todayRemoved.length;
     const successRate =
       totalProcessed > 0
-        ? Math.round((todayAdmitted.length / totalProcessed) * 100)
+        ? Math.round((todayServed.length / totalProcessed) * 100)
         : 100;
 
     return {
-      totalServed: todayAdmitted.length,
+      totalServed: todayServed.length,
       currentQueue,
       avgWaitTime,
       successRate,
-      leftToday,
+      leftToday: leftToday + todayNoShows, // Include no-shows in the left count
     };
   };
 
@@ -244,6 +255,15 @@ const BusinessDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Update timer every second for admitted customers countdown
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimerTick((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Function to admit a customer (they go to Step 5)
   const admitCustomer = async (customerIndex: number) => {
     if (!currentLocation) return;
@@ -310,6 +330,68 @@ const BusinessDashboard = () => {
     }
   };
 
+  // Function to confirm customer arrival
+  const confirmArrival = async (customer: any) => {
+    if (!me) return;
+
+    setLoading(true);
+    try {
+      const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
+
+      await api(`/auth/business/${me.username}/admitted/${customerId}/confirm-arrival`, {
+        method: "POST",
+      });
+
+      // Refresh the business data
+      const updated = await api("/auth/me");
+      setMe(updated.user);
+
+      toast({
+        title: "Arrival confirmed",
+        description: `${customer.firstName} ${customer.lastName} has been marked as arrived.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to confirm arrival",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to mark customer as no-show
+  const markNoShow = async (customer: any) => {
+    if (!me) return;
+
+    setLoading(true);
+    try {
+      const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
+
+      await api(`/auth/business/${me.username}/admitted/${customerId}/mark-no-show`, {
+        method: "POST",
+      });
+
+      // Refresh the business data
+      const updated = await api("/auth/me");
+      setMe(updated.user);
+
+      toast({
+        title: "Marked as no-show",
+        description: `${customer.firstName} ${customer.lastName} has been marked as a no-show.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to mark no-show",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Format time since customer joined
   const formatTimeSince = (joinedAt: string) => {
     const joined = new Date(joinedAt);
@@ -321,6 +403,20 @@ const BusinessDashboard = () => {
     if (diffMins < 60) return `${diffMins}m ago`;
     const diffHours = Math.floor(diffMins / 60);
     return `${diffHours}h ${diffMins % 60}m ago`;
+  };
+
+  // Calculate time remaining for admitted customer
+  const getTimeRemaining = (admittedAt: string) => {
+    const admitted = new Date(admittedAt);
+    const now = new Date();
+    const elapsed = now.getTime() - admitted.getTime();
+    const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+    const remaining = Math.max(0, fiveMinutes - elapsed);
+
+    const minutes = Math.floor(remaining / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+
+    return { minutes, seconds, expired: remaining === 0 };
   };
 
   // Get current date
@@ -387,21 +483,24 @@ const BusinessDashboard = () => {
         waitTimes.set(key, []);
       }
 
-      // served + wait
+      // served + wait (exclude no-shows from served count)
       for (const c of admittedCustomers) {
         if (!c.admittedAt) continue;
         const admit = new Date(c.admittedAt);
         const key = admit.toISOString().slice(0, 10);
         if (!dataMap.has(key)) continue;
 
-        dataMap.get(key)!.served += 1;
+        // Only count as served if not a no-show
+        if (c.finalStatus !== "no_show") {
+          dataMap.get(key)!.served += 1;
 
-        if (c.joinedAt) {
-          const wt =
-            (new Date(c.admittedAt).getTime() -
-              new Date(c.joinedAt).getTime()) /
-            60000;
-          waitTimes.get(key)!.push(wt);
+          if (c.joinedAt) {
+            const wt =
+              (new Date(c.admittedAt).getTime() -
+                new Date(c.joinedAt).getTime()) /
+              60000;
+            waitTimes.get(key)!.push(wt);
+          }
         }
       }
 
@@ -414,10 +513,17 @@ const BusinessDashboard = () => {
         }
       }
 
-      // no-shows per day
+      // no-shows per day - include both removed customers and admitted no-shows
       for (const c of removedCustomers) {
         if (c.status === "left" && c.leftAt) {
           const key = new Date(c.leftAt).toISOString().slice(0, 10);
+          if (dataMap.has(key)) dataMap.get(key)!.noShows += 1;
+        }
+      }
+      // Add admitted customers marked as no-show
+      for (const c of admittedCustomers) {
+        if (c.finalStatus === "no_show" && c.admittedAt) {
+          const key = new Date(c.admittedAt).toISOString().slice(0, 10);
           if (dataMap.has(key)) dataMap.get(key)!.noShows += 1;
         }
       }
@@ -458,19 +564,22 @@ const BusinessDashboard = () => {
 
     const weekKeyFrom = (d: Date) => startOfWeek(d).toISOString().slice(0, 10);
 
-    // served + wait per week
+    // served + wait per week (exclude no-shows from served count)
     for (const c of admittedCustomers) {
       if (!c.admittedAt) continue;
       const key = weekKeyFrom(new Date(c.admittedAt));
       if (!weekRows.has(key)) continue;
 
-      weekRows.get(key)!.served += 1;
+      // Only count as served if not a no-show
+      if (c.finalStatus !== "no_show") {
+        weekRows.get(key)!.served += 1;
 
-      if (c.joinedAt) {
-        const wt =
-          (new Date(c.admittedAt).getTime() - new Date(c.joinedAt).getTime()) /
-          60000;
-        weekWaitTimes.get(key)!.push(wt);
+        if (c.joinedAt) {
+          const wt =
+            (new Date(c.admittedAt).getTime() - new Date(c.joinedAt).getTime()) /
+            60000;
+          weekWaitTimes.get(key)!.push(wt);
+        }
       }
     }
 
@@ -483,10 +592,17 @@ const BusinessDashboard = () => {
       }
     }
 
-    // no-shows per week
+    // no-shows per week - include both removed customers and admitted no-shows
     for (const c of removedCustomers) {
       if (c.status === "left" && c.leftAt) {
         const key = weekKeyFrom(new Date(c.leftAt));
+        if (weekRows.has(key)) weekRows.get(key)!.noShows += 1;
+      }
+    }
+    // Add admitted customers marked as no-show
+    for (const c of admittedCustomers) {
+      if (c.finalStatus === "no_show" && c.admittedAt) {
+        const key = weekKeyFrom(new Date(c.admittedAt));
         if (weekRows.has(key)) weekRows.get(key)!.noShows += 1;
       }
     }
@@ -508,11 +624,13 @@ const BusinessDashboard = () => {
       hourMap.set(i, 0);
     }
 
-    // Count customers per hour
+    // Count customers per hour (exclude no-shows)
     admittedCustomers.forEach((customer: any) => {
-      const joinDate = new Date(customer.joinedAt);
-      const hour = joinDate.getHours();
-      hourMap.set(hour, (hourMap.get(hour) || 0) + 1);
+      if (customer.finalStatus !== "no_show") {
+        const joinDate = new Date(customer.joinedAt);
+        const hour = joinDate.getHours();
+        hourMap.set(hour, (hourMap.get(hour) || 0) + 1);
+      }
     });
 
     return Array.from(hourMap.entries())
@@ -543,7 +661,8 @@ const BusinessDashboard = () => {
     ];
 
     admittedCustomers.forEach((customer: any) => {
-      if (customer.joinedAt && customer.admittedAt) {
+      // Exclude no-shows from wait time distribution
+      if (customer.finalStatus !== "no_show" && customer.joinedAt && customer.admittedAt) {
         const joinTime = new Date(customer.joinedAt).getTime();
         const admitTime = new Date(customer.admittedAt).getTime();
         const waitTime = (admitTime - joinTime) / (1000 * 60); // minutes
@@ -937,6 +1056,104 @@ const BusinessDashboard = () => {
               )}
             </CardContent>
           </Card>
+
+          {/* Awaiting Arrival Confirmation */}
+          {(() => {
+            // Filter admitted customers with pending status within last 5 minutes
+            const now = new Date();
+            const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+
+            const pendingAdmittedCustomers = (
+              currentLocation?.admittedCustomers || []
+            ).filter((customer: any) => {
+              const admittedTime = new Date(customer.admittedAt);
+              return (
+                customer.finalStatus === "pending" &&
+                admittedTime >= fiveMinutesAgo
+              );
+            });
+
+            return (
+              pendingAdmittedCustomers.length > 0 && (
+                <Card className="bg-amber-50 border-amber-200 rounded-xl shadow-sm mb-6">
+                  <CardHeader className="border-b border-amber-200 p-4 md:p-6">
+                    <CardTitle className="text-lg md:text-xl text-amber-800 flex items-center gap-2">
+                      <Clock className="w-5 h-5" />
+                      Awaiting Arrival Confirmation
+                    </CardTitle>
+                    <CardDescription className="text-amber-700 text-sm">
+                      Customers admitted in the last 5 minutes - confirm their arrival
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4 md:p-6">
+                    <div className="space-y-3 md:space-y-4">
+                      {pendingAdmittedCustomers.map((customer: any, index: number) => {
+                        const timeRemaining = getTimeRemaining(customer.admittedAt);
+                        const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
+
+                        return (
+                          <div
+                            key={customerId}
+                            className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-white rounded-lg border border-amber-200"
+                          >
+                            <div className="flex items-center space-x-3 md:space-x-4 flex-1">
+                              <div className="flex-shrink-0">
+                                <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-amber-400 to-amber-600 rounded-full flex items-center justify-center text-white font-semibold text-sm md:text-base">
+                                  {timeRemaining.expired ? "!" : `${timeRemaining.minutes}:${timeRemaining.seconds.toString().padStart(2, '0')}`}
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-gray-800 text-sm md:text-base">
+                                  {customer.firstName} {customer.lastName}
+                                </h3>
+                                <div className="flex flex-col space-y-1 md:flex-row md:items-center md:space-y-0 md:space-x-4 text-xs md:text-sm text-gray-600">
+                                  <span>
+                                    Admitted: {formatTimeSince(customer.admittedAt)}
+                                  </span>
+                                  <span className="hidden md:inline">•</span>
+                                  <span>
+                                    {customer.numGuests}{" "}
+                                    {customer.numGuests === 1 ? "guest" : "guests"}
+                                  </span>
+                                  {timeRemaining.expired && (
+                                    <>
+                                      <span className="hidden md:inline">•</span>
+                                      <span className="text-red-600 font-semibold">
+                                        Time expired
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2 md:space-x-3 ml-11 md:ml-0">
+                              <Button
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-white flex-1 md:flex-none"
+                                onClick={() => confirmArrival(customer)}
+                                disabled={loading}
+                              >
+                                Arrived
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-500 text-red-600 hover:bg-red-50 flex-1 md:flex-none"
+                                onClick={() => markNoShow(customer)}
+                                disabled={loading}
+                              >
+                                No Show
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            );
+          })()}
 
           {/* Recently Left Customers */}
           {(() => {
