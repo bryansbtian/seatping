@@ -19,7 +19,7 @@ const Demo = () => {
         </div>
 
         {/* Video section */}
-        <div className="w-full max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-lg border bg-black">
+        {/* <div className="w-full max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-lg border bg-black">
           <iframe
             src="https://www.youtube.com/embed/dQw4w9WgXcQ" // <-- Replace with your actual demo video link
             title="SeatPing Demo Video"
@@ -27,7 +27,7 @@ const Demo = () => {
             allowFullScreen
             className="w-full h-full"
           ></iframe>
-        </div>
+        </div> */}
       </div>
 
       <Footer />
