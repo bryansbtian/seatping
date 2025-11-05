@@ -423,6 +423,48 @@ router.post("/business/:username/queue", async (req, res) => {
     // Calculate credit deductions for queue joining
     let smsCreditsToDeduct = 0;
 
+    // Send SMS confirmation when customer joins the queue (if they provided phone number and consent)
+    if (customer.phoneNumber && customer.phoneNumber.trim() !== "" && customer.smsConsent) {
+      try {
+        const telnyxApiKey = process.env.TELNYX_API_KEY;
+        const telnyxPhoneNumber = process.env.TELNYX_PHONE_NUMBER;
+
+        if (!telnyxApiKey || !telnyxPhoneNumber) {
+          console.error('Missing Telnyx credentials:', {
+            hasApiKey: !!telnyxApiKey,
+            hasTelnyxPhone: !!telnyxPhoneNumber
+          });
+          throw new Error('Telnyx credentials not configured');
+        }
+
+        const telnyx = new Telnyx({ apiKey: telnyxApiKey });
+
+        // Format phone number to E.164 format using the stored country code
+        const customerCountryCode = customer.countryCode || "+1";
+        let phoneDigitsOnly = customer.phoneNumber.trim().replace(/\D/g, '');
+
+        // Construct full phone number with country code
+        let formattedPhone = customerCountryCode + phoneDigitsOnly;
+
+        const businessName = (user as any).name || "the business";
+        const message = await telnyx.messages.send({
+          from: telnyxPhoneNumber,
+          to: formattedPhone,
+          text: `You've successfully joined the queue at ${businessName}! You are #${customer.position} in line. We'll notify you when it's your turn. Thank you for using SeatPing!`,
+        });
+        console.log("Queue join SMS confirmation sent successfully:", message.data?.id, "to", formattedPhone);
+
+        // Deduct SMS credit for the confirmation message
+        smsCreditsToDeduct = 1;
+        location.smsCredits = (location.smsCredits || 0) - 1;
+      } catch (error: any) {
+        console.error('Failed to send queue join SMS confirmation:', error?.message || error);
+        // Don't fail the queue joining if SMS fails - just log the error
+      }
+    } else {
+      console.log("No phone number or SMS consent - skipping queue join SMS confirmation");
+    }
+
     // Update the locations array
     locations[locationIndex] = location;
 

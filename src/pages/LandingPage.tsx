@@ -401,11 +401,11 @@ const LandingPage = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>1500 SMS/Month</span>
+                    <span>600 SMS/Month per location</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>1500 Customers/Month</span>
+                    <span>600 Customers/Month per location</span>
                   </div>
                 </div>
 

@@ -39,14 +39,14 @@ const PRICING_PLANS = {
     name: "Professional Monthly",
     price: 49,
     interval: "month",
-    features: ["• 3 Locations", "• 1500 SMS/Month", "• 1500 Customers/Month"],
+    features: ["• 3 Locations", "• 600 SMS/Month", "• 600 Customers/Month"],
     savings: null,
   },
   "Professional Yearly": {
     name: "Professional Yearly",
     price: 490,
     interval: "year",
-    features: ["• 3 Locations", "• 1500 SMS/Month", "• 1500 Customers/Month"],
+    features: ["• 3 Locations", "• 600 SMS/Month", "• 600 Customers/Month"],
     savings: "Save $98/year",
   },
 };

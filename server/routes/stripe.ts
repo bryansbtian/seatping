@@ -54,8 +54,8 @@ const PLAN_RULES: Record<
   },
   Professional: {
     plan: "Professional",
-    baseCustomerCredits: 1500,
-    baseSMSCredits: 1500,
+    baseCustomerCredits: 600,
+    baseSMSCredits: 600,
     maxLocations: 3,
   },
 };
