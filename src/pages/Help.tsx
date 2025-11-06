@@ -11,7 +11,7 @@ const Help = () => {
         <div className="max-w-4xl mx-auto space-y-10">
           {/* Page Title */}
           <div className="text-center space-y-4">
-            <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-primary to-success bg-clip-text text-transparent leading-tight pb-3 pt-10 sm:pt-12 md:pt-16">
+            <h1 className="text-3xl md:text-5xl font-semibold bg-gradient-to-r from-primary to-success bg-clip-text text-transparent leading-tight pb-3 pt-10 sm:pt-12 md:pt-16">
               Help & FAQ
             </h1>
             <p className="text-muted-foreground text-lg md:text-xl">

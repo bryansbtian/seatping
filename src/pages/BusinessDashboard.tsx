@@ -20,6 +20,8 @@ import {
   Calendar,
   ChevronDown,
   BarChart3,
+  LogOut,
+  X,
 } from "lucide-react";
 import Footer from "@/components/Footer";
 import {
@@ -131,7 +133,8 @@ const BusinessDashboard = () => {
       waitTimeCount > 0 ? Math.round(totalWaitTime / waitTimeCount) : 0;
 
     // Calculate success rate (served / (served + no-shows + removed))
-    const totalProcessed = todayServed.length + todayNoShows + todayRemoved.length;
+    const totalProcessed =
+      todayServed.length + todayNoShows + todayRemoved.length;
     const successRate =
       totalProcessed > 0
         ? Math.round((todayServed.length / totalProcessed) * 100)
@@ -338,9 +341,12 @@ const BusinessDashboard = () => {
     try {
       const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
 
-      await api(`/auth/business/${me.username}/admitted/${customerId}/confirm-arrival`, {
-        method: "POST",
-      });
+      await api(
+        `/auth/business/${me.username}/admitted/${customerId}/confirm-arrival`,
+        {
+          method: "POST",
+        }
+      );
 
       // Refresh the business data
       const updated = await api("/auth/me");
@@ -369,9 +375,12 @@ const BusinessDashboard = () => {
     try {
       const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
 
-      await api(`/auth/business/${me.username}/admitted/${customerId}/mark-no-show`, {
-        method: "POST",
-      });
+      await api(
+        `/auth/business/${me.username}/admitted/${customerId}/mark-no-show`,
+        {
+          method: "POST",
+        }
+      );
 
       // Refresh the business data
       const updated = await api("/auth/me");
@@ -576,7 +585,8 @@ const BusinessDashboard = () => {
 
         if (c.joinedAt) {
           const wt =
-            (new Date(c.admittedAt).getTime() - new Date(c.joinedAt).getTime()) /
+            (new Date(c.admittedAt).getTime() -
+              new Date(c.joinedAt).getTime()) /
             60000;
           weekWaitTimes.get(key)!.push(wt);
         }
@@ -662,7 +672,11 @@ const BusinessDashboard = () => {
 
     admittedCustomers.forEach((customer: any) => {
       // Exclude no-shows from wait time distribution
-      if (customer.finalStatus !== "no_show" && customer.joinedAt && customer.admittedAt) {
+      if (
+        customer.finalStatus !== "no_show" &&
+        customer.joinedAt &&
+        customer.admittedAt
+      ) {
         const joinTime = new Date(customer.joinedAt).getTime();
         const admitTime = new Date(customer.admittedAt).getTime();
         const waitTime = (admitTime - joinTime) / (1000 * 60); // minutes
@@ -684,7 +698,7 @@ const BusinessDashboard = () => {
   return (
     <>
       <BusinessHeader />
-      <div className="min-h-screen pt-20 bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100">
         <div className="container mx-auto px-4 py-8">
           {/* Trial Banner Logic */}
           {me && me.trial === true && (
@@ -706,7 +720,7 @@ const BusinessDashboard = () => {
                   <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
                       <div>
-                        <h3 className="text-lg md:text-xl font-bold">
+                        <h3 className="text-lg md:text-xl font-semibold">
                           ⚠️ Trial Expired
                         </h3>
                         <p className="text-sm md:text-base opacity-90">
@@ -717,7 +731,7 @@ const BusinessDashboard = () => {
                       <div className="flex justify-end">
                         <Button
                           variant="outline"
-                          className="border-white text-white hover:bg-white hover:text-red-600"
+                          className="border-2 border-white text-white bg-white/10 hover:bg-white hover:text-red-600"
                           onClick={() => (window.location.href = "/payments")}
                         >
                           Upgrade Now
@@ -729,10 +743,10 @@ const BusinessDashboard = () => {
               ) : (
                 /* Trial Active Banner - Shows when trial is still active */
                 <div className="mb-6">
-                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+                  <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
                       <div>
-                        <h3 className="text-lg md:text-xl font-bold">
+                        <h3 className="text-lg md:text-xl font-semibold">
                           You're on a Free Trial!
                         </h3>
                         <p className="text-sm md:text-base opacity-90">
@@ -740,7 +754,7 @@ const BusinessDashboard = () => {
                           features
                         </p>
                         {trialTimeLeft && (
-                          <div className="mt-2 flex items-center space-x-2 text-blue-100">
+                          <div className="mt-2 flex items-center space-x-2 text-indigo-100">
                             <span className="text-sm font-medium">
                               Trial expires in: {trialTimeLeft.days}d{" "}
                               {trialTimeLeft.hours}h {trialTimeLeft.minutes}m
@@ -751,7 +765,7 @@ const BusinessDashboard = () => {
                       <div className="flex justify-end">
                         <Button
                           variant="outline"
-                          className="border-white text-white hover:bg-white hover:text-blue-600"
+                          className="border-2 border-white text-white bg-white/10 hover:bg-white hover:text-indigo-600"
                           onClick={() => (window.location.href = "/payments")}
                         >
                           Upgrade Now
@@ -771,10 +785,10 @@ const BusinessDashboard = () => {
             currentLocation.smsCredits === 0 &&
             currentLocation.customerCredits === 0 && (
               <div className="mb-6">
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+                <div className="bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
                     <div>
-                      <h3 className="text-lg md:text-xl font-bold">
+                      <h3 className="text-lg md:text-xl font-semibold">
                         ⚠️ No Credits Available
                       </h3>
                       <p className="text-sm md:text-base opacity-90">
@@ -785,7 +799,7 @@ const BusinessDashboard = () => {
                     <div className="flex justify-end">
                       <Button
                         variant="outline"
-                        className="border-white text-white hover:bg-white hover:text-orange-600"
+                        className="border-white text-white hover:bg-white hover:text-teal-600"
                         onClick={() => (window.location.href = "/plan-change")}
                       >
                         Change Plan
@@ -800,7 +814,7 @@ const BusinessDashboard = () => {
           <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
             <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
               <div>
-                <h1 className="text-xl md:text-2xl font-bold text-gray-800">
+                <h1 className="text-xl md:text-2xl font-semibold text-gray-800">
                   Hello {me?.name || "Business Owner"}!
                 </h1>
                 <p className="text-gray-600 text-sm md:text-base">
@@ -808,7 +822,7 @@ const BusinessDashboard = () => {
                 </p>
                 {currentLocation && (
                   <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                    <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
                       Customer Credits: {currentLocation?.customerCredits || 0}
                     </span>
                     <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
@@ -829,7 +843,7 @@ const BusinessDashboard = () => {
                 {/* Location Selector */}
                 <div className="relative">
                   <select
-                    className="appearance-none bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto"
+                    className="appearance-none bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-auto"
                     value={selectedLocationIndex}
                     onChange={(e) =>
                       setSelectedLocationIndex(Number(e.target.value))
@@ -862,12 +876,12 @@ const BusinessDashboard = () => {
                   <p className="text-gray-600 text-xs md:text-sm">
                     Total Queue
                   </p>
-                  <p className="text-2xl md:text-3xl font-bold text-gray-800">
+                  <p className="text-2xl md:text-3xl font-semibold text-gray-800">
                     {todayStats.currentQueue}
                   </p>
                 </div>
-                <div className="p-2 md:p-3 bg-blue-100 rounded-full">
-                  <Users className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
+                <div className="p-2 md:p-3 bg-indigo-100 rounded-full">
+                  <Users className="w-5 h-5 md:w-6 md:h-6 text-indigo-600" />
                 </div>
               </div>
             </Card>
@@ -878,7 +892,7 @@ const BusinessDashboard = () => {
                   <p className="text-gray-600 text-xs md:text-sm">
                     Avg Wait Time
                   </p>
-                  <p className="text-2xl md:text-3xl font-bold text-gray-800">
+                  <p className="text-2xl md:text-3xl font-semibold text-gray-800">
                     {todayStats.avgWaitTime}m
                   </p>
                 </div>
@@ -894,12 +908,12 @@ const BusinessDashboard = () => {
                   <p className="text-gray-600 text-xs md:text-sm">
                     Served Today
                   </p>
-                  <p className="text-2xl md:text-3xl font-bold text-gray-800">
+                  <p className="text-2xl md:text-3xl font-semibold text-gray-800">
                     {todayStats.totalServed}
                   </p>
                 </div>
-                <div className="p-2 md:p-3 bg-orange-100 rounded-full">
-                  <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-orange-600" />
+                <div className="p-2 md:p-3 bg-teal-100 rounded-full">
+                  <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
                 </div>
               </div>
             </Card>
@@ -910,7 +924,7 @@ const BusinessDashboard = () => {
                   <p className="text-gray-600 text-xs md:text-sm">
                     Success Rate
                   </p>
-                  <p className="text-2xl md:text-3xl font-bold text-gray-800">
+                  <p className="text-2xl md:text-3xl font-semibold text-gray-800">
                     {todayStats.successRate}%
                   </p>
                 </div>
@@ -924,12 +938,12 @@ const BusinessDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-xs md:text-sm">Left Today</p>
-                  <p className="text-2xl md:text-3xl font-bold text-gray-800">
+                  <p className="text-2xl md:text-3xl font-semibold text-gray-800">
                     {todayStats.leftToday}
                   </p>
                 </div>
-                <div className="p-2 md:p-3 bg-orange-100 rounded-full">
-                  <Users className="w-5 h-5 md:w-6 md:h-6 text-orange-600" />
+                <div className="p-2 md:p-3 bg-teal-100 rounded-full">
+                  <Users className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
                 </div>
               </div>
             </Card>
@@ -977,7 +991,7 @@ const BusinessDashboard = () => {
                   </Button>
                   <Badge
                     variant="secondary"
-                    className="bg-blue-100 text-blue-700 text-center md:text-left"
+                    className="bg-indigo-100 text-indigo-700 text-center md:text-left"
                   >
                     {queueData.length}{" "}
                     {queueData.length === 1 ? "customer" : "customers"}
@@ -1001,29 +1015,34 @@ const BusinessDashboard = () => {
                       className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                     >
                       <div className="flex items-center space-x-3 md:space-x-4">
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm md:text-base">
+                        <div className="w-8 h-8 md:w-10 md:h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm md:text-base">
                           {index + 1}
                         </div>
                         <div className="flex-1">
                           <h3 className="font-semibold text-gray-800 text-sm md:text-base">
                             {customer.firstName} {customer.lastName}
                           </h3>
-                          <div className="flex flex-col space-y-1 md:flex-row md:items-center md:space-y-0 md:space-x-4 text-xs md:text-sm text-gray-600">
+                          <div className="flex flex-col md:flex-row md:items-center text-xs md:text-sm text-gray-600 space-y-0.5 md:space-y-0">
                             <span>
                               Joined: {formatTimeSince(customer.joinedAt)}
                             </span>
-                            <span className="hidden md:inline">•</span>
-                            <span>
+                            <span className="hidden md:inline mx-1 text-gray-400">
+                              •
+                            </span>
+                            <span className="md:whitespace-nowrap">
                               {customer.numGuests}{" "}
                               {customer.numGuests === 1 ? "guest" : "guests"}
                             </span>
-                            <span className="hidden md:inline">•</span>
-                            <span>
+                            <span className="hidden md:inline mx-1 text-gray-400">
+                              •
+                            </span>
+                            <span className="md:whitespace-nowrap">
                               {customer.waitingPreference === "on_premises"
                                 ? "Stay on Premises"
                                 : "Wait Anywhere"}
                             </span>
                           </div>
+
                           {customer.phoneNumber && (
                             <p className="text-xs md:text-sm text-gray-500 mt-1">
                               Phone: {customer.phoneNumber}
@@ -1082,72 +1101,93 @@ const BusinessDashboard = () => {
                       Awaiting Arrival Confirmation
                     </CardTitle>
                     <CardDescription className="text-amber-700 text-sm">
-                      Customers admitted in the last 5 minutes - confirm their arrival
+                      Customers admitted in the last 5 minutes - confirm their
+                      arrival
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-4 md:p-6">
                     <div className="space-y-3 md:space-y-4">
-                      {pendingAdmittedCustomers.map((customer: any, index: number) => {
-                        const timeRemaining = getTimeRemaining(customer.admittedAt);
-                        const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
+                      {pendingAdmittedCustomers.map(
+                        (customer: any, index: number) => {
+                          const timeRemaining = getTimeRemaining(
+                            customer.admittedAt
+                          );
+                          const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
 
-                        return (
-                          <div
-                            key={customerId}
-                            className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-white rounded-lg border border-amber-200"
-                          >
-                            <div className="flex items-center space-x-3 md:space-x-4 flex-1">
-                              <div className="flex-shrink-0">
-                                <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-amber-400 to-amber-600 rounded-full flex items-center justify-center text-white font-semibold text-sm md:text-base">
-                                  {timeRemaining.expired ? "!" : `${timeRemaining.minutes}:${timeRemaining.seconds.toString().padStart(2, '0')}`}
+                          return (
+                            <div
+                              key={customerId}
+                              className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-white rounded-lg border border-amber-200"
+                            >
+                              <div className="flex items-center space-x-3 md:space-x-4 flex-1">
+                                <div className="flex-shrink-0">
+                                  <div className="w-8 h-8 md:w-10 md:h-10 bg-amber-600 rounded-full flex items-center justify-center">
+                                    <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-white leading-none tabular-nums">
+                                      {timeRemaining.expired
+                                        ? "!"
+                                        : `${
+                                            timeRemaining.minutes
+                                          }:${timeRemaining.seconds
+                                            .toString()
+                                            .padStart(2, "0")}`}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold text-gray-800 text-sm md:text-base">
+                                    {customer.firstName} {customer.lastName}
+                                  </h3>
+                                  <div className="flex flex-col md:flex-row md:items-center text-xs md:text-sm text-gray-600 space-y-0.5 md:space-y-0">
+                                    <span>
+                                      Admitted:{" "}
+                                      {formatTimeSince(customer.admittedAt)}
+                                    </span>
+                                    <span className="hidden md:inline mx-1 text-gray-400">
+                                      •
+                                    </span>
+                                    <span className="md:whitespace-nowrap">
+                                      {customer.numGuests}{" "}
+                                      {customer.numGuests === 1
+                                        ? "guest"
+                                        : "guests"}
+                                    </span>
+
+                                    {timeRemaining.expired && (
+                                      <>
+                                        <span className="hidden md:inline mx-1 text-gray-400">
+                                          •
+                                        </span>
+                                        <span className="text-red-600 font-semibold md:whitespace-nowrap">
+                                          Time expired
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-gray-800 text-sm md:text-base">
-                                  {customer.firstName} {customer.lastName}
-                                </h3>
-                                <div className="flex flex-col space-y-1 md:flex-row md:items-center md:space-y-0 md:space-x-4 text-xs md:text-sm text-gray-600">
-                                  <span>
-                                    Admitted: {formatTimeSince(customer.admittedAt)}
-                                  </span>
-                                  <span className="hidden md:inline">•</span>
-                                  <span>
-                                    {customer.numGuests}{" "}
-                                    {customer.numGuests === 1 ? "guest" : "guests"}
-                                  </span>
-                                  {timeRemaining.expired && (
-                                    <>
-                                      <span className="hidden md:inline">•</span>
-                                      <span className="text-red-600 font-semibold">
-                                        Time expired
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
+                              <div className="flex items-center space-x-2 md:space-x-3 ml-11 md:ml-0">
+                                <Button
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white flex-1 md:flex-none"
+                                  onClick={() => confirmArrival(customer)}
+                                  disabled={loading}
+                                >
+                                  Arrived
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-red-500 text-red-600 hover:bg-red-50 flex-1 md:flex-none"
+                                  onClick={() => markNoShow(customer)}
+                                  disabled={loading}
+                                >
+                                  No Show
+                                </Button>
                               </div>
                             </div>
-                            <div className="flex items-center space-x-2 md:space-x-3 ml-11 md:ml-0">
-                              <Button
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700 text-white flex-1 md:flex-none"
-                                onClick={() => confirmArrival(customer)}
-                                disabled={loading}
-                              >
-                                Arrived
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-red-500 text-red-600 hover:bg-red-50 flex-1 md:flex-none"
-                                onClick={() => markNoShow(customer)}
-                                disabled={loading}
-                              >
-                                No Show
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        }
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1199,18 +1239,22 @@ const BusinessDashboard = () => {
                               <div
                                 className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm md:text-base ${
                                   customer.status === "left"
-                                    ? "bg-orange-500"
+                                    ? "bg-teal-500"
                                     : "bg-red-500"
                                 }`}
                               >
-                                {customer.status === "left" ? "👋" : "❌"}
+                                {customer.status === "left" ? (
+                                  <LogOut className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                                ) : (
+                                  <X className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                                )}
                               </div>
                               <div className="flex-1">
                                 <h3 className="font-semibold text-gray-800 text-sm md:text-base">
                                   {customer.firstName} {customer.lastName}
                                 </h3>
-                                <div className="flex flex-col space-y-1 md:flex-row md:items-center md:space-y-0 md:space-x-4 text-xs md:text-sm text-gray-600">
-                                  <span>
+                                <div className="flex flex-col md:flex-row md:items-center text-xs md:text-sm text-gray-600 space-y-0.5 md:space-y-0">
+                                  <span className="md:whitespace-nowrap">
                                     {customer.status === "left"
                                       ? "Left"
                                       : "Removed"}
@@ -1219,21 +1263,26 @@ const BusinessDashboard = () => {
                                       customer.leftAt || customer.removedAt
                                     )}
                                   </span>
-                                  <span className="hidden md:inline">•</span>
-                                  <span>
+                                  <span className="hidden md:inline mx-1 text-gray-400">
+                                    •
+                                  </span>
+                                  <span className="md:whitespace-nowrap">
                                     {customer.numGuests}{" "}
                                     {customer.numGuests === 1
                                       ? "guest"
                                       : "guests"}
                                   </span>
-                                  <span className="hidden md:inline">•</span>
-                                  <span>
+                                  <span className="hidden md:inline mx-1 text-gray-400">
+                                    •
+                                  </span>
+                                  <span className="md:whitespace-nowrap">
                                     {customer.waitingPreference ===
                                     "on_premises"
                                       ? "Stay on Premises"
                                       : "Wait Anywhere"}
                                   </span>
                                 </div>
+
                                 {customer.phoneNumber && (
                                   <p className="text-xs md:text-sm text-gray-500 mt-1">
                                     Phone: {customer.phoneNumber}
@@ -1305,12 +1354,22 @@ const BusinessDashboard = () => {
               <CardContent className="p-4 md:p-6">
                 {dailyWeeklySummary.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={dailyWeeklySummary}>
+                    <LineChart
+                      data={dailyWeeklySummary}
+                      margin={{ top: 8, right: 16, left: 16, bottom: 44 }} // a bit more room
+                    >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
+                      <XAxis dataKey="date" tickMargin={14} height={32} />
                       <YAxis />
                       <Tooltip />
-                      <Legend />
+
+                      {/* Add gap above legend */}
+                      <Legend
+                        verticalAlign="bottom"
+                        align="center"
+                        wrapperStyle={{ bottom: 4 }} // try -8 to -14 to taste
+                      />
+
                       <Line
                         type="monotone"
                         dataKey="served"

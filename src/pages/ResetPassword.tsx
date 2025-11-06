@@ -98,7 +98,7 @@ const ResetPassword = () => {
               <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-              <CardTitle className="text-2xl bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
+              <CardTitle className="text-2xl text-primary">
                 Password Reset Complete!
               </CardTitle>
               <CardDescription>
@@ -135,10 +135,10 @@ const ResetPassword = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-success/5 px-4">
         <Card className="w-full max-w-md shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
           <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <Lock className="w-8 h-8 text-blue-600" />
+            <div className="mx-auto w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
+              <Lock className="w-8 h-8 text-indigo-600" />
             </div>
-            <CardTitle className="text-2xl bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
+            <CardTitle className="text-2xl text-primary">
               Reset Your Password
             </CardTitle>
             <CardDescription>

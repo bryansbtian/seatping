@@ -247,7 +247,7 @@ const BusinessSettings = () => {
   return (
     <>
       <BusinessHeader />
-      <div className="min-h-screen pt-20 bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100">
         <div className="container mx-auto px-4 py-8">
           {/* Trial banners */}
           {me && me.trial === true && me.trialDurationDays > 0 && (
@@ -265,7 +265,7 @@ const BusinessSettings = () => {
                   <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
                       <div>
-                        <h3 className="text-lg md:text-xl font-bold">
+                        <h3 className="text-lg md:text-xl font-semibold">
                           ⚠️ Trial Expired
                         </h3>
                         <p className="text-sm md:text-base opacity-90">
@@ -276,7 +276,7 @@ const BusinessSettings = () => {
                       <div className="flex justify-end">
                         <Button
                           variant="outline"
-                          className="border-white text-white hover:bg-white hover:text-red-600"
+                          className="border-2 border-white text-white bg-white/10 hover:bg-white hover:text-red-600"
                           onClick={() => (window.location.href = "/payments")}
                         >
                           Upgrade Now
@@ -287,10 +287,10 @@ const BusinessSettings = () => {
                 </div>
               ) : (
                 <div className="mb-6">
-                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+                  <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
                       <div>
-                        <h3 className="text-lg md:text-xl font-bold">
+                        <h3 className="text-lg md:text-xl font-semibold">
                           You're on a Free Trial!
                         </h3>
                         <p className="text-sm md:text-base opacity-90">
@@ -298,7 +298,7 @@ const BusinessSettings = () => {
                           features
                         </p>
                         {trialTimeLeft && (
-                          <div className="mt-2 flex items-center space-x-2 text-blue-100">
+                          <div className="mt-2 flex items-center space-x-2 text-indigo-100">
                             <span className="text-sm font-medium">
                               Trial expires in: {trialTimeLeft.days}d{" "}
                               {trialTimeLeft.hours}h {trialTimeLeft.minutes}m
@@ -309,7 +309,7 @@ const BusinessSettings = () => {
                       <div className="flex justify-end">
                         <Button
                           variant="outline"
-                          className="border-white text-white hover:bg-white hover:text-blue-600"
+                          className="border-2 border-white text-white bg-white/10 hover:bg-white hover:text-indigo-600"
                           onClick={() => (window.location.href = "/payments")}
                         >
                           Upgrade Now
@@ -331,10 +331,10 @@ const BusinessSettings = () => {
                 location.smsCredits === 0 && location.customerCredits === 0
             ) && (
               <div className="mb-6">
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+                <div className="bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
                     <div>
-                      <h3 className="text-lg md:text-xl font-bold">
+                      <h3 className="text-lg md:text-xl font-semibold">
                         ⚠️ No Credits Available
                       </h3>
                       <p className="text-sm md:text-base opacity-90">
@@ -346,7 +346,7 @@ const BusinessSettings = () => {
                       <Button
                         asChild
                         variant="outline"
-                        className="border-white text-white hover:bg-white hover:text-orange-600"
+                        className="border-white text-white hover:bg-white hover:text-teal-600"
                       >
                         <a
                           href={BILLING_PORTAL_URL}
@@ -429,7 +429,7 @@ const BusinessSettings = () => {
           <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
             <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
               <div>
-                <h1 className="text-xl md:text-2xl font-bold text-gray-800">
+                <h1 className="text-xl md:text-2xl font-semibold text-gray-800">
                   Business Settings
                 </h1>
                 <p className="text-gray-600 text-sm md:text-base">
@@ -500,7 +500,7 @@ const BusinessSettings = () => {
                     </Label>
                     <Input
                       id="plan"
-                      value={me?.plan || "Basic"}
+                      value={me?.plan || "Starter"}
                       disabled
                       className="bg-gray-50 text-sm md:text-base"
                     />
@@ -514,7 +514,7 @@ const BusinessSettings = () => {
               <CardHeader className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-t-xl">
                 <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
                   <div>
-                    <CardTitle className="text-lg md:text-xl font-bold">
+                    <CardTitle className="text-lg md:text-xl font-semibold">
                       <QrCode className="inline-block w-5 h-5 md:w-6 md:h-6 mr-2" />
                       Queue QR Code
                     </CardTitle>
@@ -625,14 +625,14 @@ const BusinessSettings = () => {
                       <Button
                         onClick={addLocation}
                         disabled={loading || locations.length >= maxLocations}
-                        className="bg-blue-600 hover:bg-blue-700 text-white w-full md:w-auto text-sm md:text-base"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white w-full md:w-auto text-sm md:text-base"
                       >
                         <Plus size={16} className="mr-2" /> Add Location
                       </Button>
                     </div>
                   </div>
                   {locations.length >= maxLocations && (
-                    <p className="text-xs md:text-sm text-orange-600 mt-2">
+                    <p className="text-xs md:text-sm text-teal-600 mt-2">
                       You have reached the maximum number of locations for your
                       plan.
                     </p>
@@ -672,7 +672,7 @@ const BusinessSettings = () => {
                                 queue
                               </p>
                               <div className="flex flex-col sm:flex-row gap-2">
-                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
                                   Customer Credits:{" "}
                                   {location?.customerCredits || 0}
                                 </span>

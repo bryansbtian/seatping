@@ -46,7 +46,7 @@ const Queue = () => {
       <div className="min-h-screen pt-28 pb-16 flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-success/5 px-4">
         <Card className="w-full max-w-md shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
+            <CardTitle className="text-2xl text-primary">
               Join the Queue
             </CardTitle>
             <CardDescription>

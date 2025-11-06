@@ -14,461 +14,979 @@ import {
   Smartphone,
   Bell,
   ClipboardList,
-  Star,
-  Utensils,
-  Scissors,
-  Sparkles,
-  Building2,
-  Building,
   User,
-  QrCode,
   Users,
+  Rocket,
+  TrendingUp,
+  Star,
+  BarChart3,
 } from "lucide-react";
 import Header from "@/components/Header";
-import heroImage from "@/assets/hero-image.jpg";
 import Footer from "@/components/Footer";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 const LandingPage = () => {
-  const features = [
-    {
-      icon: <Clock className="w-8 h-8 text-blue-600" />,
-      title: "Set up in 2 minutes",
-      description: "Quick setup with no hardware needed",
-    },
-    {
-      icon: <Smartphone className="w-8 h-8 text-blue-600" />,
-      title: "Works on any phone",
-      description: "No app downloads required",
-    },
-    {
-      icon: <Bell className="w-8 h-8 text-blue-600" />,
-      title: "Smart notifications",
-      description: "SMS alerts when ready",
-    },
-  ];
-
-  const businessTypes = [
-    {
-      icon: <Utensils className="w-8 h-8 text-orange-600" />,
-      title: "Restaurants",
-      description: "Handle lunch rush without the stress",
-      before: "Line chaos",
-      after: "Smooth flow",
-    },
-    {
-      icon: <Scissors className="w-8 h-8 text-purple-600" />,
-      title: "Barbershops",
-      description: "Turn Saturday chaos into extra revenue",
-      before: "8 walk-aways",
-      after: "0 walk-aways",
-    },
-    {
-      icon: <Sparkles className="w-8 h-8 text-pink-600" />,
-      title: "Nail Salons",
-      description: "Fill dead afternoon slots with morning overflow",
-      before: "2hr waits",
-      after: "45min waits",
-    },
-    {
-      icon: <Building2 className="w-8 h-8 text-green-600" />,
-      title: "Walk-in Clinics",
-      description: "Clear your waiting room, keep patients happy",
-      before: "15 in lobby",
-      after: "5 in lobby",
-    },
-  ];
-
-  const steps = [
-    {
-      icon: <User className="w-8 h-8 text-blue-600" />,
-      title: "Sign Up & Get QR",
-      description: "Create account in seconds",
-      time: "1 min",
-    },
-    {
-      icon: <QrCode className="w-8 h-8 text-blue-600" />,
-      title: "Display QR Code",
-      description: "Print and post at entrance",
-      time: "1 min",
-    },
-    {
-      icon: <Bell className="w-8 h-8 text-blue-600" />,
-      title: "Notify Customer",
-      description: "One tap when ready",
-      time: "1 tap",
-    },
-  ];
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
       {/* Hero Section */}
-      <section className="pt-28 md:pt-32 lg:pt-40 pb-16 px-4">
-        <div className="container mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-8">
-              <div className="space-y-4">
-                <h1 className="text-4xl md:text-6xl font-bold leading-tight">
-                  Hold every walk-in.
-                  <br />
-                  <span className="bg-gradient-to-r from-success to-success-glow bg-clip-text text-transparent">
-                    Boost revenue.
-                  </span>
-                </h1>
-                <p className="text-xl text-muted-foreground leading-relaxed">
-                  Let customers queue digitally and wait wherever they want.
-                  <br />
-                  They save time. You save sales.
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" asChild>
-                  <Link to="/signup">Start Free Trial</Link>
-                </Button>
-                <Button size="lg" variant="outline" asChild>
-                  <Link to="/demo">Watch Demo</Link>
-                </Button>
-              </div>
+      <section className="pt-28 md:pt-32 lg:pt-40 pb-20 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <div className="space-y-8">
+            {/* Hero text */}
+            <div className="space-y-6 max-w-4xl mx-auto text-center px-4">
+              <h1 className="text-4xl sm:text-5xl md:text-7xl font-medium leading-tight">
+                Queues Without the Queue
+              </h1>
+              <p className="text-lg sm:text-xl md:text-2xl text-slate-600 leading-relaxed max-w-3xl mx-auto">
+                Customers join by QR, get SMS, and show up right on time.
+              </p>
             </div>
 
-            <div className="relative">
-              <img
-                src={heroImage}
-                alt="SeatPing digital queue management system"
-                className="w-full rounded-2xl shadow-2xl"
-              />
+            {/* Button row */}
+            <div className="flex justify-center">
+              <Button
+                size="lg"
+                asChild
+                className="group inline-flex items-center gap-2 rounded-xl bg-slate-900 text-white px-6 md:px-8 shadow-sm hover:bg-slate-800 transition"
+              >
+                <Link to="/signup">
+                  <Rocket
+                    className="h-4 w-4 -ml-1 opacity-90 transition-transform group-hover:-translate-y-0.5"
+                    aria-hidden="true"
+                  />
+                  <span className="font-medium">Get Started Free</span>
+                </Link>
+              </Button>
+            </div>
+
+            {/* Dashboard Preview */}
+            <div className="relative mt-16 w-full">
+              <div className="rounded-2xl shadow-2xl border border-slate-200 bg-slate-50 p-6 md:p-8">
+                {/* Dashboard Header */}
+                <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl md:text-2xl font-semibold text-slate-800">
+                        Hello Cafe Milano!
+                      </h2>
+                      <p className="text-slate-600 text-sm md:text-base">
+                        Here is your daily statistic
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
+                          Customer Credits: 285
+                        </span>
+                        <span className="text-xs bg-teal-100 text-teal-700 px-2 py-1 rounded">
+                          SMS Credits: 291
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
+                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <Clock className="w-4 h-4" />
+                        <span>Aug 22, 2025</span>
+                      </div>
+                      <div className="relative">
+                        <select className="appearance-none bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                          <option>Downtown</option>
+                        </select>
+                        <ClipboardList className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-6">
+                  <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-slate-600 text-xs md:text-sm">
+                        Total Queue
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-2xl md:text-3xl font-semibold text-slate-800">
+                          3
+                        </p>
+                        <div className="p-2 bg-indigo-100 rounded-full">
+                          <Users className="w-5 h-5 md:w-6 md:h-6 text-indigo-600" />
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-slate-600 text-xs md:text-sm">
+                        Avg Wait Time
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-2xl md:text-3xl font-semibold text-slate-800">
+                          5m
+                        </p>
+                        <div className="p-2 bg-teal-100 rounded-full">
+                          <Clock className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-slate-600 text-xs md:text-sm">
+                        Served Today
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-2xl md:text-3xl font-semibold text-slate-800">
+                          8
+                        </p>
+                        <div className="p-2 bg-teal-100 rounded-full">
+                          <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-slate-600 text-xs md:text-sm">
+                        Success Rate
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-2xl md:text-3xl font-semibold text-slate-800">
+                          88%
+                        </p>
+                        <div className="p-2 bg-violet-100 rounded-full">
+                          <Star className="w-5 h-5 md:w-6 md:h-6 text-violet-600" />
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-slate-600 text-xs md:text-sm">
+                        Left Today
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-2xl md:text-3xl font-semibold text-slate-800">
+                          1
+                        </p>
+                        <div className="p-2 bg-teal-100 rounded-full">
+                          <Users className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Queue Management */}
+                <div className="bg-white rounded-xl shadow-sm border-0 p-4 md:p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg md:text-xl font-semibold text-slate-800">
+                        Queue Management
+                      </h3>
+                      <p className="text-sm text-slate-600">
+                        Managing queue for: Downtown
+                      </p>
+                    </div>
+                    <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 text-[10px] sm:text-xs md:text-sm px-2 py-1 sm:px-3 whitespace-nowrap mt-1 sm:mt-1.5">
+                      3 customers
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-3">
+                    {[
+                      {
+                        position: 1,
+                        name: "Jessica Martinez",
+                        joined: "Just now",
+                        guests: 2,
+                        preference: "Stay on Premises",
+                        phone: "555-0123",
+                      },
+                      {
+                        position: 2,
+                        name: "David Kim",
+                        joined: "5 mins ago",
+                        guests: 4,
+                        preference: "Wait Outside",
+                        phone: "555-0456",
+                      },
+                      {
+                        position: 3,
+                        name: "Rachel Thompson",
+                        joined: "8 mins ago",
+                        guests: 1,
+                        preference: "Stay on Premises",
+                        phone: "555-0789",
+                      },
+                    ].map((customer) => (
+                      <div
+                        key={customer.position}
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200"
+                      >
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
+                            <span className="text-base font-semibold text-white">
+                              {customer.position}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-slate-900 text-sm md:text-base">
+                              {customer.name}
+                            </p>
+                            <p className="text-xs md:text-sm text-slate-600">
+                              Joined: {customer.joined} • {customer.guests}{" "}
+                              guest
+                              {customer.guests > 1 ? "s" : ""} •{" "}
+                              {customer.preference}
+                            </p>
+                            {customer.preference !== "Stay on Premises" && (
+                              <p className="text-xs text-slate-500 mt-1">
+                                Phone: {customer.phone}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2 sm:flex-shrink-0 w-full sm:w-auto">
+                          <Button
+                            size="sm"
+                            className="bg-teal-600 hover:bg-teal-700 text-white text-xs md:text-sm flex-1 sm:flex-none"
+                          >
+                            Admit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-slate-300 text-slate-700 hover:bg-slate-100 text-xs md:text-sm flex-1 sm:flex-none"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Bar */}
-      <section className="py-8 bg-muted/30">
+      {/* Trust Section */}
+      <section className="py-12 bg-slate-50 border-y border-slate-200">
         <div className="container mx-auto px-4">
-          <div className="flex flex-wrap justify-center gap-8">
-            {features.map((feature, index) => (
-              <div
-                key={index}
-                className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-2 sm:gap-3"
-              >
-                <div className="flex-shrink-0">{feature.icon}</div>
+          <p className="text-center text-slate-500 mb-8 text-sm">
+            Trusted by businesses everywhere.
+          </p>
+          <div className="flex flex-wrap justify-center gap-x-12 gap-y-6 items-center">
+            <div className="text-center">
+              <p className="text-3xl font-semibold text-slate-900">500+</p>
+              <p className="text-sm text-slate-500">Active Businesses</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-semibold text-slate-900">50k+</p>
+              <p className="text-sm text-slate-500">Customers Served</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-semibold text-slate-900">2min</p>
+              <p className="text-sm text-slate-500">Setup Time</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-semibold text-slate-900">0</p>
+              <p className="text-sm text-slate-500">Hardware Needed</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Meet SeatPing Section */}
+      <section className="py-20 px-4">
+        <div className="container mx-auto">
+          <div className="text-center mb-16 px-4">
+            <p className="text-sm text-slate-500 mb-4">Key Features</p>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-6">
+              Meet SeatPing
+            </h2>
+            <p className="text-base sm:text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">
+              The digital queue to hold, notify, and serve every walk-in
+              customer.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-12 items-start max-w-6xl mx-auto">
+            {/* Left: Feature Cards */}
+            <div className="space-y-8">
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-indigo-50 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-indigo-600" />
+                </div>
                 <div>
-                  <p className="font-semibold">{feature.title}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {feature.description}
+                  <h3 className="text-xl font-semibold text-slate-900 mb-2">
+                    Digital Queue Management
+                  </h3>
+                  <p className="text-slate-600">
+                    Let customers join the queue with a simple QR scan. No app
+                    required.
                   </p>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Revenue Impact */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto text-center">
-          <div className="space-y-8">
-            <h2 className="text-3xl md:text-4xl font-bold">
-              Your Saturday:{" "}
-              <span className="text-destructive">16 customers at 10am.</span>{" "}
-              <span className="text-muted-foreground">0 at 2pm.</span>
-              <br />
-              That's money walking out the door.
-            </h2>
-
-            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mt-12">
-              <Card className="shadow-lg border-0 bg-destructive/5">
-                <CardHeader className="text-center">
-                  <CardTitle className="text-destructive text-2xl">
-                    Without SeatPing
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <div className="text-6xl text-destructive mb-4">❌</div>
-                  <div className="text-4xl font-bold text-destructive mb-2">
-                    8 of 16 leave
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-lg border-0 bg-success/5">
-                <CardHeader className="text-center">
-                  <CardTitle className="text-success text-2xl">
-                    With SeatPing
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <div className="text-6xl text-success mb-4">✅</div>
-                  <div className="text-4xl font-bold text-success mb-2">
-                    16 of 16 served
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section id="features" className="py-16 px-4 bg-muted/30">
-        <div className="container mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              How It Works
-            </h2>
-            <p className="text-xl text-muted-foreground">
-              Three simple steps to transform your business
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {steps.map((step, index) => (
-              <Card
-                key={index}
-                className="shadow-lg border rounded-2xl hover:scale-105 hover:shadow-xl transition-transform duration-300"
-              >
-                <CardHeader className="text-center">
-                  <div className="mb-4 flex justify-center">{step.icon}</div>
-                  <CardTitle className="text-lg">{step.title}</CardTitle>
-                  <CardDescription className="text-sm">
-                    {step.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <Badge
-                    variant="secondary"
-                    className="bg-success/10 text-success"
-                  >
-                    {step.time}
-                  </Badge>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* One Line, Two Ways to Wait */}
-      <section id="wait-modes" className="py-16 px-4">
-        <div className="container mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              One Line, Two Ways to Wait
-            </h2>
-            <p className="text-xl text-muted-foreground">
-              Let guests choose how they wait—inside your shop or out and about.
-            </p>
-          </div>
-
-          <div className="relative grid md:grid-cols-3 gap-6 items-start">
-            {/* Left card */}
-            <Card className="shadow-lg border rounded-2xl hover:scale-105 hover:shadow-xl transition-transform duration-300">
-              <CardHeader className="text-center">
-                <div className="mb-4 flex justify-center">
-                  <Building className="w-10 h-10 text-blue-600" />
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-teal-50 flex items-center justify-center">
+                  <Bell className="w-6 h-6 text-teal-600" />
                 </div>
-                <CardTitle className="text-xl">Stay Inside</CardTitle>
-                <CardDescription>
-                  Great for visitors who prefer to wait in-store.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3 text-muted-foreground">
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5" />
-                    <span>Phone-free check-ins—no number required</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5" />
-                    <span>Save on messaging costs</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5" />
-                    <span>Call names directly from the counter or screen</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5" />
-                    <span>Easy for less tech-savvy guests</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900 mb-2">
+                    Smart Notifications
+                  </h3>
+                  <p className="text-slate-600">
+                    Automatic SMS alerts keep customers updated on their wait
+                    time.
+                  </p>
+                </div>
+              </div>
 
-            {/* Center pill + vertical divider on md+ */}
-            <div className="hidden md:flex h-full items-center justify-center relative">
-              <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
-              <div className="relative z-10">
-                <span className="px-5 py-2 rounded-full bg-success text-white text-sm font-medium shadow animate-fadePulse [will-change:opacity]">
-                  Switch modes anytime
-                </span>
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-violet-50 flex items-center justify-center">
+                  <BarChart3 className="w-6 h-6 text-violet-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900 mb-2">
+                    Analytics & Insights
+                  </h3>
+                  <p className="text-slate-600">
+                    Track performance with detailed charts and graphs to
+                    optimize your operations.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-indigo-50 flex items-center justify-center">
+                  <ClipboardList className="w-6 h-6 text-indigo-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900 mb-2">
+                    Unified Dashboard
+                  </h3>
+                  <p className="text-slate-600">
+                    Manage all your locations, queues, and customers in one
+                    place.
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Right card */}
-            <Card className="shadow-lg border rounded-2xl hover:scale-105 hover:shadow-xl transition-transform duration-300">
-              <CardHeader className="text-center">
-                <div className="mb-4 flex justify-center">
-                  <Smartphone className="w-10 h-10 text-blue-600" />
-                </div>
-                <CardTitle className="text-xl">Step Out Nearby</CardTitle>
-                <CardDescription>
-                  Perfect for guests who want flexibility.
-                </CardDescription>
+            {/* Right: Analytics Preview */}
+            <div className="relative">
+              <Card className="shadow-2xl border border-slate-200 bg-white">
+                <CardHeader className="border-b border-slate-100 p-4 md:p-6">
+                  <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
+                    <div>
+                      <CardTitle className="text-lg md:text-xl text-slate-800 flex items-center space-x-2">
+                        <TrendingUp className="w-5 h-5" />
+                        <span>Performance Summary</span>
+                      </CardTitle>
+                      <CardDescription className="text-slate-600 text-sm">
+                        Track customers served, wait times, and no-shows
+                      </CardDescription>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button size="sm" variant="default">
+                        Daily
+                      </Button>
+                      <Button size="sm" variant="outline">
+                        Weekly
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 md:p-6">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart
+                      data={[
+                        { date: "Oct 30", served: 12, avgWait: 15, noShows: 2 },
+                        { date: "Oct 31", served: 18, avgWait: 12, noShows: 1 },
+                        { date: "Nov 1", served: 25, avgWait: 10, noShows: 3 },
+                        { date: "Nov 2", served: 22, avgWait: 14, noShows: 2 },
+                        { date: "Nov 3", served: 30, avgWait: 8, noShows: 5 },
+                        { date: "Nov 4", served: 35, avgWait: 7, noShows: 8 },
+                        { date: "Nov 5", served: 40, avgWait: 6, noShows: 11 },
+                      ]}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="served"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        name="Customers Served"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgWait"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        name="Avg Wait Time (min)"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="noShows"
+                        stroke="#f59e0b"
+                        strokeWidth={2}
+                        name="No-Shows"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Supercharge Your Workflow */}
+      <section id="features" className="py-20 px-4 bg-slate-50">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-16 px-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-6">
+              Supercharge Your Workflow with SeatPing
+            </h2>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Card 1 */}
+            <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden">
+              <div className="aspect-video bg-gradient-to-br from-indigo-100 to-indigo-50 flex items-center justify-center">
+                <Clock className="w-20 h-20 text-indigo-600" />
+              </div>
+              <CardHeader>
+                <CardTitle className="text-2xl text-slate-900">
+                  Quick Setup
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-3 text-muted-foreground">
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5" />
-                    <span>SMS when it's your turn</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5" />
-                    <span>Grab coffee or run a quick errand</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5" />
-                    <span>Automatic status reminders</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5" />
-                    <span>Relax at a nearby spot while you wait</span>
-                  </li>
-                </ul>
+                <p className="text-slate-600 leading-relaxed">
+                  Get started in 2 minutes. Create your account, display your QR
+                  code, and start managing your queue instantly.
+                </p>
               </CardContent>
             </Card>
+
+            {/* Card 2 */}
+            <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden">
+              <div className="aspect-video bg-gradient-to-br from-teal-100 to-teal-50 flex items-center justify-center">
+                <Smartphone className="w-20 h-20 text-teal-600" />
+              </div>
+              <CardHeader>
+                <CardTitle className="text-2xl text-slate-900">
+                  Smart Notifications
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-600 leading-relaxed">
+                  Customers receive automatic SMS updates. They can wait
+                  anywhere, and you'll never lose a sale.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Card 3 */}
+            <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden">
+              <div className="aspect-video bg-gradient-to-br from-violet-100 to-violet-50 flex items-center justify-center">
+                <ClipboardList className="w-20 h-20 text-violet-600" />
+              </div>
+              <CardHeader>
+                <CardTitle className="text-2xl text-slate-900">
+                  Real-Time Management
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-600 leading-relaxed">
+                  Track every customer, send notifications with one tap, and
+                  manage multiple locations from one dashboard.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-20 px-4 bg-white overflow-hidden">
+        <div className="container mx-auto max-w-7xl">
+          <div className="text-center mb-16 px-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-4">
+              Hear It from Those Who Matter Most
+            </h2>
+            <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
+              See what our customers have to say about their experiences. Real
+              stories, straight from the people who matter most.
+            </p>
+          </div>
+
+          {/* First Row - Scrolling Right to Left */}
+          <div className="mb-6 relative overflow-hidden">
+            {/* Left blur edge */}
+            <div className="hidden md:block absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
+            {/* Right blur edge */}
+            <div className="hidden md:block absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
+
+            <div className="flex gap-6 animate-scroll-left hover:pause-animation">
+              {[
+                {
+                  name: "John Davis",
+                  role: "Owner, Bella's Bistro",
+                  avatar: "JD",
+                  color: "from-indigo-600 to-indigo-500",
+                  text: "SeatPing keeps our team organized and focused. Queue management has never been easier!",
+                  time: "2 days ago",
+                },
+                {
+                  name: "Sarah Chen",
+                  role: "Manager, Trim & Style",
+                  avatar: "SC",
+                  color: "from-teal-600 to-teal-500",
+                  text: "Smart notifications help us hit every deadline. SeatPing is a game changer.",
+                  time: "1 week ago",
+                },
+                {
+                  name: "Mike Rodriguez",
+                  role: "Operations Lead",
+                  avatar: "MR",
+                  color: "from-violet-600 to-violet-500",
+                  text: "Managing locations is effortless with SeatPing. Our workflow is so much smoother.",
+                  time: "3 days ago",
+                },
+                {
+                  name: "Emma Wilson",
+                  role: "Cafe Owner",
+                  avatar: "EW",
+                  color: "from-indigo-500 to-violet-500",
+                  text: "The real-time updates are incredible. Our customers love the flexibility!",
+                  time: "5 days ago",
+                },
+                {
+                  name: "David Park",
+                  role: "Manager, Urban Salon",
+                  avatar: "DP",
+                  color: "from-teal-500 to-cyan-500",
+                  text: "Best queue system we've used. Setup was a breeze and it just works!",
+                  time: "1 week ago",
+                },
+                // Duplicate for seamless loop
+                {
+                  name: "John Davis",
+                  role: "Owner, Bella's Bistro",
+                  avatar: "JD",
+                  color: "from-indigo-600 to-indigo-500",
+                  text: "SeatPing keeps our team organized and focused. Queue management has never been easier!",
+                  time: "2 days ago",
+                },
+                {
+                  name: "Sarah Chen",
+                  role: "Manager, Trim & Style",
+                  avatar: "SC",
+                  color: "from-teal-600 to-teal-500",
+                  text: "Smart notifications help us hit every deadline. SeatPing is a game changer.",
+                  time: "1 week ago",
+                },
+                {
+                  name: "Mike Rodriguez",
+                  role: "Operations Lead",
+                  avatar: "MR",
+                  color: "from-violet-600 to-violet-500",
+                  text: "Managing locations is effortless with SeatPing. Our workflow is so much smoother.",
+                  time: "3 days ago",
+                },
+                {
+                  name: "Emma Wilson",
+                  role: "Cafe Owner",
+                  avatar: "EW",
+                  color: "from-indigo-500 to-violet-500",
+                  text: "The real-time updates are incredible. Our customers love the flexibility!",
+                  time: "5 days ago",
+                },
+                {
+                  name: "David Park",
+                  role: "Manager, Urban Salon",
+                  avatar: "DP",
+                  color: "from-teal-500 to-cyan-500",
+                  text: "Best queue system we've used. Setup was a breeze and it just works!",
+                  time: "1 week ago",
+                },
+              ].map((testimonial, idx) => (
+                <Card
+                  key={idx}
+                  className="min-w-[350px] bg-white border-slate-200 shadow-sm flex-shrink-0"
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-12 h-12 rounded-full bg-gradient-to-br ${testimonial.color} flex items-center justify-center text-white font-semibold`}
+                        >
+                          {testimonial.avatar}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-900">
+                            {testimonial.name}
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            {testimonial.role}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-slate-400">
+                        {testimonial.time}
+                      </span>
+                    </div>
+                    <p className="text-slate-700 text-sm leading-relaxed">
+                      "{testimonial.text}"
+                    </p>
+                    <div className="flex gap-1 mt-4">
+                      {[...Array(5)].map((_, i) => (
+                        <span key={i} className="text-yellow-500 text-sm">
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Second Row - Scrolling Left to Right */}
+          <div className="relative overflow-hidden">
+            {/* Left blur edge */}
+            <div className="hidden md:block absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
+            {/* Right blur edge */}
+            <div className="hidden md:block absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
+
+            <div className="flex gap-6 animate-scroll-right hover:pause-animation">
+              {[
+                {
+                  name: "Emily Liu",
+                  role: "Director, QuickCare Clinic",
+                  avatar: "EL",
+                  color: "from-indigo-600 to-violet-600",
+                  text: "SeatPing's dashboard gives us clarity and control. Highly recommended!",
+                  time: "4 days ago",
+                },
+                {
+                  name: "Alex Turner",
+                  role: "Founder, Urban Cuts",
+                  avatar: "AT",
+                  color: "from-indigo-500 to-violet-500",
+                  text: "The UI is clean and intuitive. SeatPing makes queue management simple.",
+                  time: "1 week ago",
+                },
+                {
+                  name: "Rachel Park",
+                  role: "Owner, Nail Lounge",
+                  avatar: "RP",
+                  color: "from-teal-500 to-cyan-500",
+                  text: "SeatPing's smart notifications save me hours every week. Love it!",
+                  time: "6 days ago",
+                },
+                {
+                  name: "Tom Anderson",
+                  role: "Restaurant Manager",
+                  avatar: "TA",
+                  color: "from-violet-600 to-indigo-600",
+                  text: "We've reduced wait complaints by 80%. Game-changing for our business!",
+                  time: "2 weeks ago",
+                },
+                {
+                  name: "Lisa Martinez",
+                  role: "Spa Director",
+                  avatar: "LM",
+                  color: "from-teal-600 to-cyan-600",
+                  text: "Customer satisfaction through the roof! Best investment we've made.",
+                  time: "3 days ago",
+                },
+                // Duplicate for seamless loop
+                {
+                  name: "Emily Liu",
+                  role: "Director, QuickCare Clinic",
+                  avatar: "EL",
+                  color: "from-indigo-600 to-violet-600",
+                  text: "SeatPing's dashboard gives us clarity and control. Highly recommended!",
+                  time: "4 days ago",
+                },
+                {
+                  name: "Alex Turner",
+                  role: "Founder, Urban Cuts",
+                  avatar: "AT",
+                  color: "from-indigo-500 to-violet-500",
+                  text: "The UI is clean and intuitive. SeatPing makes queue management simple.",
+                  time: "1 week ago",
+                },
+                {
+                  name: "Rachel Park",
+                  role: "Owner, Nail Lounge",
+                  avatar: "RP",
+                  color: "from-teal-500 to-cyan-500",
+                  text: "SeatPing's smart notifications save me hours every week. Love it!",
+                  time: "6 days ago",
+                },
+                {
+                  name: "Tom Anderson",
+                  role: "Restaurant Manager",
+                  avatar: "TA",
+                  color: "from-violet-600 to-indigo-600",
+                  text: "We've reduced wait complaints by 80%. Game-changing for our business!",
+                  time: "2 weeks ago",
+                },
+                {
+                  name: "Lisa Martinez",
+                  role: "Spa Director",
+                  avatar: "LM",
+                  color: "from-teal-600 to-cyan-600",
+                  text: "Customer satisfaction through the roof! Best investment we've made.",
+                  time: "3 days ago",
+                },
+              ].map((testimonial, idx) => (
+                <Card
+                  key={idx}
+                  className="min-w-[350px] bg-white border-slate-200 shadow-sm flex-shrink-0"
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-12 h-12 rounded-full bg-gradient-to-br ${testimonial.color} flex items-center justify-center text-white font-semibold`}
+                        >
+                          {testimonial.avatar}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-900">
+                            {testimonial.name}
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            {testimonial.role}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-slate-400">
+                        {testimonial.time}
+                      </span>
+                    </div>
+                    <p className="text-slate-700 text-sm leading-relaxed">
+                      "{testimonial.text}"
+                    </p>
+                    <div className="flex gap-1 mt-4">
+                      {[...Array(5)].map((_, i) => (
+                        <span key={i} className="text-yellow-500 text-sm">
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-16 px-4 bg-muted/30">
-        <div className="container mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Pricing That Makes Sense for Your Business
+      <section id="pricing" className="py-20 px-4 bg-slate-50">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-16 px-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-6">
+              Simple, Flexible Pricing for SeatPing
             </h2>
+            <p className="text-base sm:text-lg md:text-xl text-slate-600">
+              SeatPing helps businesses manage queues effortlessly. Choose a
+              plan and boost your productivity.
+            </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <Card className="shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
-              <CardHeader className="text-center">
-                <CardTitle className="text-xl">Starter</CardTitle>
-                <div className="text-3xl font-bold text-success">
-                  $19
-                  <span className="text-lg text-muted-foreground">/month</span>
+          <div className="grid lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {/* Starter Plan */}
+            <Card className="shadow-lg border border-slate-200 bg-white flex flex-col">
+              <CardHeader className="text-center pb-8 pt-8">
+                <CardTitle className="text-2xl text-slate-900 mb-4">
+                  Starter
+                </CardTitle>
+                <div className="mb-2">
+                  <span className="text-5xl font-semibold text-slate-900">
+                    $19
+                  </span>
+                  <span className="text-slate-500"> / mo</span>
                 </div>
+                <p className="text-sm text-slate-500">Per user</p>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3 mb-0 md:mb-10">
+              <CardContent className="space-y-6 flex-1 flex flex-col">
+                <div className="space-y-4 flex-1">
                   <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>1 Location</span>
+                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                    <span className="text-slate-700">1 Location</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>300 SMS/Month</span>
+                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                    <span className="text-slate-700">300 SMS/Month</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>300 Customers/Month</span>
+                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                    <span className="text-slate-700">300 Customers/Month</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                    <span className="text-slate-700">Email Support</span>
                   </div>
                 </div>
 
-                <Button className="w-full" size="lg" asChild>
-                  <Link to="/signup">Start Free Trial</Link>
+                <Button
+                  variant="outline"
+                  className="w-full border-slate-300 hover:bg-slate-50"
+                  size="lg"
+                  asChild
+                >
+                  <Link to="/signup">Get Started</Link>
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="shadow-2xl border-2 border-primary bg-card/80 backdrop-blur-sm">
-              <CardHeader className="text-center">
-                <Badge className="mx-auto mb-2 bg-primary text-primary-foreground">
-                  Most Popular
-                </Badge>
-                <CardTitle className="text-xl">Professional</CardTitle>
-                <div className="text-3xl font-bold text-success">
-                  $49
-                  <span className="text-lg text-muted-foreground">/month</span>
+            {/* Professional Plan - Popular */}
+            <Card className="shadow-xl border-2 border-indigo-200 bg-white relative flex flex-col">
+              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-0 px-4 py-1">
+                Popular
+              </Badge>
+              <CardHeader className="text-center pb-8 pt-8">
+                <CardTitle className="text-2xl text-slate-900 mb-4">
+                  Professional
+                </CardTitle>
+                <div className="mb-2">
+                  <span className="text-5xl font-semibold text-slate-900">
+                    $49
+                  </span>
+                  <span className="text-slate-500"> / mo</span>
                 </div>
+                <p className="text-sm text-slate-500">Per user</p>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
+              <CardContent className="space-y-6 flex-1 flex flex-col">
+                <div className="space-y-4 flex-1">
                   <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>3 Locations</span>
+                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                    <span className="text-slate-700">All Free Features</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>600 SMS/Month per location</span>
+                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                    <span className="text-slate-700">3 Locations</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>600 Customers/Month per location</span>
+                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                    <span className="text-slate-700">
+                      600 SMS/Month per location
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                    <span className="text-slate-700">
+                      600 Customers/Month per location
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                    <span className="text-slate-700">Priority Support</span>
                   </div>
                 </div>
 
-                <Button className="w-full" size="lg" asChild>
-                  <Link to="/signup">Start Free Trial</Link>
+                <Button
+                  className="w-full bg-slate-900 hover:bg-slate-800"
+                  size="lg"
+                  asChild
+                >
+                  <Link to="/signup">Get Started</Link>
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
-              <CardHeader className="text-center">
-                <CardTitle className="text-xl">Custom</CardTitle>
-                <div className="text-3xl font-bold text-success">
-                  Custom
-                  <span className="text-lg text-muted-foreground">/month</span>
+            {/* Custom Plan */}
+            <Card className="shadow-lg border border-slate-200 bg-white flex flex-col">
+              <CardHeader className="text-center pb-8 pt-8">
+                <CardTitle className="text-2xl text-slate-900 mb-4">
+                  Business
+                </CardTitle>
+                <div className="mb-2">
+                  <span className="text-5xl font-semibold text-slate-900">
+                    Custom
+                  </span>
                 </div>
+                <p className="text-sm text-slate-500">Per user</p>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3 mb-0 md:mb-10">
+              <CardContent className="space-y-6 flex-1 flex flex-col">
+                <div className="space-y-4 flex-1">
                   <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>Custom Locations</span>
+                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                    <span className="text-slate-700">All Pro Features</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>Custom SMS Credits</span>
+                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                    <span className="text-slate-700">Unlimited Locations</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 bg-success rounded-full"></span>
-                    <span>Custom Customers Credits</span>
+                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                    <span className="text-slate-700">Custom SMS Credits</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                    <span className="text-slate-700">Dedicated Support</span>
                   </div>
                 </div>
 
-                <Button className="w-full" size="lg" asChild>
+                <Button
+                  variant="outline"
+                  className="w-full border-slate-300 hover:bg-slate-50"
+                  size="lg"
+                  asChild
+                >
                   <Link to="/sales">Contact Sales</Link>
                 </Button>
               </CardContent>
             </Card>
-
-            <div className="md:col-span-3 text-center mt-6">
-              <p className="text-muted-foreground">
-                <Star className="w-4 h-4 inline-block mr-1 text-yellow-500 relative -top-[2px]" />{" "}
-                All plans include 7-day free trial • No credit card required •
-                Cancel anytime
-              </p>
-            </div>
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-16 px-4">
+      <section className="py-20 px-4">
         <div className="container mx-auto text-center">
-          <div className="max-w-2xl mx-auto space-y-6">
-            <h2 className="text-3xl md:text-4xl font-bold">
+          <div className="max-w-3xl mx-auto space-y-8 px-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900">
               Ready to Hold Every Walk-In?
             </h2>
-            <p className="text-xl text-muted-foreground">
+            <p className="text-base sm:text-lg md:text-xl text-slate-600">
               Start your free trial today. No credit card required.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="outline" size="lg" asChild>
-                <Link to="/signup">Start Free Trial</Link>
+            <div className="flex justify-center">
+              <Button
+                size="lg"
+                className="text-sm sm:text-base px-6 sm:px-8 bg-slate-900 hover:bg-slate-800"
+                asChild
+              >
+                <Link to="/signup">Get Started Free</Link>
               </Button>
             </div>
           </div>

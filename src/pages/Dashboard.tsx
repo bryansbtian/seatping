@@ -78,7 +78,7 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-success/5">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-success bg-clip-text text-transparent mb-2">
+          <h1 className="text-3xl font-semibold text-primary mb-2">
             Business Dashboard
           </h1>
           <p className="text-muted-foreground">
@@ -91,7 +91,7 @@ const Dashboard = () => {
           <Card className="shadow-lg border-0 bg-gradient-to-br from-success/10 to-success/5">
             <CardHeader className="pb-2">
               <CardDescription>Total Served Today</CardDescription>
-              <CardTitle className="text-2xl text-success">
+              <CardTitle className="text-2xl font-semibold text-success">
                 {todayStats.totalServed}
               </CardTitle>
             </CardHeader>
@@ -100,7 +100,7 @@ const Dashboard = () => {
           <Card className="shadow-lg border-0 bg-gradient-to-br from-primary/10 to-primary/5">
             <CardHeader className="pb-2">
               <CardDescription>Current Queue</CardDescription>
-              <CardTitle className="text-2xl text-primary">
+              <CardTitle className="text-2xl font-semibold text-primary">
                 {todayStats.currentQueue}
               </CardTitle>
             </CardHeader>
@@ -109,7 +109,7 @@ const Dashboard = () => {
           <Card className="shadow-lg border-0">
             <CardHeader className="pb-2">
               <CardDescription>Avg Wait Time</CardDescription>
-              <CardTitle className="text-2xl">
+              <CardTitle className="text-2xl font-semibold">
                 {todayStats.avgWaitTime}min
               </CardTitle>
             </CardHeader>
@@ -118,7 +118,7 @@ const Dashboard = () => {
           <Card className="shadow-lg border-0 bg-gradient-to-br from-destructive/10 to-destructive/5">
             <CardHeader className="pb-2">
               <CardDescription>Walk-aways</CardDescription>
-              <CardTitle className="text-2xl text-destructive">
+              <CardTitle className="text-2xl font-semibold text-destructive">
                 {todayStats.walkAways}
               </CardTitle>
             </CardHeader>
@@ -149,7 +149,7 @@ const Dashboard = () => {
                     className="flex items-center justify-between p-4 bg-muted/50 rounded-lg"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-8 h-8 bg-gradient-to-r from-primary to-primary-glow rounded-full flex items-center justify-center text-white font-semibold">
+                      <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-semibold">
                         {index + 1}
                       </div>
                       <div>

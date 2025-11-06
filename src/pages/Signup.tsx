@@ -118,7 +118,7 @@ const Signup = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 py-8 pt-24">
         <Card className="w-full max-w-md shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
+            <CardTitle className="text-2xl text-primary">
               Create Your Account
             </CardTitle>
             <CardDescription>

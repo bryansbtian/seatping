@@ -9,7 +9,7 @@ const Demo = () => {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 py-3 sm:py-8 md:py-16 lg:py-24 space-y-4 sm:space-y-6 md:space-y-8">
         {/* Title and description */}
         <div className="text-center max-w-2xl mx-auto space-y-4">
-          <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-primary to-success bg-clip-text text-transparent leading-tight pb-3">
+          <h1 className="text-3xl md:text-5xl font-semibold text-primary leading-tight pb-3">
             See SeatPing in Action
           </h1>
           <p className="text-muted-foreground text-lg md:text-xl">

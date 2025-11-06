@@ -145,7 +145,7 @@ const PlanChange = () => {
   return (
     <>
       <BusinessHeader />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-teal-50 to-blue-100 py-24 sm:py-16 md:py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50 to-indigo-100 py-24 sm:py-16 md:py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           {/* Back Button */}
           <div className="mb-6">
@@ -161,7 +161,7 @@ const PlanChange = () => {
 
           <Card className="shadow-xl rounded-xl border-0">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-bold">
+              <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-semibold">
                 Change Your Plan
               </CardTitle>
               {selectedPlan && (
@@ -192,7 +192,7 @@ const PlanChange = () => {
                           isCurrentPlan(plan)
                             ? "border-2 border-gray-300 bg-gray-50 opacity-60"
                             : selectedPlan === plan
-                            ? "border-2 border-blue-500 bg-blue-50 shadow-2xl"
+                            ? "border-2 border-indigo-500 bg-indigo-50 shadow-2xl"
                             : "border-2 border-transparent hover:border-primary hover:shadow-2xl"
                         }`}
                         onClick={() =>
@@ -212,7 +212,7 @@ const PlanChange = () => {
                               </span>
                             )}
                             {selectedPlan === plan && !isCurrentPlan(plan) && (
-                              <span className="block text-xs sm:text-sm text-blue-600 mt-1 font-medium">
+                              <span className="block text-xs sm:text-sm text-indigo-600 mt-1 font-medium">
                                 Selected
                               </span>
                             )}
@@ -270,7 +270,7 @@ const PlanChange = () => {
                 {/* Change Plan Button */}
                 <Button
                   type="submit"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-lg mt-4 sm:mt-6"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-lg mt-4 sm:mt-6"
                   disabled={loading || !selectedPlan}
                 >
                   {loading ? "Processing..." : "Update Billing"}
@@ -305,7 +305,7 @@ const PlanChange = () => {
                 </Button>
                 <Button
                   onClick={handleConfirmPlanChange}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700"
                   disabled={loading}
                 >
                   {loading ? "Updating..." : "Confirm Change"}

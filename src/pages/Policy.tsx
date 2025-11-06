@@ -18,7 +18,7 @@ const Policy = () => {
       <section className="pt-28 md:pt-32 lg:pt-40 pb-10 px-4">
         <div className="container mx-auto">
           <div className="text-center max-w-3xl mx-auto space-y-4">
-            <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary to-success bg-clip-text text-transparent pb-2">
+            <h1 className="text-4xl md:text-6xl font-semibold bg-gradient-to-r from-primary to-success bg-clip-text text-transparent pb-2">
               Privacy Policy
             </h1>
             <p className="text-muted-foreground">

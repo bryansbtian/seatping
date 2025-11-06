@@ -177,11 +177,11 @@ const Payments = () => {
   return (
     <>
       <BusinessHeader />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-teal-50 to-blue-100 py-24 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50 to-indigo-100 py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <Card className="shadow-xl rounded-xl border-0">
             <CardHeader className="text-center">
-              <CardTitle className="text-3xl lg:text-4xl font-bold">
+              <CardTitle className="text-3xl lg:text-4xl font-semibold">
                 Choose Your Plan
               </CardTitle>
 
@@ -257,7 +257,7 @@ const Payments = () => {
                           !onTrial && isCurrent
                             ? "border-2 border-gray-300 bg-gray-50 opacity-60"
                             : isSelected
-                            ? "border-2 border-blue-500 bg-blue-50 shadow-2xl"
+                            ? "border-2 border-indigo-500 bg-indigo-50 shadow-2xl"
                             : "border-2 border-transparent hover:border-primary hover:shadow-2xl"
                         }`}
                         onClick={() => handlePlanChange(planKey)}
@@ -277,7 +277,7 @@ const Payments = () => {
                               </span>
                             )}
                             {isSelected && !(!onTrial && isCurrent) && (
-                              <span className="block text-sm text-blue-600 mt-1 font-medium">
+                              <span className="block text-sm text-indigo-600 mt-1 font-medium">
                                 Selected
                               </span>
                             )}
@@ -342,11 +342,11 @@ const Payments = () => {
                   <h3 className="text-lg font-semibold text-gray-800">
                     Payment Method
                   </h3>
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                  <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
                       <CreditCard className="w-4 h-4 text-white" />
                     </div>
-                    <Label className="text-base font-medium text-blue-800">
+                    <Label className="text-base font-medium text-indigo-800">
                       Credit Card
                     </Label>
                   </div>

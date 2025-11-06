@@ -1,9 +1,16 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
 const BusinessHeader = () => {
   const [open, setOpen] = useState(false);
+
+  const handleLogout = (e: React.MouseEvent) => {
+    e.preventDefault();
+    fetch("/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    }).then(() => (window.location.href = "/"));
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -23,32 +30,25 @@ const BusinessHeader = () => {
       <div className="container mx-auto px-4 py-4 flex items-center justify-between relative">
         <Link
           to="/business/dashboard"
-          className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent"
+          className="text-2xl font-semibold text-slate-900"
         >
           SeatPing
         </Link>
 
         {/* Desktop / Tablet actions (sm and up) */}
-        <div className="hidden sm:flex items-center gap-3">
-          <Button variant="default" asChild>
-            <Link to="/business/dashboard">Dashboard</Link>
-          </Button>
-          <Button variant="success" asChild>
-            <Link to="/business/settings">Settings</Link>
-          </Button>
-          <Button
-            variant="outline"
-            asChild
-            onClick={(e) => {
-              e.preventDefault();
-              fetch("/auth/logout", {
-                method: "POST",
-                credentials: "include",
-              }).then(() => (window.location.href = "/"));
-            }}
+        <div className="hidden sm:flex items-center gap-8">
+          <Link to="/business/dashboard" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
+            Dashboard
+          </Link>
+          <Link to="/business/settings" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
+            Settings
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="text-slate-900 hover:text-slate-600 transition-colors font-medium cursor-pointer"
           >
-            <Link to="/auth/logout">Logout</Link>
-          </Button>
+            Logout
+          </button>
         </div>
 
         {/* Mobile hamburger */}
@@ -75,36 +75,26 @@ const BusinessHeader = () => {
             role="menu"
             className="sm:hidden absolute top-full left-4 right-4 mt-3 rounded-2xl border border-border bg-background shadow-xl p-3 space-y-2"
           >
-            <Button
-              variant="default"
-              className="w-full justify-start"
-              asChild
+            <Link
+              to="/business/dashboard"
+              className="block px-4 py-2 text-slate-900 hover:bg-slate-50 rounded-lg transition-colors font-medium"
               onClick={() => setOpen(false)}
             >
-              <Link to="/business/dashboard">Dashboard</Link>
-            </Button>
-            <Button
-              variant="success"
-              className="w-full justify-start"
-              asChild
+              Dashboard
+            </Link>
+            <Link
+              to="/business/settings"
+              className="block px-4 py-2 text-slate-900 hover:bg-slate-50 rounded-lg transition-colors font-medium"
               onClick={() => setOpen(false)}
             >
-              <Link to="/business/settings">Settings</Link>
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              asChild
-              onClick={(e) => {
-                e.preventDefault();
-                fetch("/auth/logout", {
-                  method: "POST",
-                  credentials: "include",
-                }).then(() => (window.location.href = "/"));
-              }}
+              Settings
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="block w-full text-left px-4 py-2 text-slate-900 hover:bg-slate-50 rounded-lg transition-colors font-medium cursor-pointer"
             >
-              <Link to="/auth/logout">Logout</Link>
-            </Button>
+              Logout
+            </button>
           </div>
         )}
       </div>

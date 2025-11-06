@@ -358,7 +358,7 @@ const Admin = () => {
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+            <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
             <p className="text-muted-foreground">Manage business credits and support tickets</p>
           </div>
           <Button variant="outline" onClick={() => setIsAuthenticated(false)}>
@@ -380,7 +380,7 @@ const Admin = () => {
                     <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{stats.total}</div>
+                    <div className="text-2xl font-semibold">{stats.total}</div>
                   </CardContent>
                 </Card>
                 <Card>
@@ -388,7 +388,7 @@ const Admin = () => {
                     <CardTitle className="text-sm font-medium text-muted-foreground">Open</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-red-600">{stats.open}</div>
+                    <div className="text-2xl font-semibold text-red-600">{stats.open}</div>
                   </CardContent>
                 </Card>
                 <Card>
@@ -396,7 +396,7 @@ const Admin = () => {
                     <CardTitle className="text-sm font-medium text-muted-foreground">In Progress</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-blue-600">{stats.inProgress}</div>
+                    <div className="text-2xl font-semibold text-indigo-600">{stats.inProgress}</div>
                   </CardContent>
                 </Card>
                 <Card>
@@ -404,7 +404,7 @@ const Admin = () => {
                     <CardTitle className="text-sm font-medium text-muted-foreground">Closed</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-green-600">{stats.closed}</div>
+                    <div className="text-2xl font-semibold text-green-600">{stats.closed}</div>
                   </CardContent>
                 </Card>
                 <Card>
@@ -412,7 +412,7 @@ const Admin = () => {
                     <CardTitle className="text-sm font-medium text-muted-foreground">Sales</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{stats.sales}</div>
+                    <div className="text-2xl font-semibold">{stats.sales}</div>
                   </CardContent>
                 </Card>
                 <Card>
@@ -420,7 +420,7 @@ const Admin = () => {
                     <CardTitle className="text-sm font-medium text-muted-foreground">Feedback</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{stats.feedback}</div>
+                    <div className="text-2xl font-semibold">{stats.feedback}</div>
                   </CardContent>
                 </Card>
               </div>
@@ -662,7 +662,7 @@ const Admin = () => {
                       <div
                         key={idx}
                         className={`p-4 rounded-md ${
-                          msg.isTeamResponse ? "bg-blue-50 border-l-4 border-blue-500" : "bg-muted"
+                          msg.isTeamResponse ? "bg-indigo-50 border-l-4 border-indigo-500" : "bg-muted"
                         }`}
                       >
                         <div className="flex justify-between items-start mb-2">

@@ -490,7 +490,7 @@ export default function QueueBusiness() {
       <div className="min-h-screen pt-28 pb-16 flex items-center justify-center bg-gradient-to-br from-success/5 via-background to-primary/5 px-4">
         <Card className="w-full max-w-xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
+            <CardTitle className="text-2xl text-primary">
               {businessName || `@${businessUsername}`}
             </CardTitle>
             <CardDescription>
@@ -1107,7 +1107,7 @@ export default function QueueBusiness() {
             {/* Step 5 content */}
             {step === 5 && (
               <div className="space-y-6 text-center">
-                <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-r from-primary to-success flex items-center justify-center">
+                <div className="mx-auto w-16 h-16 rounded-full bg-primary flex items-center justify-center">
                   <svg
                     className="w-8 h-8 text-white"
                     viewBox="0 0 24 24"

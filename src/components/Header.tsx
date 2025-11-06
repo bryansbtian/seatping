@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
 const Header = () => {
@@ -23,22 +22,22 @@ const Header = () => {
       <div className="container mx-auto px-4 py-4 flex items-center justify-between relative">
         <Link
           to="/"
-          className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent"
+          className="text-2xl font-semibold text-slate-900"
         >
           SeatPing
         </Link>
 
         {/* Desktop / Tablet actions (sm and up) */}
-        <div className="hidden sm:flex items-center gap-3">
-          <Button variant="default" asChild>
-            <Link to="/login">Login</Link>
-          </Button>
-          <Button variant="success" asChild>
-            <Link to="/signup">Get Started</Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link to="/queue">Join Queue</Link>
-          </Button>
+        <div className="hidden sm:flex items-center gap-8">
+          <Link to="/login" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
+            Login
+          </Link>
+          <Link to="/signup" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
+            Get Started
+          </Link>
+          <Link to="/queue" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
+            Join Queue
+          </Link>
         </div>
 
         <button
@@ -64,30 +63,27 @@ const Header = () => {
             role="menu"
             className="sm:hidden absolute top-full left-4 right-4 mt-3 rounded-2xl border border-border bg-background shadow-xl p-3 space-y-2"
           >
-            <Button
-              variant="default"
-              className="w-full justify-start"
-              asChild
+            <Link
+              to="/login"
+              className="block px-4 py-2 text-slate-900 hover:bg-slate-50 rounded-lg transition-colors font-medium"
               onClick={() => setOpen(false)}
             >
-              <Link to="/login">Login</Link>
-            </Button>
-            <Button
-              variant="success"
-              className="w-full justify-start"
-              asChild
+              Login
+            </Link>
+            <Link
+              to="/signup"
+              className="block px-4 py-2 text-slate-900 hover:bg-slate-50 rounded-lg transition-colors font-medium"
               onClick={() => setOpen(false)}
             >
-              <Link to="/signup">Get Started</Link>
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              asChild
+              Get Started
+            </Link>
+            <Link
+              to="/queue"
+              className="block px-4 py-2 text-slate-900 hover:bg-slate-50 rounded-lg transition-colors font-medium"
               onClick={() => setOpen(false)}
             >
-              <Link to="/queue">Join Queue</Link>
-            </Button>
+              Join Queue
+            </Link>
           </div>
         )}
       </div>
