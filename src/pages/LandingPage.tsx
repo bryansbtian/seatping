@@ -19,6 +19,10 @@ import {
   TrendingUp,
   Star,
   BarChart3,
+  MessageSquare,
+  LogOut,
+  ChevronDown,
+  Calendar,
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -96,8 +100,64 @@ const LandingPage = () => {
             {/* Dashboard Preview */}
             <div className="relative mt-16 w-full">
               <div className="rounded-2xl shadow-2xl border border-slate-200 bg-slate-50 p-6 md:p-8">
-                {/* Dashboard Header */}
-                <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
+                {/* Dashboard Header - Mobile Version */}
+                <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-4 lg:hidden">
+                  {/* Header (no date here) */}
+                  <div className="mb-4">
+                    <h2 className="text-xl md:text-2xl font-semibold text-slate-800 leading-tight">
+                      Hello Cafe Milano!
+                    </h2>
+                    <p className="text-slate-600 text-sm md:text-base">
+                      Here is your daily statistic
+                    </p>
+                  </div>
+
+                  {/* Credits Cards */}
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs text-slate-600 mb-2">
+                            Customer Credits
+                          </p>
+                          <p className="text-xl md:text-2xl font-semibold text-slate-800">
+                            285
+                          </p>
+                        </div>
+                        <div className="w-8 h-8 rounded-full grid place-items-center shrink-0 bg-indigo-100">
+                          <Users className="w-4 h-4 text-indigo-600" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs text-slate-600 mb-2">
+                            SMS Credits
+                          </p>
+                          <p className="text-xl md:text-2xl font-semibold text-slate-800">
+                            291
+                          </p>
+                        </div>
+                        <div className="w-8 h-8 rounded-full grid place-items-center shrink-0 bg-teal-100">
+                          <MessageSquare className="w-4 h-4 text-teal-600" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Location Selector */}
+                  <div className="relative">
+                    <select className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                      <option>Downtown</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Dashboard Header - Desktop Version */}
+                <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6 hidden lg:block">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
                       <h2 className="text-xl md:text-2xl font-semibold text-slate-800">
@@ -118,21 +178,118 @@ const LandingPage = () => {
 
                     <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
                       <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <Clock className="w-4 h-4" />
+                        <Calendar className="w-4 h-4" />
                         <span>Aug 22, 2025</span>
                       </div>
                       <div className="relative">
                         <select className="appearance-none bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                           <option>Downtown</option>
                         </select>
-                        <ClipboardList className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Stats Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-6">
+                {/* Stats Cards - Mobile Version */}
+                <div className="space-y-3 mb-6 lg:hidden">
+                  {/* Total Queue - Full Width */}
+                  <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-slate-600 text-xs mb-2">
+                          Total Queue
+                        </p>
+                        <p className="text-3xl font-semibold text-slate-800">
+                          3
+                        </p>
+                      </div>
+                      {/* unified icon badge */}
+                      <div className="w-12 h-12 rounded-full grid place-items-center shrink-0 bg-indigo-100">
+                        <Users className="w-6 h-6 text-indigo-600" />
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Row 2: Avg Wait Time and Served Today */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-slate-600 text-xs mb-2">
+                            Avg Wait Time
+                          </p>
+                          <p className="text-2xl font-semibold text-slate-800">
+                            5m
+                          </p>
+                        </div>
+                        {/* unified icon badge */}
+                        <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-teal-100">
+                          <Clock className="w-5 h-5 text-teal-600" />
+                        </div>
+                      </div>
+                    </Card>
+
+                    <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-slate-600 text-xs mb-2">
+                            Served Today
+                          </p>
+                          <p className="text-2xl font-semibold text-slate-800">
+                            8
+                          </p>
+                        </div>
+                        {/* unified icon badge (different color only) */}
+                        <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-emerald-100">
+                          <TrendingUp className="w-5 h-5 text-emerald-600" />
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+
+                  {/* Row 3: Success Rate and Left Today */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-slate-600 text-xs mb-2">
+                            Success Rate
+                          </p>
+                          <p className="text-2xl font-semibold text-slate-800">
+                            88%
+                          </p>
+                        </div>
+                        {/* unified icon badge */}
+                        <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-violet-100">
+                          <Star className="w-5 h-5 text-violet-600" />
+                        </div>
+                      </div>
+                    </Card>
+
+                    <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-slate-600 text-xs mb-2">
+                            Left Today
+                          </p>
+                          {/* nudge the number down */}
+                          <p className="text-2xl font-semibold text-slate-800 mt-3">
+                            1
+                          </p>
+                          {/* for a subtler nudge, use mt-[2px] instead */}
+                        </div>
+                        {/* bottom-align + nudge down */}
+                        <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-teal-100 self-end mt-3">
+                          <LogOut className="w-5 h-5 text-teal-600" />
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+
+                {/* Stats Cards - Desktop Version */}
+                <div className="hidden lg:grid grid-cols-5 gap-4 mb-6">
                   <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
                     <div className="flex flex-col gap-2">
                       <p className="text-slate-600 text-xs md:text-sm">
@@ -207,7 +364,7 @@ const LandingPage = () => {
                           1
                         </p>
                         <div className="p-2 bg-teal-100 rounded-full">
-                          <Users className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
+                          <LogOut className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
                         </div>
                       </div>
                     </div>
@@ -235,7 +392,7 @@ const LandingPage = () => {
                       {
                         position: 1,
                         name: "Jessica Martinez",
-                        joined: "Just now",
+                        joined: "8 mins ago",
                         guests: 2,
                         preference: "Stay on Premises",
                         phone: "555-0123",
@@ -251,7 +408,7 @@ const LandingPage = () => {
                       {
                         position: 3,
                         name: "Rachel Thompson",
-                        joined: "8 mins ago",
+                        joined: "Just now",
                         guests: 1,
                         preference: "Stay on Premises",
                         phone: "555-0789",

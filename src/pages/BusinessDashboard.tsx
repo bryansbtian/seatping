@@ -943,7 +943,7 @@ const BusinessDashboard = () => {
                   </p>
                 </div>
                 <div className="p-2 md:p-3 bg-teal-100 rounded-full">
-                  <Users className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
+                  <LogOut className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
                 </div>
               </div>
             </Card>
