@@ -607,18 +607,33 @@ const LandingPage = () => {
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart
                       data={chartData}
-                      margin={{ top: 8, right: 16, left: 16, bottom: 44 }}
+                      margin={{ top: 8, right: 16, left: 28, bottom: 44 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" tickMargin={14} height={32} />
-                      <YAxis />
+
+                      {/* Left axis (visible) */}
+                      <YAxis yAxisId="left" width={40} />
+
+                      {/* Right axis (invisible) to balance spacing and center the chart */}
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        width={40}
+                        tick={false}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+
                       <Tooltip />
                       <Legend
                         verticalAlign="bottom"
                         align="center"
                         wrapperStyle={{ bottom: 4 }}
                       />
+
                       <Line
+                        yAxisId="left"
                         type="monotone"
                         dataKey="served"
                         stroke="#3b82f6"
@@ -626,6 +641,7 @@ const LandingPage = () => {
                         name="Customers Served"
                       />
                       <Line
+                        yAxisId="left"
                         type="monotone"
                         dataKey="avgWait"
                         stroke="#10b981"
@@ -633,6 +649,7 @@ const LandingPage = () => {
                         name="Avg Wait Time (min)"
                       />
                       <Line
+                        yAxisId="left"
                         type="monotone"
                         dataKey="noShows"
                         stroke="#f59e0b"

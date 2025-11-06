@@ -1356,7 +1356,7 @@ const BusinessDashboard = () => {
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart
                       data={dailyWeeklySummary}
-                      margin={{ top: 8, right: 16, left: 16, bottom: 44 }} // a bit more room
+                      margin={{ top: 8, right: 24, left: 16, bottom: 44 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" tickMargin={14} height={32} />
@@ -1435,6 +1435,7 @@ const BusinessDashboard = () => {
                           dataKey="customers"
                           fill="#3b82f6"
                           name="Customers"
+                          radius={[8, 8, 0, 0]}
                         />
                       </BarChart>
                     </ResponsiveContainer>
@@ -1468,7 +1469,7 @@ const BusinessDashboard = () => {
                         <XAxis dataKey="range" />
                         <YAxis />
                         <Tooltip />
-                        <Bar dataKey="count" fill="#10b981" name="Customers" />
+                        <Bar dataKey="count" fill="#10b981" name="Customers" radius={[8, 8, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
