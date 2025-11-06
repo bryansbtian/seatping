@@ -114,6 +114,8 @@ export default {
         fadePulse: "fadePulse 5s ease-in-out infinite",
         "scroll-left": "scroll-left 30s linear infinite",
         "scroll-right": "scroll-right 30s linear infinite",
+        "scroll-left-mobile": "scroll-left 15s linear infinite",
+        "scroll-right-mobile": "scroll-right 15s linear infinite",
       },
     },
   },

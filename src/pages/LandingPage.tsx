@@ -14,7 +14,6 @@ import {
   Smartphone,
   Bell,
   ClipboardList,
-  User,
   Users,
   Rocket,
   TrendingUp,
@@ -33,8 +32,32 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { useState } from "react";
 
 const LandingPage = () => {
+  const [chartView, setChartView] = useState<"daily" | "weekly">("daily");
+
+  const dailyData = [
+    { date: "Oct 30", served: 12, avgWait: 15, noShows: 2 },
+    { date: "Oct 31", served: 18, avgWait: 12, noShows: 1 },
+    { date: "Nov 1", served: 25, avgWait: 10, noShows: 3 },
+    { date: "Nov 2", served: 22, avgWait: 14, noShows: 2 },
+    { date: "Nov 3", served: 30, avgWait: 8, noShows: 5 },
+    { date: "Nov 4", served: 35, avgWait: 7, noShows: 8 },
+    { date: "Nov 5", served: 40, avgWait: 6, noShows: 11 },
+  ];
+
+  const weeklyData = [
+    { date: "Week 1", served: 120, avgWait: 18, noShows: 15 },
+    { date: "Week 2", served: 145, avgWait: 15, noShows: 12 },
+    { date: "Week 3", served: 180, avgWait: 12, noShows: 20 },
+    { date: "Week 4", served: 210, avgWait: 10, noShows: 18 },
+    { date: "Week 5", served: 195, avgWait: 11, noShows: 22 },
+    { date: "Week 6", served: 235, avgWait: 9, noShows: 25 },
+  ];
+
+  const chartData = chartView === "daily" ? dailyData : weeklyData;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -223,7 +246,7 @@ const LandingPage = () => {
                         joined: "5 mins ago",
                         guests: 4,
                         preference: "Wait Outside",
-                        phone: "555-0456",
+                        phone: "(123) 456-7890",
                       },
                       {
                         position: 3,
@@ -393,23 +416,31 @@ const LandingPage = () => {
 
             {/* Right: Analytics Preview */}
             <div className="relative">
-              <Card className="shadow-2xl border border-slate-200 bg-white">
+              <Card className="shadow-2xl border border-slate-200 bg-white rounded-2xl">
                 <CardHeader className="border-b border-slate-100 p-4 md:p-6">
                   <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
                     <div>
-                      <CardTitle className="text-lg md:text-xl text-slate-800 flex items-center space-x-2">
+                      <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
                         <TrendingUp className="w-5 h-5" />
                         <span>Performance Summary</span>
                       </CardTitle>
-                      <CardDescription className="text-slate-600 text-sm">
+                      <CardDescription className="text-gray-600 text-sm">
                         Track customers served, wait times, and no-shows
                       </CardDescription>
                     </div>
                     <div className="flex space-x-2">
-                      <Button size="sm" variant="default">
+                      <Button
+                        size="sm"
+                        variant={chartView === "daily" ? "default" : "outline"}
+                        onClick={() => setChartView("daily")}
+                      >
                         Daily
                       </Button>
-                      <Button size="sm" variant="outline">
+                      <Button
+                        size="sm"
+                        variant={chartView === "weekly" ? "default" : "outline"}
+                        onClick={() => setChartView("weekly")}
+                      >
                         Weekly
                       </Button>
                     </div>
@@ -418,21 +449,18 @@ const LandingPage = () => {
                 <CardContent className="p-4 md:p-6">
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart
-                      data={[
-                        { date: "Oct 30", served: 12, avgWait: 15, noShows: 2 },
-                        { date: "Oct 31", served: 18, avgWait: 12, noShows: 1 },
-                        { date: "Nov 1", served: 25, avgWait: 10, noShows: 3 },
-                        { date: "Nov 2", served: 22, avgWait: 14, noShows: 2 },
-                        { date: "Nov 3", served: 30, avgWait: 8, noShows: 5 },
-                        { date: "Nov 4", served: 35, avgWait: 7, noShows: 8 },
-                        { date: "Nov 5", served: 40, avgWait: 6, noShows: 11 },
-                      ]}
+                      data={chartData}
+                      margin={{ top: 8, right: 16, left: 16, bottom: 44 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
+                      <XAxis dataKey="date" tickMargin={14} height={32} />
                       <YAxis />
                       <Tooltip />
-                      <Legend />
+                      <Legend
+                        verticalAlign="bottom"
+                        align="center"
+                        wrapperStyle={{ bottom: 4 }}
+                      />
                       <Line
                         type="monotone"
                         dataKey="served"
@@ -550,7 +578,7 @@ const LandingPage = () => {
             {/* Right blur edge */}
             <div className="hidden md:block absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
 
-            <div className="flex gap-6 animate-scroll-left hover:pause-animation">
+            <div className="flex gap-6 animate-scroll-left-mobile md:animate-scroll-left hover:pause-animation">
               {[
                 {
                   name: "John Davis",
@@ -682,7 +710,7 @@ const LandingPage = () => {
             {/* Right blur edge */}
             <div className="hidden md:block absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
 
-            <div className="flex gap-6 animate-scroll-right hover:pause-animation">
+            <div className="flex gap-6 animate-scroll-right-mobile md:animate-scroll-right hover:pause-animation">
               {[
                 {
                   name: "Emily Liu",
