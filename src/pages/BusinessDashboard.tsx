@@ -810,40 +810,106 @@ const BusinessDashboard = () => {
               </div>
             )}
 
-          {/* Dashboard Header */}
-          <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
-            <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+          {/* Dashboard Header - Mobile Version */}
+          <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-4 lg:hidden">
+            {/* Header (no date here) */}
+            <div className="mb-4">
+              <h2 className="text-xl md:text-2xl font-semibold text-slate-800 leading-tight">
+                Hello {me?.name || "Business Owner"}!
+              </h2>
+              <p className="text-slate-600 text-sm md:text-base">
+                Here is your daily statistic
+              </p>
+            </div>
+
+            {/* Credits Cards */}
+            {currentLocation && (
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-slate-600 mb-2">
+                        Customer Credits
+                      </p>
+                      <p className="text-xl md:text-2xl font-semibold text-slate-800">
+                        {currentLocation?.customerCredits || 0}
+                      </p>
+                    </div>
+                    <div className="w-8 h-8 rounded-full grid place-items-center shrink-0 bg-indigo-100">
+                      <Users className="w-4 h-4 text-indigo-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-slate-600 mb-2">SMS Credits</p>
+                      <p className="text-xl md:text-2xl font-semibold text-slate-800">
+                        {currentLocation?.smsCredits || 0}
+                      </p>
+                    </div>
+                    <div className="w-8 h-8 rounded-full grid place-items-center shrink-0 bg-teal-100">
+                      <Clock className="w-4 h-4 text-teal-600" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Location Selector */}
+            <div className="relative">
+              <select
+                className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={selectedLocationIndex}
+                onChange={(e) =>
+                  setSelectedLocationIndex(Number(e.target.value))
+                }
+              >
+                {locations.length > 0 ? (
+                  locations.map((loc, idx) => (
+                    <option key={idx} value={idx}>
+                      {loc?.address || `Location ${idx + 1}`}
+                    </option>
+                  ))
+                ) : (
+                  <option value={0}>No locations</option>
+                )}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Dashboard Header - Desktop Version */}
+          <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6 hidden lg:block">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <h1 className="text-xl md:text-2xl font-semibold text-gray-800">
+                <h2 className="text-xl md:text-2xl font-semibold text-slate-800">
                   Hello {me?.name || "Business Owner"}!
-                </h1>
-                <p className="text-gray-600 text-sm md:text-base">
+                </h2>
+                <p className="text-slate-600 text-sm md:text-base">
                   Here is your daily statistic
                 </p>
                 {currentLocation && (
-                  <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                  <div className="flex flex-wrap gap-2 mt-2">
                     <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
                       Customer Credits: {currentLocation?.customerCredits || 0}
                     </span>
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                    <span className="text-xs bg-teal-100 text-teal-700 px-2 py-1 rounded">
                       SMS Credits: {currentLocation?.smsCredits || 0}
                     </span>
                   </div>
                 )}
               </div>
 
-              <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-y-0 md:space-x-4">
-                <div className="flex items-center space-x-2">
-                  <Calendar size={16} className="text-gray-400" />
-                  <span className="text-sm text-gray-600">
-                    {getCurrentDate()}
-                  </span>
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <Calendar className="w-4 h-4" />
+                  <span>{getCurrentDate()}</span>
                 </div>
-
-                {/* Location Selector */}
                 <div className="relative">
                   <select
-                    className="appearance-none bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-auto"
+                    className="appearance-none bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={selectedLocationIndex}
                     onChange={(e) =>
                       setSelectedLocationIndex(Number(e.target.value))
@@ -859,91 +925,166 @@ const BusinessDashboard = () => {
                       <option value={0}>No locations</option>
                     )}
                   </select>
-                  <ChevronDown
-                    size={16}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
-                  />
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-6">
-            <Card className="p-4 md:p-6 bg-white rounded-xl shadow-sm border-0">
+          {/* Stats Cards - Mobile Version */}
+          <div className="space-y-3 mb-6 lg:hidden">
+            {/* Total Queue - Full Width */}
+            <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-xs md:text-sm">
-                    Total Queue
-                  </p>
-                  <p className="text-2xl md:text-3xl font-semibold text-gray-800">
+                  <p className="text-slate-600 text-xs mb-2">Total Queue</p>
+                  <p className="text-3xl font-semibold text-slate-800">
                     {todayStats.currentQueue}
                   </p>
                 </div>
-                <div className="p-2 md:p-3 bg-indigo-100 rounded-full">
-                  <Users className="w-5 h-5 md:w-6 md:h-6 text-indigo-600" />
+                <div className="w-12 h-12 rounded-full grid place-items-center shrink-0 bg-indigo-100">
+                  <Users className="w-6 h-6 text-indigo-600" />
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4 md:p-6 bg-white rounded-xl shadow-sm border-0">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-xs md:text-sm">
-                    Avg Wait Time
+            {/* Row 2: Avg Wait Time and Served Today */}
+            <div className="grid grid-cols-2 gap-3">
+              <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-600 text-xs mb-2">Avg Wait Time</p>
+                    <p className="text-2xl font-semibold text-slate-800">
+                      {todayStats.avgWaitTime}m
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-teal-100">
+                    <Clock className="w-5 h-5 text-teal-600" />
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-600 text-xs mb-2">Served Today</p>
+                    <p className="text-2xl font-semibold text-slate-800">
+                      {todayStats.totalServed}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-emerald-100">
+                    <TrendingUp className="w-5 h-5 text-emerald-600" />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Row 3: Success Rate and Left Today */}
+            <div className="grid grid-cols-2 gap-3">
+              <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-600 text-xs mb-2">Success Rate</p>
+                    <p className="text-2xl font-semibold text-slate-800">
+                      {todayStats.successRate}%
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-violet-100">
+                    <Star className="w-5 h-5 text-violet-600" />
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-600 text-xs mb-2">Left Today</p>
+                    <p className="text-2xl font-semibold text-slate-800 mt-3">
+                      {todayStats.leftToday}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-teal-100 self-end mt-3">
+                    <LogOut className="w-5 h-5 text-teal-600" />
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </div>
+
+          {/* Stats Cards - Desktop Version */}
+          <div className="hidden lg:grid grid-cols-5 gap-4 mb-6">
+            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+              <div className="flex flex-col gap-2">
+                <p className="text-slate-600 text-xs md:text-sm">Total Queue</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-2xl md:text-3xl font-semibold text-slate-800">
+                    {todayStats.currentQueue}
                   </p>
-                  <p className="text-2xl md:text-3xl font-semibold text-gray-800">
+                  <div className="p-2 bg-indigo-100 rounded-full">
+                    <Users className="w-5 h-5 md:w-6 md:h-6 text-indigo-600" />
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+              <div className="flex flex-col gap-2">
+                <p className="text-slate-600 text-xs md:text-sm">
+                  Avg Wait Time
+                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-2xl md:text-3xl font-semibold text-slate-800">
                     {todayStats.avgWaitTime}m
                   </p>
-                </div>
-                <div className="p-2 md:p-3 bg-green-100 rounded-full">
-                  <Clock className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
+                  <div className="p-2 bg-teal-100 rounded-full">
+                    <Clock className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
+                  </div>
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4 md:p-6 bg-white rounded-xl shadow-sm border-0">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-xs md:text-sm">
-                    Served Today
-                  </p>
-                  <p className="text-2xl md:text-3xl font-semibold text-gray-800">
+            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+              <div className="flex flex-col gap-2">
+                <p className="text-slate-600 text-xs md:text-sm">
+                  Served Today
+                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-2xl md:text-3xl font-semibold text-slate-800">
                     {todayStats.totalServed}
                   </p>
-                </div>
-                <div className="p-2 md:p-3 bg-teal-100 rounded-full">
-                  <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
+                  <div className="p-2 bg-teal-100 rounded-full">
+                    <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
+                  </div>
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4 md:p-6 bg-white rounded-xl shadow-sm border-0">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-xs md:text-sm">
-                    Success Rate
-                  </p>
-                  <p className="text-2xl md:text-3xl font-semibold text-gray-800">
+            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+              <div className="flex flex-col gap-2">
+                <p className="text-slate-600 text-xs md:text-sm">
+                  Success Rate
+                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-2xl md:text-3xl font-semibold text-slate-800">
                     {todayStats.successRate}%
                   </p>
-                </div>
-                <div className="p-2 md:p-3 bg-purple-100 rounded-full">
-                  <Star className="w-5 h-5 md:w-6 md:h-6 text-purple-600" />
+                  <div className="p-2 bg-violet-100 rounded-full">
+                    <Star className="w-5 h-5 md:w-6 md:h-6 text-violet-600" />
+                  </div>
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4 md:p-6 bg-white rounded-xl shadow-sm border-0">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-xs md:text-sm">Left Today</p>
-                  <p className="text-2xl md:text-3xl font-semibold text-gray-800">
+            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+              <div className="flex flex-col gap-2">
+                <p className="text-slate-600 text-xs md:text-sm">Left Today</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-2xl md:text-3xl font-semibold text-slate-800">
                     {todayStats.leftToday}
                   </p>
-                </div>
-                <div className="p-2 md:p-3 bg-teal-100 rounded-full">
-                  <LogOut className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
+                  <div className="p-2 bg-teal-100 rounded-full">
+                    <LogOut className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
+                  </div>
                 </div>
               </div>
             </Card>
@@ -952,7 +1093,54 @@ const BusinessDashboard = () => {
           {/* Queue Management */}
           <Card className="bg-white rounded-xl shadow-sm border-0 mb-6">
             <CardHeader className="border-b border-gray-100 p-4 md:p-6">
-              <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
+              {/* Mobile Layout */}
+              <div className="md:hidden">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg text-gray-800">
+                    Queue Management
+                  </CardTitle>
+                  <Badge
+                    variant="secondary"
+                    className="bg-indigo-100 text-indigo-700 text-[10px] sm:text-xs px-2 py-1 sm:px-3 whitespace-nowrap"
+                  >
+                    {queueData.length}{" "}
+                    {queueData.length === 1 ? "customer" : "customers"}
+                  </Badge>
+                </div>
+                <CardDescription className="text-gray-600 text-sm mb-3 mt-0.5">
+                  {currentLocation
+                    ? `Managing queue for: ${currentLocation.address}`
+                    : "No location selected"}
+                </CardDescription>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const res = await api("/auth/me");
+                      setMe(res.user);
+                      toast({
+                        title: "Queue refreshed",
+                        description: "Queue data has been updated.",
+                      });
+                    } catch (error: any) {
+                      toast({
+                        title: "Failed to refresh",
+                        description: error.message || "Please try again.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  disabled={loading}
+                  className="flex items-center space-x-2 w-full"
+                >
+                  <RefreshCw size={16} />
+                  <span>Refresh</span>
+                </Button>
+              </div>
+
+              {/* Desktop Layout */}
+              <div className="hidden md:flex md:items-center md:justify-between">
                 <div>
                   <CardTitle className="text-lg md:text-xl text-gray-800">
                     Queue Management
@@ -963,7 +1151,7 @@ const BusinessDashboard = () => {
                       : "No location selected"}
                   </CardDescription>
                 </div>
-                <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-y-0 md:space-x-3">
+                <div className="flex items-center space-x-3">
                   <Button
                     size="sm"
                     variant="outline"
@@ -984,14 +1172,14 @@ const BusinessDashboard = () => {
                       }
                     }}
                     disabled={loading}
-                    className="flex items-center space-x-2 w-full md:w-auto"
+                    className="flex items-center space-x-2"
                   >
                     <RefreshCw size={16} />
                     <span>Refresh</span>
                   </Button>
                   <Badge
                     variant="secondary"
-                    className="bg-indigo-100 text-indigo-700 text-center md:text-left"
+                    className="bg-indigo-100 text-indigo-700"
                   >
                     {queueData.length}{" "}
                     {queueData.length === 1 ? "customer" : "customers"}
@@ -1469,7 +1657,12 @@ const BusinessDashboard = () => {
                         <XAxis dataKey="range" />
                         <YAxis />
                         <Tooltip />
-                        <Bar dataKey="count" fill="#10b981" name="Customers" radius={[8, 8, 0, 0]} />
+                        <Bar
+                          dataKey="count"
+                          fill="#10b981"
+                          name="Customers"
+                          radius={[8, 8, 0, 0]}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
