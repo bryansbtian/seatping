@@ -402,7 +402,7 @@ const LandingPage = () => {
                         name: "David Kim",
                         joined: "5 mins ago",
                         guests: 4,
-                        preference: "Wait Outside",
+                        preference: "Wait Anywhere",
                         phone: "(123) 456-7890",
                       },
                       {
@@ -472,7 +472,9 @@ const LandingPage = () => {
           <p className="text-center text-slate-500 mb-8 text-sm">
             Trusted by businesses everywhere.
           </p>
-          <div className="flex flex-wrap justify-center gap-x-12 gap-y-6 items-center">
+
+          {/* Narrower max width on large screens */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-6 mx-auto max-w-4xl md:max-w-5xl">
             <div className="text-center">
               <p className="text-3xl font-semibold text-slate-900">500+</p>
               <p className="text-sm text-slate-500">Active Businesses</p>
@@ -482,7 +484,7 @@ const LandingPage = () => {
               <p className="text-sm text-slate-500">Customers Served</p>
             </div>
             <div className="text-center">
-              <p className="text-3xl font-semibold text-slate-900">2min</p>
+              <p className="text-3xl font-semibold text-slate-900">2 min</p>
               <p className="text-sm text-slate-500">Setup Time</p>
             </div>
             <div className="text-center">

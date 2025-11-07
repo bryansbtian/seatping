@@ -77,9 +77,6 @@ export default function QueueBusiness() {
   const [secondsLeft, setSecondsLeft] = useState(5 * 60);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
-  // NEW: ref to focus Step 4 phone input when needed
-  const phoneStatusRef = useRef<HTMLInputElement | null>(null);
-
   // Restore queue state from localStorage on mount
   useEffect(() => {
     if (!businessUsername) {
@@ -376,65 +373,6 @@ export default function QueueBusiness() {
       });
     } finally {
       setJoiningQueue(false);
-    }
-  };
-
-  // UPDATED: Always show a catchy toast when switching; if phone missing, prompt + focus
-  const changePreferenceOnStatus = (pref: "on_premises" | "wait_anywhere") => {
-    if (
-      pref === "wait_anywhere" &&
-      (!form.phoneNumber || !form.smsConsent || !form.smsMarketingConsent)
-    ) {
-      // ensure the phone field appears
-      setForm((p) => ({ ...p, waitingPreference: "wait_anywhere" }));
-      const newErrors: Record<string, string> = {};
-      if (!form.phoneNumber) {
-        newErrors.phoneNumber =
-          "Phone number is required if you want to wait anywhere";
-      }
-      if (!form.smsConsent) {
-        newErrors.smsConsent =
-          "You must agree to receive transactional text messages";
-      }
-      if (!form.smsMarketingConsent) {
-        newErrors.smsMarketingConsent =
-          "You must agree to receive marketing text messages";
-      }
-      setErrors((p) => ({ ...p, ...newErrors }));
-
-      // fun toast even when phone missing or consent not given
-      toast({
-        title: "Almost there!",
-        description: !form.phoneNumber
-          ? "Add your phone number so we can text you when it's nearly your turn"
-          : "Please agree to both consent checkboxes to continue",
-      });
-
-      // focus the phone field if missing
-      if (!form.phoneNumber) {
-        setTimeout(() => phoneStatusRef.current?.focus(), 0);
-      }
-      return;
-    }
-
-    setErrors((p) => ({
-      ...p,
-      phoneNumber: "",
-      smsConsent: "",
-      smsMarketingConsent: "",
-    }));
-    setForm((p) => ({ ...p, waitingPreference: pref }));
-
-    if (pref === "on_premises") {
-      toast({
-        title: "You're staying close!",
-        description: "We'll call your name when it's your turn",
-      });
-    } else {
-      toast({
-        title: "Switched to Wait Anywhere!",
-        description: `We'll text you at ${form.countryCode} ${form.phoneNumber} when it's almost your turn.`,
-      });
     }
   };
 
@@ -832,28 +770,22 @@ export default function QueueBusiness() {
                   </>
                 )}
 
-                <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setStep(2)}
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      type="submit"
-                      className="flex-1"
-                      disabled={joiningQueue}
-                    >
-                      {joiningQueue ? "Joining..." : "Next"}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground text-center">
-                    You can change your waiting preference later on the Queue
-                    Status page.
-                  </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setStep(2)}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1"
+                    disabled={joiningQueue}
+                  >
+                    {joiningQueue ? "Joining..." : "Next"}
+                  </Button>
                 </div>
               </form>
             )}
@@ -910,186 +842,6 @@ export default function QueueBusiness() {
                         : "Wait Anywhere"}
                     </div>
                   </div>
-                </div>
-
-                {/* Change preference (phone required for Wait Anywhere) */}
-                <div className="space-y-3 text-center">
-                  <Label className="block text-center">
-                    Change Waiting Preference
-                  </Label>
-
-                  {/* Full-width left & right buttons */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      className="w-full"
-                      variant={
-                        form.waitingPreference === "on_premises"
-                          ? "default"
-                          : "outline"
-                      }
-                      onClick={() => changePreferenceOnStatus("on_premises")}
-                    >
-                      Stay on Premises
-                    </Button>
-                    <Button
-                      className="w-full"
-                      variant={
-                        form.waitingPreference === "wait_anywhere"
-                          ? "default"
-                          : "outline"
-                      }
-                      onClick={() => changePreferenceOnStatus("wait_anywhere")}
-                    >
-                      Wait Anywhere
-                    </Button>
-                  </div>
-
-                  {form.waitingPreference === "wait_anywhere" && (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="phoneNumber_status">Phone Number</Label>
-                        <div className="flex gap-2">
-                          <select
-                            name="countryCode"
-                            value={form.countryCode}
-                            onChange={handleChange}
-                            disabled
-                            className="w-24 rounded-md border bg-background pl-3 pr-7 py-2 text-sm appearance-none opacity-60 cursor-not-allowed"
-                          >
-                            <option value="+1">🇺🇸 +1</option>
-                          </select>
-                          <Input
-                            id="phoneNumber_status"
-                            name="phoneNumber"
-                            type="tel"
-                            placeholder="5551234567"
-                            value={form.phoneNumber}
-                            onChange={handleChange}
-                            ref={phoneStatusRef} // focus target
-                            className={
-                              errors.phoneNumber
-                                ? "border-destructive focus:ring-destructive flex-1"
-                                : "flex-1"
-                            }
-                          />
-                        </div>
-                        {errors.phoneNumber && (
-                          <p className="text-sm text-destructive">
-                            {errors.phoneNumber}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* SMS Consent Checkboxes */}
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-2">
-                          <Checkbox
-                            id="smsConsent_status"
-                            checked={form.smsConsent}
-                            onCheckedChange={(checked) => {
-                              setForm((p) => ({
-                                ...p,
-                                smsConsent: checked as boolean,
-                              }));
-                              if (errors.smsConsent)
-                                setErrors((p) => ({ ...p, smsConsent: "" }));
-                            }}
-                            className={cn(
-                              errors.smsConsent ? "border-destructive" : "",
-                              "mt-1.5 flex-shrink-0"
-                            )}
-                          />
-                          <div className="flex-1">
-                            <label
-                              htmlFor="smsConsent_status"
-                              className="text-sm leading-5 cursor-pointer"
-                            >
-                              By checking this box and submitting this form, you
-                              consent to receive transactional text messages for
-                              queue notifications from SeatPing. Reply STOP to
-                              opt out. Reply HELP for help. Standard message and
-                              data rates may apply. Message frequency may vary.
-                              View our{" "}
-                              <a
-                                href="/terms"
-                                className="underline text-primary"
-                              >
-                                Terms and Conditions
-                              </a>
-                              . View our{" "}
-                              <a
-                                href="/policy"
-                                className="underline text-primary"
-                              >
-                                Privacy Policy
-                              </a>
-                              .
-                            </label>
-                            {errors.smsConsent && (
-                              <p className="text-sm text-destructive mt-1">
-                                {errors.smsConsent}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-2">
-                          <Checkbox
-                            id="smsMarketingConsent_status"
-                            checked={form.smsMarketingConsent}
-                            onCheckedChange={(checked) => {
-                              setForm((p) => ({
-                                ...p,
-                                smsMarketingConsent: checked as boolean,
-                              }));
-                              if (errors.smsMarketingConsent)
-                                setErrors((p) => ({
-                                  ...p,
-                                  smsMarketingConsent: "",
-                                }));
-                            }}
-                            className={cn(
-                              errors.smsMarketingConsent
-                                ? "border-destructive"
-                                : "",
-                              "mt-1.5 flex-shrink-0"
-                            )}
-                          />
-                          <div className="flex-1">
-                            <label
-                              htmlFor="smsMarketingConsent_status"
-                              className="text-sm leading-5 cursor-pointer"
-                            >
-                              By checking this box and submitting this form, you
-                              consent to receive text messages for marketing
-                              from SeatPing. Reply STOP to opt out. Reply HELP
-                              for help. Message and data rates may apply.
-                              Message frequency may vary. View our{" "}
-                              <a
-                                href="/terms"
-                                className="underline text-primary"
-                              >
-                                Terms and Conditions
-                              </a>
-                              . View our{" "}
-                              <a
-                                href="/policy"
-                                className="underline text-primary"
-                              >
-                                Privacy Policy
-                              </a>
-                              .
-                            </label>
-                            {errors.smsMarketingConsent && (
-                              <p className="text-sm text-destructive mt-1">
-                                {errors.smsMarketingConsent}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
                 </div>
 
                 <div className="flex gap-2">
