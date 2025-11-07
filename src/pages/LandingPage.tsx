@@ -219,7 +219,7 @@ const LandingPage = () => {
                           <p className="text-slate-600 text-xs mb-2">
                             Avg Wait Time
                           </p>
-                          <p className="text-2xl font-semibold text-slate-800">
+                          <p className="text-xl font-semibold text-slate-800">
                             5m
                           </p>
                         </div>
@@ -236,7 +236,7 @@ const LandingPage = () => {
                           <p className="text-slate-600 text-xs mb-2">
                             Served Today
                           </p>
-                          <p className="text-2xl font-semibold text-slate-800">
+                          <p className="text-xl font-semibold text-slate-800">
                             8
                           </p>
                         </div>
@@ -256,7 +256,7 @@ const LandingPage = () => {
                           <p className="text-slate-600 text-xs mb-2">
                             Success Rate
                           </p>
-                          <p className="text-2xl font-semibold text-slate-800">
+                          <p className="text-xl font-semibold text-slate-800">
                             88%
                           </p>
                         </div>
@@ -273,14 +273,12 @@ const LandingPage = () => {
                           <p className="text-slate-600 text-xs mb-2">
                             Left Today
                           </p>
-                          {/* nudge the number down */}
-                          <p className="text-2xl font-semibold text-slate-800 mt-3">
+                          <p className="text-xl font-semibold text-slate-800 leading-none">
                             1
                           </p>
-                          {/* for a subtler nudge, use mt-[2px] instead */}
                         </div>
-                        {/* bottom-align + nudge down */}
-                        <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-teal-100 self-end mt-3">
+                        {/* same wrapper as other icons; tiny upward nudge if needed */}
+                        <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-teal-100 translate-y-[3px] md:translate-y-0">
                           <LogOut className="w-5 h-5 text-teal-600" />
                         </div>
                       </div>

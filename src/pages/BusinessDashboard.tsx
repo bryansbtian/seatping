@@ -999,11 +999,12 @@ const BusinessDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-slate-600 text-xs mb-2">Left Today</p>
-                    <p className="text-2xl font-semibold text-slate-800 mt-3">
+                    <p className="text-2xl font-semibold text-slate-800">
                       {todayStats.leftToday}
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-teal-100 self-end mt-3">
+                  {/* nudge icon up a bit */}
+                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-teal-100 -mt-1">
                     <LogOut className="w-5 h-5 text-teal-600" />
                   </div>
                 </div>
@@ -1421,7 +1422,7 @@ const BusinessDashboard = () => {
                         (customer: any, index: number) => (
                           <div
                             key={index}
-                            className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg"
+                            className="flex flex-col space-y-1.5 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg"
                           >
                             <div className="flex items-center space-x-3 md:space-x-4">
                               <div
@@ -1478,14 +1479,14 @@ const BusinessDashboard = () => {
                                 )}
                               </div>
                             </div>
-                            <div className="ml-11 md:ml-0">
+                            <div className="ml-11 md:ml-0 -mt-1 md:mt-0">
                               <Badge
                                 variant={
                                   customer.status === "left"
                                     ? "secondary"
                                     : "destructive"
                                 }
-                                className="text-xs"
+                                className="inline-flex h-6 items-center justify-center px-3 text-xs leading-none md:h-7"
                               >
                                 {customer.status === "left"
                                   ? "Left Queue"
