@@ -846,7 +846,6 @@ export default function QueueBusiness() {
 
                 <div className="flex gap-2">
                   <Button
-                    variant="success"
                     className="flex-1"
                     onClick={leaveQueue}
                   >
