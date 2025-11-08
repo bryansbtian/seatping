@@ -47,17 +47,19 @@ const LandingPage = () => {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('animate-in');
+            entry.target.classList.add("animate-in");
           }
         });
       },
       {
         threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px',
+        rootMargin: "0px 0px -50px 0px",
       }
     );
 
-    const elements = document.querySelectorAll('.scroll-animate, .scroll-animate-left, .scroll-animate-right, .scroll-animate-scale');
+    const elements = document.querySelectorAll(
+      ".scroll-animate, .scroll-animate-left, .scroll-animate-right, .scroll-animate-scale"
+    );
     elements.forEach((el) => observer.observe(el));
 
     return () => {
@@ -122,7 +124,7 @@ const LandingPage = () => {
             </div>
 
             {/* Dashboard Preview */}
-            <div className="relative mt-16 w-full animate-fade-in-up animation-delay-400">
+            <div className="relative mt-16 w-full animate-fade-in-up animation-delay-400 max-[325px]:hidden">
               <div className="rounded-2xl shadow-2xl border border-slate-200 bg-slate-50 p-6 md:p-8 hover:shadow-3xl transition-shadow duration-500">
                 {/* Dashboard Header - Mobile Version */}
                 <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-4 lg:hidden">
