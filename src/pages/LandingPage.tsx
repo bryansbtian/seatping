@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { CheckCircle } from "@mynaui/icons-react";
+import { CheckCircle, Message } from "@mynaui/icons-react";
 import {
   Clock,
   Smartphone,
@@ -36,10 +36,34 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const LandingPage = () => {
   const [chartView, setChartView] = useState<"daily" | "weekly">("daily");
+
+  // Scroll animation setup
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate-in');
+          }
+        });
+      },
+      {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px',
+      }
+    );
+
+    const elements = document.querySelectorAll('.scroll-animate, .scroll-animate-left, .scroll-animate-right, .scroll-animate-scale');
+    elements.forEach((el) => observer.observe(el));
+
+    return () => {
+      elements.forEach((el) => observer.unobserve(el));
+    };
+  }, []);
 
   const dailyData = [
     { date: "Oct 30", served: 12, avgWait: 15, noShows: 2 },
@@ -71,7 +95,7 @@ const LandingPage = () => {
         <div className="container mx-auto max-w-6xl">
           <div className="space-y-8">
             {/* Hero text */}
-            <div className="space-y-6 max-w-4xl mx-auto text-center px-4">
+            <div className="space-y-6 max-w-4xl mx-auto text-center px-4 animate-fade-in-up">
               <h1 className="text-4xl sm:text-5xl md:text-7xl font-medium leading-tight">
                 Queues Without the Queue
               </h1>
@@ -81,11 +105,11 @@ const LandingPage = () => {
             </div>
 
             {/* Button row */}
-            <div className="flex justify-center">
+            <div className="flex justify-center animate-fade-in-up animation-delay-200">
               <Button
                 size="lg"
                 asChild
-                className="group inline-flex items-center gap-2 rounded-xl bg-slate-900 text-white px-6 md:px-8 shadow-sm hover:bg-slate-800 transition"
+                className="group inline-flex items-center gap-2 rounded-xl bg-slate-900 text-white px-6 md:px-8 shadow-sm hover:bg-slate-800 hover:shadow-lg hover:scale-105 transition-all duration-300"
               >
                 <Link to="/signup">
                   <Rocket
@@ -98,8 +122,8 @@ const LandingPage = () => {
             </div>
 
             {/* Dashboard Preview */}
-            <div className="relative mt-16 w-full">
-              <div className="rounded-2xl shadow-2xl border border-slate-200 bg-slate-50 p-6 md:p-8">
+            <div className="relative mt-16 w-full animate-fade-in-up animation-delay-400">
+              <div className="rounded-2xl shadow-2xl border border-slate-200 bg-slate-50 p-6 md:p-8 hover:shadow-3xl transition-shadow duration-500">
                 {/* Dashboard Header - Mobile Version */}
                 <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-4 lg:hidden">
                   {/* Header (no date here) */}
@@ -112,36 +136,52 @@ const LandingPage = () => {
                     </p>
                   </div>
 
-                  {/* Credits Cards */}
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-xs text-slate-600 mb-2">
+                  {/* Credits Cards – Mobile (Landing) */}
+                  <div className="grid grid-cols-2 gap-3 max-[400px]:gap-2 max-[365px]:gap-1 mb-3 lg:hidden">
+                    {/* Customer Credits */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 max-[400px]:p-2.5 max-[365px]:p-2">
+                      <div className="relative">
+                        <div className="pr-12 max-[400px]:pr-10 max-[365px]:pr-9">
+                          <p className="text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] text-slate-600 mb-2">
                             Customer Credits
                           </p>
-                          <p className="text-xl md:text-2xl font-semibold text-slate-800">
+                          <p className="text-xl max-[400px]:text-base max-[365px]:text-sm font-semibold text-slate-800">
                             285
                           </p>
                         </div>
-                        <div className="w-8 h-8 rounded-full grid place-items-center shrink-0 bg-indigo-100">
-                          <Users className="w-4 h-4 text-indigo-600" />
+                        <div
+                          className="
+          absolute right-0 max-[400px]:right-0 max-[365px]:right-1
+          top-1/2 -translate-y-1/2
+          w-8 h-8 max-[400px]:w-7 max-[400px]:h-7 max-[365px]:w-6 max-[365px]:h-6
+          rounded-full grid place-items-center bg-indigo-100
+        "
+                        >
+                          <Users className="w-4 h-4 max-[400px]:w-[14px] max-[400px]:h-[14px] max-[365px]:w-3 max-[365px]:h-3 text-indigo-600" />
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-xs text-slate-600 mb-2">
+                    {/* SMS Credits */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 max-[400px]:p-2.5 max-[365px]:p-2">
+                      <div className="relative">
+                        <div className="pr-12 max-[400px]:pr-10 max-[365px]:pr-9">
+                          <p className="text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] text-slate-600 mb-2">
                             SMS Credits
                           </p>
-                          <p className="text-xl md:text-2xl font-semibold text-slate-800">
+                          <p className="text-xl max-[400px]:text-base max-[365px]:text-sm font-semibold text-slate-800">
                             291
                           </p>
                         </div>
-                        <div className="w-8 h-8 rounded-full grid place-items-center shrink-0 bg-teal-100">
-                          <MessageSquare className="w-4 h-4 text-teal-600" />
+                        <div
+                          className="
+          absolute right-0 max-[400px]:right-0 max-[365px]:right-1
+          top-1/2 -translate-y-1/2
+          w-8 h-8 max-[400px]:w-7 max-[400px]:h-7 max-[365px]:w-6 max-[365px]:h-6
+          rounded-full grid place-items-center bg-teal-100
+        "
+                        >
+                          <Message className="w-4 h-4 max-[400px]:w-[14px] max-[400px]:h-[14px] max-[365px]:w-3 max-[365px]:h-3 text-teal-600" />
                         </div>
                       </div>
                     </div>
@@ -192,94 +232,91 @@ const LandingPage = () => {
                 </div>
 
                 {/* Stats Cards - Mobile Version */}
-                <div className="space-y-3 mb-6 lg:hidden">
+                <div className="space-y-3 max-[365px]:space-y-2 mb-6 lg:hidden">
                   {/* Total Queue - Full Width */}
-                  <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                  <Card className="p-4 max-[400px]:p-3 max-[365px]:p-2.5 bg-white rounded-xl shadow-sm border border-slate-200">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-slate-600 text-xs mb-2">
+                        <p className="text-slate-600 text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] mb-2">
                           Total Queue
                         </p>
-                        <p className="text-3xl font-semibold text-slate-800">
+                        <p className="text-3xl max-[400px]:text-2xl max-[365px]:text-xl font-semibold text-slate-800">
                           3
                         </p>
                       </div>
                       {/* unified icon badge */}
-                      <div className="w-12 h-12 rounded-full grid place-items-center shrink-0 bg-indigo-100">
-                        <Users className="w-6 h-6 text-indigo-600" />
+                      <div className="w-12 h-12 max-[400px]:w-9 max-[400px]:h-9 max-[365px]:w-8 max-[365px]:h-8 rounded-full grid place-items-center shrink-0 bg-indigo-100">
+                        <Users className="w-6 h-6 max-[400px]:w-4.5 max-[400px]:h-4.5 max-[365px]:w-4 max-[365px]:h-4 text-indigo-600" />
                       </div>
                     </div>
                   </Card>
 
                   {/* Row 2: Avg Wait Time and Served Today */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                  <div className="grid grid-cols-2 gap-3 max-[400px]:gap-2 max-[365px]:gap-1.5">
+                    <Card className="p-4 max-[400px]:p-3 max-[365px]:p-2.5 bg-white rounded-xl shadow-sm border border-slate-200">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-slate-600 text-xs mb-2">
+                          <p className="text-slate-600 text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] mb-2">
                             Avg Wait Time
                           </p>
-                          <p className="text-xl font-semibold text-slate-800">
+                          <p className="text-xl max-[400px]:text-base max-[365px]:text-sm font-semibold text-slate-800">
                             5m
                           </p>
                         </div>
-                        {/* unified icon badge */}
-                        <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-teal-100">
-                          <Clock className="w-5 h-5 text-teal-600" />
+                        <div className="w-10 h-10 max-[400px]:w-8 max-[400px]:h-8 max-[365px]:w-7 max-[365px]:h-7 rounded-full grid place-items-center shrink-0 bg-teal-100">
+                          <Clock className="w-5 h-5 max-[400px]:w-4 max-[400px]:h-4 max-[365px]:w-[14px] max-[365px]:h-[14px] text-teal-600" />
                         </div>
                       </div>
                     </Card>
 
-                    <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                    <Card className="p-4 max-[400px]:p-3 max-[365px]:p-2.5 bg-white rounded-xl shadow-sm border border-slate-200">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-slate-600 text-xs mb-2">
+                          <p className="text-slate-600 text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] mb-2">
                             Served Today
                           </p>
-                          <p className="text-xl font-semibold text-slate-800">
+                          <p className="text-xl max-[400px]:text-base max-[365px]:text-sm font-semibold text-slate-800">
                             8
                           </p>
                         </div>
-                        {/* unified icon badge (different color only) */}
-                        <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-emerald-100">
-                          <TrendingUp className="w-5 h-5 text-emerald-600" />
+                        <div className="w-10 h-10 max-[400px]:w-8 max-[400px]:h-8 max-[365px]:w-7 max-[365px]:h-7 rounded-full grid place-items-center shrink-0 bg-emerald-100">
+                          <TrendingUp className="w-5 h-5 max-[400px]:w-4 max-[400px]:h-4 max-[365px]:w-[14px] max-[365px]:h-[14px] text-emerald-600" />
                         </div>
                       </div>
                     </Card>
                   </div>
 
                   {/* Row 3: Success Rate and Left Today */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                  <div className="grid grid-cols-2 gap-3 max-[400px]:gap-2 max-[365px]:gap-1.5">
+                    <Card className="p-4 max-[400px]:p-3 max-[365px]:p-2.5 bg-white rounded-xl shadow-sm border border-slate-200">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-slate-600 text-xs mb-2">
+                          <p className="text-slate-600 text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] mb-2">
                             Success Rate
                           </p>
-                          <p className="text-xl font-semibold text-slate-800">
+                          <p className="text-xl max-[400px]:text-base max-[365px]:text-sm font-semibold text-slate-800">
                             88%
                           </p>
                         </div>
-                        {/* unified icon badge */}
-                        <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-violet-100">
-                          <Star className="w-5 h-5 text-violet-600" />
+                        <div className="w-10 h-10 max-[400px]:w-8 max-[400px]:h-8 max-[365px]:w-7 max-[365px]:h-7 rounded-full grid place-items-center shrink-0 bg-violet-100">
+                          <Star className="w-5 h-5 max-[400px]:w-4 max-[400px]:h-4 max-[365px]:w-[14px] max-[365px]:h-[14px] text-violet-600" />
                         </div>
                       </div>
                     </Card>
 
-                    <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                    <Card className="p-4 max-[400px]:p-3 max-[365px]:p-2.5 bg-white rounded-xl shadow-sm border border-slate-200">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-slate-600 text-xs mb-2">
-                            Left Today
+                          <p className="text-slate-600 text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] mb-2 leading-tight">
+                            <span className="block">Left</span>
+                            <span className="block">Today</span>
                           </p>
-                          <p className="text-xl font-semibold text-slate-800 leading-none">
+                          <p className="text-xl max-[400px]:text-base max-[365px]:text-sm font-semibold text-slate-800">
                             1
                           </p>
                         </div>
-                        {/* same wrapper as other icons; tiny upward nudge if needed */}
-                        <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-teal-100 translate-y-[3px] md:translate-y-0">
-                          <LogOut className="w-5 h-5 text-teal-600" />
+                        <div className="w-10 h-10 max-[400px]:w-8 max-[400px]:h-8 max-[365px]:w-7 max-[365px]:h-7 rounded-full grid place-items-center shrink-0 bg-teal-100">
+                          <LogOut className="w-5 h-5 max-[400px]:w-4 max-[400px]:h-4 max-[365px]:w-[14px] max-[365px]:h-[14px] text-teal-600" />
                         </div>
                       </div>
                     </Card>
@@ -467,25 +504,25 @@ const LandingPage = () => {
       {/* Trust Section */}
       <section className="py-12 bg-slate-50 border-y border-slate-200">
         <div className="container mx-auto px-4">
-          <p className="text-center text-slate-500 mb-8 text-sm">
+          <p className="text-center text-slate-500 mb-8 text-sm scroll-animate">
             Trusted by businesses everywhere.
           </p>
 
           {/* Narrower max width on large screens */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-6 mx-auto max-w-4xl md:max-w-5xl">
-            <div className="text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-6 mx-auto max-w-4xl md:max-w-5xl stagger-children">
+            <div className="text-center scroll-animate">
               <p className="text-3xl font-semibold text-slate-900">500+</p>
               <p className="text-sm text-slate-500">Active Businesses</p>
             </div>
-            <div className="text-center">
+            <div className="text-center scroll-animate">
               <p className="text-3xl font-semibold text-slate-900">50k+</p>
               <p className="text-sm text-slate-500">Customers Served</p>
             </div>
-            <div className="text-center">
+            <div className="text-center scroll-animate">
               <p className="text-3xl font-semibold text-slate-900">2 min</p>
               <p className="text-sm text-slate-500">Setup Time</p>
             </div>
-            <div className="text-center">
+            <div className="text-center scroll-animate">
               <p className="text-3xl font-semibold text-slate-900">0</p>
               <p className="text-sm text-slate-500">Hardware Needed</p>
             </div>
@@ -496,7 +533,7 @@ const LandingPage = () => {
       {/* Meet SeatPing Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto">
-          <div className="text-center mb-16 px-4">
+          <div className="text-center mb-16 px-4 scroll-animate">
             <p className="text-sm text-slate-500 mb-4">Key Features</p>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-6">
               Meet SeatPing
@@ -509,9 +546,9 @@ const LandingPage = () => {
 
           <div className="grid lg:grid-cols-2 gap-12 items-start max-w-6xl mx-auto">
             {/* Left: Feature Cards */}
-            <div className="space-y-8">
-              <div className="flex gap-4">
-                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-indigo-50 flex items-center justify-center">
+            <div className="space-y-8 scroll-animate-left">
+              <div className="flex gap-4 group hover:translate-x-2 transition-transform duration-300">
+                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-indigo-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                   <Users className="w-6 h-6 text-indigo-600" />
                 </div>
                 <div>
@@ -525,8 +562,8 @@ const LandingPage = () => {
                 </div>
               </div>
 
-              <div className="flex gap-4">
-                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-teal-50 flex items-center justify-center">
+              <div className="flex gap-4 group hover:translate-x-2 transition-transform duration-300">
+                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-teal-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                   <Bell className="w-6 h-6 text-teal-600" />
                 </div>
                 <div>
@@ -540,8 +577,8 @@ const LandingPage = () => {
                 </div>
               </div>
 
-              <div className="flex gap-4">
-                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-violet-50 flex items-center justify-center">
+              <div className="flex gap-4 group hover:translate-x-2 transition-transform duration-300">
+                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-violet-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                   <BarChart3 className="w-6 h-6 text-violet-600" />
                 </div>
                 <div>
@@ -555,8 +592,8 @@ const LandingPage = () => {
                 </div>
               </div>
 
-              <div className="flex gap-4">
-                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-indigo-50 flex items-center justify-center">
+              <div className="flex gap-4 group hover:translate-x-2 transition-transform duration-300">
+                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-indigo-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                   <ClipboardList className="w-6 h-6 text-indigo-600" />
                 </div>
                 <div>
@@ -572,7 +609,7 @@ const LandingPage = () => {
             </div>
 
             {/* Right: Analytics Preview */}
-            <div className="relative">
+            <div className="relative scroll-animate-right">
               <Card className="shadow-2xl border border-slate-200 bg-white rounded-2xl">
                 <CardHeader className="border-b border-slate-100 p-4 md:p-6">
                   <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
@@ -668,7 +705,7 @@ const LandingPage = () => {
       {/* Supercharge Your Workflow */}
       <section id="features" className="py-20 px-4 bg-slate-50">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16 px-4">
+          <div className="text-center mb-16 px-4 scroll-animate">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-6">
               Supercharge Your Workflow with SeatPing
             </h2>
@@ -676,7 +713,7 @@ const LandingPage = () => {
 
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Card 1 */}
-            <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden">
+            <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
               <div className="aspect-video bg-gradient-to-br from-indigo-100 to-indigo-50 flex items-center justify-center">
                 <Clock className="w-20 h-20 text-indigo-600" />
               </div>
@@ -694,7 +731,7 @@ const LandingPage = () => {
             </Card>
 
             {/* Card 2 */}
-            <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden">
+            <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
               <div className="aspect-video bg-gradient-to-br from-teal-100 to-teal-50 flex items-center justify-center">
                 <Smartphone className="w-20 h-20 text-teal-600" />
               </div>
@@ -712,7 +749,7 @@ const LandingPage = () => {
             </Card>
 
             {/* Card 3 */}
-            <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden">
+            <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
               <div className="aspect-video bg-gradient-to-br from-violet-100 to-violet-50 flex items-center justify-center">
                 <ClipboardList className="w-20 h-20 text-violet-600" />
               </div>
@@ -735,7 +772,7 @@ const LandingPage = () => {
       {/* Testimonials Section */}
       <section className="py-20 px-4 bg-white overflow-hidden">
         <div className="container mx-auto max-w-7xl">
-          <div className="text-center mb-16 px-4">
+          <div className="text-center mb-16 px-4 scroll-animate">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-4">
               Hear It from Those Who Matter Most
             </h2>
@@ -1014,7 +1051,7 @@ const LandingPage = () => {
       {/* Pricing */}
       <section id="pricing" className="py-20 px-4 bg-slate-50">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16 px-4">
+          <div className="text-center mb-16 px-4 scroll-animate">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-6">
               Simple, Flexible Pricing for SeatPing
             </h2>
@@ -1026,7 +1063,7 @@ const LandingPage = () => {
 
           <div className="grid lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Starter Plan */}
-            <Card className="shadow-lg border border-slate-200 bg-white flex flex-col">
+            <Card className="shadow-lg border border-slate-200 bg-white flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
               <CardHeader className="text-center pb-8 pt-8">
                 <CardTitle className="text-2xl text-slate-900 mb-4">
                   Starter
@@ -1071,7 +1108,7 @@ const LandingPage = () => {
             </Card>
 
             {/* Professional Plan - Popular */}
-            <Card className="shadow-xl border-2 border-indigo-200 bg-white relative flex flex-col">
+            <Card className="shadow-xl border-2 border-indigo-200 bg-white relative flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 hover:border-indigo-300">
               <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-0 px-4 py-1">
                 Popular
               </Badge>
@@ -1126,7 +1163,7 @@ const LandingPage = () => {
             </Card>
 
             {/* Custom Plan */}
-            <Card className="shadow-lg border border-slate-200 bg-white flex flex-col">
+            <Card className="shadow-lg border border-slate-200 bg-white flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
               <CardHeader className="text-center pb-8 pt-8">
                 <CardTitle className="text-2xl text-slate-900 mb-4">
                   Business
@@ -1175,7 +1212,7 @@ const LandingPage = () => {
       {/* CTA */}
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
-          <div className="max-w-3xl mx-auto space-y-8 px-4">
+          <div className="max-w-3xl mx-auto space-y-8 px-4 scroll-animate">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900">
               Ready to Hold Every Walk-In?
             </h2>
@@ -1185,7 +1222,7 @@ const LandingPage = () => {
             <div className="flex justify-center">
               <Button
                 size="lg"
-                className="text-sm sm:text-base px-6 sm:px-8 bg-slate-900 hover:bg-slate-800"
+                className="text-sm sm:text-base px-6 sm:px-8 bg-slate-900 hover:bg-slate-800 hover:shadow-lg hover:scale-105 transition-all duration-300"
                 asChild
               >
                 <Link to="/signup">Get Started Free</Link>

@@ -419,7 +419,7 @@ router.post("/webhook", express.raw({ type: "*/*" }), async (req, res) => {
             eventType: event?.type,
             eventId: event?.id,
         });
-        return res.json({ received: true });
+        return res.status(500).json({ error: "Webhook handler failed", message: e?.message });
     }
 });
 // ---------- DEV HELPERS ----------

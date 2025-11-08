@@ -36,6 +36,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { Message } from "@mynaui/icons-react";
 
 const BusinessDashboard = () => {
   const [me, setMe] = useState<any | null>(null);
@@ -835,7 +836,8 @@ const BusinessDashboard = () => {
                         {currentLocation?.customerCredits || 0}
                       </p>
                     </div>
-                    <div className="w-8 h-8 rounded-full grid place-items-center shrink-0 bg-indigo-100">
+                    {/* hide under 400px */}
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 leading-none max-[400px]:hidden">
                       <Users className="w-4 h-4 text-indigo-600" />
                     </div>
                   </div>
@@ -849,8 +851,9 @@ const BusinessDashboard = () => {
                         {currentLocation?.smsCredits || 0}
                       </p>
                     </div>
-                    <div className="w-8 h-8 rounded-full grid place-items-center shrink-0 bg-teal-100">
-                      <Clock className="w-4 h-4 text-teal-600" />
+                    {/* hide under 400px */}
+                    <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center shrink-0 leading-none max-[400px]:hidden">
+                      <Message className="w-4 h-4 text-teal-600" />
                     </div>
                   </div>
                 </div>
@@ -985,11 +988,11 @@ const BusinessDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-slate-600 text-xs mb-2">Success Rate</p>
-                    <p className="text-2xl font-semibold text-slate-800">
+                    <p className="text-2xl font-semibold text-slate-800 leading-none">
                       {todayStats.successRate}%
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-violet-100">
+                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 self-center bg-violet-100">
                     <Star className="w-5 h-5 text-violet-600" />
                   </div>
                 </div>
@@ -999,12 +1002,12 @@ const BusinessDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-slate-600 text-xs mb-2">Left Today</p>
-                    <p className="text-2xl font-semibold text-slate-800">
+                    <p className="text-2xl font-semibold text-slate-800 leading-none">
                       {todayStats.leftToday}
                     </p>
                   </div>
-                  {/* nudge icon up a bit */}
-                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-teal-100 -mt-1">
+                  {/* remove the negative margin and center like the star */}
+                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 self-center bg-teal-100">
                     <LogOut className="w-5 h-5 text-teal-600" />
                   </div>
                 </div>
@@ -1507,7 +1510,7 @@ const BusinessDashboard = () => {
           <div className="mb-6 space-y-6">
             {/* Daily/Weekly Summary Graph */}
             <Card className="bg-white rounded-xl shadow-sm border-0">
-              <CardHeader className="border-b border-gray-100 p-4 md:p-6">
+              <CardHeader className="border-b border-slate-100 p-4 md:p-6">
                 <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
                   <div>
                     <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
@@ -1545,21 +1548,33 @@ const BusinessDashboard = () => {
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart
                       data={dailyWeeklySummary}
-                      margin={{ top: 8, right: 24, left: 16, bottom: 44 }}
+                      margin={{ top: 8, right: 16, left: 28, bottom: 44 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" tickMargin={14} height={32} />
-                      <YAxis />
-                      <Tooltip />
 
-                      {/* Add gap above legend */}
+                      {/* Left axis (visible) */}
+                      <YAxis yAxisId="left" width={40} />
+
+                      {/* Right axis (invisible) to balance spacing and center the chart */}
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        width={40}
+                        tick={false}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+
+                      <Tooltip />
                       <Legend
                         verticalAlign="bottom"
                         align="center"
-                        wrapperStyle={{ bottom: 4 }} // try -8 to -14 to taste
+                        wrapperStyle={{ bottom: 4 }}
                       />
 
                       <Line
+                        yAxisId="left"
                         type="monotone"
                         dataKey="served"
                         stroke="#3b82f6"
@@ -1567,6 +1582,7 @@ const BusinessDashboard = () => {
                         name="Customers Served"
                       />
                       <Line
+                        yAxisId="left"
                         type="monotone"
                         dataKey="avgWait"
                         stroke="#10b981"
@@ -1574,6 +1590,7 @@ const BusinessDashboard = () => {
                         name="Avg Wait Time (min)"
                       />
                       <Line
+                        yAxisId="left"
                         type="monotone"
                         dataKey="noShows"
                         stroke="#f59e0b"
@@ -1609,8 +1626,11 @@ const BusinessDashboard = () => {
                 </CardHeader>
                 <CardContent className="p-4 md:p-6">
                   {peakHoursData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={peakHoursData}>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart
+                        data={peakHoursData}
+                        margin={{ top: 8, right: 16, left: 28, bottom: 8 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis
                           dataKey="hour"
@@ -1618,9 +1638,23 @@ const BusinessDashboard = () => {
                           textAnchor="end"
                           height={80}
                         />
-                        <YAxis />
+
+                        {/* Left axis (visible) */}
+                        <YAxis yAxisId="left" width={40} />
+
+                        {/* Right axis (invisible) to balance spacing and center the chart */}
+                        <YAxis
+                          yAxisId="right"
+                          orientation="right"
+                          width={40}
+                          tick={false}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+
                         <Tooltip />
                         <Bar
+                          yAxisId="left"
                           dataKey="customers"
                           fill="#3b82f6"
                           name="Customers"
@@ -1652,13 +1686,30 @@ const BusinessDashboard = () => {
                 </CardHeader>
                 <CardContent className="p-4 md:p-6">
                   {waitTimeDistribution.some((b) => b.count > 0) ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={waitTimeDistribution}>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart
+                        data={waitTimeDistribution}
+                        margin={{ top: 8, right: 16, left: 28, bottom: 8 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="range" />
-                        <YAxis />
+                        <XAxis dataKey="range" height={80} />
+
+                        {/* Left axis (visible) */}
+                        <YAxis yAxisId="left" width={40} />
+
+                        {/* Right axis (invisible) to balance spacing and center the chart */}
+                        <YAxis
+                          yAxisId="right"
+                          orientation="right"
+                          width={40}
+                          tick={false}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+
                         <Tooltip />
                         <Bar
+                          yAxisId="left"
                           dataKey="count"
                           fill="#10b981"
                           name="Customers"
