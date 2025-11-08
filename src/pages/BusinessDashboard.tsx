@@ -945,7 +945,7 @@ const BusinessDashboard = () => {
                     {todayStats.currentQueue}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-full grid place-items-center shrink-0 bg-indigo-100">
+                <div className="w-12 h-12 rounded-full grid place-items-center shrink-0 bg-indigo-100 max-[325px]:hidden">
                   <Users className="w-6 h-6 text-indigo-600" />
                 </div>
               </div>
@@ -961,7 +961,7 @@ const BusinessDashboard = () => {
                       {todayStats.avgWaitTime}m
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-teal-100">
+                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-teal-100 max-[325px]:hidden">
                     <Clock className="w-5 h-5 text-teal-600" />
                   </div>
                 </div>
@@ -975,7 +975,7 @@ const BusinessDashboard = () => {
                       {todayStats.totalServed}
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-emerald-100">
+                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-emerald-100 max-[325px]:hidden">
                     <TrendingUp className="w-5 h-5 text-emerald-600" />
                   </div>
                 </div>
@@ -992,7 +992,7 @@ const BusinessDashboard = () => {
                       {todayStats.successRate}%
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 self-center bg-violet-100">
+                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 self-center bg-violet-100 max-[325px]:hidden">
                     <Star className="w-5 h-5 text-violet-600" />
                   </div>
                 </div>
@@ -1006,8 +1006,8 @@ const BusinessDashboard = () => {
                       {todayStats.leftToday}
                     </p>
                   </div>
-                  {/* remove the negative margin and center like the star */}
-                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 self-center bg-teal-100">
+                  {/* hide under 325px */}
+                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 self-center bg-teal-100 max-[325px]:hidden">
                     <LogOut className="w-5 h-5 text-teal-600" />
                   </div>
                 </div>
