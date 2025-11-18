@@ -142,53 +142,34 @@ export async function enforceTrialExpiration(userId: string): Promise<void> {
 
   if (!user) return;
 
-  // Check if trial has expired (account > 7 days old)
-  if (isTrialExpired(user)) {
-    if (user.trial === true) {
-      // Trial expired and user is still in trial mode - set all credits to 0
-      console.log(
-        `[TRIAL] User ${user.id} trial has expired (account > 7 days old) and trial = true, enforcing 0 credits`
-      );
+  // Check if trial has expired (account > 7 days old) AND user is still in trial mode
+  if (isTrialExpired(user) && user.trial === true) {
+    // Trial expired and user is still in trial mode - set all credits to 0
+    console.log(
+      `[TRIAL] User ${user.id} trial has expired (account > 7 days old) and trial = true, enforcing 0 credits`
+    );
 
-      const locations = ((user as any).locations as any[]) || [];
+    const locations = ((user as any).locations as any[]) || [];
 
-      const updatedLocations = locations.map((location: any) => ({
-        ...location,
-        smsCredits: 0,
-        customerCredits: 0,
-      }));
+    const updatedLocations = locations.map((location: any) => ({
+      ...location,
+      smsCredits: 0,
+      customerCredits: 0,
+    }));
 
-      await prisma.user.update({
-        where: { id: userId },
-        data: { locations: updatedLocations as any },
-      });
+    await prisma.user.update({
+      where: { id: userId },
+      data: { locations: updatedLocations as any },
+    });
 
-      console.log(
-        `[TRIAL] Updated ${locations.length} locations to 0 credits for user ${user.id}`
-      );
-    } else {
-      // Trial expired but user has purchased a plan - keep credits as per plan
-      console.log(
-        `[TRIAL] User ${user.id} trial has expired (account > 7 days old) but trial = false, keeping plan credits`
-      );
-
-      const locations = ((user as any).locations as any[]) || [];
-
-      const updatedLocations = locations.map((location: any) => ({
-        ...location,
-        smsCredits: user.baseSMSCredits || 0,
-        customerCredits: user.baseCustomerCredits || 0,
-      }));
-
-      await prisma.user.update({
-        where: { id: userId },
-        data: { locations: updatedLocations as any },
-      });
-
-      console.log(
-        `[TRIAL] Updated ${locations.length} locations to plan credits for user ${user.id}`
-      );
-    }
+    console.log(
+      `[TRIAL] Updated ${locations.length} locations to 0 credits for user ${user.id}`
+    );
+  } else if (isTrialExpired(user) && user.trial === false) {
+    // Trial expired but user has purchased a plan - do NOT reset credits
+    console.log(
+      `[TRIAL] User ${user.id} has purchased a plan (trial = false), credits managed by monthly refill logic`
+    );
   } else {
     console.log(
       `[TRIAL] User ${user.id} trial is still active (account ≤ 7 days old)`
