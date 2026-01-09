@@ -340,8 +340,11 @@ router.post("/business/:username/queue", async (req, res) => {
       numGuests,
       phoneNumber,
       countryCode,
+      email,
       waitingPreference,
+      notificationMethod,
       smsConsent,
+      smsMarketingConsent,
     } = req.body || {};
 
     if (
@@ -354,16 +357,34 @@ router.post("/business/:username/queue", async (req, res) => {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    if (waitingPreference === "wait_anywhere" && !phoneNumber) {
-      return res
-        .status(400)
-        .json({ error: "Phone number is required for Wait Anywhere" });
-    }
+    // Validate notification method requirements
+    if (waitingPreference === "wait_anywhere") {
+      if (!notificationMethod) {
+        return res
+          .status(400)
+          .json({ error: "Notification method is required for Wait Anywhere" });
+      }
 
-    if (waitingPreference === "wait_anywhere" && !smsConsent) {
-      return res
-        .status(400)
-        .json({ error: "SMS consent is required for Wait Anywhere" });
+      if (notificationMethod === "sms" || notificationMethod === "whatsapp") {
+        if (!phoneNumber) {
+          return res
+            .status(400)
+            .json({ error: "Phone number is required for SMS/WhatsApp notifications" });
+        }
+        if (notificationMethod === "sms" && !smsConsent) {
+          return res
+            .status(400)
+            .json({ error: "SMS consent is required for SMS notifications" });
+        }
+      }
+
+      if (notificationMethod === "email") {
+        if (!email) {
+          return res
+            .status(400)
+            .json({ error: "Email is required for email notifications" });
+        }
+      }
     }
 
     const user = await prisma.user.findUnique({
@@ -390,13 +411,14 @@ router.post("/business/:username/queue", async (req, res) => {
 
     const location = locations[locationIndex];
 
-    // Check if location has enough SMS credits for wait anywhere customers
-    if (waitingPreference === "wait_anywhere") {
+    // Check if location has enough SMS credits for SMS/WhatsApp notifications
+    if (waitingPreference === "wait_anywhere" &&
+        (notificationMethod === "sms" || notificationMethod === "whatsapp")) {
       const locationSmsCredits = location.smsCredits || 0;
       if (locationSmsCredits <= 0) {
         return res.status(400).json({
           error:
-            "This location has insufficient SMS credits for Wait Anywhere service",
+            "This location has insufficient SMS credits for SMS/WhatsApp notifications",
         });
       }
     }
@@ -410,8 +432,11 @@ router.post("/business/:username/queue", async (req, res) => {
       numGuests: Number(numGuests),
       phoneNumber: phoneNumber || "",
       countryCode: countryCode || "+1", // Store country code, default to +1
+      email: email || "", // Store email for email notifications
       waitingPreference,
+      notificationMethod: notificationMethod || "", // Store notification method preference
       smsConsent: smsConsent || false, // Store SMS consent for compliance
+      smsMarketingConsent: smsMarketingConsent || false, // Store marketing consent
       joinedAt: new Date().toISOString(),
       position: (location.queue || []).length + 1,
       queueToken, // Store token with customer data
@@ -709,47 +734,87 @@ router.post(
           admittedCustomer.admittedAt = new Date().toISOString();
           admittedCustomer.finalStatus = "pending"; // Track if customer arrived or was a no-show
 
-          // Send SMS notification to customer when admitted
+          // Send notification to customer when admitted
           console.log("Admitting customer:", admittedCustomer);
-          console.log("Customer phone number:", admittedCustomer.phoneNumber);
+          console.log("Customer notification method:", admittedCustomer.notificationMethod);
           console.log("Customer waiting preference:", admittedCustomer.waitingPreference);
 
-          // Send SMS only to customers who chose "wait_anywhere"
-          if (admittedCustomer.waitingPreference === "wait_anywhere" && admittedCustomer.phoneNumber && admittedCustomer.phoneNumber.trim() !== "") {
-            try {
-              const telnyxApiKey = process.env.TELNYX_API_KEY;
-              const telnyxPhoneNumber = process.env.TELNYX_PHONE_NUMBER;
+          // Send notification based on customer's notification method preference
+          if (admittedCustomer.waitingPreference === "wait_anywhere") {
+            const businessName = (user as any).name || "The business";
 
-              if (!telnyxApiKey || !telnyxPhoneNumber) {
-                console.error('Missing Telnyx credentials:', {
-                  hasApiKey: !!telnyxApiKey,
-                  hasTelnyxPhone: !!telnyxPhoneNumber
+            // Send SMS notification
+            if (admittedCustomer.notificationMethod === "sms" && admittedCustomer.phoneNumber && admittedCustomer.phoneNumber.trim() !== "") {
+              try {
+                const telnyxApiKey = process.env.TELNYX_API_KEY;
+                const telnyxPhoneNumber = process.env.TELNYX_PHONE_NUMBER;
+
+                if (!telnyxApiKey || !telnyxPhoneNumber) {
+                  console.error('Missing Telnyx credentials:', {
+                    hasApiKey: !!telnyxApiKey,
+                    hasTelnyxPhone: !!telnyxPhoneNumber
+                  });
+                  throw new Error('Telnyx credentials not configured');
+                }
+
+                const telnyx = new Telnyx({ apiKey: telnyxApiKey });
+
+                // Format phone number to E.164 format using the stored country code
+                const customerCountryCode = admittedCustomer.countryCode || "+1";
+                let phoneDigitsOnly = admittedCustomer.phoneNumber.trim().replace(/\D/g, '');
+
+                // Construct full phone number with country code
+                let formattedPhone = customerCountryCode + phoneDigitsOnly;
+
+                const message = await telnyx.messages.send({
+                  from: telnyxPhoneNumber,
+                  to: formattedPhone,
+                  text: `Good news! It's your turn at ${businessName}. Please proceed to the host within the next 5 minutes. Thank you for using SeatPing!`,
                 });
-                throw new Error('Telnyx credentials not configured');
+                console.log("SMS notification sent successfully:", message.data?.id, "to", formattedPhone);
+              } catch (error: any) {
+                console.error('Failed to send SMS notification:', error?.message || error);
+                // Don't fail the admission if SMS fails - just log the error
               }
+            }
+            // Send WhatsApp notification (TODO: implement WhatsApp logic)
+            else if (admittedCustomer.notificationMethod === "whatsapp" && admittedCustomer.phoneNumber && admittedCustomer.phoneNumber.trim() !== "") {
+              // TODO: Implement WhatsApp notification logic
+              console.log("WhatsApp notification not yet implemented - customer:", admittedCustomer.phoneNumber);
+            }
+            // Send Email notification
+            else if (admittedCustomer.notificationMethod === "email" && admittedCustomer.email && admittedCustomer.email.trim() !== "") {
+              try {
+                const emailHtml = `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #2563eb;">Good News!</h2>
+                    <p style="font-size: 16px;">It's your turn at <strong>${businessName}</strong>!</p>
+                    <p style="font-size: 14px;">Please proceed to the host within the next 5 minutes.</p>
+                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+                    <p style="font-size: 12px; color: #6b7280;">Thank you for using SeatPing!</p>
+                  </div>
+                `;
 
-              const telnyx = new Telnyx({ apiKey: telnyxApiKey });
+                const emailSent = await sendEmail({
+                  to: admittedCustomer.email,
+                  subject: `It's your turn at ${businessName}!`,
+                  html: emailHtml,
+                });
 
-              // Format phone number to E.164 format using the stored country code
-              const customerCountryCode = admittedCustomer.countryCode || "+1";
-              let phoneDigitsOnly = admittedCustomer.phoneNumber.trim().replace(/\D/g, '');
-
-              // Construct full phone number with country code
-              let formattedPhone = customerCountryCode + phoneDigitsOnly;
-
-              const businessName = (user as any).name || "The business";
-              const message = await telnyx.messages.send({
-                from: telnyxPhoneNumber,
-                to: formattedPhone,
-                text: `Good news! It's your turn at ${businessName}. Please proceed to the host within the next 5 minutes. Thank you for using SeatPing!`,
-              });
-              console.log("SMS notification sent successfully:", message.data?.id, "to", formattedPhone);
-            } catch (error: any) {
-              console.error('Failed to send SMS notification:', error?.message || error);
-              // Don't fail the admission if SMS fails - just log the error
+                if (emailSent) {
+                  console.log("Email notification sent successfully to:", admittedCustomer.email);
+                } else {
+                  console.error("Failed to send email notification to:", admittedCustomer.email);
+                }
+              } catch (error: any) {
+                console.error('Failed to send email notification:', error?.message || error);
+                // Don't fail the admission if email fails - just log the error
+              }
+            } else {
+              console.log("No valid notification method or contact info - skipping notification");
             }
           } else {
-            console.log("Customer chose 'on_premises' or no phone number - skipping SMS notification");
+            console.log("Customer chose 'on_premises' - skipping notification");
           }
 
 
@@ -781,8 +846,9 @@ router.post(
         (location.customerCredits || 0) - customerCreditsToDeduct
       );
 
-      // Deduct SMS credit if customer opted for it
-      if (admittedCustomer.waitingPreference === "wait_anywhere") {
+      // Deduct SMS credit if customer opted for SMS or WhatsApp notifications
+      if (admittedCustomer.waitingPreference === "wait_anywhere" &&
+          (admittedCustomer.notificationMethod === "sms" || admittedCustomer.notificationMethod === "whatsapp")) {
         smsCreditsToDeduct = 1;
         location.smsCredits = Math.max(
           0,

@@ -53,9 +53,11 @@ export default function QueueBusiness() {
     firstName: "",
     lastName: "",
     numGuests: "1",
-    phoneNumber: "", // required only when wait_anywhere
+    phoneNumber: "", // required only when wait_anywhere with SMS/WhatsApp
     countryCode: "+1", // default to US
+    email: "", // required when wait_anywhere with Email
     waitingPreference: "on_premises" as "on_premises" | "wait_anywhere",
+    notificationMethod: "" as "" | "sms" | "whatsapp" | "email", // selected when wait_anywhere
     joinedAt: "", // Will be set when customer joins queue
     smsConsent: false, // required when wait_anywhere - transactional messages
     smsMarketingConsent: false, // optional - marketing messages
@@ -123,8 +125,10 @@ export default function QueueBusiness() {
                 numGuests: String(response.customer.numGuests || 1),
                 phoneNumber: response.customer.phoneNumber || "",
                 countryCode: response.customer.countryCode || "+1",
+                email: response.customer.email || "",
                 waitingPreference:
                   response.customer.waitingPreference || "on_premises",
+                notificationMethod: response.customer.notificationMethod || "",
                 joinedAt: response.customer.joinedAt || "",
                 smsConsent: response.customer.smsConsent || false,
                 smsMarketingConsent:
@@ -307,20 +311,41 @@ export default function QueueBusiness() {
   const nextFromStep3 = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
-    if (form.waitingPreference === "wait_anywhere" && !form.phoneNumber) {
-      newErrors.phoneNumber = "Phone number is required for Wait Anywhere";
+
+    // Validate notification method selection if wait_anywhere
+    if (form.waitingPreference === "wait_anywhere" && !form.notificationMethod) {
+      newErrors.notificationMethod = "Please select a notification method";
     }
-    if (form.waitingPreference === "wait_anywhere" && !form.smsConsent) {
-      newErrors.smsConsent =
-        "You must agree to receive transactional text messages";
+
+    // Validate based on notification method
+    if (form.waitingPreference === "wait_anywhere" && form.notificationMethod === "sms") {
+      if (!form.phoneNumber) {
+        newErrors.phoneNumber = "Phone number is required for SMS notifications";
+      }
+      if (!form.smsConsent) {
+        newErrors.smsConsent =
+          "You must agree to receive transactional text messages";
+      }
+      if (!form.smsMarketingConsent) {
+        newErrors.smsMarketingConsent =
+          "You must agree to receive marketing text messages";
+      }
     }
-    if (
-      form.waitingPreference === "wait_anywhere" &&
-      !form.smsMarketingConsent
-    ) {
-      newErrors.smsMarketingConsent =
-        "You must agree to receive marketing text messages";
+
+    if (form.waitingPreference === "wait_anywhere" && form.notificationMethod === "whatsapp") {
+      if (!form.phoneNumber) {
+        newErrors.phoneNumber = "Phone number is required for WhatsApp notifications";
+      }
     }
+
+    if (form.waitingPreference === "wait_anywhere" && form.notificationMethod === "email") {
+      if (!form.email) {
+        newErrors.email = "Email address is required for email notifications";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+        newErrors.email = "Please enter a valid email address";
+      }
+    }
+
     setErrors(newErrors);
     if (Object.keys(newErrors).length) return;
 
@@ -336,7 +361,9 @@ export default function QueueBusiness() {
           numGuests: parseInt(form.numGuests),
           phoneNumber: form.phoneNumber,
           countryCode: form.countryCode,
+          email: form.email,
           waitingPreference: form.waitingPreference,
+          notificationMethod: form.notificationMethod,
           smsConsent: form.smsConsent,
           smsMarketingConsent: form.smsMarketingConsent,
         }),
@@ -353,12 +380,21 @@ export default function QueueBusiness() {
           localStorage.setItem(storageKey, response.queueToken);
         }
 
+        // Generate appropriate toast message based on notification method
+        let toastDescription = "Stay nearby — we'll call your name on site.";
+        if (form.waitingPreference === "wait_anywhere") {
+          if (form.notificationMethod === "sms") {
+            toastDescription = `We'll text you at ${form.countryCode} ${form.phoneNumber} when it's almost your turn.`;
+          } else if (form.notificationMethod === "whatsapp") {
+            toastDescription = `We'll message you on WhatsApp at ${form.countryCode} ${form.phoneNumber} when it's almost your turn.`;
+          } else if (form.notificationMethod === "email") {
+            toastDescription = `We'll email you at ${form.email} when it's your turn.`;
+          }
+        }
+
         toast({
           title: "You're in the queue!",
-          description:
-            form.waitingPreference === "wait_anywhere"
-              ? `We'll text you at ${form.countryCode} ${form.phoneNumber} when it's almost your turn.`
-              : "Stay nearby — we'll call your name on site.",
+          description: toastDescription,
         });
 
         // Set the actual position from the database
@@ -629,144 +665,283 @@ export default function QueueBusiness() {
                   </div>
                 </div>
 
-                {/* Phone only when Wait Anywhere */}
+                {/* Notification method selection when Wait Anywhere */}
                 {form.waitingPreference === "wait_anywhere" && (
                   <>
                     <div className="space-y-2">
-                      <Label htmlFor="phoneNumber">Phone Number</Label>
-                      <div className="flex gap-2">
-                        <select
-                          name="countryCode"
-                          value={form.countryCode}
-                          onChange={handleChange}
-                          disabled
-                          className="w-24 rounded-md border bg-background pl-3 pr-7 py-2 text-sm appearance-none opacity-60 cursor-not-allowed"
-                        >
-                          <option value="+1">🇺🇸 +1</option>
-                        </select>
-                        <Input
-                          id="phoneNumber"
-                          name="phoneNumber"
-                          type="tel"
-                          placeholder="5551234567"
-                          value={form.phoneNumber}
-                          onChange={handleChange}
-                          className={
-                            errors.phoneNumber
-                              ? "border-destructive focus:ring-destructive flex-1"
-                              : "flex-1"
+                      <Label>How would you like to be notified?</Label>
+                      <div className="grid grid-cols-1 gap-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((p) => ({
+                              ...p,
+                              notificationMethod: "sms",
+                            }))
                           }
-                        />
+                          className={`rounded-lg border px-4 py-3 text-left transition ${
+                            form.notificationMethod === "sms"
+                              ? "border-primary ring-2 ring-primary/30"
+                              : "hover:bg-muted"
+                          }`}
+                        >
+                          <div className="font-medium">SMS</div>
+                          <div className="text-sm text-muted-foreground">
+                            Receive text message notifications
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((p) => ({
+                              ...p,
+                              notificationMethod: "whatsapp",
+                            }))
+                          }
+                          className={`rounded-lg border px-4 py-3 text-left transition ${
+                            form.notificationMethod === "whatsapp"
+                              ? "border-primary ring-2 ring-primary/30"
+                              : "hover:bg-muted"
+                          }`}
+                        >
+                          <div className="font-medium">WhatsApp</div>
+                          <div className="text-sm text-muted-foreground">
+                            Receive WhatsApp notifications
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((p) => ({
+                              ...p,
+                              notificationMethod: "email",
+                            }))
+                          }
+                          className={`rounded-lg border px-4 py-3 text-left transition ${
+                            form.notificationMethod === "email"
+                              ? "border-primary ring-2 ring-primary/30"
+                              : "hover:bg-muted"
+                          }`}
+                        >
+                          <div className="font-medium">Email</div>
+                          <div className="text-sm text-muted-foreground">
+                            Receive email notifications
+                          </div>
+                        </button>
                       </div>
-                      {errors.phoneNumber && (
+                      {errors.notificationMethod && (
                         <p className="text-sm text-destructive">
-                          {errors.phoneNumber}
+                          {errors.notificationMethod}
                         </p>
                       )}
                     </div>
 
-                    {/* SMS Consent Checkboxes */}
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-2">
-                        <Checkbox
-                          id="smsConsent"
-                          checked={form.smsConsent}
-                          onCheckedChange={(checked) => {
-                            setForm((p) => ({
-                              ...p,
-                              smsConsent: checked as boolean,
-                            }));
-                            if (errors.smsConsent)
-                              setErrors((p) => ({ ...p, smsConsent: "" }));
-                          }}
-                          className={cn(
-                            errors.smsConsent ? "border-destructive" : "",
-                            "mt-1.5 flex-shrink-0"
-                          )}
-                        />
-                        <div className="flex-1">
-                          <label
-                            htmlFor="smsConsent"
-                            className="text-sm leading-5 cursor-pointer"
-                          >
-                            By checking this box and submitting this form, you
-                            consent to receive transactional text messages for
-                            queue notifications from SeatPing. Reply STOP to opt
-                            out. Reply HELP for help. Standard message and data
-                            rates may apply. Message frequency may vary. View
-                            our{" "}
-                            <a href="/terms" className="underline text-primary">
-                              Terms and Conditions
-                            </a>
-                            . View our{" "}
-                            <a
-                              href="/policy"
-                              className="underline text-primary"
+                    {/* Phone number input for SMS */}
+                    {form.notificationMethod === "sms" && (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="phoneNumber">Phone Number</Label>
+                          <div className="flex gap-2">
+                            <select
+                              name="countryCode"
+                              value={form.countryCode}
+                              onChange={handleChange}
+                              disabled
+                              className="w-24 rounded-md border bg-background pl-3 pr-7 py-2 text-sm appearance-none opacity-60 cursor-not-allowed"
                             >
-                              Privacy Policy
-                            </a>
-                            .
-                          </label>
-                          {errors.smsConsent && (
-                            <p className="text-sm text-destructive mt-1">
-                              {errors.smsConsent}
+                              <option value="+1">🇺🇸 +1</option>
+                            </select>
+                            <Input
+                              id="phoneNumber"
+                              name="phoneNumber"
+                              type="tel"
+                              placeholder="5551234567"
+                              value={form.phoneNumber}
+                              onChange={handleChange}
+                              className={
+                                errors.phoneNumber
+                                  ? "border-destructive focus:ring-destructive flex-1"
+                                  : "flex-1"
+                              }
+                            />
+                          </div>
+                          {errors.phoneNumber && (
+                            <p className="text-sm text-destructive">
+                              {errors.phoneNumber}
                             </p>
                           )}
                         </div>
-                      </div>
 
-                      <div className="flex items-start gap-2">
-                        <Checkbox
-                          id="smsMarketingConsent"
-                          checked={form.smsMarketingConsent}
-                          onCheckedChange={(checked) => {
-                            setForm((p) => ({
-                              ...p,
-                              smsMarketingConsent: checked as boolean,
-                            }));
-                            if (errors.smsMarketingConsent)
-                              setErrors((p) => ({
-                                ...p,
-                                smsMarketingConsent: "",
-                              }));
-                          }}
-                          className={cn(
-                            errors.smsMarketingConsent
-                              ? "border-destructive"
-                              : "",
-                            "mt-1.5 flex-shrink-0"
-                          )}
-                        />
-                        <div className="flex-1">
-                          <label
-                            htmlFor="smsMarketingConsent"
-                            className="text-sm leading-5 cursor-pointer"
-                          >
-                            By checking this box and submitting this form, you
-                            consent to receive text messages for marketing from
-                            SeatPing. Reply STOP to opt out. Reply HELP for
-                            help. Message and data rates may apply. Message
-                            frequency may vary. View our{" "}
-                            <a href="/terms" className="underline text-primary">
-                              Terms and Conditions
-                            </a>
-                            . View our{" "}
-                            <a
-                              href="/policy"
-                              className="underline text-primary"
+                        {/* SMS Consent Checkboxes */}
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-2">
+                            <Checkbox
+                              id="smsConsent"
+                              checked={form.smsConsent}
+                              onCheckedChange={(checked) => {
+                                setForm((p) => ({
+                                  ...p,
+                                  smsConsent: checked as boolean,
+                                }));
+                                if (errors.smsConsent)
+                                  setErrors((p) => ({ ...p, smsConsent: "" }));
+                              }}
+                              className={cn(
+                                errors.smsConsent ? "border-destructive" : "",
+                                "mt-1.5 flex-shrink-0"
+                              )}
+                            />
+                            <div className="flex-1">
+                              <label
+                                htmlFor="smsConsent"
+                                className="text-sm leading-5 cursor-pointer"
+                              >
+                                By checking this box and submitting this form, you
+                                consent to receive transactional text messages for
+                                queue notifications from SeatPing. Reply STOP to opt
+                                out. Reply HELP for help. Standard message and data
+                                rates may apply. Message frequency may vary. View
+                                our{" "}
+                                <a href="/terms" className="underline text-primary">
+                                  Terms and Conditions
+                                </a>
+                                . View our{" "}
+                                <a
+                                  href="/policy"
+                                  className="underline text-primary"
+                                >
+                                  Privacy Policy
+                                </a>
+                                .
+                              </label>
+                              {errors.smsConsent && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {errors.smsConsent}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-2">
+                            <Checkbox
+                              id="smsMarketingConsent"
+                              checked={form.smsMarketingConsent}
+                              onCheckedChange={(checked) => {
+                                setForm((p) => ({
+                                  ...p,
+                                  smsMarketingConsent: checked as boolean,
+                                }));
+                                if (errors.smsMarketingConsent)
+                                  setErrors((p) => ({
+                                    ...p,
+                                    smsMarketingConsent: "",
+                                  }));
+                              }}
+                              className={cn(
+                                errors.smsMarketingConsent
+                                  ? "border-destructive"
+                                  : "",
+                                "mt-1.5 flex-shrink-0"
+                              )}
+                            />
+                            <div className="flex-1">
+                              <label
+                                htmlFor="smsMarketingConsent"
+                                className="text-sm leading-5 cursor-pointer"
+                              >
+                                By checking this box and submitting this form, you
+                                consent to receive text messages for marketing from
+                                SeatPing. Reply STOP to opt out. Reply HELP for
+                                help. Message and data rates may apply. Message
+                                frequency may vary. View our{" "}
+                                <a href="/terms" className="underline text-primary">
+                                  Terms and Conditions
+                                </a>
+                                . View our{" "}
+                                <a
+                                  href="/policy"
+                                  className="underline text-primary"
+                                >
+                                  Privacy Policy
+                                </a>
+                                .
+                              </label>
+                              {errors.smsMarketingConsent && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {errors.smsMarketingConsent}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Phone number input for WhatsApp */}
+                    {form.notificationMethod === "whatsapp" && (
+                      <>
+                        {/* TODO: Implement WhatsApp notification logic */}
+                        <div className="space-y-2">
+                          <Label htmlFor="phoneNumber">Phone Number</Label>
+                          <div className="flex gap-2">
+                            <select
+                              name="countryCode"
+                              value={form.countryCode}
+                              onChange={handleChange}
+                              disabled
+                              className="w-24 rounded-md border bg-background pl-3 pr-7 py-2 text-sm appearance-none opacity-60 cursor-not-allowed"
                             >
-                              Privacy Policy
-                            </a>
-                            .
-                          </label>
-                          {errors.smsMarketingConsent && (
-                            <p className="text-sm text-destructive mt-1">
-                              {errors.smsMarketingConsent}
+                              <option value="+1">🇺🇸 +1</option>
+                            </select>
+                            <Input
+                              id="phoneNumber"
+                              name="phoneNumber"
+                              type="tel"
+                              placeholder="5551234567"
+                              value={form.phoneNumber}
+                              onChange={handleChange}
+                              className={
+                                errors.phoneNumber
+                                  ? "border-destructive focus:ring-destructive flex-1"
+                                  : "flex-1"
+                              }
+                            />
+                          </div>
+                          {errors.phoneNumber && (
+                            <p className="text-sm text-destructive">
+                              {errors.phoneNumber}
                             </p>
                           )}
                         </div>
+                      </>
+                    )}
+
+                    {/* Email input for Email notification */}
+                    {form.notificationMethod === "email" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email Address</Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          placeholder="you@example.com"
+                          value={form.email}
+                          onChange={handleChange}
+                          className={
+                            errors.email
+                              ? "border-destructive focus:ring-destructive"
+                              : ""
+                          }
+                        />
+                        {errors.email && (
+                          <p className="text-sm text-destructive">
+                            {errors.email}
+                          </p>
+                        )}
                       </div>
-                    </div>
+                    )}
                   </>
                 )}
 
