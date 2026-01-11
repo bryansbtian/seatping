@@ -499,6 +499,76 @@ export const sendRegistrationConfirmationEmail = async (
   });
 };
 
+export const sendQueueJoinConfirmationEmail = async (
+  email: string,
+  firstName: string,
+  lastName: string,
+  businessName: string,
+  address: string,
+  position: number
+): Promise<boolean> => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">You're in the queue!</p>
+      </div>
+
+      <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+        <h2 style="color: #333; margin-bottom: 20px;">Hi ${firstName},</h2>
+
+        <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+          Thank you for joining the queue at <strong>${businessName}</strong>. We'll notify you when it's your turn!
+        </p>
+
+        <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #4caf50;">
+          <p style="margin: 0; color: #2e7d32; font-weight: bold;">You're #${position} in line</p>
+          <p style="margin: 10px 0 0 0; color: #2e7d32; font-size: 14px;">
+            We'll send you an email when it's almost your turn.
+          </p>
+        </div>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+          <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Queue Details</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold; width: 140px;">Business:</td>
+              <td style="padding: 8px 0; color: #333;">${businessName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Location:</td>
+              <td style="padding: 8px 0; color: #333;">${address}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Name:</td>
+              <td style="padding: 8px 0; color: #333;">${firstName} ${lastName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Position:</td>
+              <td style="padding: 8px 0; color: #333; font-weight: bold;">#${position}</td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="color: #666; font-size: 14px; margin-top: 25px;">
+          You can close this email - we'll notify you when it's your turn. Thank you for your patience!
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+        <p>© 2025 SeatPing. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `You're in the queue at ${businessName}`,
+    html,
+    from: "bryan.susanto@seatping.biz",
+  });
+};
+
 export const sendSalesInquiryEmail = async (
   data: SalesInquiryData
 ): Promise<boolean> => {

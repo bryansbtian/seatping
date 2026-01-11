@@ -336,6 +336,14 @@ export default function QueueBusiness() {
       if (!form.phoneNumber) {
         newErrors.phoneNumber = "Phone number is required for WhatsApp notifications";
       }
+      if (!form.smsConsent) {
+        newErrors.smsConsent =
+          "You must agree to receive transactional text messages";
+      }
+      if (!form.smsMarketingConsent) {
+        newErrors.smsMarketingConsent =
+          "You must agree to receive marketing text messages";
+      }
     }
 
     if (form.waitingPreference === "wait_anywhere" && form.notificationMethod === "email") {
@@ -914,6 +922,109 @@ export default function QueueBusiness() {
                               {errors.phoneNumber}
                             </p>
                           )}
+                        </div>
+
+                        {/* WhatsApp Consent Checkboxes */}
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-2">
+                            <Checkbox
+                              id="smsConsent"
+                              checked={form.smsConsent}
+                              onCheckedChange={(checked) => {
+                                setForm((p) => ({
+                                  ...p,
+                                  smsConsent: checked as boolean,
+                                }));
+                                if (errors.smsConsent)
+                                  setErrors((p) => ({ ...p, smsConsent: "" }));
+                              }}
+                              className={cn(
+                                errors.smsConsent ? "border-destructive" : "",
+                                "mt-1.5 flex-shrink-0"
+                              )}
+                            />
+                            <div className="flex-1">
+                              <label
+                                htmlFor="smsConsent"
+                                className="text-sm leading-5 cursor-pointer"
+                              >
+                                By checking this box and submitting this form, you
+                                consent to receive transactional text messages for
+                                queue notifications from SeatPing. Reply STOP to opt
+                                out. Reply HELP for help. Standard message and data
+                                rates may apply. Message frequency may vary. View
+                                our{" "}
+                                <a href="/terms" className="underline text-primary">
+                                  Terms and Conditions
+                                </a>
+                                . View our{" "}
+                                <a
+                                  href="/policy"
+                                  className="underline text-primary"
+                                >
+                                  Privacy Policy
+                                </a>
+                                .
+                              </label>
+                              {errors.smsConsent && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {errors.smsConsent}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-2">
+                            <Checkbox
+                              id="smsMarketingConsent"
+                              checked={form.smsMarketingConsent}
+                              onCheckedChange={(checked) => {
+                                setForm((p) => ({
+                                  ...p,
+                                  smsMarketingConsent: checked as boolean,
+                                }));
+                                if (errors.smsMarketingConsent)
+                                  setErrors((p) => ({
+                                    ...p,
+                                    smsMarketingConsent: "",
+                                  }));
+                              }}
+                              className={cn(
+                                errors.smsMarketingConsent
+                                  ? "border-destructive"
+                                  : "",
+                                "mt-1.5 flex-shrink-0"
+                              )}
+                            />
+                            <div className="flex-1">
+                              <label
+                                htmlFor="smsMarketingConsent"
+                                className="text-sm leading-5 cursor-pointer"
+                              >
+                                By checking this box and submitting this form, you
+                                consent to receive text messages for marketing from
+                                SeatPing. Reply STOP to opt out. Reply HELP for
+                                help. Message and data rates may apply. Message
+                                frequency may vary. View our{" "}
+                                <a href="/terms" className="underline text-primary">
+                                  Terms and Conditions
+                                </a>
+                                . View our{" "}
+                                <a
+                                  href="/policy"
+                                  className="underline text-primary"
+                                >
+                                  Privacy Policy
+                                </a>
+                                .
+                              </label>
+                              {errors.smsMarketingConsent && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {errors.smsMarketingConsent}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </>
                     )}

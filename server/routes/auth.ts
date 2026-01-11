@@ -19,7 +19,7 @@ import {
   checkAndRefillMonthlyCredits,
   handlePlanPurchase
 } from "../lib/trial.js";
-import { sendPasswordResetEmail, sendEmail, sendRegistrationConfirmationEmail, sendPasswordChangeConfirmationEmail } from "../lib/email.js";
+import { sendPasswordResetEmail, sendEmail, sendRegistrationConfirmationEmail, sendPasswordChangeConfirmationEmail, sendQueueJoinConfirmationEmail } from "../lib/email.js";
 import crypto from "crypto";
 
 const router = Router();
@@ -455,6 +455,64 @@ router.post("/business/:username/queue", async (req, res) => {
         locations: locations as any,
       },
     });
+
+    // Send confirmation notifications based on notification method
+    const businessName = (user as any).name || "the business";
+
+    if (waitingPreference === "wait_anywhere" && notificationMethod) {
+      // Send SMS confirmation
+      if (notificationMethod === "sms" && phoneNumber) {
+        try {
+          const telnyxApiKey = process.env.TELNYX_API_KEY;
+          const telnyxPhoneNumber = process.env.TELNYX_PHONE_NUMBER;
+
+          if (telnyxApiKey && telnyxPhoneNumber) {
+            const telnyx = new Telnyx({ apiKey: telnyxApiKey });
+
+            // Format phone number to E.164 format
+            const customerCountryCode = countryCode || "+1";
+            const phoneDigitsOnly = phoneNumber.trim().replace(/\D/g, '');
+            const formattedPhone = customerCountryCode + phoneDigitsOnly;
+
+            const message = await telnyx.messages.send({
+              from: telnyxPhoneNumber,
+              to: formattedPhone,
+              text: `Hi ${firstName}! You've joined the queue at ${businessName}. You're #${customer.position} in line. We'll text you when it's almost your turn. Reply STOP to opt out. - SeatPing`,
+            });
+
+            console.log("[QUEUE-JOIN] SMS confirmation sent successfully:", message.data?.id, "to", formattedPhone);
+          } else {
+            console.error("[QUEUE-JOIN] Missing Telnyx credentials - cannot send SMS confirmation");
+          }
+        } catch (error: any) {
+          console.error("[QUEUE-JOIN] Failed to send SMS confirmation:", error?.message || error);
+          // Don't fail the queue join if SMS fails - just log the error
+        }
+      }
+
+      // Send email confirmation
+      if (notificationMethod === "email" && email) {
+        try {
+          const emailSent = await sendQueueJoinConfirmationEmail(
+            email,
+            firstName,
+            lastName,
+            businessName,
+            address,
+            customer.position
+          );
+
+          if (emailSent) {
+            console.log("[QUEUE-JOIN] Email confirmation sent successfully to:", email);
+          } else {
+            console.error("[QUEUE-JOIN] Failed to send email confirmation to:", email);
+          }
+        } catch (error: any) {
+          console.error("[QUEUE-JOIN] Error sending email confirmation:", error?.message || error);
+          // Don't fail the queue join if email fails - just log the error
+        }
+      }
+    }
 
     return res.json({
       success: true,
