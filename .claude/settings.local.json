@@ -8,7 +8,9 @@
       "Bash(npm install:*)",
       "Bash(curl:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(npm run build:server:*)"
+      "Bash(npm run build:server:*)",
+      "Bash(npx tsc:*)",
+      "Bash(xargs grep *)"
     ],
     "deny": [],
     "ask": []

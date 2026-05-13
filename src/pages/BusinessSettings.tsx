@@ -380,7 +380,7 @@ const BusinessSettings = () => {
                       asChild
                       variant="outline"
                       size="sm"
-                      className="border-white text-white hover:bg-white hover:text-gray-700 text-xs md:text-sm"
+                      className="border-white bg-white text-gray-700 hover:bg-gray-100 text-xs md:text-sm"
                     >
                       <a
                         href={BILLING_PORTAL_URL}
@@ -632,7 +632,7 @@ const BusinessSettings = () => {
                     </div>
                   </div>
                   {locations.length >= maxLocations && (
-                    <p className="text-xs md:text-sm text-teal-600 mt-2">
+                    <p className="text-xs md:text-sm text-red-600 mt-2">
                       You have reached the maximum number of locations for your
                       plan.
                     </p>
