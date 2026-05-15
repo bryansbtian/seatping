@@ -43,6 +43,7 @@ interface User {
   username: string;
   email: string;
   plan: string;
+  phone: string;
   locations: Location[];
   maxLocations: number;
   trial: boolean;
@@ -74,7 +75,7 @@ const BusinessSettings = () => {
       const createdAt = new Date(me.createdAt);
       const trialDurationDays = me.trialDurationDays || 7;
       const trialEndDate = new Date(
-        createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000
+        createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
       );
       const now = new Date();
       return now <= trialEndDate;
@@ -88,14 +89,14 @@ const BusinessSettings = () => {
       const createdAt = new Date(me.createdAt);
       const trialDurationDays = me.trialDurationDays || 7;
       const trialEndDate = new Date(
-        createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000
+        createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
       );
       const now = new Date();
       const timeLeft = trialEndDate.getTime() - now.getTime();
       if (timeLeft <= 0) return null;
       const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
       const hours = Math.floor(
-        (timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+        (timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
       );
       const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
       return { days, hours, minutes };
@@ -182,7 +183,7 @@ const BusinessSettings = () => {
     setLoading(true);
     try {
       const updatedLocations = locations.filter(
-        (_, index) => index !== locationIndex
+        (_, index) => index !== locationIndex,
       );
       const updated = await api("/auth/me", {
         method: "PUT",
@@ -256,7 +257,7 @@ const BusinessSettings = () => {
                 const createdAt = new Date(me.createdAt);
                 const trialDurationDays = me.trialDurationDays || 7;
                 const trialEndDate = new Date(
-                  createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000
+                  createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
                 );
                 const now = new Date();
                 return now > trialEndDate;
@@ -266,7 +267,7 @@ const BusinessSettings = () => {
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
                       <div>
                         <h3 className="text-lg md:text-xl font-semibold">
-                          ⚠️ Trial Expired
+                          Trial Expired
                         </h3>
                         <p className="text-sm md:text-base opacity-90">
                           Your trial has expired. Upgrade to continue using
@@ -277,7 +278,7 @@ const BusinessSettings = () => {
                         <Button
                           variant="outline"
                           className="border-2 border-white text-white bg-white/10 hover:bg-white hover:text-red-600"
-                          onClick={() => (window.location.href = "/payments")}
+                          onClick={() => (window.location.href = "/sales")}
                         >
                           Upgrade Now
                         </Button>
@@ -310,7 +311,7 @@ const BusinessSettings = () => {
                         <Button
                           variant="outline"
                           className="border-2 border-white text-white bg-white/10 hover:bg-white hover:text-indigo-600"
-                          onClick={() => (window.location.href = "/payments")}
+                          onClick={() => (window.location.href = "/sales")}
                         >
                           Upgrade Now
                         </Button>
@@ -328,7 +329,7 @@ const BusinessSettings = () => {
             locations.length > 0 &&
             locations.some(
               (location: Location) =>
-                location.smsCredits === 0 && location.customerCredits === 0
+                location.smsCredits === 0 && location.customerCredits === 0,
             ) && (
               <div className="mb-6">
                 <div className="bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
@@ -362,8 +363,8 @@ const BusinessSettings = () => {
               </div>
             )}
 
-          {/* Manage subscription banner */}
-          {me && me.trial === false && me.trialDurationDays !== 0 && (
+          {/* Manage subscription banner - temporarily hidden */}
+          {false && me && me.trial === false && me.trialDurationDays !== 0 && (
             <div className="mb-6">
               <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-xl shadow-lg p-3 md:p-4 text-white">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
@@ -495,12 +496,12 @@ const BusinessSettings = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="plan" className="text-sm md:text-base">
-                      Plan
+                    <Label htmlFor="phone" className="text-sm md:text-base">
+                      Phone Number
                     </Label>
                     <Input
-                      id="plan"
-                      value={me?.plan || "Starter"}
+                      id="phone"
+                      value={me?.phone || ""}
                       disabled
                       className="bg-gray-50 text-sm md:text-base"
                     />

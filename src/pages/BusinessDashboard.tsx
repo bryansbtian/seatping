@@ -61,7 +61,7 @@ const BusinessDashboard = () => {
       const createdAt = new Date(me.createdAt);
       const trialDurationDays = me.trialDurationDays || 7;
       const trialEndDate = new Date(
-        createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000
+        createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
       );
       const now = new Date();
       return now <= trialEndDate;
@@ -162,7 +162,7 @@ const BusinessDashboard = () => {
     const trialDurationDays =
       typeof me.trialDurationDays === "number" ? me.trialDurationDays : 7;
     const trialEndDate = new Date(
-      createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000
+      createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
     );
     const now = new Date();
     const timeLeft = trialEndDate.getTime() - now.getTime();
@@ -173,7 +173,7 @@ const BusinessDashboard = () => {
 
     const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
     const hours = Math.floor(
-      (timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+      (timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
     );
     const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
 
@@ -218,7 +218,7 @@ const BusinessDashboard = () => {
       const createdAt = new Date(me.createdAt);
       const trialDurationDays = me.trialDurationDays || 0;
       const trialEndDate = new Date(
-        createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000
+        createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
       );
       const now = new Date();
       const isExpired = now > trialEndDate;
@@ -346,7 +346,7 @@ const BusinessDashboard = () => {
         `/auth/business/${me.username}/admitted/${customerId}/confirm-arrival`,
         {
           method: "POST",
-        }
+        },
       );
 
       // Refresh the business data
@@ -380,7 +380,7 @@ const BusinessDashboard = () => {
         `/auth/business/${me.username}/admitted/${customerId}/mark-no-show`,
         {
           method: "POST",
-        }
+        },
       );
 
       // Refresh the business data
@@ -518,7 +518,7 @@ const BusinessDashboard = () => {
       for (const [key, times] of waitTimes.entries()) {
         if (times.length) {
           dataMap.get(key)!.avgWait = Math.round(
-            times.reduce((a, b) => a + b, 0) / times.length
+            times.reduce((a, b) => a + b, 0) / times.length,
           );
         }
       }
@@ -559,7 +559,7 @@ const BusinessDashboard = () => {
     // seed 5 weeks using each week's start date as the key
     for (let i = weeks - 1; i >= 0; i--) {
       const start = startOfWeek(
-        new Date(now.getFullYear(), now.getMonth(), now.getDate() - i * 7)
+        new Date(now.getFullYear(), now.getMonth(), now.getDate() - i * 7),
       );
       const key = start.toISOString().slice(0, 10);
       weekRows.set(key, {
@@ -598,7 +598,7 @@ const BusinessDashboard = () => {
     for (const [key, times] of weekWaitTimes.entries()) {
       if (times.length) {
         weekRows.get(key)!.avgWait = Math.round(
-          times.reduce((a, b) => a + b, 0) / times.length
+          times.reduce((a, b) => a + b, 0) / times.length,
         );
       }
     }
@@ -650,10 +650,10 @@ const BusinessDashboard = () => {
           hour === 0
             ? "12 AM"
             : hour < 12
-            ? `${hour} AM`
-            : hour === 12
-            ? "12 PM"
-            : `${hour - 12} PM`,
+              ? `${hour} AM`
+              : hour === 12
+                ? "12 PM"
+                : `${hour - 12} PM`,
         customers: count,
       }))
       .filter((entry) => entry.customers > 0); // Only show hours with traffic
@@ -683,7 +683,7 @@ const BusinessDashboard = () => {
         const waitTime = (admitTime - joinTime) / (1000 * 60); // minutes
 
         const bucket = buckets.find(
-          (b) => waitTime >= b.min && waitTime < b.max
+          (b) => waitTime >= b.min && waitTime < b.max,
         );
         if (bucket) bucket.count++;
       }
@@ -712,7 +712,7 @@ const BusinessDashboard = () => {
                     ? me.trialDurationDays
                     : 7;
                 const trialEndDate = new Date(
-                  createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000
+                  createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
                 );
                 const now = new Date();
                 return now > trialEndDate;
@@ -722,7 +722,7 @@ const BusinessDashboard = () => {
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
                       <div>
                         <h3 className="text-lg md:text-xl font-semibold">
-                          ⚠️ Trial Expired
+                          Trial Expired
                         </h3>
                         <p className="text-sm md:text-base opacity-90">
                           Your trial has expired. Upgrade to continue using
@@ -733,7 +733,7 @@ const BusinessDashboard = () => {
                         <Button
                           variant="outline"
                           className="border-2 border-white text-white bg-white/10 hover:bg-white hover:text-red-600"
-                          onClick={() => (window.location.href = "/payments")}
+                          onClick={() => (window.location.href = "/sales")}
                         >
                           Upgrade Now
                         </Button>
@@ -767,7 +767,7 @@ const BusinessDashboard = () => {
                         <Button
                           variant="outline"
                           className="border-2 border-white text-white bg-white/10 hover:bg-white hover:text-indigo-600"
-                          onClick={() => (window.location.href = "/payments")}
+                          onClick={() => (window.location.href = "/sales")}
                         >
                           Upgrade Now
                         </Button>
@@ -1302,7 +1302,7 @@ const BusinessDashboard = () => {
                       {pendingAdmittedCustomers.map(
                         (customer: any, index: number) => {
                           const timeRemaining = getTimeRemaining(
-                            customer.admittedAt
+                            customer.admittedAt,
                           );
                           const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
 
@@ -1378,7 +1378,7 @@ const BusinessDashboard = () => {
                               </div>
                             </div>
                           );
-                        }
+                        },
                       )}
                     </div>
                   </CardContent>
@@ -1392,7 +1392,7 @@ const BusinessDashboard = () => {
             // Filter customers who left in the past 24 hours
             const now = new Date();
             const twentyFourHoursAgo = new Date(
-              now.getTime() - 24 * 60 * 60 * 1000
+              now.getTime() - 24 * 60 * 60 * 1000,
             );
 
             const recentlyLeftCustomers = (
@@ -1400,7 +1400,7 @@ const BusinessDashboard = () => {
             )
               .filter((customer: any) => {
                 const leftTime = new Date(
-                  customer.leftAt || customer.removedAt
+                  customer.leftAt || customer.removedAt,
                 );
                 return leftTime >= twentyFourHoursAgo;
               })
@@ -1452,7 +1452,7 @@ const BusinessDashboard = () => {
                                       : "Removed"}
                                     :{" "}
                                     {formatTimeSince(
-                                      customer.leftAt || customer.removedAt
+                                      customer.leftAt || customer.removedAt,
                                     )}
                                   </span>
                                   <span className="hidden md:inline mx-1 text-gray-400">
@@ -1497,7 +1497,7 @@ const BusinessDashboard = () => {
                               </Badge>
                             </div>
                           </div>
-                        )
+                        ),
                       )}
                     </div>
                   </CardContent>

@@ -23,6 +23,7 @@ import {
   LogOut,
   ChevronDown,
   Calendar,
+  CalendarDays,
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -54,11 +55,11 @@ const LandingPage = () => {
       {
         threshold: 0.1,
         rootMargin: "0px 0px -50px 0px",
-      }
+      },
     );
 
     const elements = document.querySelectorAll(
-      ".scroll-animate, .scroll-animate-left, .scroll-animate-right, .scroll-animate-scale"
+      ".scroll-animate, .scroll-animate-left, .scroll-animate-right, .scroll-animate-scale",
     );
     elements.forEach((el) => observer.observe(el));
 
@@ -107,11 +108,25 @@ const LandingPage = () => {
             </div>
 
             {/* Button row */}
-            <div className="flex justify-center animate-fade-in-up animation-delay-200">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4 animate-fade-in-up animation-delay-200">
+              <Button
+                size="lg"
+                variant="outline"
+                asChild
+                className="group inline-flex w-full sm:w-auto items-center gap-2 rounded-xl border-slate-200 bg-white text-slate-900 px-6 md:px-8 shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:shadow-md hover:scale-105 transition-all duration-300"
+              >
+                <Link to="/sales">
+                  <CalendarDays
+                    className="h-4 w-4 -ml-1 text-slate-600 transition-transform group-hover:-translate-y-0.5"
+                    aria-hidden="true"
+                  />
+                  <span className="font-medium">Book Demo</span>
+                </Link>
+              </Button>
               <Button
                 size="lg"
                 asChild
-                className="group inline-flex items-center gap-2 rounded-xl bg-slate-900 text-white px-6 md:px-8 shadow-sm hover:bg-slate-800 hover:shadow-lg hover:scale-105 transition-all duration-300"
+                className="group inline-flex w-full sm:w-auto items-center gap-2 rounded-xl bg-slate-900 text-white px-6 md:px-8 shadow-sm hover:bg-slate-800 hover:shadow-lg hover:scale-105 transition-all duration-300"
               >
                 <Link to="/signup">
                   <Rocket
@@ -1050,169 +1065,175 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="py-20 px-4 bg-slate-50">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16 px-4 scroll-animate">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-6">
-              Simple, Flexible Pricing for SeatPing
-            </h2>
-            <p className="text-base sm:text-lg md:text-xl text-slate-600">
-              SeatPing helps businesses manage queues effortlessly. Choose a
-              plan and boost your productivity.
-            </p>
-          </div>
+      {/* Pricing - temporarily hidden */}
+      {false && (
+        <section id="pricing" className="py-20 px-4 bg-slate-50">
+          <div className="container mx-auto max-w-6xl">
+            <div className="text-center mb-16 px-4 scroll-animate">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-6">
+                Simple, Flexible Pricing for SeatPing
+              </h2>
+              <p className="text-base sm:text-lg md:text-xl text-slate-600">
+                SeatPing helps businesses manage queues effortlessly. Choose a
+                plan and boost your productivity.
+              </p>
+            </div>
 
-          <div className="grid lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* Starter Plan */}
-            <Card className="shadow-lg border border-slate-200 bg-white flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-              <CardHeader className="text-center pb-8 pt-8">
-                <CardTitle className="text-2xl text-slate-900 mb-4">
-                  Starter
-                </CardTitle>
-                <div className="mb-2">
-                  <span className="text-5xl font-semibold text-slate-900">
-                    $19
-                  </span>
-                  <span className="text-slate-500"> / mo</span>
-                </div>
-                <p className="text-sm text-slate-500">Per user</p>
-              </CardHeader>
-              <CardContent className="space-y-6 flex-1 flex flex-col">
-                <div className="space-y-4 flex-1">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                    <span className="text-slate-700">1 Location</span>
+            <div className="grid lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              {/* Starter Plan */}
+              <Card className="shadow-lg border border-slate-200 bg-white flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
+                <CardHeader className="text-center pb-8 pt-8">
+                  <CardTitle className="text-2xl text-slate-900 mb-4">
+                    Starter
+                  </CardTitle>
+                  <div className="mb-2">
+                    <span className="text-5xl font-semibold text-slate-900">
+                      $19
+                    </span>
+                    <span className="text-slate-500"> / mo</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                    <span className="text-slate-700">300 SMS/Month</span>
+                  <p className="text-sm text-slate-500">Per user</p>
+                </CardHeader>
+                <CardContent className="space-y-6 flex-1 flex flex-col">
+                  <div className="space-y-4 flex-1">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                      <span className="text-slate-700">1 Location</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                      <span className="text-slate-700">300 SMS/Month</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                      <span className="text-slate-700">
+                        300 Customers/Month
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                      <span className="text-slate-700">Email Support</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                    <span className="text-slate-700">300 Customers/Month</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                    <span className="text-slate-700">Email Support</span>
-                  </div>
-                </div>
 
-                <Button
-                  variant="outline"
-                  className="w-full border-slate-300 hover:bg-slate-50"
-                  size="lg"
-                  asChild
-                >
-                  <Link to="/signup">Get Started</Link>
-                </Button>
-              </CardContent>
-            </Card>
+                  <Button
+                    variant="outline"
+                    className="w-full border-slate-300 hover:bg-slate-50"
+                    size="lg"
+                    asChild
+                  >
+                    <Link to="/signup">Get Started</Link>
+                  </Button>
+                </CardContent>
+              </Card>
 
-            {/* Professional Plan - Popular */}
-            <Card className="shadow-xl border-2 border-indigo-200 bg-white relative flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 hover:border-indigo-300">
-              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-0 px-4 py-1">
-                Popular
-              </Badge>
-              <CardHeader className="text-center pb-8 pt-8">
-                <CardTitle className="text-2xl text-slate-900 mb-4">
-                  Professional
-                </CardTitle>
-                <div className="mb-2">
-                  <span className="text-5xl font-semibold text-slate-900">
-                    $49
-                  </span>
-                  <span className="text-slate-500"> / mo</span>
-                </div>
-                <p className="text-sm text-slate-500">Per user</p>
-              </CardHeader>
-              <CardContent className="space-y-6 flex-1 flex flex-col">
-                <div className="space-y-4 flex-1">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                    <span className="text-slate-700">All Free Features</span>
+              {/* Professional Plan - Popular */}
+              <Card className="shadow-xl border-2 border-indigo-200 bg-white relative flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 hover:border-indigo-300">
+                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-0 px-4 py-1">
+                  Popular
+                </Badge>
+                <CardHeader className="text-center pb-8 pt-8">
+                  <CardTitle className="text-2xl text-slate-900 mb-4">
+                    Professional
+                  </CardTitle>
+                  <div className="mb-2">
+                    <span className="text-5xl font-semibold text-slate-900">
+                      $49
+                    </span>
+                    <span className="text-slate-500"> / mo</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                    <span className="text-slate-700">3 Locations</span>
+                  <p className="text-sm text-slate-500">Per user</p>
+                </CardHeader>
+                <CardContent className="space-y-6 flex-1 flex flex-col">
+                  <div className="space-y-4 flex-1">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                      <span className="text-slate-700">All Free Features</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                      <span className="text-slate-700">3 Locations</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                      <span className="text-slate-700">
+                        600 SMS/Month per location
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                      <span className="text-slate-700">
+                        600 Customers/Month per location
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                      <span className="text-slate-700">Priority Support</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                    <span className="text-slate-700">
-                      600 SMS/Month per location
+
+                  <Button
+                    className="w-full bg-slate-900 hover:bg-slate-800"
+                    size="lg"
+                    asChild
+                  >
+                    <Link to="/signup">Get Started</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Custom Plan */}
+              <Card className="shadow-lg border border-slate-200 bg-white flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
+                <CardHeader className="text-center pb-8 pt-8">
+                  <CardTitle className="text-2xl text-slate-900 mb-4">
+                    Business
+                  </CardTitle>
+                  <div className="mb-2">
+                    <span className="text-5xl font-semibold text-slate-900">
+                      Custom
                     </span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                    <span className="text-slate-700">
-                      600 Customers/Month per location
-                    </span>
+                  <p className="text-sm text-slate-500">Per user</p>
+                </CardHeader>
+                <CardContent className="space-y-6 flex-1 flex flex-col">
+                  <div className="space-y-4 flex-1">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                      <span className="text-slate-700">All Pro Features</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                      <span className="text-slate-700">
+                        Unlimited Locations
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                      <span className="text-slate-700">Custom SMS Credits</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                      <span className="text-slate-700">Dedicated Support</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                    <span className="text-slate-700">Priority Support</span>
-                  </div>
-                </div>
 
-                <Button
-                  className="w-full bg-slate-900 hover:bg-slate-800"
-                  size="lg"
-                  asChild
-                >
-                  <Link to="/signup">Get Started</Link>
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Custom Plan */}
-            <Card className="shadow-lg border border-slate-200 bg-white flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-              <CardHeader className="text-center pb-8 pt-8">
-                <CardTitle className="text-2xl text-slate-900 mb-4">
-                  Business
-                </CardTitle>
-                <div className="mb-2">
-                  <span className="text-5xl font-semibold text-slate-900">
-                    Custom
-                  </span>
-                </div>
-                <p className="text-sm text-slate-500">Per user</p>
-              </CardHeader>
-              <CardContent className="space-y-6 flex-1 flex flex-col">
-                <div className="space-y-4 flex-1">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                    <span className="text-slate-700">All Pro Features</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                    <span className="text-slate-700">Unlimited Locations</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                    <span className="text-slate-700">Custom SMS Credits</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                    <span className="text-slate-700">Dedicated Support</span>
-                  </div>
-                </div>
-
-                <Button
-                  variant="outline"
-                  className="w-full border-slate-300 hover:bg-slate-50"
-                  size="lg"
-                  asChild
-                >
-                  <Link to="/sales">Contact Sales</Link>
-                </Button>
-              </CardContent>
-            </Card>
+                  <Button
+                    variant="outline"
+                    className="w-full border-slate-300 hover:bg-slate-50"
+                    size="lg"
+                    asChild
+                  >
+                    <Link to="/sales">Contact Sales</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* CTA */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4 bg-slate-50">
         <div className="container mx-auto text-center">
           <div className="max-w-3xl mx-auto space-y-8 px-4 scroll-animate">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900">
