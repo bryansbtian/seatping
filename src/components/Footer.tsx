@@ -7,7 +7,7 @@ const Footer = () => {
         {/* Top: Copyright + Links */}
         <div className="hidden sm:flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span>© 2025 SeatPing. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} SeatPing. All rights reserved.</span>
             <Link to="/policy" className="text-primary transition">
               Privacy Policy
             </Link>
@@ -33,7 +33,7 @@ const Footer = () => {
 
         {/* Mobile Layout */}
         <div className="flex flex-col items-center gap-3 sm:hidden text-center">
-          <span>© 2025 SeatPing. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} SeatPing. All rights reserved.</span>
           <div className="flex gap-4">
             <Link to="/policy" className="text-primary transition">
               Privacy Policy

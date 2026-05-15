@@ -14,6 +14,7 @@ import stripeRouter from "./routes/stripe.js";
 import salesRouter from "./routes/sales.js";
 import feedbackRouter from "./routes/feedback.js";
 import ticketsRouter from "./routes/tickets.js";
+import { runDailyCreditRefillSweep } from "./lib/trial.js";
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -65,6 +66,17 @@ if (process.env.VERCEL !== '1') {
   app.listen(PORT, () => {
     console.log(`[api] listening on http://localhost:${PORT}`);
   });
+
+  // Daily credit refill sweep — runs once at startup, then every 24 hours.
+  const DAILY_MS = 24 * 60 * 60 * 1000;
+  runDailyCreditRefillSweep().catch((err) =>
+    console.error("[CREDIT-SWEEP] initial run failed:", err)
+  );
+  setInterval(() => {
+    runDailyCreditRefillSweep().catch((err) =>
+      console.error("[CREDIT-SWEEP] scheduled run failed:", err)
+    );
+  }, DAILY_MS);
 }
 
 export default app;

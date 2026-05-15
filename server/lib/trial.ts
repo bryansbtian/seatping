@@ -21,38 +21,35 @@ export function isTrialExpired(user: any): boolean {
 }
 
 /**
- * Check if monthly credits need to be refilled
- * @param user - The user object from database
- * @returns true if credits should be refilled, false otherwise
+ * Compute the first monthly anchor that is strictly after `now`, starting from `anchor`.
+ * Uses calendar-month arithmetic, so cycles are 28-31 days long.
+ */
+export function nextMonthlyAnchorAfter(anchor: Date, now: Date): Date {
+  const next = new Date(anchor);
+  while (next <= now) {
+    next.setMonth(next.getMonth() + 1);
+  }
+  return next;
+}
+
+/**
+ * Compute the next refill date for a user given their planStartedAt.
+ * Always returns the first monthly anchor strictly after `now`.
+ */
+export function computeNextRefillDate(planStartedAt: Date, now: Date = new Date()): Date {
+  return nextMonthlyAnchorAfter(planStartedAt, now);
+}
+
+/**
+ * Check if monthly credits need to be refilled.
+ * Returns true only for users on a paid plan whose next refill date has arrived.
  */
 export function shouldRefillMonthlyCredits(user: any): boolean {
-  // Only refill for users who have purchased a plan (trial = false) and have planStartedAt
-  if (user.trial || !user.planStartedAt) {
-    return false; // No refill for trial users or users without plan
-  }
-
-  const planStartedAt = new Date(user.planStartedAt);
+  if (user.trial !== false) return false;
+  if (!user.planStartedAt) return false;
+  if (!user.nextCreditRefillAt) return false;
   const now = new Date();
-
-  // Calculate the day of month when the billing cycle resets (based on planStartedAt)
-  const billingDayOfMonth = planStartedAt.getDate();
-
-  // Calculate the next billing date from planStartedAt
-  let nextBillingDate = new Date(planStartedAt);
-  nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
-
-  // Keep advancing the billing date until we find the next one after now
-  while (nextBillingDate <= now) {
-    nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
-  }
-
-  // Calculate the previous billing date (one month before next)
-  const previousBillingDate = new Date(nextBillingDate);
-  previousBillingDate.setMonth(previousBillingDate.getMonth() - 1);
-
-  // Check if we've passed a billing cycle since planStartedAt
-  // Credits should refill if now >= previousBillingDate and planStartedAt < previousBillingDate
-  return now >= previousBillingDate && planStartedAt < previousBillingDate;
+  return new Date(user.nextCreditRefillAt) <= now;
 }
 
 /**
@@ -201,15 +198,14 @@ export function createLocationWithTrialEnforcement(
 }
 
 /**
- * Refill credits for all locations based on user's base credits
- * Also updates planStartedAt to mark the start of the new billing cycle
- * @param userId - The user ID
- * @param plan - The plan name
+ * Refill credits for all locations to the user's base credits.
+ * Leaves `planStartedAt` unchanged and advances `nextCreditRefillAt` to the
+ * next monthly anchor strictly after `now` (single jump — no per-cycle catch-up).
+ *
+ * Caller is responsible for ensuring the user is eligible (trial === false,
+ * planStartedAt set, refill is actually due).
  */
-export async function refillCreditsForPlan(
-  userId: string,
-  plan: string
-): Promise<void> {
+export async function refillCreditsForUser(userId: string): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -219,37 +215,29 @@ export async function refillCreditsForPlan(
       planStartedAt: true,
     },
   });
-
-  if (!user) return;
+  if (!user || !user.planStartedAt) return;
 
   const locations = ((user as any).locations as any[]) || [];
-
   const updatedLocations = locations.map((location: any) => ({
     ...location,
     smsCredits: user.baseSMSCredits || 0,
     customerCredits: user.baseCustomerCredits || 0,
   }));
 
-  // Calculate the new planStartedAt (advance by one month from current planStartedAt)
-  const currentPlanStartedAt = user.planStartedAt
-    ? new Date(user.planStartedAt)
-    : new Date();
-  const newPlanStartedAt = new Date(currentPlanStartedAt);
-  newPlanStartedAt.setMonth(newPlanStartedAt.getMonth() + 1);
+  const now = new Date();
+  const nextRefill = computeNextRefillDate(new Date(user.planStartedAt), now);
 
   await prisma.user.update({
     where: { id: userId },
     data: {
       locations: updatedLocations as any,
-      planStartedAt: newPlanStartedAt, // Update to next billing cycle
+      lastCreditRefillAt: now,
+      nextCreditRefillAt: nextRefill,
     },
   });
 
   console.log(
-    `[CREDITS] Refilled credits for user ${userId} with base credits: SMS=${user.baseSMSCredits}, Customers=${user.baseCustomerCredits}`
-  );
-  console.log(
-    `[CREDITS] Updated planStartedAt from ${currentPlanStartedAt.toISOString()} to ${newPlanStartedAt.toISOString()}`
+    `[CREDITS] Refilled user ${userId} (SMS=${user.baseSMSCredits}, Customers=${user.baseCustomerCredits}); nextCreditRefillAt=${nextRefill.toISOString()}`
   );
 }
 
@@ -263,13 +251,17 @@ export async function handlePlanPurchase(
   plan: string
 ): Promise<void> {
   const planCredits = getCreditsForPlan(plan);
+  const now = new Date();
+  const nextRefill = computeNextRefillDate(now, now);
 
   // Set plan, planStartedAt to current time, mark as not in trial, set base credits, and update maxLocations
   await prisma.user.update({
     where: { id: userId },
     data: {
       plan: plan,
-      planStartedAt: new Date(),
+      planStartedAt: now,
+      lastCreditRefillAt: now,
+      nextCreditRefillAt: nextRefill,
       trial: false, // User has purchased a plan (NOT that trial expired)
       baseSMSCredits: planCredits.smsCredits,
       baseCustomerCredits: planCredits.customerCredits,
@@ -284,8 +276,34 @@ export async function handlePlanPurchase(
 }
 
 /**
- * Check and refill monthly credits if needed
- * @param userId - The user ID
+ * For users on a paid plan with `planStartedAt` set but no `nextCreditRefillAt`
+ * (e.g. accounts created before this feature shipped), seed `nextCreditRefillAt`
+ * to the next monthly anchor strictly after now. Does NOT perform a refill.
+ */
+async function backfillNextCreditRefillAt(user: {
+  id: string;
+  trial: boolean;
+  planStartedAt: Date | null;
+  nextCreditRefillAt: Date | null;
+}): Promise<Date | null> {
+  if (user.trial !== false) return null;
+  if (!user.planStartedAt) return null;
+  if (user.nextCreditRefillAt) return user.nextCreditRefillAt;
+
+  const next = computeNextRefillDate(new Date(user.planStartedAt));
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { nextCreditRefillAt: next },
+  });
+  console.log(
+    `[CREDITS] Backfilled nextCreditRefillAt for user ${user.id} -> ${next.toISOString()}`
+  );
+  return next;
+}
+
+/**
+ * Check and refill monthly credits for a single user if due.
+ * Safe to call frequently — short-circuits when the user isn't eligible or not yet due.
  */
 export async function checkAndRefillMonthlyCredits(
   userId: string
@@ -295,16 +313,67 @@ export async function checkAndRefillMonthlyCredits(
     select: {
       id: true,
       trial: true,
-      plan: true,
       planStartedAt: true,
-      locations: true,
+      nextCreditRefillAt: true,
     },
   });
-
   if (!user) return;
+  if (user.trial !== false) return;
+  if (!user.planStartedAt) return;
 
-  if (shouldRefillMonthlyCredits(user)) {
-    await refillCreditsForPlan(userId, (user as any).plan);
-    console.log(`[MONTHLY] Monthly credits refilled for user ${userId}`);
+  const nextRefill = await backfillNextCreditRefillAt(user);
+  if (!nextRefill) return;
+
+  if (new Date(nextRefill) <= new Date()) {
+    await refillCreditsForUser(userId);
+    console.log(`[MONTHLY] Credits refilled on-demand for user ${userId}`);
   }
+}
+
+/**
+ * Daily scheduled sweep: refill credits for every paid user whose
+ * `nextCreditRefillAt` is due. Also seeds `nextCreditRefillAt` for legacy
+ * accounts that don't have it yet.
+ */
+export async function runDailyCreditRefillSweep(): Promise<void> {
+  const now = new Date();
+  console.log(`[CREDIT-SWEEP] starting at ${now.toISOString()}`);
+
+  // Refill anyone with a due nextCreditRefillAt
+  const dueUsers = await prisma.user.findMany({
+    where: {
+      trial: false,
+      planStartedAt: { not: null },
+      nextCreditRefillAt: { lte: now },
+    },
+    select: { id: true },
+  });
+  for (const u of dueUsers) {
+    try {
+      await refillCreditsForUser(u.id);
+    } catch (err) {
+      console.error(`[CREDIT-SWEEP] refill failed for ${u.id}:`, err);
+    }
+  }
+
+  // Backfill legacy users that don't have nextCreditRefillAt yet
+  const legacyUsers = await prisma.user.findMany({
+    where: {
+      trial: false,
+      planStartedAt: { not: null },
+      nextCreditRefillAt: null,
+    },
+    select: { id: true, trial: true, planStartedAt: true, nextCreditRefillAt: true },
+  });
+  for (const u of legacyUsers) {
+    try {
+      await backfillNextCreditRefillAt(u);
+    } catch (err) {
+      console.error(`[CREDIT-SWEEP] backfill failed for ${u.id}:`, err);
+    }
+  }
+
+  console.log(
+    `[CREDIT-SWEEP] done — refilled=${dueUsers.length}, backfilled=${legacyUsers.length}`
+  );
 }

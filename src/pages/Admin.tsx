@@ -3,11 +3,40 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
@@ -43,23 +72,56 @@ interface TicketStats {
   feedback: number;
 }
 
+interface CustomerLocation {
+  address: string;
+  smsCredits: number;
+  customerCredits: number;
+}
+
+interface CustomerRecord {
+  name: string;
+  username: string;
+  email: string;
+  phone: string;
+  trial: boolean;
+  trialDurationDays: number;
+  maxLocations: number;
+  baseCustomerCredits: number;
+  baseSMSCredits: number;
+  planStartedAt: string | null;
+  locations: CustomerLocation[];
+}
+
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
-  const [updateForm, setUpdateForm] = useState({
-    businessUsername: "",
-    customerCredits: "",
-    smsCredits: ""
-  });
   const [isLoading, setIsLoading] = useState(false);
+
+  // Customer management state
+  const [searchUsername, setSearchUsername] = useState("");
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<CustomerRecord | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [customerError, setCustomerError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState<CustomerRecord | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   // Ticket management state
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [stats, setStats] = useState<TicketStats | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [filter, setFilter] = useState({ status: "all", type: "all", priority: "all" });
-  const [responseForm, setResponseForm] = useState({ message: "", responderName: "" });
+  const [filter, setFilter] = useState({
+    status: "all",
+    type: "all",
+    priority: "all",
+  });
+  const [responseForm, setResponseForm] = useState({
+    message: "",
+    responderName: "",
+  });
 
   const { toast } = useToast();
 
@@ -73,7 +135,10 @@ const Admin = () => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (loginForm.username === "adminSeatPing" && loginForm.password === "seatping2025@") {
+    if (
+      loginForm.username === "adminSeatPing" &&
+      loginForm.password === "seatping2025@"
+    ) {
       setIsAuthenticated(true);
       toast({
         title: "Success",
@@ -88,49 +153,218 @@ const Admin = () => {
     }
   };
 
-  const handleUpdate = async () => {
-    if (!updateForm.businessUsername || !updateForm.customerCredits || !updateForm.smsCredits) {
+  const handleSearchCustomer = async () => {
+    const trimmed = searchUsername.trim();
+    if (!trimmed) {
       toast({
         title: "Error",
-        description: "Please fill in all fields",
+        description: "Please enter a business username",
         variant: "destructive",
       });
       return;
     }
 
-    setIsLoading(true);
-    
-    try {
-      const response = await fetch("/admin/update-credits", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: updateForm.businessUsername,
-          baseCustomerCredits: parseInt(updateForm.customerCredits),
-          baseSMSCredits: parseInt(updateForm.smsCredits),
-        }),
-      });
+    setIsSearching(true);
+    setCustomerError(null);
+    setSelectedCustomer(null);
+    setIsEditing(false);
+    setEditDraft(null);
 
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Business credits updated successfully",
-        });
-        setUpdateForm({
-          businessUsername: "",
-          customerCredits: "",
-          smsCredits: ""
-        });
-      } else {
-        const error = await response.text();
+    try {
+      const response = await fetch(
+        `/admin/customer/${encodeURIComponent(trimmed)}`,
+      );
+
+      if (response.status === 404) {
+        setCustomerError("No customer found with this username.");
+        return;
+      }
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const message = data?.error || "Failed to fetch customer";
+        setCustomerError(message);
         toast({
           title: "Error",
-          description: error || "Failed to update credits",
+          description: message,
           variant: "destructive",
         });
+        return;
       }
+
+      const data = await response.json();
+      setSelectedCustomer(data.customer);
+    } catch (error) {
+      const message = "Network error occurred";
+      setCustomerError(message);
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const startEditing = () => {
+    if (!selectedCustomer) return;
+    setEditDraft({
+      ...selectedCustomer,
+      locations: selectedCustomer.locations.map((l) => ({ ...l })),
+    });
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditDraft(null);
+  };
+
+  const updateDraftNumber = (
+    key:
+      | "trialDurationDays"
+      | "maxLocations"
+      | "baseCustomerCredits"
+      | "baseSMSCredits",
+    raw: string,
+  ) => {
+    if (!editDraft) return;
+    const parsed = raw === "" ? 0 : parseInt(raw, 10);
+    if (Number.isNaN(parsed) || parsed < 0) return;
+    setEditDraft({ ...editDraft, [key]: parsed });
+  };
+
+  const updateDraftBoolean = (key: "trial", value: boolean) => {
+    if (!editDraft) return;
+    setEditDraft({ ...editDraft, [key]: value });
+  };
+
+  const updateDraftString = (
+    key: "name" | "username" | "email" | "phone",
+    value: string,
+  ) => {
+    if (!editDraft) return;
+    setEditDraft({ ...editDraft, [key]: value });
+  };
+
+  const updateDraftPlanStartedAt = (value: string) => {
+    if (!editDraft) return;
+    setEditDraft({ ...editDraft, planStartedAt: value === "" ? null : value });
+  };
+
+  const updateDraftLocation = (
+    index: number,
+    key: "smsCredits" | "customerCredits",
+    raw: string,
+  ) => {
+    if (!editDraft) return;
+    const parsed = raw === "" ? 0 : parseInt(raw, 10);
+    if (Number.isNaN(parsed) || parsed < 0) return;
+    const next = editDraft.locations.map((loc, i) =>
+      i === index ? { ...loc, [key]: parsed } : loc,
+    );
+    setEditDraft({ ...editDraft, locations: next });
+  };
+
+  const updateDraftLocationAddress = (index: number, value: string) => {
+    if (!editDraft) return;
+    const next = editDraft.locations.map((loc, i) =>
+      i === index ? { ...loc, address: value } : loc,
+    );
+    setEditDraft({ ...editDraft, locations: next });
+  };
+
+  const toDateInputValue = (value: string | null) => {
+    if (!value) return "";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const buildPlanStartedAtForSave = (dateOnly: string | null) => {
+    if (!dateOnly) return null;
+    const [yStr, mStr, dStr] = dateOnly.split("-");
+    const y = parseInt(yStr, 10);
+    const m = parseInt(mStr, 10);
+    const d = parseInt(dStr, 10);
+    if (
+      Number.isNaN(y) ||
+      Number.isNaN(m) ||
+      Number.isNaN(d) ||
+      m < 1 ||
+      m > 12 ||
+      d < 1 ||
+      d > 31
+    ) {
+      return null;
+    }
+    const now = new Date();
+    const combined = new Date(
+      y,
+      m - 1,
+      d,
+      now.getHours(),
+      now.getMinutes(),
+      now.getSeconds(),
+      now.getMilliseconds(),
+    );
+    return combined.toISOString();
+  };
+
+  const handleSaveCustomer = async () => {
+    if (!editDraft || !selectedCustomer) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(
+        `/admin/customer/${encodeURIComponent(selectedCustomer.username)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: editDraft.name,
+            username: editDraft.username,
+            email: editDraft.email,
+            phone: editDraft.phone,
+            trial: editDraft.trial,
+            trialDurationDays: editDraft.trialDurationDays,
+            maxLocations: editDraft.maxLocations,
+            baseCustomerCredits: editDraft.baseCustomerCredits,
+            baseSMSCredits: editDraft.baseSMSCredits,
+            planStartedAt: buildPlanStartedAtForSave(editDraft.planStartedAt),
+            locations: editDraft.locations.map((l) => ({
+              address: l.address,
+              smsCredits: l.smsCredits,
+              customerCredits: l.customerCredits,
+            })),
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        toast({
+          title: "Error",
+          description: data?.error || "Failed to update customer",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const data = await response.json();
+      setSelectedCustomer(data.customer);
+      setSearchUsername(data.customer.username);
+      setIsEditing(false);
+      setEditDraft(null);
+      setIsConfirmOpen(false);
+      toast({
+        title: "Success",
+        description: "Customer updated successfully",
+      });
     } catch (error) {
       toast({
         title: "Error",
@@ -138,8 +372,21 @@ const Admin = () => {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
+  };
+
+  const formatBoolean = (value: boolean) => (value ? "Yes" : "No");
+
+  const formatDate = (value: string | null) => {
+    if (!value) return "Not started";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "Not started";
+    return d.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
   };
 
   // Ticket Management Functions
@@ -217,7 +464,10 @@ const Admin = () => {
     }
   };
 
-  const handleUpdatePriority = async (ticketNumber: string, priority: string) => {
+  const handleUpdatePriority = async (
+    ticketNumber: string,
+    priority: string,
+  ) => {
     try {
       const response = await fetch(`/tickets/${ticketNumber}/priority`, {
         method: "PATCH",
@@ -246,7 +496,11 @@ const Admin = () => {
   };
 
   const handleRespond = async () => {
-    if (!selectedTicket || !responseForm.message || !responseForm.responderName) {
+    if (
+      !selectedTicket ||
+      !responseForm.message ||
+      !responseForm.responderName
+    ) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -257,11 +511,14 @@ const Admin = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/tickets/${selectedTicket.ticketNumber}/respond`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(responseForm),
-      });
+      const response = await fetch(
+        `/tickets/${selectedTicket.ticketNumber}/respond`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(responseForm),
+        },
+      );
 
       if (response.ok) {
         toast({
@@ -292,12 +549,19 @@ const Admin = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+    const variants: Record<
+      string,
+      "default" | "secondary" | "destructive" | "outline"
+    > = {
       open: "destructive",
       in_progress: "default",
       closed: "secondary",
     };
-    return <Badge variant={variants[status] || "outline"}>{status.replace("_", " ").toUpperCase()}</Badge>;
+    return (
+      <Badge variant={variants[status] || "outline"}>
+        {status.replace("_", " ").toUpperCase()}
+      </Badge>
+    );
   };
 
   const getPriorityBadge = (priority?: string) => {
@@ -307,7 +571,11 @@ const Admin = () => {
       medium: "default",
       low: "secondary",
     };
-    return <Badge variant={variants[priority] || "secondary"}>{priority.toUpperCase()}</Badge>;
+    return (
+      <Badge variant={variants[priority] || "secondary"}>
+        {priority.toUpperCase()}
+      </Badge>
+    );
   };
 
   if (!isAuthenticated) {
@@ -359,7 +627,9 @@ const Admin = () => {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
-            <p className="text-muted-foreground">Manage business credits and support tickets</p>
+            <p className="text-muted-foreground">
+              Manage customer accounts and support tickets
+            </p>
           </div>
           <Button variant="outline" onClick={() => setIsAuthenticated(false)}>
             Logout
@@ -369,7 +639,7 @@ const Admin = () => {
         <Tabs defaultValue="tickets" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="tickets">Ticket Management</TabsTrigger>
-            <TabsTrigger value="credits">Credits Management</TabsTrigger>
+            <TabsTrigger value="customer">Customer Management</TabsTrigger>
           </TabsList>
 
           <TabsContent value="tickets" className="space-y-6 mt-6">
@@ -377,7 +647,9 @@ const Admin = () => {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Total
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-semibold">{stats.total}</div>
@@ -385,31 +657,45 @@ const Admin = () => {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Open</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Open
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-semibold text-red-600">{stats.open}</div>
+                    <div className="text-2xl font-semibold text-red-600">
+                      {stats.open}
+                    </div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">In Progress</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      In Progress
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-semibold text-indigo-600">{stats.inProgress}</div>
+                    <div className="text-2xl font-semibold text-indigo-600">
+                      {stats.inProgress}
+                    </div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Closed</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Closed
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-semibold text-green-600">{stats.closed}</div>
+                    <div className="text-2xl font-semibold text-green-600">
+                      {stats.closed}
+                    </div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Sales</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Sales
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-semibold">{stats.sales}</div>
@@ -417,10 +703,14 @@ const Admin = () => {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Feedback</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Feedback
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-semibold">{stats.feedback}</div>
+                    <div className="text-2xl font-semibold">
+                      {stats.feedback}
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -432,7 +722,12 @@ const Admin = () => {
               </CardHeader>
               <CardContent className="flex flex-wrap gap-4">
                 <div className="w-40">
-                  <Select value={filter.status} onValueChange={(value) => setFilter({ ...filter, status: value })}>
+                  <Select
+                    value={filter.status}
+                    onValueChange={(value) =>
+                      setFilter({ ...filter, status: value })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
@@ -445,7 +740,12 @@ const Admin = () => {
                   </Select>
                 </div>
                 <div className="w-40">
-                  <Select value={filter.type} onValueChange={(value) => setFilter({ ...filter, type: value })}>
+                  <Select
+                    value={filter.type}
+                    onValueChange={(value) =>
+                      setFilter({ ...filter, type: value })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Type" />
                     </SelectTrigger>
@@ -457,7 +757,12 @@ const Admin = () => {
                   </Select>
                 </div>
                 <div className="w-40">
-                  <Select value={filter.priority} onValueChange={(value) => setFilter({ ...filter, priority: value })}>
+                  <Select
+                    value={filter.priority}
+                    onValueChange={(value) =>
+                      setFilter({ ...filter, priority: value })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Priority" />
                     </SelectTrigger>
@@ -474,18 +779,27 @@ const Admin = () => {
 
             <div className="space-y-4">
               {tickets.map((ticket) => (
-                <Card key={ticket.id} className="cursor-pointer hover:bg-accent" onClick={() => handleViewTicket(ticket.ticketNumber)}>
+                <Card
+                  key={ticket.id}
+                  className="cursor-pointer hover:bg-accent"
+                  onClick={() => handleViewTicket(ticket.ticketNumber)}
+                >
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start">
                       <div className="space-y-2 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-lg">{ticket.subject}</h3>
+                          <h3 className="font-semibold text-lg">
+                            {ticket.subject}
+                          </h3>
                           {getStatusBadge(ticket.status)}
                           {getPriorityBadge(ticket.priority)}
-                          <Badge variant="outline">{ticket.type.toUpperCase()}</Badge>
+                          <Badge variant="outline">
+                            {ticket.type.toUpperCase()}
+                          </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {ticket.ticketNumber} • From: {ticket.senderName} ({ticket.senderEmail})
+                          {ticket.ticketNumber} • From: {ticket.senderName} (
+                          {ticket.senderEmail})
                           {ticket.businessName && ` • ${ticket.businessName}`}
                         </p>
                         <p className="text-sm">
@@ -499,80 +813,481 @@ const Admin = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="credits" className="mt-6">
+          <TabsContent value="customer" className="mt-6 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl">Update Business Credits</CardTitle>
-                <p className="text-muted-foreground">Manage customer and SMS credits for businesses</p>
+                <CardTitle className="text-2xl">Customer Management</CardTitle>
+                <CardDescription>
+                  Search and view business account details
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="businessUsername">Business Username</Label>
+                  <Label htmlFor="searchUsername">Business Username</Label>
                   <Input
-                    id="businessUsername"
+                    id="searchUsername"
                     type="text"
-                    value={updateForm.businessUsername}
-                    onChange={(e) =>
-                      setUpdateForm({ ...updateForm, businessUsername: e.target.value })
-                    }
+                    value={searchUsername}
+                    onChange={(e) => setSearchUsername(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSearchCustomer();
+                      }
+                    }}
                     placeholder="Enter business username"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="customerCredits">New Customer Credits Base</Label>
-                  <Input
-                    id="customerCredits"
-                    type="number"
-                    value={updateForm.customerCredits}
-                    onChange={(e) =>
-                      setUpdateForm({ ...updateForm, customerCredits: e.target.value })
-                    }
-                    placeholder="Enter customer credits"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="smsCredits">SMS Credits Base</Label>
-                  <Input
-                    id="smsCredits"
-                    type="number"
-                    value={updateForm.smsCredits}
-                    onChange={(e) =>
-                      setUpdateForm({ ...updateForm, smsCredits: e.target.value })
-                    }
-                    placeholder="Enter SMS credits"
-                  />
-                </div>
-
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button className="w-full" disabled={isLoading}>
-                      {isLoading ? "Updating..." : "Update Credits"}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Confirm Update</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to update the credits for business "{updateForm.businessUsername}"?
-                        <br />
-                        <br />
-                        Customer Credits: {updateForm.customerCredits}
-                        <br />
-                        SMS Credits: {updateForm.smsCredits}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleUpdate}>
-                        Confirm Update
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={handleSearchCustomer}
+                  disabled={isSearching}
+                >
+                  {isSearching ? "Searching..." : "Search Customer"}
+                </Button>
               </CardContent>
             </Card>
+
+            {customerError && !isSearching && (
+              <Card>
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  {customerError}
+                </CardContent>
+              </Card>
+            )}
+
+            {selectedCustomer && !isSearching && (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Viewing Customer:{" "}
+                      <span className="font-medium text-foreground">
+                        {selectedCustomer.username}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {!isEditing ? (
+                      <Button onClick={startEditing}>Edit Customer</Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={cancelEditing}
+                          disabled={isSaving}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={() => setIsConfirmOpen(true)}
+                          disabled={isSaving}
+                        >
+                          {isSaving ? "Saving..." : "Save Changes"}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Account Information</CardTitle>
+                    <CardDescription>
+                      Business contact and identity details
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-muted-foreground">Name</Label>
+                        {isEditing && editDraft ? (
+                          <Input
+                            value={editDraft.name}
+                            onChange={(e) =>
+                              updateDraftString("name", e.target.value)
+                            }
+                          />
+                        ) : (
+                          <p className="text-sm md:text-base font-medium break-words">
+                            {selectedCustomer.name || "—"}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">
+                          Username
+                        </Label>
+                        {isEditing && editDraft ? (
+                          <Input
+                            value={editDraft.username}
+                            onChange={(e) =>
+                              updateDraftString("username", e.target.value)
+                            }
+                          />
+                        ) : (
+                          <p className="text-sm md:text-base font-medium break-words">
+                            {selectedCustomer.username || "—"}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Email</Label>
+                        {isEditing && editDraft ? (
+                          <Input
+                            type="email"
+                            value={editDraft.email}
+                            onChange={(e) =>
+                              updateDraftString("email", e.target.value)
+                            }
+                          />
+                        ) : (
+                          <p className="text-sm md:text-base font-medium break-words">
+                            {selectedCustomer.email || "—"}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Phone</Label>
+                        {isEditing && editDraft ? (
+                          <Input
+                            value={editDraft.phone}
+                            onChange={(e) =>
+                              updateDraftString("phone", e.target.value)
+                            }
+                          />
+                        ) : (
+                          <p className="text-sm md:text-base font-medium break-words">
+                            {selectedCustomer.phone || "—"}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Plan & Trial Information</CardTitle>
+                    <CardDescription>
+                      Subscription and trial status
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div>
+                        <Label className="text-muted-foreground">Trial</Label>
+                        {isEditing && editDraft ? (
+                          <div className="flex items-center gap-3 pt-1">
+                            <Switch
+                              checked={editDraft.trial}
+                              onCheckedChange={(v) =>
+                                updateDraftBoolean("trial", v)
+                              }
+                            />
+                            <span className="text-sm">
+                              {formatBoolean(editDraft.trial)}
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-sm md:text-base font-medium">
+                            {formatBoolean(selectedCustomer.trial)}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">
+                          Trial Duration (days)
+                        </Label>
+                        {isEditing && editDraft ? (
+                          <Input
+                            type="number"
+                            min={0}
+                            value={editDraft.trialDurationDays}
+                            onChange={(e) =>
+                              updateDraftNumber(
+                                "trialDurationDays",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        ) : (
+                          <p className="text-sm md:text-base font-medium">
+                            {selectedCustomer.trialDurationDays ?? 0}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">
+                          Max Locations
+                        </Label>
+                        {isEditing && editDraft ? (
+                          <Input
+                            type="number"
+                            min={0}
+                            value={editDraft.maxLocations}
+                            onChange={(e) =>
+                              updateDraftNumber("maxLocations", e.target.value)
+                            }
+                          />
+                        ) : (
+                          <p className="text-sm md:text-base font-medium">
+                            {selectedCustomer.maxLocations ?? 0}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">
+                          Base Customer Credits
+                        </Label>
+                        {isEditing && editDraft ? (
+                          <Input
+                            type="number"
+                            min={0}
+                            value={editDraft.baseCustomerCredits}
+                            onChange={(e) =>
+                              updateDraftNumber(
+                                "baseCustomerCredits",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        ) : (
+                          <p className="text-sm md:text-base font-medium">
+                            {selectedCustomer.baseCustomerCredits ?? 0}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">
+                          Base SMS Credits
+                        </Label>
+                        {isEditing && editDraft ? (
+                          <Input
+                            type="number"
+                            min={0}
+                            value={editDraft.baseSMSCredits}
+                            onChange={(e) =>
+                              updateDraftNumber(
+                                "baseSMSCredits",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        ) : (
+                          <p className="text-sm md:text-base font-medium">
+                            {selectedCustomer.baseSMSCredits ?? 0}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">
+                          Plan Started At
+                        </Label>
+                        {isEditing && editDraft ? (
+                          <div className="space-y-2">
+                            <Input
+                              type="date"
+                              value={toDateInputValue(editDraft.planStartedAt)}
+                              onChange={(e) =>
+                                updateDraftPlanStartedAt(e.target.value)
+                              }
+                            />
+                            {editDraft.planStartedAt && (
+                              <button
+                                type="button"
+                                className="text-xs text-muted-foreground underline"
+                                onClick={() => updateDraftPlanStartedAt("")}
+                              >
+                                Clear date
+                              </button>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Time of day will be set to the current system time on save.
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-sm md:text-base font-medium">
+                            {formatDate(selectedCustomer.planStartedAt)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Locations</CardTitle>
+                    <CardDescription>
+                      {selectedCustomer.locations.length === 0
+                        ? "No locations registered"
+                        : `${selectedCustomer.locations.length} location${selectedCustomer.locations.length === 1 ? "" : "s"}`}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {selectedCustomer.locations.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        This business has not added any locations yet.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {(isEditing && editDraft
+                          ? editDraft.locations
+                          : selectedCustomer.locations
+                        ).map((location, idx) => (
+                          <div
+                            key={idx}
+                            className="rounded-lg border bg-muted/30 p-4 space-y-3"
+                          >
+                            <div>
+                              <Label className="text-muted-foreground">
+                                Address
+                              </Label>
+                              {isEditing && editDraft ? (
+                                <Input
+                                  value={location.address}
+                                  onChange={(e) =>
+                                    updateDraftLocationAddress(idx, e.target.value)
+                                  }
+                                />
+                              ) : (
+                                <p className="text-sm md:text-base font-medium break-words">
+                                  {location.address || "—"}
+                                </p>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label className="text-muted-foreground">
+                                  SMS Credits
+                                </Label>
+                                {isEditing && editDraft ? (
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    value={location.smsCredits}
+                                    onChange={(e) =>
+                                      updateDraftLocation(
+                                        idx,
+                                        "smsCredits",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                ) : (
+                                  <p className="text-sm md:text-base font-medium">
+                                    {location.smsCredits}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label className="text-muted-foreground">
+                                  Customer Credits
+                                </Label>
+                                {isEditing && editDraft ? (
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    value={location.customerCredits}
+                                    onChange={(e) =>
+                                      updateDraftLocation(
+                                        idx,
+                                        "customerCredits",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                ) : (
+                                  <p className="text-sm md:text-base font-medium">
+                                    {location.customerCredits}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirm changes</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {editDraft && selectedCustomer && (
+                      <>
+                        Apply these changes to{" "}
+                        <span className="font-medium">
+                          {selectedCustomer.username}
+                        </span>
+                        ?
+                        <br />
+                        <br />
+                        Name: {editDraft.name}
+                        <br />
+                        Username: {editDraft.username}
+                        {editDraft.username !== selectedCustomer.username && (
+                          <span className="text-amber-600">
+                            {" "}
+                            (rename — must be unique)
+                          </span>
+                        )}
+                        <br />
+                        Email: {editDraft.email}
+                        {editDraft.email !== selectedCustomer.email && (
+                          <span className="text-amber-600">
+                            {" "}
+                            (changed — must be unique)
+                          </span>
+                        )}
+                        <br />
+                        Phone: {editDraft.phone}
+                        <br />
+                        <br />
+                        Trial: {formatBoolean(editDraft.trial)}
+                        <br />
+                        Trial Duration: {editDraft.trialDurationDays} days
+                        <br />
+                        Max Locations: {editDraft.maxLocations}
+                        <br />
+                        Base Customer Credits: {editDraft.baseCustomerCredits}
+                        <br />
+                        Base SMS Credits: {editDraft.baseSMSCredits}
+                        <br />
+                        Plan Started At:{" "}
+                        {editDraft.planStartedAt
+                          ? `${toDateInputValue(editDraft.planStartedAt)} (time set to system time on save)`
+                          : "Not started"}
+                        {editDraft.locations.length > 0 && (
+                          <>
+                            <br />
+                            <br />
+                            Location addresses and per-location credits will also be updated.
+                          </>
+                        )}
+                      </>
+                    )}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isSaving}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleSaveCustomer}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving..." : "Confirm"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </TabsContent>
         </Tabs>
 
@@ -580,7 +1295,9 @@ const Admin = () => {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedTicket?.subject}</DialogTitle>
-              <DialogDescription>Ticket #{selectedTicket?.ticketNumber}</DialogDescription>
+              <DialogDescription>
+                Ticket #{selectedTicket?.ticketNumber}
+              </DialogDescription>
             </DialogHeader>
 
             {selectedTicket && (
@@ -595,20 +1312,35 @@ const Admin = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Status</Label>
-                      <Select value={selectedTicket.status} onValueChange={(value) => handleUpdateStatus(selectedTicket.ticketNumber, value)}>
+                      <Select
+                        value={selectedTicket.status}
+                        onValueChange={(value) =>
+                          handleUpdateStatus(selectedTicket.ticketNumber, value)
+                        }
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="open">Open</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="in_progress">
+                            In Progress
+                          </SelectItem>
                           <SelectItem value="closed">Closed</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
                       <Label>Priority</Label>
-                      <Select value={selectedTicket.priority || "low"} onValueChange={(value) => handleUpdatePriority(selectedTicket.ticketNumber, value)}>
+                      <Select
+                        value={selectedTicket.priority || "low"}
+                        onValueChange={(value) =>
+                          handleUpdatePriority(
+                            selectedTicket.ticketNumber,
+                            value,
+                          )
+                        }
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -624,10 +1356,23 @@ const Admin = () => {
                   <div className="space-y-2">
                     <Label>Contact Information</Label>
                     <div className="bg-muted p-4 rounded-md space-y-1">
-                      <p><strong>Name:</strong> {selectedTicket.senderName}</p>
-                      <p><strong>Email:</strong> {selectedTicket.senderEmail}</p>
-                      {selectedTicket.senderPhone && <p><strong>Phone:</strong> {selectedTicket.senderPhone}</p>}
-                      {selectedTicket.businessName && <p><strong>Business:</strong> {selectedTicket.businessName}</p>}
+                      <p>
+                        <strong>Name:</strong> {selectedTicket.senderName}
+                      </p>
+                      <p>
+                        <strong>Email:</strong> {selectedTicket.senderEmail}
+                      </p>
+                      {selectedTicket.senderPhone && (
+                        <p>
+                          <strong>Phone:</strong> {selectedTicket.senderPhone}
+                        </p>
+                      )}
+                      {selectedTicket.businessName && (
+                        <p>
+                          <strong>Business:</strong>{" "}
+                          {selectedTicket.businessName}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -635,25 +1380,66 @@ const Admin = () => {
                     <div className="space-y-2">
                       <Label>Sales Details</Label>
                       <div className="bg-muted p-4 rounded-md space-y-1 text-sm">
-                        {selectedTicket.data.businessWebsite && <p><strong>Website:</strong> {selectedTicket.data.businessWebsite}</p>}
-                        {selectedTicket.data.locations && <p><strong>Locations:</strong> {selectedTicket.data.locations}</p>}
-                        {selectedTicket.data.smsPerMonth && <p><strong>SMS/Month:</strong> {selectedTicket.data.smsPerMonth}</p>}
-                        {selectedTicket.data.customersPerDay && <p><strong>Customers/Day:</strong> {selectedTicket.data.customersPerDay}</p>}
-                        {selectedTicket.data.useCase && <p><strong>Use Case:</strong> {selectedTicket.data.useCase}</p>}
-                        {selectedTicket.data.budget && <p><strong>Budget:</strong> {selectedTicket.data.budget}</p>}
+                        {selectedTicket.data.businessWebsite && (
+                          <p>
+                            <strong>Website:</strong>{" "}
+                            {selectedTicket.data.businessWebsite}
+                          </p>
+                        )}
+                        {selectedTicket.data.locations && (
+                          <p>
+                            <strong>Locations:</strong>{" "}
+                            {selectedTicket.data.locations}
+                          </p>
+                        )}
+                        {selectedTicket.data.smsPerMonth && (
+                          <p>
+                            <strong>SMS/Month:</strong>{" "}
+                            {selectedTicket.data.smsPerMonth}
+                          </p>
+                        )}
+                        {selectedTicket.data.customersPerDay && (
+                          <p>
+                            <strong>Customers/Day:</strong>{" "}
+                            {selectedTicket.data.customersPerDay}
+                          </p>
+                        )}
+                        {selectedTicket.data.useCase && (
+                          <p>
+                            <strong>Use Case:</strong>{" "}
+                            {selectedTicket.data.useCase}
+                          </p>
+                        )}
+                        {selectedTicket.data.budget && (
+                          <p>
+                            <strong>Budget:</strong>{" "}
+                            {selectedTicket.data.budget}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
 
-                  {selectedTicket.type === "feedback" && selectedTicket.data && (
-                    <div className="space-y-2">
-                      <Label>Feedback Details</Label>
-                      <div className="bg-muted p-4 rounded-md space-y-1 text-sm">
-                        {selectedTicket.data.feedbackType && <p><strong>Type:</strong> {selectedTicket.data.feedbackType}</p>}
-                        {selectedTicket.data.severity && <p><strong>Severity:</strong> {selectedTicket.data.severity}</p>}
+                  {selectedTicket.type === "feedback" &&
+                    selectedTicket.data && (
+                      <div className="space-y-2">
+                        <Label>Feedback Details</Label>
+                        <div className="bg-muted p-4 rounded-md space-y-1 text-sm">
+                          {selectedTicket.data.feedbackType && (
+                            <p>
+                              <strong>Type:</strong>{" "}
+                              {selectedTicket.data.feedbackType}
+                            </p>
+                          )}
+                          {selectedTicket.data.severity && (
+                            <p>
+                              <strong>Severity:</strong>{" "}
+                              {selectedTicket.data.severity}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </TabsContent>
 
                 <TabsContent value="messages" className="space-y-4">
@@ -662,12 +1448,16 @@ const Admin = () => {
                       <div
                         key={idx}
                         className={`p-4 rounded-md ${
-                          msg.isTeamResponse ? "bg-indigo-50 border-l-4 border-indigo-500" : "bg-muted"
+                          msg.isTeamResponse
+                            ? "bg-indigo-50 border-l-4 border-indigo-500"
+                            : "bg-muted"
                         }`}
                       >
                         <div className="flex justify-between items-start mb-2">
                           <p className="font-semibold">{msg.sender}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(msg.timestamp).toLocaleString()}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(msg.timestamp).toLocaleString()}
+                          </p>
                         </div>
                         <p className="whitespace-pre-wrap">{msg.message}</p>
                       </div>
@@ -681,7 +1471,12 @@ const Admin = () => {
                       <Label>Your Name</Label>
                       <Input
                         value={responseForm.responderName}
-                        onChange={(e) => setResponseForm({ ...responseForm, responderName: e.target.value })}
+                        onChange={(e) =>
+                          setResponseForm({
+                            ...responseForm,
+                            responderName: e.target.value,
+                          })
+                        }
                         placeholder="Enter your name"
                       />
                     </div>
@@ -689,7 +1484,12 @@ const Admin = () => {
                       <Label>Response Message</Label>
                       <Textarea
                         value={responseForm.message}
-                        onChange={(e) => setResponseForm({ ...responseForm, message: e.target.value })}
+                        onChange={(e) =>
+                          setResponseForm({
+                            ...responseForm,
+                            message: e.target.value,
+                          })
+                        }
                         placeholder="Type your response here..."
                         rows={8}
                       />
@@ -717,4 +1517,3 @@ const Admin = () => {
 };
 
 export default Admin;
-

@@ -118,14 +118,26 @@ async function applyPlanToUser(
       plan
     );
 
+    const now = new Date();
+    const nextRefill = (() => {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() + 1);
+      return d;
+    })();
     const updateData = {
       plan: r.plan,
       baseCustomerCredits: r.baseCustomerCredits,
       baseSMSCredits: r.baseSMSCredits,
       maxLocations: r.maxLocations,
       trial: false, // 🔒 ensure trial is OFF
-      ...(setStartTime ? { planStartedAt: new Date() } : {}),
-      updatedAt: new Date(),
+      ...(setStartTime
+        ? {
+            planStartedAt: now,
+            lastCreditRefillAt: now,
+            nextCreditRefillAt: nextRefill,
+          }
+        : {}),
+      updatedAt: now,
     };
 
     console.log("[stripe] Updating user with data:", updateData);

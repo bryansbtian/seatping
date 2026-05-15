@@ -16,6 +16,10 @@ export default defineConfig(({ mode }) => ({
         target: "http://localhost:4000",
         changeOrigin: true,
       },
+      "/admin/customer": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
       "/stripe": {
         target: "http://localhost:4000",
         changeOrigin: true,

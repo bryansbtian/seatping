@@ -10,7 +10,9 @@
       "mcp__ide__getDiagnostics",
       "Bash(npm run build:server:*)",
       "Bash(npx tsc:*)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(npm list *)",
+      "Bash(npx prisma *)"
     ],
     "deny": [],
     "ask": []

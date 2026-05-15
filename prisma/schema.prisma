@@ -23,6 +23,8 @@ model User {
   baseCustomerCredits Int    @default(50)
   baseSMSCredits    Int      @default(200)
   planStartedAt     DateTime?
+  lastCreditRefillAt DateTime?
+  nextCreditRefillAt DateTime?
   resetToken        String?
   resetTokenExpiry  DateTime?
   createdAt         DateTime @default(now())
