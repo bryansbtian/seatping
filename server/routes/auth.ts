@@ -20,6 +20,7 @@ import {
   handlePlanPurchase
 } from "../lib/trial.js";
 import { sendPasswordResetEmail, sendEmail, sendRegistrationConfirmationEmail, sendPasswordChangeConfirmationEmail, sendQueueJoinConfirmationEmail } from "../lib/email.js";
+import { sendQueueJoinedWhatsApp, sendQueueAdmittedWhatsApp } from "../lib/whatsapp.js";
 import crypto from "crypto";
 
 const router = Router();
@@ -490,6 +491,19 @@ router.post("/business/:username/queue", async (req, res) => {
         }
       }
 
+      // Send WhatsApp confirmation
+      if (notificationMethod === "whatsapp" && phoneNumber) {
+        sendQueueJoinedWhatsApp({
+          countryCode: countryCode || "+1",
+          phoneNumber,
+          customerName: firstName,
+          businessName,
+          position: customer.position,
+        }).catch((error: any) => {
+          console.error("[QUEUE-JOIN] Error sending WhatsApp confirmation:", error?.message || error);
+        });
+      }
+
       // Send email confirmation
       if (notificationMethod === "email" && email) {
         try {
@@ -835,10 +849,21 @@ router.post(
                 // Don't fail the admission if SMS fails - just log the error
               }
             }
-            // Send WhatsApp notification (TODO: implement WhatsApp logic)
+            // Send WhatsApp notification
             else if (admittedCustomer.notificationMethod === "whatsapp" && admittedCustomer.phoneNumber && admittedCustomer.phoneNumber.trim() !== "") {
-              // TODO: Implement WhatsApp notification logic
-              console.log("WhatsApp notification not yet implemented - customer:", admittedCustomer.phoneNumber);
+              try {
+                const sent = await sendQueueAdmittedWhatsApp({
+                  countryCode: admittedCustomer.countryCode || "+1",
+                  phoneNumber: admittedCustomer.phoneNumber,
+                  businessName,
+                });
+                if (!sent) {
+                  console.error("[ADMIT] WhatsApp queue_admitted send returned false for:", admittedCustomer.phoneNumber);
+                }
+              } catch (error: any) {
+                console.error("[ADMIT] Failed to send WhatsApp notification:", error?.message || error);
+                // Don't fail the admission if WhatsApp fails - just log the error
+              }
             }
             // Send Email notification
             else if (admittedCustomer.notificationMethod === "email" && admittedCustomer.email && admittedCustomer.email.trim() !== "") {

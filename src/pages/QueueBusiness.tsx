@@ -13,9 +13,42 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+type CountryOption = { name: string; dial: string; flag: string };
+
+const SMS_COUNTRIES: CountryOption[] = [
+  { name: "United States", dial: "+1", flag: "🇺🇸" },
+];
+
+const WHATSAPP_COUNTRIES: CountryOption[] = [
+  { name: "China", dial: "+86", flag: "🇨🇳" },
+  { name: "Indonesia", dial: "+62", flag: "🇮🇩" },
+  { name: "Japan", dial: "+81", flag: "🇯🇵" },
+  { name: "Malaysia", dial: "+60", flag: "🇲🇾" },
+  { name: "Philippines", dial: "+63", flag: "🇵🇭" },
+  { name: "Singapore", dial: "+65", flag: "🇸🇬" },
+  { name: "South Korea", dial: "+82", flag: "🇰🇷" },
+  { name: "Taiwan", dial: "+886", flag: "🇹🇼" },
+  { name: "United Kingdom", dial: "+44", flag: "🇬🇧" },
+  { name: "United States", dial: "+1", flag: "🇺🇸" },
+];
 
 /** API call to get addresses for this business */
 async function fetchAddressesForBusiness(
@@ -57,7 +90,7 @@ export default function QueueBusiness() {
     countryCode: "+1", // default to US
     email: "", // required when wait_anywhere with Email
     waitingPreference: "on_premises" as "on_premises" | "wait_anywhere",
-    notificationMethod: "" as "" | "sms" | "email", // selected when wait_anywhere
+    notificationMethod: "" as "" | "sms" | "email" | "whatsapp", // selected when wait_anywhere
     joinedAt: "", // Will be set when customer joins queue
     smsConsent: false, // required when wait_anywhere - transactional messages
     smsMarketingConsent: false, // optional - marketing messages
@@ -65,6 +98,21 @@ export default function QueueBusiness() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [queueToken, setQueueToken] = useState<string | null>(null);
+  const [whatsappCountryOpen, setWhatsappCountryOpen] = useState(false);
+  const [smsCountryOpen, setSmsCountryOpen] = useState(false);
+
+  const selectedWhatsappCountry = useMemo(
+    () =>
+      WHATSAPP_COUNTRIES.find((c) => c.dial === form.countryCode) ||
+      WHATSAPP_COUNTRIES.find((c) => c.dial === "+1")!,
+    [form.countryCode]
+  );
+
+  const selectedSmsCountry = useMemo(
+    () =>
+      SMS_COUNTRIES.find((c) => c.dial === form.countryCode) || SMS_COUNTRIES[0],
+    [form.countryCode]
+  );
 
   // Status placeholders
   const [peopleAhead, setPeopleAhead] = useState(3); // example: user is #4 initially
@@ -332,6 +380,12 @@ export default function QueueBusiness() {
       }
     }
 
+    if (form.waitingPreference === "wait_anywhere" && form.notificationMethod === "whatsapp") {
+      if (!form.phoneNumber) {
+        newErrors.phoneNumber = "Phone number is required for WhatsApp notifications";
+      }
+    }
+
     if (form.waitingPreference === "wait_anywhere" && form.notificationMethod === "email") {
       if (!form.email) {
         newErrors.email = "Email address is required for email notifications";
@@ -379,6 +433,8 @@ export default function QueueBusiness() {
         if (form.waitingPreference === "wait_anywhere") {
           if (form.notificationMethod === "sms") {
             toastDescription = `We'll text you at ${form.countryCode} ${form.phoneNumber} when it's almost your turn.`;
+          } else if (form.notificationMethod === "whatsapp") {
+            toastDescription = `We'll message you on WhatsApp at ${form.countryCode} ${form.phoneNumber} when it's almost your turn.`;
           } else if (form.notificationMethod === "email") {
             toastDescription = `We'll email you at ${form.email} when it's your turn.`;
           }
@@ -669,6 +725,7 @@ export default function QueueBusiness() {
                             setForm((p) => ({
                               ...p,
                               notificationMethod: "sms",
+                              countryCode: "+1",
                             }))
                           }
                           className={`rounded-lg border px-4 py-3 text-left transition ${
@@ -680,6 +737,26 @@ export default function QueueBusiness() {
                           <div className="font-medium">SMS</div>
                           <div className="text-sm text-muted-foreground">
                             Receive text message notifications
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((p) => ({
+                              ...p,
+                              notificationMethod: "whatsapp",
+                            }))
+                          }
+                          className={`rounded-lg border px-4 py-3 text-left transition ${
+                            form.notificationMethod === "whatsapp"
+                              ? "border-primary ring-2 ring-primary/30"
+                              : "hover:bg-muted"
+                          }`}
+                        >
+                          <div className="font-medium">WhatsApp</div>
+                          <div className="text-sm text-muted-foreground">
+                            Receive WhatsApp queue notifications
                           </div>
                         </button>
 
@@ -716,15 +793,67 @@ export default function QueueBusiness() {
                         <div className="space-y-2">
                           <Label htmlFor="phoneNumber">Phone Number</Label>
                           <div className="flex gap-2">
-                            <select
-                              name="countryCode"
-                              value={form.countryCode}
-                              onChange={handleChange}
-                              disabled
-                              className="w-24 rounded-md border bg-background pl-3 pr-7 py-2 text-sm appearance-none opacity-60 cursor-not-allowed"
+                            <Popover
+                              open={smsCountryOpen}
+                              onOpenChange={setSmsCountryOpen}
                             >
-                              <option value="+1">🇺🇸 +1</option>
-                            </select>
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  role="combobox"
+                                  aria-expanded={smsCountryOpen}
+                                  className="flex h-10 w-32 items-center justify-between rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                                >
+                                  <span className="truncate">
+                                    {selectedSmsCountry.flag}{" "}
+                                    {selectedSmsCountry.dial}
+                                  </span>
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-64 p-0" align="start">
+                                <Command
+                                  filter={(value, search) => {
+                                    const term = search.toLowerCase().replace(/\+/g, "");
+                                    return value.toLowerCase().includes(term) ? 1 : 0;
+                                  }}
+                                >
+                                  <CommandInput placeholder="Search country or code..." />
+                                  <CommandList>
+                                    <CommandEmpty>No country found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {SMS_COUNTRIES.map((c) => (
+                                        <CommandItem
+                                          key={c.dial}
+                                          value={`${c.name} ${c.dial}`}
+                                          onSelect={() => {
+                                            setForm((p) => ({
+                                              ...p,
+                                              countryCode: c.dial,
+                                            }));
+                                            setSmsCountryOpen(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              form.countryCode === c.dial
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            )}
+                                          />
+                                          <span className="mr-2">{c.flag}</span>
+                                          <span className="flex-1">{c.name}</span>
+                                          <span className="text-muted-foreground">
+                                            {c.dial}
+                                          </span>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                             <Input
                               id="phoneNumber"
                               name="phoneNumber"
@@ -849,6 +978,94 @@ export default function QueueBusiness() {
                           </div>
                         </div>
                       </>
+                    )}
+
+                    {/* Phone number input for WhatsApp (no consent checkboxes) */}
+                    {form.notificationMethod === "whatsapp" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="whatsappPhoneNumber">Phone Number</Label>
+                        <div className="flex gap-2">
+                          <Popover
+                            open={whatsappCountryOpen}
+                            onOpenChange={setWhatsappCountryOpen}
+                          >
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                role="combobox"
+                                aria-expanded={whatsappCountryOpen}
+                                className="flex h-10 w-32 items-center justify-between rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                              >
+                                <span className="truncate">
+                                  {selectedWhatsappCountry.flag}{" "}
+                                  {selectedWhatsappCountry.dial}
+                                </span>
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-0" align="start">
+                              <Command
+                                filter={(value, search) => {
+                                  const term = search.toLowerCase().replace(/\+/g, "");
+                                  return value.toLowerCase().includes(term) ? 1 : 0;
+                                }}
+                              >
+                                <CommandInput placeholder="Search country or code..." />
+                                <CommandList>
+                                  <CommandEmpty>No country found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {WHATSAPP_COUNTRIES.map((c) => (
+                                      <CommandItem
+                                        key={c.dial}
+                                        value={`${c.name} ${c.dial}`}
+                                        onSelect={() => {
+                                          setForm((p) => ({
+                                            ...p,
+                                            countryCode: c.dial,
+                                          }));
+                                          setWhatsappCountryOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            form.countryCode === c.dial
+                                              ? "opacity-100"
+                                              : "opacity-0"
+                                          )}
+                                        />
+                                        <span className="mr-2">{c.flag}</span>
+                                        <span className="flex-1">{c.name}</span>
+                                        <span className="text-muted-foreground">
+                                          {c.dial}
+                                        </span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          <Input
+                            id="whatsappPhoneNumber"
+                            name="phoneNumber"
+                            type="tel"
+                            placeholder="5551234567"
+                            value={form.phoneNumber}
+                            onChange={handleChange}
+                            className={
+                              errors.phoneNumber
+                                ? "border-destructive focus:ring-destructive flex-1"
+                                : "flex-1"
+                            }
+                          />
+                        </div>
+                        {errors.phoneNumber && (
+                          <p className="text-sm text-destructive">
+                            {errors.phoneNumber}
+                          </p>
+                        )}
+                      </div>
                     )}
 
                     {/* Email input for Email notification */}
