@@ -1393,19 +1393,15 @@ const BusinessDashboard = () => {
 
           {/* Awaiting Arrival Confirmation */}
           {(() => {
-            // Filter admitted customers with pending status within last 5 minutes
-            const now = new Date();
-            const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
-
+            // Show every admitted customer still awaiting a decision. The 5-minute
+            // timer is informational only — once it hits 0 the card stays put
+            // (shown as "Time expired") so the business can remove it manually via
+            // Arrived / No Show. We do NOT auto-drop the card when the timer runs
+            // out; the only way a customer leaves this list is a manual action
+            // that sets finalStatus to "arrived" or "no_show".
             const pendingAdmittedCustomers = (
               currentLocation?.admittedCustomers || []
-            ).filter((customer: any) => {
-              const admittedTime = new Date(customer.admittedAt);
-              return (
-                customer.finalStatus === "pending" &&
-                admittedTime >= fiveMinutesAgo
-              );
-            });
+            ).filter((customer: any) => customer.finalStatus === "pending");
 
             return (
               pendingAdmittedCustomers.length > 0 && (
@@ -1469,7 +1465,7 @@ const BusinessDashboard = () => {
                                       <>
                                         <span className="text-gray-400">•</span>
                                         <span className="text-red-600 font-semibold whitespace-nowrap">
-                                          Time expired
+                                          Time Expired
                                         </span>
                                       </>
                                     )}

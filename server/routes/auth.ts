@@ -1718,7 +1718,7 @@ router.post("/business/:username/queue", async (req, res) => {
             const message = await telnyx.messages.send({
               from: telnyxPhoneNumber,
               to: formattedPhone,
-              text: `Hi ${firstName}! You've joined the queue at ${restaurantName}. You're #${customer.position} in line. We'll text you when it's almost your turn. Reply STOP to opt out. - SeatPing`,
+              text: `Hi ${firstName}! You've joined the queue at ${restaurantName}. You're #${customer.position} in line. We'll text you when it's almost your turn.`,
             });
             console.log("[QUEUE-JOIN] SMS confirmation sent:", message.data?.id, "to", formattedPhone);
           } else {
