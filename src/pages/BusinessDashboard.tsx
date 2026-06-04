@@ -1217,7 +1217,7 @@ const BusinessDashboard = () => {
                 <CardDescription className="text-gray-600 text-sm mb-3 mt-0.5">
                   {currentLocation
                     ? `Managing queue for: ${locLabel(currentLocation, selectedLocationIndex)}`
-                    : "No location selected"}
+                    : "No Location Selected"}
                 </CardDescription>
                 <Button
                   size="sm"
@@ -1256,7 +1256,7 @@ const BusinessDashboard = () => {
                   <CardDescription className="text-gray-600 text-sm">
                     {currentLocation
                       ? `Managing queue for: ${locLabel(currentLocation, selectedLocationIndex)}`
-                      : "No location selected"}
+                      : "No Location Selected"}
                   </CardDescription>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -1498,17 +1498,23 @@ const BusinessDashboard = () => {
           })()}
 
           {/* Today's Reservations — sits between the live waitlist and the
-              recently-left list so staff manage walk-ins + bookings together. */}
-          {currentLocation && (
-            <ReservationsManager
-              reservations={currentLocation.reservations || []}
-              businessUsername={me?.username || ""}
-              locationId={currentLocation.id}
-              locationLabel={locLabel(currentLocation, selectedLocationIndex)}
-              reservationsEnabled={currentLocation.reservationsEnabled !== false}
-              onUpdated={(user) => setMe(user)}
-            />
-          )}
+              recently-left list so staff manage walk-ins + bookings together.
+              Always rendered (even with no location) so it mirrors the Queue
+              Management card; the empty state shows "No location selected". */}
+          <ReservationsManager
+            reservations={currentLocation?.reservations || []}
+            businessUsername={me?.username || ""}
+            locationId={currentLocation?.id || ""}
+            locationLabel={
+              currentLocation
+                ? locLabel(currentLocation, selectedLocationIndex)
+                : ""
+            }
+            reservationsEnabled={
+              currentLocation ? currentLocation.reservationsEnabled !== false : true
+            }
+            onUpdated={(user) => setMe(user)}
+          />
 
           {/* Recently Left Customers */}
           {(() => {
@@ -1530,7 +1536,6 @@ const BusinessDashboard = () => {
               .slice(-5); // Show only the last 5 most recent
 
             return (
-              recentlyLeftCustomers.length > 0 && (
                 <Card className="bg-white rounded-xl shadow-sm border-0 mb-6">
                   <CardHeader className="border-b border-gray-100 p-4 md:p-6">
                     <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
@@ -1542,6 +1547,14 @@ const BusinessDashboard = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-4 md:p-6">
+                    {recentlyLeftCustomers.length === 0 ? (
+                      <div className="flex flex-col items-center py-10 text-center text-slate-400">
+                        <Users className="h-8 w-8" />
+                        <p className="mt-2 text-sm">
+                          No customers have left recently.
+                        </p>
+                      </div>
+                    ) : (
                     <div className="space-y-3 md:space-y-4">
                       {recentlyLeftCustomers.map(
                         (customer: any, index: number) => {
@@ -1615,9 +1628,9 @@ const BusinessDashboard = () => {
                         },
                       )}
                     </div>
+                    )}
                   </CardContent>
                 </Card>
-              )
             );
           })()}
 

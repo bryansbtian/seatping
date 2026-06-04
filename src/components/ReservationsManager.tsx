@@ -204,9 +204,11 @@ export default function ReservationsManager({
               Reservations Management
             </CardTitle>
             <CardDescription className="text-gray-600 text-sm mt-0.5">
-              {reservationsEnabled
-                ? `Bookings for: ${locationLabel}`
-                : "Reservations are disabled for this location."}
+              {!locationId
+                ? "No Location Selected"
+                : reservationsEnabled
+                  ? `Bookings for: ${locationLabel}`
+                  : "Reservations are disabled for this location."}
             </CardDescription>
           </div>
         </div>
