@@ -33,6 +33,15 @@ export function buildTimeOptions(startHour = 0, endHour = 23, stepMin = 30) {
 // Full-day options, 00:00 → 23:30. Used by Opening Hours.
 export const ALL_DAY_TIME_OPTIONS = buildTimeOptions(0, 23, 30);
 
+// Shared mobile "flat field" override passed to FieldTrigger / Input in the
+// Home and Search search bars. Strips the per-field card chrome (border /
+// radius / shadow) so each control reads as a flat row inside one unified
+// panel on mobile, then restores the bordered "field" look at md+.
+// `max-[360px]:` shrinks text + padding on very narrow phones (~320px) so the
+// Date / Time labels and placeholders stop truncating.
+export const FLAT_FIELD =
+  "border-0 rounded-none shadow-none px-3 text-sm max-[360px]:px-2 max-[360px]:text-xs md:border md:border-slate-200 md:rounded-xl md:px-4 md:text-sm";
+
 // Field-style trigger (icon · value · chevron). Shared across pickers so the
 // Date / Time / People controls and the Opening Hours selectors look identical.
 export const FieldTrigger = React.forwardRef<

@@ -33,7 +33,6 @@ import {
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
@@ -48,10 +47,12 @@ import {
 } from "@/components/ui/popover";
 import {
   FieldTrigger,
+  FLAT_FIELD,
   OptionRow,
   TimeSelect,
   formatTimeLabel,
 } from "@/components/TimeSelect";
+import { SearchSuggestInput } from "@/components/SearchSuggestInput";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -403,97 +404,112 @@ export default function SearchResults() {
           className="container mx-auto px-4"
           aria-label="Search restaurants"
         >
-          {/* Layout mirrors the Home page search bar (ReservationSearchBar):
-              Date/Time/Party are content-sized (auto) so the input gets the
-              remaining space via the minmax(0,1fr) track, and Search drops to
-              its own full-width row at md, then sits inline at xl. */}
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[auto_auto_auto_minmax(0,1fr)] md:items-center xl:grid-cols-[auto_auto_auto_minmax(0,1fr)_auto]">
-            {/* Mobile: Date + Time share row 1 via a 2-col sub-grid.
-                md+: `contents` removes the wrapper so children flow back into
-                the outer grid as auto-sized tracks. */}
-            <div className="grid grid-cols-2 gap-3 md:contents">
-              <Popover open={dateOpen} onOpenChange={setDateOpen}>
+          {/* Mirrors the Home page search bar (ReservationSearchBar):
+              - Mobile: one unified white flat panel. Fields are flat rows split
+                by thin dividers (carried on wrapper divs, not the fields); Date
+                + Time share row 1 via a vertical divider. The dark Search button
+                is the last row of the panel.
+              - md+: the panel chrome drops away (transparent) and the fields
+                become individual white cards on the dark bar — Date/Time/Party
+                content-sized (auto), the input filling the minmax(0,1fr) track,
+                and Search dropping to its own full-width row (inline at xl). */}
+          <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm max-[360px]:p-2 md:grid md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none md:grid-cols-[auto_auto_auto_minmax(0,1fr)] md:items-center md:gap-3 xl:grid-cols-[auto_auto_auto_minmax(0,1fr)_auto]">
+            {/* Row 1: Date + Time, vertical divider on mobile. */}
+            <div className="flex items-stretch md:contents">
+              <div className="flex-1 min-w-0 md:contents">
+                <Popover open={dateOpen} onOpenChange={setDateOpen}>
+                  <PopoverTrigger asChild>
+                    <FieldTrigger
+                      icon={CalendarIcon}
+                      aria-label={`Date: ${dateLabel}`}
+                      className={cn(FLAT_FIELD, "bg-white md:w-auto md:min-w-[120px]")}
+                    >
+                      {dateLabel}
+                    </FieldTrigger>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={(d) => {
+                        if (d) setDate(d);
+                        setDateOpen(false);
+                      }}
+                      disabled={{ before: startOfToday }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="flex-1 min-w-0 border-l border-slate-200 md:border-l-0 md:contents">
+                <TimeSelect
+                  value={time}
+                  onChange={setTime}
+                  options={TIME_OPTIONS}
+                  aria-label={`Time: ${formatTimeLabel(time)}`}
+                  className={cn(FLAT_FIELD, "bg-white md:w-auto md:min-w-[132px]")}
+                />
+              </div>
+            </div>
+
+            {/* Row 2: Guests. */}
+            <div className="border-t border-slate-200 md:border-t-0 md:contents">
+              <Popover open={peopleOpen} onOpenChange={setPeopleOpen}>
                 <PopoverTrigger asChild>
                   <FieldTrigger
-                    icon={CalendarIcon}
-                    aria-label={`Date: ${dateLabel}`}
-                    className="md:w-auto md:min-w-[120px] bg-white"
+                    icon={Users}
+                    aria-label={`Number of guests: ${peopleLabel(people)}`}
+                    className={cn(FLAT_FIELD, "bg-white md:w-auto md:min-w-[120px]")}
                   >
-                    {dateLabel}
+                    {peopleLabel(people)}
                   </FieldTrigger>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(d) => {
-                      if (d) setDate(d);
-                      setDateOpen(false);
-                    }}
-                    disabled={{ before: startOfToday }}
-                    initialFocus
-                  />
+                <PopoverContent
+                  className="w-48 max-h-72 overflow-y-auto p-1"
+                  align="start"
+                >
+                  {PEOPLE_OPTIONS.map((value) => (
+                    <OptionRow
+                      key={value}
+                      selected={value === people}
+                      onSelect={() => {
+                        setPeople(value);
+                        setPeopleOpen(false);
+                      }}
+                    >
+                      {peopleLabel(value)}
+                    </OptionRow>
+                  ))}
                 </PopoverContent>
               </Popover>
-
-              <TimeSelect
-                value={time}
-                onChange={setTime}
-                options={TIME_OPTIONS}
-                aria-label={`Time: ${formatTimeLabel(time)}`}
-                className="md:w-auto md:min-w-[132px] bg-white"
-              />
             </div>
 
-            <Popover open={peopleOpen} onOpenChange={setPeopleOpen}>
-              <PopoverTrigger asChild>
-                <FieldTrigger
-                  icon={Users}
-                  aria-label={`Number of guests: ${peopleLabel(people)}`}
-                  className="md:w-auto md:min-w-[120px] bg-white"
-                >
-                  {peopleLabel(people)}
-                </FieldTrigger>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-48 max-h-72 overflow-y-auto p-1"
-                align="start"
+            {/* Row 3: Search input + live restaurant suggestions — same
+                component (and behavior) as the homepage hero search. */}
+            <SearchSuggestInput
+              value={inputQuery}
+              onChange={setInputQuery}
+              date={date}
+              time={time}
+              people={people}
+              className="border-t border-slate-200 md:border-t-0"
+              inputClassName="rounded-none border-0 bg-white text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-slate-50 max-[360px]:text-xs md:rounded-xl md:border md:border-slate-200 md:text-base md:focus-visible:ring-2 md:focus-visible:ring-offset-2 md:focus-visible:bg-white"
+            />
+
+            {/* Row 4: Search button — dark inside the mobile panel; white card on
+                the dark bar at md+. */}
+            <div className="border-t border-slate-200 pt-3 md:border-t-0 md:pt-0 md:contents">
+              <Button
+                type="submit"
+                size="lg"
+                disabled={!inputQuery.trim()}
+                className="h-12 w-full rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-colors md:col-span-full md:bg-white md:text-slate-900 md:hover:bg-slate-100 xl:col-auto"
               >
-                {PEOPLE_OPTIONS.map((value) => (
-                  <OptionRow
-                    key={value}
-                    selected={value === people}
-                    onSelect={() => {
-                      setPeople(value);
-                      setPeopleOpen(false);
-                    }}
-                  >
-                    {peopleLabel(value)}
-                  </OptionRow>
-                ))}
-              </PopoverContent>
-            </Popover>
-
-            <div className="relative w-full min-w-0">
-              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-              <Input
-                value={inputQuery}
-                onChange={(e) => setInputQuery(e.target.value)}
-                placeholder="Restaurants, cuisines, or areas"
-                className="h-12 w-full pl-9 rounded-xl border-slate-200 bg-white text-sm sm:text-base"
-                aria-label="Search restaurants, cuisines, or areas"
-              />
+                <SearchIcon className="h-4 w-4" />
+                <span className="font-medium">Search</span>
+              </Button>
             </div>
-
-            <Button
-              type="submit"
-              size="lg"
-              disabled={!inputQuery.trim()}
-              className="h-12 w-full rounded-xl bg-white text-slate-900 hover:bg-slate-100 transition-colors md:col-span-full xl:col-auto"
-            >
-              <SearchIcon className="h-4 w-4" />
-              <span className="font-medium">Search</span>
-            </Button>
           </div>
         </form>
       </section>
