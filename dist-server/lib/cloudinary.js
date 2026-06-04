@@ -36,6 +36,37 @@ export function assertCloudinaryConfigured() {
         throw new Error(`Cloudinary is not configured. Missing env var(s): ${missing.join(", ")}. Add them to your .env (copy from console.cloudinary.com) and restart the server.`);
     }
 }
+/** Cloudinary folder a given location/kind uploads land in. */
+export function locationFolder(locationId, kind) {
+    return `${BASE_FOLDER}/${locationId}/${kind}`;
+}
+/**
+ * Produce a short-lived signature so the BROWSER can upload an image directly to
+ * Cloudinary (bypassing our serverless function and its ~4.5MB body limit). The
+ * API secret stays server-side: we only sign `folder` + `timestamp`, which the
+ * client must echo back verbatim alongside the file. The returned publicId is
+ * later verified against `locationFolder` in the commit route so a client can't
+ * point us at an asset outside its own folder.
+ */
+export function signLocationUpload(locationId, kind) {
+    assertCloudinaryConfigured();
+    const timestamp = Math.round(Date.now() / 1000);
+    const folder = locationFolder(locationId, kind);
+    const signature = cloudinary.utils.api_sign_request({ folder, timestamp }, API_SECRET);
+    return {
+        cloudName: CLOUD_NAME,
+        apiKey: API_KEY,
+        timestamp,
+        folder,
+        signature,
+    };
+}
+/** True if `publicId` lives inside the expected location/kind folder. */
+export function publicIdInLocationFolder(publicId, locationId, kind) {
+    if (!publicId)
+        return false;
+    return publicId.startsWith(`${locationFolder(locationId, kind)}/`);
+}
 /**
  * Upload an in-memory image buffer to Cloudinary and return its secure URL +
  * publicId. `kind` picks the subfolder (banner vs gallery photo).

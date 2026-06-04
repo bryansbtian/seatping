@@ -177,8 +177,7 @@ const BusinessDashboard = () => {
     // Fold reservation outcomes into today's totals: a reservation marked
     // arrived/completed counts as served; a no-show counts toward "left".
     const reservations = currentLocation.reservations || [];
-    const isToday = (iso: any) =>
-      iso && new Date(iso).toDateString() === today;
+    const isToday = (iso: any) => iso && new Date(iso).toDateString() === today;
     let reservationsServedToday = 0;
     let reservationNoShowsToday = 0;
     for (const r of reservations) {
@@ -490,7 +489,7 @@ const BusinessDashboard = () => {
     const diffMs = now.getTime() - joined.getTime();
     const diffMins = Math.floor(diffMs / 60000);
 
-    if (diffMins < 1) return "Just now";
+    if (diffMins < 1) return "Just Now";
     if (diffMins < 60) return `${diffMins}m ago`;
     const diffHours = Math.floor(diffMins / 60);
     return `${diffHours}h ${diffMins % 60}m ago`;
@@ -516,9 +515,13 @@ const BusinessDashboard = () => {
   // e.g. ("+1", "2069313369") -> "+1 (206) 931-3369"; other countries are shown
   // as clean international digits since correct grouping is country-specific.
   const formatPhone = (countryCode?: string, phoneNumber?: string) => {
-    const national = String(phoneNumber || "").replace(/\D/g, "").replace(/^0+/, "");
+    const national = String(phoneNumber || "")
+      .replace(/\D/g, "")
+      .replace(/^0+/, "");
     if (!national) return "";
-    const rawCode = String(countryCode || "").trim().replace(/[^\d+]/g, "");
+    const rawCode = String(countryCode || "")
+      .trim()
+      .replace(/[^\d+]/g, "");
     const digits = rawCode.replace(/^\+/, "");
     const code = digits ? `+${digits}` : "+1";
     if (code === "+1" && national.length === 10) {
@@ -1331,7 +1334,9 @@ const BusinessDashboard = () => {
                               <>
                                 <span className="text-gray-400">•</span>
                                 <span className="whitespace-nowrap">
-                                  {formatNotificationMethod(customer.notificationMethod)}
+                                  {formatNotificationMethod(
+                                    customer.notificationMethod,
+                                  )}
                                 </span>
                               </>
                             )}
@@ -1339,7 +1344,11 @@ const BusinessDashboard = () => {
 
                           {customer.phoneNumber && (
                             <p className="text-xs md:text-sm text-gray-500 mt-1">
-                              Phone: {formatPhone(customer.countryCode, customer.phoneNumber)}
+                              Phone:{" "}
+                              {formatPhone(
+                                customer.countryCode,
+                                customer.phoneNumber,
+                              )}
                             </p>
                           )}
                           {customer.email && (
@@ -1511,7 +1520,9 @@ const BusinessDashboard = () => {
                 : ""
             }
             reservationsEnabled={
-              currentLocation ? currentLocation.reservationsEnabled !== false : true
+              currentLocation
+                ? currentLocation.reservationsEnabled !== false
+                : true
             }
             onUpdated={(user) => setMe(user)}
           />
@@ -1536,25 +1547,25 @@ const BusinessDashboard = () => {
               .slice(-5); // Show only the last 5 most recent
 
             return (
-                <Card className="bg-white rounded-xl shadow-sm border-0 mb-6">
-                  <CardHeader className="border-b border-gray-100 p-4 md:p-6">
-                    <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
-                      <Users className="w-5 h-5" />
-                      <span>Recently Left Customers</span>
-                    </CardTitle>
-                    <CardDescription className="text-gray-600 text-sm">
-                      Customers who have left the queue recently
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-4 md:p-6">
-                    {recentlyLeftCustomers.length === 0 ? (
-                      <div className="flex flex-col items-center py-10 text-center text-slate-400">
-                        <Users className="h-8 w-8" />
-                        <p className="mt-2 text-sm">
-                          No customers have left recently.
-                        </p>
-                      </div>
-                    ) : (
+              <Card className="bg-white rounded-xl shadow-sm border-0 mb-6">
+                <CardHeader className="border-b border-gray-100 p-4 md:p-6">
+                  <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
+                    <Users className="w-5 h-5" />
+                    <span>Recently Left Customers</span>
+                  </CardTitle>
+                  <CardDescription className="text-gray-600 text-sm">
+                    Customers who have left the queue recently
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 md:p-6">
+                  {recentlyLeftCustomers.length === 0 ? (
+                    <div className="flex flex-col items-center py-10 text-center text-slate-400">
+                      <Users className="h-8 w-8" />
+                      <p className="mt-2 text-sm">
+                        No customers have left recently.
+                      </p>
+                    </div>
+                  ) : (
                     <div className="space-y-3 md:space-y-4">
                       {recentlyLeftCustomers.map(
                         (customer: any, index: number) => {
@@ -1573,64 +1584,72 @@ const BusinessDashboard = () => {
                             </Badge>
                           );
                           return (
-                          <div
-                            key={index}
-                            className="flex flex-col space-y-1.5 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg"
-                          >
-                            <div className="flex items-start md:items-center">
-                              <div className="flex-1">
-                                <h3 className="font-semibold text-gray-800 text-sm md:text-base">
-                                  {customer.firstName} {customer.lastName}
-                                </h3>
-                                <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
-                                  <span className="whitespace-nowrap">
-                                    {customer.status === "left"
-                                      ? "Left"
-                                      : "Removed"}
-                                    :{" "}
-                                    {formatTimeSince(
-                                      customer.leftAt || customer.removedAt,
+                            <div
+                              key={index}
+                              className="flex flex-col space-y-1.5 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg"
+                            >
+                              <div className="flex items-start md:items-center">
+                                <div className="flex-1">
+                                  <h3 className="font-semibold text-gray-800 text-sm md:text-base">
+                                    {customer.firstName} {customer.lastName}
+                                  </h3>
+                                  <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
+                                    <span className="whitespace-nowrap">
+                                      {customer.status === "left"
+                                        ? "Left"
+                                        : "Removed"}
+                                      :{" "}
+                                      {formatTimeSince(
+                                        customer.leftAt || customer.removedAt,
+                                      )}
+                                    </span>
+                                    <span className="text-gray-400">•</span>
+                                    <span className="whitespace-nowrap">
+                                      {customer.numGuests}{" "}
+                                      {customer.numGuests === 1
+                                        ? "Guest"
+                                        : "Guests"}
+                                    </span>
+                                    {customer.notificationMethod && (
+                                      <>
+                                        <span className="text-gray-400">•</span>
+                                        <span className="whitespace-nowrap">
+                                          {formatNotificationMethod(
+                                            customer.notificationMethod,
+                                          )}
+                                        </span>
+                                      </>
                                     )}
-                                  </span>
-                                  <span className="text-gray-400">•</span>
-                                  <span className="whitespace-nowrap">
-                                    {customer.numGuests}{" "}
-                                    {customer.numGuests === 1
-                                      ? "Guest"
-                                      : "Guests"}
-                                  </span>
-                                  {customer.notificationMethod && (
-                                    <>
-                                      <span className="text-gray-400">•</span>
-                                      <span className="whitespace-nowrap">
-                                        {formatNotificationMethod(customer.notificationMethod)}
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
+                                  </div>
 
-                                {customer.phoneNumber && (
-                                  <p className="text-xs md:text-sm text-gray-500 mt-1">
-                                    Phone: {formatPhone(customer.countryCode, customer.phoneNumber)}
-                                  </p>
-                                )}
-                                {/* Mobile: pill sits directly below the metadata,
+                                  {customer.phoneNumber && (
+                                    <p className="text-xs md:text-sm text-gray-500 mt-1">
+                                      Phone:{" "}
+                                      {formatPhone(
+                                        customer.countryCode,
+                                        customer.phoneNumber,
+                                      )}
+                                    </p>
+                                  )}
+                                  {/* Mobile: pill sits directly below the metadata,
                                     aligned with the customer text (not the icon). */}
-                                <div className="mt-1.5 md:hidden">
-                                  {statusBadge}
+                                  <div className="mt-1.5 md:hidden">
+                                    {statusBadge}
+                                  </div>
                                 </div>
                               </div>
+                              {/* Desktop: pill stays on the right of the row. */}
+                              <div className="hidden md:block">
+                                {statusBadge}
+                              </div>
                             </div>
-                            {/* Desktop: pill stays on the right of the row. */}
-                            <div className="hidden md:block">{statusBadge}</div>
-                          </div>
                           );
                         },
                       )}
                     </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  )}
+                </CardContent>
+              </Card>
             );
           })()}
 
@@ -1690,7 +1709,11 @@ const BusinessDashboard = () => {
                         <XAxis dataKey="date" tickMargin={14} height={32} />
 
                         {/* Left axis (visible) */}
-                        <YAxis yAxisId="left" width={40} allowDecimals={false} />
+                        <YAxis
+                          yAxisId="left"
+                          width={40}
+                          allowDecimals={false}
+                        />
 
                         {/* Right axis (invisible) to balance spacing and center the chart */}
                         <YAxis

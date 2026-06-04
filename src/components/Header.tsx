@@ -41,8 +41,6 @@ const Header = ({
   const [open, setOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  // Separate input for the mobile hamburger search (Restaurant Details only).
-  const [mobileSearchQuery, setMobileSearchQuery] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -94,17 +92,6 @@ const Header = ({
     e.preventDefault();
     const q = searchQuery.trim();
     navigate(q ? `/search?query=${encodeURIComponent(q)}` : "/search");
-  };
-
-  // Mobile hamburger search (Restaurant Details only). Path-style /search/:query
-  // per the spec; closes the dropdown after navigating.
-  const handleMobileSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = mobileSearchQuery.trim();
-    if (!q) return; // Do nothing on empty input.
-    navigate(`/search/${encodeURIComponent(q)}`);
-    setMobileSearchQuery("");
-    setOpen(false);
   };
 
   return (
@@ -192,25 +179,6 @@ const Header = ({
               </Link>
             </div>
             <MobileMenu open={open} setOpen={setOpen}>
-              {/* Restaurant Details pages: search at the top of the dropdown. */}
-              {showSearch && (
-                <form
-                  onSubmit={handleMobileSearch}
-                  role="search"
-                  className="px-1 pb-2"
-                >
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      value={mobileSearchQuery}
-                      onChange={(e) => setMobileSearchQuery(e.target.value)}
-                      placeholder="Restaurants, cuisines, or areas"
-                      aria-label="Search restaurants"
-                      className="h-10 w-full min-w-0 rounded-xl border-slate-200 pl-9"
-                    />
-                  </div>
-                </form>
-              )}
               <MobileLink to="/login" onClick={() => setOpen(false)}>
                 Log In
               </MobileLink>

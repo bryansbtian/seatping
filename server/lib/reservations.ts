@@ -97,6 +97,94 @@ function minutesToTime(mins: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+/**
+ * Minutes that `timeZone` is ahead of UTC at the instant `at` (DST-aware).
+ * Negative when the zone is behind UTC.
+ */
+function tzOffsetMinutes(timeZone: string, at: Date): number {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const map: Record<string, string> = {};
+  for (const p of dtf.formatToParts(at)) {
+    if (p.type !== "literal") map[p.type] = p.value;
+  }
+  const hour = map.hour === "24" ? 0 : Number(map.hour);
+  const asUTC = Date.UTC(
+    Number(map.year),
+    Number(map.month) - 1,
+    Number(map.day),
+    hour,
+    Number(map.minute),
+    Number(map.second),
+  );
+  return Math.round((asUTC - at.getTime()) / 60000);
+}
+
+/**
+ * Absolute epoch ms for a wall-clock (`date`, `time`) interpreted in `timeZone`.
+ * The restaurant's opening hours and slot times are wall-clock values in its own
+ * timezone, so this is how we anchor them to a real instant for "now" comparisons.
+ * Falls back to server-local parsing if `timeZone` is missing/invalid.
+ */
+export function zonedWallTimeToMs(
+  date: string,
+  time: string,
+  timeZone?: string,
+): number {
+  if (!timeZone) return new Date(`${date}T${time}:00`).getTime();
+  try {
+    const [y, mo, d] = date.split("-").map(Number);
+    const [h, mi] = time.split(":").map(Number);
+    const utcGuess = Date.UTC(y, mo - 1, d, h, mi);
+    // Refine once to settle DST/offset transitions.
+    const off1 = tzOffsetMinutes(timeZone, new Date(utcGuess));
+    let ms = utcGuess - off1 * 60000;
+    const off2 = tzOffsetMinutes(timeZone, new Date(ms));
+    if (off2 !== off1) ms = utcGuess - off2 * 60000;
+    return ms;
+  } catch {
+    return new Date(`${date}T${time}:00`).getTime();
+  }
+}
+
+/** Wall-clock "YYYY-MM-DD" for instant `at` in `timeZone` (server-local fallback). */
+export function zonedDateStr(at: Date, timeZone?: string): string {
+  if (!timeZone) {
+    const y = at.getFullYear();
+    const m = String(at.getMonth() + 1).padStart(2, "0");
+    const d = String(at.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  try {
+    // en-CA renders as YYYY-MM-DD.
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(at);
+  } catch {
+    return zonedDateStr(at);
+  }
+}
+
+/** Whole-day difference between two "YYYY-MM-DD" strings (b - a). */
+function daysBetweenDateStr(a: string, b: string): number {
+  const [ay, am, ad] = a.split("-").map(Number);
+  const [by, bm, bd] = b.split("-").map(Number);
+  const aMs = Date.UTC(ay, am - 1, ad);
+  const bMs = Date.UTC(by, bm - 1, bd);
+  return Math.round((bMs - aMs) / 86400000);
+}
+
 /** 12-hour label, e.g. "7:00 PM". */
 export function formatTimeLabel(t: string): string {
   const [hStr, mStr] = t.split(":");
@@ -167,17 +255,22 @@ export function computeAvailability(params: {
   partySize: number;
   now?: Date;
   excludeId?: string;
+  /**
+   * IANA timezone of the restaurant (e.g. "Asia/Jakarta"). Slot wall-clock
+   * times and "today" are evaluated in this zone so a slot that has already
+   * passed in the restaurant's local time is correctly unbookable, regardless
+   * of where the server runs (UTC in production). Falls back to server-local.
+   */
+  timeZone?: string;
 }): { slots: Slot[]; partyTooLarge: boolean; outsideWindow: boolean } {
-  const { settings, reservations, date, partySize } = params;
+  const { settings, reservations, date, partySize, timeZone } = params;
   const now = params.now || new Date();
 
   const partyTooLarge = partySize > settings.maxPartySize;
 
-  // Booking window check at the date level.
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  const selected = new Date(`${date}T00:00:00`);
-  const daysAhead = Math.round((selected.getTime() - today.getTime()) / 86400000);
+  // Booking window check at the date level, in the restaurant's timezone.
+  const todayStr = zonedDateStr(now, timeZone);
+  const daysAhead = DATE_RE.test(date) ? daysBetweenDateStr(todayStr, date) : 0;
   const outsideWindow = daysAhead < 0 || daysAhead > settings.bookingWindowDays;
 
   const slots: Slot[] = [];
@@ -185,7 +278,7 @@ export function computeAvailability(params: {
 
   const startMin = timeToMinutes(settings.reservationStartTime);
   const endMin = timeToMinutes(settings.reservationEndTime);
-  const earliestBookable = new Date(now.getTime() + settings.minNoticeMinutes * 60000);
+  const earliestBookableMs = now.getTime() + settings.minNoticeMinutes * 60000;
 
   for (let m = startMin; m < endMin; m += 30) {
     const time = minutesToTime(m);
@@ -193,7 +286,7 @@ export function computeAvailability(params: {
     const used = activeGuestsInHour(reservations, date, hour, params.excludeId);
     const remaining = Math.max(0, settings.maxReservedGuestsPerHour - used);
 
-    const slotDate = new Date(`${date}T${time}:00`);
+    const slotMs = zonedWallTimeToMs(date, time, timeZone);
     let available = true;
     let reason: Slot["reason"];
 
@@ -203,7 +296,7 @@ export function computeAvailability(params: {
     } else if (outsideWindow) {
       available = false;
       reason = "closed";
-    } else if (slotDate.getTime() < earliestBookable.getTime()) {
+    } else if (slotMs < earliestBookableMs) {
       available = false;
       reason = "too_soon";
     } else if (used + partySize > settings.maxReservedGuestsPerHour) {
@@ -230,8 +323,9 @@ export function validateReservationRequest(params: {
   partySize: number;
   now?: Date;
   excludeId?: string;
+  timeZone?: string;
 }): string | null {
-  const { settings, reservations, date, time, partySize } = params;
+  const { settings, reservations, date, time, partySize, timeZone } = params;
   const now = params.now || new Date();
 
   if (!DATE_RE.test(date)) return "A valid date is required.";
@@ -250,6 +344,7 @@ export function validateReservationRequest(params: {
     partySize,
     now,
     excludeId: params.excludeId,
+    timeZone,
   });
   if (outsideWindow) {
     return `Reservations can only be made up to ${settings.bookingWindowDays} days in advance.`;

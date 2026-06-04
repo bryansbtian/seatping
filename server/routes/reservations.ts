@@ -52,6 +52,19 @@ async function resolveLocation(businessUsername: string, locationId: string) {
   return { business, location };
 }
 
+/**
+ * Restaurant's IANA timezone, read from its public opening-hours config
+ * (location.restaurantProfile.openingHours.timezone). Availability and the
+ * minimum-notice check are evaluated in this zone so slots that have already
+ * passed locally are unbookable regardless of the server's timezone. Falls back
+ * to the platform default when a restaurant hasn't set one.
+ */
+function locationTimeZone(location: any): string {
+  const oh = (location?.restaurantProfile as any)?.openingHours;
+  const tz = oh && typeof oh === "object" ? oh.timezone : undefined;
+  return typeof tz === "string" && tz ? tz : "Asia/Jakarta";
+}
+
 function readableDate(date: string): string {
   const d = new Date(`${date}T00:00:00`);
   if (Number.isNaN(d.getTime())) return date;
@@ -185,6 +198,7 @@ router.get("/:businessUsername/:locationId/availability", async (req, res) => {
       reservations,
       date,
       partySize,
+      timeZone: locationTimeZone(location),
     });
 
     return res.json({
@@ -239,6 +253,7 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
       date: String(date || ""),
       time: String(time || ""),
       partySize: size,
+      timeZone: locationTimeZone(location),
     });
     if (error) return res.status(400).json({ error });
 
@@ -391,6 +406,7 @@ router.put("/manage/:manageToken", async (req, res) => {
       time,
       partySize,
       excludeId: reservation.id,
+      timeZone: locationTimeZone(location),
     });
     if (error) return res.status(400).json({ error });
 
