@@ -16,7 +16,12 @@ import multer from "multer";
 import { prisma } from "../lib/prisma.js";
 import { requireBusiness } from "../lib/auth.js";
 import { assembleBusinessMe, serializePhoto } from "../lib/business.js";
-import { uploadImageBuffer, deleteImageByPublicId } from "../lib/cloudinary.js";
+import {
+  uploadImageBuffer,
+  deleteImageByPublicId,
+  signLocationUpload,
+  publicIdInLocationFolder,
+} from "../lib/cloudinary.js";
 
 const router = Router();
 
@@ -296,6 +301,79 @@ router.post(
 );
 
 /**
+ * POST /api/locations/:locationId/banner/sign
+ * Returns a short-lived Cloudinary signature so the browser can upload the
+ * banner DIRECTLY to Cloudinary (bypassing Vercel's ~4.5MB function body cap).
+ */
+router.post(
+  "/:locationId/banner/sign",
+  loadOwnedLocation,
+  async (_req: Request, res: Response) => {
+    try {
+      const location = res.locals.location as OwnedLocation;
+      return res.json({ upload: signLocationUpload(location.id, "banner") });
+    } catch (err: any) {
+      console.error("[locations] banner sign error:", err?.message || err);
+      return res
+        .status(500)
+        .json({ error: err?.message || "Failed to prepare upload." });
+    }
+  }
+);
+
+/**
+ * POST /api/locations/:locationId/banner/commit
+ * Body: { url, publicId } — persist a banner the browser already uploaded to
+ * Cloudinary (via /banner/sign). The publicId is verified to live in this
+ * location's banner folder before we trust it, then the old asset is replaced.
+ */
+router.post(
+  "/:locationId/banner/commit",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = res.locals.location as OwnedLocation;
+      const { url, publicId } = (req.body || {}) as {
+        url?: unknown;
+        publicId?: unknown;
+      };
+      if (
+        typeof url !== "string" ||
+        !url ||
+        typeof publicId !== "string" ||
+        !publicId
+      ) {
+        return res.status(400).json({ error: "Missing uploaded image data." });
+      }
+      if (!publicIdInLocationFolder(publicId, location.id, "banner")) {
+        return res.status(400).json({ error: "Invalid image reference." });
+      }
+
+      await prisma.location.update({
+        where: { id: location.id },
+        data: { bannerImageUrl: url, bannerImagePublicId: publicId },
+      });
+
+      // Replace = delete the previous asset (best-effort), unless it's the same.
+      if (
+        location.bannerImagePublicId &&
+        location.bannerImagePublicId !== publicId
+      ) {
+        await deleteImageByPublicId(location.bannerImagePublicId);
+      }
+
+      const user = await refreshedUser(req);
+      return res.json({ banner: { url, publicId }, user });
+    } catch (err: any) {
+      console.error("[locations] banner commit error:", err?.message || err);
+      return res
+        .status(500)
+        .json({ error: err?.message || "Failed to save banner." });
+    }
+  }
+);
+
+/**
  * DELETE /api/locations/:locationId/banner
  * Removes the banner from the DB and deletes the Cloudinary asset (best-effort).
  */
@@ -381,6 +459,93 @@ router.post(
       return res
         .status(500)
         .json({ error: err?.message || "Failed to upload photos." });
+    }
+  }
+);
+
+/**
+ * POST /api/locations/:locationId/photos/sign
+ * Returns a Cloudinary signature for a direct browser upload of ONE gallery
+ * photo, plus how many slots remain (so the client can stop early). Each photo
+ * is uploaded + committed individually to keep payloads tiny.
+ */
+router.post(
+  "/:locationId/photos/sign",
+  loadOwnedLocation,
+  async (_req: Request, res: Response) => {
+    try {
+      const location = res.locals.location as OwnedLocation;
+      const existingCount = await prisma.photo.count({
+        where: { locationId: location.id },
+      });
+      const remaining = MAX_PHOTOS_PER_LOCATION - existingCount;
+      if (remaining <= 0) {
+        return res.status(400).json({
+          error: `This location already has the maximum of ${MAX_PHOTOS_PER_LOCATION} photos.`,
+        });
+      }
+      return res.json({
+        upload: signLocationUpload(location.id, "photo"),
+        remaining,
+      });
+    } catch (err: any) {
+      console.error("[locations] photos sign error:", err?.message || err);
+      return res
+        .status(500)
+        .json({ error: err?.message || "Failed to prepare upload." });
+    }
+  }
+);
+
+/**
+ * POST /api/locations/:locationId/photos/commit
+ * Body: { url, publicId } — persist one gallery photo already uploaded to
+ * Cloudinary (via /photos/sign). Re-checks the 10-photo cap; if it's now full
+ * the just-uploaded (orphan) asset is deleted so it doesn't linger.
+ */
+router.post(
+  "/:locationId/photos/commit",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = res.locals.location as OwnedLocation;
+      const { url, publicId } = (req.body || {}) as {
+        url?: unknown;
+        publicId?: unknown;
+      };
+      if (
+        typeof url !== "string" ||
+        !url ||
+        typeof publicId !== "string" ||
+        !publicId
+      ) {
+        return res.status(400).json({ error: "Missing uploaded image data." });
+      }
+      if (!publicIdInLocationFolder(publicId, location.id, "photo")) {
+        return res.status(400).json({ error: "Invalid image reference." });
+      }
+
+      const existingCount = await prisma.photo.count({
+        where: { locationId: location.id },
+      });
+      if (existingCount >= MAX_PHOTOS_PER_LOCATION) {
+        await deleteImageByPublicId(publicId); // don't keep the orphan
+        return res.status(400).json({
+          error: `This location already has the maximum of ${MAX_PHOTOS_PER_LOCATION} photos.`,
+        });
+      }
+
+      const photo = await prisma.photo.create({
+        data: { locationId: location.id, url, publicId },
+      });
+
+      const user = await refreshedUser(req);
+      return res.json({ photo: serializePhoto(photo), user });
+    } catch (err: any) {
+      console.error("[locations] photos commit error:", err?.message || err);
+      return res
+        .status(500)
+        .json({ error: err?.message || "Failed to save photo." });
     }
   }
 );

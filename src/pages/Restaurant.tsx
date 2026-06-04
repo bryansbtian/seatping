@@ -531,34 +531,30 @@ export default function RestaurantPage() {
 
   return (
     <PageShell hideHeader={navTakeover}>
-      {/* Hero banner */}
-      <div className="relative bg-slate-100">
-        <div className="container mx-auto max-w-7xl px-4 pt-6">
-          <div className="relative h-56 w-full overflow-hidden rounded-2xl sm:h-72 md:h-96">
-            {heroImage ? (
-              <img
-                src={heroImage}
-                alt={r.name}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
-                <Utensils className="h-10 w-10" />
-              </div>
-            )}
-            {r.photos.length > 0 && (
-              <Button
-                size="sm"
-                variant="secondary"
-                className="absolute bottom-3 right-3 bg-white/95 text-slate-900 shadow-sm hover:bg-white"
-                onClick={() => setPhotosOpen(true)}
-              >
-                <ImageIcon className="h-4 w-4" />
-                <span>View photos</span>
-              </Button>
-            )}
+      {/* Hero banner — full-bleed, edge to edge */}
+      <div className="relative h-56 w-full overflow-hidden bg-slate-100 sm:h-72 md:h-96">
+        {heroImage ? (
+          <img
+            src={heroImage}
+            alt={r.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
+            <Utensils className="h-10 w-10" />
           </div>
-        </div>
+        )}
+        {r.photos.length > 0 && (
+          <Button
+            size="sm"
+            variant="secondary"
+            className="absolute bottom-4 right-4 bg-white/95 text-slate-900 shadow-sm hover:bg-white"
+            onClick={() => setPhotosOpen(true)}
+          >
+            <ImageIcon className="h-4 w-4" />
+            <span>View Photos</span>
+          </Button>
+        )}
       </div>
 
       {/* Title + main content */}
@@ -570,14 +566,15 @@ export default function RestaurantPage() {
                 (NOT inside the reservation card). Hidden on mobile — a pill
                 appears below the meta row there instead. */}
             <div className="flex items-start justify-between gap-3">
-              <h1 className="text-2xl sm:text-4xl font-semibold text-slate-900">
+              <h1 className="text-xl sm:text-4xl font-semibold text-slate-900">
                 {r.name}
               </h1>
+              {/* Heart on the right — icon-only on mobile, full pill on sm+. */}
               <SaveButton
                 saved={saved}
                 busy={saveBusy}
                 onClick={toggleSave}
-                className="hidden shrink-0 sm:inline-flex"
+                className="shrink-0"
               />
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
@@ -615,12 +612,10 @@ export default function RestaurantPage() {
                 </span>
               )}
             </div>
-            {/* Mobile: Save pill below the rating/cuisine/location row. */}
-            <div className="mt-3 sm:hidden">
-              <SaveButton saved={saved} busy={saveBusy} onClick={toggleSave} />
-            </div>
             {r.tagline && (
-              <p className="mt-3 text-base text-slate-600">{r.tagline}</p>
+              <p className="mt-3 text-sm sm:text-base text-slate-600">
+                {r.tagline}
+              </p>
             )}
 
             {/* On mobile + tablet, the action card sits right under the header,
@@ -1036,8 +1031,10 @@ function SaveButton({
       onClick={onClick}
       disabled={busy}
       aria-pressed={saved}
+      aria-label={label}
       className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60",
+        // Icon-only round button on mobile; full pill with label on sm+.
+        "inline-flex items-center gap-2 rounded-full border p-2 text-sm font-medium transition-colors disabled:opacity-60 sm:px-4 sm:py-2",
         saved
           ? "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
           : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
@@ -1047,7 +1044,7 @@ function SaveButton({
       <Heart
         className={cn("h-4 w-4", saved && "fill-rose-500 text-rose-500")}
       />
-      <span>{label}</span>
+      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }
@@ -1226,32 +1223,37 @@ function PhotosModal({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-5xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
-        <DialogHeader>
+      {/* Centered modal: capped width/height per breakpoint with breathing room
+          on every side. Only the photo grid scrolls — the header + close button
+          stay pinned. Rounded on all sizes (override the base sm:rounded-lg). */}
+      <DialogContent className="flex max-h-[85vh] w-full max-w-[94vw] flex-col gap-0 overflow-hidden rounded-xl p-0 sm:max-w-[88vw] lg:max-w-[960px]">
+        <DialogHeader className="shrink-0 px-4 pb-3 pt-4 sm:px-6 sm:pr-12 sm:pt-6">
           <DialogTitle>Photos</DialogTitle>
           <DialogDescription className="break-words">
             {restaurantName}
           </DialogDescription>
         </DialogHeader>
-        {photos.length === 0 ? (
-          <p className="py-6 text-sm text-slate-500">No photos yet.</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-            {photos.map((p) => (
-              <div
-                key={p.id}
-                className="aspect-[4/3] overflow-hidden rounded-lg border border-slate-200"
-              >
-                <img
-                  src={p.url}
-                  alt={p.altText || "Restaurant photo"}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 sm:px-6 sm:pb-6">
+          {photos.length === 0 ? (
+            <p className="py-6 text-sm text-slate-500">No photos yet.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+              {photos.map((p) => (
+                <div
+                  key={p.id}
+                  className="aspect-[4/3] overflow-hidden rounded-lg border border-slate-200"
+                >
+                  <img
+                    src={p.url}
+                    alt={p.altText || "Restaurant photo"}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -1339,7 +1341,7 @@ function MenuList({
             onClick={() => setExpanded((v) => !v)}
             className="rounded-full px-6"
           >
-            {expanded ? "Show less" : "View full menu"}
+            {expanded ? "Show Less" : "View Full Menu"}
           </Button>
         </div>
       )}

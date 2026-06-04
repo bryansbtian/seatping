@@ -25,11 +25,23 @@
       "destination": "/api/server"
     },
     {
+      "source": "/api/featured-restaurants/:path*",
+      "destination": "/api/server"
+    },
+    {
       "source": "/api/featured-restaurants",
       "destination": "/api/server"
     },
     {
       "source": "/api/restaurants/:path*",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/reservations/:path*",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/search/:path*",
       "destination": "/api/server"
     },
     {

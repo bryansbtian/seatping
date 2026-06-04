@@ -44,6 +44,60 @@ export function assertCloudinaryConfigured() {
 
 export type UploadedImage = { url: string; publicId: string };
 
+/** Cloudinary folder a given location/kind uploads land in. */
+export function locationFolder(
+  locationId: string,
+  kind: "banner" | "photo"
+): string {
+  return `${BASE_FOLDER}/${locationId}/${kind}`;
+}
+
+export type UploadSignature = {
+  cloudName: string;
+  apiKey: string;
+  timestamp: number;
+  folder: string;
+  signature: string;
+};
+
+/**
+ * Produce a short-lived signature so the BROWSER can upload an image directly to
+ * Cloudinary (bypassing our serverless function and its ~4.5MB body limit). The
+ * API secret stays server-side: we only sign `folder` + `timestamp`, which the
+ * client must echo back verbatim alongside the file. The returned publicId is
+ * later verified against `locationFolder` in the commit route so a client can't
+ * point us at an asset outside its own folder.
+ */
+export function signLocationUpload(
+  locationId: string,
+  kind: "banner" | "photo"
+): UploadSignature {
+  assertCloudinaryConfigured();
+  const timestamp = Math.round(Date.now() / 1000);
+  const folder = locationFolder(locationId, kind);
+  const signature = cloudinary.utils.api_sign_request(
+    { folder, timestamp },
+    API_SECRET as string
+  );
+  return {
+    cloudName: CLOUD_NAME as string,
+    apiKey: API_KEY as string,
+    timestamp,
+    folder,
+    signature,
+  };
+}
+
+/** True if `publicId` lives inside the expected location/kind folder. */
+export function publicIdInLocationFolder(
+  publicId: string | null | undefined,
+  locationId: string,
+  kind: "banner" | "photo"
+): boolean {
+  if (!publicId) return false;
+  return publicId.startsWith(`${locationFolder(locationId, kind)}/`);
+}
+
 /**
  * Upload an in-memory image buffer to Cloudinary and return its secure URL +
  * publicId. `kind` picks the subfolder (banner vs gallery photo).

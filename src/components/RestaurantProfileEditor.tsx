@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { api, apiUpload } from "@/lib/api";
+import { api } from "@/lib/api";
+import { uploadBanner, uploadPhoto } from "@/lib/imageUpload";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,7 +127,10 @@ const DEFAULT_RESERVATION_SETTINGS: ReservationSettings = {
 
 // Upload limits — kept in sync with the backend (server/routes/locations.ts).
 const MAX_PHOTOS = 10;
-const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB
+// Images are downscaled + re-encoded in the browser before upload (see
+// lib/imageUpload.ts), so this is just a sanity cap on the ORIGINAL to avoid
+// decoding absurdly large files — not the bytes we actually send.
+const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25MB
 const ACCEPTED_IMAGE_TYPES = [
   "image/jpeg",
   "image/jpg",
@@ -140,7 +144,7 @@ function validateImageFile(file: File): string | null {
     return "Only JPG, PNG, and WEBP images are allowed.";
   }
   if (file.size > MAX_FILE_BYTES) {
-    return "Each image must be 5MB or smaller.";
+    return "Each image must be 25MB or smaller.";
   }
   return null;
 }
@@ -278,12 +282,9 @@ export default function RestaurantProfileEditor({
     }
     setBannerUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await apiUpload(
-        `/api/locations/${location.id}/banner/upload`,
-        fd,
-      );
+      // Direct-to-Cloudinary upload (compressed in the browser) so large photos
+      // don't hit Vercel's ~4.5MB function body limit. See lib/imageUpload.ts.
+      const res = await uploadBanner(location.id, file);
       setBanner(res.banner ?? null);
       onMediaChange?.(res.user);
       toast({
@@ -351,16 +352,17 @@ export default function RestaurantProfileEditor({
     }
 
     setPhotosUploading(true);
+    // Upload one photo per request (each compressed in the browser, then sent
+    // straight to Cloudinary) so neither a single big file nor a batch trips
+    // Vercel's ~4.5MB function body limit. Partial successes are kept.
+    const added: Photo[] = [];
+    let lastUser: any = null;
     try {
-      const fd = new FormData();
-      files.forEach((f) => fd.append("files", f));
-      const res = await apiUpload(
-        `/api/locations/${location.id}/photos/upload`,
-        fd,
-      );
-      const added: Photo[] = Array.isArray(res.photos) ? res.photos : [];
-      setPhotos((prev) => [...prev, ...added]);
-      onMediaChange?.(res.user);
+      for (const f of files) {
+        const res = await uploadPhoto(location.id, f);
+        if (res.photo) added.push(res.photo);
+        lastUser = res.user;
+      }
       toast({
         title: "Photos uploaded",
         description: `${added.length} photo${added.length === 1 ? "" : "s"} added.`,
@@ -372,6 +374,8 @@ export default function RestaurantProfileEditor({
         variant: "destructive",
       });
     } finally {
+      if (added.length) setPhotos((prev) => [...prev, ...added]);
+      if (lastUser) onMediaChange?.(lastUser);
       setPhotosUploading(false);
     }
   };
@@ -873,7 +877,7 @@ export default function RestaurantProfileEditor({
           </CardTitle>
           <CardDescription className={sectionDesc}>
             The main hero image at the top of your public page. Use a wide image
-            (around 16:9). JPG, PNG, or WEBP, up to 5MB.
+            (around 16:9). JPG, PNG, or WEBP, up to 25MB.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
@@ -960,7 +964,7 @@ export default function RestaurantProfileEditor({
           </CardTitle>
           <CardDescription className={sectionDesc}>
             Gallery images for your public page ({photos.length}/{MAX_PHOTOS}
-            ). JPG, PNG, or WEBP, up to 5MB each.
+            ). JPG, PNG, or WEBP, up to 25MB each.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">

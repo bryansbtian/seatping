@@ -35,6 +35,7 @@ const Feedback = () => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const isIssue = useMemo(
     () => ["bug", "ux", "billing"].includes(formData.feedbackType),
@@ -90,6 +91,7 @@ const Feedback = () => {
     e.preventDefault();
     if (!validate()) return;
 
+    setSubmitting(true);
     try {
       const response = await fetch("/api/feedback/submit", {
         method: "POST",
@@ -121,6 +123,8 @@ const Feedback = () => {
         description: "Failed to submit feedback. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -369,9 +373,9 @@ const Feedback = () => {
               <Button
                 type="submit"
                 className="h-11 w-full text-base"
-                disabled={!formData.allowContact}
+                disabled={!formData.allowContact || submitting}
               >
-                Submit Feedback
+                {submitting ? "Sending..." : "Submit Feedback"}
               </Button>
             </form>
           </div>
