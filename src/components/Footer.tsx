@@ -48,7 +48,7 @@ const Footer = () => {
               Feedback
             </Link>
             <Link to="/help" className={actionLink}>
-              Help
+              Help &amp; FAQ
             </Link>
           </div>
         </div>

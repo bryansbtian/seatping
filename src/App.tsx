@@ -104,10 +104,33 @@ const App = () => (
             }
           />
 
-          {/* Business marketing + auth */}
-          <Route path="/business" element={<LandingPage />} />
-          <Route path="/business/login" element={<BusinessLogin />} />
-          <Route path="/business/signup" element={<BusinessSignup />} />
+          {/* Business marketing + auth. A logged-in business is bounced to the
+              dashboard so it never lands back on these guest-only pages.
+              Customer sessions and anonymous visitors see them normally. */}
+          <Route
+            path="/business"
+            element={
+              <BusinessGuestRoute>
+                <LandingPage />
+              </BusinessGuestRoute>
+            }
+          />
+          <Route
+            path="/business/login"
+            element={
+              <BusinessGuestRoute>
+                <BusinessLogin />
+              </BusinessGuestRoute>
+            }
+          />
+          <Route
+            path="/business/signup"
+            element={
+              <BusinessGuestRoute>
+                <BusinessSignup />
+              </BusinessGuestRoute>
+            }
+          />
 
           <Route path="/forgot" element={<ForgotPassword />} />
           <Route path="/reset" element={<ResetPassword />} />
@@ -179,6 +202,21 @@ function RequireBusiness({ children }: { children: React.ReactNode }) {
   const session = useSession();
   if (session === undefined) return null; // still loading
   if (!session.business) return <Navigate to="/business/login" replace />;
+  return <>{children}</>;
+}
+
+/**
+ * Inverse of RequireBusiness for the public business pages (/business,
+ * /business/login, /business/signup). A logged-in BUSINESS account is redirected
+ * to its dashboard so it can't sit on the marketing/auth pages. A customer
+ * session does NOT count (business auth stays separate), and anonymous visitors
+ * see the page as normal. Renders nothing while the session is still loading so
+ * the guest page never flashes before a redirect.
+ */
+function BusinessGuestRoute({ children }: { children: React.ReactNode }) {
+  const session = useSession();
+  if (session === undefined) return null; // still loading
+  if (session.business) return <Navigate to="/business/dashboard" replace />;
   return <>{children}</>;
 }
 

@@ -1,1065 +1,330 @@
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle, Message } from "@mynaui/icons-react";
-import {
-  Clock,
-  Smartphone,
-  Bell,
-  ClipboardList,
-  Users,
-  Rocket,
-  TrendingUp,
-  Star,
-  BarChart3,
-  MessageSquare,
-  LogOut,
-  ChevronDown,
-  Calendar,
-  CalendarDays,
-} from "lucide-react";
+import { Star, ChevronRight } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-import { useState, useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
+import { HeroDashboardScreen } from "@/components/landing/ProductPreviews";
+
+// Card width inside the carousel: ~1 card on mobile, ~2 on tablet, exactly 3
+// on desktop (gap-5 = 1.25rem, so two gaps = 2.5rem across the 3 visible cards).
+const TESTIMONIAL_W =
+  "min-w-[82%] snap-start sm:min-w-[46%] lg:min-w-[calc((100%-2.5rem)/3)]";
+
+const TESTIMONIALS = [
+  {
+    initials: "MS",
+    name: "Maria Santos",
+    role: "Restaurant Owner",
+    quote:
+      "SeatPing helped us manage walk-ins without crowding the entrance. The team can see who's waiting, who's admitted, and what needs attention without shouting across the floor.",
+    date: "Mar 12, 2026",
+  },
+  {
+    initials: "DL",
+    name: "Daniel Lee",
+    role: "Café Manager",
+    quote:
+      "Reservations and queue updates are much easier to handle from one dashboard. It feels simple enough for staff to use during a busy shift.",
+    date: "Feb 4, 2026",
+  },
+  {
+    initials: "RL",
+    name: "Rachel Lim",
+    role: "Front Desk Manager",
+    quote:
+      "The QR queue flow made check-ins smoother and reduced the number of people waiting around the counter.",
+    date: "Apr 27, 2026",
+  },
+  {
+    initials: "PN",
+    name: "Priya Nair",
+    role: "Salon Owner",
+    quote:
+      "Clients book a slot, get a text when we're ready, and stop crowding the waiting area. Our front desk finally feels calm.",
+    date: "Jan 19, 2026",
+  },
+  {
+    initials: "MC",
+    name: "Marcus Chen",
+    role: "Operations Lead",
+    quote:
+      "Running a few locations from one place is the part I didn't expect to love. Each spot keeps its own queue and hours without extra setup.",
+    date: "May 8, 2026",
+  },
+  {
+    initials: "SA",
+    name: "Sofia Almeida",
+    role: "Bistro Manager",
+    quote:
+      "We cut no-shows by reminding guests automatically. Reservations and walk-ins finally live in the same view.",
+    date: "Jun 2, 2026",
+  },
+];
+
+/** A plain quote testimonial card. */
+function TestimonialCard({
+  initials,
+  name,
+  role,
+  quote,
+  date,
+}: {
+  initials: string;
+  name: string;
+  role: string;
+  quote: string;
+  date: string;
+}) {
+  return (
+    <div
+      data-card
+      className={cn(
+        "relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white to-slate-50 p-6 shadow-sm",
+        TESTIMONIAL_W,
+      )}
+    >
+      {/* Soft cloudy SeatPing-brand mist: a pale blue-gray haze in the top-left
+          and a subtle navy/teal wash in the bottom-right. Large blurs keep it
+          atmospheric (not a pattern); the centre stays clean behind the text. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-12 -top-12 h-44 w-44 rounded-full bg-slate-300/45 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-sky-200/40 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-14 -right-12 h-48 w-48 rounded-full bg-teal-200/40 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-6 -right-4 h-28 w-28 rounded-full bg-slate-500/15 blur-2xl"
+      />
+      <div className="relative flex flex-1 flex-col">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
+            {initials}
+          </span>
+          <div className="min-w-0">
+            <p className="font-semibold text-slate-900">{name}</p>
+            <p className="text-sm text-slate-500">{role}</p>
+          </div>
+        </div>
+        <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-600">
+          “{quote}”
+        </p>
+        <div className="mt-5 flex items-center justify-between">
+          <div className="flex items-center gap-0.5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
+            ))}
+          </div>
+          <span className="text-xs text-slate-400">{date}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Page                                                              */
+/* ------------------------------------------------------------------ */
 
 const LandingPage = () => {
-  const [chartView, setChartView] = useState<"daily" | "weekly">("daily");
+  // Testimonials carousel: advance one card per click, loop back at the end.
+  const testimonialsRef = useRef<HTMLDivElement>(null);
+  const scrollTestimonials = () => {
+    const el = testimonialsRef.current;
+    if (!el) return;
+    const card = el.querySelector<HTMLElement>("[data-card]");
+    const step = card ? card.offsetWidth + 20 : el.clientWidth; // 20px = gap-5
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+    el.scrollTo({
+      left: atEnd ? 0 : el.scrollLeft + step,
+      behavior: "smooth",
+    });
+  };
 
-  // Scroll animation setup
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("animate-in");
-          }
+          if (entry.isIntersecting) entry.target.classList.add("animate-in");
         });
       },
-      {
-        threshold: 0.1,
-        rootMargin: "0px 0px -50px 0px",
-      },
+      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" },
     );
-
-    const elements = document.querySelectorAll(
+    const els = document.querySelectorAll(
       ".scroll-animate, .scroll-animate-left, .scroll-animate-right, .scroll-animate-scale",
     );
-    elements.forEach((el) => observer.observe(el));
-
-    return () => {
-      elements.forEach((el) => observer.unobserve(el));
-    };
+    els.forEach((el) => observer.observe(el));
+    return () => els.forEach((el) => observer.unobserve(el));
   }, []);
 
-  const dailyData = [
-    { date: "Oct 30", served: 12, avgWait: 15, noShows: 2 },
-    { date: "Oct 31", served: 18, avgWait: 12, noShows: 1 },
-    { date: "Nov 1", served: 25, avgWait: 10, noShows: 3 },
-    { date: "Nov 2", served: 22, avgWait: 14, noShows: 2 },
-    { date: "Nov 3", served: 30, avgWait: 8, noShows: 5 },
-    { date: "Nov 4", served: 35, avgWait: 7, noShows: 8 },
-    { date: "Nov 5", served: 40, avgWait: 6, noShows: 11 },
-  ];
-
-  const weeklyData = [
-    { date: "Week 1", served: 120, avgWait: 18, noShows: 15 },
-    { date: "Week 2", served: 145, avgWait: 15, noShows: 12 },
-    { date: "Week 3", served: 180, avgWait: 12, noShows: 20 },
-    { date: "Week 4", served: 210, avgWait: 10, noShows: 18 },
-    { date: "Week 5", served: 195, avgWait: 11, noShows: 22 },
-    { date: "Week 6", served: 235, avgWait: 9, noShows: 25 },
-  ];
-
-  const chartData = chartView === "daily" ? dailyData : weeklyData;
-
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white text-slate-900">
       <Header variant="business" />
 
-      {/* Hero Section */}
-      <section className="pt-28 md:pt-32 lg:pt-40 pb-20 px-4">
-        <div className="container mx-auto max-w-6xl">
-          <div className="space-y-8">
-            {/* Hero text */}
-            <div className="space-y-6 max-w-4xl mx-auto text-center px-4 animate-fade-in-up">
-              <h1 className="text-4xl sm:text-5xl md:text-7xl font-medium leading-tight">
-                Queues Without the Queue
-              </h1>
-              <p className="text-lg sm:text-xl md:text-2xl text-slate-600 leading-relaxed max-w-3xl mx-auto">
-                Customers join by QR, get SMS, and show up right on time.
-              </p>
-            </div>
-
-            {/* Button row */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4 animate-fade-in-up animation-delay-200">
+      {/* ============================================================ */}
+      {/* 1. HERO copy left, iPad with the real dashboard on the right */}
+      {/* ============================================================ */}
+      <section className="relative overflow-hidden px-4 pt-24 md:pt-28 pb-10 md:pb-12">
+        {/* subtle SeatPing-brand glow behind the device (keeps the bg clean) */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-32 -z-10 h-[26rem] w-[36rem] max-w-[90vw] -translate-x-1/2 rounded-full bg-teal-100/40 blur-3xl"
+        />
+        <div className="container relative mx-auto max-w-5xl">
+          {/* Centered copy + CTA */}
+          <div className="mx-auto max-w-2xl text-center animate-fade-in-up">
+            <h1 className="text-3xl font-semibold leading-[1.1] tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
+              One Dashboard for Queues and Reservations
+            </h1>
+            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-600 md:text-lg">
+              Manage walk-ins, bookings, and guest updates in one place.
+            </p>
+            <div className="mt-6 flex justify-center">
               <Button
                 size="lg"
-                variant="outline"
                 asChild
-                className="group inline-flex w-full sm:w-auto items-center gap-2 rounded-xl border-slate-200 bg-white text-slate-900 px-6 md:px-8 shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:shadow-md hover:scale-105 transition-all duration-300"
+                className="h-12 rounded-xl bg-slate-900 px-8 text-sm text-white shadow-sm transition-all duration-300 hover:bg-slate-800 hover:shadow-lg"
               >
                 <Link to="/sales">
-                  <CalendarDays
-                    className="h-4 w-4 -ml-1 text-slate-600 transition-transform group-hover:-translate-y-0.5"
-                    aria-hidden="true"
-                  />
-                  <span className="font-medium">Book Demo</span>
-                </Link>
-              </Button>
-              <Button
-                size="lg"
-                asChild
-                className="group inline-flex w-full sm:w-auto items-center gap-2 rounded-xl bg-slate-900 text-white px-6 md:px-8 shadow-sm hover:bg-slate-800 hover:shadow-lg hover:scale-105 transition-all duration-300"
-              >
-                <Link to="/business/signup">
-                  <Rocket
-                    className="h-4 w-4 -ml-1 opacity-90 transition-transform group-hover:-translate-y-0.5"
-                    aria-hidden="true"
-                  />
-                  <span className="font-medium">Get Started Free</span>
+                  <span className="font-medium">Book a Demo</span>
                 </Link>
               </Button>
             </div>
+          </div>
 
-            {/* Dashboard Preview */}
-            <div className="relative mt-16 w-full animate-fade-in-up animation-delay-400 max-[325px]:hidden">
-              <div className="rounded-2xl shadow-2xl border border-slate-200 bg-slate-50 p-6 md:p-8 hover:shadow-3xl transition-shadow duration-500">
-                {/* Dashboard Header - Mobile Version */}
-                <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-4 lg:hidden">
-                  {/* Header (no date here) */}
-                  <div className="mb-4">
-                    <h2 className="text-xl md:text-2xl font-semibold text-slate-800 leading-tight">
-                      Hello Cafe Milano!
-                    </h2>
-                    <p className="text-slate-600 text-sm md:text-base">
-                      Here is your daily statistic
-                    </p>
-                  </div>
-
-                  {/* Credits Card – Mobile (Landing) */}
-                  <div className="mb-3 lg:hidden">
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 max-[400px]:p-2.5 max-[365px]:p-2">
-                      <div className="relative">
-                        <div className="pr-12 max-[400px]:pr-10 max-[365px]:pr-9">
-                          <p className="text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] text-slate-600 mb-2">
-                            Credits
-                          </p>
-                          <p className="text-xl max-[400px]:text-base max-[365px]:text-sm font-semibold text-slate-800">
-                            285
-                          </p>
-                        </div>
-                        <div
-                          className="
-          absolute right-0 max-[400px]:right-0 max-[365px]:right-1
-          top-1/2 -translate-y-1/2
-          w-8 h-8 max-[400px]:w-7 max-[400px]:h-7 max-[365px]:w-6 max-[365px]:h-6
-          rounded-full grid place-items-center bg-indigo-100
-        "
-                        >
-                          <Users className="w-4 h-4 max-[400px]:w-[14px] max-[400px]:h-[14px] max-[365px]:w-3 max-[365px]:h-3 text-indigo-600" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Location Selector */}
-                  <div className="relative">
-                    <select className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                      <option>Downtown</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-                  </div>
-                </div>
-
-                {/* Dashboard Header - Desktop Version */}
-                <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6 hidden lg:block">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                      <h2 className="text-xl md:text-2xl font-semibold text-slate-800">
-                        Hello Cafe Milano!
-                      </h2>
-                      <p className="text-slate-600 text-sm md:text-base">
-                        Here is your daily statistic
-                      </p>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
-                          Credits: 285
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <Calendar className="w-4 h-4" />
-                        <span>Aug 22, 2025</span>
-                      </div>
-                      <div className="relative">
-                        <select className="appearance-none bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                          <option>Downtown</option>
-                        </select>
-                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Stats Cards - Mobile Version */}
-                <div className="space-y-3 max-[365px]:space-y-2 mb-6 lg:hidden">
-                  {/* Total Queue - Full Width */}
-                  <Card className="p-4 max-[400px]:p-3 max-[365px]:p-2.5 bg-white rounded-xl shadow-sm border border-slate-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-slate-600 text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] mb-2">
-                          Total Queue
-                        </p>
-                        <p className="text-3xl max-[400px]:text-2xl max-[365px]:text-xl font-semibold text-slate-800">
-                          3
-                        </p>
-                      </div>
-                      {/* unified icon badge */}
-                      <div className="w-12 h-12 max-[400px]:w-9 max-[400px]:h-9 max-[365px]:w-8 max-[365px]:h-8 rounded-full grid place-items-center shrink-0 bg-indigo-100">
-                        <Users className="w-6 h-6 max-[400px]:w-4.5 max-[400px]:h-4.5 max-[365px]:w-4 max-[365px]:h-4 text-indigo-600" />
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Row 2: Avg Wait Time and Served Today */}
-                  <div className="grid grid-cols-2 gap-3 max-[400px]:gap-2 max-[365px]:gap-1.5">
-                    <Card className="p-4 max-[400px]:p-3 max-[365px]:p-2.5 bg-white rounded-xl shadow-sm border border-slate-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-slate-600 text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] mb-2">
-                            Avg Wait Time
-                          </p>
-                          <p className="text-xl max-[400px]:text-base max-[365px]:text-sm font-semibold text-slate-800">
-                            5m
-                          </p>
-                        </div>
-                        <div className="w-10 h-10 max-[400px]:w-8 max-[400px]:h-8 max-[365px]:w-7 max-[365px]:h-7 rounded-full grid place-items-center shrink-0 bg-teal-100">
-                          <Clock className="w-5 h-5 max-[400px]:w-4 max-[400px]:h-4 max-[365px]:w-[14px] max-[365px]:h-[14px] text-teal-600" />
-                        </div>
-                      </div>
-                    </Card>
-
-                    <Card className="p-4 max-[400px]:p-3 max-[365px]:p-2.5 bg-white rounded-xl shadow-sm border border-slate-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-slate-600 text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] mb-2">
-                            Served Today
-                          </p>
-                          <p className="text-xl max-[400px]:text-base max-[365px]:text-sm font-semibold text-slate-800">
-                            8
-                          </p>
-                        </div>
-                        <div className="w-10 h-10 max-[400px]:w-8 max-[400px]:h-8 max-[365px]:w-7 max-[365px]:h-7 rounded-full grid place-items-center shrink-0 bg-emerald-100">
-                          <TrendingUp className="w-5 h-5 max-[400px]:w-4 max-[400px]:h-4 max-[365px]:w-[14px] max-[365px]:h-[14px] text-emerald-600" />
-                        </div>
-                      </div>
-                    </Card>
-                  </div>
-
-                  {/* Row 3: Success Rate and Left Today */}
-                  <div className="grid grid-cols-2 gap-3 max-[400px]:gap-2 max-[365px]:gap-1.5">
-                    <Card className="p-4 max-[400px]:p-3 max-[365px]:p-2.5 bg-white rounded-xl shadow-sm border border-slate-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-slate-600 text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] mb-2">
-                            Success Rate
-                          </p>
-                          <p className="text-xl max-[400px]:text-base max-[365px]:text-sm font-semibold text-slate-800">
-                            88%
-                          </p>
-                        </div>
-                        <div className="w-10 h-10 max-[400px]:w-8 max-[400px]:h-8 max-[365px]:w-7 max-[365px]:h-7 rounded-full grid place-items-center shrink-0 bg-violet-100">
-                          <Star className="w-5 h-5 max-[400px]:w-4 max-[400px]:h-4 max-[365px]:w-[14px] max-[365px]:h-[14px] text-violet-600" />
-                        </div>
-                      </div>
-                    </Card>
-
-                    <Card className="p-4 max-[400px]:p-3 max-[365px]:p-2.5 bg-white rounded-xl shadow-sm border border-slate-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-slate-600 text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] mb-2 leading-tight">
-                            <span className="block">Left</span>
-                            <span className="block">Today</span>
-                          </p>
-                          <p className="text-xl max-[400px]:text-base max-[365px]:text-sm font-semibold text-slate-800">
-                            1
-                          </p>
-                        </div>
-                        <div className="w-10 h-10 max-[400px]:w-8 max-[400px]:h-8 max-[365px]:w-7 max-[365px]:h-7 rounded-full grid place-items-center shrink-0 bg-teal-100">
-                          <LogOut className="w-5 h-5 max-[400px]:w-4 max-[400px]:h-4 max-[365px]:w-[14px] max-[365px]:h-[14px] text-teal-600" />
-                        </div>
-                      </div>
-                    </Card>
-                  </div>
-                </div>
-
-                {/* Stats Cards - Desktop Version */}
-                <div className="hidden lg:grid grid-cols-5 gap-4 mb-6">
-                  <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
-                    <div className="flex flex-col gap-2">
-                      <p className="text-slate-600 text-xs md:text-sm">
-                        Total Queue
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <p className="text-2xl md:text-3xl font-semibold text-slate-800">
-                          3
-                        </p>
-                        <div className="p-2 bg-indigo-100 rounded-full">
-                          <Users className="w-5 h-5 md:w-6 md:h-6 text-indigo-600" />
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-
-                  <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
-                    <div className="flex flex-col gap-2">
-                      <p className="text-slate-600 text-xs md:text-sm">
-                        Avg Wait Time
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <p className="text-2xl md:text-3xl font-semibold text-slate-800">
-                          5m
-                        </p>
-                        <div className="p-2 bg-teal-100 rounded-full">
-                          <Clock className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-
-                  <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
-                    <div className="flex flex-col gap-2">
-                      <p className="text-slate-600 text-xs md:text-sm">
-                        Served Today
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <p className="text-2xl md:text-3xl font-semibold text-slate-800">
-                          8
-                        </p>
-                        <div className="p-2 bg-teal-100 rounded-full">
-                          <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-
-                  <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
-                    <div className="flex flex-col gap-2">
-                      <p className="text-slate-600 text-xs md:text-sm">
-                        Success Rate
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <p className="text-2xl md:text-3xl font-semibold text-slate-800">
-                          88%
-                        </p>
-                        <div className="p-2 bg-violet-100 rounded-full">
-                          <Star className="w-5 h-5 md:w-6 md:h-6 text-violet-600" />
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-
-                  <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
-                    <div className="flex flex-col gap-2">
-                      <p className="text-slate-600 text-xs md:text-sm">
-                        Left Today
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <p className="text-2xl md:text-3xl font-semibold text-slate-800">
-                          1
-                        </p>
-                        <div className="p-2 bg-teal-100 rounded-full">
-                          <LogOut className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                </div>
-
-                {/* Queue Management */}
-                <div className="bg-white rounded-xl shadow-sm border-0 p-4 md:p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg md:text-xl font-semibold text-slate-800">
-                        Queue Management
-                      </h3>
-                      <p className="text-sm text-slate-600">
-                        Managing queue for: Downtown
-                      </p>
-                    </div>
-                    <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 text-[10px] sm:text-xs md:text-sm px-2 py-1 sm:px-3 whitespace-nowrap mt-1 sm:mt-1.5">
-                      3 customers
-                    </Badge>
-                  </div>
-
-                  <div className="space-y-3">
-                    {[
-                      {
-                        position: 1,
-                        name: "Jessica Martinez",
-                        joined: "8 mins ago",
-                        guests: 2,
-                        preference: "Stay on Premises",
-                        phone: "555-0123",
-                      },
-                      {
-                        position: 2,
-                        name: "David Kim",
-                        joined: "5 mins ago",
-                        guests: 4,
-                        preference: "Wait Anywhere",
-                        phone: "(123) 456-7890",
-                      },
-                      {
-                        position: 3,
-                        name: "Rachel Thompson",
-                        joined: "Just now",
-                        guests: 1,
-                        preference: "Stay on Premises",
-                        phone: "555-0789",
-                      },
-                    ].map((customer) => (
-                      <div
-                        key={customer.position}
-                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200"
-                      >
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
-                            <span className="text-base font-semibold text-white">
-                              {customer.position}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-slate-900 text-sm md:text-base">
-                              {customer.name}
-                            </p>
-                            <p className="text-xs md:text-sm text-slate-600">
-                              Joined: {customer.joined} • {customer.guests}{" "}
-                              guest
-                              {customer.guests > 1 ? "s" : ""} •{" "}
-                              {customer.preference}
-                            </p>
-                            {customer.preference !== "Stay on Premises" && (
-                              <p className="text-xs text-slate-500 mt-1">
-                                Phone: {customer.phone}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex gap-2 sm:flex-shrink-0 w-full sm:w-auto">
-                          <Button
-                            size="sm"
-                            className="bg-teal-600 hover:bg-teal-700 text-white text-xs md:text-sm flex-1 sm:flex-none"
-                          >
-                            Admit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-slate-300 text-slate-700 hover:bg-slate-100 text-xs md:text-sm flex-1 sm:flex-none"
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+          {/* iPad below the CTA, centered, showing the SeatPing dashboard */}
+          <div className="relative mx-auto mt-8 w-full max-w-[940px] animate-fade-in-up animation-delay-200">
+            <div className="relative rounded-[1.75rem] border border-slate-200 bg-slate-900 p-2.5 shadow-2xl shadow-slate-300/50 ring-1 ring-slate-900/10">
+              {/* front camera */}
+              <span className="absolute left-1/2 top-1.5 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-white/25" />
+              {/* screen */}
+              <div className="overflow-hidden rounded-[1.2rem] bg-slate-50 p-3">
+                <HeroDashboardScreen />
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Trust Section */}
-      <section className="py-12 bg-slate-50 border-y border-slate-200">
-        <div className="container mx-auto px-4">
-          <p className="text-center text-slate-500 mb-8 text-sm scroll-animate">
-            Trusted by businesses everywhere.
+      {/* ============================================================ */}
+      {/* TESTIMONIALS trust before the final CTA                      */}
+      {/* ============================================================ */}
+      <section className="border-t border-slate-200 bg-slate-50 px-4 py-16 md:py-20">
+        <div className="container mx-auto max-w-6xl scroll-animate">
+          {/* Heading row: headline on the left, scroll control on the right */}
+          <div className="flex items-end justify-between gap-6">
+            <div className="max-w-2xl">
+              <h2 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
+                Built for Teams That Manage{" "}
+                <span className="text-slate-400">Guests Every Day</span>
+              </h2>
+              <p className="mt-3 text-base text-slate-500">
+                Designed for growing restaurants, cafés, salons, and service
+                teams.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={scrollTestimonials}
+              aria-label="Show more testimonials"
+              className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white shadow-sm transition-all duration-300 hover:bg-slate-800 hover:shadow-lg md:inline-flex"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Carousel: scrollable row, 1 card on mobile, ~2 on tablet, 3 on desktop */}
+          <div
+            ref={testimonialsRef}
+            className="mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {TESTIMONIALS.map((t) => (
+              <TestimonialCard key={t.name} {...t} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/* 5. FINAL CTA light gradient, scribble headline, value cards */}
+      {/* ============================================================ */}
+      <section className="relative overflow-hidden border-y border-slate-200 bg-slate-50 px-4 py-14 md:py-20">
+        {/* soft accent-tinted gradient background */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-emerald-50/60 via-slate-50 to-slate-50"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-[40rem] max-w-[90vw] -translate-x-1/2 rounded-full bg-emerald-100/40 blur-3xl"
+        />
+
+        <div className="container mx-auto max-w-4xl text-center scroll-animate">
+          {/* Headline as a tasteful editorial correction: "front-door chaos"
+              is struck through (same scribble as the sales page), "smooth
+              service" is the penned-in fix on the line below. */}
+          <h2
+            className="text-4xl font-bold leading-[1.12] tracking-tight text-slate-900 sm:text-5xl md:text-6xl"
+            aria-label="Turn Every Arrival Into Smooth Service"
+          >
+            <span aria-hidden className="block">
+              Turn Every Arrival Into
+            </span>
+            <span aria-hidden className="mt-1.5 block">
+              {/* rejected phrase: scribble copied from the sales page */}
+              <span className="relative inline-block whitespace-nowrap text-slate-400">
+                Front-Door Chaos
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 120 16"
+                  preserveAspectRatio="none"
+                  className="pointer-events-none absolute inset-x-0 top-[62%] h-[0.55em] w-full -translate-y-1/2 text-success"
+                >
+                  <path
+                    d="M3 9 C 28 3, 46 14, 66 7 S 100 3, 117 9"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+            </span>
+            {/* penned-in correction, on the line below */}
+            <span className="mt-1.5 block font-hand text-[1.12em] font-bold leading-none text-success">
+              Smooth Service
+            </span>
+          </h2>
+
+          <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600">
+            Set up queues, reservations, notifications, and location settings
+            with no extra hardware and no complicated onboarding.
           </p>
 
-          {/* Narrower max width on large screens */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-6 mx-auto max-w-4xl md:max-w-5xl stagger-children">
-            <div className="text-center scroll-animate">
-              <p className="text-3xl font-semibold text-slate-900">500+</p>
-              <p className="text-sm text-slate-500">Active Businesses</p>
-            </div>
-            <div className="text-center scroll-animate">
-              <p className="text-3xl font-semibold text-slate-900">50k+</p>
-              <p className="text-sm text-slate-500">Customers Served</p>
-            </div>
-            <div className="text-center scroll-animate">
-              <p className="text-3xl font-semibold text-slate-900">2 min</p>
-              <p className="text-sm text-slate-500">Setup Time</p>
-            </div>
-            <div className="text-center scroll-animate">
-              <p className="text-3xl font-semibold text-slate-900">0</p>
-              <p className="text-sm text-slate-500">Hardware Needed</p>
-            </div>
+          {/* CTA button */}
+          <div className="mt-7 flex justify-center">
+            <Button
+              size="lg"
+              asChild
+              className="rounded-xl bg-slate-900 px-8 text-white shadow-sm transition-all duration-300 hover:bg-slate-800 hover:shadow-lg"
+            >
+              <Link to="/sales">
+                <span className="font-medium">Book a Demo</span>
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
 
-      {/* Meet SeatPing Section */}
-      <section className="py-20 px-4">
-        <div className="container mx-auto">
-          <div className="text-center mb-16 px-4 scroll-animate">
-            <p className="text-sm text-slate-500 mb-4">Key Features</p>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-6">
-              Meet SeatPing
-            </h2>
-            <p className="text-base sm:text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">
-              The digital queue to hold, notify, and serve every walk-in
-              customer.
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-12 items-start max-w-6xl mx-auto">
-            {/* Left: Feature Cards */}
-            <div className="space-y-8 scroll-animate-left">
-              <div className="flex gap-4 group hover:translate-x-2 transition-transform duration-300">
-                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-indigo-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <Users className="w-6 h-6 text-indigo-600" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                    Digital Queue Management
-                  </h3>
-                  <p className="text-slate-600">
-                    Let customers join the queue with a simple QR scan. No app
-                    required.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4 group hover:translate-x-2 transition-transform duration-300">
-                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-teal-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <Bell className="w-6 h-6 text-teal-600" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                    Smart Notifications
-                  </h3>
-                  <p className="text-slate-600">
-                    Automatic SMS alerts keep customers updated on their wait
-                    time.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4 group hover:translate-x-2 transition-transform duration-300">
-                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-violet-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <BarChart3 className="w-6 h-6 text-violet-600" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                    Analytics & Insights
-                  </h3>
-                  <p className="text-slate-600">
-                    Track performance with detailed charts and graphs to
-                    optimize your operations.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4 group hover:translate-x-2 transition-transform duration-300">
-                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-indigo-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <ClipboardList className="w-6 h-6 text-indigo-600" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                    Unified Dashboard
-                  </h3>
-                  <p className="text-slate-600">
-                    Manage all your locations, queues, and customers in one
-                    place.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Analytics Preview */}
-            <div className="relative scroll-animate-right">
-              <Card className="shadow-2xl border border-slate-200 bg-white rounded-2xl">
-                <CardHeader className="border-b border-slate-100 p-4 md:p-6">
-                  <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
-                    <div>
-                      <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
-                        <TrendingUp className="w-5 h-5" />
-                        <span>Performance Summary</span>
-                      </CardTitle>
-                      <CardDescription className="text-gray-600 text-sm">
-                        Track customers served, wait times, and no-shows
-                      </CardDescription>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant={chartView === "daily" ? "default" : "outline"}
-                        onClick={() => setChartView("daily")}
-                      >
-                        Daily
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={chartView === "weekly" ? "default" : "outline"}
-                        onClick={() => setChartView("weekly")}
-                      >
-                        Weekly
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-4 md:p-6">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart
-                      data={chartData}
-                      margin={{ top: 8, right: 16, left: 28, bottom: 44 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" tickMargin={14} height={32} />
-
-                      {/* Left axis (visible) */}
-                      <YAxis yAxisId="left" width={40} />
-
-                      {/* Right axis (invisible) to balance spacing and center the chart */}
-                      <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        width={40}
-                        tick={false}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-
-                      <Tooltip />
-                      <Legend
-                        verticalAlign="bottom"
-                        align="center"
-                        wrapperStyle={{ bottom: 4 }}
-                      />
-
-                      <Line
-                        yAxisId="left"
-                        type="monotone"
-                        dataKey="served"
-                        stroke="#3b82f6"
-                        strokeWidth={2}
-                        name="Customers Served"
-                      />
-                      <Line
-                        yAxisId="left"
-                        type="monotone"
-                        dataKey="avgWait"
-                        stroke="#10b981"
-                        strokeWidth={2}
-                        name="Avg Wait Time (min)"
-                      />
-                      <Line
-                        yAxisId="left"
-                        type="monotone"
-                        dataKey="noShows"
-                        stroke="#f59e0b"
-                        strokeWidth={2}
-                        name="No-Shows"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Supercharge Your Workflow */}
-      <section id="features" className="py-20 px-4 bg-slate-50">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16 px-4 scroll-animate">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-6">
-              Supercharge Your Workflow with SeatPing
-            </h2>
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Card 1 */}
-            <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-              <div className="aspect-video bg-gradient-to-br from-indigo-100 to-indigo-50 flex items-center justify-center">
-                <Clock className="w-20 h-20 text-indigo-600" />
-              </div>
-              <CardHeader>
-                <CardTitle className="text-2xl text-slate-900">
-                  Quick Setup
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-slate-600 leading-relaxed">
-                  Get started in 2 minutes. Create your account, display your QR
-                  code, and start managing your queue instantly.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Card 2 */}
-            <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-              <div className="aspect-video bg-gradient-to-br from-teal-100 to-teal-50 flex items-center justify-center">
-                <Smartphone className="w-20 h-20 text-teal-600" />
-              </div>
-              <CardHeader>
-                <CardTitle className="text-2xl text-slate-900">
-                  Smart Notifications
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-slate-600 leading-relaxed">
-                  Customers receive automatic SMS updates. They can wait
-                  anywhere, and you'll never lose a sale.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Card 3 */}
-            <Card className="shadow-lg border border-slate-200 bg-white overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-              <div className="aspect-video bg-gradient-to-br from-violet-100 to-violet-50 flex items-center justify-center">
-                <ClipboardList className="w-20 h-20 text-violet-600" />
-              </div>
-              <CardHeader>
-                <CardTitle className="text-2xl text-slate-900">
-                  Real-Time Management
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-slate-600 leading-relaxed">
-                  Track every customer, send notifications with one tap, and
-                  manage multiple locations from one dashboard.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="py-20 px-4 bg-white overflow-hidden">
-        <div className="container mx-auto max-w-7xl">
-          <div className="text-center mb-16 px-4 scroll-animate">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-4">
-              Hear It from Those Who Matter Most
-            </h2>
-            <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
-              See what our customers have to say about their experiences. Real
-              stories, straight from the people who matter most.
-            </p>
-          </div>
-
-          {/* First Row - Scrolling Right to Left */}
-          <div className="mb-6 relative overflow-hidden">
-            {/* Left blur edge */}
-            <div className="hidden md:block absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
-            {/* Right blur edge */}
-            <div className="hidden md:block absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
-
-            <div className="flex gap-6 animate-scroll-left-mobile md:animate-scroll-left hover:pause-animation">
-              {[
-                {
-                  name: "John Davis",
-                  role: "Owner, Bella's Bistro",
-                  avatar: "JD",
-                  color: "from-indigo-600 to-indigo-500",
-                  text: "SeatPing keeps our team organized and focused. Queue management has never been easier!",
-                  time: "2 days ago",
-                },
-                {
-                  name: "Sarah Chen",
-                  role: "Manager, Trim & Style",
-                  avatar: "SC",
-                  color: "from-teal-600 to-teal-500",
-                  text: "Smart notifications help us hit every deadline. SeatPing is a game changer.",
-                  time: "1 week ago",
-                },
-                {
-                  name: "Mike Rodriguez",
-                  role: "Operations Lead",
-                  avatar: "MR",
-                  color: "from-violet-600 to-violet-500",
-                  text: "Managing locations is effortless with SeatPing. Our workflow is so much smoother.",
-                  time: "3 days ago",
-                },
-                {
-                  name: "Emma Wilson",
-                  role: "Cafe Owner",
-                  avatar: "EW",
-                  color: "from-indigo-500 to-violet-500",
-                  text: "The real-time updates are incredible. Our customers love the flexibility!",
-                  time: "5 days ago",
-                },
-                {
-                  name: "David Park",
-                  role: "Manager, Urban Salon",
-                  avatar: "DP",
-                  color: "from-teal-500 to-cyan-500",
-                  text: "Best queue system we've used. Setup was a breeze and it just works!",
-                  time: "1 week ago",
-                },
-                // Duplicate for seamless loop
-                {
-                  name: "John Davis",
-                  role: "Owner, Bella's Bistro",
-                  avatar: "JD",
-                  color: "from-indigo-600 to-indigo-500",
-                  text: "SeatPing keeps our team organized and focused. Queue management has never been easier!",
-                  time: "2 days ago",
-                },
-                {
-                  name: "Sarah Chen",
-                  role: "Manager, Trim & Style",
-                  avatar: "SC",
-                  color: "from-teal-600 to-teal-500",
-                  text: "Smart notifications help us hit every deadline. SeatPing is a game changer.",
-                  time: "1 week ago",
-                },
-                {
-                  name: "Mike Rodriguez",
-                  role: "Operations Lead",
-                  avatar: "MR",
-                  color: "from-violet-600 to-violet-500",
-                  text: "Managing locations is effortless with SeatPing. Our workflow is so much smoother.",
-                  time: "3 days ago",
-                },
-                {
-                  name: "Emma Wilson",
-                  role: "Cafe Owner",
-                  avatar: "EW",
-                  color: "from-indigo-500 to-violet-500",
-                  text: "The real-time updates are incredible. Our customers love the flexibility!",
-                  time: "5 days ago",
-                },
-                {
-                  name: "David Park",
-                  role: "Manager, Urban Salon",
-                  avatar: "DP",
-                  color: "from-teal-500 to-cyan-500",
-                  text: "Best queue system we've used. Setup was a breeze and it just works!",
-                  time: "1 week ago",
-                },
-              ].map((testimonial, idx) => (
-                <Card
-                  key={idx}
-                  className="min-w-[350px] bg-white border-slate-200 shadow-sm flex-shrink-0"
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-12 h-12 rounded-full bg-gradient-to-br ${testimonial.color} flex items-center justify-center text-white font-semibold`}
-                        >
-                          {testimonial.avatar}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-slate-900">
-                            {testimonial.name}
-                          </p>
-                          <p className="text-sm text-slate-500">
-                            {testimonial.role}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-xs text-slate-400">
-                        {testimonial.time}
-                      </span>
-                    </div>
-                    <p className="text-slate-700 text-sm leading-relaxed">
-                      "{testimonial.text}"
-                    </p>
-                    <div className="flex gap-1 mt-4">
-                      {[...Array(5)].map((_, i) => (
-                        <span key={i} className="text-yellow-500 text-sm">
-                          ★
-                        </span>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          {/* Second Row - Scrolling Left to Right */}
-          <div className="relative overflow-hidden">
-            {/* Left blur edge */}
-            <div className="hidden md:block absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
-            {/* Right blur edge */}
-            <div className="hidden md:block absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
-
-            <div className="flex gap-6 animate-scroll-right-mobile md:animate-scroll-right hover:pause-animation">
-              {[
-                {
-                  name: "Emily Liu",
-                  role: "Director, QuickCare Clinic",
-                  avatar: "EL",
-                  color: "from-indigo-600 to-violet-600",
-                  text: "SeatPing's dashboard gives us clarity and control. Highly recommended!",
-                  time: "4 days ago",
-                },
-                {
-                  name: "Alex Turner",
-                  role: "Founder, Urban Cuts",
-                  avatar: "AT",
-                  color: "from-indigo-500 to-violet-500",
-                  text: "The UI is clean and intuitive. SeatPing makes queue management simple.",
-                  time: "1 week ago",
-                },
-                {
-                  name: "Rachel Park",
-                  role: "Owner, Nail Lounge",
-                  avatar: "RP",
-                  color: "from-teal-500 to-cyan-500",
-                  text: "SeatPing's smart notifications save me hours every week. Love it!",
-                  time: "6 days ago",
-                },
-                {
-                  name: "Tom Anderson",
-                  role: "Restaurant Manager",
-                  avatar: "TA",
-                  color: "from-violet-600 to-indigo-600",
-                  text: "We've reduced wait complaints by 80%. Game-changing for our business!",
-                  time: "2 weeks ago",
-                },
-                {
-                  name: "Lisa Martinez",
-                  role: "Spa Director",
-                  avatar: "LM",
-                  color: "from-teal-600 to-cyan-600",
-                  text: "Customer satisfaction through the roof! Best investment we've made.",
-                  time: "3 days ago",
-                },
-                // Duplicate for seamless loop
-                {
-                  name: "Emily Liu",
-                  role: "Director, QuickCare Clinic",
-                  avatar: "EL",
-                  color: "from-indigo-600 to-violet-600",
-                  text: "SeatPing's dashboard gives us clarity and control. Highly recommended!",
-                  time: "4 days ago",
-                },
-                {
-                  name: "Alex Turner",
-                  role: "Founder, Urban Cuts",
-                  avatar: "AT",
-                  color: "from-indigo-500 to-violet-500",
-                  text: "The UI is clean and intuitive. SeatPing makes queue management simple.",
-                  time: "1 week ago",
-                },
-                {
-                  name: "Rachel Park",
-                  role: "Owner, Nail Lounge",
-                  avatar: "RP",
-                  color: "from-teal-500 to-cyan-500",
-                  text: "SeatPing's smart notifications save me hours every week. Love it!",
-                  time: "6 days ago",
-                },
-                {
-                  name: "Tom Anderson",
-                  role: "Restaurant Manager",
-                  avatar: "TA",
-                  color: "from-violet-600 to-indigo-600",
-                  text: "We've reduced wait complaints by 80%. Game-changing for our business!",
-                  time: "2 weeks ago",
-                },
-                {
-                  name: "Lisa Martinez",
-                  role: "Spa Director",
-                  avatar: "LM",
-                  color: "from-teal-600 to-cyan-600",
-                  text: "Customer satisfaction through the roof! Best investment we've made.",
-                  time: "3 days ago",
-                },
-              ].map((testimonial, idx) => (
-                <Card
-                  key={idx}
-                  className="min-w-[350px] bg-white border-slate-200 shadow-sm flex-shrink-0"
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-12 h-12 rounded-full bg-gradient-to-br ${testimonial.color} flex items-center justify-center text-white font-semibold`}
-                        >
-                          {testimonial.avatar}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-slate-900">
-                            {testimonial.name}
-                          </p>
-                          <p className="text-sm text-slate-500">
-                            {testimonial.role}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-xs text-slate-400">
-                        {testimonial.time}
-                      </span>
-                    </div>
-                    <p className="text-slate-700 text-sm leading-relaxed">
-                      "{testimonial.text}"
-                    </p>
-                    <div className="flex gap-1 mt-4">
-                      {[...Array(5)].map((_, i) => (
-                        <span key={i} className="text-yellow-500 text-sm">
-                          ★
-                        </span>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-      {/* CTA */}
-      <section className="py-20 px-4 bg-slate-50">
-        <div className="container mx-auto text-center">
-          <div className="max-w-3xl mx-auto space-y-8 px-4 scroll-animate">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900">
-              Ready to Hold Every Walk-In?
-            </h2>
-            <p className="text-base sm:text-lg md:text-xl text-slate-600">
-              Start your free trial today. No credit card required.
-            </p>
-            <div className="flex justify-center">
-              <Button
-                size="lg"
-                className="text-sm sm:text-base px-6 sm:px-8 bg-slate-900 hover:bg-slate-800 hover:shadow-lg hover:scale-105 transition-all duration-300"
-                asChild
-              >
-                <Link to="/business/signup">Get Started Free</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
       <Footer />
     </div>
   );

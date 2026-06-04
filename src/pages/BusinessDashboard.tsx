@@ -7,7 +7,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import BusinessHeader from "@/components/BusinessHeader";
@@ -31,12 +31,19 @@ import {
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   Legend,
 } from "recharts";
 import { Message } from "@mynaui/icons-react";
+
+// Rounded-rectangle styling shared by every chart tooltip popup.
+const TOOLTIP_CONTENT_STYLE = {
+  borderRadius: 12,
+  border: "1px solid #e2e8f0",
+  boxShadow: "0 10px 25px -5px rgba(15, 23, 42, 0.1)",
+  padding: "8px 12px",
+};
 
 const BusinessDashboard = () => {
   const [me, setMe] = useState<any | null>(null);
@@ -47,15 +54,11 @@ const BusinessDashboard = () => {
   const [analyticsTimeframe, setAnalyticsTimeframe] = useState<
     "daily" | "weekly"
   >("daily");
-  // Brief fade applied while switching Daily/Weekly so the chart eases between
-  // the two ranges instead of snapping. Data is computed synchronously, so the
-  // previous chart stays visible (just dimmed) until the new lines animate in.
-  const [chartFading, setChartFading] = useState(false);
+  // Switching Daily/Weekly just swaps the dataset and lets Recharts morph the
+  // lines (same smooth transition as the marketing landing chart). No opacity
+  // fade — that competed with the line animation and looked choppy.
   const changeAnalyticsTimeframe = (tf: "daily" | "weekly") => {
-    if (tf === analyticsTimeframe) return;
-    setChartFading(true);
     setAnalyticsTimeframe(tf);
-    window.setTimeout(() => setChartFading(false), 220);
   };
   const [trialTimeLeft, setTrialTimeLeft] = useState<{
     days: number;
@@ -531,6 +534,26 @@ const BusinessDashboard = () => {
     return `${code} ${national}`;
   };
 
+  // One clean "Channel: contact" line based on the contact the customer actually
+  // chose for this queue entry. Crucially, when the method is SMS/WhatsApp we show
+  // the phone only — never the account email of a logged-in customer (and vice
+  // versa). Returns null only when there's no method/contact to show at all.
+  const notificationContact = (c: any): string | null => {
+    const method = c?.notificationMethod;
+    const phone = formatPhone(c?.countryCode, c?.phoneNumber);
+    if (method === "email") {
+      return c?.email ? `Email: ${c.email}` : "Email";
+    }
+    if (method === "sms" || method === "whatsapp") {
+      const label = formatNotificationMethod(method);
+      return phone ? `${label}: ${phone}` : label;
+    }
+    // Legacy/unknown method: show a single best-effort contact, phone first.
+    if (phone) return `Phone: ${phone}`;
+    if (c?.email) return `Email: ${c.email}`;
+    return null;
+  };
+
   // Calculate time remaining for admitted customer
   const getTimeRemaining = (admittedAt: string) => {
     const admitted = new Date(admittedAt);
@@ -834,7 +857,15 @@ const BusinessDashboard = () => {
     return buckets;
   };
 
-  const dailyWeeklySummary = getDailyWeeklySummaryData();
+  // Memoized so the chart's data array keeps a stable reference across the
+  // dashboard's per-second timer re-renders. Without this, every tick produced
+  // a new array and Recharts restarted the line animation — the choppy/laggy
+  // toggle. Only recomputes when the location or the daily/weekly range changes.
+  const dailyWeeklySummary = useMemo(
+    () => getDailyWeeklySummaryData(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentLocation, analyticsTimeframe],
+  );
   const peakHoursData = getPeakHoursData();
   const waitTimeDistribution = getWaitTimeDistribution();
 
@@ -1330,30 +1361,13 @@ const BusinessDashboard = () => {
                               {customer.numGuests}{" "}
                               {customer.numGuests === 1 ? "Guest" : "Guests"}
                             </span>
-                            {customer.notificationMethod && (
-                              <>
-                                <span className="text-gray-400">•</span>
-                                <span className="whitespace-nowrap">
-                                  {formatNotificationMethod(
-                                    customer.notificationMethod,
-                                  )}
-                                </span>
-                              </>
-                            )}
                           </div>
 
-                          {customer.phoneNumber && (
-                            <p className="text-xs md:text-sm text-gray-500 mt-1">
-                              Phone:{" "}
-                              {formatPhone(
-                                customer.countryCode,
-                                customer.phoneNumber,
-                              )}
-                            </p>
-                          )}
-                          {customer.email && (
+                          {/* Single row for the chosen notification channel +
+                              its contact (no account-email leak for SMS/WhatsApp). */}
+                          {notificationContact(customer) && (
                             <p className="text-xs md:text-sm text-gray-500 mt-1 break-all">
-                              Email: {customer.email}
+                              {notificationContact(customer)}
                             </p>
                           )}
                           {customer.queueToken &&
@@ -1606,25 +1620,12 @@ const BusinessDashboard = () => {
                                         ? "Guest"
                                         : "Guests"}
                                     </span>
-                                    {customer.notificationMethod && (
-                                      <>
-                                        <span className="text-gray-400">•</span>
-                                        <span className="whitespace-nowrap">
-                                          {formatNotificationMethod(
-                                            customer.notificationMethod,
-                                          )}
-                                        </span>
-                                      </>
-                                    )}
                                   </div>
 
-                                  {customer.phoneNumber && (
-                                    <p className="text-xs md:text-sm text-gray-500 mt-1">
-                                      Phone:{" "}
-                                      {formatPhone(
-                                        customer.countryCode,
-                                        customer.phoneNumber,
-                                      )}
+                                  {/* Chosen notification channel + its contact only. */}
+                                  {notificationContact(customer) && (
+                                    <p className="text-xs md:text-sm text-gray-500 mt-1 break-all">
+                                      {notificationContact(customer)}
                                     </p>
                                   )}
                                   {/* Mobile: pill sits directly below the metadata,
@@ -1688,20 +1689,14 @@ const BusinessDashboard = () => {
               </CardHeader>
               <CardContent className="p-4 md:p-6">
                 {/* Fixed-height wrapper so switching ranges (or hitting the
-                    empty state) never resizes the card. The opacity transition
-                    eases the swap between Daily and Weekly. */}
-                <div
-                  className={`h-[300px] w-full transition-opacity duration-200 ease-in-out ${
-                    chartFading ? "opacity-60" : "opacity-100"
-                  }`}
-                >
+                    empty state) never resizes the card. */}
+                <div className="h-[300px] w-full">
                   {dailyWeeklySummary.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart
                         data={dailyWeeklySummary}
                         margin={{ top: 8, right: 16, left: 28, bottom: 44 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="date" tickMargin={14} height={32} />
 
                         {/* Left axis (visible) */}
@@ -1721,7 +1716,7 @@ const BusinessDashboard = () => {
                           tickLine={false}
                         />
 
-                        <Tooltip />
+                        <Tooltip contentStyle={TOOLTIP_CONTENT_STYLE} />
                         <Legend
                           verticalAlign="bottom"
                           align="center"
@@ -1729,17 +1724,17 @@ const BusinessDashboard = () => {
                         />
 
                         {/* Stable dataKeys + colors across Daily/Weekly so
-                            Recharts morphs each line instead of remounting. */}
+                            Recharts morphs each line instead of remounting.
+                            `dot={false}` + recharts' default animation mirror
+                            the marketing landing chart's smooth toggle. */}
                         <Line
                           yAxisId="left"
                           type="monotone"
                           dataKey="served"
                           stroke="#3b82f6"
                           strokeWidth={2}
+                          dot={false}
                           name="Customers Served"
-                          isAnimationActive
-                          animationDuration={400}
-                          animationEasing="ease-in-out"
                         />
                         <Line
                           yAxisId="left"
@@ -1747,10 +1742,8 @@ const BusinessDashboard = () => {
                           dataKey="avgWait"
                           stroke="#10b981"
                           strokeWidth={2}
+                          dot={false}
                           name="Avg Wait Time (min)"
-                          isAnimationActive
-                          animationDuration={400}
-                          animationEasing="ease-in-out"
                         />
                         <Line
                           yAxisId="left"
@@ -1758,10 +1751,8 @@ const BusinessDashboard = () => {
                           dataKey="noShows"
                           stroke="#f59e0b"
                           strokeWidth={2}
+                          dot={false}
                           name="No-Shows"
-                          isAnimationActive
-                          animationDuration={400}
-                          animationEasing="ease-in-out"
                         />
                       </LineChart>
                     </ResponsiveContainer>
@@ -1798,7 +1789,6 @@ const BusinessDashboard = () => {
                         data={peakHoursData}
                         margin={{ top: 8, right: 16, left: 28, bottom: 8 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
                         <XAxis
                           dataKey="hour"
                           angle={-45}
@@ -1819,7 +1809,7 @@ const BusinessDashboard = () => {
                           tickLine={false}
                         />
 
-                        <Tooltip />
+                        <Tooltip cursor={false} contentStyle={TOOLTIP_CONTENT_STYLE} />
                         <Bar
                           yAxisId="left"
                           dataKey="customers"
@@ -1858,7 +1848,6 @@ const BusinessDashboard = () => {
                         data={waitTimeDistribution}
                         margin={{ top: 8, right: 16, left: 28, bottom: 8 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="range" height={80} />
 
                         {/* Left axis (visible) */}
@@ -1874,7 +1863,7 @@ const BusinessDashboard = () => {
                           tickLine={false}
                         />
 
-                        <Tooltip />
+                        <Tooltip cursor={false} contentStyle={TOOLTIP_CONTENT_STYLE} />
                         <Bar
                           yAxisId="left"
                           dataKey="count"

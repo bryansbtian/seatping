@@ -902,7 +902,7 @@ export function PartyField({
           aria-label={`Number of guests: ${value}`}
           className={className}
         >
-          {value} {value === 1 ? "guest" : "guests"}
+          {value} {value === 1 ? "Guest" : "Guests"}
         </FieldTrigger>
       </PopoverTrigger>
       <PopoverContent
@@ -918,7 +918,7 @@ export function PartyField({
               setOpen(false);
             }}
           >
-            {n} {n === 1 ? "guest" : "guests"}
+            {n} {n === 1 ? "Guest" : "Guests"}
           </OptionRow>
         ))}
       </PopoverContent>

@@ -97,8 +97,8 @@ const PEOPLE_OPTIONS: string[] = [
 ];
 
 function peopleLabel(value: string) {
-  if (value === "large") return "Larger party";
-  return `${value} ${value === "1" ? "guest" : "guests"}`;
+  if (value === "large") return "Larger Party";
+  return `${value} ${value === "1" ? "Guest" : "Guests"}`;
 }
 
 type SearchResult = {
