@@ -47,7 +47,7 @@ const BusinessHeader = () => {
             onClick={handleLogout}
             className="text-slate-900 hover:text-slate-600 transition-colors font-medium cursor-pointer"
           >
-            Logout
+            Log Out
           </button>
         </div>
 
@@ -93,7 +93,7 @@ const BusinessHeader = () => {
               onClick={handleLogout}
               className="block w-full text-left px-4 py-2 text-slate-900 hover:bg-slate-50 rounded-lg transition-colors font-medium cursor-pointer"
             >
-              Logout
+              Log Out
             </button>
           </div>
         )}

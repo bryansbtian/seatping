@@ -14,19 +14,22 @@ import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { api } from "@/lib/api";
+import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 
+// Customer signup. Creates a record in the `users` collection via /auth/signup.
 const Signup = () => {
   const [formData, setFormData] = useState({
-    businessName: "",
-    businessUsername: "",
+    name: "",
+    username: "",
     email: "",
     phone: "",
+    countryCode: "+1",
     password: "",
     confirmPassword: "",
   });
   const [errors, setErrors] = useState({
-    businessName: "",
-    businessUsername: "",
+    name: "",
+    username: "",
     email: "",
     phone: "",
     password: "",
@@ -46,24 +49,22 @@ const Signup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors = {
-      businessName: "",
-      businessUsername: "",
+      name: "",
+      username: "",
       email: "",
       phone: "",
       password: "",
       confirmPassword: "",
     };
 
-    if (!formData.businessName)
-      newErrors.businessName = "Business name is required";
-    if (!formData.businessUsername)
-      newErrors.businessUsername = "Business username is required";
-    else if (formData.businessUsername.length < 3)
-      newErrors.businessUsername = "Username must be at least 3 characters";
+    if (!formData.name) newErrors.name = "Name is required";
+    if (!formData.username) newErrors.username = "Username is required";
+    else if (formData.username.length < 3)
+      newErrors.username = "Username must be at least 3 characters";
     if (!formData.email) newErrors.email = "Email is required";
-    if (!formData.phone) newErrors.phone = "Phone number is required";
-    else if (formData.phone.length < 6)
-      newErrors.phone = "Phone must be at least 6 characters";
+    // Phone is optional for customers — validate only when something was entered.
+    if (formData.phone && formData.phone.replace(/\D/g, "").length < 6)
+      newErrors.phone = "Phone must be at least 6 digits";
     if (!formData.password) newErrors.password = "Password is required";
     else if (formData.password.length < 8)
       newErrors.password = "Password must be at least 8 chars";
@@ -82,14 +83,15 @@ const Signup = () => {
 
     try {
       setLoading(true);
-      // map fields to API payload - automatically assign Starter plan for free trial
       const payload = {
-        name: formData.businessName,
-        username: formData.businessUsername,
+        name: formData.name,
+        username: formData.username,
         email: formData.email,
-        phone: formData.phone,
+        // Combine country code + digits, or send empty when no phone was given.
+        phone: formData.phone.trim()
+          ? `${formData.countryCode}${formData.phone.replace(/\D/g, "")}`
+          : "",
         password: formData.password,
-        plan: "Starter", // Always Starter plan for free trial
       };
       const res = await api("/auth/signup", {
         method: "POST",
@@ -100,7 +102,8 @@ const Signup = () => {
         title: "Account created!",
         description: `Welcome, ${res.user.name}`,
       });
-      navigate("/business/dashboard");
+      // Customer signup returns to the customer-facing homepage.
+      navigate("/");
     } catch (err: any) {
       toast({
         title: "Sign up failed",
@@ -116,51 +119,49 @@ const Signup = () => {
     <>
       <Header />
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 py-8 pt-24">
-        <Card className="w-full max-w-md shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl text-primary">
+        <Card className="w-full max-w-md lg:max-w-2xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
+          <CardHeader className="space-y-2 px-6 pb-6 pt-8 text-center sm:px-10 sm:pt-10">
+            <CardTitle className="text-3xl text-primary">
               Create Your Account
             </CardTitle>
-            <CardDescription>
-              Join SeatPing and transform your business
+            <CardDescription className="text-sm sm:text-base">
+              Join SeatPing to discover restaurants and skip the wait
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Business Name */}
+          <CardContent className="px-6 pb-8 sm:px-10 sm:pb-10">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Name */}
               <div className="space-y-2">
-                <Label htmlFor="businessName">Business Name</Label>
+                <Label htmlFor="name">Full Name</Label>
                 <Input
-                  id="businessName"
-                  name="businessName"
-                  value={formData.businessName}
+                  id="name"
+                  name="name"
+                  className="h-11"
+                  value={formData.name}
                   onChange={handleChange}
                   required
                 />
-                {errors.businessName && (
-                  <p className="text-sm text-destructive">
-                    {errors.businessName}
-                  </p>
+                {errors.name && (
+                  <p className="text-sm text-destructive">{errors.name}</p>
                 )}
               </div>
-              
-              {/* Business Username */}
+
+              {/* Username */}
               <div className="space-y-2">
-                <Label htmlFor="businessUsername">Business Username</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
-                  id="businessUsername"
-                  name="businessUsername"
-                  value={formData.businessUsername}
+                  id="username"
+                  name="username"
+                  className="h-11"
+                  value={formData.username}
                   onChange={handleChange}
                   required
                 />
-                {errors.businessUsername && (
-                  <p className="text-sm text-destructive">
-                    {errors.businessUsername}
-                  </p>
+                {errors.username && (
+                  <p className="text-sm text-destructive">{errors.username}</p>
                 )}
               </div>
-              
+
               {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -168,6 +169,7 @@ const Signup = () => {
                   id="email"
                   name="email"
                   type="email"
+                  className="h-11"
                   value={formData.email}
                   onChange={handleChange}
                   required
@@ -176,23 +178,38 @@ const Signup = () => {
                   <p className="text-sm text-destructive">{errors.email}</p>
                 )}
               </div>
-              
-              {/* Phone */}
+
+              {/* Phone (optional for customers) */}
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  required
-                />
+                <Label htmlFor="phone">
+                  Phone Number{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (Optional)
+                  </span>
+                </Label>
+                <div className="flex gap-2">
+                  <CountryCodeSelect
+                    className="h-11"
+                    value={formData.countryCode}
+                    onChange={(dial) =>
+                      setFormData((p) => ({ ...p, countryCode: dial }))
+                    }
+                  />
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="(555) 123-4567"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="h-11 flex-1 placeholder:text-sm sm:placeholder:text-base"
+                  />
+                </div>
                 {errors.phone && (
                   <p className="text-sm text-destructive">{errors.phone}</p>
                 )}
               </div>
-              
+
               {/* Password */}
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
@@ -200,17 +217,16 @@ const Signup = () => {
                   id="password"
                   name="password"
                   type="password"
+                  className="h-11"
                   value={formData.password}
                   onChange={handleChange}
                   required
                 />
                 {errors.password && (
-                  <p className="text-sm text-destructive">
-                    {errors.password}
-                  </p>
+                  <p className="text-sm text-destructive">{errors.password}</p>
                 )}
               </div>
-              
+
               {/* Confirm Password */}
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
@@ -218,6 +234,7 @@ const Signup = () => {
                   id="confirmPassword"
                   name="confirmPassword"
                   type="password"
+                  className="h-11"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   required
@@ -229,10 +246,12 @@ const Signup = () => {
                 )}
               </div>
 
-
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Creating..." : "Start Free Trial"}
+              <Button
+                type="submit"
+                className="h-11 w-full text-base"
+                disabled={loading}
+              >
+                {loading ? "Creating..." : "Sign Up"}
               </Button>
             </form>
 

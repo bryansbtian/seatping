@@ -24,15 +24,21 @@ const generateTicketNumber = async (type) => {
 router.post('/inquiry', express.json(), async (req, res) => {
     try {
         console.log('[sales] Received sales inquiry:', req.body);
-        const data = req.body;
-        // Basic validation
-        if (!data.businessName || !data.contactName || !data.workEmail || !data.subject || !data.message) {
+        const body = req.body || {};
+        const data = {
+            businessName: String(body.businessName || "").trim(),
+            businessEmail: String(body.businessEmail || "").trim(),
+            contactName: String(body.contactName || "").trim(),
+            phoneNumber: String(body.phoneNumber || "").trim(),
+        };
+        // Basic validation — all four fields are required.
+        if (!data.businessName || !data.businessEmail || !data.contactName || !data.phoneNumber) {
             console.error('[sales] Missing required fields');
             return res.status(400).json({ error: 'Missing required fields' });
         }
         // Email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(data.workEmail)) {
+        if (!emailRegex.test(data.businessEmail)) {
             console.error('[sales] Invalid email format');
             return res.status(400).json({ error: 'Invalid email format' });
         }
@@ -46,21 +52,22 @@ router.post('/inquiry', express.json(), async (req, res) => {
         // Create ticket in database
         console.log('[sales] Creating ticket...');
         const ticketNumber = await generateTicketNumber('SALES');
+        const subject = `New Sales Inquiry From ${data.businessName}`;
         const ticket = await prisma.ticket.create({
             data: {
                 ticketNumber,
                 type: 'sales',
                 status: 'open',
-                subject: data.subject,
+                subject,
                 senderName: data.contactName,
-                senderEmail: data.workEmail,
-                senderPhone: data.phone,
+                senderEmail: data.businessEmail,
+                senderPhone: data.phoneNumber,
                 businessName: data.businessName,
                 data: data,
                 messages: [
                     {
                         sender: data.contactName,
-                        message: data.message,
+                        message: `Demo request from ${data.businessName} (${data.contactName}, ${data.businessEmail}, ${data.phoneNumber}).`,
                         timestamp: new Date().toISOString(),
                         isTeamResponse: false,
                     },
@@ -70,7 +77,7 @@ router.post('/inquiry', express.json(), async (req, res) => {
         console.log('[sales] ✅ Ticket created:', ticket.ticketNumber);
         // Send confirmation email to user
         console.log('[sales] Sending confirmation email to user...');
-        const confirmationSent = await sendSalesInquiryConfirmationEmail(data.workEmail, data.contactName, ticket.ticketNumber, data.subject);
+        const confirmationSent = await sendSalesInquiryConfirmationEmail(data.businessEmail, data.contactName, data.businessName, ticket.ticketNumber);
         if (confirmationSent) {
             console.log('[sales] ✅ Confirmation email sent to user');
         }

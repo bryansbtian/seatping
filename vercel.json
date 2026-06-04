@@ -13,15 +13,23 @@
       "destination": "/api/server"
     },
     {
-      "source": "/stripe/:path*",
-      "destination": "/api/server"
-    },
-    {
       "source": "/api/sales/:path*",
       "destination": "/api/server"
     },
     {
       "source": "/api/feedback/:path*",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/locations/:path*",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/featured-restaurants",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/restaurants/:path*",
       "destination": "/api/server"
     },
     {

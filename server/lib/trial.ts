@@ -1,17 +1,34 @@
 // server/lib/trial.ts
+//
+// Credit + trial logic for BUSINESS accounts.
+//
+// Business accounts live in the `businesses` collection (prisma.business) and
+// each business owns rows in the `locations` collection (prisma.location).
+// Credits are tracked per location.
+//
+// There are no plans — billing is manual. Every business starts on a 7-day
+// trial with 300 base credits and 1 location. A business is "activated" by an
+// admin turning `trial` off, which stamps `creditsStartedAt` and anchors the
+// monthly credit refill from that moment.
 import { prisma } from "./prisma.js";
 
+/** Default base credits granted to a new business and its locations. */
+export const DEFAULT_BASE_CREDITS = 300;
+
 /**
- * Check if a user's trial has expired
- * @param user - The user object from database
+ * Check if a business's trial has expired
+ * @param business - The business object from database
  * @returns true if trial has expired, false otherwise
  */
-export function isTrialExpired(user: any): boolean {
-  // Trial expires when account is more than 7 days old, regardless of trial field
-  // trial = false means user purchased a plan, NOT that trial expired
-  const createdAt = new Date(user.createdAt);
+export function isTrialExpired(business: any): boolean {
+  // Trial expires when the account is more than `trialDurationDays` old,
+  // regardless of the trial field. trial = false means the business was
+  // manually activated, NOT that the trial expired.
+  const createdAt = new Date(business.createdAt);
   const trialDurationDays =
-    typeof user.trialDurationDays === "number" ? user.trialDurationDays : 7;
+    typeof business.trialDurationDays === "number"
+      ? business.trialDurationDays
+      : 7;
   const trialEndDate = new Date(
     createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000
   );
@@ -33,347 +50,282 @@ export function nextMonthlyAnchorAfter(anchor: Date, now: Date): Date {
 }
 
 /**
- * Compute the next refill date for a user given their planStartedAt.
- * Always returns the first monthly anchor strictly after `now`.
+ * Compute the next refill date for a business given their credits-cycle anchor
+ * (`creditsStartedAt`). Always returns the first monthly anchor strictly after `now`.
  */
-export function computeNextRefillDate(planStartedAt: Date, now: Date = new Date()): Date {
-  return nextMonthlyAnchorAfter(planStartedAt, now);
+export function computeNextRefillDate(creditsStartedAt: Date, now: Date = new Date()): Date {
+  return nextMonthlyAnchorAfter(creditsStartedAt, now);
 }
 
 /**
  * Check if monthly credits need to be refilled.
- * Returns true only for users on a paid plan whose next refill date has arrived.
+ * Returns true only for activated businesses (trial === false) whose next
+ * refill date has arrived.
  */
-export function shouldRefillMonthlyCredits(user: any): boolean {
-  if (user.trial !== false) return false;
-  if (!user.planStartedAt) return false;
-  if (!user.nextCreditRefillAt) return false;
+export function shouldRefillMonthlyCredits(business: any): boolean {
+  if (business.trial !== false) return false;
+  if (!business.creditsStartedAt) return false;
+  if (!business.nextCreditRefillAt) return false;
   const now = new Date();
-  return new Date(user.nextCreditRefillAt) <= now;
+  return new Date(business.nextCreditRefillAt) <= now;
 }
 
 /**
- * Get credits for a location based on plan
- * @param plan - The plan name
- * @returns Object with smsCredits and customerCredits
+ * Base (monthly) credits for a business. Plans are gone, so this is simply the
+ * business's configured `baseCredits` (defaults to 300).
+ * @param business - The business object from database
  */
-export function getCreditsForPlan(plan: string): {
-  smsCredits: number;
-  customerCredits: number;
-} {
-  switch (plan) {
-    case "Starter":
-      return { smsCredits: 300, customerCredits: 300 };
-    case "Professional":
-      return { smsCredits: 600, customerCredits: 600 };
-    default:
-      return { smsCredits: 300, customerCredits: 300 };
+export function getBaseCreditsForUser(business: any): number {
+  return typeof business?.baseCredits === "number"
+    ? business.baseCredits
+    : DEFAULT_BASE_CREDITS;
+}
+
+/**
+ * Credits a new/refilled location should start with, based on trial status.
+ * @param business - The business object from database
+ */
+export function getCreditsForLocation(business: any): number {
+  // Trial expired while still in trial mode -> no credits.
+  if (isTrialExpired(business) && business.trial === true) {
+    return 0;
   }
+  // Active trial, or manually activated -> base credits.
+  return getBaseCreditsForUser(business);
+}
+
+/** Public restaurant/location detail fields captured from Google Places. */
+export interface LocationDetailsInput {
+  address: string;
+  displayName?: string;
+  area?: string;
+  city?: string;
+  country?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  googlePlaceId?: string;
+  googleMapsUrl?: string;
 }
 
 /**
- * Get base credits for a user based on their plan
- * @param user - The user object from database
- * @returns Object with baseSMSCredits and baseCustomerCredits
+ * Build a Prisma `Location` create payload for a business, with credits derived
+ * from the business's trial status. The returned object is ready to pass to
+ * `prisma.location.create({ data })`.
+ *
+ * Accepts either a plain address string (legacy) or a details object carrying
+ * the Google Places fields + the customer-facing displayName.
+ * @param business - The business object (must include id + username)
+ * @param location - Address string, or location details object
  */
-export function getBaseCreditsForUser(user: any): {
-  baseSMSCredits: number;
-  baseCustomerCredits: number;
-} {
-  const planCredits = getCreditsForPlan((user as any).plan);
+export function buildLocationData(
+  business: any,
+  location: string | LocationDetailsInput
+): any {
+  const credits = getCreditsForLocation(business);
+  const baseCredits = getBaseCreditsForUser(business);
+  const d: LocationDetailsInput =
+    typeof location === "string" ? { address: location } : location;
 
   return {
-    baseSMSCredits: planCredits.smsCredits,
-    baseCustomerCredits: planCredits.customerCredits,
+    businessId: String(business.id),
+    businessUsername: business.username ?? null,
+    address: d.address,
+    displayName: d.displayName?.trim() || null,
+    area: d.area?.trim() || null,
+    city: d.city?.trim() || null,
+    country: d.country?.trim() || null,
+    latitude: typeof d.latitude === "number" ? d.latitude : null,
+    longitude: typeof d.longitude === "number" ? d.longitude : null,
+    googlePlaceId: d.googlePlaceId?.trim() || null,
+    googleMapsUrl: d.googleMapsUrl?.trim() || null,
+    queue: [],
+    admittedCustomers: [],
+    removedCustomers: [],
+    credits,
+    baseCredits,
   };
 }
 
 /**
- * Get credits for a location based on trial status and user's base credits
- * @param user - The user object from database
- * @returns Object with smsCredits and customerCredits
+ * Enforce trial expiration on all of a business's locations.
+ * If the trial has expired while still in trial mode, every location's credits
+ * are zeroed out.
+ * @param businessId - The business ID
  */
-export function getCreditsForLocation(user: any): {
-  smsCredits: number;
-  customerCredits: number;
-} {
-  // If trial has expired (account > 7 days old) and trial = true, return 0 credits
-  if (isTrialExpired(user) && user.trial === true) {
-    return { smsCredits: 0, customerCredits: 0 };
-  }
-
-  // If trial has expired but trial = false (user purchased plan), use base credits
-  if (isTrialExpired(user) && user.trial === false) {
-    return {
-      smsCredits: user.baseSMSCredits || 0,
-      customerCredits: user.baseCustomerCredits || 0,
-    };
-  }
-
-  // If trial is still active (account ≤ 7 days old), use base credits
-  return {
-    smsCredits: user.baseSMSCredits || 0,
-    customerCredits: user.baseCustomerCredits || 0,
-  };
-}
-
-/**
- * Enforce trial expiration on all locations for a user
- * This ensures that even if users try to manipulate the system, they get 0 credits
- * @param userId - The user ID
- */
-export async function enforceTrialExpiration(userId: string): Promise<void> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
+export async function enforceTrialExpiration(businessId: string): Promise<void> {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
     select: {
       id: true,
       trial: true,
       trialDurationDays: true,
       createdAt: true,
-      plan: true,
-      baseSMSCredits: true,
-      baseCustomerCredits: true,
-      locations: true,
+      baseCredits: true,
     },
   });
 
-  if (!user) return;
+  if (!business) return;
 
-  // Check if trial has expired (account > 7 days old) AND user is still in trial mode
-  if (isTrialExpired(user) && user.trial === true) {
-    // Trial expired and user is still in trial mode - set all credits to 0
+  if (isTrialExpired(business) && business.trial === true) {
     console.log(
-      `[TRIAL] User ${user.id} trial has expired (account > 7 days old) and trial = true, enforcing 0 credits`
+      `[TRIAL] Business ${business.id} trial expired and trial = true, enforcing 0 credits on all locations`
     );
 
-    const locations = ((user as any).locations as any[]) || [];
-
-    const updatedLocations = locations.map((location: any) => ({
-      ...location,
-      smsCredits: 0,
-      customerCredits: 0,
-    }));
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: { locations: updatedLocations as any },
+    const result = await prisma.location.updateMany({
+      where: { businessId },
+      data: { credits: 0 },
     });
 
     console.log(
-      `[TRIAL] Updated ${locations.length} locations to 0 credits for user ${user.id}`
+      `[TRIAL] Zeroed credits on ${result.count} locations for business ${business.id}`
     );
-  } else if (isTrialExpired(user) && user.trial === false) {
-    // Trial expired but user has purchased a plan - do NOT reset credits
+  } else if (isTrialExpired(business) && business.trial === false) {
     console.log(
-      `[TRIAL] User ${user.id} has purchased a plan (trial = false), credits managed by monthly refill logic`
+      `[TRIAL] Business ${business.id} manually activated (trial = false), credits managed by monthly refill logic`
     );
   } else {
-    console.log(
-      `[TRIAL] User ${user.id} trial is still active (account ≤ 7 days old)`
-    );
+    console.log(`[TRIAL] Business ${business.id} trial is still active`);
   }
 }
 
 /**
- * Validate and enforce credits when adding a new location
- * @param user - The user object from database
- * @param address - The address for the new location
- * @returns The location object with proper credits
- */
-export function createLocationWithTrialEnforcement(
-  user: any,
-  address: string
-): any {
-  const credits = getCreditsForLocation(user);
-
-  return {
-    address,
-    queue: [],
-    admittedCustomers: [],
-    removedCustomers: [],
-    smsCredits: credits.smsCredits,
-    customerCredits: credits.customerCredits,
-    createdAt: new Date().toISOString(),
-  };
-}
-
-/**
- * Refill credits for all locations to the user's base credits.
- * Leaves `planStartedAt` unchanged and advances `nextCreditRefillAt` to the
- * next monthly anchor strictly after `now` (single jump — no per-cycle catch-up).
+ * Refill credits for all of a business's locations to the base credits.
+ * Leaves `creditsStartedAt` unchanged and advances `nextCreditRefillAt` to the
+ * next monthly anchor strictly after `now`.
  *
- * Caller is responsible for ensuring the user is eligible (trial === false,
- * planStartedAt set, refill is actually due).
+ * Caller is responsible for ensuring the business is eligible (trial === false,
+ * creditsStartedAt set, refill is actually due).
  */
-export async function refillCreditsForUser(userId: string): Promise<void> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
+export async function refillCreditsForUser(businessId: string): Promise<void> {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
     select: {
-      locations: true,
-      baseSMSCredits: true,
-      baseCustomerCredits: true,
-      planStartedAt: true,
+      baseCredits: true,
+      creditsStartedAt: true,
     },
   });
-  if (!user || !user.planStartedAt) return;
+  if (!business || !business.creditsStartedAt) return;
 
-  const locations = ((user as any).locations as any[]) || [];
-  const updatedLocations = locations.map((location: any) => ({
-    ...location,
-    smsCredits: user.baseSMSCredits || 0,
-    customerCredits: user.baseCustomerCredits || 0,
-  }));
+  await prisma.location.updateMany({
+    where: { businessId },
+    data: {
+      credits: business.baseCredits || 0,
+    },
+  });
 
   const now = new Date();
-  const nextRefill = computeNextRefillDate(new Date(user.planStartedAt), now);
+  const nextRefill = computeNextRefillDate(new Date(business.creditsStartedAt), now);
 
-  await prisma.user.update({
-    where: { id: userId },
+  await prisma.business.update({
+    where: { id: businessId },
     data: {
-      locations: updatedLocations as any,
       lastCreditRefillAt: now,
       nextCreditRefillAt: nextRefill,
     },
   });
 
   console.log(
-    `[CREDITS] Refilled user ${userId} (SMS=${user.baseSMSCredits}, Customers=${user.baseCustomerCredits}); nextCreditRefillAt=${nextRefill.toISOString()}`
+    `[CREDITS] Refilled business ${businessId} (credits=${business.baseCredits}); nextCreditRefillAt=${nextRefill.toISOString()}`
   );
 }
 
 /**
- * Handle plan purchase - refill credits and set planStartedAt
- * @param userId - The user ID
- * @param plan - The plan name
+ * For activated businesses with `creditsStartedAt` set but no
+ * `nextCreditRefillAt`, seed `nextCreditRefillAt` to the next monthly anchor
+ * strictly after now. Does NOT perform a refill.
  */
-export async function handlePlanPurchase(
-  userId: string,
-  plan: string
-): Promise<void> {
-  const planCredits = getCreditsForPlan(plan);
-  const now = new Date();
-  const nextRefill = computeNextRefillDate(now, now);
-
-  // Set plan, planStartedAt to current time, mark as not in trial, set base credits, and update maxLocations
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      plan: plan,
-      planStartedAt: now,
-      lastCreditRefillAt: now,
-      nextCreditRefillAt: nextRefill,
-      trial: false, // User has purchased a plan (NOT that trial expired)
-      baseSMSCredits: planCredits.smsCredits,
-      baseCustomerCredits: planCredits.customerCredits,
-      maxLocations: plan === "Professional" ? 3 : 1, // Update maxLocations based on plan
-      locations: [], // Delete all locations when changing plans
-    },
-  });
-
-  console.log(
-    `[PLAN] User ${userId} purchased plan ${plan}, base credits set, maxLocations updated, and all locations deleted`
-  );
-}
-
-/**
- * For users on a paid plan with `planStartedAt` set but no `nextCreditRefillAt`
- * (e.g. accounts created before this feature shipped), seed `nextCreditRefillAt`
- * to the next monthly anchor strictly after now. Does NOT perform a refill.
- */
-async function backfillNextCreditRefillAt(user: {
+async function backfillNextCreditRefillAt(business: {
   id: string;
   trial: boolean;
-  planStartedAt: Date | null;
+  creditsStartedAt: Date | null;
   nextCreditRefillAt: Date | null;
 }): Promise<Date | null> {
-  if (user.trial !== false) return null;
-  if (!user.planStartedAt) return null;
-  if (user.nextCreditRefillAt) return user.nextCreditRefillAt;
+  if (business.trial !== false) return null;
+  if (!business.creditsStartedAt) return null;
+  if (business.nextCreditRefillAt) return business.nextCreditRefillAt;
 
-  const next = computeNextRefillDate(new Date(user.planStartedAt));
-  await prisma.user.update({
-    where: { id: user.id },
+  const next = computeNextRefillDate(new Date(business.creditsStartedAt));
+  await prisma.business.update({
+    where: { id: business.id },
     data: { nextCreditRefillAt: next },
   });
   console.log(
-    `[CREDITS] Backfilled nextCreditRefillAt for user ${user.id} -> ${next.toISOString()}`
+    `[CREDITS] Backfilled nextCreditRefillAt for business ${business.id} -> ${next.toISOString()}`
   );
   return next;
 }
 
 /**
- * Check and refill monthly credits for a single user if due.
- * Safe to call frequently — short-circuits when the user isn't eligible or not yet due.
+ * Check and refill monthly credits for a single business if due.
+ * Safe to call frequently — short-circuits when not eligible or not yet due.
  */
 export async function checkAndRefillMonthlyCredits(
-  userId: string
+  businessId: string
 ): Promise<void> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
     select: {
       id: true,
       trial: true,
-      planStartedAt: true,
+      creditsStartedAt: true,
       nextCreditRefillAt: true,
     },
   });
-  if (!user) return;
-  if (user.trial !== false) return;
-  if (!user.planStartedAt) return;
+  if (!business) return;
+  if (business.trial !== false) return;
+  if (!business.creditsStartedAt) return;
 
-  const nextRefill = await backfillNextCreditRefillAt(user);
+  const nextRefill = await backfillNextCreditRefillAt(business);
   if (!nextRefill) return;
 
   if (new Date(nextRefill) <= new Date()) {
-    await refillCreditsForUser(userId);
-    console.log(`[MONTHLY] Credits refilled on-demand for user ${userId}`);
+    await refillCreditsForUser(businessId);
+    console.log(`[MONTHLY] Credits refilled on-demand for business ${businessId}`);
   }
 }
 
 /**
- * Daily scheduled sweep: refill credits for every paid user whose
- * `nextCreditRefillAt` is due. Also seeds `nextCreditRefillAt` for legacy
- * accounts that don't have it yet.
+ * Daily scheduled sweep: refill credits for every activated business whose
+ * `nextCreditRefillAt` is due. Also seeds `nextCreditRefillAt` for accounts that
+ * were activated but don't have it yet.
  */
 export async function runDailyCreditRefillSweep(): Promise<void> {
   const now = new Date();
   console.log(`[CREDIT-SWEEP] starting at ${now.toISOString()}`);
 
-  // Refill anyone with a due nextCreditRefillAt
-  const dueUsers = await prisma.user.findMany({
+  const dueBusinesses = await prisma.business.findMany({
     where: {
       trial: false,
-      planStartedAt: { not: null },
+      creditsStartedAt: { not: null },
       nextCreditRefillAt: { lte: now },
     },
     select: { id: true },
   });
-  for (const u of dueUsers) {
+  for (const b of dueBusinesses) {
     try {
-      await refillCreditsForUser(u.id);
+      await refillCreditsForUser(b.id);
     } catch (err) {
-      console.error(`[CREDIT-SWEEP] refill failed for ${u.id}:`, err);
+      console.error(`[CREDIT-SWEEP] refill failed for ${b.id}:`, err);
     }
   }
 
-  // Backfill legacy users that don't have nextCreditRefillAt yet
-  const legacyUsers = await prisma.user.findMany({
+  const legacyBusinesses = await prisma.business.findMany({
     where: {
       trial: false,
-      planStartedAt: { not: null },
+      creditsStartedAt: { not: null },
       nextCreditRefillAt: null,
     },
-    select: { id: true, trial: true, planStartedAt: true, nextCreditRefillAt: true },
+    select: { id: true, trial: true, creditsStartedAt: true, nextCreditRefillAt: true },
   });
-  for (const u of legacyUsers) {
+  for (const b of legacyBusinesses) {
     try {
-      await backfillNextCreditRefillAt(u);
+      await backfillNextCreditRefillAt(b);
     } catch (err) {
-      console.error(`[CREDIT-SWEEP] backfill failed for ${u.id}:`, err);
+      console.error(`[CREDIT-SWEEP] backfill failed for ${b.id}:`, err);
     }
   }
 
   console.log(
-    `[CREDIT-SWEEP] done — refilled=${dueUsers.length}, backfilled=${legacyUsers.length}`
+    `[CREDIT-SWEEP] done — refilled=${dueBusinesses.length}, backfilled=${legacyBusinesses.length}`
   );
 }

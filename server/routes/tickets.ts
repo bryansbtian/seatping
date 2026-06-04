@@ -1,6 +1,6 @@
 import express from 'express';
 import { prisma } from '../lib/prisma.js';
-import { sendEmail } from '../lib/email.js';
+import { sendEmail, renderEmail, p, calloutBox, esc } from '../lib/email.js';
 
 const router = express.Router();
 
@@ -187,48 +187,18 @@ router.post('/:ticketNumber/respond', express.json(), async (req, res) => {
     }
 
     // Prepare email content
+    const kind = ticket.type === 'sales' ? 'sales inquiry' : 'feedback';
     const emailSubject = `Re: ${ticket.subject} [Ticket #${ticket.ticketNumber}]`;
-    const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1 style="margin: 0; font-size: 28px;">SeatPing</h1>
-          <p style="margin: 10px 0 0 0; opacity: 0.9;">Response to Your ${ticket.type === 'sales' ? 'Inquiry' : 'Feedback'}</p>
-        </div>
-
-        <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
-          <p style="color: #666; margin-bottom: 10px;">Hi ${ticket.senderName},</p>
-
-          <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
-            Thank you for reaching out to us. Here's our response to your ${ticket.type === 'sales' ? 'sales inquiry' : 'feedback'}:
-          </p>
-
-          <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #667eea;">
-            <p style="color: #333; line-height: 1.6; white-space: pre-wrap; margin: 0;">${message}</p>
-          </div>
-
-          <p style="color: #666; font-size: 14px; margin-top: 25px;">
-            Best regards,<br>
-            ${responderName}<br>
-            SeatPing Team
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 25px 0;">
-
-          <p style="color: #999; font-size: 12px;">
-            <strong>Ticket Reference:</strong> ${ticket.ticketNumber}<br>
-            <strong>Original Subject:</strong> ${ticket.subject}
-          </p>
-
-          <p style="color: #999; font-size: 12px; margin-top: 15px;">
-            You can reply directly to this email if you have any further questions.
-          </p>
-        </div>
-
-        <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
-          <p>© 2025 SeatPing. All rights reserved.</p>
-        </div>
-      </div>
-    `;
+    const emailHtml = renderEmail({
+      heading: `Response to your ${kind}`,
+      preheader: `We've replied to your ${kind} (ticket ${ticket.ticketNumber}).`,
+      bodyHtml: `
+        ${p(`Hi ${esc(ticket.senderName)}, thanks for reaching out. Here's our response to your ${kind}:`)}
+        ${calloutBox(esc(message).replace(/\n/g, '<br>'))}
+        ${p(`Best regards,<br>${esc(responderName)}<br>The SeatPing team`)}
+        ${p(`<span style="font-size: 13px; color: #8A8580;"><strong>Ticket:</strong> ${esc(ticket.ticketNumber)} · <strong>Subject:</strong> ${esc(ticket.subject)}<br>You can reply directly to this email with any follow-up questions.</span>`)}
+      `,
+    });
 
     // Send email to customer
     console.log(`[tickets] Sending response email for ticket ${ticketNumber}`);

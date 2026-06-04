@@ -10,11 +10,16 @@ import { fileURLToPath } from "url";
 // your existing imports...
 import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
-import stripeRouter from "./routes/stripe.js";
 import salesRouter from "./routes/sales.js";
 import feedbackRouter from "./routes/feedback.js";
 import ticketsRouter from "./routes/tickets.js";
+import locationsRouter from "./routes/locations.js";
+import featuredRouter from "./routes/featured.js";
+import restaurantsRouter from "./routes/restaurants.js";
+import reservationsRouter from "./routes/reservations.js";
+import searchRouter from "./routes/search.js";
 import { runDailyCreditRefillSweep } from "./lib/trial.js";
+import { runReservationReminderSweep } from "./lib/reservationReminders.js";
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -29,10 +34,8 @@ app.use(
   })
 );
 
-// 🔴 Mount Stripe BEFORE any body parsers
-app.use("/stripe", stripeRouter);
-
-// normal parsers after
+// Body parsers. (Billing is handled manually outside the app — no payment
+// webhook needs the raw request body, so parsers can be mounted first.)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -46,6 +49,11 @@ app.use("/auth", authRouter);
 app.use("/admin", adminRouter);
 app.use("/api/sales", salesRouter);
 app.use("/api/feedback", feedbackRouter);
+app.use("/api/locations", locationsRouter);
+app.use("/api/featured-restaurants", featuredRouter);
+app.use("/api/restaurants", restaurantsRouter);
+app.use("/api/reservations", reservationsRouter);
+app.use("/api/search", searchRouter);
 app.use("/tickets", ticketsRouter);
 
 // Serve static files from the React app in production
@@ -77,6 +85,19 @@ if (process.env.VERCEL !== '1') {
       console.error("[CREDIT-SWEEP] scheduled run failed:", err)
     );
   }, DAILY_MS);
+
+  // Reservation reminders — poll every 15 minutes for confirmed bookings that
+  // are ~2 hours out and send a one-time reminder. Dedup state is persisted on
+  // each reservation, so this is safe across restarts. Runs once at startup too.
+  const REMINDER_MS = 15 * 60 * 1000;
+  runReservationReminderSweep().catch((err) =>
+    console.error("[RESERVATION-REMINDER] initial run failed:", err)
+  );
+  setInterval(() => {
+    runReservationReminderSweep().catch((err) =>
+      console.error("[RESERVATION-REMINDER] scheduled run failed:", err)
+    );
+  }, REMINDER_MS);
 }
 
 export default app;

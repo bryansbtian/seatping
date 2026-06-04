@@ -20,7 +20,11 @@ export default defineConfig(({ mode }) => ({
         target: "http://localhost:4000",
         changeOrigin: true,
       },
-      "/stripe": {
+      "/admin/featured-restaurants": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
+      "/admin/businesses": {
         target: "http://localhost:4000",
         changeOrigin: true,
       },
@@ -29,6 +33,26 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
       },
       "/api/sales": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
+      "/api/locations": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
+      "/api/featured-restaurants": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
+      "/api/restaurants": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
+      "/api/reservations": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
+      "/api/search": {
         target: "http://localhost:4000",
         changeOrigin: true,
       },

@@ -1,29 +1,38 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { CountryCodeSelect } from "@/components/CountryCodeSelect";
+import { Users, CalendarDays, Bell } from "lucide-react";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-const MAX_MESSAGE = 1400;
+/** Small frosted "dashboard" card floated over the hospitality visual. */
+const FloatingStat = ({
+  icon,
+  title,
+  detail,
+  className = "",
+}: {
+  icon: React.ReactNode;
+  title: string;
+  detail: string;
+  className?: string;
+}) => (
+  <div
+    className={`flex max-w-[280px] items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-4 py-3 shadow-xl backdrop-blur-md ${className}`}
+  >
+    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-success/20 text-success">
+      {icon}
+    </span>
+    <div className="min-w-0">
+      <p className="text-sm font-semibold leading-tight text-white">{title}</p>
+      <p className="truncate text-xs text-white/70">{detail}</p>
+    </div>
+  </div>
+);
 
 const Sales = () => {
   const navigate = useNavigate();
@@ -31,70 +40,33 @@ const Sales = () => {
 
   const [formData, setFormData] = useState({
     businessName: "",
-    businessWebsite: "",
+    businessEmail: "",
     contactName: "",
-    workEmail: "",
     phone: "",
-    locations: "",
-    smsPerMonth: "",
-    customersPerDay: "",
-    useCase: "restaurant", // restaurant | clinic | retail | salon | other
-    budget: "mid", // low | mid | high | not_sure
-    subject: "Custom Plan Inquiry",
-    message: "",
-    allowContact: false,
+    countryCode: "+1",
   });
-
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value, type, checked } = e.target as HTMLInputElement;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const handleSelect = (field: keyof typeof formData) => (value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field as string])
-      setErrors((prev) => ({ ...prev, [field as string]: "" }));
-  };
-
-  const numericOk = useMemo(() => {
-    const mayNum = (v: string) => v === "" || /^\d+$/.test(v);
-    return (
-      mayNum(formData.locations) &&
-      mayNum(formData.smsPerMonth) &&
-      mayNum(formData.customersPerDay)
-    );
-  }, [formData.locations, formData.smsPerMonth, formData.customersPerDay]);
-
   const validate = () => {
     const next: Record<string, string> = {};
-
     if (!formData.businessName.trim())
       next.businessName = "Business name is required";
+    if (!formData.businessEmail.trim())
+      next.businessEmail = "Business email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.businessEmail.trim()))
+      next.businessEmail = "Enter a valid email";
     if (!formData.contactName.trim())
       next.contactName = "Contact name is required";
-    if (!formData.workEmail.trim()) next.workEmail = "Work email is required";
-    if (
-      formData.workEmail &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.workEmail.trim())
-    ) {
-      next.workEmail = "Enter a valid email";
-    }
-    if (!numericOk) next.numeric = "Locations/SMS/Customers must be numbers";
-    if (!formData.subject.trim()) next.subject = "Subject is required";
-    if (!formData.message.trim()) next.message = "Please describe your needs";
-    if (formData.message.length > MAX_MESSAGE)
-      next.message = `Message exceeds ${MAX_MESSAGE} characters`;
-    if (!formData.allowContact)
-      next.allowContact = "Please allow us to contact you about this request.";
-
+    if (!formData.phone.trim()) next.phone = "Phone number is required";
+    else if (formData.phone.replace(/\D/g, "").length < 6)
+      next.phone = "Phone must be at least 6 digits";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -103,25 +75,31 @@ const Sales = () => {
     e.preventDefault();
     if (!validate()) return;
 
+    setSubmitting(true);
     try {
       const response = await fetch("/api/sales/inquiry", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          businessName: formData.businessName.trim(),
+          businessEmail: formData.businessEmail.trim(),
+          contactName: formData.contactName.trim(),
+          phoneNumber: `${formData.countryCode}${formData.phone.replace(/\D/g, "")}`,
+        }),
       });
-
       const data = await response.json();
 
       if (response.ok) {
         toast({
           title: "Thanks! Our sales team will reach out.",
-          description: "We've received your custom plan request.",
+          description: "We've received your request and will be in touch soon.",
         });
         navigate("/");
       } else {
         toast({
           title: "Error",
-          description: data.error || "Failed to submit inquiry. Please try again.",
+          description:
+            data.error || "Failed to submit your request. Please try again.",
           variant: "destructive",
         });
       }
@@ -129,9 +107,11 @@ const Sales = () => {
       console.error("Error submitting sales inquiry:", error);
       toast({
         title: "Error",
-        description: "Failed to submit inquiry. Please try again.",
+        description: "Failed to submit your request. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -139,89 +119,113 @@ const Sales = () => {
     <>
       <Header />
 
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 py-8 pt-24">
-        <Card className="w-full max-w-2xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
-              Contact Sales — Custom Plan
-            </CardTitle>
-            <CardDescription>
-              Tell us what you need and we'll tailor SeatPing to your scale
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Company & Contact */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="businessName">Business Name</Label>
-                  <Input
-                    id="businessName"
-                    name="businessName"
-                    placeholder="SeatPing Café Group"
-                    value={formData.businessName}
-                    onChange={handleChange}
-                    className={errors.businessName ? "border-destructive" : ""}
-                    required
+      <main className="bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 pb-12 pt-24 sm:pb-16 sm:pt-28">
+        <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-2 lg:items-stretch lg:gap-14">
+          {/* Left — headline + form */}
+          <div className="mx-auto w-full max-w-xl lg:mx-0">
+            {/* aria-label gives the intended reading ("...In Seconds"); the
+                crossed-out word stays in the DOM and the scribble is decorative. */}
+            <h1
+              className="text-4xl sm:text-5xl font-semibold leading-tight text-slate-900"
+              aria-label="Manage Guest Flow In Seconds"
+            >
+              Manage Guest Flow In{" "}
+              <span className="relative inline-block whitespace-nowrap text-slate-400">
+                Minutes
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 120 16"
+                  preserveAspectRatio="none"
+                  className="pointer-events-none absolute inset-x-0 top-[62%] h-[0.55em] w-full -translate-y-1/2 text-success"
+                >
+                  <path
+                    d="M3 9 C 28 3, 46 14, 66 7 S 100 3, 117 9"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
                   />
-                  {errors.businessName && (
-                    <p className="text-sm text-destructive">
-                      {errors.businessName}
-                    </p>
-                  )}
-                </div>
+                </svg>
+              </span>{" "}
+              <span className="text-success">Seconds</span>
+            </h1>
+            <p className="mt-4 text-base sm:text-lg text-slate-600">
+              Tell us about your business and we'll get back to you with the
+              best SeatPing setup for your locations.
+            </p>
 
-                <div className="space-y-2">
-                  <Label htmlFor="businessWebsite">Website (optional)</Label>
-                  <Input
-                    id="businessWebsite"
-                    name="businessWebsite"
-                    placeholder="https://yourdomain.com"
-                    value={formData.businessWebsite}
-                    onChange={handleChange}
+            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="businessName">Business Name</Label>
+                <Input
+                  id="businessName"
+                  name="businessName"
+                  placeholder="SeatPing Café Group"
+                  value={formData.businessName}
+                  onChange={handleChange}
+                  className={`h-11 placeholder:text-sm sm:placeholder:text-base ${
+                    errors.businessName ? "border-destructive" : ""
+                  }`}
+                  required
+                />
+                {errors.businessName && (
+                  <p className="text-sm text-destructive">
+                    {errors.businessName}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="businessEmail">Business Email</Label>
+                <Input
+                  id="businessEmail"
+                  name="businessEmail"
+                  type="email"
+                  placeholder="you@company.com"
+                  value={formData.businessEmail}
+                  onChange={handleChange}
+                  className={`h-11 placeholder:text-sm sm:placeholder:text-base ${
+                    errors.businessEmail ? "border-destructive" : ""
+                  }`}
+                  required
+                />
+                {errors.businessEmail && (
+                  <p className="text-sm text-destructive">
+                    {errors.businessEmail}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="contactName">Contact Name</Label>
+                <Input
+                  id="contactName"
+                  name="contactName"
+                  placeholder="Jane Doe"
+                  value={formData.contactName}
+                  onChange={handleChange}
+                  className={`h-11 placeholder:text-sm sm:placeholder:text-base ${
+                    errors.contactName ? "border-destructive" : ""
+                  }`}
+                  required
+                />
+                {errors.contactName && (
+                  <p className="text-sm text-destructive">
+                    {errors.contactName}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <div className="flex gap-2">
+                  <CountryCodeSelect
+                    className="h-11"
+                    value={formData.countryCode}
+                    onChange={(dial) =>
+                      setFormData((p) => ({ ...p, countryCode: dial }))
+                    }
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="contactName">Contact Name</Label>
-                  <Input
-                    id="contactName"
-                    name="contactName"
-                    placeholder="Jane Doe"
-                    value={formData.contactName}
-                    onChange={handleChange}
-                    className={errors.contactName ? "border-destructive" : ""}
-                    required
-                  />
-                  {errors.contactName && (
-                    <p className="text-sm text-destructive">
-                      {errors.contactName}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="workEmail">Work Email</Label>
-                  <Input
-                    id="workEmail"
-                    name="workEmail"
-                    type="email"
-                    placeholder="you@company.com"
-                    value={formData.workEmail}
-                    onChange={handleChange}
-                    className={errors.workEmail ? "border-destructive" : ""}
-                    required
-                  />
-                  {errors.workEmail && (
-                    <p className="text-sm text-destructive">
-                      {errors.workEmail}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="phone">Phone (optional)</Label>
                   <Input
                     id="phone"
                     name="phone"
@@ -229,180 +233,82 @@ const Sales = () => {
                     placeholder="(555) 123-4567"
                     value={formData.phone}
                     onChange={handleChange}
-                  />
-                </div>
-              </div>
-
-              {/* Requirements */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="locations">Locations (approx.)</Label>
-                  <Input
-                    id="locations"
-                    name="locations"
-                    inputMode="numeric"
-                    placeholder="e.g., 10"
-                    value={formData.locations}
-                    onChange={handleChange}
-                    className={errors.numeric ? "border-destructive" : ""}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="smsPerMonth">SMS / Month (approx.)</Label>
-                  <Input
-                    id="smsPerMonth"
-                    name="smsPerMonth"
-                    inputMode="numeric"
-                    placeholder="e.g., 5000"
-                    value={formData.smsPerMonth}
-                    onChange={handleChange}
-                    className={errors.numeric ? "border-destructive" : ""}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="customersPerDay">
-                    Customers / Day (approx.)
-                  </Label>
-                  <Input
-                    id="customersPerDay"
-                    name="customersPerDay"
-                    inputMode="numeric"
-                    placeholder="e.g., 800"
-                    value={formData.customersPerDay}
-                    onChange={handleChange}
-                    className={errors.numeric ? "border-destructive" : ""}
-                  />
-                </div>
-              </div>
-
-              {/* Use case & budget */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="useCase">Primary Use Case</Label>
-                  <Select
-                    value={formData.useCase}
-                    onValueChange={handleSelect("useCase")}
-                  >
-                    <SelectTrigger id="useCase">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="restaurant">
-                        Restaurant / F&amp;B
-                      </SelectItem>
-                      <SelectItem value="clinic">
-                        Clinic / Healthcare
-                      </SelectItem>
-                      <SelectItem value="retail">Retail / Service</SelectItem>
-                      <SelectItem value="salon">Salon / Beauty</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="budget">Budget Range</Label>
-                  <Select
-                    value={formData.budget}
-                    onValueChange={handleSelect("budget")}
-                  >
-                    <SelectTrigger id="budget">
-                      <SelectValue placeholder="Select range" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Entry</SelectItem>
-                      <SelectItem value="mid">Mid</SelectItem>
-                      <SelectItem value="high">Enterprise</SelectItem>
-                      <SelectItem value="not_sure">Not Sure Yet</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Subject & Message */}
-              <div className="space-y-2">
-                <Label htmlFor="subject">Subject</Label>
-                <Input
-                  id="subject"
-                  name="subject"
-                  placeholder="Custom Plan for 10+ locations"
-                  value={formData.subject}
-                  onChange={handleChange}
-                  className={errors.subject ? "border-destructive" : ""}
-                  required
-                />
-                {errors.subject && (
-                  <p className="text-sm text-destructive">{errors.subject}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="message">Message</Label>
-                  <span
-                    className={`text-xs ${
-                      formData.message.length > MAX_MESSAGE
-                        ? "text-destructive"
-                        : "text-muted-foreground"
+                    className={`h-11 flex-1 placeholder:text-sm sm:placeholder:text-base ${
+                      errors.phone ? "border-destructive" : ""
                     }`}
-                  >
-                    {formData.message.length}/{MAX_MESSAGE}
-                  </span>
-                </div>
-                <Textarea
-                  id="message"
-                  name="message"
-                  placeholder="Describe your rollout plan, integrations, reporting needs, and any SLAs or security requirements."
-                  value={formData.message}
-                  onChange={handleChange}
-                  className={`min-h-[140px] ${
-                    errors.message ? "border-destructive" : ""
-                  }`}
-                  required
-                />
-                {errors.message && (
-                  <p className="text-sm text-destructive">{errors.message}</p>
-                )}
-              </div>
-
-              {/* Consent */}
-              <div className="space-y-2">
-                <label className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    name="allowContact"
-                    checked={formData.allowContact}
-                    onChange={handleChange}
                     required
-                    className="mt-1 h-4 w-4"
-                    aria-invalid={!!errors.allowContact}
-                    aria-describedby="allowContactHelp"
                   />
-                  <span className="text-sm text-muted-foreground">
-                    I'm okay with SeatPing contacting me about this custom plan
-                    request.
-                  </span>
-                </label>
-                {errors.allowContact && (
-                  <p id="allowContactHelp" className="text-sm text-destructive">
-                    {errors.allowContact}
-                  </p>
+                </div>
+                {errors.phone && (
+                  <p className="text-sm text-destructive">{errors.phone}</p>
                 )}
               </div>
 
               <Button
                 type="submit"
-                className="w-full"
-                disabled={!formData.allowContact}
+                className="h-11 w-full text-base"
+                disabled={submitting}
               >
-                Contact Sales
+                {submitting ? "Sending..." : "Request A Demo"}
               </Button>
             </form>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+
+          {/* Right — hospitality visual with floating dashboard cards
+              (desktop only). Communicates that SeatPing handles both waitlists
+              AND reservations, not just queues. */}
+          <div className="hidden lg:block">
+            <div className="relative flex h-full min-h-[480px] flex-col justify-between overflow-hidden rounded-3xl bg-slate-900 p-8 text-white shadow-2xl">
+              {/* Dining-room / host-stand backdrop. The slate-900 base shows
+                  through if the photo can't load, so the panel still looks
+                  polished. */}
+              <img
+                src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1100&q=80"
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+              />
+              {/* Dark navy overlay for contrast + brand tint. */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-950/90 via-slate-900/80 to-primary/60" />
+
+              {/* Floating dashboard-style cards — staggered for a layered,
+                  "live product" feel without clutter. */}
+              <div className="relative z-10 mb-8 space-y-3">
+                <FloatingStat
+                  icon={<Users className="h-5 w-5" />}
+                  title="Queue"
+                  detail="3 Guests Waiting"
+                  className="ml-0"
+                />
+                <FloatingStat
+                  icon={<CalendarDays className="h-5 w-5" />}
+                  title="Reservations"
+                  detail="12 Booked Today"
+                  className="ml-10"
+                />
+                <FloatingStat
+                  icon={<Bell className="h-5 w-5" />}
+                  title="Guest Notifications"
+                  detail="SMS · WhatsApp · Email"
+                  className="ml-4"
+                />
+              </div>
+
+              {/* Value statement */}
+              <div className="relative z-10">
+                <p className="text-xl font-medium leading-snug sm:text-2xl">
+                  SeatPing helps restaurants manage queues, reservations, and
+                  guest communication from one simple dashboard.
+                </p>
+                <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-white/60">
+                  Built for restaurants, cafes, and service businesses
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
 
       <Footer />
     </>

@@ -6,13 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
 import {
@@ -45,11 +38,11 @@ const Feedback = () => {
 
   const isIssue = useMemo(
     () => ["bug", "ux", "billing"].includes(formData.feedbackType),
-    [formData.feedbackType]
+    [formData.feedbackType],
   );
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value, type, checked } = e.target as HTMLInputElement;
     setFormData((prev) => ({
@@ -116,7 +109,8 @@ const Feedback = () => {
       } else {
         toast({
           title: "Error",
-          description: data.error || "Failed to submit feedback. Please try again.",
+          description:
+            data.error || "Failed to submit feedback. Please try again.",
           variant: "destructive",
         });
       }
@@ -134,20 +128,52 @@ const Feedback = () => {
     <>
       <Header />
 
-      {/* Page content */}
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 py-8 pt-24">
-        <Card className="w-full max-w-2xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
-              Share Your Feedback
-            </CardTitle>
-            <CardDescription>
-              Help us make SeatPing better for you and your guests
-            </CardDescription>
-          </CardHeader>
+      {/* Two-column layout matching /sales: form on the left, dark support card
+          on the right (stacks below the form on mobile). */}
+      <main className="bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 pb-12 pt-24 sm:pb-16 sm:pt-28">
+        <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-2 lg:items-stretch lg:gap-14">
+          {/* Left — visual support card (desktop only; hidden on mobile). */}
+          <div className="hidden lg:block">
+            <div className="relative flex h-full min-h-[480px] flex-col justify-end overflow-hidden rounded-3xl bg-slate-900 p-8 text-white shadow-2xl">
+              {/* Hospitality / staff-workflow backdrop. The slate-900 base shows
+                  through if the photo can't load, so the panel still looks
+                  polished. */}
+              <img
+                src="https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1100&q=80"
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+              />
+              {/* Dark navy overlay for contrast + brand tint. */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-950/90 via-slate-900/80 to-primary/60" />
 
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Heading + body + supporting label */}
+              <div className="relative z-10">
+                <h2 className="text-2xl font-semibold leading-snug sm:text-[1.65rem]">
+                  Help Us Improve SeatPing
+                </h2>
+                <p className="mt-4 text-base leading-relaxed text-white/80">
+                  Share bugs, feature ideas, or workflow issues so we can make
+                  queues, reservations, and guest communication smoother.
+                </p>
+                <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-white/60">
+                  Built with feedback from real service businesses
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Right — title + form */}
+          <div className="mx-auto w-full max-w-2xl lg:mx-0 lg:max-w-none">
+            <h1 className="text-3xl sm:text-4xl font-semibold leading-tight text-slate-900">
+              Tell Us What We Can Improve
+            </h1>
+            <p className="mt-4 text-base sm:text-lg text-slate-600">
+              Send feedback, report issues, or suggest features for SeatPing.
+            </p>
+
+            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
               {/* Row: Type & (optional) Severity for issues */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -156,7 +182,7 @@ const Feedback = () => {
                     value={formData.feedbackType}
                     onValueChange={handleTypeChange}
                   >
-                    <SelectTrigger id="feedbackType">
+                    <SelectTrigger id="feedbackType" className="h-11">
                       <SelectValue placeholder="Choose a type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -183,7 +209,7 @@ const Feedback = () => {
                       value={formData.severity}
                       onValueChange={handleSeverityChange}
                     >
-                      <SelectTrigger id="severity">
+                      <SelectTrigger id="severity" className="h-11">
                         <SelectValue placeholder="Select severity" />
                       </SelectTrigger>
                       <SelectContent>
@@ -210,7 +236,9 @@ const Feedback = () => {
                   placeholder="Short summary of your feedback"
                   value={formData.subject}
                   onChange={handleChange}
-                  className={errors.subject ? "border-destructive" : ""}
+                  className={`h-11 placeholder:text-sm sm:placeholder:text-base ${
+                    errors.subject ? "border-destructive" : ""
+                  }`}
                   required
                 />
                 {errors.subject && (
@@ -238,7 +266,7 @@ const Feedback = () => {
                   placeholder="Describe the issue, idea, or request. Include steps to reproduce if it's a bug."
                   value={formData.message}
                   onChange={handleChange}
-                  className={`min-h-[140px] ${
+                  className={`min-h-[140px] placeholder:text-sm sm:placeholder:text-base ${
                     errors.message ? "border-destructive" : ""
                   }`}
                   required
@@ -258,7 +286,9 @@ const Feedback = () => {
                     placeholder="Jane Doe"
                     value={formData.name}
                     onChange={handleChange}
-                    className={errors.name ? "border-destructive" : ""}
+                    className={`h-11 placeholder:text-sm sm:placeholder:text-base ${
+                      errors.name ? "border-destructive" : ""
+                    }`}
                     required
                   />
                   {errors.name && (
@@ -274,7 +304,9 @@ const Feedback = () => {
                     placeholder="you@company.com"
                     value={formData.email}
                     onChange={handleChange}
-                    className={errors.email ? "border-destructive" : ""}
+                    className={`h-11 placeholder:text-sm sm:placeholder:text-base ${
+                      errors.email ? "border-destructive" : ""
+                    }`}
                     required
                   />
                   {errors.email && (
@@ -286,17 +318,18 @@ const Feedback = () => {
               {/* Optional business + phone */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="businessName">Business (optional)</Label>
+                  <Label htmlFor="businessName">Business (Optional)</Label>
                   <Input
                     id="businessName"
                     name="businessName"
                     placeholder="SeatPing Café"
                     value={formData.businessName}
                     onChange={handleChange}
+                    className="h-11 placeholder:text-sm sm:placeholder:text-base"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone (optional)</Label>
+                  <Label htmlFor="phone">Phone (Optional)</Label>
                   <Input
                     id="phone"
                     name="phone"
@@ -304,6 +337,7 @@ const Feedback = () => {
                     placeholder="(555) 123-4567"
                     value={formData.phone}
                     onChange={handleChange}
+                    className="h-11 placeholder:text-sm sm:placeholder:text-base"
                   />
                 </div>
               </div>
@@ -334,15 +368,15 @@ const Feedback = () => {
 
               <Button
                 type="submit"
-                className="w-full"
+                className="h-11 w-full text-base"
                 disabled={!formData.allowContact}
               >
                 Submit Feedback
               </Button>
             </form>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
+      </main>
 
       <Footer />
     </>

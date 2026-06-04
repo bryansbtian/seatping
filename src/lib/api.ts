@@ -1,3 +1,15 @@
+function extractError(data: any, status: number): string {
+  // Prefer server-provided error message; fall back to first validation issue if available
+  let message = data?.error || `Request Failed: ${status}`;
+  if (data?.issues?.fieldErrors) {
+    const fieldErrors = data.issues.fieldErrors as Record<string, string[]>;
+    const firstField = Object.keys(fieldErrors)[0];
+    const firstMsg = firstField ? fieldErrors[firstField]?.[0] : undefined;
+    if (firstMsg) message = firstMsg;
+  }
+  return message;
+}
+
 export async function api(path: string, init: RequestInit = {}) {
   const res = await fetch(path, {
     ...init,
@@ -8,16 +20,29 @@ export async function api(path: string, init: RequestInit = {}) {
   try {
     data = await res.json();
   } catch {}
-  if (!res.ok) {
-    // Prefer server-provided error message; fall back to first validation issue if available
-    let message = data?.error || `Request Failed: ${res.status}`;
-    if (data?.issues?.fieldErrors) {
-      const fieldErrors = data.issues.fieldErrors as Record<string, string[]>;
-      const firstField = Object.keys(fieldErrors)[0];
-      const firstMsg = firstField ? fieldErrors[firstField]?.[0] : undefined;
-      if (firstMsg) message = firstMsg;
-    }
-    throw new Error(message);
-  }
+  if (!res.ok) throw new Error(extractError(data, res.status));
+  return data;
+}
+
+/**
+ * Upload helper for multipart/form-data (file uploads). Unlike `api()` it does
+ * NOT set a Content-Type header — the browser sets the multipart boundary
+ * automatically. Same credential + error-handling behavior as `api()`.
+ */
+export async function apiUpload(
+  path: string,
+  formData: FormData,
+  method: string = "POST",
+) {
+  const res = await fetch(path, {
+    method,
+    body: formData,
+    credentials: "include",
+  });
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {}
+  if (!res.ok) throw new Error(extractError(data, res.status));
   return data;
 }

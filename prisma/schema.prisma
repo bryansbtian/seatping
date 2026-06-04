@@ -14,39 +14,216 @@ model User {
   email     String   @unique
   phone     String
   password  String
-  customerId        String?
-  plan              String?
-  locations         Json     @default("[]")
-  trial             Boolean  @default(true)
-  trialDurationDays Int      @default(7)
-  maxLocations      Int      @default(1)
-  baseCustomerCredits Int    @default(50)
-  baseSMSCredits    Int      @default(200)
-  planStartedAt     DateTime?
-  lastCreditRefillAt DateTime?
-  nextCreditRefillAt DateTime?
-  resetToken        String?
-  resetTokenExpiry  DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+
+  // Customer activity stored inline as JSON for now (reservations + queueing are
+  // still early). Each item also carries denormalized business details so cards
+  // render without a join; `businessUsername` lets us fetch the business/location
+  // profile image later. See src/pages/Profile.tsx for item shapes.
+  upcomingReservations Json @default("[]")
+  pastReservations     Json @default("[]")
+  queueingActivity     Json @default("[]")
+
+  // Restaurants the customer bookmarked, newest first. Each item is
+  // denormalized so a card renders without a join:
+  // { id, businessUsername, businessName?, locationName?, area?, city?, savedAt }.
+  // `id`/dedup key is `businessUsername` (one save per business).
+  savedRestaurants     Json @default("[]")
+
+  resetToken       String?
+  resetTokenExpiry DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+model Business {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  name     String
+  username String @unique
+  email    String @unique
+  phone    String
+  password String
+
+  // No plans — billing is manual. Every business starts on a 7-day trial with
+  // 300 base credits and 1 location, and is activated by an admin turning
+  // `trial` off (which anchors the monthly refill via `creditsStartedAt`).
+  trial             Boolean @default(true)
+  trialDurationDays Int     @default(7)
+  maxLocations      Int     @default(1)
+
+  baseCredits Int @default(300)
+
+  // Anchor for the monthly credit-refill cycle. Set to the activation moment
+  // when an admin turns `trial` off; null while on trial. (Formerly planStartedAt.)
+  creditsStartedAt    DateTime?
+  lastCreditRefillAt  DateTime?
+  nextCreditRefillAt  DateTime?
+
+  resetToken       String?
+  resetTokenExpiry DateTime?
+
+  // Homepage "Featured Restaurants" entries owned by this business (admin-curated).
+  featured FeaturedRestaurant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("businesses")
+}
+
+model Location {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  businessId       String  @db.ObjectId
+  businessUsername String?
+
+  name    String?
+  // Customer-facing short label shown when joining a queue / booking (e.g.
+  // "Senopati", "PIK", "Main Branch"). Labeled "Location Display Name" in the UI.
+  displayName String?
+  address String
+
+  // Google Places address details (captured from autocomplete; all optional so
+  // manually-typed addresses still work).
+  area          String?
+  city          String?
+  country       String?
+  latitude      Float?
+  longitude     Float?
+  googlePlaceId String?
+  googleMapsUrl String?
+
+  queue             Json @default("[]")
+  admittedCustomers Json @default("[]")
+  removedCustomers  Json @default("[]")
+
+  // Unified credits. Consumed only when a customer chooses "Wait Anywhere"
+  // (1 credit, any channel). `baseCredits` is the monthly refill target.
+  credits     Int @default(0)
+  baseCredits Int @default(0)
+
+  queueEnabled        Boolean @default(true)
+  reservationsEnabled Boolean @default(true)
+
+  reservationSettings Json @default("{}")
+  reservations        Json @default("[]")
+  restaurantProfile   Json @default("{}")
+
+  // Hero/banner image for the public location page (one per location). Uploaded
+  // to Cloudinary from the backend; `publicId` lets us delete the old asset when
+  // the banner is replaced or removed. Gallery photos live in the Photo model.
+  bannerImageUrl      String?
+  bannerImagePublicId String?
+
+  // Gallery photos (max 10 per location, enforced in the upload route).
+  photos Photo[]
+
+  // Customer reviews for this location (viewed by the owner in the dashboard).
+  reviews Review[]
+
+  // Homepage "Featured Restaurants" entry for this location, if any (admin-curated).
+  featured FeaturedRestaurant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("locations")
+  @@index([businessId])
+  @@index([businessUsername])
+}
+
+/// Gallery image for a location's public page. Files live in Cloudinary; only
+/// the URL + Cloudinary `publicId` (for deletion) are stored here.
+model Photo {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  locationId String   @db.ObjectId
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  url      String
+  publicId String
+  altText  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("photos")
+  @@index([locationId])
+}
+
+/// Customer review for a location. Created by the customer feedback flow (once
+/// built) and viewed by the business owner in the dashboard. Customer display
+/// fields are denormalized so a review renders without a join to `users`.
+model Review {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  locationId String  @db.ObjectId
+  customerId String? @db.ObjectId
+
+  customerName     String?
+  customerUsername String?
+  rating           Int
+  description      String?
+
+  // Optional visit context, populated when a review comes from a queue/booking
+  // completion flow. Rendered only when present.
+  partySize    Int?
+  serviceType  String?
+
+  // Single business-owner reply per review. Customers cannot see edit/delete
+  // controls — those are owner-only via PATCH/DELETE on the reply route.
+  businessReply          String?
+  businessReplyCreatedAt DateTime?
+  businessReplyUpdatedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
+  @@index([locationId])
+  @@index([customerId])
+}
+
+/// Admin-curated homepage feature. `businessId` is the owning business (this
+/// app's "user" for business accounts); one feature per location (@@unique).
+model FeaturedRestaurant {
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
+  businessId String @db.ObjectId
+  locationId String @db.ObjectId
+
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId])
+  @@index([businessId])
+  @@index([isActive])
+  @@index([sortOrder])
+  @@map("featured_restaurants")
 }
 
 model Ticket {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   ticketNumber  String   @unique
-  type          String   // "sales" or "feedback"
-  status        String   @default("open") // "open", "in_progress", "closed"
-  priority      String?  // "low", "medium", "high"
+  type          String
+  status        String   @default("open")
+  priority      String?
   subject       String
   senderName    String
   senderEmail   String
   senderPhone   String?
   businessName  String?
-  data          Json     // Store full request data (SalesInquiryData or FeedbackData)
-  messages      Json     @default("[]") // Array of {sender, message, timestamp, isTeamResponse}
-  assignedTo    String?  // Name of team member handling ticket
+  data          Json
+  messages      Json     @default("[]")
+  assignedTo    String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

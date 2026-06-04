@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import NotFound from "@/pages/NotFound";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,10 +51,23 @@ const WHATSAPP_COUNTRIES: CountryOption[] = [
   { name: "United States", dial: "+1", flag: "🇺🇸" },
 ];
 
-/** API call to get addresses for this business */
+type AddressOption = {
+  id?: string;
+  address: string;
+  businessName: string;
+  restaurantName?: string | null;
+  displayName?: string | null;
+  name?: string | null;
+  area?: string | null;
+  city?: string | null;
+  country?: string | null;
+  googleMapsUrl?: string | null;
+};
+
+/** API call to get addresses (locations) for this business. */
 async function fetchAddressesForBusiness(
-  username: string
-): Promise<Array<{ address: string; businessName: string }>> {
+  username: string,
+): Promise<AddressOption[]> {
   if (!username) return [];
   try {
     const response = await api(`/auth/business/${username}/addresses`);
@@ -64,36 +78,59 @@ async function fetchAddressesForBusiness(
   }
 }
 
-type Step = 2 | 3 | 4 | 5;
+/** Friendly label for a location, with safe fallbacks for legacy data. */
+function locationLabel(loc: AddressOption | null): string {
+  if (!loc) return "";
+  return loc.displayName || loc.name || loc.address || "Location";
+}
+
+// Display label for a notification channel (SMS / WhatsApp / Email).
+function notificationLabel(method?: string): string {
+  switch (method) {
+    case "sms":
+      return "SMS";
+    case "whatsapp":
+      return "WhatsApp";
+    case "email":
+      return "Email";
+    default:
+      return "—";
+  }
+}
+
+// Step 2 = join form, Step 4 = queue status, Step 5 = admitted (countdown),
+// Step 6 = checked in (business confirmed arrival — terminal).
+type Step = 2 | 4 | 5 | 6;
 
 export default function QueueBusiness() {
-  const { businessUsername = "" } = useParams();
+  const { businessUsername = "", locationId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
 
   const [step, setStep] = useState<Step>(2);
 
-  const [addresses, setAddresses] = useState<
-    Array<{ address: string; businessName: string }>
-  >([]);
   const [loadingAddresses, setLoadingAddresses] = useState(false);
+  // The location the customer is joining. Comes from the QR code URL
+  // (locationId) when present; otherwise from the legacy selector.
+  const [selectedLocation, setSelectedLocation] =
+    useState<AddressOption | null>(null);
+  const [invalidLink, setInvalidLink] = useState(false);
   const [businessName, setBusinessName] = useState("");
   const [joiningQueue, setJoiningQueue] = useState(false);
   const [hasLeftQueue, setHasLeftQueue] = useState(false);
 
   const [form, setForm] = useState({
-    address: "",
     firstName: "",
     lastName: "",
     numGuests: "1",
-    phoneNumber: "", // required only when wait_anywhere with SMS/WhatsApp
+    notificationMethod: "" as "" | "sms" | "whatsapp" | "email",
+    phoneNumber: "",
     countryCode: "+1", // default to US
-    email: "", // required when wait_anywhere with Email
-    waitingPreference: "on_premises" as "on_premises" | "wait_anywhere",
-    notificationMethod: "" as "" | "sms" | "email" | "whatsapp", // selected when wait_anywhere
-    joinedAt: "", // Will be set when customer joins queue
-    smsConsent: false, // required when wait_anywhere - transactional messages
-    smsMarketingConsent: false, // optional - marketing messages
+    email: "",
+    joinedAt: "", // set when the customer joins the queue
+    smsConsent: false, // required when SMS — transactional messages
+    smsMarketingConsent: false, // optional — marketing messages
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -101,36 +138,56 @@ export default function QueueBusiness() {
   const [whatsappCountryOpen, setWhatsappCountryOpen] = useState(false);
   const [smsCountryOpen, setSmsCountryOpen] = useState(false);
 
+  // localStorage key for queue persistence — scoped to the location when known
+  // so different locations of the same business don't collide.
+  const storageKey = useMemo(
+    () => `queue_${businessUsername}${locationId ? `_${locationId}` : ""}`,
+    [businessUsername, locationId],
+  );
+
   const selectedWhatsappCountry = useMemo(
     () =>
       WHATSAPP_COUNTRIES.find((c) => c.dial === form.countryCode) ||
       WHATSAPP_COUNTRIES.find((c) => c.dial === "+1")!,
-    [form.countryCode]
+    [form.countryCode],
   );
 
   const selectedSmsCountry = useMemo(
     () =>
-      SMS_COUNTRIES.find((c) => c.dial === form.countryCode) || SMS_COUNTRIES[0],
-    [form.countryCode]
+      SMS_COUNTRIES.find((c) => c.dial === form.countryCode) ||
+      SMS_COUNTRIES[0],
+    [form.countryCode],
   );
 
   // Status placeholders
-  const [peopleAhead, setPeopleAhead] = useState(3); // example: user is #4 initially
-  const avgPerPersonMin = 5;
-  const etaMinutes = useMemo(
-    () => Math.max(peopleAhead, 0) * avgPerPersonMin,
-    [peopleAhead]
-  );
+  const [peopleAhead, setPeopleAhead] = useState(3);
   const positionInLine = useMemo(() => peopleAhead + 1, [peopleAhead]);
 
-  // Step 5 countdown (5 minutes)
-  const [secondsLeft, setSecondsLeft] = useState(5 * 60);
+  // Smart estimated wait — computed on the backend (see server/lib/queueEta.ts).
+  const [eta, setEta] = useState<{
+    displayText: string;
+    estimatedWaitMin: number;
+    estimatedWaitMax: number;
+  } | null>(null);
+  const [etaLoading, setEtaLoading] = useState(false);
+  const [etaError, setEtaError] = useState(false);
+
+  // Step 5 countdown (5 minutes). The hold window is anchored to the server's
+  // `admittedAt` timestamp so it survives refreshes/reopens — once it elapses we
+  // show an expired state instead of restarting the timer.
+  const HOLD_SECONDS = 5 * 60;
+  const [secondsLeft, setSecondsLeft] = useState(HOLD_SECONDS);
+  const [admittedAt, setAdmittedAt] = useState<string | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Restore queue state from localStorage on mount
+  // The admitted hold has expired once the countdown anchored to admittedAt
+  // reaches zero. On step 5 this drives the expired vs. active screen.
+  const turnExpired = step === 5 && secondsLeft <= 0;
+
+  // Load the business + location and restore any saved queue session on mount.
   useEffect(() => {
     if (!businessUsername) {
-      navigate("/queue");
+      navigate("/");
       return;
     }
 
@@ -138,166 +195,246 @@ export default function QueueBusiness() {
       setLoadingAddresses(true);
       try {
         const list = await fetchAddressesForBusiness(businessUsername);
-        setAddresses(list);
-        if (list.length > 0) {
-          setBusinessName(list[0].businessName);
-        } else {
-          // No locations found for this business
+
+        if (list.length === 0) {
           toast({
-            title: "No locations found",
+            title: "No Locations Found",
             description: "This business doesn't have any locations set up yet.",
             variant: "destructive",
           });
-          navigate("/queue");
+          navigate("/");
           return;
         }
 
-        // Check for existing queue session in localStorage
-        const storageKey = `queue_${businessUsername}`;
-        const savedToken = localStorage.getItem(storageKey);
+        setBusinessName(list[0].businessName);
 
+        // Resolve the target location from the QR/URL locationId. The location
+        // must exist and belong to this business, or the link is invalid.
+        const match = list.find((l) => l.id === locationId);
+        if (!match) {
+          setInvalidLink(true);
+          return;
+        }
+        setSelectedLocation(match);
+
+        // Restore a saved queue session. Prefer the device's localStorage token;
+        // fall back to a `?token=` URL param (used by the profile's "View live
+        // queue" link so the session restores on any device). Persist it so
+        // subsequent polls/refreshes work without the query string.
+        const urlToken = searchParams.get("token");
+        const lsToken = localStorage.getItem(storageKey);
+        // Prefer the device's stored token; fall back to an explicit ?token=
+        // link (used by the profile's "View live queue" link so the session can
+        // be restored on any device).
+        const savedToken = lsToken || urlToken;
+        // True when the customer arrived via an explicit token link rather than
+        // a token already persisted on this device.
+        const fromUrl = !!urlToken && savedToken === urlToken;
         if (savedToken) {
-          // Restore queue state from backend using token
           try {
             const response = await api(
-              `/auth/business/${businessUsername}/queue/token/${savedToken}/status`
+              `/auth/business/${businessUsername}/queue/token/${savedToken}/status`,
             );
 
-            if (response.customer && !response.removed) {
-              // Restore customer data and show appropriate step
+            if (response.checkedIn) {
+              // Arrival confirmed → this queue session is COMPLETE. A completed
+              // ticket must never block rejoining, so always drop the
+              // device-stored token. Only when the customer explicitly opened
+              // the old token link do we still show the checked-in confirmation
+              // for that past ticket; from the normal join page they simply see
+              // the form and can queue again.
+              localStorage.removeItem(storageKey);
+              if (fromUrl) {
+                setQueueToken(savedToken);
+                setForm((prev) => ({
+                  ...prev,
+                  firstName: response.customer?.firstName || prev.firstName,
+                  lastName: response.customer?.lastName || prev.lastName,
+                  numGuests: String(
+                    response.customer?.numGuests || prev.numGuests,
+                  ),
+                }));
+                setBusinessName(response.businessName || list[0].businessName);
+                setStep(6);
+              }
+            } else if (response.admitted && response.expired) {
+              // The previous hold window has already passed. Drop the stale
+              // session so this page just shows the join form and the customer
+              // can queue again (e.g. the next day) at the same restaurant.
+              localStorage.removeItem(storageKey);
+            } else if (response.customer && !response.removed) {
+              // Active session (waiting or admitted) — persist the token so a
+              // refresh/reopen on this device restores the live state.
+              localStorage.setItem(storageKey, savedToken);
               setQueueToken(savedToken);
-              setForm({
-                address: response.address || response.customer.address || "",
+              setForm((prev) => ({
+                ...prev,
                 firstName: response.customer.firstName || "",
                 lastName: response.customer.lastName || "",
                 numGuests: String(response.customer.numGuests || 1),
                 phoneNumber: response.customer.phoneNumber || "",
                 countryCode: response.customer.countryCode || "+1",
                 email: response.customer.email || "",
-                waitingPreference:
-                  response.customer.waitingPreference || "on_premises",
                 notificationMethod: response.customer.notificationMethod || "",
                 joinedAt: response.customer.joinedAt || "",
                 smsConsent: response.customer.smsConsent || false,
                 smsMarketingConsent:
                   response.customer.smsMarketingConsent || false,
-              });
+              }));
               setBusinessName(response.businessName || list[0].businessName);
 
               if (response.admitted) {
-                setStep(5); // Customer admitted
+                setAdmittedAt(
+                  response.admittedAt || response.customer?.admittedAt || null,
+                );
+                setStep(5);
                 toast({
-                  title: "Welcome back!",
+                  title: "Welcome Back!",
                   description:
                     "You've been admitted. Please proceed to your turn.",
                 });
               } else {
-                setStep(4); // Still in queue
+                setStep(4);
                 setPeopleAhead(Math.max(0, (response.position || 1) - 1));
                 toast({
-                  title: "Queue restored",
+                  title: "Queue Restored",
                   description: "Your queue position has been restored.",
                 });
               }
             } else if (response.removed) {
-              // Queue session ended
               localStorage.removeItem(storageKey);
               toast({
-                title: "Queue session ended",
+                title: "Queue Session Ended",
                 description:
                   response.message || "Your queue session has ended.",
                 variant: "destructive",
               });
             }
           } catch (error) {
-            // Token expired or invalid - clear it
             localStorage.removeItem(storageKey);
             console.log("Failed to restore queue state:", error);
           }
         }
       } catch (error) {
         toast({
-          title: "Error loading business",
+          title: "Error Loading Business",
           description: "Failed to load business information. Please try again.",
           variant: "destructive",
         });
-        navigate("/queue");
+        navigate("/");
       } finally {
         setLoadingAddresses(false);
       }
     })();
-  }, [businessUsername, navigate, toast]);
+  }, [businessUsername, locationId, storageKey, navigate, toast, searchParams]);
 
-  // Check if customer has been admitted by the business - more frequent checking for real-time updates
+  // Prefill the join form from the logged-in customer's account (if any).
+  // Guest / business sessions return 401 and are ignored. Only empty fields are
+  // filled, so a restored queue session (above) is never overwritten.
   useEffect(() => {
-    if (step !== 4 || hasLeftQueue) return; // Only check when on step 4 (Queue status) and haven't left
+    let cancelled = false;
+    api("/auth/me")
+      .then((d) => {
+        if (cancelled || !d?.user) return;
+        const full = String(d.user.name || "").trim();
+        const sp = full.indexOf(" ");
+        const first = sp === -1 ? full : full.slice(0, sp);
+        const last = sp === -1 ? "" : full.slice(sp + 1);
+        setForm((prev) => ({
+          ...prev,
+          firstName: prev.firstName || first,
+          lastName: prev.lastName || last,
+          email: prev.email || d.user.email || "",
+        }));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-    // Use token-based status check if token exists, otherwise fall back to customerId
+  // Poll for admission/removal while the customer is waiting (step 4) AND after
+  // admission (step 5), so the page picks up the business confirming arrival
+  // (-> checked-in) or marking a no-show without a manual refresh.
+  useEffect(() => {
+    if ((step !== 4 && step !== 5) || hasLeftQueue) return;
+
     const checkAdmissionStatus = async () => {
       try {
-        let response;
+        let response: any;
         if (queueToken) {
-          // Use token-based endpoint for better reliability
           response = await api(
-            `/auth/business/${businessUsername}/queue/token/${queueToken}/status`
+            `/auth/business/${businessUsername}/queue/token/${queueToken}/status`,
           );
         } else {
-          // Fallback to customerId-based endpoint
           const customerId = `${form.firstName}${form.lastName}${form.joinedAt}`;
           if (!customerId || !form.joinedAt) return;
           response = await api(
-            `/auth/business/${businessUsername}/queue/${customerId}/status`
+            `/auth/business/${businessUsername}/queue/${customerId}/status`,
           );
         }
 
-        if (response.removed) {
-          // Clear localStorage token
-          const storageKey = `queue_${businessUsername}`;
+        if (response.checkedIn) {
+          // Business confirmed arrival → terminal checked-in screen. This
+          // session is now complete, so clear the device-stored token: the
+          // current screen stays (state is in memory) but a later reopen of the
+          // join page won't restore this completed ticket and can queue again.
           localStorage.removeItem(storageKey);
-
-          // Check if customer left themselves or was removed by business
-          if (response.status === "left") {
-            // Customer left the queue themselves - this shouldn't happen here
-            // since they should have already navigated away after clicking "Leave Queue"
+          setStep(6);
+          toast({
+            title: "Arrival Confirmed",
+            description:
+              "You're all set. Please follow the host's instructions.",
+          });
+        } else if (response.removed) {
+          localStorage.removeItem(storageKey);
+          if (response.status === "no_show") {
             toast({
-              title: "You left the queue",
+              title: "Marked as No-Show",
+              description: "The restaurant marked this spot as a no-show.",
+              variant: "destructive",
+            });
+          } else if (response.status === "left") {
+            toast({
+              title: "You Left the Queue",
               description: "You have left the queue.",
             });
           } else {
-            // Customer has been removed from the queue by the business
             toast({
-              title: "Removed from queue",
+              title: "Removed from Queue",
               description:
                 "You have been removed from the queue by the business.",
               variant: "destructive",
             });
           }
-          // Redirect back to queue selection after a short delay
           setTimeout(() => {
-            navigate("/queue");
+            navigate("/");
           }, 2000);
         } else if (response.admitted) {
-          // Customer has been admitted by the business
-          setStep(5);
-          toast({
-            title: "You've been admitted!",
-            description:
-              "The business has called you. Please proceed to your turn.",
-          });
+          setAdmittedAt(
+            response.admittedAt || response.customer?.admittedAt || null,
+          );
+          // Only announce the transition once (when coming from the waiting
+          // screen); step 5 keeps polling, so guard against repeat toasts.
+          if (step !== 5) {
+            setStep(5);
+            if (!response.expired) {
+              toast({
+                title: "You've Been Admitted!",
+                description:
+                  "The business has called you. Please proceed to your turn.",
+              });
+            }
+          }
         } else if (response.position) {
-          // Update position if it changed
           setPeopleAhead(Math.max(0, response.position - 1));
         }
       } catch (error) {
-        // Silently handle errors - customer might not be found if they just joined
         console.log("Checking admission status...");
       }
     };
 
-    // Check admission status every 2 seconds when on step 4 for real-time updates
     const interval = setInterval(checkAdmissionStatus, 2000);
-
-    // Also check immediately
     checkAdmissionStatus();
 
     return () => clearInterval(interval);
@@ -308,86 +445,110 @@ export default function QueueBusiness() {
     form.lastName,
     form.joinedAt,
     queueToken,
+    storageKey,
     toast,
     hasLeftQueue,
     navigate,
   ]);
 
-  // Start countdown for Step 5
+  // Fetch the backend-computed ETA while waiting. Refreshes every 30s and
+  // whenever the queue position changes (admit/remove/leave shifts the line).
+  useEffect(() => {
+    if (step !== 4 || !queueToken || !businessUsername) {
+      setEta(null);
+      setEtaError(false);
+      return;
+    }
+    let cancelled = false;
+    const fetchEta = async () => {
+      setEtaLoading(true);
+      try {
+        const res = await api(
+          `/auth/business/${businessUsername}/queue/token/${queueToken}/eta`,
+        );
+        if (!cancelled) {
+          setEta(res.eta ?? null);
+          setEtaError(false);
+        }
+      } catch {
+        if (!cancelled) setEtaError(true);
+      } finally {
+        if (!cancelled) setEtaLoading(false);
+      }
+    };
+    fetchEta();
+    const id = setInterval(fetchEta, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [step, queueToken, businessUsername, peopleAhead]);
+
+  // Start countdown for Step 5. Remaining time is derived from the absolute
+  // expiry (admittedAt + 5 min) on every tick, so a refresh or reopen continues
+  // from the real remaining time and reads 0 once the window has already passed.
   useEffect(() => {
     if (step !== 5) return;
     if (countdownRef.current) clearInterval(countdownRef.current);
-    setSecondsLeft(5 * 60);
+
+    const startMs = admittedAt ? new Date(admittedAt).getTime() : Date.now();
+    const expiresMs = startMs + HOLD_SECONDS * 1000;
+    const remaining = () =>
+      Math.max(0, Math.ceil((expiresMs - Date.now()) / 1000));
+
+    setSecondsLeft(remaining());
+    if (remaining() <= 0) return; // Already expired — no ticking needed.
+
     countdownRef.current = setInterval(() => {
-      setSecondsLeft((s) => {
-        if (s <= 1) {
-          if (countdownRef.current) clearInterval(countdownRef.current);
-          return 0;
-        }
-        return s - 1;
-      });
+      const left = remaining();
+      setSecondsLeft(left);
+      if (left <= 0 && countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
     }, 1000);
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [step]);
+  }, [step, admittedAt]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
     if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
   };
 
-  // Step 2 → Step 3
-  const nextFromStep2 = (e: React.FormEvent) => {
+  // Submit the join form → Step 4.
+  const joinQueue = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
-    if (!form.address) newErrors.address = "Location is required";
-    if (!form.firstName) newErrors.firstName = "First name is required";
-    if (!form.lastName) newErrors.lastName = "Last name is required";
+
+    if (!selectedLocation) newErrors.location = "Please select a location";
+    if (!form.firstName.trim()) newErrors.firstName = "First name is required";
+    if (!form.lastName.trim()) newErrors.lastName = "Last name is required";
     const numGuests = parseInt(form.numGuests);
     if (isNaN(numGuests) || numGuests < 1)
       newErrors.numGuests = "Number of guests must be at least 1";
-    setErrors(newErrors);
-    if (Object.keys(newErrors).length) return;
-    setStep(3);
-  };
 
-  // Step 3 → Step 4
-  const nextFromStep3 = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const newErrors: Record<string, string> = {};
-
-    // Validate notification method selection if wait_anywhere
-    if (form.waitingPreference === "wait_anywhere" && !form.notificationMethod) {
-      newErrors.notificationMethod = "Please select a notification method";
-    }
-
-    // Validate based on notification method
-    if (form.waitingPreference === "wait_anywhere" && form.notificationMethod === "sms") {
-      if (!form.phoneNumber) {
-        newErrors.phoneNumber = "Phone number is required for SMS notifications";
+    if (!form.notificationMethod) {
+      newErrors.notificationMethod = "Please choose how we should notify you";
+    } else if (form.notificationMethod === "sms") {
+      if (!form.phoneNumber.trim()) {
+        newErrors.phoneNumber =
+          "Phone number is required for SMS notifications";
       }
       if (!form.smsConsent) {
         newErrors.smsConsent =
           "You must agree to receive transactional text messages";
       }
-      if (!form.smsMarketingConsent) {
-        newErrors.smsMarketingConsent =
-          "You must agree to receive marketing text messages";
+    } else if (form.notificationMethod === "whatsapp") {
+      if (!form.phoneNumber.trim()) {
+        newErrors.phoneNumber =
+          "Phone number is required for WhatsApp notifications";
       }
-    }
-
-    if (form.waitingPreference === "wait_anywhere" && form.notificationMethod === "whatsapp") {
-      if (!form.phoneNumber) {
-        newErrors.phoneNumber = "Phone number is required for WhatsApp notifications";
-      }
-    }
-
-    if (form.waitingPreference === "wait_anywhere" && form.notificationMethod === "email") {
-      if (!form.email) {
+    } else if (form.notificationMethod === "email") {
+      if (!form.email.trim()) {
         newErrors.email = "Email address is required for email notifications";
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
         newErrors.email = "Please enter a valid email address";
@@ -399,18 +560,17 @@ export default function QueueBusiness() {
 
     setJoiningQueue(true);
     try {
-      // Add customer to the queue in the database
       const response = await api(`/auth/business/${businessUsername}/queue`, {
         method: "POST",
         body: JSON.stringify({
-          address: form.address,
-          firstName: form.firstName,
-          lastName: form.lastName,
-          numGuests: parseInt(form.numGuests),
+          locationId: selectedLocation?.id,
+          address: selectedLocation?.address,
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          numGuests,
           phoneNumber: form.phoneNumber,
           countryCode: form.countryCode,
           email: form.email,
-          waitingPreference: form.waitingPreference,
           notificationMethod: form.notificationMethod,
           smsConsent: form.smsConsent,
           smsMarketingConsent: form.smsMarketingConsent,
@@ -418,40 +578,44 @@ export default function QueueBusiness() {
       });
 
       if (response.success) {
-        // Set the joinedAt timestamp for admission status checking
         setForm((prev) => ({ ...prev, joinedAt: response.customer.joinedAt }));
 
-        // Save queue token to localStorage for persistence
-        const storageKey = `queue_${businessUsername}`;
         if (response.queueToken) {
           setQueueToken(response.queueToken);
           localStorage.setItem(storageKey, response.queueToken);
         }
 
-        // Generate appropriate toast message based on notification method
-        let toastDescription = "Stay nearby — we'll call your name on site.";
-        if (form.waitingPreference === "wait_anywhere") {
-          if (form.notificationMethod === "sms") {
-            toastDescription = `We'll text you at ${form.countryCode} ${form.phoneNumber} when it's almost your turn.`;
-          } else if (form.notificationMethod === "whatsapp") {
-            toastDescription = `We'll message you on WhatsApp at ${form.countryCode} ${form.phoneNumber} when it's almost your turn.`;
-          } else if (form.notificationMethod === "email") {
-            toastDescription = `We'll email you at ${form.email} when it's your turn.`;
-          }
+        let toastDescription: ReactNode =
+          "We'll let you know when it's your turn.";
+        if (form.notificationMethod === "sms") {
+          toastDescription = `We'll text you at ${form.countryCode} ${form.phoneNumber} when it's your turn.`;
+        } else if (form.notificationMethod === "whatsapp") {
+          toastDescription = `We'll message you on WhatsApp at ${form.countryCode} ${form.phoneNumber} when it's your turn.`;
+        } else if (form.notificationMethod === "email") {
+          // The email is wrapped in `normal-case` so the toast's title-case
+          // styling doesn't capitalize it — show the address exactly as typed.
+          toastDescription = (
+            <>
+              We'll email you at{" "}
+              <span className="normal-case lowercase">
+                {form.email.toLowerCase()}
+              </span>{" "}
+              when it's your turn.
+            </>
+          );
         }
 
         toast({
-          title: "You're in the queue!",
+          title: "You're in the Queue!",
           description: toastDescription,
         });
 
-        // Set the actual position from the database
-        setPeopleAhead(Math.max(0, response.position - 1)); // people ahead = position - 1
+        setPeopleAhead(Math.max(0, response.position - 1));
         setStep(4);
       }
     } catch (error: any) {
       toast({
-        title: "Failed to join queue",
+        title: "Failed to Join Queue",
         description: error.message || "Please try again",
         variant: "destructive",
       });
@@ -461,544 +625,237 @@ export default function QueueBusiness() {
   };
 
   const leaveQueue = async () => {
-    // Set flag to prevent status checking from running
     setHasLeftQueue(true);
-
-    // Clear localStorage token
-    const storageKey = `queue_${businessUsername}`;
     localStorage.removeItem(storageKey);
 
     if (!form.joinedAt) {
-      // If customer hasn't joined queue yet, just navigate away
-      toast({ title: "You left the queue" });
-      navigate("/queue");
+      toast({ title: "You Left the Queue" });
+      navigate("/");
       return;
     }
 
     try {
       const customerId = `${form.firstName}${form.lastName}${form.joinedAt}`;
-
-      // Call API to remove customer from queue
       await api(
         `/auth/business/${businessUsername}/queue/${customerId}/leave`,
-        {
-          method: "POST",
-        }
+        { method: "POST" },
       );
-
       toast({
-        title: "You left the queue",
+        title: "You Left the Queue",
         description: "You have been removed from the queue.",
       });
-      navigate("/queue");
+      navigate("/");
     } catch (error: any) {
       console.error("Failed to leave queue:", error);
       toast({
-        title: "Error leaving queue",
+        title: "Error Leaving Queue",
         description: error.message || "Please try again",
         variant: "destructive",
       });
-      // Still navigate away even if API call fails
-      navigate("/queue");
+      navigate("/");
     }
   };
 
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
+  // The location is fixed by the QR/URL — the customer can never change it.
+  const selectedLabel = locationLabel(selectedLocation);
+  // Public restaurant name for this location, falling back to the business name.
+  const restaurantName =
+    selectedLocation?.restaurantName || businessName || `@${businessUsername}`;
+
+  // Invalid / expired QR link — treat it like any other dead link and show
+  // the standard 404 page instead of a bespoke "Queue Link Unavailable" card.
+  if (invalidLink) {
+    return <NotFound />;
+  }
+
   return (
     <>
       <Header />
-      <div className="min-h-screen pt-28 pb-16 flex items-center justify-center bg-gradient-to-br from-success/5 via-background to-primary/5 px-4">
-        <Card className="w-full max-w-xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl text-primary">
-              {businessName || `@${businessUsername}`}
-            </CardTitle>
-            <CardDescription>
-              {step === 2 && "Enter your details"}
-              {step === 3 && "Choose how you want to wait"}
-              {step === 4 && "Queue status"}
-              {step === 5 && "It's your turn"}
-            </CardDescription>
-          </CardHeader>
+      {/* Full-height flex column: fixed header overlaid on top (pt-* on <main>
+          clears it), card centered in the remaining space, footer at the bottom.
+          The column is exactly min-h-screen so short content doesn't leave a
+          large empty band above or below the card. */}
+      <div className="flex min-h-screen flex-col bg-gradient-to-br from-success/5 via-background to-primary/5">
+        <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10">
+          <Card className="w-full max-w-xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
+            <CardHeader className="text-center">
+              <CardTitle className="text-xl sm:text-2xl text-primary">
+                {step === 2 ? "Join the Queue" : restaurantName}
+              </CardTitle>
+              {step !== 5 && (
+                <CardDescription>
+                  {step === 2 &&
+                    (selectedLabel
+                      ? `You're joining the queue at ${selectedLabel}. We'll notify you when your it's your turn.`
+                      : "Enter your details to join the queue.")}
+                  {step === 4 && "Queue Status"}
+                </CardDescription>
+              )}
+            </CardHeader>
 
-          <CardContent>
-            {step === 2 && (
-              <form onSubmit={nextFromStep2} className="space-y-4">
-                {/* Address (no map) */}
-                <div className="space-y-2">
-                  <Label htmlFor="address">Location</Label>
-                  <div className="relative">
-                    <select
-                      id="address"
-                      name="address"
-                      value={form.address}
-                      onChange={handleChange}
-                      className={`w-full appearance-none rounded-md border bg-background px-3 py-2 pr-10 text-sm ${
-                        errors.address
-                          ? "border-destructive focus:ring-destructive"
-                          : ""
-                      }`}
-                      disabled={loadingAddresses}
-                    >
-                      <option value="" disabled>
-                        {loadingAddresses
-                          ? "Loading addresses..."
-                          : "Select a Location"}
-                      </option>
-                      {addresses.map((a) => (
-                        <option key={a.address} value={a.address}>
-                          {a.businessName} - {a.address}
-                        </option>
-                      ))}
-                    </select>
-                    <svg
-                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
-                  {errors.address && (
-                    <p className="text-sm text-destructive">{errors.address}</p>
-                  )}
-                </div>
-
-                {/* Names */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input
-                      id="firstName"
-                      name="firstName"
-                      placeholder="John"
-                      value={form.firstName}
-                      onChange={handleChange}
-                      className={
-                        errors.firstName
-                          ? "border-destructive focus:ring-destructive"
-                          : ""
-                      }
-                    />
-                    {errors.firstName && (
-                      <p className="text-sm text-destructive">
-                        {errors.firstName}
+            <CardContent>
+              {step === 2 && (
+                <form onSubmit={joinQueue} className="space-y-4">
+                  {/* Location is fixed by the QR/URL — shown read-only, never
+                    selectable by the customer. */}
+                  {selectedLocation && (
+                    <div className="min-w-0 rounded-lg border bg-muted/40 p-3">
+                      <p className="font-medium text-foreground break-words">
+                        {restaurantName}
                       </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      name="lastName"
-                      placeholder="Doe"
-                      value={form.lastName}
-                      onChange={handleChange}
-                      className={
-                        errors.lastName
-                          ? "border-destructive focus:ring-destructive"
-                          : ""
-                      }
-                    />
-                    {errors.lastName && (
-                      <p className="text-sm text-destructive">
-                        {errors.lastName}
+                      <p className="text-sm text-muted-foreground break-words">
+                        {selectedLabel}
                       </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Number of guests */}
-                <div className="space-y-2">
-                  <Label htmlFor="numGuests">Number of Guests</Label>
-                  <Input
-                    id="numGuests"
-                    name="numGuests"
-                    type="text"
-                    placeholder="1"
-                    value={form.numGuests}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        numGuests: e.target.value,
-                      }))
-                    }
-                    className={
-                      errors.numGuests
-                        ? "border-destructive focus:ring-destructive"
-                        : ""
-                    }
-                  />
-                  {errors.numGuests && (
-                    <p className="text-sm text-destructive">
-                      {errors.numGuests}
-                    </p>
+                    </div>
                   )}
-                </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => navigate("/queue")}
-                  >
-                    Back
-                  </Button>
-                  <Button type="submit" className="flex-1">
-                    Next
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            {step === 3 && (
-              <form onSubmit={nextFromStep3} className="space-y-4">
-                {/* Preference */}
-                <div className="space-y-2">
-                  <Label>Waiting Preference</Label>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setForm((p) => ({
-                          ...p,
-                          waitingPreference: "on_premises",
-                        }))
-                      }
-                      className={`rounded-lg border px-4 py-3 text-left transition ${
-                        form.waitingPreference === "on_premises"
-                          ? "border-primary ring-2 ring-primary/30"
-                          : "hover:bg-muted"
-                      }`}
-                    >
-                      <div className="font-medium">Stay on Premises</div>
-                      <div className="text-sm text-muted-foreground">
-                        <em>“Hang tight—your spot's coming up fast.”</em>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setForm((p) => ({
-                          ...p,
-                          waitingPreference: "wait_anywhere",
-                        }))
-                      }
-                      className={`rounded-lg border px-4 py-3 text-left transition ${
-                        form.waitingPreference === "wait_anywhere"
-                          ? "border-primary ring-2 ring-primary/30"
-                          : "hover:bg-muted"
-                      }`}
-                    >
-                      <div className="font-medium">Wait Anywhere</div>
-                      <div className="text-sm text-muted-foreground">
-                        <em>
-                          “Roam freely—we'll ping you when it's nearly your
-                          turn.”
-                        </em>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Notification method selection when Wait Anywhere */}
-                {form.waitingPreference === "wait_anywhere" && (
-                  <>
+                  {/* Names */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>How would you like to be notified?</Label>
-                      <div className="grid grid-cols-1 gap-3">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForm((p) => ({
-                              ...p,
-                              notificationMethod: "sms",
-                              countryCode: "+1",
-                            }))
-                          }
-                          className={`rounded-lg border px-4 py-3 text-left transition ${
-                            form.notificationMethod === "sms"
-                              ? "border-primary ring-2 ring-primary/30"
-                              : "hover:bg-muted"
-                          }`}
-                        >
-                          <div className="font-medium">SMS</div>
-                          <div className="text-sm text-muted-foreground">
-                            Receive text message notifications
-                          </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForm((p) => ({
-                              ...p,
-                              notificationMethod: "whatsapp",
-                            }))
-                          }
-                          className={`rounded-lg border px-4 py-3 text-left transition ${
-                            form.notificationMethod === "whatsapp"
-                              ? "border-primary ring-2 ring-primary/30"
-                              : "hover:bg-muted"
-                          }`}
-                        >
-                          <div className="font-medium">WhatsApp</div>
-                          <div className="text-sm text-muted-foreground">
-                            Receive WhatsApp queue notifications
-                          </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForm((p) => ({
-                              ...p,
-                              notificationMethod: "email",
-                            }))
-                          }
-                          className={`rounded-lg border px-4 py-3 text-left transition ${
-                            form.notificationMethod === "email"
-                              ? "border-primary ring-2 ring-primary/30"
-                              : "hover:bg-muted"
-                          }`}
-                        >
-                          <div className="font-medium">Email</div>
-                          <div className="text-sm text-muted-foreground">
-                            Receive email notifications
-                          </div>
-                        </button>
-                      </div>
-                      {errors.notificationMethod && (
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        name="firstName"
+                        placeholder="John"
+                        value={form.firstName}
+                        onChange={handleChange}
+                        className={
+                          errors.firstName
+                            ? "border-destructive focus:ring-destructive"
+                            : ""
+                        }
+                      />
+                      {errors.firstName && (
                         <p className="text-sm text-destructive">
-                          {errors.notificationMethod}
+                          {errors.firstName}
                         </p>
                       )}
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        name="lastName"
+                        placeholder="Doe"
+                        value={form.lastName}
+                        onChange={handleChange}
+                        className={
+                          errors.lastName
+                            ? "border-destructive focus:ring-destructive"
+                            : ""
+                        }
+                      />
+                      {errors.lastName && (
+                        <p className="text-sm text-destructive">
+                          {errors.lastName}
+                        </p>
+                      )}
+                    </div>
+                  </div>
 
-                    {/* Phone number input for SMS */}
-                    {form.notificationMethod === "sms" && (
-                      <>
-                        <div className="space-y-2">
-                          <Label htmlFor="phoneNumber">Phone Number</Label>
-                          <div className="flex gap-2">
-                            <Popover
-                              open={smsCountryOpen}
-                              onOpenChange={setSmsCountryOpen}
-                            >
-                              <PopoverTrigger asChild>
-                                <button
-                                  type="button"
-                                  role="combobox"
-                                  aria-expanded={smsCountryOpen}
-                                  className="flex h-10 w-32 items-center justify-between rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
-                                >
-                                  <span className="truncate">
-                                    {selectedSmsCountry.flag}{" "}
-                                    {selectedSmsCountry.dial}
-                                  </span>
-                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-64 p-0" align="start">
-                                <Command
-                                  filter={(value, search) => {
-                                    const term = search.toLowerCase().replace(/\+/g, "");
-                                    return value.toLowerCase().includes(term) ? 1 : 0;
-                                  }}
-                                >
-                                  <CommandInput placeholder="Search country or code..." />
-                                  <CommandList>
-                                    <CommandEmpty>No country found.</CommandEmpty>
-                                    <CommandGroup>
-                                      {SMS_COUNTRIES.map((c) => (
-                                        <CommandItem
-                                          key={c.dial}
-                                          value={`${c.name} ${c.dial}`}
-                                          onSelect={() => {
-                                            setForm((p) => ({
-                                              ...p,
-                                              countryCode: c.dial,
-                                            }));
-                                            setSmsCountryOpen(false);
-                                          }}
-                                        >
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4",
-                                              form.countryCode === c.dial
-                                                ? "opacity-100"
-                                                : "opacity-0"
-                                            )}
-                                          />
-                                          <span className="mr-2">{c.flag}</span>
-                                          <span className="flex-1">{c.name}</span>
-                                          <span className="text-muted-foreground">
-                                            {c.dial}
-                                          </span>
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
-                            <Input
-                              id="phoneNumber"
-                              name="phoneNumber"
-                              type="tel"
-                              placeholder="5551234567"
-                              value={form.phoneNumber}
-                              onChange={handleChange}
-                              className={
-                                errors.phoneNumber
-                                  ? "border-destructive focus:ring-destructive flex-1"
-                                  : "flex-1"
-                              }
-                            />
-                          </div>
-                          {errors.phoneNumber && (
-                            <p className="text-sm text-destructive">
-                              {errors.phoneNumber}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* SMS Consent Checkboxes */}
-                        <div className="space-y-3">
-                          <div className="flex items-start gap-2">
-                            <Checkbox
-                              id="smsConsent"
-                              checked={form.smsConsent}
-                              onCheckedChange={(checked) => {
-                                setForm((p) => ({
-                                  ...p,
-                                  smsConsent: checked as boolean,
-                                }));
-                                if (errors.smsConsent)
-                                  setErrors((p) => ({ ...p, smsConsent: "" }));
-                              }}
-                              className={cn(
-                                errors.smsConsent ? "border-destructive" : "",
-                                "mt-1.5 flex-shrink-0"
-                              )}
-                            />
-                            <div className="flex-1">
-                              <label
-                                htmlFor="smsConsent"
-                                className="text-sm leading-5 cursor-pointer"
-                              >
-                                By checking this box and submitting this form, you
-                                consent to receive transactional text messages for
-                                queue notifications from SeatPing. Reply STOP to opt
-                                out. Reply HELP for help. Standard message and data
-                                rates may apply. Message frequency may vary. View
-                                our{" "}
-                                <a href="/terms" className="underline text-primary">
-                                  Terms and Conditions
-                                </a>
-                                . View our{" "}
-                                <a
-                                  href="/policy"
-                                  className="underline text-primary"
-                                >
-                                  Privacy Policy
-                                </a>
-                                .
-                              </label>
-                              {errors.smsConsent && (
-                                <p className="text-sm text-destructive mt-1">
-                                  {errors.smsConsent}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-start gap-2">
-                            <Checkbox
-                              id="smsMarketingConsent"
-                              checked={form.smsMarketingConsent}
-                              onCheckedChange={(checked) => {
-                                setForm((p) => ({
-                                  ...p,
-                                  smsMarketingConsent: checked as boolean,
-                                }));
-                                if (errors.smsMarketingConsent)
-                                  setErrors((p) => ({
-                                    ...p,
-                                    smsMarketingConsent: "",
-                                  }));
-                              }}
-                              className={cn(
-                                errors.smsMarketingConsent
-                                  ? "border-destructive"
-                                  : "",
-                                "mt-1.5 flex-shrink-0"
-                              )}
-                            />
-                            <div className="flex-1">
-                              <label
-                                htmlFor="smsMarketingConsent"
-                                className="text-sm leading-5 cursor-pointer"
-                              >
-                                By checking this box and submitting this form, you
-                                consent to receive text messages for marketing from
-                                SeatPing. Reply STOP to opt out. Reply HELP for
-                                help. Message and data rates may apply. Message
-                                frequency may vary. View our{" "}
-                                <a href="/terms" className="underline text-primary">
-                                  Terms and Conditions
-                                </a>
-                                . View our{" "}
-                                <a
-                                  href="/policy"
-                                  className="underline text-primary"
-                                >
-                                  Privacy Policy
-                                </a>
-                                .
-                              </label>
-                              {errors.smsMarketingConsent && (
-                                <p className="text-sm text-destructive mt-1">
-                                  {errors.smsMarketingConsent}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </>
+                  {/* Number of guests */}
+                  <div className="space-y-2">
+                    <Label htmlFor="numGuests">Number of Guests</Label>
+                    <Input
+                      id="numGuests"
+                      name="numGuests"
+                      type="text"
+                      placeholder="1"
+                      value={form.numGuests}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, numGuests: e.target.value }))
+                      }
+                      className={
+                        errors.numGuests
+                          ? "border-destructive focus:ring-destructive"
+                          : ""
+                      }
+                    />
+                    {errors.numGuests && (
+                      <p className="text-sm text-destructive">
+                        {errors.numGuests}
+                      </p>
                     )}
+                  </div>
 
-                    {/* Phone number input for WhatsApp (no consent checkboxes) */}
-                    {form.notificationMethod === "whatsapp" && (
+                  {/* Notification method */}
+                  <div className="space-y-2">
+                    <Label>How should we notify you?</Label>
+                    <div className="grid grid-cols-1 gap-3">
+                      {(
+                        [
+                          {
+                            key: "sms",
+                            title: "SMS",
+                            desc: "Receive Text Message Notifications",
+                          },
+                          {
+                            key: "whatsapp",
+                            title: "WhatsApp",
+                            desc: "Receive WhatsApp Queue Notifications",
+                          },
+                          {
+                            key: "email",
+                            title: "Email",
+                            desc: "Receive Email Notifications",
+                          },
+                        ] as const
+                      ).map((opt) => (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() =>
+                            setForm((p) => ({
+                              ...p,
+                              notificationMethod: opt.key,
+                              // Reset to a valid default dial code per channel.
+                              countryCode:
+                                opt.key === "sms" ? "+1" : p.countryCode,
+                            }))
+                          }
+                          className={`rounded-lg border px-4 py-3 text-left transition ${
+                            form.notificationMethod === opt.key
+                              ? "border-primary ring-2 ring-primary/30"
+                              : "hover:bg-muted"
+                          }`}
+                        >
+                          <div className="font-medium">{opt.title}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {opt.desc}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    {errors.notificationMethod && (
+                      <p className="text-sm text-destructive">
+                        {errors.notificationMethod}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* SMS phone + consent */}
+                  {form.notificationMethod === "sms" && (
+                    <>
                       <div className="space-y-2">
-                        <Label htmlFor="whatsappPhoneNumber">Phone Number</Label>
+                        <Label htmlFor="phoneNumber">Phone Number</Label>
                         <div className="flex gap-2">
                           <Popover
-                            open={whatsappCountryOpen}
-                            onOpenChange={setWhatsappCountryOpen}
+                            open={smsCountryOpen}
+                            onOpenChange={setSmsCountryOpen}
                           >
                             <PopoverTrigger asChild>
                               <button
                                 type="button"
                                 role="combobox"
-                                aria-expanded={whatsappCountryOpen}
+                                aria-expanded={smsCountryOpen}
                                 className="flex h-10 w-32 items-center justify-between rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
                               >
                                 <span className="truncate">
-                                  {selectedWhatsappCountry.flag}{" "}
-                                  {selectedWhatsappCountry.dial}
+                                  {selectedSmsCountry.flag}{" "}
+                                  {selectedSmsCountry.dial}
                                 </span>
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </button>
@@ -1006,15 +863,19 @@ export default function QueueBusiness() {
                             <PopoverContent className="w-64 p-0" align="start">
                               <Command
                                 filter={(value, search) => {
-                                  const term = search.toLowerCase().replace(/\+/g, "");
-                                  return value.toLowerCase().includes(term) ? 1 : 0;
+                                  const term = search
+                                    .toLowerCase()
+                                    .replace(/\+/g, "");
+                                  return value.toLowerCase().includes(term)
+                                    ? 1
+                                    : 0;
                                 }}
                               >
                                 <CommandInput placeholder="Search country or code..." />
                                 <CommandList>
                                   <CommandEmpty>No country found.</CommandEmpty>
                                   <CommandGroup>
-                                    {WHATSAPP_COUNTRIES.map((c) => (
+                                    {SMS_COUNTRIES.map((c) => (
                                       <CommandItem
                                         key={c.dial}
                                         value={`${c.name} ${c.dial}`}
@@ -1023,7 +884,7 @@ export default function QueueBusiness() {
                                             ...p,
                                             countryCode: c.dial,
                                           }));
-                                          setWhatsappCountryOpen(false);
+                                          setSmsCountryOpen(false);
                                         }}
                                       >
                                         <Check
@@ -1031,7 +892,7 @@ export default function QueueBusiness() {
                                             "mr-2 h-4 w-4",
                                             form.countryCode === c.dial
                                               ? "opacity-100"
-                                              : "opacity-0"
+                                              : "opacity-0",
                                           )}
                                         />
                                         <span className="mr-2">{c.flag}</span>
@@ -1047,10 +908,10 @@ export default function QueueBusiness() {
                             </PopoverContent>
                           </Popover>
                           <Input
-                            id="whatsappPhoneNumber"
+                            id="phoneNumber"
                             name="phoneNumber"
                             type="tel"
-                            placeholder="5551234567"
+                            placeholder="(555) 123-4567"
                             value={form.phoneNumber}
                             onChange={handleChange}
                             className={
@@ -1066,184 +927,425 @@ export default function QueueBusiness() {
                           </p>
                         )}
                       </div>
-                    )}
 
-                    {/* Email input for Email notification */}
-                    {form.notificationMethod === "email" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email Address</Label>
+                      {/* SMS Consent */}
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-2">
+                          <Checkbox
+                            id="smsConsent"
+                            checked={form.smsConsent}
+                            onCheckedChange={(checked) => {
+                              setForm((p) => ({
+                                ...p,
+                                smsConsent: checked as boolean,
+                              }));
+                              if (errors.smsConsent)
+                                setErrors((p) => ({ ...p, smsConsent: "" }));
+                            }}
+                            className={cn(
+                              errors.smsConsent ? "border-destructive" : "",
+                              "mt-1.5 flex-shrink-0",
+                            )}
+                          />
+                          <div className="flex-1">
+                            <label
+                              htmlFor="smsConsent"
+                              className="text-sm leading-5 cursor-pointer"
+                            >
+                              By checking this box and submitting this form, you
+                              consent to receive transactional text messages for
+                              queue notifications from SeatPing. Reply STOP to
+                              opt out. Reply HELP for help. Standard message and
+                              data rates may apply. Message frequency may vary.
+                              View our{" "}
+                              <a
+                                href="/terms"
+                                className="underline text-primary"
+                              >
+                                Terms and Conditions
+                              </a>
+                              . View our{" "}
+                              <a
+                                href="/policy"
+                                className="underline text-primary"
+                              >
+                                Privacy Policy
+                              </a>
+                              .
+                            </label>
+                            {errors.smsConsent && (
+                              <p className="text-sm text-destructive mt-1">
+                                {errors.smsConsent}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2">
+                          <Checkbox
+                            id="smsMarketingConsent"
+                            checked={form.smsMarketingConsent}
+                            onCheckedChange={(checked) =>
+                              setForm((p) => ({
+                                ...p,
+                                smsMarketingConsent: checked as boolean,
+                              }))
+                            }
+                            className="mt-1.5 flex-shrink-0"
+                          />
+                          <div className="flex-1">
+                            <label
+                              htmlFor="smsMarketingConsent"
+                              className="text-sm leading-5 cursor-pointer"
+                            >
+                              (Optional) By checking this box, you consent to
+                              receive text messages for marketing from SeatPing.
+                              Reply STOP to opt out. Reply HELP for help.
+                              Message and data rates may apply. Message
+                              frequency may vary. View our{" "}
+                              <a
+                                href="/terms"
+                                className="underline text-primary"
+                              >
+                                Terms and Conditions
+                              </a>
+                              . View our{" "}
+                              <a
+                                href="/policy"
+                                className="underline text-primary"
+                              >
+                                Privacy Policy
+                              </a>
+                              .
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* WhatsApp phone */}
+                  {form.notificationMethod === "whatsapp" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsappPhoneNumber">Phone Number</Label>
+                      <div className="flex gap-2">
+                        <Popover
+                          open={whatsappCountryOpen}
+                          onOpenChange={setWhatsappCountryOpen}
+                        >
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              role="combobox"
+                              aria-expanded={whatsappCountryOpen}
+                              className="flex h-10 w-32 items-center justify-between rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                            >
+                              <span className="truncate">
+                                {selectedWhatsappCountry.flag}{" "}
+                                {selectedWhatsappCountry.dial}
+                              </span>
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 p-0" align="start">
+                            <Command
+                              filter={(value, search) => {
+                                const term = search
+                                  .toLowerCase()
+                                  .replace(/\+/g, "");
+                                return value.toLowerCase().includes(term)
+                                  ? 1
+                                  : 0;
+                              }}
+                            >
+                              <CommandInput placeholder="Search country or code..." />
+                              <CommandList>
+                                <CommandEmpty>No country found.</CommandEmpty>
+                                <CommandGroup>
+                                  {WHATSAPP_COUNTRIES.map((c) => (
+                                    <CommandItem
+                                      key={c.dial}
+                                      value={`${c.name} ${c.dial}`}
+                                      onSelect={() => {
+                                        setForm((p) => ({
+                                          ...p,
+                                          countryCode: c.dial,
+                                        }));
+                                        setWhatsappCountryOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          form.countryCode === c.dial
+                                            ? "opacity-100"
+                                            : "opacity-0",
+                                        )}
+                                      />
+                                      <span className="mr-2">{c.flag}</span>
+                                      <span className="flex-1">{c.name}</span>
+                                      <span className="text-muted-foreground">
+                                        {c.dial}
+                                      </span>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                         <Input
-                          id="email"
-                          name="email"
-                          type="email"
-                          placeholder="you@example.com"
-                          value={form.email}
+                          id="whatsappPhoneNumber"
+                          name="phoneNumber"
+                          type="tel"
+                          placeholder="(555) 123-4567"
+                          value={form.phoneNumber}
                           onChange={handleChange}
                           className={
-                            errors.email
-                              ? "border-destructive focus:ring-destructive"
-                              : ""
+                            errors.phoneNumber
+                              ? "border-destructive focus:ring-destructive flex-1"
+                              : "flex-1"
                           }
                         />
-                        {errors.email && (
-                          <p className="text-sm text-destructive">
-                            {errors.email}
-                          </p>
-                        )}
                       </div>
-                    )}
-                  </>
-                )}
+                      {errors.phoneNumber && (
+                        <p className="text-sm text-destructive">
+                          {errors.phoneNumber}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setStep(2)}
-                  >
-                    Back
-                  </Button>
+                  {/* Email */}
+                  {form.notificationMethod === "email" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={form.email}
+                        onChange={handleChange}
+                        className={
+                          errors.email
+                            ? "border-destructive focus:ring-destructive"
+                            : ""
+                        }
+                      />
+                      {errors.email && (
+                        <p className="text-sm text-destructive">
+                          {errors.email}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   <Button
                     type="submit"
-                    className="flex-1"
-                    disabled={joiningQueue}
+                    className="w-full"
+                    disabled={joiningQueue || loadingAddresses}
                   >
-                    {joiningQueue ? "Joining..." : "Next"}
+                    {joiningQueue ? "Joining..." : "Join Queue"}
                   </Button>
-                </div>
-              </form>
-            )}
+                </form>
+              )}
 
-            {step === 4 && (
-              <div className="space-y-5">
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Queue Details
-                  </p>
-                  <p>
-                    <strong>Business:</strong>{" "}
-                    {businessName || `@${businessUsername}`}
-                  </p>
-                  <p>
-                    <strong>Address:</strong> {form.address}
-                  </p>
-                  <p>
-                    <strong>Name:</strong> {form.firstName} {form.lastName}
-                  </p>
-                  <p>
-                    <strong>Guests:</strong> {parseInt(form.numGuests)}
-                  </p>
-                </div>
-
-                {/* Line position text first */}
-                <div className="text-center space-y-1">
-                  <div className="text-xl font-semibold">
-                    You are #{positionInLine} in line
+              {step === 4 && (
+                <div className="space-y-5">
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Queue Details
+                    </p>
+                    <p>
+                      <strong>Restaurant:</strong> {restaurantName}
+                    </p>
+                    <p>
+                      <strong>Location:</strong> {selectedLabel}
+                    </p>
+                    <p>
+                      <strong>Name:</strong> {form.firstName} {form.lastName}
+                    </p>
+                    <p>
+                      <strong>Number of Guests:</strong>{" "}
+                      {parseInt(form.numGuests)}
+                    </p>
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    There {peopleAhead === 1 ? "is" : "are"} {peopleAhead}{" "}
-                    {peopleAhead === 1 ? "person" : "people"} ahead of you
-                  </div>
-                </div>
 
-                {/* Cards below the text */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="rounded-lg border p-4 text-center">
+                  <div className="text-center space-y-1">
+                    <div className="text-xl font-semibold">
+                      You are #{positionInLine} in line
+                    </div>
                     <div className="text-sm text-muted-foreground">
-                      Estimated Wait
-                    </div>
-                    <div className="text-3xl font-semibold">
-                      {etaMinutes} min
+                      There {peopleAhead === 1 ? "is" : "are"} {peopleAhead}{" "}
+                      {peopleAhead === 1 ? "party" : "parties"} ahead of you
                     </div>
                   </div>
-                  <div className="rounded-lg border p-4 text-center">
-                    <div className="text-sm text-muted-foreground">
-                      Preference
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="rounded-lg border p-4 text-center">
+                      <div className="text-sm text-muted-foreground">
+                        Estimated Wait
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {eta
+                          ? eta.displayText
+                          : etaLoading
+                            ? "Calculating wait time…"
+                            : etaError
+                              ? "Updating soon"
+                              : "Calculating wait time…"}
+                      </div>
                     </div>
-                    <div className="text-lg font-medium">
-                      {form.waitingPreference === "on_premises"
-                        ? "Stay on Premises"
-                        : "Wait Anywhere"}
+                    <div className="rounded-lg border p-4 text-center">
+                      <div className="text-sm text-muted-foreground">
+                        Notifications
+                      </div>
+                      <div className="text-lg font-medium">
+                        {notificationLabel(form.notificationMethod)}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    className="flex-1"
-                    onClick={leaveQueue}
-                  >
-                    Leave Queue
-                  </Button>
-                </div>
-              </div>
-            )}
+                  <p className="text-center text-xs text-muted-foreground">
+                    Wait time may change based on queue movement and upcoming
+                    reservations.
+                  </p>
 
-            {/* Step 5 content */}
-            {step === 5 && (
-              <div className="space-y-6 text-center">
-                <div className="mx-auto w-16 h-16 rounded-full bg-primary flex items-center justify-center">
-                  <svg
-                    className="w-8 h-8 text-white"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <path
-                      d="M12 6v6l4 2"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <div className="flex gap-2">
+                    <Button className="flex-1" onClick={leaveQueue}>
+                      Leave Queue
+                    </Button>
+                  </div>
                 </div>
+              )}
 
-                <div className="space-y-2">
-                  <div className="text-2xl font-semibold">It's your turn!</div>
-                  <p className="text-muted-foreground">
-                    Please arrive within{" "}
-                    <span className="font-medium">
-                      {mm}:{ss}
-                    </span>
-                    . Your spot will be held for 5 minutes.
-                  </p>
+              {step === 5 && (
+                <div className="space-y-5 text-center">
+                  {turnExpired ? (
+                    <>
+                      <h2 className="text-2xl sm:text-3xl font-bold text-destructive">
+                        Time's Up
+                      </h2>
+
+                      {/* Expired state — the hold window has passed. */}
+                      <div className="rounded-2xl border border-destructive/15 bg-destructive/5 px-6 py-6">
+                        <p className="text-base font-semibold text-foreground">
+                          Time's up. Your spot has been released.
+                        </p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          Please speak with the host if you still need
+                          assistance.
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="text-2xl sm:text-3xl font-bold text-primary">
+                        It's Your Turn!
+                      </h2>
+
+                      {/* Countdown — the primary focus */}
+                      <div className="rounded-2xl border border-primary/10 bg-primary/5 px-6 py-6">
+                        <p className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                          Please Arrive Within
+                        </p>
+                        <div className="mt-2 text-6xl sm:text-7xl font-bold leading-none tabular-nums text-primary">
+                          {mm}:{ss}
+                        </div>
+                        <p className="mt-3 text-sm text-muted-foreground">
+                          Your spot will be held for 5 minutes.
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Details */}
+                  <div className="rounded-xl bg-muted px-4 py-3 text-left">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Details
+                    </p>
+                    <dl className="space-y-1.5 text-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-muted-foreground">Restaurant</dt>
+                        <dd className="text-right font-medium">
+                          {restaurantName}
+                        </dd>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-muted-foreground">Location</dt>
+                        <dd className="text-right font-medium">
+                          {selectedLabel}
+                        </dd>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-muted-foreground">Name</dt>
+                        <dd className="text-right font-medium">
+                          {form.firstName} {form.lastName}
+                        </dd>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-muted-foreground">
+                          Number of Guests
+                        </dt>
+                        <dd className="text-right font-medium">
+                          {parseInt(form.numGuests)}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
                 </div>
+              )}
 
-                <div className="p-4 bg-muted rounded-lg text-left">
-                  <p className="text-sm text-muted-foreground mb-2">Details</p>
-                  <p>
-                    <strong>Business:</strong>{" "}
-                    {businessName || `@${businessUsername}`}
-                  </p>
-                  <p>
-                    <strong>Address:</strong> {form.address}
-                  </p>
-                  <p>
-                    <strong>Name:</strong> {form.firstName} {form.lastName}
-                  </p>
-                  <p>
-                    <strong>Guests:</strong> {parseInt(form.numGuests)}
-                  </p>
-                  <p>
-                    <strong>Preference:</strong>{" "}
-                    {form.waitingPreference === "on_premises"
-                      ? "Stay on Premises"
-                      : "Wait Anywhere"}
-                  </p>
+              {step === 6 && (
+                <div className="space-y-5 text-center">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-primary">
+                    You're Checked In.
+                  </h2>
+
+                  <div className="rounded-2xl border border-primary/10 bg-primary/5 px-6 py-6">
+                    <p className="text-base font-semibold text-foreground">
+                      Arrival Confirmed. You're All Set.
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      The restaurant has confirmed your arrival. Please follow
+                      the host's instructions.
+                    </p>
+                  </div>
+
+                  {/* Details */}
+                  <div className="rounded-xl bg-muted px-4 py-3 text-left">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Details
+                    </p>
+                    <dl className="space-y-1.5 text-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-muted-foreground">Restaurant</dt>
+                        <dd className="text-right font-medium">
+                          {restaurantName}
+                        </dd>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-muted-foreground">Location</dt>
+                        <dd className="text-right font-medium">
+                          {selectedLabel}
+                        </dd>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-muted-foreground">Name</dt>
+                        <dd className="text-right font-medium">
+                          {form.firstName} {form.lastName}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
                 </div>
-
-                {secondsLeft === 0 && (
-                  <p className="text-destructive text-sm">
-                    Timer expired — your spot will be released.
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
       </div>
-      <Footer />
     </>
   );
 }

@@ -91,7 +91,7 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header variant="business" />
 
       {/* Hero Section */}
       <section className="pt-28 md:pt-32 lg:pt-40 pb-20 px-4">
@@ -128,7 +128,7 @@ const LandingPage = () => {
                 asChild
                 className="group inline-flex w-full sm:w-auto items-center gap-2 rounded-xl bg-slate-900 text-white px-6 md:px-8 shadow-sm hover:bg-slate-800 hover:shadow-lg hover:scale-105 transition-all duration-300"
               >
-                <Link to="/signup">
+                <Link to="/business/signup">
                   <Rocket
                     className="h-4 w-4 -ml-1 opacity-90 transition-transform group-hover:-translate-y-0.5"
                     aria-hidden="true"
@@ -153,14 +153,13 @@ const LandingPage = () => {
                     </p>
                   </div>
 
-                  {/* Credits Cards – Mobile (Landing) */}
-                  <div className="grid grid-cols-2 gap-3 max-[400px]:gap-2 max-[365px]:gap-1 mb-3 lg:hidden">
-                    {/* Customer Credits */}
+                  {/* Credits Card – Mobile (Landing) */}
+                  <div className="mb-3 lg:hidden">
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 max-[400px]:p-2.5 max-[365px]:p-2">
                       <div className="relative">
                         <div className="pr-12 max-[400px]:pr-10 max-[365px]:pr-9">
                           <p className="text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] text-slate-600 mb-2">
-                            Customer Credits
+                            Credits
                           </p>
                           <p className="text-xl max-[400px]:text-base max-[365px]:text-sm font-semibold text-slate-800">
                             285
@@ -175,30 +174,6 @@ const LandingPage = () => {
         "
                         >
                           <Users className="w-4 h-4 max-[400px]:w-[14px] max-[400px]:h-[14px] max-[365px]:w-3 max-[365px]:h-3 text-indigo-600" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* SMS Credits */}
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 max-[400px]:p-2.5 max-[365px]:p-2">
-                      <div className="relative">
-                        <div className="pr-12 max-[400px]:pr-10 max-[365px]:pr-9">
-                          <p className="text-xs max-[400px]:text-[10px] max-[365px]:text-[9px] text-slate-600 mb-2">
-                            SMS Credits
-                          </p>
-                          <p className="text-xl max-[400px]:text-base max-[365px]:text-sm font-semibold text-slate-800">
-                            291
-                          </p>
-                        </div>
-                        <div
-                          className="
-          absolute right-0 max-[400px]:right-0 max-[365px]:right-1
-          top-1/2 -translate-y-1/2
-          w-8 h-8 max-[400px]:w-7 max-[400px]:h-7 max-[365px]:w-6 max-[365px]:h-6
-          rounded-full grid place-items-center bg-teal-100
-        "
-                        >
-                          <Message className="w-4 h-4 max-[400px]:w-[14px] max-[400px]:h-[14px] max-[365px]:w-3 max-[365px]:h-3 text-teal-600" />
                         </div>
                       </div>
                     </div>
@@ -225,10 +200,7 @@ const LandingPage = () => {
                       </p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
-                          Customer Credits: 285
-                        </span>
-                        <span className="text-xs bg-teal-100 text-teal-700 px-2 py-1 rounded">
-                          SMS Credits: 291
+                          Credits: 285
                         </span>
                       </div>
                     </div>
@@ -1065,172 +1037,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Pricing - temporarily hidden */}
-      {false && (
-        <section id="pricing" className="py-20 px-4 bg-slate-50">
-          <div className="container mx-auto max-w-6xl">
-            <div className="text-center mb-16 px-4 scroll-animate">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-6">
-                Simple, Flexible Pricing for SeatPing
-              </h2>
-              <p className="text-base sm:text-lg md:text-xl text-slate-600">
-                SeatPing helps businesses manage queues effortlessly. Choose a
-                plan and boost your productivity.
-              </p>
-            </div>
-
-            <div className="grid lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
-              {/* Starter Plan */}
-              <Card className="shadow-lg border border-slate-200 bg-white flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-                <CardHeader className="text-center pb-8 pt-8">
-                  <CardTitle className="text-2xl text-slate-900 mb-4">
-                    Starter
-                  </CardTitle>
-                  <div className="mb-2">
-                    <span className="text-5xl font-semibold text-slate-900">
-                      $19
-                    </span>
-                    <span className="text-slate-500"> / mo</span>
-                  </div>
-                  <p className="text-sm text-slate-500">Per user</p>
-                </CardHeader>
-                <CardContent className="space-y-6 flex-1 flex flex-col">
-                  <div className="space-y-4 flex-1">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span className="text-slate-700">1 Location</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span className="text-slate-700">300 SMS/Month</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span className="text-slate-700">
-                        300 Customers/Month
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span className="text-slate-700">Email Support</span>
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    className="w-full border-slate-300 hover:bg-slate-50"
-                    size="lg"
-                    asChild
-                  >
-                    <Link to="/signup">Get Started</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Professional Plan - Popular */}
-              <Card className="shadow-xl border-2 border-indigo-200 bg-white relative flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 hover:border-indigo-300">
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-0 px-4 py-1">
-                  Popular
-                </Badge>
-                <CardHeader className="text-center pb-8 pt-8">
-                  <CardTitle className="text-2xl text-slate-900 mb-4">
-                    Professional
-                  </CardTitle>
-                  <div className="mb-2">
-                    <span className="text-5xl font-semibold text-slate-900">
-                      $49
-                    </span>
-                    <span className="text-slate-500"> / mo</span>
-                  </div>
-                  <p className="text-sm text-slate-500">Per user</p>
-                </CardHeader>
-                <CardContent className="space-y-6 flex-1 flex flex-col">
-                  <div className="space-y-4 flex-1">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span className="text-slate-700">All Free Features</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span className="text-slate-700">3 Locations</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span className="text-slate-700">
-                        600 SMS/Month per location
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span className="text-slate-700">
-                        600 Customers/Month per location
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span className="text-slate-700">Priority Support</span>
-                    </div>
-                  </div>
-
-                  <Button
-                    className="w-full bg-slate-900 hover:bg-slate-800"
-                    size="lg"
-                    asChild
-                  >
-                    <Link to="/signup">Get Started</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Custom Plan */}
-              <Card className="shadow-lg border border-slate-200 bg-white flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-                <CardHeader className="text-center pb-8 pt-8">
-                  <CardTitle className="text-2xl text-slate-900 mb-4">
-                    Business
-                  </CardTitle>
-                  <div className="mb-2">
-                    <span className="text-5xl font-semibold text-slate-900">
-                      Custom
-                    </span>
-                  </div>
-                  <p className="text-sm text-slate-500">Per user</p>
-                </CardHeader>
-                <CardContent className="space-y-6 flex-1 flex flex-col">
-                  <div className="space-y-4 flex-1">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span className="text-slate-700">All Pro Features</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span className="text-slate-700">
-                        Unlimited Locations
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span className="text-slate-700">Custom SMS Credits</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span className="text-slate-700">Dedicated Support</span>
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    className="w-full border-slate-300 hover:bg-slate-50"
-                    size="lg"
-                    asChild
-                  >
-                    <Link to="/sales">Contact Sales</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* CTA */}
       <section className="py-20 px-4 bg-slate-50">
@@ -1248,7 +1054,7 @@ const LandingPage = () => {
                 className="text-sm sm:text-base px-6 sm:px-8 bg-slate-900 hover:bg-slate-800 hover:shadow-lg hover:scale-105 transition-all duration-300"
                 asChild
               >
-                <Link to="/signup">Get Started Free</Link>
+                <Link to="/business/signup">Get Started Free</Link>
               </Button>
             </div>
           </div>

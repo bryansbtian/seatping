@@ -1,0 +1,681 @@
+// LocationManagement.tsx
+// Add/remove business locations. Lives on the business Profile page because the
+// location (display name, address, coordinates) is part of the customer-facing
+// profile and powers queue/reservation location selection.
+import { useState } from "react";
+import { api } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  MapPin,
+  Plus,
+  Trash2,
+  Pencil,
+  Star,
+  QrCode,
+  Copy,
+  Download,
+} from "lucide-react";
+import QRCode from "qrcode";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import RestaurantProfileEditor from "@/components/RestaurantProfileEditor";
+import LocationReviewsModal from "@/components/LocationReviewsModal";
+import type { PlaceDetails } from "@/lib/googleMaps";
+
+interface Location {
+  id: string;
+  name?: string | null;
+  displayName?: string | null;
+  address: string;
+  shortAddress?: string | null;
+  googleMapsUrl?: string | null;
+  queue?: unknown[];
+  credits?: number;
+  queueEnabled?: boolean;
+  reservationsEnabled?: boolean;
+  restaurantProfile?: Record<string, unknown>;
+  bannerImageUrl?: string | null;
+  bannerImagePublicId?: string | null;
+  photos?: Array<{
+    id: string;
+    url: string;
+    publicId: string;
+    altText?: string | null;
+  }>;
+}
+interface MeLike {
+  username?: string;
+  locations?: Location[];
+  maxLocations?: number;
+}
+
+/**
+ * Derive a short address from a long Google formatted address by keeping the
+ * first 1–2 meaningful comma-separated parts (e.g. unit + building) and dropping
+ * the long street/city/province tail. Used when no `shortAddress` is stored.
+ */
+function deriveShortAddress(full?: string | null): string {
+  if (!full) return "";
+  const parts = full
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parts.slice(0, 2).join(", ");
+}
+
+export default function LocationManagement({
+  me,
+  onChanged,
+}: {
+  me: MeLike | null;
+  onChanged: (updatedUser: any) => void;
+}) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [newLocationAddress, setNewLocationAddress] = useState("");
+  const [newLocationDisplayName, setNewLocationDisplayName] = useState("");
+  const [newLocationPlace, setNewLocationPlace] = useState<PlaceDetails | null>(
+    null,
+  );
+  // The location whose public restaurant profile is being edited (modal).
+  const [editing, setEditing] = useState<Location | null>(null);
+  // The location whose customer reviews are being viewed (modal).
+  const [selectedLocationForReviews, setSelectedLocationForReviews] =
+    useState<Location | null>(null);
+  const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
+  // The location whose queue QR code is being shown (modal), plus the generated
+  // QR image (data URL) for that location's queue link.
+  const [qrLocation, setQrLocation] = useState<Location | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  // Which location cards have their full address expanded.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) =>
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const locations: Location[] = me?.locations || [];
+  const maxLocations = me?.maxLocations ?? 1;
+  const atMax = locations.length >= maxLocations;
+  const businessUsername = me?.username || "";
+
+  /** Location-specific queue URL a customer reaches by scanning the QR code. */
+  const queueUrlFor = (location: Location) =>
+    `${window.location.origin}/queue/${businessUsername}/${location.id}`;
+
+  /** Open the QR modal for a location and generate its QR image. */
+  const openQrModal = async (location: Location) => {
+    setQrLocation(location);
+    setQrDataUrl("");
+    try {
+      const dataUrl = await QRCode.toDataURL(queueUrlFor(location), {
+        width: 300,
+        margin: 2,
+        color: { dark: "#000000", light: "#FFFFFF" },
+      });
+      setQrDataUrl(dataUrl);
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to generate QR code. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const copyQueueLink = async () => {
+    if (!qrLocation) return;
+    try {
+      await navigator.clipboard.writeText(queueUrlFor(qrLocation));
+      toast({
+        title: "Link copied",
+        description: "The queue link has been copied to your clipboard.",
+      });
+    } catch {
+      toast({
+        title: "Couldn't copy link",
+        description: "Copy the link manually from the box above.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const downloadQrCode = () => {
+    if (!qrDataUrl || !qrLocation) return;
+    const label =
+      qrLocation.displayName || qrLocation.name || qrLocation.id || "location";
+    const safe = label
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-");
+    const link = document.createElement("a");
+    link.download = `${safe}-queue-qr.png`;
+    link.href = qrDataUrl;
+    link.click();
+  };
+
+  const addLocation = async () => {
+    if (!newLocationDisplayName.trim()) {
+      toast({
+        title: "Location Display Name required",
+        description: "Enter the short name customers will see.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!newLocationAddress.trim()) {
+      toast({
+        title: "Address required",
+        description: "Search for or type your location address.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (atMax) {
+      toast({
+        title: "Limit reached",
+        description: `You have reached the maximum locations (${maxLocations}).`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setLoading(true);
+    try {
+      const place = newLocationPlace;
+      // Manual / non-geocoded entry is allowed, but warn that map data is missing.
+      if (!place?.googlePlaceId || place?.latitude == null) {
+        toast({
+          title: "Saved without map data",
+          description:
+            "We couldn't capture coordinates for this address. Re-search it later to enable maps features.",
+        });
+      }
+      const updated = await api("/auth/business/locations", {
+        method: "POST",
+        body: JSON.stringify({
+          displayName: newLocationDisplayName.trim(),
+          address: newLocationAddress.trim(),
+          area: place?.area,
+          city: place?.city,
+          country: place?.country,
+          latitude: place?.latitude ?? null,
+          longitude: place?.longitude ?? null,
+          googlePlaceId: place?.googlePlaceId,
+          googleMapsUrl: place?.googleMapsUrl,
+        }),
+      });
+      onChanged(updated.user);
+      setNewLocationAddress("");
+      setNewLocationDisplayName("");
+      setNewLocationPlace(null);
+      toast({
+        title: "Location added",
+        description: "New location has been added successfully.",
+      });
+    } catch (e: any) {
+      toast({
+        title: "Failed to add location",
+        description: e?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeLocation = async (locationIndex: number) => {
+    setLoading(true);
+    try {
+      const updatedLocations = locations.filter(
+        (_, index) => index !== locationIndex,
+      );
+      const updated = await api("/auth/business/me", {
+        method: "PUT",
+        body: JSON.stringify({ locations: updatedLocations }),
+      });
+      onChanged(updated.user);
+      toast({
+        title: "Location removed",
+        description: "Location has been removed successfully.",
+      });
+    } catch (e: any) {
+      toast({
+        title: "Failed to remove location",
+        description: e?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <Card className="bg-white rounded-xl shadow-sm border-0">
+        <CardHeader className="p-4 md:p-6">
+          <CardTitle className="text-lg md:text-xl text-gray-800">
+            Location Management
+          </CardTitle>
+          <CardDescription className="text-gray-600 text-sm md:text-base">
+            Add and manage your business locations ({locations.length}/
+            {maxLocations} {maxLocations === 1 ? "location" : "locations"} used)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 md:space-y-6 p-4 md:p-6 pt-0">
+          {/* Add New Location */}
+          <div className="border border-dashed border-gray-300 rounded-lg p-4 md:p-6">
+            {/* Header row: title + Add Location button (top-right on sm+) */}
+            <div className="flex items-center justify-between gap-3 mb-3 md:mb-4">
+              <h3 className="text-base md:text-lg font-semibold text-gray-800">
+                Add New Location
+              </h3>
+              <Button
+                onClick={addLocation}
+                disabled={loading || atMax}
+                className="hidden lg:inline-flex bg-indigo-600 hover:bg-indigo-700 text-white text-sm md:text-base"
+              >
+                <Plus size={16} className="mr-2" /> Add Location
+              </Button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+                {/* Location Display Name (customer-facing label) */}
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="newLocationDisplayName"
+                    className="text-sm md:text-base"
+                  >
+                    Location Display Name
+                  </Label>
+                  <Input
+                    id="newLocationDisplayName"
+                    placeholder="Senopati, PIK, SCBD, or Main Branch"
+                    value={newLocationDisplayName}
+                    onChange={(e) => setNewLocationDisplayName(e.target.value)}
+                    disabled={atMax}
+                    className={`text-sm md:text-base ${
+                      atMax ? "bg-gray-100 cursor-not-allowed" : ""
+                    }`}
+                  />
+                  <p className="text-xs text-gray-500">
+                    This is the short location name customers will see when
+                    joining a queue or booking a table.
+                  </p>
+                </div>
+
+                {/* Address search (Google Places autocomplete) */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="newLocation" className="text-sm md:text-base">
+                    Search Address
+                  </Label>
+                  <AddressAutocomplete
+                    id="newLocation"
+                    value={newLocationAddress}
+                    onChange={(t) => {
+                      setNewLocationAddress(t);
+                      // Manual edits invalidate a previously picked place.
+                      setNewLocationPlace((p) =>
+                        p && p.address === t ? p : null,
+                      );
+                    }}
+                    onPlaceSelected={(d) => {
+                      setNewLocationPlace(d);
+                      setNewLocationAddress(d.address);
+                    }}
+                    placeholder="Search for your business address"
+                    disabled={atMax}
+                    className={`text-sm md:text-base ${
+                      atMax ? "bg-gray-100 cursor-not-allowed" : ""
+                    }`}
+                  />
+                </div>
+              </div>
+              {/* Mobile + tablet: button stays attached below the fields,
+                  full width. The top-right button only shows on desktop (lg+). */}
+              <Button
+                onClick={addLocation}
+                disabled={loading || atMax}
+                className="lg:hidden w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm md:text-base"
+              >
+                <Plus size={16} className="mr-2" /> Add Location
+              </Button>
+            </div>
+            {atMax && (
+              <p className="text-xs md:text-sm text-red-600 mt-2">
+                You have reached the maximum number of locations for your
+                account.
+              </p>
+            )}
+          </div>
+
+          {/* Existing Locations */}
+          <div>
+            <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-3 md:mb-4">
+              Current Locations
+            </h3>
+            {locations.length === 0 ? (
+              <div className="text-center py-6 md:py-8">
+                <MapPin className="w-10 h-10 md:w-12 md:h-12 text-gray-300 mx-auto mb-3 md:mb-4" />
+                <p className="text-gray-500 text-sm md:text-base">
+                  No locations added yet.
+                </p>
+                <p className="text-xs md:text-sm text-gray-400 mt-1">
+                  Add your first location above to get started.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {locations.map((location: Location, index: number) => {
+                  const short =
+                    location.shortAddress ||
+                    deriveShortAddress(location.address);
+                  const isExpanded = expandedIds.has(location.id);
+                  const hasFullMore = Boolean(
+                    location.address &&
+                    location.address.trim() !== short.trim(),
+                  );
+                  return (
+                    <div
+                      key={location.id || index}
+                      className="flex flex-col gap-4 p-3 md:p-4 bg-gray-50 rounded-lg lg:flex-row lg:items-start lg:justify-between lg:gap-4"
+                    >
+                      <div className="flex items-start space-x-3 min-w-0 flex-1">
+                        <MapPin className="w-4 h-4 md:w-5 md:h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          {/* Name + credits pill on one row. The pill wraps below
+                              the name when there isn't room, but stays grouped
+                              with it (above the address). */}
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            {/* Customer-facing display name with safe fallbacks. */}
+                            <p className="font-medium text-gray-800 text-sm md:text-base break-words">
+                              {location.displayName ||
+                                location.name ||
+                                location.address ||
+                                "Unnamed location"}
+                            </p>
+                            <span className="inline-flex w-fit shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
+                              Credits: {location?.credits || 0}
+                            </span>
+                          </div>
+                          {!location.displayName && (
+                            <p className="text-xs text-amber-600">
+                              Add a Location Display Name so customers see a
+                              friendly name.
+                            </p>
+                          )}
+
+                          {/* Short address by default; full address behind a toggle. */}
+                          {location.address && (
+                            <>
+                              <p
+                                className="mt-1 text-xs md:text-sm text-gray-500 truncate"
+                                title={location.address}
+                              >
+                                {short}
+                              </p>
+                              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                {hasFullMore && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleExpanded(location.id)}
+                                    className="text-xs font-medium text-indigo-600 hover:underline"
+                                  >
+                                    {isExpanded
+                                      ? "Hide Full Address"
+                                      : "View Full Address"}
+                                  </button>
+                                )}
+                                {location.googleMapsUrl && (
+                                  <a
+                                    href={location.googleMapsUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs font-medium text-indigo-600 hover:underline"
+                                  >
+                                    View on Maps
+                                  </a>
+                                )}
+                              </div>
+                              {isExpanded && (
+                                <p className="mt-1 text-xs text-gray-500 break-words">
+                                  {location.address}
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action row: 1 button per row on mobile, 2 per row on
+                          tablet (grid), and a single horizontal row on desktop
+                          (lg+). Keeps buttons full-height and aligned — including
+                          Delete — instead of cramming a compressed desktop row. */}
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end lg:gap-3 lg:shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-10 w-full justify-center lg:w-auto"
+                          onClick={() => setEditing(location)}
+                        >
+                          <Pencil size={16} className="mr-2" /> Edit Restaurant
+                          Profile
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-10 w-full justify-center lg:w-auto"
+                          onClick={() => {
+                            setSelectedLocationForReviews(location);
+                            setIsReviewsModalOpen(true);
+                          }}
+                        >
+                          <Star size={16} className="mr-2" /> View Reviews
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-10 w-full justify-center lg:w-auto"
+                          onClick={() => openQrModal(location)}
+                        >
+                          <QrCode size={16} className="mr-2" /> QR Code
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-10 w-full justify-center text-red-600 hover:bg-red-50 hover:text-red-700 lg:w-10 lg:px-0"
+                              disabled={loading}
+                            >
+                              <Trash2 size={16} className="mr-2 lg:mr-0" />
+                              <span className="lg:hidden">Remove Location</span>
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="max-w-sm md:max-w-lg mx-4">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="text-base md:text-lg">
+                                Remove Location
+                              </AlertDialogTitle>
+                              <AlertDialogDescription className="text-sm md:text-base">
+                                Are you sure you want to remove "
+                                {location.displayName || location.address}"?
+                                This action cannot be undone and will remove all
+                                customers from the queue at this location.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter className="flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
+                              <AlertDialogCancel className="w-full md:w-auto">
+                                Cancel
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => removeLocation(index)}
+                                className="bg-red-600 hover:bg-red-700 w-full md:w-auto"
+                              >
+                                Remove Location
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Edit Restaurant Profile — opens the public profile editor for the
+          chosen location in a modal. */}
+      <Dialog
+        open={!!editing}
+        onOpenChange={(open) => {
+          if (!open) setEditing(null);
+        }}
+      >
+        <DialogContent className="fixed left-1/2 top-1/2 z-50 mx-auto w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-2xl p-4 sm:max-w-2xl sm:p-6 max-sm:text-xs [&_.text-2xl]:max-sm:text-base [&_.text-xl]:max-sm:text-sm [&_.text-lg]:max-sm:text-sm [&_.text-base]:max-sm:text-xs [&_.text-sm]:max-sm:text-xs [&_label]:max-sm:text-xs [&_p]:max-sm:text-xs [&_input]:max-sm:h-9 [&_input]:max-sm:text-xs [&_textarea]:max-sm:text-xs [&_select]:max-sm:text-xs max-[374px]:text-[10px] [&_.text-2xl]:max-[374px]:text-xs [&_.text-xl]:max-[374px]:text-[11px] [&_.text-lg]:max-[374px]:text-[11px] [&_.text-base]:max-[374px]:text-[10px] [&_.text-sm]:max-[374px]:text-[10px] [&_label]:max-[374px]:text-[10px] [&_p]:max-[374px]:text-[10px] [&_input]:max-[374px]:h-7 [&_input]:max-[374px]:text-[10px] [&_textarea]:max-[374px]:text-[10px] [&_select]:max-[374px]:text-[10px]">
+          <DialogHeader className="text-left">
+            <DialogTitle>Edit Restaurant Profile</DialogTitle>
+            <DialogDescription>
+              {editing?.displayName || editing?.address}
+            </DialogDescription>
+          </DialogHeader>
+          {editing && (
+            <RestaurantProfileEditor
+              key={editing.id}
+              location={editing}
+              onSaved={(u) => {
+                onChanged(u);
+                setEditing(null);
+              }}
+              onMediaChange={(u: any) => {
+                // Banner/photo uploads persist immediately — refresh the
+                // dashboard + the open editor snapshot without closing the modal.
+                onChanged(u);
+                setEditing((prev) =>
+                  prev
+                    ? ((u?.locations || []).find(
+                        (l: Location) => l.id === prev.id,
+                      ) ?? prev)
+                    : prev,
+                );
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* View Reviews — owner-only customer reviews for the chosen location. */}
+      <LocationReviewsModal
+        location={selectedLocationForReviews}
+        open={isReviewsModalOpen}
+        onOpenChange={(open) => {
+          setIsReviewsModalOpen(open);
+          if (!open) setSelectedLocationForReviews(null);
+        }}
+      />
+
+      {/* Location QR Code — customers scan this to join THIS location's queue. */}
+      <Dialog
+        open={!!qrLocation}
+        onOpenChange={(open) => {
+          if (!open) {
+            setQrLocation(null);
+            setQrDataUrl("");
+          }
+        }}
+      >
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md overflow-x-hidden rounded-xl">
+          <DialogHeader>
+            <DialogTitle>Location QR Code</DialogTitle>
+            <DialogDescription>
+              {qrLocation?.displayName ||
+                qrLocation?.name ||
+                qrLocation?.address}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* QR image */}
+            <div className="flex justify-center">
+              <div className="inline-block rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm">
+                {qrDataUrl ? (
+                  <img
+                    src={qrDataUrl}
+                    alt="Queue QR Code"
+                    className="mx-auto h-56 w-56"
+                  />
+                ) : (
+                  <div className="flex h-56 w-56 items-center justify-center text-sm text-gray-400">
+                    Generating…
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Queue URL */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">Queue Link</Label>
+              <code className="block break-all rounded-md bg-gray-100 px-3 py-2 font-mono text-xs text-indigo-600">
+                {qrLocation ? queueUrlFor(qrLocation) : ""}
+              </code>
+            </div>
+
+            <p className="text-center text-xs text-gray-500">
+              Customers who scan this code join the queue for this location
+              automatically.
+            </p>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                variant="outline"
+                className="w-full sm:flex-1"
+                onClick={copyQueueLink}
+              >
+                <Copy size={16} className="mr-2" /> Copy Link
+              </Button>
+              <Button
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white sm:flex-1"
+                onClick={downloadQrCode}
+                disabled={!qrDataUrl}
+              >
+                <Download size={16} className="mr-2" /> Download QR Code
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

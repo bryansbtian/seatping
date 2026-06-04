@@ -11,17 +11,17 @@ import { useEffect, useState, useRef } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import BusinessHeader from "@/components/BusinessHeader";
+import ReservationsManager from "@/components/ReservationsManager";
 import {
   Users,
   Clock,
   TrendingUp,
-  Star,
   RefreshCw,
   Calendar,
+  ListOrdered,
   ChevronDown,
   BarChart3,
   LogOut,
-  X,
 } from "lucide-react";
 import Footer from "@/components/Footer";
 import {
@@ -41,10 +41,22 @@ import { Message } from "@mynaui/icons-react";
 const BusinessDashboard = () => {
   const [me, setMe] = useState<any | null>(null);
   const [selectedLocationIndex, setSelectedLocationIndex] = useState(0);
+  // Per-customer queue ETAs (keyed by queueToken), from the shared backend helper.
+  const [queueEtas, setQueueEtas] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
   const [analyticsTimeframe, setAnalyticsTimeframe] = useState<
     "daily" | "weekly"
   >("daily");
+  // Brief fade applied while switching Daily/Weekly so the chart eases between
+  // the two ranges instead of snapping. Data is computed synchronously, so the
+  // previous chart stays visible (just dimmed) until the new lines animate in.
+  const [chartFading, setChartFading] = useState(false);
+  const changeAnalyticsTimeframe = (tf: "daily" | "weekly") => {
+    if (tf === analyticsTimeframe) return;
+    setChartFading(true);
+    setAnalyticsTimeframe(tf);
+    window.setTimeout(() => setChartFading(false), 220);
+  };
   const [trialTimeLeft, setTrialTimeLeft] = useState<{
     days: number;
     hours: number;
@@ -71,6 +83,10 @@ const BusinessDashboard = () => {
   // Get current location and queue
   const currentLocation = locations[selectedLocationIndex];
   const queueData = currentLocation?.queue || [];
+  // Customer-facing location label (display name) with safe fallbacks. Display
+  // only — queue operations still key off the underlying address.
+  const locLabel = (loc: any, idx: number) =>
+    loc?.displayName || loc?.name || loc?.address || `Location ${idx + 1}`;
 
   // Calculate real-time statistics
   const calculateStats = () => {
@@ -81,12 +97,29 @@ const BusinessDashboard = () => {
         avgWaitTime: 0,
         successRate: 0,
         leftToday: 0,
+        reservationsToday: 0,
       };
     }
 
     const admittedCustomers = currentLocation.admittedCustomers || [];
     const removedCustomers = currentLocation.removedCustomers || [];
     const currentQueue = queueData.length;
+
+    // Reservations for this location dated today that still occupy a table
+    // (pending / confirmed / arrived) — matches the "Today" reservations tab.
+    const todayDate = new Date();
+    const todayYmd = `${todayDate.getFullYear()}-${String(
+      todayDate.getMonth() + 1,
+    ).padStart(2, "0")}-${String(todayDate.getDate()).padStart(2, "0")}`;
+    const reservationsToday = (currentLocation.reservations || []).filter(
+      (r: any) => {
+        const d = String(r?.reservationDateTime || "").split("T")[0];
+        return (
+          d === todayYmd &&
+          ["pending", "confirmed", "arrived"].includes(r?.status)
+        );
+      },
+    ).length;
 
     // Filter for today's customers
     const today = new Date().toDateString();
@@ -141,12 +174,29 @@ const BusinessDashboard = () => {
         ? Math.round((todayServed.length / totalProcessed) * 100)
         : 100;
 
+    // Fold reservation outcomes into today's totals: a reservation marked
+    // arrived/completed counts as served; a no-show counts toward "left".
+    const reservations = currentLocation.reservations || [];
+    const isToday = (iso: any) =>
+      iso && new Date(iso).toDateString() === today;
+    let reservationsServedToday = 0;
+    let reservationNoShowsToday = 0;
+    for (const r of reservations) {
+      if (r?.status === "arrived" || r?.status === "completed") {
+        if (isToday(r.arrivedAt || r.completedAt)) reservationsServedToday++;
+      } else if (r?.status === "no_show" && isToday(r.noShowAt)) {
+        reservationNoShowsToday++;
+      }
+    }
+
     return {
-      totalServed: todayServed.length,
+      totalServed: todayServed.length + reservationsServedToday,
       currentQueue,
       avgWaitTime,
       successRate,
-      leftToday: leftToday + todayNoShows, // Include no-shows in the left count
+      // Include queue no-shows + reservation no-shows in the left count.
+      leftToday: leftToday + todayNoShows + reservationNoShowsToday,
+      reservationsToday,
     };
   };
 
@@ -226,8 +276,7 @@ const BusinessDashboard = () => {
       if (isExpired) {
         const updatedLocations = me.locations.map((location: any) => ({
           ...location,
-          customerCredits: 0,
-          smsCredits: 0,
+          credits: 0,
         }));
 
         setMe((prevMe: any) => ({
@@ -241,7 +290,7 @@ const BusinessDashboard = () => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await api("/auth/me");
+        const res = await api("/auth/business/me");
         setMe(res.user);
       } catch {}
     })();
@@ -251,13 +300,45 @@ const BusinessDashboard = () => {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const res = await api("/auth/me");
+        const res = await api("/auth/business/me");
         setMe(res.user);
       } catch {}
     }, 10000); // Refresh every 10 seconds
 
     return () => clearInterval(interval);
   }, []);
+
+  // Per-customer ETAs for the current location's live waitlist. Refreshes when
+  // the queue changes and every 30s (same backend helper as the customer page).
+  useEffect(() => {
+    if (!me?.username || !currentLocation?.id) {
+      setQueueEtas({});
+      return;
+    }
+    let cancelled = false;
+    const fetchEtas = async () => {
+      try {
+        const res = await api(
+          `/auth/business/${me.username}/locations/${currentLocation.id}/queue-etas`,
+        );
+        if (cancelled) return;
+        const map: Record<string, any> = {};
+        for (const e of res.etas || []) {
+          if (e?.queueToken) map[e.queueToken] = e;
+        }
+        setQueueEtas(map);
+      } catch {
+        /* non-fatal: labels just won't show */
+      }
+    };
+    fetchEtas();
+    const id = setInterval(fetchEtas, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.username, currentLocation?.id, queueData.length]);
 
   // Update timer every second for admitted customers countdown
   useEffect(() => {
@@ -283,7 +364,7 @@ const BusinessDashboard = () => {
       });
 
       // Refresh the business data
-      const updated = await api("/auth/me");
+      const updated = await api("/auth/business/me");
       setMe(updated.user);
 
       toast({
@@ -316,7 +397,7 @@ const BusinessDashboard = () => {
       });
 
       // Refresh the business data
-      const updated = await api("/auth/me");
+      const updated = await api("/auth/business/me");
       setMe(updated.user);
 
       toast({
@@ -350,7 +431,7 @@ const BusinessDashboard = () => {
       );
 
       // Refresh the business data
-      const updated = await api("/auth/me");
+      const updated = await api("/auth/business/me");
       setMe(updated.user);
 
       toast({
@@ -384,7 +465,7 @@ const BusinessDashboard = () => {
       );
 
       // Refresh the business data
-      const updated = await api("/auth/me");
+      const updated = await api("/auth/business/me");
       setMe(updated.user);
 
       toast({
@@ -413,6 +494,38 @@ const BusinessDashboard = () => {
     if (diffMins < 60) return `${diffMins}m ago`;
     const diffHours = Math.floor(diffMins / 60);
     return `${diffHours}h ${diffMins % 60}m ago`;
+  };
+
+  // Display label for a notification channel (SMS / WhatsApp / Email).
+  const formatNotificationMethod = (method?: string) => {
+    switch (method) {
+      case "sms":
+        return "SMS";
+      case "whatsapp":
+        return "WhatsApp";
+      case "email":
+        return "Email";
+      default:
+        return method || "";
+    }
+  };
+
+  // Format a phone number with its country code. The country code (defaulting
+  // to +1) is normalized to a leading "+" and leading zeros are stripped from
+  // the national number. US/Canada (+1) numbers get locale-aware NANP grouping,
+  // e.g. ("+1", "2069313369") -> "+1 (206) 931-3369"; other countries are shown
+  // as clean international digits since correct grouping is country-specific.
+  const formatPhone = (countryCode?: string, phoneNumber?: string) => {
+    const national = String(phoneNumber || "").replace(/\D/g, "").replace(/^0+/, "");
+    if (!national) return "";
+    const rawCode = String(countryCode || "").trim().replace(/[^\d+]/g, "");
+    const digits = rawCode.replace(/^\+/, "");
+    const code = digits ? `+${digits}` : "+1";
+    if (code === "+1" && national.length === 10) {
+      const formatted = `(${national.slice(0, 3)}) ${national.slice(3, 6)}-${national.slice(6)}`;
+      return `${code} ${formatted}`;
+    }
+    return `${code} ${national}`;
   };
 
   // Calculate time remaining for admitted customer
@@ -537,6 +650,19 @@ const BusinessDashboard = () => {
           if (dataMap.has(key)) dataMap.get(key)!.noShows += 1;
         }
       }
+      // Reservation outcomes: arrived/completed → served, no_show → no-shows.
+      for (const r of currentLocation.reservations || []) {
+        if (r?.status === "arrived" || r?.status === "completed") {
+          const ts = r.arrivedAt || r.completedAt;
+          if (ts) {
+            const key = new Date(ts).toISOString().slice(0, 10);
+            if (dataMap.has(key)) dataMap.get(key)!.served += 1;
+          }
+        } else if (r?.status === "no_show" && r.noShowAt) {
+          const key = new Date(r.noShowAt).toISOString().slice(0, 10);
+          if (dataMap.has(key)) dataMap.get(key)!.noShows += 1;
+        }
+      }
 
       return Array.from(dataMap.values());
     }
@@ -614,6 +740,19 @@ const BusinessDashboard = () => {
     for (const c of admittedCustomers) {
       if (c.finalStatus === "no_show" && c.admittedAt) {
         const key = weekKeyFrom(new Date(c.admittedAt));
+        if (weekRows.has(key)) weekRows.get(key)!.noShows += 1;
+      }
+    }
+    // Reservation outcomes: arrived/completed → served, no_show → no-shows.
+    for (const r of currentLocation.reservations || []) {
+      if (r?.status === "arrived" || r?.status === "completed") {
+        const ts = r.arrivedAt || r.completedAt;
+        if (ts) {
+          const key = weekKeyFrom(new Date(ts));
+          if (weekRows.has(key)) weekRows.get(key)!.served += 1;
+        }
+      } else if (r?.status === "no_show" && r.noShowAt) {
+        const key = weekKeyFrom(new Date(r.noShowAt));
         if (weekRows.has(key)) weekRows.get(key)!.noShows += 1;
       }
     }
@@ -700,7 +839,7 @@ const BusinessDashboard = () => {
     <>
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-8 [&_.text-3xl]:max-[374px]:text-2xl [&_.text-2xl]:max-[374px]:text-xl [&_.text-xl]:max-[374px]:text-lg [&_.text-lg]:max-[374px]:text-base [&_.text-base]:max-[374px]:text-sm [&_.text-sm]:max-[374px]:text-xs [&_.text-xs]:max-[374px]:text-[11px]">
           {/* Trial Banner Logic */}
           {me && me.trial === true && (
             <>
@@ -725,8 +864,8 @@ const BusinessDashboard = () => {
                           Trial Expired
                         </h3>
                         <p className="text-sm md:text-base opacity-90">
-                          Your trial has expired. Upgrade to continue using
-                          SeatPing with full features.
+                          Your free trial has ended. Please contact SeatPing to
+                          continue using your business dashboard.
                         </p>
                       </div>
                       <div className="flex justify-end">
@@ -735,7 +874,7 @@ const BusinessDashboard = () => {
                           className="border-2 border-white text-white bg-white/10 hover:bg-white hover:text-red-600"
                           onClick={() => (window.location.href = "/sales")}
                         >
-                          Upgrade Now
+                          Contact SeatPing
                         </Button>
                       </div>
                     </div>
@@ -751,8 +890,8 @@ const BusinessDashboard = () => {
                           You're on a Free Trial!
                         </h3>
                         <p className="text-sm md:text-base opacity-90">
-                          Upgrade now to unlock unlimited locations and premium
-                          features
+                          Contact SeatPing when you're ready to activate your
+                          account.
                         </p>
                         {trialTimeLeft && (
                           <div className="mt-2 flex items-center space-x-2 text-indigo-100">
@@ -769,7 +908,7 @@ const BusinessDashboard = () => {
                           className="border-2 border-white text-white bg-white/10 hover:bg-white hover:text-indigo-600"
                           onClick={() => (window.location.href = "/sales")}
                         >
-                          Upgrade Now
+                          Contact SeatPing
                         </Button>
                       </div>
                     </div>
@@ -779,12 +918,11 @@ const BusinessDashboard = () => {
             </>
           )}
 
-          {/* Show upgrade banner for users who are not on trial but have 0 credits */}
+          {/* No-credits notice for activated (non-trial) businesses with 0 credits */}
           {me &&
             me.trial === false &&
             currentLocation &&
-            currentLocation.smsCredits === 0 &&
-            currentLocation.customerCredits === 0 && (
+            currentLocation.credits === 0 && (
               <div className="mb-6">
                 <div className="bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
@@ -793,17 +931,17 @@ const BusinessDashboard = () => {
                         ⚠️ No Credits Available
                       </h3>
                       <p className="text-sm md:text-base opacity-90">
-                        You have no credits available. Please contact support or
-                        upgrade your plan.
+                        You have no credits available. Please contact SeatPing
+                        to top up credits or adjust your account.
                       </p>
                     </div>
                     <div className="flex justify-end">
                       <Button
                         variant="outline"
                         className="border-white text-white hover:bg-white hover:text-teal-600"
-                        onClick={() => (window.location.href = "/plan-change")}
+                        onClick={() => (window.location.href = "/sales")}
                       >
-                        Change Plan
+                        Contact SeatPing
                       </Button>
                     </div>
                   </div>
@@ -823,37 +961,19 @@ const BusinessDashboard = () => {
               </p>
             </div>
 
-            {/* Credits Cards */}
+            {/* Credits Card */}
             {currentLocation && (
-              <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="mb-3">
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs text-slate-600 mb-2">
-                        Customer Credits
-                      </p>
+                      <p className="text-xs text-slate-600 mb-1">Credits</p>
                       <p className="text-xl md:text-2xl font-semibold text-slate-800">
-                        {currentLocation?.customerCredits || 0}
+                        {currentLocation?.credits || 0}
                       </p>
                     </div>
-                    {/* hide under 400px */}
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 leading-none max-[400px]:hidden">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 leading-none">
                       <Users className="w-4 h-4 text-indigo-600" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs text-slate-600 mb-2">SMS Credits</p>
-                      <p className="text-xl md:text-2xl font-semibold text-slate-800">
-                        {currentLocation?.smsCredits || 0}
-                      </p>
-                    </div>
-                    {/* hide under 400px */}
-                    <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center shrink-0 leading-none max-[400px]:hidden">
-                      <Message className="w-4 h-4 text-teal-600" />
                     </div>
                   </div>
                 </div>
@@ -872,7 +992,7 @@ const BusinessDashboard = () => {
                 {locations.length > 0 ? (
                   locations.map((loc, idx) => (
                     <option key={idx} value={idx}>
-                      {loc?.address || `Location ${idx + 1}`}
+                      {locLabel(loc, idx)}
                     </option>
                   ))
                 ) : (
@@ -894,12 +1014,9 @@ const BusinessDashboard = () => {
                   Here is your daily statistic
                 </p>
                 {currentLocation && (
-                  <div className="flex flex-wrap gap-2 mt-2">
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
                     <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
-                      Customer Credits: {currentLocation?.customerCredits || 0}
-                    </span>
-                    <span className="text-xs bg-teal-100 text-teal-700 px-2 py-1 rounded">
-                      SMS Credits: {currentLocation?.smsCredits || 0}
+                      Credits: {currentLocation?.credits || 0}
                     </span>
                   </div>
                 )}
@@ -921,7 +1038,7 @@ const BusinessDashboard = () => {
                     {locations.length > 0 ? (
                       locations.map((loc, idx) => (
                         <option key={idx} value={idx}>
-                          {loc?.address || `Location ${idx + 1}`}
+                          {locLabel(loc, idx)}
                         </option>
                       ))
                     ) : (
@@ -934,92 +1051,77 @@ const BusinessDashboard = () => {
             </div>
           </div>
 
-          {/* Stats Cards - Mobile Version */}
-          <div className="space-y-3 mb-6 lg:hidden">
-            {/* Total Queue - Full Width */}
-            <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-600 text-xs mb-2">Total Queue</p>
-                  <p className="text-3xl font-semibold text-slate-800">
-                    {todayStats.currentQueue}
-                  </p>
-                </div>
-                <div className="w-12 h-12 rounded-full grid place-items-center shrink-0 bg-indigo-100 max-[325px]:hidden">
-                  <Users className="w-6 h-6 text-indigo-600" />
-                </div>
+          {/* Stats Cards - Mobile Version: a single compact "Today's Summary"
+              card so the page stays short and scannable instead of a long
+              stack of individual stat cards. */}
+          <Card className="mb-6 bg-white rounded-xl shadow-sm border border-slate-200 lg:hidden">
+            <div className="p-4">
+              <p className="text-sm font-semibold text-slate-800 mb-3">
+                Today's Summary
+              </p>
+              <div className="divide-y divide-slate-100">
+                {[
+                  {
+                    label: "Current Queue",
+                    value: todayStats.currentQueue,
+                    icon: Users,
+                    tint: "bg-indigo-100 text-indigo-600",
+                  },
+                  {
+                    label: "Reservations Today",
+                    value: todayStats.reservationsToday,
+                    icon: Calendar,
+                    tint: "bg-blue-100 text-blue-600",
+                  },
+                  {
+                    label: "Avg Queue Wait",
+                    value: `${todayStats.avgWaitTime}m`,
+                    icon: Clock,
+                    tint: "bg-teal-100 text-teal-600",
+                  },
+                  {
+                    label: "Served Today",
+                    value: todayStats.totalServed,
+                    icon: TrendingUp,
+                    tint: "bg-emerald-100 text-emerald-600",
+                  },
+                  {
+                    label: "Left Today",
+                    value: todayStats.leftToday,
+                    icon: LogOut,
+                    tint: "bg-teal-100 text-teal-600",
+                  },
+                ].map(({ label, value, icon: Icon, tint }) => (
+                  <div
+                    key={label}
+                    className="flex items-center justify-between py-2.5"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`w-8 h-8 rounded-full grid place-items-center shrink-0 max-[325px]:hidden ${tint}`}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm text-slate-600 truncate">
+                        {label}
+                      </span>
+                    </div>
+                    <span className="text-lg font-semibold text-slate-800 leading-none shrink-0">
+                      {value}
+                    </span>
+                  </div>
+                ))}
               </div>
-            </Card>
-
-            {/* Row 2: Avg Wait Time and Served Today */}
-            <div className="grid grid-cols-2 gap-3">
-              <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-slate-600 text-xs mb-2">Avg Wait Time</p>
-                    <p className="text-2xl font-semibold text-slate-800">
-                      {todayStats.avgWaitTime}m
-                    </p>
-                  </div>
-                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-teal-100 max-[325px]:hidden">
-                    <Clock className="w-5 h-5 text-teal-600" />
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-slate-600 text-xs mb-2">Served Today</p>
-                    <p className="text-2xl font-semibold text-slate-800">
-                      {todayStats.totalServed}
-                    </p>
-                  </div>
-                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-emerald-100 max-[325px]:hidden">
-                    <TrendingUp className="w-5 h-5 text-emerald-600" />
-                  </div>
-                </div>
-              </Card>
             </div>
-
-            {/* Row 3: Success Rate and Left Today */}
-            <div className="grid grid-cols-2 gap-3">
-              <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-slate-600 text-xs mb-2">Success Rate</p>
-                    <p className="text-2xl font-semibold text-slate-800 leading-none">
-                      {todayStats.successRate}%
-                    </p>
-                  </div>
-                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 self-center bg-violet-100 max-[325px]:hidden">
-                    <Star className="w-5 h-5 text-violet-600" />
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-slate-600 text-xs mb-2">Left Today</p>
-                    <p className="text-2xl font-semibold text-slate-800 leading-none">
-                      {todayStats.leftToday}
-                    </p>
-                  </div>
-                  {/* hide under 325px */}
-                  <div className="w-10 h-10 rounded-full grid place-items-center shrink-0 self-center bg-teal-100 max-[325px]:hidden">
-                    <LogOut className="w-5 h-5 text-teal-600" />
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </div>
+          </Card>
 
           {/* Stats Cards - Desktop Version */}
           <div className="hidden lg:grid grid-cols-5 gap-4 mb-6">
             <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
               <div className="flex flex-col gap-2">
-                <p className="text-slate-600 text-xs md:text-sm">Total Queue</p>
+                <p className="text-slate-600 text-xs md:text-sm">
+                  Current Queue
+                </p>
                 <div className="flex items-center justify-between">
                   <p className="text-2xl md:text-3xl font-semibold text-slate-800">
                     {todayStats.currentQueue}
@@ -1034,7 +1136,23 @@ const BusinessDashboard = () => {
             <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
               <div className="flex flex-col gap-2">
                 <p className="text-slate-600 text-xs md:text-sm">
-                  Avg Wait Time
+                  Reservations Today
+                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-2xl md:text-3xl font-semibold text-slate-800">
+                    {todayStats.reservationsToday}
+                  </p>
+                  <div className="p-2 bg-blue-100 rounded-full">
+                    <Calendar className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+              <div className="flex flex-col gap-2">
+                <p className="text-slate-600 text-xs md:text-sm">
+                  Avg Queue Wait Time
                 </p>
                 <div className="flex items-center justify-between">
                   <p className="text-2xl md:text-3xl font-semibold text-slate-800">
@@ -1056,24 +1174,8 @@ const BusinessDashboard = () => {
                   <p className="text-2xl md:text-3xl font-semibold text-slate-800">
                     {todayStats.totalServed}
                   </p>
-                  <div className="p-2 bg-teal-100 rounded-full">
-                    <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
-              <div className="flex flex-col gap-2">
-                <p className="text-slate-600 text-xs md:text-sm">
-                  Success Rate
-                </p>
-                <div className="flex items-center justify-between">
-                  <p className="text-2xl md:text-3xl font-semibold text-slate-800">
-                    {todayStats.successRate}%
-                  </p>
-                  <div className="p-2 bg-violet-100 rounded-full">
-                    <Star className="w-5 h-5 md:w-6 md:h-6 text-violet-600" />
+                  <div className="p-2 bg-emerald-100 rounded-full">
+                    <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-emerald-600" />
                   </div>
                 </div>
               </div>
@@ -1100,12 +1202,13 @@ const BusinessDashboard = () => {
               {/* Mobile Layout */}
               <div className="md:hidden">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg text-gray-800">
+                  <CardTitle className="flex items-center gap-2 text-lg text-gray-800">
+                    <ListOrdered className="w-5 h-5" />
                     Queue Management
                   </CardTitle>
                   <Badge
                     variant="secondary"
-                    className="bg-indigo-100 text-indigo-700 text-[10px] sm:text-xs px-2 py-1 sm:px-3 whitespace-nowrap"
+                    className="bg-indigo-100 text-indigo-700 text-[10px] sm:text-xs px-2 py-1 sm:px-3 whitespace-nowrap max-[374px]:hidden"
                   >
                     {queueData.length}{" "}
                     {queueData.length === 1 ? "customer" : "customers"}
@@ -1113,7 +1216,7 @@ const BusinessDashboard = () => {
                 </div>
                 <CardDescription className="text-gray-600 text-sm mb-3 mt-0.5">
                   {currentLocation
-                    ? `Managing queue for: ${currentLocation.address}`
+                    ? `Managing queue for: ${locLabel(currentLocation, selectedLocationIndex)}`
                     : "No location selected"}
                 </CardDescription>
                 <Button
@@ -1121,7 +1224,7 @@ const BusinessDashboard = () => {
                   variant="outline"
                   onClick={async () => {
                     try {
-                      const res = await api("/auth/me");
+                      const res = await api("/auth/business/me");
                       setMe(res.user);
                       toast({
                         title: "Queue refreshed",
@@ -1146,12 +1249,13 @@ const BusinessDashboard = () => {
               {/* Desktop Layout */}
               <div className="hidden md:flex md:items-center md:justify-between">
                 <div>
-                  <CardTitle className="text-lg md:text-xl text-gray-800">
+                  <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
+                    <ListOrdered className="w-5 h-5" />
                     Queue Management
                   </CardTitle>
                   <CardDescription className="text-gray-600 text-sm">
                     {currentLocation
-                      ? `Managing queue for: ${currentLocation.address}`
+                      ? `Managing queue for: ${locLabel(currentLocation, selectedLocationIndex)}`
                       : "No location selected"}
                   </CardDescription>
                 </div>
@@ -1161,7 +1265,7 @@ const BusinessDashboard = () => {
                     variant="outline"
                     onClick={async () => {
                       try {
-                        const res = await api("/auth/me");
+                        const res = await api("/auth/business/me");
                         setMe(res.user);
                         toast({
                           title: "Queue refreshed",
@@ -1193,9 +1297,9 @@ const BusinessDashboard = () => {
             </CardHeader>
             <CardContent className="p-4 md:p-6">
               {queueData.length === 0 ? (
-                <div className="text-center py-8 md:py-12">
-                  <Users className="w-10 h-10 md:w-12 md:h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500 text-sm md:text-base">
+                <div className="flex flex-col items-center py-10 text-center text-slate-400">
+                  <Users className="h-8 w-8" />
+                  <p className="mt-2 text-sm">
                     No customers in queue at this location.
                   </p>
                 </div>
@@ -1206,43 +1310,53 @@ const BusinessDashboard = () => {
                       key={index}
                       className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                     >
-                      <div className="flex items-center space-x-3 md:space-x-4">
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm md:text-base">
-                          {index + 1}
-                        </div>
+                      <div className="flex items-start space-x-3 md:space-x-4">
+                        <span className="mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-2 py-1 text-xs md:text-sm font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
+                          #{index + 1}
+                        </span>
                         <div className="flex-1">
                           <h3 className="font-semibold text-gray-800 text-sm md:text-base">
                             {customer.firstName} {customer.lastName}
                           </h3>
-                          <div className="flex flex-col md:flex-row md:items-center text-xs md:text-sm text-gray-600 space-y-0.5 md:space-y-0">
-                            <span>
+                          <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
+                            <span className="whitespace-nowrap">
                               Joined: {formatTimeSince(customer.joinedAt)}
                             </span>
-                            <span className="hidden md:inline mx-1 text-gray-400">
-                              •
-                            </span>
-                            <span className="md:whitespace-nowrap">
+                            <span className="text-gray-400">•</span>
+                            <span className="whitespace-nowrap">
                               {customer.numGuests}{" "}
-                              {customer.numGuests === 1 ? "guest" : "guests"}
+                              {customer.numGuests === 1 ? "Guest" : "Guests"}
                             </span>
-                            <span className="hidden md:inline mx-1 text-gray-400">
-                              •
-                            </span>
-                            <span className="md:whitespace-nowrap">
-                              {customer.waitingPreference === "on_premises"
-                                ? "Stay on Premises"
-                                : "Wait Anywhere"}
-                            </span>
+                            {customer.notificationMethod && (
+                              <>
+                                <span className="text-gray-400">•</span>
+                                <span className="whitespace-nowrap">
+                                  {formatNotificationMethod(customer.notificationMethod)}
+                                </span>
+                              </>
+                            )}
                           </div>
 
                           {customer.phoneNumber && (
                             <p className="text-xs md:text-sm text-gray-500 mt-1">
-                              Phone: {customer.phoneNumber}
+                              Phone: {formatPhone(customer.countryCode, customer.phoneNumber)}
                             </p>
                           )}
+                          {customer.email && (
+                            <p className="text-xs md:text-sm text-gray-500 mt-1 break-all">
+                              Email: {customer.email}
+                            </p>
+                          )}
+                          {customer.queueToken &&
+                            queueEtas[customer.queueToken] && (
+                              <p className="text-xs md:text-sm font-medium text-indigo-600 mt-1">
+                                Estimated wait:{" "}
+                                {queueEtas[customer.queueToken].displayText}
+                              </p>
+                            )}
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2 md:space-x-3 ml-11 md:ml-0">
+                      <div className="flex items-center space-x-2 md:space-x-3">
                         <Button
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white flex-1 md:flex-none"
@@ -1329,27 +1443,23 @@ const BusinessDashboard = () => {
                                   <h3 className="font-semibold text-gray-800 text-sm md:text-base">
                                     {customer.firstName} {customer.lastName}
                                   </h3>
-                                  <div className="flex flex-col md:flex-row md:items-center text-xs md:text-sm text-gray-600 space-y-0.5 md:space-y-0">
-                                    <span>
+                                  <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
+                                    <span className="whitespace-nowrap">
                                       Admitted:{" "}
                                       {formatTimeSince(customer.admittedAt)}
                                     </span>
-                                    <span className="hidden md:inline mx-1 text-gray-400">
-                                      •
-                                    </span>
-                                    <span className="md:whitespace-nowrap">
+                                    <span className="text-gray-400">•</span>
+                                    <span className="whitespace-nowrap">
                                       {customer.numGuests}{" "}
                                       {customer.numGuests === 1
-                                        ? "guest"
-                                        : "guests"}
+                                        ? "Guest"
+                                        : "Guests"}
                                     </span>
 
                                     {timeRemaining.expired && (
                                       <>
-                                        <span className="hidden md:inline mx-1 text-gray-400">
-                                          •
-                                        </span>
-                                        <span className="text-red-600 font-semibold md:whitespace-nowrap">
+                                        <span className="text-gray-400">•</span>
+                                        <span className="text-red-600 font-semibold whitespace-nowrap">
                                           Time expired
                                         </span>
                                       </>
@@ -1357,7 +1467,7 @@ const BusinessDashboard = () => {
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex items-center space-x-2 md:space-x-3 ml-11 md:ml-0">
+                              <div className="flex items-center gap-2 md:gap-3">
                                 <Button
                                   size="sm"
                                   className="bg-green-600 hover:bg-green-700 text-white flex-1 md:flex-none"
@@ -1387,6 +1497,19 @@ const BusinessDashboard = () => {
             );
           })()}
 
+          {/* Today's Reservations — sits between the live waitlist and the
+              recently-left list so staff manage walk-ins + bookings together. */}
+          {currentLocation && (
+            <ReservationsManager
+              reservations={currentLocation.reservations || []}
+              businessUsername={me?.username || ""}
+              locationId={currentLocation.id}
+              locationLabel={locLabel(currentLocation, selectedLocationIndex)}
+              reservationsEnabled={currentLocation.reservationsEnabled !== false}
+              onUpdated={(user) => setMe(user)}
+            />
+          )}
+
           {/* Recently Left Customers */}
           {(() => {
             // Filter customers who left in the past 24 hours
@@ -1408,45 +1531,46 @@ const BusinessDashboard = () => {
 
             return (
               recentlyLeftCustomers.length > 0 && (
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
+                <Card className="bg-white rounded-xl shadow-sm border-0 mb-6">
+                  <CardHeader className="border-b border-gray-100 p-4 md:p-6">
+                    <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
                       <Users className="w-5 h-5" />
                       <span>Recently Left Customers</span>
                     </CardTitle>
-                    <CardDescription>
-                      {" "}
+                    <CardDescription className="text-gray-600 text-sm">
                       Customers who have left the queue recently
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-4 md:p-6">
                     <div className="space-y-3 md:space-y-4">
                       {recentlyLeftCustomers.map(
-                        (customer: any, index: number) => (
+                        (customer: any, index: number) => {
+                          const statusBadge = (
+                            <Badge
+                              variant={
+                                customer.status === "left"
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                              className="inline-flex h-6 items-center justify-center px-3 text-xs leading-none md:h-7"
+                            >
+                              {customer.status === "left"
+                                ? "Left Queue"
+                                : "Removed by Business"}
+                            </Badge>
+                          );
+                          return (
                           <div
                             key={index}
                             className="flex flex-col space-y-1.5 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg"
                           >
-                            <div className="flex items-center space-x-3 md:space-x-4">
-                              <div
-                                className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm md:text-base ${
-                                  customer.status === "left"
-                                    ? "bg-teal-500"
-                                    : "bg-red-500"
-                                }`}
-                              >
-                                {customer.status === "left" ? (
-                                  <LogOut className="w-4 h-4 md:w-5 md:h-5 text-white" />
-                                ) : (
-                                  <X className="w-4 h-4 md:w-5 md:h-5 text-white" />
-                                )}
-                              </div>
+                            <div className="flex items-start md:items-center">
                               <div className="flex-1">
                                 <h3 className="font-semibold text-gray-800 text-sm md:text-base">
                                   {customer.firstName} {customer.lastName}
                                 </h3>
-                                <div className="flex flex-col md:flex-row md:items-center text-xs md:text-sm text-gray-600 space-y-0.5 md:space-y-0">
-                                  <span className="md:whitespace-nowrap">
+                                <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
+                                  <span className="whitespace-nowrap">
                                     {customer.status === "left"
                                       ? "Left"
                                       : "Removed"}
@@ -1455,49 +1579,40 @@ const BusinessDashboard = () => {
                                       customer.leftAt || customer.removedAt,
                                     )}
                                   </span>
-                                  <span className="hidden md:inline mx-1 text-gray-400">
-                                    •
-                                  </span>
-                                  <span className="md:whitespace-nowrap">
+                                  <span className="text-gray-400">•</span>
+                                  <span className="whitespace-nowrap">
                                     {customer.numGuests}{" "}
                                     {customer.numGuests === 1
-                                      ? "guest"
-                                      : "guests"}
+                                      ? "Guest"
+                                      : "Guests"}
                                   </span>
-                                  <span className="hidden md:inline mx-1 text-gray-400">
-                                    •
-                                  </span>
-                                  <span className="md:whitespace-nowrap">
-                                    {customer.waitingPreference ===
-                                    "on_premises"
-                                      ? "Stay on Premises"
-                                      : "Wait Anywhere"}
-                                  </span>
+                                  {customer.notificationMethod && (
+                                    <>
+                                      <span className="text-gray-400">•</span>
+                                      <span className="whitespace-nowrap">
+                                        {formatNotificationMethod(customer.notificationMethod)}
+                                      </span>
+                                    </>
+                                  )}
                                 </div>
 
                                 {customer.phoneNumber && (
                                   <p className="text-xs md:text-sm text-gray-500 mt-1">
-                                    Phone: {customer.phoneNumber}
+                                    Phone: {formatPhone(customer.countryCode, customer.phoneNumber)}
                                   </p>
                                 )}
+                                {/* Mobile: pill sits directly below the metadata,
+                                    aligned with the customer text (not the icon). */}
+                                <div className="mt-1.5 md:hidden">
+                                  {statusBadge}
+                                </div>
                               </div>
                             </div>
-                            <div className="ml-11 md:ml-0 -mt-1 md:mt-0">
-                              <Badge
-                                variant={
-                                  customer.status === "left"
-                                    ? "secondary"
-                                    : "destructive"
-                                }
-                                className="inline-flex h-6 items-center justify-center px-3 text-xs leading-none md:h-7"
-                              >
-                                {customer.status === "left"
-                                  ? "Left Queue"
-                                  : "Removed by Business"}
-                              </Badge>
-                            </div>
+                            {/* Desktop: pill stays on the right of the row. */}
+                            <div className="hidden md:block">{statusBadge}</div>
                           </div>
-                        ),
+                          );
+                        },
                       )}
                     </div>
                   </CardContent>
@@ -1527,7 +1642,7 @@ const BusinessDashboard = () => {
                       variant={
                         analyticsTimeframe === "daily" ? "default" : "outline"
                       }
-                      onClick={() => setAnalyticsTimeframe("daily")}
+                      onClick={() => changeAnalyticsTimeframe("daily")}
                     >
                       Daily
                     </Button>
@@ -1536,7 +1651,7 @@ const BusinessDashboard = () => {
                       variant={
                         analyticsTimeframe === "weekly" ? "default" : "outline"
                       }
-                      onClick={() => setAnalyticsTimeframe("weekly")}
+                      onClick={() => changeAnalyticsTimeframe("weekly")}
                     >
                       Weekly
                     </Button>
@@ -1544,70 +1659,90 @@ const BusinessDashboard = () => {
                 </div>
               </CardHeader>
               <CardContent className="p-4 md:p-6">
-                {dailyWeeklySummary.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart
-                      data={dailyWeeklySummary}
-                      margin={{ top: 8, right: 16, left: 28, bottom: 44 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" tickMargin={14} height={32} />
+                {/* Fixed-height wrapper so switching ranges (or hitting the
+                    empty state) never resizes the card. The opacity transition
+                    eases the swap between Daily and Weekly. */}
+                <div
+                  className={`h-[300px] w-full transition-opacity duration-200 ease-in-out ${
+                    chartFading ? "opacity-60" : "opacity-100"
+                  }`}
+                >
+                  {dailyWeeklySummary.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={dailyWeeklySummary}
+                        margin={{ top: 8, right: 16, left: 28, bottom: 44 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" tickMargin={14} height={32} />
 
-                      {/* Left axis (visible) */}
-                      <YAxis yAxisId="left" width={40} />
+                        {/* Left axis (visible) */}
+                        <YAxis yAxisId="left" width={40} allowDecimals={false} />
 
-                      {/* Right axis (invisible) to balance spacing and center the chart */}
-                      <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        width={40}
-                        tick={false}
-                        axisLine={false}
-                        tickLine={false}
-                      />
+                        {/* Right axis (invisible) to balance spacing and center the chart */}
+                        <YAxis
+                          yAxisId="right"
+                          orientation="right"
+                          width={40}
+                          tick={false}
+                          axisLine={false}
+                          tickLine={false}
+                        />
 
-                      <Tooltip />
-                      <Legend
-                        verticalAlign="bottom"
-                        align="center"
-                        wrapperStyle={{ bottom: 4 }}
-                      />
+                        <Tooltip />
+                        <Legend
+                          verticalAlign="bottom"
+                          align="center"
+                          wrapperStyle={{ bottom: 4 }}
+                        />
 
-                      <Line
-                        yAxisId="left"
-                        type="monotone"
-                        dataKey="served"
-                        stroke="#3b82f6"
-                        strokeWidth={2}
-                        name="Customers Served"
-                      />
-                      <Line
-                        yAxisId="left"
-                        type="monotone"
-                        dataKey="avgWait"
-                        stroke="#10b981"
-                        strokeWidth={2}
-                        name="Avg Wait Time (min)"
-                      />
-                      <Line
-                        yAxisId="left"
-                        type="monotone"
-                        dataKey="noShows"
-                        stroke="#f59e0b"
-                        strokeWidth={2}
-                        name="No-Shows"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="text-center py-12">
-                    <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">
-                      No data available yet. Start serving customers to see
-                      analytics!
-                    </p>
-                  </div>
-                )}
+                        {/* Stable dataKeys + colors across Daily/Weekly so
+                            Recharts morphs each line instead of remounting. */}
+                        <Line
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="served"
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          name="Customers Served"
+                          isAnimationActive
+                          animationDuration={400}
+                          animationEasing="ease-in-out"
+                        />
+                        <Line
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="avgWait"
+                          stroke="#10b981"
+                          strokeWidth={2}
+                          name="Avg Wait Time (min)"
+                          isAnimationActive
+                          animationDuration={400}
+                          animationEasing="ease-in-out"
+                        />
+                        <Line
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="noShows"
+                          stroke="#f59e0b"
+                          strokeWidth={2}
+                          name="No-Shows"
+                          isAnimationActive
+                          animationDuration={400}
+                          animationEasing="ease-in-out"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center text-center">
+                      <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500">
+                        No data available yet. Start serving customers to see
+                        analytics!
+                      </p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 

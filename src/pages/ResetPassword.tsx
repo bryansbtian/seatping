@@ -29,6 +29,13 @@ const ResetPassword = () => {
 
   const token = searchParams.get("token");
 
+  // Context-aware: the reset link carries the account type (?type=business),
+  // so a business user gets the business header and is returned to the business
+  // login after resetting.
+  const isBusiness = searchParams.get("type") === "business";
+  const headerVariant = isBusiness ? "business" : "customer";
+  const loginPath = isBusiness ? "/business/login" : "/login";
+
   useEffect(() => {
     if (!token) {
       toast({
@@ -36,9 +43,9 @@ const ResetPassword = () => {
         description: "This password reset link is invalid.",
         variant: "destructive",
       });
-      navigate("/forgot");
+      navigate(isBusiness ? "/forgot?type=business" : "/forgot");
     }
-  }, [token, navigate, toast]);
+  }, [token, navigate, toast, isBusiness]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,36 +98,38 @@ const ResetPassword = () => {
   if (passwordReset) {
     return (
       <>
-        <Header />
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-success/5 px-4">
-          <Card className="w-full max-w-md shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
-            <CardHeader className="text-center">
-              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
-              </div>
-              <CardTitle className="text-2xl text-primary">
-                Password Reset Complete!
-              </CardTitle>
-              <CardDescription>
-                Your password has been successfully updated.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="text-center space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  You can now log in to your account using your new password.
-                </p>
-              </div>
-              
-              <Button asChild className="w-full">
-                <Link to="/login">
-                  Continue to Login
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+        <Header variant={headerVariant} />
+        <div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/5 via-background to-success/5">
+          <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10 sm:pt-28 sm:pb-14">
+            <Card className="w-full max-w-[540px] shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
+              <CardHeader className="px-6 pb-6 pt-8 text-center sm:px-10 sm:pt-10">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+                  <CheckCircle className="h-8 w-8 text-green-600" />
+                </div>
+                <CardTitle className="text-3xl text-primary">
+                  Password Reset Complete!
+                </CardTitle>
+                <CardDescription className="text-sm sm:text-base">
+                  Your password has been successfully updated.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 px-6 pb-8 sm:px-10 sm:pb-10">
+                <div className="text-center space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    You can now log in to your account using your new password.
+                  </p>
+                </div>
+
+                <Button asChild className="h-11 w-full text-base">
+                  <Link to={loginPath}>
+                    Continue to Log In
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </main>
+          <Footer />
         </div>
-        <Footer />
       </>
     );
   }
@@ -131,73 +140,85 @@ const ResetPassword = () => {
 
   return (
     <>
-      <Header />
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-success/5 px-4">
-        <Card className="w-full max-w-md shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
-              <Lock className="w-8 h-8 text-indigo-600" />
-            </div>
-            <CardTitle className="text-2xl text-primary">
-              Reset Your Password
-            </CardTitle>
-            <CardDescription>
-              Enter your new password below.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">New Password</Label>
-                <Input
-                  id="newPassword"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter your new password"
-                  required
-                />
-                {errors.newPassword && (
-                  <p className="text-sm text-destructive">
-                    {errors.newPassword}
-                  </p>
-                )}
+      <Header variant={headerVariant} />
+      {/* Full-height flex column matching the Forgot Password layout: fixed
+          header overlaid on top (pt-* on <main> clears it), card centered in the
+          remaining space, footer at the bottom. The column is exactly
+          min-h-screen so short content never leaves a giant empty area. */}
+      <div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/5 via-background to-success/5">
+        <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10 sm:pt-28 sm:pb-14">
+          <Card className="w-full max-w-[540px] shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
+            <CardHeader className="px-6 pb-6 pt-8 text-center sm:px-10 sm:pt-10">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100">
+                <Lock className="h-8 w-8 text-indigo-600" />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your new password"
-                  required
-                />
-                {errors.confirmPassword && (
-                  <p className="text-sm text-destructive">
-                    {errors.confirmPassword}
-                  </p>
-                )}
+              <CardTitle className="text-3xl text-primary">
+                Reset Your Password
+              </CardTitle>
+              <CardDescription className="text-sm sm:text-base">
+                Enter your new password below.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-6 pb-8 sm:px-10 sm:pb-10">
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    className="h-11 placeholder:text-sm sm:placeholder:text-base"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter your new password"
+                    required
+                  />
+                  {errors.newPassword && (
+                    <p className="text-sm text-destructive">
+                      {errors.newPassword}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    className="h-11 placeholder:text-sm sm:placeholder:text-base"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm your new password"
+                    required
+                  />
+                  {errors.confirmPassword && (
+                    <p className="text-sm text-destructive">
+                      {errors.confirmPassword}
+                    </p>
+                  )}
+                </div>
+
+                <Button
+                  type="submit"
+                  className="h-11 w-full text-base"
+                  disabled={loading}
+                >
+                  {loading ? "Updating..." : "Update Password"}
+                </Button>
+              </form>
+
+              <div className="mt-5 text-center">
+                <Button asChild variant="link" className="text-muted-foreground">
+                  <Link to={loginPath}>
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back to Log In
+                  </Link>
+                </Button>
               </div>
-              
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Updating..." : "Update Password"}
-              </Button>
-            </form>
-            
-            <div className="mt-6 text-center">
-              <Button asChild variant="link" className="text-muted-foreground">
-                <Link to="/login">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Login
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
       </div>
-      <Footer />
     </>
   );
 };

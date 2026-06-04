@@ -247,3 +247,68 @@ All colors MUST be HSL.
   .stagger-children > *:nth-child(5) { animation-delay: 0.4s; }
   .stagger-children > *:nth-child(6) { animation-delay: 0.5s; }
 }
+
+/* ---------------------------------------------------------------------------
+   Google Places Autocomplete dropdown — styled to match SeatPing.
+   Google injects `.pac-container` into <body>, so these MUST be global (not
+   scoped to a component). The Google attribution (.pac-logo) is left visible
+   as required by Google's terms.
+--------------------------------------------------------------------------- */
+.pac-container {
+  margin-top: 6px;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  box-shadow:
+    0 10px 25px -5px rgba(15, 23, 42, 0.15),
+    0 4px 10px -6px rgba(15, 23, 42, 0.1);
+  font-family: inherit;
+  overflow: hidden;
+  z-index: 60;
+}
+
+.pac-item {
+  padding: 12px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  line-height: 1.3;
+  color: #64748b; /* slate-500 — secondary address text */
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.pac-item:hover,
+.pac-item-selected,
+.pac-item-selected:hover {
+  background-color: #f1f5f9; /* slate-100 hover/active */
+}
+
+.pac-item-query {
+  font-size: 0.875rem;
+  color: #0f172a; /* slate-900 — primary navy text */
+}
+
+.pac-matched {
+  font-weight: 600;
+}
+
+.pac-icon {
+  margin-right: 10px;
+  margin-top: 3px;
+}
+
+/* Keep Google's "powered by" attribution visible, just with some spacing. */
+.pac-logo::after {
+  margin: 8px 14px;
+}
+
+@media (max-width: 640px) {
+  .pac-container {
+    border-radius: 10px;
+  }
+  .pac-item {
+    padding: 10px 12px;
+  }
+}

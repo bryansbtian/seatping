@@ -1,49 +1,58 @@
 # SeatPing
 
-Virtual Queue Management SaaS for Restaurants & Service Businesses.
+Virtual Queue and Reservations Software for Restaurants and Service Businesses.
 
-SeatPing helps businesses manage customer wait times through QR-code based virtual queues and SMS notifications, reducing crowded waiting areas and improving customer experience.
+SeatPing helps businesses manage customer flow through QR code based queues, customer notifications, reservation management, and a business dashboard built for daily front-of-house operations.
 
 ---
 
 ## Overview
 
-SeatPing is a full-stack queue management platform designed for restaurants, cafes, salons, barbershops, clinics, and other service businesses.
+SeatPing is a full-stack web application designed for restaurants, cafes, salons, barbershops, clinics, and other service businesses that need a simple way to manage waiting customers and bookings.
 
 Customers can:
 
-- Join a queue through a QR code
-- Receive SMS updates
-- Return when their turn is approaching
+- Join a queue through a QR code or public restaurant page
+- Choose a notification method such as SMS, WhatsApp, or email
+- Receive updates when they are admitted or ready to return
+- Confirm arrival after being admitted
+- Book reservations when enabled by the business
 
 Businesses can:
 
 - Manage live queues
-- Admit or remove customers
-- Monitor wait activity
+- Admit, remove, and mark customers as arrived or no-show
+- Manage reservations
+- Track recently left customers
 - Manage multiple locations
-- Track customer and SMS credits
+- Configure opening hours and reservation settings
+- Track customer credits and usage by location
+- Edit public restaurant profiles, photos, menu, reviews, and location details
 
-The goal is to make queue management simple, affordable, and accessible for small and medium-sized businesses.
+The goal is to make customer flow management simple, affordable, and accessible for small and medium-sized businesses.
 
 ---
 
 ## Problem
 
-Many businesses still rely on:
+Many service businesses still rely on manual and fragmented systems:
 
 - Paper waitlists
 - Verbal queue systems
 - Crowded waiting areas
 - Manual customer notifications
+- Disconnected reservation and queue workflows
+- Limited visibility into wait times, no-shows, and customer flow
 
 This creates:
 
 - Poor customer experience
 - Staff inefficiency
-- Lost revenue from walkaways
+- Confusion at the host stand
+- Missed revenue from walkaways
+- Limited operational data for business owners
 
-SeatPing modernizes the waiting experience with a lightweight digital workflow.
+SeatPing modernizes the waiting and booking experience with a lightweight digital workflow.
 
 ---
 
@@ -51,33 +60,70 @@ SeatPing modernizes the waiting experience with a lightweight digital workflow.
 
 ### Virtual Queue System
 
-- QR-code queue entry
+- QR code queue entry
 - Customer-facing queue page
 - Live queue updates
+- Position tracking
+- Estimated wait time display
+- Arrival confirmation flow
+- Recently left, removed, and no-show customer tracking
 
-### SMS Notifications
+### Customer Notifications
 
-- Queue status updates
-- Ready-to-return notifications
-- Reminder messaging
+- SMS notifications
+- WhatsApp notifications
+- Email notifications
+- Queue joined messages
+- Admission and arrival messages
+- Ready-to-return updates
+
+### Reservations
+
+- Optional reservation system per business location
+- Reservation availability by opening hours
+- Maximum party size configuration
+- Maximum reserved guests per hour
+- Reservation management dashboard
+- Today, upcoming, past, cancelled, and no-show tabs
 
 ### Business Dashboard
 
-- Queue management interface
-- Customer admissions/removals
+- Live queue management
+- Reservation management
+- Daily performance summary
+- Customers served tracking
+- Average wait time tracking
+- No-show tracking
 - Multi-location support
+- Location-specific customer credits
 
-### Subscription & Billing
+### Public Restaurant Pages
 
-- Free trial system
-- Credit-based plans
-- Stripe payment integration
+- Restaurant profile page
+- Banner and photo gallery
+- Menu highlights
+- Full menu link
+- Reviews and business replies
+- Location details
+- Queue and reservation actions
 
-### Authentication & Security
+### Business Settings
 
-- JWT authentication
-- Password hashing with bcrypt
-- Protected business/admin routes
+- Multiple business locations
+- Location display name
+- Address and map links
+- Opening hours
+- Timezone selection
+- Reservation settings
+- Public profile editing
+- QR code per location
+
+### Admin Features
+
+- Business management
+- Customer management
+- Featured restaurant management
+- Manual business activation and access control
 
 ---
 
@@ -90,6 +136,7 @@ SeatPing modernizes the waiting experience with a lightweight digital workflow.
 - Vite
 - Tailwind CSS
 - shadcn/ui
+- React Router
 
 ### Backend
 
@@ -98,26 +145,16 @@ SeatPing modernizes the waiting experience with a lightweight digital workflow.
 - Prisma ORM
 - MongoDB
 
-### Infrastructure & Services
+### Authentication and Security
 
-- Stripe
-- SMS integration
-- JWT Authentication
+- JWT authentication
+- bcrypt password hashing
+- Protected customer, business, and admin routes
 
----
+### Services
 
-## System Architecture
-
-```text
-Customer
-   ↓
-QR Code / Queue Link
-   ↓
-React Frontend
-   ↓
-Express API Server
-   ↓
-MongoDB Database
-   ↓
-SMS Notification Service
-```
+- SMS notification provider
+- WhatsApp notification provider
+- Email utilities
+- Google Maps and Places integration
+- Image upload service

@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import FeaturedRestaurantsManager from "@/components/FeaturedRestaurantsManager";
 
 interface Ticket {
   id: string;
@@ -74,8 +75,8 @@ interface TicketStats {
 
 interface CustomerLocation {
   address: string;
-  smsCredits: number;
-  customerCredits: number;
+  displayName?: string | null;
+  credits: number;
 }
 
 interface CustomerRecord {
@@ -86,9 +87,8 @@ interface CustomerRecord {
   trial: boolean;
   trialDurationDays: number;
   maxLocations: number;
-  baseCustomerCredits: number;
-  baseSMSCredits: number;
-  planStartedAt: string | null;
+  baseCredits: number;
+  creditsStartedAt: string | null;
   locations: CustomerLocation[];
 }
 
@@ -222,11 +222,7 @@ const Admin = () => {
   };
 
   const updateDraftNumber = (
-    key:
-      | "trialDurationDays"
-      | "maxLocations"
-      | "baseCustomerCredits"
-      | "baseSMSCredits",
+    key: "trialDurationDays" | "maxLocations" | "baseCredits",
     raw: string,
   ) => {
     if (!editDraft) return;
@@ -248,16 +244,7 @@ const Admin = () => {
     setEditDraft({ ...editDraft, [key]: value });
   };
 
-  const updateDraftPlanStartedAt = (value: string) => {
-    if (!editDraft) return;
-    setEditDraft({ ...editDraft, planStartedAt: value === "" ? null : value });
-  };
-
-  const updateDraftLocation = (
-    index: number,
-    key: "smsCredits" | "customerCredits",
-    raw: string,
-  ) => {
+  const updateDraftLocation = (index: number, key: "credits", raw: string) => {
     if (!editDraft) return;
     const parsed = raw === "" ? 0 : parseInt(raw, 10);
     if (Number.isNaN(parsed) || parsed < 0) return;
@@ -273,46 +260,6 @@ const Admin = () => {
       i === index ? { ...loc, address: value } : loc,
     );
     setEditDraft({ ...editDraft, locations: next });
-  };
-
-  const toDateInputValue = (value: string | null) => {
-    if (!value) return "";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "";
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  };
-
-  const buildPlanStartedAtForSave = (dateOnly: string | null) => {
-    if (!dateOnly) return null;
-    const [yStr, mStr, dStr] = dateOnly.split("-");
-    const y = parseInt(yStr, 10);
-    const m = parseInt(mStr, 10);
-    const d = parseInt(dStr, 10);
-    if (
-      Number.isNaN(y) ||
-      Number.isNaN(m) ||
-      Number.isNaN(d) ||
-      m < 1 ||
-      m > 12 ||
-      d < 1 ||
-      d > 31
-    ) {
-      return null;
-    }
-    const now = new Date();
-    const combined = new Date(
-      y,
-      m - 1,
-      d,
-      now.getHours(),
-      now.getMinutes(),
-      now.getSeconds(),
-      now.getMilliseconds(),
-    );
-    return combined.toISOString();
   };
 
   const handleSaveCustomer = async () => {
@@ -333,13 +280,10 @@ const Admin = () => {
             trial: editDraft.trial,
             trialDurationDays: editDraft.trialDurationDays,
             maxLocations: editDraft.maxLocations,
-            baseCustomerCredits: editDraft.baseCustomerCredits,
-            baseSMSCredits: editDraft.baseSMSCredits,
-            planStartedAt: buildPlanStartedAtForSave(editDraft.planStartedAt),
+            baseCredits: editDraft.baseCredits,
             locations: editDraft.locations.map((l) => ({
               address: l.address,
-              smsCredits: l.smsCredits,
-              customerCredits: l.customerCredits,
+              credits: l.credits,
             })),
           }),
         },
@@ -612,7 +556,7 @@ const Admin = () => {
                 />
               </div>
               <Button type="submit" className="w-full">
-                Login
+                Log In
               </Button>
             </form>
           </CardContent>
@@ -632,14 +576,15 @@ const Admin = () => {
             </p>
           </div>
           <Button variant="outline" onClick={() => setIsAuthenticated(false)}>
-            Logout
+            Log Out
           </Button>
         </div>
 
         <Tabs defaultValue="tickets" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-1 h-auto sm:grid-cols-3">
             <TabsTrigger value="tickets">Ticket Management</TabsTrigger>
             <TabsTrigger value="customer">Customer Management</TabsTrigger>
+            <TabsTrigger value="featured">Featured Restaurants</TabsTrigger>
           </TabsList>
 
           <TabsContent value="tickets" className="space-y-6 mt-6">
@@ -969,9 +914,10 @@ const Admin = () => {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Plan & Trial Information</CardTitle>
+                    <CardTitle>Trial & Access</CardTitle>
                     <CardDescription>
-                      Subscription and trial status
+                      Turn Trial off to activate paid access — credits start
+                      then and refill monthly
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1039,79 +985,35 @@ const Admin = () => {
                       </div>
                       <div>
                         <Label className="text-muted-foreground">
-                          Base Customer Credits
+                          Base Credits
                         </Label>
                         {isEditing && editDraft ? (
                           <Input
                             type="number"
                             min={0}
-                            value={editDraft.baseCustomerCredits}
+                            value={editDraft.baseCredits}
                             onChange={(e) =>
-                              updateDraftNumber(
-                                "baseCustomerCredits",
-                                e.target.value,
-                              )
+                              updateDraftNumber("baseCredits", e.target.value)
                             }
                           />
                         ) : (
                           <p className="text-sm md:text-base font-medium">
-                            {selectedCustomer.baseCustomerCredits ?? 0}
+                            {selectedCustomer.baseCredits ?? 0}
                           </p>
                         )}
                       </div>
                       <div>
                         <Label className="text-muted-foreground">
-                          Base SMS Credits
+                          Credits Cycle Started
                         </Label>
-                        {isEditing && editDraft ? (
-                          <Input
-                            type="number"
-                            min={0}
-                            value={editDraft.baseSMSCredits}
-                            onChange={(e) =>
-                              updateDraftNumber(
-                                "baseSMSCredits",
-                                e.target.value,
-                              )
-                            }
-                          />
-                        ) : (
-                          <p className="text-sm md:text-base font-medium">
-                            {selectedCustomer.baseSMSCredits ?? 0}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">
-                          Plan Started At
-                        </Label>
-                        {isEditing && editDraft ? (
-                          <div className="space-y-2">
-                            <Input
-                              type="date"
-                              value={toDateInputValue(editDraft.planStartedAt)}
-                              onChange={(e) =>
-                                updateDraftPlanStartedAt(e.target.value)
-                              }
-                            />
-                            {editDraft.planStartedAt && (
-                              <button
-                                type="button"
-                                className="text-xs text-muted-foreground underline"
-                                onClick={() => updateDraftPlanStartedAt("")}
-                              >
-                                Clear date
-                              </button>
-                            )}
-                            <p className="text-xs text-muted-foreground">
-                              Time of day will be set to the current system time on save.
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="text-sm md:text-base font-medium">
-                            {formatDate(selectedCustomer.planStartedAt)}
-                          </p>
-                        )}
+                        <p className="text-sm md:text-base font-medium">
+                          {selectedCustomer.creditsStartedAt
+                            ? formatDate(selectedCustomer.creditsStartedAt)
+                            : "—"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Set automatically when Trial is turned off.
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -1149,7 +1051,10 @@ const Admin = () => {
                                 <Input
                                   value={location.address}
                                   onChange={(e) =>
-                                    updateDraftLocationAddress(idx, e.target.value)
+                                    updateDraftLocationAddress(
+                                      idx,
+                                      e.target.value,
+                                    )
                                   }
                                 />
                               ) : (
@@ -1158,53 +1063,28 @@ const Admin = () => {
                                 </p>
                               )}
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <Label className="text-muted-foreground">
-                                  SMS Credits
-                                </Label>
-                                {isEditing && editDraft ? (
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    value={location.smsCredits}
-                                    onChange={(e) =>
-                                      updateDraftLocation(
-                                        idx,
-                                        "smsCredits",
-                                        e.target.value,
-                                      )
-                                    }
-                                  />
-                                ) : (
-                                  <p className="text-sm md:text-base font-medium">
-                                    {location.smsCredits}
-                                  </p>
-                                )}
-                              </div>
-                              <div>
-                                <Label className="text-muted-foreground">
-                                  Customer Credits
-                                </Label>
-                                {isEditing && editDraft ? (
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    value={location.customerCredits}
-                                    onChange={(e) =>
-                                      updateDraftLocation(
-                                        idx,
-                                        "customerCredits",
-                                        e.target.value,
-                                      )
-                                    }
-                                  />
-                                ) : (
-                                  <p className="text-sm md:text-base font-medium">
-                                    {location.customerCredits}
-                                  </p>
-                                )}
-                              </div>
+                            <div>
+                              <Label className="text-muted-foreground">
+                                Credits
+                              </Label>
+                              {isEditing && editDraft ? (
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  value={location.credits}
+                                  onChange={(e) =>
+                                    updateDraftLocation(
+                                      idx,
+                                      "credits",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+                              ) : (
+                                <p className="text-sm md:text-base font-medium">
+                                  {location.credits}
+                                </p>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -1256,19 +1136,23 @@ const Admin = () => {
                         <br />
                         Max Locations: {editDraft.maxLocations}
                         <br />
-                        Base Customer Credits: {editDraft.baseCustomerCredits}
-                        <br />
-                        Base SMS Credits: {editDraft.baseSMSCredits}
-                        <br />
-                        Plan Started At:{" "}
-                        {editDraft.planStartedAt
-                          ? `${toDateInputValue(editDraft.planStartedAt)} (time set to system time on save)`
-                          : "Not started"}
+                        Base Credits: {editDraft.baseCredits}
+                        {editDraft.trial !== selectedCustomer.trial && (
+                          <>
+                            <br />
+                            <span className="text-amber-600">
+                              {editDraft.trial
+                                ? "Trial ON — credits cycle will be cleared"
+                                : "Trial OFF — credits cycle starts now, refills next month"}
+                            </span>
+                          </>
+                        )}
                         {editDraft.locations.length > 0 && (
                           <>
                             <br />
                             <br />
-                            Location addresses and per-location credits will also be updated.
+                            Location addresses and per-location credits will
+                            also be updated.
                           </>
                         )}
                       </>
@@ -1288,6 +1172,10 @@ const Admin = () => {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+          </TabsContent>
+
+          <TabsContent value="featured" className="mt-6">
+            <FeaturedRestaurantsManager />
           </TabsContent>
         </Tabs>
 

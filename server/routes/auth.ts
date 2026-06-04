@@ -1,5 +1,16 @@
 import Telnyx from "telnyx";
 // server/routes/auth.ts
+//
+// Auth is split by account type:
+//   - Customers live in the `users` collection (prisma.user). JWT accountType "customer".
+//     Routes: /auth/signup, /auth/login, /auth/logout, /auth/me
+//   - Businesses live in the `businesses` collection (prisma.business) and own
+//     rows in the `locations` collection (prisma.location). JWT accountType "business".
+//     Routes: /auth/business/signup, /auth/business/login, /auth/business/logout,
+//             /auth/business/me (GET/PUT), /auth/business/locations,
+//             and the /auth/business/:username/* queue API.
+//
+// A logged-in customer is never treated as a logged-in business and vice versa.
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "../lib/prisma.js";
@@ -7,118 +18,117 @@ import {
   signJwt,
   setAuthCookie,
   clearAuthCookie,
-  requireAuth,
+  clearAllAuthCookies,
+  requireCustomer,
+  requireBusiness,
+  readSession,
 } from "../lib/auth.js";
-import { LoginSchema, SignUpSchema } from "../lib/validation.js";
 import {
-  isTrialExpired,
-  getCreditsForLocation,
-  getCreditsForPlan,
+  CustomerSignUpSchema,
+  BusinessSignUpSchema,
+  LoginSchema,
+  CustomerUpdateSchema,
+  ChangePasswordSchema,
+} from "../lib/validation.js";
+import {
+  DEFAULT_BASE_CREDITS,
   enforceTrialExpiration,
-  createLocationWithTrialEnforcement,
+  buildLocationData,
   checkAndRefillMonthlyCredits,
-  handlePlanPurchase
 } from "../lib/trial.js";
-import { sendPasswordResetEmail, sendEmail, sendRegistrationConfirmationEmail, sendPasswordChangeConfirmationEmail, sendQueueJoinConfirmationEmail } from "../lib/email.js";
-import { sendQueueJoinedWhatsApp, sendQueueAdmittedWhatsApp } from "../lib/whatsapp.js";
+import {
+  sendEmail,
+  sendPasswordResetEmail,
+  sendBusinessOnboardingEmail,
+  sendCustomerWelcomeEmail,
+  sendPasswordChangeConfirmationEmail,
+  sendQueueJoinConfirmationEmail,
+  sendQueueYourTurnEmail,
+} from "../lib/email.js";
+import {
+  sendQueueJoinedWhatsApp,
+  sendQueueAdmittedWhatsApp,
+} from "../lib/whatsapp.js";
+import { assembleBusinessMe } from "../lib/business.js";
+import { deleteImageByPublicId } from "../lib/cloudinary.js";
+import { normalizeSettings, syncCustomerReservation } from "../lib/reservations.js";
+import { syncCustomerQueue } from "../lib/queueSync.js";
+import { etaForToken, etaForAllQueueCustomers } from "../lib/queueEta.js";
 import crypto from "crypto";
 
 const router = Router();
 
-// Note: Old utility functions replaced with trial-enforced versions in ../lib/trial.ts
+// ===========================================================================
+// Helpers
+// ===========================================================================
+
+/** Public customer-facing fields (no password). */
+function serializeCustomer(user: any) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    username: user.username,
+    phone: user.phone,
+    createdAt: user.createdAt,
+  };
+}
 
 /**
- * GET /auth/exists?username=foo
- * Returns: { exists: boolean }
+ * Load the business that the authenticated business session owns and verify it
+ * matches the :username in the route. Returns null when not found / mismatched.
  */
-router.get("/exists", async (req, res) => {
-  try {
-    const username = String(req.query.username || "").trim();
-    if (!username)
-      return res.status(400).json({ error: "username is required" });
-    const user = await prisma.user.findUnique({ where: { username } });
-    return res.json({ exists: Boolean(user) });
-  } catch (err: any) {
-    console.error("[auth] exists error:", err?.message || err);
-    return res.status(500).json({ error: "Server error" });
-  }
+async function getOwnedBusiness(businessId: string, username: string) {
+  const business = await prisma.business.findFirst({
+    where: { id: businessId, username },
+    select: { id: true, name: true, username: true },
+  });
+  return business;
+}
+
+// ===========================================================================
+// Session (public) — used by the customer-facing header to decide what to show
+// ===========================================================================
+
+/**
+ * GET /auth/session
+ * Returns the current account type without failing. Used by the header so a
+ * business session does NOT make the customer homepage look logged in (the
+ * header only treats accountType === "customer" as a logged-in customer).
+ */
+router.get("/session", (req, res) => {
+  // Customer and business sessions live in separate cookies and can both be
+  // active at once, so report each independently.
+  const customer = readSession(req, "customer");
+  const business = readSession(req, "business");
+  return res.json({
+    customer: customer ? { name: customer.name } : null,
+    business: business ? { name: business.name } : null,
+  });
 });
 
-/**
- * POST /auth/locations (protected)
- * Body: { address }
- * - Enforces maxLocations based on user.maxLocations
- * - Pushes a new location object into locations array
- */
-router.post("/locations", requireAuth, async (req, res) => {
-  try {
-    const userId = (req as any).auth.sub as string;
-    const { address } = req.body || {};
-    if (!address || typeof address !== "string") {
-      return res.status(400).json({ error: "address is required" });
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) return res.status(404).json({ error: "Not found" });
-
-    const locations = ((user as any).locations as any[]) || [];
-    const maxLocations = (user as any).maxLocations ?? 1;
-    if (locations.length >= maxLocations) {
-      return res
-        .status(400)
-        .json({ error: `Max locations reached (${maxLocations})` });
-    }
-
-    // Create new location with proper credits based on plan and trial status
-    const newLocation = createLocationWithTrialEnforcement(
-      user,
-      address
-    );
-
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: { locations: [...locations, newLocation] as any },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        username: true,
-        phone: true,
-        plan: true,
-        trial: true,
-        trialDurationDays: true,
-        maxLocations: true,
-        planStartedAt: true,
-        locations: true,
-        createdAt: true,
-      },
-    });
-    return res.json({ user: updated });
-  } catch (err: any) {
-    console.error("[auth] add location error:", err?.message || err);
-    return res.status(500).json({ error: "Server error" });
-  }
-});
+// ===========================================================================
+// CUSTOMER AUTH (users collection)
+// ===========================================================================
 
 /**
- * POST /auth/signup
+ * POST /auth/signup  (customer)
  * Body: { name, username, email, phone, password }
  */
 router.post("/signup", async (req, res) => {
   try {
-    const parsed = SignUpSchema.safeParse(req.body);
+    const parsed = CustomerSignUpSchema.safeParse(req.body);
     if (!parsed.success) {
       return res
         .status(400)
         .json({ error: "Invalid input", issues: parsed.error.flatten() });
     }
 
-    const { name, username, email, phone, password, plan } = parsed.data;
+    const { name, username, email, phone, password } = parsed.data;
 
-    // Check duplicates
     const existing = await prisma.user.findFirst({
       where: { OR: [{ email }, { username }] },
-      select: { id: true, email: true, username: true },
+      select: { id: true },
     });
     if (existing) {
       return res
@@ -128,76 +138,45 @@ router.post("/signup", async (req, res) => {
 
     const hash = await bcrypt.hash(password, 12);
 
-    // Set defaults based on plan
-    const maxLocations = plan === "Professional" ? 3 : 1;
-    const baseCredits = getCreditsForPlan(plan);
-
     const user = await prisma.user.create({
-      data: {
-        name,
-        username,
-        email,
-        phone,
-        password: hash,
-        plan,
-        locations: [],
-        trial: true,
-        trialDurationDays: 7,
-        maxLocations,
-        baseSMSCredits: baseCredits.smsCredits,
-        baseCustomerCredits: baseCredits.customerCredits,
-        planStartedAt: null, // Will be set when user actually starts a plan
-      },
+      data: { name, username, email, phone, password: hash },
       select: {
         id: true,
         name: true,
-        username: true,
         email: true,
+        username: true,
         phone: true,
-        plan: true,
-        trial: true,
-        trialDurationDays: true,
-        maxLocations: true,
-        baseSMSCredits: true,
-        baseCustomerCredits: true,
-        planStartedAt: true,
         createdAt: true,
       },
     });
 
-    // 🔵 Log new user creation (safe fields only)
-    console.log("[auth] New user created:", {
+    console.log("[auth] New customer created:", {
       id: user.id,
       email: user.email,
       username: user.username,
-      createdAt: user.createdAt,
     });
 
-    // Send registration confirmation email (don't wait for it)
-    sendRegistrationConfirmationEmail(user.email, user.name, user.username, user.plan || 'Starter')
-      .then((sent) => {
-        if (sent) {
-          console.log('[auth] Registration confirmation email sent to:', user.email);
-        } else {
-          console.error('[auth] Failed to send registration confirmation email to:', user.email);
-        }
-      })
-      .catch((err) => {
-        console.error('[auth] Error sending registration confirmation email:', err);
-      });
+    // Fire-and-forget: a failed welcome email must never block signup.
+    sendCustomerWelcomeEmail(user.email, user.name).catch((err) =>
+      console.error("[auth] customer welcome email error:", err)
+    );
 
-    const token = signJwt({ sub: user.id });
-    setAuthCookie(res, token);
+    const token = signJwt({
+      sub: user.id,
+      accountType: "customer",
+      name: user.name,
+    });
+    setAuthCookie(res, token, "customer");
 
     return res.status(201).json({ user });
   } catch (err: any) {
-    console.error("[auth] signup error:", err?.message || err);
+    console.error("[auth] customer signup error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
   }
 });
 
 /**
- * POST /auth/login
+ * POST /auth/login  (customer)
  * Body: { emailOrUsername, password }
  */
 router.post("/login", async (req, res) => {
@@ -212,60 +191,122 @@ router.post("/login", async (req, res) => {
     const { emailOrUsername, password } = parsed.data;
 
     const user = await prisma.user.findFirst({
-      where: {
-        OR: [{ email: emailOrUsername }, { username: emailOrUsername }],
-      },
+      where: { OR: [{ email: emailOrUsername }, { username: emailOrUsername }] },
     });
-
-    if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
+    if (!user) return res.status(401).json({ error: "Invalid credentials" });
 
     const ok = await bcrypt.compare(password, user.password);
-    if (!ok) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
+    if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
-    const token = signJwt({ sub: user.id });
-    setAuthCookie(res, token);
-
-    return res.json({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        username: user.username,
-        phone: user.phone,
-        plan: (user as any).plan,
-      },
+    const token = signJwt({
+      sub: user.id,
+      accountType: "customer",
+      name: user.name,
     });
+    setAuthCookie(res, token, "customer");
+
+    return res.json({ user: serializeCustomer(user) });
   } catch (err: any) {
-    console.error("[auth] login error:", err?.message || err);
+    console.error("[auth] customer login error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
   }
 });
 
 /**
- * POST /auth/logout
+ * POST /auth/logout  (clears the session cookie for either account type)
+ * Shared by both the customer and business headers, so it clears every session
+ * cookie — it can't know which account type is logging out.
  */
 router.post("/logout", (_req, res) => {
-  clearAuthCookie(res);
+  clearAllAuthCookies(res);
   res.json({ ok: true });
 });
 
 /**
- * GET /auth/me  (protected)
+ * GET /auth/me  (customer, protected)
  */
-router.get("/me", requireAuth, async (req, res) => {
+/**
+ * Attach a square thumbnail (`imageUrl`) to each reservation/queue activity
+ * entry so the profile cards can show the restaurant's banner instead of just
+ * initials — matching Saved Spots. Resolves by `locationId` when present (queue
+ * entries always have it), else falls back to the business's first location
+ * banner by `businessUsername` (covers legacy reservation entries that never
+ * stored a locationId). Entries that already carry an `imageUrl` are kept as-is.
+ */
+async function attachActivityImages<T extends Record<string, any>>(
+  user: T,
+): Promise<T> {
+  const asArray = (v: unknown) => (Array.isArray(v) ? (v as any[]) : []);
+  const upcoming = asArray(user.upcomingReservations);
+  const past = asArray(user.pastReservations);
+  const queue = asArray(user.queueingActivity);
+  const all = [...upcoming, ...past, ...queue];
+  if (all.length === 0) return user;
+
+  const locationIds = new Set<string>();
+  const usernames = new Set<string>();
+  for (const e of all) {
+    if (e?.imageUrl) continue;
+    if (e?.locationId) locationIds.add(String(e.locationId));
+    else if (e?.businessUsername) usernames.add(String(e.businessUsername));
+  }
+
+  const imgOf = (loc: any) =>
+    loc?.bannerImageUrl ||
+    (Array.isArray(loc?.photos) && loc.photos[0]?.url) ||
+    null;
+
+  const byLocation = new Map<string, string | null>();
+  if (locationIds.size > 0) {
+    const locs = await prisma.location.findMany({
+      where: { id: { in: [...locationIds] } },
+      include: { photos: { orderBy: { createdAt: "asc" }, take: 1 } },
+    });
+    for (const l of locs) byLocation.set(l.id, imgOf(l));
+  }
+
+  // Fallback: first location banner per business (for entries without a
+  // locationId). Two batched queries — no N+1.
+  const byUsername = new Map<string, string | null>();
+  if (usernames.size > 0) {
+    const bizs = await prisma.business.findMany({
+      where: { username: { in: [...usernames] } },
+      select: { id: true, username: true },
+    });
+    const bizLocs = bizs.length
+      ? await prisma.location.findMany({
+          where: { businessId: { in: bizs.map((b) => b.id) } },
+          orderBy: { createdAt: "asc" },
+          include: { photos: { orderBy: { createdAt: "asc" }, take: 1 } },
+        })
+      : [];
+    const firstByBiz = new Map<string, any>();
+    for (const l of bizLocs) {
+      if (!firstByBiz.has(l.businessId)) firstByBiz.set(l.businessId, l);
+    }
+    for (const b of bizs) byUsername.set(b.username, imgOf(firstByBiz.get(b.id)));
+  }
+
+  const withImage = (e: any) => ({
+    ...e,
+    imageUrl:
+      e?.imageUrl ??
+      (e?.locationId ? byLocation.get(String(e.locationId)) : null) ??
+      (e?.businessUsername ? byUsername.get(String(e.businessUsername)) : null) ??
+      null,
+  });
+
+  return {
+    ...user,
+    upcomingReservations: upcoming.map(withImage),
+    pastReservations: past.map(withImage),
+    queueingActivity: queue.map(withImage),
+  };
+}
+
+router.get("/me", requireCustomer, async (req, res) => {
   try {
     const userId = (req as any).auth.sub as string;
-    
-    // Enforce trial expiration before returning user data
-    await enforceTrialExpiration(userId);
-    
-    // Check and refill monthly credits if needed
-    await checkAndRefillMonthlyCredits(userId);
-    
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -274,26 +315,1188 @@ router.get("/me", requireAuth, async (req, res) => {
         email: true,
         username: true,
         phone: true,
-        plan: true,
-        trial: true,
-        trialDurationDays: true,
-        maxLocations: true,
-        planStartedAt: true,
-        locations: true,
+        upcomingReservations: true,
+        pastReservations: true,
+        queueingActivity: true,
+        savedRestaurants: true,
         createdAt: true,
       },
     });
     if (!user) return res.status(404).json({ error: "Not found" });
-    res.json({ user });
+    return res.json({ user: await attachActivityImages(user) });
   } catch (err: any) {
-    console.error("[auth] me error:", err?.message || err);
-    res.status(500).json({ error: "Server error" });
+    console.error("[auth] customer me error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
 /**
- * GET /auth/business/:username/addresses
- * Returns: { addresses: Array<{address: string, businessName: string}> }
+ * PUT /auth/me  (customer, protected)
+ * Update profile details: name, username, email, phone (phone may be cleared).
+ * Re-issues the session token so the header name stays in sync after a rename.
+ */
+router.put("/me", requireCustomer, async (req, res) => {
+  try {
+    const userId = (req as any).auth.sub as string;
+    const parsed = CustomerUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json({ error: "Invalid input", issues: parsed.error.flatten() });
+    }
+    const { name, username, email, phone } = parsed.data;
+
+    // Username/email must stay unique (ignore the user's own row).
+    const dupe = await prisma.user.findFirst({
+      where: { id: { not: userId }, OR: [{ email }, { username }] },
+      select: { email: true, username: true },
+    });
+    if (dupe) {
+      const field = dupe.email === email ? "Email" : "Username";
+      return res.status(409).json({ error: `${field} already in use` });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { name, username, email, phone },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        username: true,
+        phone: true,
+        upcomingReservations: true,
+        pastReservations: true,
+        queueingActivity: true,
+        savedRestaurants: true,
+        createdAt: true,
+      },
+    });
+
+    const token = signJwt({
+      sub: user.id,
+      accountType: "customer",
+      name: user.name,
+    });
+    setAuthCookie(res, token, "customer");
+
+    return res.json({ user });
+  } catch (err: any) {
+    console.error("[auth] customer update error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * POST /auth/me/change-password  (customer, protected)
+ * Body: { currentPassword, newPassword }. Verifies the current password first.
+ */
+router.post("/me/change-password", requireCustomer, async (req, res) => {
+  try {
+    const userId = (req as any).auth.sub as string;
+    const parsed = ChangePasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json({ error: "Invalid input", issues: parsed.error.flatten() });
+    }
+    const { currentPassword, newPassword } = parsed.data;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true, password: true },
+    });
+    if (!user) return res.status(404).json({ error: "Not found" });
+
+    const ok = await bcrypt.compare(currentPassword, user.password);
+    if (!ok) {
+      return res.status(400).json({ error: "Current password is incorrect" });
+    }
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hash },
+    });
+
+    sendPasswordChangeConfirmationEmail(user.email, user.name).catch((e) =>
+      console.error("[auth] pw change email failed:", e)
+    );
+
+    return res.json({ success: true, message: "Password updated" });
+  } catch (err: any) {
+    console.error("[auth] change password error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ===========================================================================
+// CUSTOMER SAVED RESTAURANTS (bookmarks)
+// Stored inline on the user doc as a JSON array, newest first, deduped by
+// businessUsername. Mirrors the activity arrays so the profile can render
+// cards without a join.
+// ===========================================================================
+
+// Fields returned for the customer "me" payload (shared by /me, PUT /me, and
+// the saved-restaurants endpoints so the client always gets a consistent shape).
+const CUSTOMER_ME_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  username: true,
+  phone: true,
+  upcomingReservations: true,
+  pastReservations: true,
+  queueingActivity: true,
+  savedRestaurants: true,
+  createdAt: true,
+} as const;
+
+/**
+ * POST /auth/me/saved-restaurants  (customer, protected)
+ * Body: { businessUsername, businessName?, locationName?, area?, city? }
+ * Adds a bookmark (no-op if already saved). Returns the updated customer.
+ */
+router.post("/me/saved-restaurants", requireCustomer, async (req, res) => {
+  try {
+    const userId = (req as any).auth.sub as string;
+    const { businessUsername, businessName, locationName, area, city } =
+      req.body || {};
+    if (
+      !businessUsername ||
+      typeof businessUsername !== "string" ||
+      !businessUsername.trim()
+    ) {
+      return res.status(400).json({ error: "businessUsername is required" });
+    }
+    const uname = businessUsername.trim();
+
+    const current = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { savedRestaurants: true },
+    });
+    if (!current) return res.status(404).json({ error: "Not found" });
+
+    const list = Array.isArray(current.savedRestaurants)
+      ? (current.savedRestaurants as any[])
+      : [];
+
+    // Only add when not already bookmarked (dedup by businessUsername).
+    if (!list.some((s) => s?.businessUsername === uname)) {
+      const str = (v: unknown) =>
+        typeof v === "string" && v.trim() ? v.trim() : undefined;
+      list.unshift({
+        id: uname,
+        businessUsername: uname,
+        businessName: str(businessName),
+        locationName: str(locationName),
+        area: str(area),
+        city: str(city),
+        savedAt: new Date().toISOString(),
+      });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { savedRestaurants: list },
+      select: CUSTOMER_ME_SELECT,
+    });
+    return res.json({ user });
+  } catch (err: any) {
+    console.error("[auth] save restaurant error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * DELETE /auth/me/saved-restaurants/:businessUsername  (customer, protected)
+ * Removes a bookmark. Returns the updated customer.
+ */
+router.delete(
+  "/me/saved-restaurants/:businessUsername",
+  requireCustomer,
+  async (req, res) => {
+    try {
+      const userId = (req as any).auth.sub as string;
+      const uname = String(req.params.businessUsername || "").trim();
+      if (!uname) {
+        return res.status(400).json({ error: "businessUsername is required" });
+      }
+
+      const current = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { savedRestaurants: true },
+      });
+      if (!current) return res.status(404).json({ error: "Not found" });
+
+      const list = Array.isArray(current.savedRestaurants)
+        ? (current.savedRestaurants as any[])
+        : [];
+      const next = list.filter((s) => s?.businessUsername !== uname);
+
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data: { savedRestaurants: next },
+        select: CUSTOMER_ME_SELECT,
+      });
+      return res.json({ user });
+    } catch (err: any) {
+      console.error("[auth] remove saved restaurant error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Saved restaurants are stored per LOCATION (not just per business) so a
+// customer can save "Imperial Pacific Place" separately from "Imperial
+// Senopati". Items are denormalized server-side from the location/business so a
+// profile card renders without a join. Dedup key is `locationId`.
+// ---------------------------------------------------------------------------
+const SAVED_OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
+
+/** Build a denormalized saved-location entry from a locationId, or null. */
+async function buildSavedLocationEntry(locationId: string) {
+  if (!SAVED_OBJECT_ID_RE.test(locationId)) return null;
+  const loc = await prisma.location.findUnique({
+    where: { id: locationId },
+    include: { photos: { orderBy: { createdAt: "asc" }, take: 1 } },
+  });
+  if (!loc) return null;
+  const biz = await prisma.business.findUnique({
+    where: { id: loc.businessId },
+    select: { name: true, username: true },
+  });
+  const rp = (loc.restaurantProfile || {}) as any;
+  const agg = await prisma.review.aggregate({
+    where: { locationId },
+    _avg: { rating: true },
+    _count: { _all: true },
+  });
+  const rating =
+    agg._count._all > 0 && typeof agg._avg.rating === "number"
+      ? Math.round(agg._avg.rating * 10) / 10
+      : null;
+  const cuisine =
+    Array.isArray(rp.cuisineTypes) && rp.cuisineTypes.length
+      ? String(rp.cuisineTypes[0])
+      : null;
+  return {
+    id: locationId,
+    locationId,
+    businessUsername: biz?.username ?? null,
+    businessName: biz?.name ?? null,
+    name: rp.displayName || biz?.name || loc.displayName || loc.name || "Restaurant",
+    locationName: rp.shortAddress || loc.displayName || loc.area || loc.city || null,
+    area: loc.area ?? null,
+    city: loc.city ?? null,
+    cuisine,
+    rating,
+    imageUrl: loc.bannerImageUrl || (loc as any).photos?.[0]?.url || null,
+    savedAt: new Date().toISOString(),
+  };
+}
+
+/** Match a saved entry to a locationId (new items) or legacy businessUsername id. */
+function savedMatches(s: any, key: string): boolean {
+  return s?.locationId === key || s?.id === key;
+}
+
+/**
+ * GET /auth/me/saved-locations/:locationId  (customer, protected)
+ * Returns whether the current customer has saved this location.
+ */
+router.get(
+  "/me/saved-locations/:locationId",
+  requireCustomer,
+  async (req, res) => {
+    try {
+      const userId = (req as any).auth.sub as string;
+      const locationId = String(req.params.locationId || "").trim();
+      const current = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { savedRestaurants: true },
+      });
+      const list = Array.isArray(current?.savedRestaurants)
+        ? (current!.savedRestaurants as any[])
+        : [];
+      return res.json({ saved: list.some((s) => savedMatches(s, locationId)) });
+    } catch (err: any) {
+      console.error("[auth] saved-location status error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+/**
+ * POST /auth/me/saved-locations  (customer, protected)
+ * Body: { locationId }. Saves the exact location (dedup by locationId).
+ */
+router.post("/me/saved-locations", requireCustomer, async (req, res) => {
+  try {
+    const userId = (req as any).auth.sub as string;
+    const locationId = String(req.body?.locationId || "").trim();
+    if (!SAVED_OBJECT_ID_RE.test(locationId)) {
+      return res.status(400).json({ error: "A valid locationId is required" });
+    }
+
+    const current = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { savedRestaurants: true },
+    });
+    if (!current) return res.status(404).json({ error: "Not found" });
+
+    const list = Array.isArray(current.savedRestaurants)
+      ? (current.savedRestaurants as any[])
+      : [];
+
+    if (!list.some((s) => savedMatches(s, locationId))) {
+      const entry = await buildSavedLocationEntry(locationId);
+      if (!entry) return res.status(404).json({ error: "Location not found" });
+      list.unshift(entry);
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { savedRestaurants: list },
+      select: CUSTOMER_ME_SELECT,
+    });
+    return res.json({ user });
+  } catch (err: any) {
+    console.error("[auth] save location error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * DELETE /auth/me/saved-locations/:locationId  (customer, protected)
+ * Unsaves a location. Returns the updated customer.
+ */
+router.delete(
+  "/me/saved-locations/:locationId",
+  requireCustomer,
+  async (req, res) => {
+    try {
+      const userId = (req as any).auth.sub as string;
+      const locationId = String(req.params.locationId || "").trim();
+      const current = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { savedRestaurants: true },
+      });
+      if (!current) return res.status(404).json({ error: "Not found" });
+
+      const list = Array.isArray(current.savedRestaurants)
+        ? (current.savedRestaurants as any[])
+        : [];
+      const next = list.filter((s) => !savedMatches(s, locationId));
+
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data: { savedRestaurants: next },
+        select: CUSTOMER_ME_SELECT,
+      });
+      return res.json({ user });
+    } catch (err: any) {
+      console.error("[auth] remove saved location error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Customer-owned reviews. A customer manages their own reviews from /profile:
+// list, edit (rating + text), delete. Ownership is enforced by customerId on
+// every write — a customer can only touch their own rows, and business sessions
+// can't reach these routes (requireCustomer rejects them). Business replies are
+// edited via the separate owner-only reply routes in routes/locations.ts.
+// ---------------------------------------------------------------------------
+
+/**
+ * Enrich a review row with the location/business display fields the profile
+ * card needs (restaurant name, location label, link target).
+ */
+async function buildCustomerReviewEntry(review: any) {
+  const loc = await prisma.location.findUnique({
+    where: { id: review.locationId },
+    select: {
+      id: true,
+      businessId: true,
+      name: true,
+      displayName: true,
+      area: true,
+      city: true,
+      address: true,
+      restaurantProfile: true,
+    },
+  });
+  const biz = loc
+    ? await prisma.business.findUnique({
+        where: { id: loc.businessId },
+        select: { name: true, username: true },
+      })
+    : null;
+  const rp = (loc?.restaurantProfile || {}) as any;
+  return {
+    id: review.id,
+    locationId: review.locationId,
+    businessUsername: biz?.username ?? null,
+    rating: typeof review.rating === "number" ? review.rating : 0,
+    description: review.description ?? null,
+    createdAt: review.createdAt,
+    updatedAt: review.updatedAt,
+    businessReply: review.businessReply ?? null,
+    businessReplyCreatedAt: review.businessReplyCreatedAt ?? null,
+    businessReplyUpdatedAt: review.businessReplyUpdatedAt ?? null,
+    // Display context (null when the location/business was deleted).
+    restaurantName:
+      rp.displayName || biz?.name || loc?.displayName || loc?.name || "Restaurant",
+    locationName:
+      rp.shortAddress || loc?.displayName || loc?.area || loc?.city || loc?.address || null,
+  };
+}
+
+/**
+ * GET /auth/me/reviews  (customer, protected)
+ * Returns the logged-in customer's reviews, newest first. Defensively dedupes
+ * by locationId (keeping the most recent) so any legacy duplicate rows don't
+ * surface two cards for the same restaurant.
+ */
+router.get("/me/reviews", requireCustomer, async (req, res) => {
+  try {
+    const userId = (req as any).auth.sub as string;
+    const rows = await prisma.review.findMany({
+      where: { customerId: userId },
+      orderBy: { createdAt: "desc" },
+    });
+    // Most-recent-per-location wins (rows already sorted desc).
+    const seen = new Set<string>();
+    const deduped = rows.filter((r) => {
+      if (seen.has(r.locationId)) return false;
+      seen.add(r.locationId);
+      return true;
+    });
+    const reviews = await Promise.all(deduped.map(buildCustomerReviewEntry));
+    return res.json({ reviews });
+  } catch (err: any) {
+    console.error("[auth] list customer reviews error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * PATCH /auth/me/reviews/:reviewId  (customer, protected)
+ * Body: { rating?, description? }. Updates the customer's own review only.
+ * Does NOT touch the business reply.
+ */
+router.patch("/me/reviews/:reviewId", requireCustomer, async (req, res) => {
+  try {
+    const userId = (req as any).auth.sub as string;
+    const reviewId = String(req.params.reviewId || "").trim();
+    if (!SAVED_OBJECT_ID_RE.test(reviewId)) {
+      return res.status(404).json({ error: "Review not found" });
+    }
+
+    const existing = await prisma.review.findFirst({
+      where: { id: reviewId, customerId: userId },
+      select: { id: true },
+    });
+    if (!existing) return res.status(404).json({ error: "Review not found" });
+
+    const { rating, description } = req.body || {};
+    const data: { rating?: number; description?: string | null } = {};
+
+    if (rating !== undefined) {
+      if (typeof rating !== "number" || !Number.isFinite(rating)) {
+        return res.status(400).json({ error: "rating must be a number" });
+      }
+      const ratingInt = Math.round(rating);
+      if (ratingInt < 1 || ratingInt > 5) {
+        return res.status(400).json({ error: "rating must be between 1 and 5" });
+      }
+      data.rating = ratingInt;
+    }
+
+    if (description !== undefined) {
+      if (description !== null && typeof description !== "string") {
+        return res.status(400).json({ error: "description must be a string" });
+      }
+      data.description =
+        typeof description === "string" && description.trim()
+          ? description.trim()
+          : null;
+    }
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: "Nothing to update" });
+    }
+
+    const saved = await prisma.review.update({ where: { id: reviewId }, data });
+    return res.json({ review: await buildCustomerReviewEntry(saved) });
+  } catch (err: any) {
+    console.error("[auth] update customer review error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * DELETE /auth/me/reviews/:reviewId  (customer, protected)
+ * Removes the customer's own review. Any attached business reply lives on the
+ * same row, so it's removed with it.
+ */
+router.delete("/me/reviews/:reviewId", requireCustomer, async (req, res) => {
+  try {
+    const userId = (req as any).auth.sub as string;
+    const reviewId = String(req.params.reviewId || "").trim();
+    if (!SAVED_OBJECT_ID_RE.test(reviewId)) {
+      return res.status(404).json({ error: "Review not found" });
+    }
+
+    const existing = await prisma.review.findFirst({
+      where: { id: reviewId, customerId: userId },
+      select: { id: true },
+    });
+    if (!existing) return res.status(404).json({ error: "Review not found" });
+
+    await prisma.review.delete({ where: { id: reviewId } });
+    return res.json({ success: true });
+  } catch (err: any) {
+    console.error("[auth] delete customer review error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ===========================================================================
+// CUSTOMER + BUSINESS PASSWORD RESET
+// Looks up the email/token in both collections so either account type can reset.
+// ===========================================================================
+
+/**
+ * POST /auth/forgot-password
+ * Body: { email }
+ */
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email, type } = req.body || {};
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ error: "email is required" });
+    }
+    const normalized = email.toLowerCase();
+    // Reset within the account type the request came from (customer login vs
+    // business login), so a shared email resets the correct account. Defaults
+    // to customer for older clients that don't send a type.
+    const accountType = type === "business" ? "business" : "customer";
+
+    const business =
+      accountType === "business"
+        ? await prisma.business.findUnique({
+            where: { email: normalized },
+            select: { id: true, email: true },
+          })
+        : null;
+    const user =
+      accountType === "customer"
+        ? await prisma.user.findUnique({
+            where: { email: normalized },
+            select: { id: true, email: true },
+          })
+        : null;
+
+    // Always respond success to avoid leaking which emails exist.
+    const genericOk = {
+      success: true,
+      message:
+        "If an account with that email exists, a password reset link has been sent.",
+    };
+    if (!business && !user) return res.json(genericOk);
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    if (business) {
+      await prisma.business.update({
+        where: { id: business.id },
+        data: { resetToken, resetTokenExpiry },
+      });
+    } else if (user) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { resetToken, resetTokenExpiry },
+      });
+    }
+
+    // Build the reset link from the request's origin so it points at wherever
+    // the user actually is (localhost:8080 in dev, the live domain in prod),
+    // validated against an allowlist to avoid host-header injection. Falls back
+    // to FRONTEND_URL when the origin isn't recognized.
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      process.env.APP_ORIGIN,
+      process.env.CLIENT_ORIGIN,
+      "http://localhost:8080",
+      "http://localhost:5173",
+    ].filter(Boolean) as string[];
+    const reqOrigin =
+      typeof req.headers.origin === "string" ? req.headers.origin : "";
+    const baseUrl = allowedOrigins.includes(reqOrigin) ? reqOrigin : undefined;
+
+    const targetEmail = (business?.email || user?.email) as string;
+    const emailSent = await sendPasswordResetEmail(
+      targetEmail,
+      resetToken,
+      business ? "business" : "customer",
+      baseUrl,
+    );
+    if (!emailSent) return res.status(500).json({ error: "Failed to send email" });
+
+    return res.json(genericOk);
+  } catch (err: any) {
+    console.error("[auth] forgot password error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * POST /auth/reset-password
+ * Body: { token, newPassword }
+ */
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, newPassword } = req.body || {};
+    if (!token || !newPassword) {
+      return res
+        .status(400)
+        .json({ error: "token and newPassword are required" });
+    }
+    if (typeof newPassword !== "string" || newPassword.length < 8) {
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 8 characters" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    const business = await prisma.business.findFirst({
+      where: { resetToken: token, resetTokenExpiry: { gt: new Date() } },
+      select: { id: true, email: true, name: true },
+    });
+    if (business) {
+      await prisma.business.update({
+        where: { id: business.id },
+        data: { password: hashedPassword, resetToken: null, resetTokenExpiry: null },
+      });
+      sendPasswordChangeConfirmationEmail(business.email, business.name).catch(
+        (e) => console.error("[auth] pw change email failed:", e)
+      );
+      return res.json({ success: true, message: "Password has been reset successfully" });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { resetToken: token, resetTokenExpiry: { gt: new Date() } },
+      select: { id: true, email: true, name: true },
+    });
+    if (user) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword, resetToken: null, resetTokenExpiry: null },
+      });
+      sendPasswordChangeConfirmationEmail(user.email, user.name).catch((e) =>
+        console.error("[auth] pw change email failed:", e)
+      );
+      return res.json({ success: true, message: "Password has been reset successfully" });
+    }
+
+    return res.status(400).json({ error: "Invalid or expired reset token" });
+  } catch (err: any) {
+    console.error("[auth] reset password error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ===========================================================================
+// BUSINESS AUTH (businesses collection) — static paths first
+// ===========================================================================
+
+/**
+ * GET /auth/exists?username=foo
+ * Checks whether a BUSINESS username exists (used by the join-queue lookup).
+ */
+router.get("/exists", async (req, res) => {
+  try {
+    const username = String(req.query.username || "").trim();
+    if (!username)
+      return res.status(400).json({ error: "username is required" });
+    const business = await prisma.business.findUnique({ where: { username } });
+    return res.json({ exists: Boolean(business) });
+  } catch (err: any) {
+    console.error("[auth] exists error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * POST /auth/business/signup
+ * Body: { name, username, email, phone, password }
+ * Creates the business only — no location is created by default. The business
+ * adds its first location later from Settings.
+ */
+router.post("/business/signup", async (req, res) => {
+  try {
+    const parsed = BusinessSignUpSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json({ error: "Invalid input", issues: parsed.error.flatten() });
+    }
+
+    const { name, username, email, phone, password } = parsed.data;
+
+    const existing = await prisma.business.findFirst({
+      where: { OR: [{ email }, { username }] },
+      select: { id: true },
+    });
+    if (existing) {
+      return res
+        .status(409)
+        .json({ error: "Email or username already in use" });
+    }
+
+    const hash = await bcrypt.hash(password, 12);
+
+    // No plans — every new business starts on a 7-day trial with 300 base
+    // credits and a single location. Activation (and any change to these) is
+    // done manually by an admin.
+    const business = await prisma.business.create({
+      data: {
+        name,
+        username,
+        email,
+        phone,
+        password: hash,
+        trial: true,
+        trialDurationDays: 7,
+        maxLocations: 1,
+        baseCredits: DEFAULT_BASE_CREDITS,
+        creditsStartedAt: null,
+      },
+    });
+
+    // No location is created at signup — the business adds its first location
+    // later from Settings (POST /auth/business/locations).
+    console.log("[auth] New business created:", {
+      id: business.id,
+      email: business.email,
+      username: business.username,
+    });
+
+    // Fire-and-forget onboarding email; signup must not fail if it doesn't send.
+    sendBusinessOnboardingEmail(
+      business.email,
+      business.name,
+      business.username,
+      business.trial ? business.trialDurationDays : undefined
+    ).catch((err) =>
+      console.error("[auth] business onboarding email error:", err)
+    );
+
+    const token = signJwt({
+      sub: business.id,
+      accountType: "business",
+      name: business.name,
+    });
+    setAuthCookie(res, token, "business");
+
+    const me = await assembleBusinessMe(business.id);
+    return res.status(201).json({ user: me });
+  } catch (err: any) {
+    console.error("[auth] business signup error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * POST /auth/business/login
+ * Body: { emailOrUsername, password }
+ */
+router.post("/business/login", async (req, res) => {
+  try {
+    const parsed = LoginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json({ error: "Invalid input", issues: parsed.error.flatten() });
+    }
+
+    const { emailOrUsername, password } = parsed.data;
+
+    const business = await prisma.business.findFirst({
+      where: { OR: [{ email: emailOrUsername }, { username: emailOrUsername }] },
+    });
+    if (!business) return res.status(401).json({ error: "Invalid credentials" });
+
+    const ok = await bcrypt.compare(password, business.password);
+    if (!ok) return res.status(401).json({ error: "Invalid credentials" });
+
+    const token = signJwt({
+      sub: business.id,
+      accountType: "business",
+      name: business.name,
+    });
+    setAuthCookie(res, token, "business");
+
+    return res.json({
+      user: {
+        id: business.id,
+        name: business.name,
+        email: business.email,
+        username: business.username,
+        phone: business.phone,
+      },
+    });
+  } catch (err: any) {
+    console.error("[auth] business login error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * POST /auth/business/logout
+ */
+router.post("/business/logout", (_req, res) => {
+  clearAuthCookie(res, "business");
+  res.json({ ok: true });
+});
+
+/**
+ * GET /auth/business/me  (business, protected)
+ * Returns business profile + assembled locations.
+ */
+router.get("/business/me", requireBusiness, async (req, res) => {
+  try {
+    const businessId = (req as any).auth.sub as string;
+
+    await enforceTrialExpiration(businessId);
+    await checkAndRefillMonthlyCredits(businessId);
+
+    const me = await assembleBusinessMe(businessId);
+    if (!me) return res.status(404).json({ error: "Not found" });
+    return res.json({ user: me });
+  } catch (err: any) {
+    console.error("[auth] business me error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * PUT /auth/business/me  (business, protected)
+ * Body: { locations } - reconciles the locations list (used for removal).
+ * Locations present (matched by address) are kept; any not present are deleted.
+ */
+router.put("/business/me", requireBusiness, async (req, res) => {
+  try {
+    const businessId = (req as any).auth.sub as string;
+    const { locations } = req.body || {};
+    if (!Array.isArray(locations)) {
+      return res.status(400).json({ error: "locations array is required" });
+    }
+
+    const keepAddresses = new Set(
+      locations
+        .map((l: any) => (typeof l?.address === "string" ? l.address : null))
+        .filter(Boolean)
+    );
+
+    const existing = await prisma.location.findMany({
+      where: { businessId },
+      select: { id: true, address: true, bannerImagePublicId: true },
+    });
+
+    const toDelete = existing.filter((l) => !keepAddresses.has(l.address));
+    if (toDelete.length > 0) {
+      const idsToDelete = toDelete.map((l) => l.id);
+
+      // Best-effort cleanup of Cloudinary assets (banners + gallery photos) for
+      // the locations being removed, so we don't leave orphaned remote files.
+      const orphanPhotos = await prisma.photo.findMany({
+        where: { locationId: { in: idsToDelete } },
+        select: { publicId: true },
+      });
+      await Promise.all([
+        ...toDelete.map((l) => deleteImageByPublicId(l.bannerImagePublicId)),
+        ...orphanPhotos.map((p) => deleteImageByPublicId(p.publicId)),
+      ]);
+
+      // Remove gallery photos first (Cascade is emulated on MongoDB, but doing it
+      // explicitly keeps the data consistent regardless of relation mode).
+      await prisma.photo.deleteMany({
+        where: { locationId: { in: idsToDelete } },
+      });
+      await prisma.location.deleteMany({
+        where: { id: { in: idsToDelete } },
+      });
+    }
+
+    const me = await assembleBusinessMe(businessId);
+    return res.json({ user: me });
+  } catch (err: any) {
+    console.error("[auth] business update locations error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * POST /auth/business/locations  (business, protected)
+ * Body: { displayName, address, area?, city?, country?, latitude?, longitude?,
+ *         googlePlaceId?, googleMapsUrl? } — adds a new location, enforcing
+ * maxLocations. `displayName` is the customer-facing label; Google Places
+ * details are optional so manually-typed addresses still work.
+ *
+ * TODO(location): Use latitude and longitude for search distance, maps, and nearby restaurants.
+ * TODO(location): Use googlePlaceId for future address validation and Google Maps deep links.
+ */
+router.post("/business/locations", requireBusiness, async (req, res) => {
+  try {
+    const businessId = (req as any).auth.sub as string;
+    const {
+      displayName,
+      address,
+      area,
+      city,
+      country,
+      latitude,
+      longitude,
+      googlePlaceId,
+      googleMapsUrl,
+    } = req.body || {};
+
+    if (!address || typeof address !== "string" || !address.trim()) {
+      return res.status(400).json({ error: "address is required" });
+    }
+    if (!displayName || typeof displayName !== "string" || !displayName.trim()) {
+      return res.status(400).json({ error: "displayName is required" });
+    }
+
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+    });
+    if (!business) return res.status(404).json({ error: "Not found" });
+
+    const count = await prisma.location.count({ where: { businessId } });
+    const maxLocations = (business as any).maxLocations ?? 1;
+    if (count >= maxLocations) {
+      return res
+        .status(400)
+        .json({ error: `Max locations reached (${maxLocations})` });
+    }
+
+    await prisma.location.create({
+      data: buildLocationData(business, {
+        address: address.trim(),
+        displayName: typeof displayName === "string" ? displayName : undefined,
+        area: typeof area === "string" ? area : undefined,
+        city: typeof city === "string" ? city : undefined,
+        country: typeof country === "string" ? country : undefined,
+        latitude: typeof latitude === "number" ? latitude : null,
+        longitude: typeof longitude === "number" ? longitude : null,
+        googlePlaceId: typeof googlePlaceId === "string" ? googlePlaceId : undefined,
+        googleMapsUrl: typeof googleMapsUrl === "string" ? googleMapsUrl : undefined,
+      }),
+    });
+
+    const me = await assembleBusinessMe(businessId);
+    return res.json({ user: me });
+  } catch (err: any) {
+    console.error("[auth] add location error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * PUT /auth/business/locations/:locationId  (business, protected)
+ * Update a location the business owns: its public restaurant profile JSON
+ * (`restaurantProfile`), `address`, and the `queueEnabled` / `reservationsEnabled`
+ * toggles. Used by the redesigned /business/settings profile editor.
+ *
+ * TODO(public-restaurant-page): Use location.restaurantProfile to power the
+ * public restaurant detail page (/restaurant/:slug).
+ */
+router.put("/business/locations/:locationId", requireBusiness, async (req, res) => {
+  try {
+    const businessId = (req as any).auth.sub as string;
+    const locationId = String(req.params.locationId || "").trim();
+    if (!locationId) {
+      return res.status(400).json({ error: "locationId is required" });
+    }
+
+    // Ownership: the location must belong to the authenticated business.
+    const owned = await prisma.location.findFirst({
+      where: { id: locationId, businessId },
+      select: { id: true },
+    });
+    if (!owned) {
+      return res
+        .status(404)
+        .json({ error: "Location not found or access denied" });
+    }
+
+    const {
+      restaurantProfile,
+      address,
+      queueEnabled,
+      reservationsEnabled,
+      reservationSettings,
+    } = req.body || {};
+    const data: Record<string, unknown> = {};
+
+    if (restaurantProfile !== undefined) {
+      if (
+        typeof restaurantProfile !== "object" ||
+        restaurantProfile === null ||
+        Array.isArray(restaurantProfile)
+      ) {
+        return res
+          .status(400)
+          .json({ error: "restaurantProfile must be an object" });
+      }
+      data.restaurantProfile = restaurantProfile;
+    }
+    if (address !== undefined) {
+      if (typeof address !== "string" || !address.trim()) {
+        return res.status(400).json({ error: "address must be a non-empty string" });
+      }
+      data.address = address.trim();
+    }
+    if (queueEnabled !== undefined) {
+      if (typeof queueEnabled !== "boolean") {
+        return res.status(400).json({ error: "queueEnabled must be a boolean" });
+      }
+      data.queueEnabled = queueEnabled;
+    }
+    if (reservationsEnabled !== undefined) {
+      if (typeof reservationsEnabled !== "boolean") {
+        return res
+          .status(400)
+          .json({ error: "reservationsEnabled must be a boolean" });
+      }
+      data.reservationsEnabled = reservationsEnabled;
+    }
+    if (reservationSettings !== undefined) {
+      if (
+        typeof reservationSettings !== "object" ||
+        reservationSettings === null ||
+        Array.isArray(reservationSettings)
+      ) {
+        return res
+          .status(400)
+          .json({ error: "reservationSettings must be an object" });
+      }
+      // Normalize/validate so partial or malformed input can't corrupt the JSON.
+      data.reservationSettings = normalizeSettings(reservationSettings);
+    }
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: "No editable fields provided" });
+    }
+
+    await prisma.location.update({ where: { id: locationId }, data });
+
+    const me = await assembleBusinessMe(businessId);
+    return res.json({ user: me });
+  } catch (err: any) {
+    console.error("[auth] update location profile error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * PATCH /auth/business/locations/:locationId/reservations/:reservationId
+ *   (business, protected)
+ * Change a reservation's status. Body: { status }. Allowed transitions map to
+ * the dashboard actions: confirm, cancel, mark arrived/completed/no-show.
+ */
+router.patch(
+  "/business/locations/:locationId/reservations/:reservationId",
+  requireBusiness,
+  async (req, res) => {
+    try {
+      const businessId = (req as any).auth.sub as string;
+      const locationId = String(req.params.locationId || "").trim();
+      const reservationId = String(req.params.reservationId || "").trim();
+      const status = String(req.body?.status || "").trim();
+
+      const ALLOWED = [
+        "pending",
+        "confirmed",
+        "arrived",
+        "completed",
+        "cancelled",
+        "no_show",
+      ];
+      if (!ALLOWED.includes(status)) {
+        return res.status(400).json({ error: "Invalid reservation status" });
+      }
+
+      const location = await prisma.location.findFirst({
+        where: { id: locationId, businessId },
+      });
+      if (!location) {
+        return res
+          .status(404)
+          .json({ error: "Location not found or access denied" });
+      }
+
+      const list = Array.isArray(location.reservations)
+        ? (location.reservations as any[])
+        : [];
+      const idx = list.findIndex((r) => r?.id === reservationId);
+      if (idx === -1) {
+        return res.status(404).json({ error: "Reservation not found" });
+      }
+
+      const now = new Date().toISOString();
+      const timestampField: Record<string, string> = {
+        cancelled: "cancelledAt",
+        arrived: "arrivedAt",
+        completed: "completedAt",
+        no_show: "noShowAt",
+      };
+      const updated = {
+        ...list[idx],
+        status,
+        updatedAt: now,
+        ...(timestampField[status] ? { [timestampField[status]]: now } : {}),
+      };
+      const nextList = list.map((r, i) => (i === idx ? updated : r));
+
+      await prisma.location.update({
+        where: { id: location.id },
+        data: { reservations: nextList as any },
+      });
+
+      // Keep the customer's profile copy in sync (no-op for guest bookings).
+      const biz = await prisma.business.findUnique({
+        where: { id: businessId },
+        select: { name: true },
+      });
+      await syncCustomerReservation(updated, {
+        businessName: biz?.name ?? null,
+        locationName: location.displayName || location.name || biz?.name || null,
+      });
+
+      const me = await assembleBusinessMe(businessId);
+      return res.json({ user: me });
+    } catch (err: any) {
+      console.error("[auth] reservation status error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+// ===========================================================================
+// QUEUE API (business namespace, by :username) — Location collection
+// ===========================================================================
+
+/**
+ * GET /auth/business/:username/addresses  (public)
  */
 router.get("/business/:username/addresses", async (req, res) => {
   try {
@@ -301,20 +1504,50 @@ router.get("/business/:username/addresses", async (req, res) => {
     if (!username)
       return res.status(400).json({ error: "username is required" });
 
-    const user = await prisma.user.findUnique({
+    const business = await prisma.business.findUnique({
       where: { username },
-      select: { name: true, locations: true },
+      select: { id: true, name: true },
+    });
+    if (!business) return res.status(404).json({ error: "Business not found" });
+
+    const locations = await prisma.location.findMany({
+      where: { businessId: business.id },
+      select: {
+        id: true,
+        address: true,
+        displayName: true,
+        name: true,
+        restaurantProfile: true,
+        area: true,
+        city: true,
+        country: true,
+        latitude: true,
+        longitude: true,
+        googleMapsUrl: true,
+      },
     });
 
-    if (!user) {
-      return res.status(404).json({ error: "Business not found" });
-    }
-
-    const locations = ((user as any).locations as any[]) || [];
-    const addresses = locations.map((location: any) => ({
-      address: location.address,
-      businessName: (user as any).name,
-    }));
+    // TODO(location): Use displayName as the customer-facing location label across reservations and queues.
+    const addresses = locations.map((location) => {
+      const rp = (location.restaurantProfile || {}) as any;
+      return {
+        id: location.id,
+        address: location.address,
+        // Customer-facing label, with safe fallbacks for legacy locations.
+        displayName: location.displayName || location.name || null,
+        // Public restaurant name (from the restaurant profile), falling back to
+        // the location label for legacy locations without a profile.
+        restaurantName:
+          rp.displayName || location.displayName || location.name || null,
+        area: location.area,
+        city: location.city,
+        country: location.country,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        googleMapsUrl: location.googleMapsUrl,
+        businessName: business.name,
+      };
+    });
 
     return res.json({ addresses });
   } catch (err: any) {
@@ -324,9 +1557,8 @@ router.get("/business/:username/addresses", async (req, res) => {
 });
 
 /**
- * POST /auth/business/:username/queue
- * Body: { address, firstName, lastName, numGuests, phoneNumber, waitingPreference }
- * Adds customer to the queue for a specific location
+ * POST /auth/business/:username/queue  (public)
+ * Adds a customer to a location's queue.
  */
 router.post("/business/:username/queue", async (req, res) => {
   try {
@@ -335,6 +1567,7 @@ router.post("/business/:username/queue", async (req, res) => {
       return res.status(400).json({ error: "username is required" });
 
     const {
+      locationId,
       address,
       firstName,
       lastName,
@@ -342,188 +1575,189 @@ router.post("/business/:username/queue", async (req, res) => {
       phoneNumber,
       countryCode,
       email,
-      waitingPreference,
       notificationMethod,
       smsConsent,
       smsMarketingConsent,
     } = req.body || {};
 
-    if (
-      !address ||
-      !firstName ||
-      !lastName ||
-      !numGuests ||
-      !waitingPreference
-    ) {
+    // The location now comes from the QR code URL (locationId). `address` is kept
+    // as a legacy fallback for the old business-wide /queue/:username link.
+    if (!firstName || !lastName || !numGuests || !notificationMethod) {
       return res.status(400).json({ error: "All fields are required" });
     }
+    if (!locationId && !address) {
+      return res.status(400).json({ error: "A location is required" });
+    }
 
-    // Validate notification method requirements
-    if (waitingPreference === "wait_anywhere") {
-      if (!notificationMethod) {
+    if (notificationMethod === "sms" || notificationMethod === "whatsapp") {
+      if (!phoneNumber) {
         return res
           .status(400)
-          .json({ error: "Notification method is required for Wait Anywhere" });
+          .json({ error: "Phone number is required for SMS/WhatsApp notifications" });
       }
-
-      if (notificationMethod === "sms" || notificationMethod === "whatsapp") {
-        if (!phoneNumber) {
-          return res
-            .status(400)
-            .json({ error: "Phone number is required for SMS/WhatsApp notifications" });
-        }
-        if (notificationMethod === "sms" && !smsConsent) {
-          return res
-            .status(400)
-            .json({ error: "SMS consent is required for SMS notifications" });
-        }
+      if (notificationMethod === "sms" && !smsConsent) {
+        return res
+          .status(400)
+          .json({ error: "SMS consent is required for SMS notifications" });
       }
-
-      if (notificationMethod === "email") {
-        if (!email) {
-          return res
-            .status(400)
-            .json({ error: "Email is required for email notifications" });
-        }
+    } else if (notificationMethod === "email") {
+      if (!email) {
+        return res
+          .status(400)
+          .json({ error: "Email is required for email notifications" });
       }
+    } else {
+      return res.status(400).json({ error: "Invalid notification method" });
     }
 
-    const user = await prisma.user.findUnique({
+    const business = await prisma.business.findUnique({
       where: { username },
-      select: {
-        id: true,
-        name: true,
-        locations: true,
-      },
+      select: { id: true, name: true },
     });
+    if (!business) return res.status(404).json({ error: "Business not found" });
 
-    if (!user) {
-      return res.status(404).json({ error: "Business not found" });
-    }
-
-    const locations = ((user as any).locations as any[]) || [];
-    const locationIndex = locations.findIndex(
-      (loc: any) => loc.address === address
-    );
-
-    if (locationIndex === -1) {
-      return res.status(404).json({ error: "Location not found" });
-    }
-
-    const location = locations[locationIndex];
-
-    // Check if location has enough SMS credits for SMS/WhatsApp notifications
-    if (waitingPreference === "wait_anywhere" &&
-        (notificationMethod === "sms" || notificationMethod === "whatsapp")) {
-      const locationSmsCredits = location.smsCredits || 0;
-      if (locationSmsCredits <= 0) {
-        return res.status(400).json({
-          error:
-            "This location has insufficient SMS credits for SMS/WhatsApp notifications",
+    // Prefer the QR-scoped locationId; fall back to address for the legacy link.
+    // Either way the location must belong to this business.
+    const location = locationId
+      ? await prisma.location.findFirst({
+          where: { id: String(locationId), businessId: business.id },
+        })
+      : await prisma.location.findFirst({
+          where: { businessId: business.id, address },
         });
-      }
+    if (!location) {
+      return res.status(404).json({
+        error: "This queue link is invalid or no longer available.",
+      });
     }
 
-    // Generate a unique queue token for customer persistence
-    const queueToken = crypto.randomBytes(16).toString('hex');
+    const queue = Array.isArray(location.queue) ? (location.queue as any[]) : [];
+
+    // Every notification channel consumes 1 credit at join time — SMS,
+    // WhatsApp, and email alike.
+    const consumesCredit =
+      notificationMethod === "sms" ||
+      notificationMethod === "whatsapp" ||
+      notificationMethod === "email";
+    const locationCredits = (location as any).credits || 0;
+    if (consumesCredit && locationCredits <= 0) {
+      return res.status(400).json({
+        error:
+          "This location has no credits remaining for notifications. Please contact the business.",
+      });
+    }
+
+    const queueToken = crypto.randomBytes(16).toString("hex");
+
+    // Link the ticket to the logged-in customer (if any) so it shows up in their
+    // profile's Queue Adventures. Guests join without an account (customerId null).
+    const queueSession = readSession(req);
+    const queueCustomerId =
+      queueSession?.accountType === "customer" ? queueSession.sub : null;
 
     const customer = {
       firstName,
       lastName,
+      // Combined name kept for code/UI that expects a single `name` field.
+      name: `${firstName} ${lastName}`.trim(),
       numGuests: Number(numGuests),
+      partySize: Number(numGuests),
       phoneNumber: phoneNumber || "",
-      countryCode: countryCode || "+1", // Store country code, default to +1
-      email: email || "", // Store email for email notifications
-      waitingPreference,
-      notificationMethod: notificationMethod || "", // Store notification method preference
-      smsConsent: smsConsent || false, // Store SMS consent for compliance
-      smsMarketingConsent: smsMarketingConsent || false, // Store marketing consent
+      countryCode: countryCode || "+1",
+      email: email || "",
+      notificationMethod: notificationMethod || "",
+      locationId: location.id,
+      businessUsername: username,
+      customerId: queueCustomerId,
+      smsConsent: smsConsent || false,
+      smsMarketingConsent: smsMarketingConsent || false,
       joinedAt: new Date().toISOString(),
-      position: (location.queue || []).length + 1,
-      queueToken, // Store token with customer data
+      position: queue.length + 1,
+      queueToken,
     };
 
-    // Add customer to the queue
-    location.queue = [...(location.queue || []), customer];
-
-    // Update the locations array
-    locations[locationIndex] = location;
-
-    // Update the business with the new queue
-    await prisma.user.update({
-      where: { id: (user as any).id },
+    // Deduct exactly 1 credit at join time for the cost-bearing channels.
+    await prisma.location.update({
+      where: { id: location.id },
       data: {
-        locations: locations as any,
+        queue: [...queue, customer] as any,
+        ...(consumesCredit
+          ? { credits: Math.max(0, locationCredits - 1) }
+          : {}),
       },
     });
 
-    // Send confirmation notifications based on notification method
-    const businessName = (user as any).name || "the business";
+    await syncCustomerQueue(customer, {
+      status: "waiting",
+      businessUsername: username,
+      businessName: business.name,
+      locationName: location.displayName || location.name || business.name,
+      locationId: location.id,
+    });
 
-    if (waitingPreference === "wait_anywhere" && notificationMethod) {
-      // Send SMS confirmation
+    const businessName = business.name || "the business";
+    // Customer-facing notifications use the restaurant's public name (from the
+    // restaurant profile), not the parent business/account name.
+    const rpJoin = (location.restaurantProfile || {}) as any;
+    const restaurantName =
+      rpJoin.displayName ||
+      location.displayName ||
+      location.name ||
+      businessName;
+
+    if (notificationMethod) {
       if (notificationMethod === "sms" && phoneNumber) {
         try {
           const telnyxApiKey = process.env.TELNYX_API_KEY;
           const telnyxPhoneNumber = process.env.TELNYX_PHONE_NUMBER;
-
           if (telnyxApiKey && telnyxPhoneNumber) {
             const telnyx = new Telnyx({ apiKey: telnyxApiKey });
-
-            // Format phone number to E.164 format
             const customerCountryCode = countryCode || "+1";
-            const phoneDigitsOnly = phoneNumber.trim().replace(/\D/g, '');
+            const phoneDigitsOnly = phoneNumber.trim().replace(/\D/g, "");
             const formattedPhone = customerCountryCode + phoneDigitsOnly;
-
             const message = await telnyx.messages.send({
               from: telnyxPhoneNumber,
               to: formattedPhone,
-              text: `Hi ${firstName}! You've joined the queue at ${businessName}. You're #${customer.position} in line. We'll text you when it's almost your turn. Reply STOP to opt out. - SeatPing`,
+              text: `Hi ${firstName}! You've joined the queue at ${restaurantName}. You're #${customer.position} in line. We'll text you when it's almost your turn. Reply STOP to opt out. - SeatPing`,
             });
-
-            console.log("[QUEUE-JOIN] SMS confirmation sent successfully:", message.data?.id, "to", formattedPhone);
+            console.log("[QUEUE-JOIN] SMS confirmation sent:", message.data?.id, "to", formattedPhone);
           } else {
             console.error("[QUEUE-JOIN] Missing Telnyx credentials - cannot send SMS confirmation");
           }
         } catch (error: any) {
           console.error("[QUEUE-JOIN] Failed to send SMS confirmation:", error?.message || error);
-          // Don't fail the queue join if SMS fails - just log the error
         }
       }
 
-      // Send WhatsApp confirmation
       if (notificationMethod === "whatsapp" && phoneNumber) {
         sendQueueJoinedWhatsApp({
           countryCode: countryCode || "+1",
           phoneNumber,
           customerName: firstName,
-          businessName,
+          businessName: restaurantName,
           position: customer.position,
-        }).catch((error: any) => {
-          console.error("[QUEUE-JOIN] Error sending WhatsApp confirmation:", error?.message || error);
-        });
+        }).catch((error: any) =>
+          console.error("[QUEUE-JOIN] Error sending WhatsApp confirmation:", error?.message || error)
+        );
       }
 
-      // Send email confirmation
       if (notificationMethod === "email" && email) {
         try {
           const emailSent = await sendQueueJoinConfirmationEmail(
             email,
             firstName,
             lastName,
-            businessName,
-            address,
+            restaurantName,
+            location.address,
             customer.position
           );
-
           if (emailSent) {
-            console.log("[QUEUE-JOIN] Email confirmation sent successfully to:", email);
+            console.log("[QUEUE-JOIN] Email confirmation sent to:", email);
           } else {
             console.error("[QUEUE-JOIN] Failed to send email confirmation to:", email);
           }
         } catch (error: any) {
           console.error("[QUEUE-JOIN] Error sending email confirmation:", error?.message || error);
-          // Don't fail the queue join if email fails - just log the error
         }
       }
     }
@@ -532,8 +1766,8 @@ router.post("/business/:username/queue", async (req, res) => {
       success: true,
       customer,
       position: customer.position,
-      businessName: (user as any).name,
-      queueToken, // Return token to frontend for persistence
+      businessName: business.name,
+      queueToken,
     });
   } catch (err: any) {
     console.error("[auth] add to queue error:", err?.message || err);
@@ -541,79 +1775,122 @@ router.post("/business/:username/queue", async (req, res) => {
   }
 });
 
+// How long an admitted customer's spot is held before it expires (5 minutes).
+const QUEUE_HOLD_MS = 5 * 60 * 1000;
+
 /**
- * GET /auth/business/:username/queue/token/:queueToken/status
- * Returns: { admitted: boolean, removed: boolean, position?: number, customer?: object, message?: string }
- * Checks customer status by queue token (for persistence after browser refresh)
+ * Compute hold-window expiry info for an admitted customer from their
+ * `admittedAt` timestamp. The 5-minute hold is anchored to admittedAt (stored in
+ * the DB), so it survives refreshes and server restarts. Legacy admitted records
+ * without an admittedAt can't be aged out, so they're treated as not expired.
+ */
+function admittedHoldInfo(admittedAt: string | null | undefined): {
+  admittedAt: string | null;
+  turnExpiresAt: string | null;
+  expired: boolean;
+} {
+  const ms = admittedAt ? new Date(admittedAt).getTime() : NaN;
+  if (!admittedAt || Number.isNaN(ms)) {
+    return { admittedAt: admittedAt || null, turnExpiresAt: null, expired: false };
+  }
+  const expiresMs = ms + QUEUE_HOLD_MS;
+  return {
+    admittedAt,
+    turnExpiresAt: new Date(expiresMs).toISOString(),
+    expired: Date.now() > expiresMs,
+  };
+}
+
+/**
+ * GET /auth/business/:username/queue/token/:queueToken/status  (public)
  */
 router.get("/business/:username/queue/token/:queueToken/status", async (req, res) => {
   try {
     const username = String(req.params.username || "").trim();
     const queueToken = String(req.params.queueToken || "").trim();
-
     if (!username || !queueToken) {
-      return res
-        .status(400)
-        .json({ error: "username and queueToken are required" });
+      return res.status(400).json({ error: "username and queueToken are required" });
     }
 
-    const user = await prisma.user.findUnique({
+    const business = await prisma.business.findUnique({
       where: { username },
-      select: { id: true, name: true, locations: true },
+      select: { id: true, name: true },
+    });
+    if (!business) return res.status(404).json({ error: "Business not found" });
+
+    const locations = await prisma.location.findMany({
+      where: { businessId: business.id },
     });
 
-    if (!user) {
-      return res.status(404).json({ error: "Business not found" });
-    }
-
-    const locations = ((user as any).locations as any[]) || [];
-
-    // Check if customer is still in queue by token
     for (const location of locations) {
-      const queue = location.queue || [];
-      const customerIndex = queue.findIndex(
-        (c: any) => c.queueToken === queueToken
-      );
-
+      const queue = Array.isArray(location.queue) ? (location.queue as any[]) : [];
+      const customerIndex = queue.findIndex((c: any) => c.queueToken === queueToken);
       if (customerIndex !== -1) {
-        const customer = queue[customerIndex];
         return res.json({
           admitted: false,
           removed: false,
           position: customerIndex + 1,
-          customer,
+          customer: queue[customerIndex],
           address: location.address,
-          businessName: (user as any).name,
+          businessName: business.name,
           message: "Customer is still waiting in queue",
         });
       }
     }
 
-    // Customer not in queue - check if they were admitted or removed
     for (const location of locations) {
-      // Check admitted customers
-      const admittedCustomers = location.admittedCustomers || [];
-      const admittedCustomer = admittedCustomers.find(
-        (c: any) => c.queueToken === queueToken
-      );
-
+      const admittedCustomers = Array.isArray(location.admittedCustomers)
+        ? (location.admittedCustomers as any[])
+        : [];
+      const admittedCustomer = admittedCustomers.find((c: any) => c.queueToken === queueToken);
       if (admittedCustomer) {
+        // Terminal states set by the business after admitting override the live
+        // hold window. Once arrival is confirmed (or marked no-show) the
+        // customer's page must leave the "It's Your Turn" countdown for good,
+        // even on refresh/reopen — the backend is the source of truth here.
+        if (admittedCustomer.finalStatus === "arrived") {
+          return res.json({
+            admitted: false,
+            removed: false,
+            checkedIn: true,
+            status: "arrived",
+            customer: admittedCustomer,
+            address: location.address,
+            businessName: business.name,
+            message: "Arrival confirmed",
+          });
+        }
+        if (admittedCustomer.finalStatus === "no_show") {
+          return res.json({
+            admitted: false,
+            removed: true,
+            status: "no_show",
+            customer: admittedCustomer,
+            address: location.address,
+            businessName: business.name,
+            message: "Marked as a no-show",
+          });
+        }
+        const hold = admittedHoldInfo(admittedCustomer.admittedAt);
         return res.json({
           admitted: true,
           removed: false,
+          expired: hold.expired,
+          admittedAt: hold.admittedAt,
+          turnExpiresAt: hold.turnExpiresAt,
           customer: admittedCustomer,
           address: location.address,
-          businessName: (user as any).name,
-          message: "Customer has been admitted",
+          businessName: business.name,
+          message: hold.expired
+            ? "Hold window has expired"
+            : "Customer has been admitted",
         });
       }
 
-      // Check removed customers
-      const removedCustomers = location.removedCustomers || [];
-      const removedCustomer = removedCustomers.find(
-        (c: any) => c.queueToken === queueToken
-      );
-
+      const removedCustomers = Array.isArray(location.removedCustomers)
+        ? (location.removedCustomers as any[])
+        : [];
+      const removedCustomer = removedCustomers.find((c: any) => c.queueToken === queueToken);
       if (removedCustomer) {
         return res.json({
           admitted: false,
@@ -621,15 +1898,15 @@ router.get("/business/:username/queue/token/:queueToken/status", async (req, res
           status: removedCustomer.status || "removed",
           customer: removedCustomer,
           address: location.address,
-          businessName: (user as any).name,
-          message: removedCustomer.status === "left"
-            ? "Customer has left the queue"
-            : "Customer has been removed from queue",
+          businessName: business.name,
+          message:
+            removedCustomer.status === "left"
+              ? "Customer has left the queue"
+              : "Customer has been removed from queue",
         });
       }
     }
 
-    // Customer not found anywhere
     return res.json({
       admitted: false,
       removed: false,
@@ -642,99 +1919,170 @@ router.get("/business/:username/queue/token/:queueToken/status", async (req, res
 });
 
 /**
- * GET /auth/business/:username/queue/:customerId/status
- * Returns: { admitted: boolean, removed: boolean, position?: number, message?: string }
- * Checks if a specific customer has been admitted or removed
+ * GET /auth/business/:username/queue/token/:queueToken/eta  (public)
+ * Smart estimated wait for a waiting customer. Customer-safe — returns only the
+ * ETA/position/basis, no other customers' details. Location-isolated: only the
+ * location that actually holds this token is used.
+ */
+router.get(
+  "/business/:username/queue/token/:queueToken/eta",
+  async (req, res) => {
+    try {
+      const username = String(req.params.username || "").trim();
+      const queueToken = String(req.params.queueToken || "").trim();
+      if (!username || !queueToken) {
+        return res
+          .status(400)
+          .json({ error: "username and queueToken are required" });
+      }
+
+      const business = await prisma.business.findUnique({
+        where: { username },
+        select: { id: true },
+      });
+      if (!business) return res.status(404).json({ error: "Business not found" });
+
+      const locations = await prisma.location.findMany({
+        where: { businessId: business.id },
+      });
+
+      for (const location of locations) {
+        const eta = etaForToken(location, queueToken);
+        if (eta) return res.json({ eta });
+      }
+
+      // Not currently waiting (admitted/removed/expired) — no ETA to give.
+      return res.status(404).json({ error: "Queue ticket not found or no longer waiting" });
+    } catch (err: any) {
+      console.error("[auth] queue eta error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+/**
+ * GET /auth/business/:username/locations/:locationId/queue-etas  (business)
+ * Per-customer ETAs for the live waitlist of one owned location. Uses the same
+ * helper as the customer endpoint so estimates stay consistent.
+ */
+router.get(
+  "/business/:username/locations/:locationId/queue-etas",
+  requireBusiness,
+  async (req, res) => {
+    try {
+      const businessId = (req as any).auth.sub as string;
+      const locationId = String(req.params.locationId || "").trim();
+      const location = await prisma.location.findFirst({
+        where: { id: locationId, businessId },
+      });
+      if (!location) {
+        return res
+          .status(404)
+          .json({ error: "Location not found or access denied" });
+      }
+      return res.json({ etas: etaForAllQueueCustomers(location) });
+    } catch (err: any) {
+      console.error("[auth] queue-etas error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+/**
+ * GET /auth/business/:username/queue/:customerId/status  (public)
  */
 router.get("/business/:username/queue/:customerId/status", async (req, res) => {
   try {
     const username = String(req.params.username || "").trim();
     const customerId = String(req.params.customerId || "").trim();
-
     if (!username || !customerId) {
-      return res
-        .status(400)
-        .json({ error: "username and customerId are required" });
+      return res.status(400).json({ error: "username and customerId are required" });
     }
 
-    const user = await prisma.user.findUnique({
+    const business = await prisma.business.findUnique({
       where: { username },
-      select: { id: true, name: true, locations: true },
+      select: { id: true, name: true },
+    });
+    if (!business) return res.status(404).json({ error: "Business not found" });
+
+    const locations = await prisma.location.findMany({
+      where: { businessId: business.id },
     });
 
-    if (!user) {
-      return res.status(404).json({ error: "Business not found" });
-    }
-
-    const locations = ((user as any).locations as any[]) || [];
-
-    // First check if customer is still in queue
-    let customerFound = false;
-    let customerPosition = 0;
+    const idOf = (c: any) => c.firstName + c.lastName + c.joinedAt;
 
     for (const location of locations) {
-      const queue = location.queue || [];
-      const customerIndex = queue.findIndex(
-        (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
-      );
-
-      if (customerIndex !== -1) {
-        customerFound = true;
-        customerPosition = customerIndex + 1;
-        break;
+      const queue = Array.isArray(location.queue) ? (location.queue as any[]) : [];
+      const idx = queue.findIndex((c: any) => idOf(c) === customerId);
+      if (idx !== -1) {
+        return res.json({
+          admitted: false,
+          removed: false,
+          position: idx + 1,
+          message: "Customer is still waiting in queue",
+        });
       }
     }
 
-    if (customerFound) {
-      // Customer is still in queue (waiting)
-      return res.json({
-        admitted: false,
-        removed: false,
-        position: customerPosition,
-        message: "Customer is still waiting in queue",
-      });
-    }
-
-    // Customer not in queue - check if they were admitted or removed
     for (const location of locations) {
-      // Check admitted customers
-      const admittedCustomers = location.admittedCustomers || [];
-      const admittedCustomer = admittedCustomers.find(
-        (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
-      );
-
-      if (admittedCustomer) {
+      const admittedCustomers = Array.isArray(location.admittedCustomers)
+        ? (location.admittedCustomers as any[])
+        : [];
+      const admittedById = admittedCustomers.find((c: any) => idOf(c) === customerId);
+      if (admittedById) {
+        // Terminal states set by the business after admitting override the live
+        // hold window (see the token-based endpoint above for the rationale).
+        if (admittedById.finalStatus === "arrived") {
+          return res.json({
+            admitted: false,
+            removed: false,
+            checkedIn: true,
+            status: "arrived",
+            customer: admittedById,
+            message: "Arrival confirmed",
+          });
+        }
+        if (admittedById.finalStatus === "no_show") {
+          return res.json({
+            admitted: false,
+            removed: true,
+            status: "no_show",
+            customer: admittedById,
+            message: "Marked as a no-show",
+          });
+        }
+        const hold = admittedHoldInfo(admittedById.admittedAt);
         return res.json({
           admitted: true,
           removed: false,
-          message: "Customer has been admitted",
+          expired: hold.expired,
+          admittedAt: hold.admittedAt,
+          turnExpiresAt: hold.turnExpiresAt,
+          customer: admittedById,
+          message: hold.expired
+            ? "Hold window has expired"
+            : "Customer has been admitted",
         });
       }
 
-      // Check removed customers
-      const removedCustomers = location.removedCustomers || [];
-      const removedCustomer = removedCustomers.find(
-        (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
-      );
-
+      const removedCustomers = Array.isArray(location.removedCustomers)
+        ? (location.removedCustomers as any[])
+        : [];
+      const removedCustomer = removedCustomers.find((c: any) => idOf(c) === customerId);
       if (removedCustomer) {
         return res.json({
           admitted: false,
           removed: true,
-          status: removedCustomer.status || "removed", // "removed" or "left"
-          message: removedCustomer.status === "left" 
-            ? "Customer has left the queue" 
-            : "Customer has been removed from queue",
+          status: removedCustomer.status || "removed",
+          message:
+            removedCustomer.status === "left"
+              ? "Customer has left the queue"
+              : "Customer has been removed from queue",
         });
       }
     }
 
-    // Customer not found anywhere - might be a new customer or error
-    return res.json({
-      admitted: false,
-      removed: false,
-      message: "Customer not found",
-    });
+    return res.json({ admitted: false, removed: false, message: "Customer not found" });
   } catch (err: any) {
     console.error("[auth] check customer status error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
@@ -742,223 +2090,149 @@ router.get("/business/:username/queue/:customerId/status", async (req, res) => {
 });
 
 /**
- * POST /auth/business/:username/queue/:customerId/admit (protected)
- * Admits a customer from the queue (they go to Step 5)
+ * POST /auth/business/:username/queue/:customerId/admit  (business, protected)
  */
 router.post(
   "/business/:username/queue/:customerId/admit",
-  requireAuth,
+  requireBusiness,
   async (req, res) => {
     try {
-      const userId = (req as any).auth.sub as string;
+      const businessId = (req as any).auth.sub as string;
       const username = String(req.params.username || "").trim();
       const customerId = String(req.params.customerId || "").trim();
-
       if (!username || !customerId) {
-        return res
-          .status(400)
-          .json({ error: "username and customerId are required" });
+        return res.status(400).json({ error: "username and customerId are required" });
       }
 
-      // Verify the business user owns this username
-      const user = await prisma.user.findFirst({
-        where: { id: userId, username },
-        select: {
-          id: true,
-          name: true,
-          locations: true,
-        },
-      });
-
-      if (!user) {
-        return res
-          .status(404)
-          .json({ error: "Business not found or access denied" });
+      const business = await getOwnedBusiness(businessId, username);
+      if (!business) {
+        return res.status(404).json({ error: "Business not found or access denied" });
       }
 
-      const locations = ((user as any).locations as any[]) || [];
-      let customerFound = false;
-      let admittedCustomer = null;
-      let locationIndex = -1;
+      const locations = await prisma.location.findMany({ where: { businessId: business.id } });
+      const idOf = (c: any) => c.firstName + c.lastName + c.joinedAt;
 
-      // Find and remove the customer from queue, marking as admitted
-      for (let i = 0; i < locations.length; i++) {
-        const queue = locations[i].queue || [];
-        const customerIndex = queue.findIndex(
-          (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
-        );
+      let admittedCustomer: any = null;
+      let targetLocation: any = null;
 
-        if (customerIndex !== -1) {
-          admittedCustomer = queue[customerIndex];
-          locationIndex = i;
+      for (const location of locations) {
+        const queue = Array.isArray(location.queue) ? (location.queue as any[]) : [];
+        const idx = queue.findIndex((c: any) => idOf(c) === customerId);
+        if (idx === -1) continue;
 
-          // Check if location has enough customer credits
-          const locationCustomerCredits = locations[i].customerCredits || 0;
-          if (locationCustomerCredits <= 0) {
-            return res.status(400).json({
-              error:
-                "This location has insufficient customer credits. Please upgrade your plan.",
-            });
-          }
+        admittedCustomer = queue[idx];
+        targetLocation = location;
 
-          // Mark customer as admitted and remove from queue
-          admittedCustomer.status = "admitted";
-          admittedCustomer.admittedAt = new Date().toISOString();
-          admittedCustomer.finalStatus = "pending"; // Track if customer arrived or was a no-show
+        // Credits are charged at join time (per cost-bearing channel), not on admit.
+        admittedCustomer.status = "admitted";
+        admittedCustomer.admittedAt = new Date().toISOString();
+        admittedCustomer.finalStatus = "pending";
 
-          // Send notification to customer when admitted
-          console.log("Admitting customer:", admittedCustomer);
-          console.log("Customer notification method:", admittedCustomer.notificationMethod);
-          console.log("Customer waiting preference:", admittedCustomer.waitingPreference);
+        {
+          const businessName = business.name || "The business";
+          // Customer-facing notifications use the restaurant's public name.
+          const rpAdmit = (location.restaurantProfile || {}) as any;
+          const restaurantName =
+            rpAdmit.displayName ||
+            location.displayName ||
+            location.name ||
+            businessName;
 
-          // Send notification based on customer's notification method preference
-          if (admittedCustomer.waitingPreference === "wait_anywhere") {
-            const businessName = (user as any).name || "The business";
-
-            // Send SMS notification
-            if (admittedCustomer.notificationMethod === "sms" && admittedCustomer.phoneNumber && admittedCustomer.phoneNumber.trim() !== "") {
-              try {
-                const telnyxApiKey = process.env.TELNYX_API_KEY;
-                const telnyxPhoneNumber = process.env.TELNYX_PHONE_NUMBER;
-
-                if (!telnyxApiKey || !telnyxPhoneNumber) {
-                  console.error('Missing Telnyx credentials:', {
-                    hasApiKey: !!telnyxApiKey,
-                    hasTelnyxPhone: !!telnyxPhoneNumber
-                  });
-                  throw new Error('Telnyx credentials not configured');
-                }
-
-                const telnyx = new Telnyx({ apiKey: telnyxApiKey });
-
-                // Format phone number to E.164 format using the stored country code
-                const customerCountryCode = admittedCustomer.countryCode || "+1";
-                let phoneDigitsOnly = admittedCustomer.phoneNumber.trim().replace(/\D/g, '');
-
-                // Construct full phone number with country code
-                let formattedPhone = customerCountryCode + phoneDigitsOnly;
-
-                const message = await telnyx.messages.send({
-                  from: telnyxPhoneNumber,
-                  to: formattedPhone,
-                  text: `Good news! It's your turn at ${businessName}. Please proceed to the host within the next 5 minutes. Thank you for using SeatPing!`,
-                });
-                console.log("SMS notification sent successfully:", message.data?.id, "to", formattedPhone);
-              } catch (error: any) {
-                console.error('Failed to send SMS notification:', error?.message || error);
-                // Don't fail the admission if SMS fails - just log the error
+          if (
+            admittedCustomer.notificationMethod === "sms" &&
+            admittedCustomer.phoneNumber &&
+            admittedCustomer.phoneNumber.trim() !== ""
+          ) {
+            try {
+              const telnyxApiKey = process.env.TELNYX_API_KEY;
+              const telnyxPhoneNumber = process.env.TELNYX_PHONE_NUMBER;
+              if (!telnyxApiKey || !telnyxPhoneNumber) {
+                throw new Error("Telnyx credentials not configured");
               }
+              const telnyx = new Telnyx({ apiKey: telnyxApiKey });
+              const customerCountryCode = admittedCustomer.countryCode || "+1";
+              const phoneDigitsOnly = admittedCustomer.phoneNumber.trim().replace(/\D/g, "");
+              const formattedPhone = customerCountryCode + phoneDigitsOnly;
+              const message = await telnyx.messages.send({
+                from: telnyxPhoneNumber,
+                to: formattedPhone,
+                text: `Good news! It's your turn at ${restaurantName}. Please proceed to the host within the next 5 minutes. Thank you for using SeatPing!`,
+              });
+              console.log("SMS notification sent:", message.data?.id, "to", formattedPhone);
+            } catch (error: any) {
+              console.error("Failed to send SMS notification:", error?.message || error);
             }
-            // Send WhatsApp notification
-            else if (admittedCustomer.notificationMethod === "whatsapp" && admittedCustomer.phoneNumber && admittedCustomer.phoneNumber.trim() !== "") {
-              try {
-                const sent = await sendQueueAdmittedWhatsApp({
-                  countryCode: admittedCustomer.countryCode || "+1",
-                  phoneNumber: admittedCustomer.phoneNumber,
-                  businessName,
-                });
-                if (!sent) {
-                  console.error("[ADMIT] WhatsApp queue_admitted send returned false for:", admittedCustomer.phoneNumber);
-                }
-              } catch (error: any) {
-                console.error("[ADMIT] Failed to send WhatsApp notification:", error?.message || error);
-                // Don't fail the admission if WhatsApp fails - just log the error
+          } else if (
+            admittedCustomer.notificationMethod === "whatsapp" &&
+            admittedCustomer.phoneNumber &&
+            admittedCustomer.phoneNumber.trim() !== ""
+          ) {
+            try {
+              const sent = await sendQueueAdmittedWhatsApp({
+                countryCode: admittedCustomer.countryCode || "+1",
+                phoneNumber: admittedCustomer.phoneNumber,
+                businessName: restaurantName,
+              });
+              if (!sent) {
+                console.error("[ADMIT] WhatsApp queue_admitted send returned false for:", admittedCustomer.phoneNumber);
               }
+            } catch (error: any) {
+              console.error("[ADMIT] Failed to send WhatsApp notification:", error?.message || error);
             }
-            // Send Email notification
-            else if (admittedCustomer.notificationMethod === "email" && admittedCustomer.email && admittedCustomer.email.trim() !== "") {
-              try {
-                const emailHtml = `
-                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #2563eb;">Good News!</h2>
-                    <p style="font-size: 16px;">It's your turn at <strong>${businessName}</strong>!</p>
-                    <p style="font-size: 14px;">Please proceed to the host within the next 5 minutes.</p>
-                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-                    <p style="font-size: 12px; color: #6b7280;">Thank you for using SeatPing!</p>
-                  </div>
-                `;
-
-                const emailSent = await sendEmail({
-                  to: admittedCustomer.email,
-                  subject: `It's your turn at ${businessName}!`,
-                  html: emailHtml,
-                });
-
-                if (emailSent) {
-                  console.log("Email notification sent successfully to:", admittedCustomer.email);
-                } else {
-                  console.error("Failed to send email notification to:", admittedCustomer.email);
-                }
-              } catch (error: any) {
-                console.error('Failed to send email notification:', error?.message || error);
-                // Don't fail the admission if email fails - just log the error
+          } else if (
+            admittedCustomer.notificationMethod === "email" &&
+            admittedCustomer.email &&
+            admittedCustomer.email.trim() !== ""
+          ) {
+            try {
+              const emailSent = await sendQueueYourTurnEmail(
+                admittedCustomer.email,
+                restaurantName
+              );
+              if (emailSent) {
+                console.log("Email notification sent to:", admittedCustomer.email);
+              } else {
+                console.error("Failed to send email notification to:", admittedCustomer.email);
               }
-            } else {
-              console.log("No valid notification method or contact info - skipping notification");
+            } catch (error: any) {
+              console.error("Failed to send email notification:", error?.message || error);
             }
           } else {
-            console.log("Customer chose 'on_premises' - skipping notification");
+            console.log("No valid notification method or contact info - skipping notification");
           }
-
-
-          // Store in a separate admitted customers list
-          if (!locations[i].admittedCustomers) {
-            locations[i].admittedCustomers = [];
-          }
-          locations[i].admittedCustomers.push(admittedCustomer);
-
-          // Remove from queue
-          locations[i].queue.splice(customerIndex, 1);
-          customerFound = true;
-          break;
         }
+
+        const admitted = Array.isArray(location.admittedCustomers)
+          ? (location.admittedCustomers as any[])
+          : [];
+        admitted.push(admittedCustomer);
+        queue.splice(idx, 1);
+
+        // No credit changes on admit — credits were charged at join time.
+        await prisma.location.update({
+          where: { id: location.id },
+          data: {
+            queue: queue as any,
+            admittedCustomers: admitted as any,
+          },
+        });
+
+        await syncCustomerQueue(admittedCustomer, {
+          status: "admitted",
+          businessUsername: username,
+          businessName: business.name,
+          locationName: location.displayName || location.name || business.name,
+          locationId: location.id,
+        });
+
+        return res.json({
+          success: true,
+          customer: admittedCustomer,
+          message: "Customer has been admitted",
+        });
       }
 
-      if (!customerFound) {
-        return res.status(404).json({ error: "Customer not found in queue" });
-      }
-
-      // Calculate credit deductions
-      let customerCreditsToDeduct = 1; // Always deduct 1 customer credit when admitting
-      let smsCreditsToDeduct = 0; // Initialize SMS credits to deduct
-
-      // Deduct credits from the specific location
-      const location = locations[locationIndex];
-      location.customerCredits = Math.max(
-        0,
-        (location.customerCredits || 0) - customerCreditsToDeduct
-      );
-
-      // Deduct SMS credit if customer opted for SMS or WhatsApp notifications
-      if (admittedCustomer.waitingPreference === "wait_anywhere" &&
-          (admittedCustomer.notificationMethod === "sms" || admittedCustomer.notificationMethod === "whatsapp")) {
-        smsCreditsToDeduct = 1;
-        location.smsCredits = Math.max(
-          0,
-          (location.smsCredits || 0) - smsCreditsToDeduct
-        );
-      }
-
-      // Update locations array
-      locations[locationIndex] = location;
-
-      // Update the business data with credit deductions
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          locations: locations as any,
-        },
-      });
-
-      return res.json({
-        success: true,
-        customer: admittedCustomer,
-        message: "Customer has been admitted",
-        creditsDeducted: {
-          customerCredits: customerCreditsToDeduct,
-          smsCredits: smsCreditsToDeduct,
-        },
-      });
+      return res.status(404).json({ error: "Customer not found in queue" });
     } catch (err: any) {
       console.error("[auth] admit customer error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
@@ -967,71 +2241,52 @@ router.post(
 );
 
 /**
- * POST /auth/business/:username/admitted/:customerId/confirm-arrival (protected)
- * Marks an admitted customer as arrived/confirmed
+ * POST /auth/business/:username/admitted/:customerId/confirm-arrival  (business, protected)
  */
 router.post(
   "/business/:username/admitted/:customerId/confirm-arrival",
-  requireAuth,
+  requireBusiness,
   async (req, res) => {
     try {
-      const userId = (req as any).auth.sub as string;
+      const businessId = (req as any).auth.sub as string;
       const username = String(req.params.username || "").trim();
       const customerId = String(req.params.customerId || "").trim();
-
       if (!username || !customerId) {
-        return res
-          .status(400)
-          .json({ error: "username and customerId are required" });
+        return res.status(400).json({ error: "username and customerId are required" });
       }
 
-      // Verify the business user owns this username
-      const user = await prisma.user.findFirst({
-        where: { id: userId, username },
-        select: { id: true, locations: true },
-      });
-
-      if (!user) {
-        return res
-          .status(404)
-          .json({ error: "Business not found or access denied" });
+      const business = await getOwnedBusiness(businessId, username);
+      if (!business) {
+        return res.status(404).json({ error: "Business not found or access denied" });
       }
 
-      const locations = ((user as any).locations as any[]) || [];
-      let customerFound = false;
+      const locations = await prisma.location.findMany({ where: { businessId: business.id } });
+      const idOf = (c: any) => c.firstName + c.lastName + c.joinedAt;
 
-      // Find the admitted customer and update their finalStatus
-      for (let i = 0; i < locations.length; i++) {
-        const admittedCustomers = locations[i].admittedCustomers || [];
-        const customerIndex = admittedCustomers.findIndex(
-          (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
-        );
+      for (const location of locations) {
+        const admitted = Array.isArray(location.admittedCustomers)
+          ? (location.admittedCustomers as any[])
+          : [];
+        const idx = admitted.findIndex((c: any) => idOf(c) === customerId);
+        if (idx === -1) continue;
 
-        if (customerIndex !== -1) {
-          admittedCustomers[customerIndex].finalStatus = "arrived";
-          admittedCustomers[customerIndex].confirmedAt = new Date().toISOString();
-          locations[i].admittedCustomers = admittedCustomers;
-          customerFound = true;
-          break;
-        }
+        admitted[idx].finalStatus = "arrived";
+        admitted[idx].confirmedAt = new Date().toISOString();
+        await prisma.location.update({
+          where: { id: location.id },
+          data: { admittedCustomers: admitted as any },
+        });
+        await syncCustomerQueue(admitted[idx], {
+          status: "arrived",
+          businessUsername: username,
+          businessName: business.name,
+          locationName: location.displayName || location.name || business.name,
+          locationId: location.id,
+        });
+        return res.json({ success: true, message: "Customer arrival confirmed" });
       }
 
-      if (!customerFound) {
-        return res.status(404).json({ error: "Admitted customer not found" });
-      }
-
-      // Update the business data
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          locations: locations as any,
-        },
-      });
-
-      return res.json({
-        success: true,
-        message: "Customer arrival confirmed",
-      });
+      return res.status(404).json({ error: "Admitted customer not found" });
     } catch (err: any) {
       console.error("[auth] confirm arrival error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
@@ -1040,71 +2295,52 @@ router.post(
 );
 
 /**
- * POST /auth/business/:username/admitted/:customerId/mark-no-show (protected)
- * Marks an admitted customer as no-show
+ * POST /auth/business/:username/admitted/:customerId/mark-no-show  (business, protected)
  */
 router.post(
   "/business/:username/admitted/:customerId/mark-no-show",
-  requireAuth,
+  requireBusiness,
   async (req, res) => {
     try {
-      const userId = (req as any).auth.sub as string;
+      const businessId = (req as any).auth.sub as string;
       const username = String(req.params.username || "").trim();
       const customerId = String(req.params.customerId || "").trim();
-
       if (!username || !customerId) {
-        return res
-          .status(400)
-          .json({ error: "username and customerId are required" });
+        return res.status(400).json({ error: "username and customerId are required" });
       }
 
-      // Verify the business user owns this username
-      const user = await prisma.user.findFirst({
-        where: { id: userId, username },
-        select: { id: true, locations: true },
-      });
-
-      if (!user) {
-        return res
-          .status(404)
-          .json({ error: "Business not found or access denied" });
+      const business = await getOwnedBusiness(businessId, username);
+      if (!business) {
+        return res.status(404).json({ error: "Business not found or access denied" });
       }
 
-      const locations = ((user as any).locations as any[]) || [];
-      let customerFound = false;
+      const locations = await prisma.location.findMany({ where: { businessId: business.id } });
+      const idOf = (c: any) => c.firstName + c.lastName + c.joinedAt;
 
-      // Find the admitted customer and update their finalStatus
-      for (let i = 0; i < locations.length; i++) {
-        const admittedCustomers = locations[i].admittedCustomers || [];
-        const customerIndex = admittedCustomers.findIndex(
-          (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
-        );
+      for (const location of locations) {
+        const admitted = Array.isArray(location.admittedCustomers)
+          ? (location.admittedCustomers as any[])
+          : [];
+        const idx = admitted.findIndex((c: any) => idOf(c) === customerId);
+        if (idx === -1) continue;
 
-        if (customerIndex !== -1) {
-          admittedCustomers[customerIndex].finalStatus = "no_show";
-          admittedCustomers[customerIndex].noShowMarkedAt = new Date().toISOString();
-          locations[i].admittedCustomers = admittedCustomers;
-          customerFound = true;
-          break;
-        }
+        admitted[idx].finalStatus = "no_show";
+        admitted[idx].noShowMarkedAt = new Date().toISOString();
+        await prisma.location.update({
+          where: { id: location.id },
+          data: { admittedCustomers: admitted as any },
+        });
+        await syncCustomerQueue(admitted[idx], {
+          status: "no_show",
+          businessUsername: username,
+          businessName: business.name,
+          locationName: location.displayName || location.name || business.name,
+          locationId: location.id,
+        });
+        return res.json({ success: true, message: "Customer marked as no-show" });
       }
 
-      if (!customerFound) {
-        return res.status(404).json({ error: "Admitted customer not found" });
-      }
-
-      // Update the business data
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          locations: locations as any,
-        },
-      });
-
-      return res.json({
-        success: true,
-        message: "Customer marked as no-show",
-      });
+      return res.status(404).json({ error: "Admitted customer not found" });
     } catch (err: any) {
       console.error("[auth] mark no-show error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
@@ -1113,81 +2349,64 @@ router.post(
 );
 
 /**
- * DELETE /auth/business/:username/queue/:customerId (protected)
- * Removes a customer from the queue (they get kicked out)
+ * DELETE /auth/business/:username/queue/:customerId  (business, protected)
  */
 router.delete(
   "/business/:username/queue/:customerId",
-  requireAuth,
+  requireBusiness,
   async (req, res) => {
     try {
-      const userId = (req as any).auth.sub as string;
+      const businessId = (req as any).auth.sub as string;
       const username = String(req.params.username || "").trim();
       const customerId = String(req.params.customerId || "").trim();
-
       if (!username || !customerId) {
-        return res
-          .status(400)
-          .json({ error: "username and customerId are required" });
+        return res.status(400).json({ error: "username and customerId are required" });
       }
 
-      // Verify the business user owns this username
-      const user = await prisma.user.findFirst({
-        where: { id: userId, username },
-        select: { id: true, name: true, locations: true },
-      });
-
-      if (!user) {
-        return res
-          .status(404)
-          .json({ error: "Business not found or access denied" });
+      const business = await getOwnedBusiness(businessId, username);
+      if (!business) {
+        return res.status(404).json({ error: "Business not found or access denied" });
       }
 
-      const locations = ((user as any).locations as any[]) || [];
-      let customerFound = false;
-      let removedCustomer = null;
+      const locations = await prisma.location.findMany({ where: { businessId: business.id } });
+      const idOf = (c: any) => c.firstName + c.lastName + c.joinedAt;
 
-      // Find and remove the customer from queue, marking as removed
-      for (let i = 0; i < locations.length; i++) {
-        const queue = locations[i].queue || [];
-        const customerIndex = queue.findIndex(
-          (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
-        );
+      for (const location of locations) {
+        const queue = Array.isArray(location.queue) ? (location.queue as any[]) : [];
+        const idx = queue.findIndex((c: any) => idOf(c) === customerId);
+        if (idx === -1) continue;
 
-        if (customerIndex !== -1) {
-          removedCustomer = queue[customerIndex];
-          // Mark customer as removed
-          removedCustomer.status = "removed";
-          removedCustomer.removedAt = new Date().toISOString();
+        const removedCustomer = queue[idx];
+        removedCustomer.status = "removed";
+        removedCustomer.removedAt = new Date().toISOString();
 
-          // Store in a separate removed customers list
-          if (!locations[i].removedCustomers) {
-            locations[i].removedCustomers = [];
-          }
-          locations[i].removedCustomers.push(removedCustomer);
+        const removed = Array.isArray(location.removedCustomers)
+          ? (location.removedCustomers as any[])
+          : [];
+        removed.push(removedCustomer);
+        queue.splice(idx, 1);
 
-          // Remove from queue
-          locations[i].queue.splice(customerIndex, 1);
-          customerFound = true;
-          break;
-        }
+        await prisma.location.update({
+          where: { id: location.id },
+          data: { queue: queue as any, removedCustomers: removed as any },
+        });
+
+        await syncCustomerQueue(removedCustomer, {
+          status: "removed",
+          businessUsername: username,
+          businessName: business.name,
+          locationName: location.displayName || location.name || business.name,
+          locationId: location.id,
+        });
+
+        return res.json({
+          success: true,
+          customer: removedCustomer,
+          message: "Customer has been removed from queue",
+        });
       }
 
-      if (!customerFound) {
-        return res.status(404).json({ error: "Customer not found in queue" });
-      }
-
-      // Update the business data
-      await prisma.user.update({
-        where: { id: userId },
-        data: { locations: locations as any },
-      });
-
-      return res.json({
-        success: true,
-        customer: removedCustomer,
-        message: "Customer has been removed from queue",
-      });
+      return res.status(404).json({ error: "Customer not found in queue" });
     } catch (err: any) {
       console.error("[auth] remove customer error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
@@ -1196,70 +2415,52 @@ router.delete(
 );
 
 /**
- * POST /auth/business/:username/queue/:customerId/leave
- * Allows a customer to leave the queue themselves
+ * POST /auth/business/:username/queue/:customerId/leave  (public)
+ * Customer leaves the queue themselves.
  */
-router.post(
-  "/business/:username/queue/:customerId/leave",
-  async (req, res) => {
-    try {
-      const username = String(req.params.username || "").trim();
-      const customerId = String(req.params.customerId || "").trim();
+router.post("/business/:username/queue/:customerId/leave", async (req, res) => {
+  try {
+    const username = String(req.params.username || "").trim();
+    const customerId = String(req.params.customerId || "").trim();
+    if (!username || !customerId) {
+      return res.status(400).json({ error: "username and customerId are required" });
+    }
 
-      if (!username || !customerId) {
-        return res
-          .status(400)
-          .json({ error: "username and customerId are required" });
-      }
+    const business = await prisma.business.findUnique({
+      where: { username },
+      select: { id: true, name: true },
+    });
+    if (!business) return res.status(404).json({ error: "Business not found" });
 
-      // Find the business user
-      const user = await prisma.user.findFirst({
-        where: { username },
-        select: { id: true, name: true, locations: true },
+    const locations = await prisma.location.findMany({ where: { businessId: business.id } });
+    const idOf = (c: any) => c.firstName + c.lastName + c.joinedAt;
+
+    for (const location of locations) {
+      const queue = Array.isArray(location.queue) ? (location.queue as any[]) : [];
+      const idx = queue.findIndex((c: any) => idOf(c) === customerId);
+      if (idx === -1) continue;
+
+      const removedCustomer = queue[idx];
+      removedCustomer.status = "left";
+      removedCustomer.leftAt = new Date().toISOString();
+
+      const removed = Array.isArray(location.removedCustomers)
+        ? (location.removedCustomers as any[])
+        : [];
+      removed.push(removedCustomer);
+      queue.splice(idx, 1);
+
+      await prisma.location.update({
+        where: { id: location.id },
+        data: { queue: queue as any, removedCustomers: removed as any },
       });
 
-      if (!user) {
-        return res.status(404).json({ error: "Business not found" });
-      }
-
-      const locations = ((user as any).locations as any[]) || [];
-      let customerFound = false;
-      let removedCustomer = null;
-
-      // Find and remove the customer from queue
-      for (let i = 0; i < locations.length; i++) {
-        const queue = locations[i].queue || [];
-        const customerIndex = queue.findIndex(
-          (c: any) => c.firstName + c.lastName + c.joinedAt === customerId
-        );
-
-        if (customerIndex !== -1) {
-          removedCustomer = queue[customerIndex];
-          // Mark customer as left (not removed by business)
-          removedCustomer.status = "left";
-          removedCustomer.leftAt = new Date().toISOString();
-
-          // Store in a separate removed customers list
-          if (!locations[i].removedCustomers) {
-            locations[i].removedCustomers = [];
-          }
-          locations[i].removedCustomers.push(removedCustomer);
-
-          // Remove from queue
-          locations[i].queue.splice(customerIndex, 1);
-          customerFound = true;
-          break;
-        }
-      }
-
-      if (!customerFound) {
-        return res.status(404).json({ error: "Customer not found in queue" });
-      }
-
-      // Update the business data
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { locations: locations as any },
+      await syncCustomerQueue(removedCustomer, {
+        status: "left",
+        businessUsername: username,
+        businessName: business.name,
+        locationName: location.displayName || location.name || business.name,
+        locationId: location.id,
       });
 
       return res.json({
@@ -1267,286 +2468,38 @@ router.post(
         customer: removedCustomer,
         message: "You have left the queue",
       });
-    } catch (err: any) {
-      console.error("[auth] customer leave queue error:", err?.message || err);
-      return res.status(500).json({ error: "Server error" });
-    }
-  }
-);
-
-/**
- * PUT /auth/me (protected)
- * Body: { locations } - Updates user locations
- */
-router.put("/me", requireAuth, async (req, res) => {
-  try {
-    const userId = (req as any).auth.sub as string;
-    const { locations } = req.body || {};
-
-    if (!locations || !Array.isArray(locations)) {
-      return res.status(400).json({ error: "locations array is required" });
     }
 
-    // Enforce trial expiration before processing updates
-    await enforceTrialExpiration(userId);
-
-    // Get current user to access plan information
-    const currentUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { plan: true, locations: true, trial: true, trialDurationDays: true, createdAt: true },
-    });
-
-    if (!currentUser) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const currentLocations = ((currentUser as any).locations as any[]) || [];
-
-    // Process locations to ensure new ones have credits
-    const processedLocations = locations.map((location: any) => {
-      // Check if this is a new location (doesn't exist in current locations)
-      const existingLocation = currentLocations.find(
-        (loc: any) => loc.address === location.address
-      );
-
-      if (existingLocation) {
-        // Keep existing location with all its data
-        return existingLocation;
-      } else {
-        // New location - initialize with credits based on plan and trial status
-        return createLocationWithTrialEnforcement(
-          currentUser,
-          location.address
-        );
-      }
-    });
-
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: { locations: processedLocations as any },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        username: true,
-        phone: true,
-        plan: true,
-        trial: true,
-        trialDurationDays: true,
-        maxLocations: true,
-        locations: true,
-        createdAt: true,
-      },
-    });
-
-    return res.json({ user: updated });
+    return res.status(404).json({ error: "Customer not found in queue" });
   } catch (err: any) {
-    console.error("[auth] update me error:", err?.message || err);
+    console.error("[auth] customer leave queue error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
   }
 });
 
-/**
- * POST /auth/purchase-plan (protected)
- * Body: { plan }
- * Handles plan purchase and credit refill
- */
-router.post("/purchase-plan", requireAuth, async (req, res) => {
-  try {
-    const userId = (req as any).auth.sub as string;
-    const { plan } = req.body || {};
-
-    if (!plan || typeof plan !== "string") {
-      return res.status(400).json({ error: "plan is required" });
-    }
-
-    // Handle plan purchase
-    await handlePlanPurchase(userId, plan);
-
-    // Get updated user data
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        username: true,
-        phone: true,
-        plan: true,
-        trial: true,
-        trialDurationDays: true,
-        maxLocations: true,
-        planStartedAt: true,
-        locations: true,
-        createdAt: true,
-      },
-    });
-
-    return res.json({ 
-      success: true,
-      user,
-      message: `Successfully upgraded to ${plan} plan`
-    });
-  } catch (err: any) {
-    console.error("[auth] purchase plan error:", err?.message || err);
-    return res.status(500).json({ error: "Server error" });
-  }
-});
+// ===========================================================================
+// Misc (unchanged behavior)
+// ===========================================================================
 
 /**
- * POST /auth/forgot-password
- * Body: { email }
- * Sends password reset email
- */
-router.post("/forgot-password", async (req, res) => {
-  try {
-    const { email } = req.body || {};
-    
-    if (!email || typeof email !== "string") {
-      return res.status(400).json({ error: "email is required" });
-    }
-
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-      select: { id: true, email: true, name: true }
-    });
-
-    if (!user) {
-      // Don't reveal if email exists or not for security
-      return res.json({ 
-        success: true, 
-        message: "If an account with that email exists, a password reset link has been sent." 
-      });
-    }
-
-    // Generate reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-    // Store reset token in database
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        resetToken,
-        resetTokenExpiry,
-      },
-    });
-
-    // Send password reset email
-    const emailSent = await sendPasswordResetEmail(user.email, resetToken);
-    
-    if (!emailSent) {
-      return res.status(500).json({ error: "Failed to send email" });
-    }
-
-    return res.json({ 
-      success: true, 
-      message: "If an account with that email exists, a password reset link has been sent." 
-    });
-  } catch (err: any) {
-    console.error("[auth] forgot password error:", err?.message || err);
-    return res.status(500).json({ error: "Server error" });
-  }
-});
-
-/**
- * POST /auth/reset-password
- * Body: { token, newPassword }
- * Resets password using reset token
- */
-router.post("/reset-password", async (req, res) => {
-  try {
-    const { token, newPassword } = req.body || {};
-    
-    if (!token || !newPassword) {
-      return res.status(400).json({ error: "token and newPassword are required" });
-    }
-
-    if (typeof newPassword !== "string" || newPassword.length < 8) {
-      return res.status(400).json({ error: "Password must be at least 8 characters" });
-    }
-
-    // Find user with valid reset token
-    const user = await prisma.user.findFirst({
-      where: {
-        resetToken: token,
-        resetTokenExpiry: {
-          gt: new Date(),
-        },
-      },
-    });
-
-    if (!user) {
-      return res.status(400).json({ error: "Invalid or expired reset token" });
-    }
-
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Update password and clear reset token
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        password: hashedPassword,
-        resetToken: null,
-        resetTokenExpiry: null,
-      },
-    });
-
-    // Send password change confirmation email
-    sendPasswordChangeConfirmationEmail(user.email, user.name).catch((err) => {
-      console.error("[auth] Failed to send password change confirmation email:", err);
-    });
-
-    return res.json({
-      success: true,
-      message: "Password has been reset successfully"
-    });
-  } catch (err: any) {
-    console.error("[auth] reset password error:", err?.message || err);
-    return res.status(500).json({ error: "Server error" });
-  }
-});
-
-/**
- * POST /auth/test-email (for debugging)
- * Body: { email }
- * Sends a test email to verify SMTP configuration
+ * POST /auth/test-email (debugging)
  */
 router.post("/test-email", async (req, res) => {
   try {
     const { email } = req.body || {};
-    
     if (!email || typeof email !== "string") {
       return res.status(400).json({ error: "email is required" });
     }
-
-    console.log('[TEST-EMAIL] Testing email configuration...');
-    
     const testHtml = `
       <div style="font-family: Arial, sans-serif; padding: 20px;">
         <h2>Test Email from SeatPing</h2>
         <p>This is a test email to verify SMTP configuration.</p>
-        <p>If you receive this, email is working correctly!</p>
         <p>Time: ${new Date().toISOString()}</p>
       </div>
     `;
-
-    const emailSent = await sendEmail({
-      to: email,
-      subject: 'SeatPing Email Test',
-      html: testHtml,
-    });
-    
-    if (emailSent) {
-      return res.json({ 
-        success: true, 
-        message: "Test email sent successfully" 
-      });
-    } else {
-      return res.status(500).json({ error: "Failed to send test email" });
-    }
+    const emailSent = await sendEmail({ to: email, subject: "SeatPing Email Test", html: testHtml });
+    if (emailSent) return res.json({ success: true, message: "Test email sent successfully" });
+    return res.status(500).json({ error: "Failed to send test email" });
   } catch (err: any) {
     console.error("[auth] test email error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
@@ -1555,48 +2508,18 @@ router.post("/test-email", async (req, res) => {
 
 /**
  * POST /auth/telnyx/webhook
- * Handles Telnyx webhook events for SMS delivery status
  */
 router.post("/telnyx/webhook", async (req, res) => {
   try {
     const event = req.body;
-
-    console.log('[TELNYX-WEBHOOK] Received event:', {
+    console.log("[TELNYX-WEBHOOK] Received event:", {
       type: event.data?.event_type,
       messageId: event.data?.payload?.id,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-
-    // Handle different event types
-    if (event.data?.event_type === 'message.sent') {
-      console.log('[TELNYX-WEBHOOK] Message sent:', {
-        messageId: event.data.payload.id,
-        to: event.data.payload.to?.[0]?.phone_number,
-        from: event.data.payload.from?.phone_number,
-      });
-    } else if (event.data?.event_type === 'message.delivered') {
-      console.log('[TELNYX-WEBHOOK] Message delivered:', {
-        messageId: event.data.payload.id,
-        to: event.data.payload.to?.[0]?.phone_number,
-      });
-    } else if (event.data?.event_type === 'message.sending_failed') {
-      console.error('[TELNYX-WEBHOOK] Message failed:', {
-        messageId: event.data.payload.id,
-        to: event.data.payload.to?.[0]?.phone_number,
-        errors: event.data.payload.errors,
-      });
-    } else if (event.data?.event_type === 'message.finalized') {
-      console.log('[TELNYX-WEBHOOK] Message finalized:', {
-        messageId: event.data.payload.id,
-        status: event.data.payload.to?.[0]?.status,
-      });
-    }
-
-    // Always respond with 200 to acknowledge receipt
     return res.json({ received: true });
   } catch (err: any) {
-    console.error('[TELNYX-WEBHOOK] Error processing webhook:', err?.message || err);
-    // Still return 200 to prevent retries
+    console.error("[TELNYX-WEBHOOK] Error processing webhook:", err?.message || err);
     return res.json({ received: true });
   }
 });
