@@ -331,14 +331,32 @@ router.get("/manage/:manageToken", async (req, res) => {
     });
     const settings = normalizeSettings(location.reservationSettings);
 
+    // Restaurant display name comes from the location's public profile (same
+    // source as the public restaurant page) — NOT the business account name.
+    const rp = (location.restaurantProfile || {}) as any;
+    const restaurantName =
+      rp.displayName ||
+      business?.name ||
+      location.displayName ||
+      location.name ||
+      "Restaurant";
+    const locationLabel =
+      rp.shortAddress ||
+      location.displayName ||
+      location.name ||
+      location.area ||
+      location.city ||
+      null;
+
     return res.json({
       reservation: serializeReservation(reservation, { includeToken: true }),
       settings,
       restaurant: {
         businessUsername: business?.username ?? null,
         businessName: business?.name ?? null,
+        name: restaurantName,
         locationId: location.id,
-        locationName: location.displayName || location.name || business?.name || "Restaurant",
+        locationName: locationLabel,
         address: location.address || "",
       },
     });

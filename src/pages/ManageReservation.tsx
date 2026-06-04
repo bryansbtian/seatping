@@ -244,9 +244,9 @@ export default function ManageReservation() {
                 </h1>
                 <p className="mt-1 text-sm text-slate-500">
                   {restaurant?.locationName &&
-                  restaurant.locationName !== restaurant?.businessName
-                    ? `${restaurant.businessName} · ${restaurant.locationName}`
-                    : restaurant?.businessName || restaurant?.locationName}
+                  restaurant.locationName !== restaurant?.name
+                    ? `${restaurant.name} · ${restaurant.locationName}`
+                    : restaurant?.name || restaurant?.locationName}
                 </p>
               </div>
 
