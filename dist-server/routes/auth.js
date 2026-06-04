@@ -173,6 +173,81 @@ router.post("/logout", (_req, res) => {
 /**
  * GET /auth/me  (customer, protected)
  */
+/**
+ * Attach a square thumbnail (`imageUrl`) to each reservation/queue activity
+ * entry so the profile cards can show the restaurant's banner instead of just
+ * initials — matching Saved Spots. Resolves by `locationId` when present (queue
+ * entries always have it), else falls back to the business's first location
+ * banner by `businessUsername` (covers legacy reservation entries that never
+ * stored a locationId). Entries that already carry an `imageUrl` are kept as-is.
+ */
+async function attachActivityImages(user) {
+    const asArray = (v) => (Array.isArray(v) ? v : []);
+    const upcoming = asArray(user.upcomingReservations);
+    const past = asArray(user.pastReservations);
+    const queue = asArray(user.queueingActivity);
+    const all = [...upcoming, ...past, ...queue];
+    if (all.length === 0)
+        return user;
+    const locationIds = new Set();
+    const usernames = new Set();
+    for (const e of all) {
+        if (e?.imageUrl)
+            continue;
+        if (e?.locationId)
+            locationIds.add(String(e.locationId));
+        else if (e?.businessUsername)
+            usernames.add(String(e.businessUsername));
+    }
+    const imgOf = (loc) => loc?.bannerImageUrl ||
+        (Array.isArray(loc?.photos) && loc.photos[0]?.url) ||
+        null;
+    const byLocation = new Map();
+    if (locationIds.size > 0) {
+        const locs = await prisma.location.findMany({
+            where: { id: { in: [...locationIds] } },
+            include: { photos: { orderBy: { createdAt: "asc" }, take: 1 } },
+        });
+        for (const l of locs)
+            byLocation.set(l.id, imgOf(l));
+    }
+    // Fallback: first location banner per business (for entries without a
+    // locationId). Two batched queries — no N+1.
+    const byUsername = new Map();
+    if (usernames.size > 0) {
+        const bizs = await prisma.business.findMany({
+            where: { username: { in: [...usernames] } },
+            select: { id: true, username: true },
+        });
+        const bizLocs = bizs.length
+            ? await prisma.location.findMany({
+                where: { businessId: { in: bizs.map((b) => b.id) } },
+                orderBy: { createdAt: "asc" },
+                include: { photos: { orderBy: { createdAt: "asc" }, take: 1 } },
+            })
+            : [];
+        const firstByBiz = new Map();
+        for (const l of bizLocs) {
+            if (!firstByBiz.has(l.businessId))
+                firstByBiz.set(l.businessId, l);
+        }
+        for (const b of bizs)
+            byUsername.set(b.username, imgOf(firstByBiz.get(b.id)));
+    }
+    const withImage = (e) => ({
+        ...e,
+        imageUrl: e?.imageUrl ??
+            (e?.locationId ? byLocation.get(String(e.locationId)) : null) ??
+            (e?.businessUsername ? byUsername.get(String(e.businessUsername)) : null) ??
+            null,
+    });
+    return {
+        ...user,
+        upcomingReservations: upcoming.map(withImage),
+        pastReservations: past.map(withImage),
+        queueingActivity: queue.map(withImage),
+    };
+}
 router.get("/me", requireCustomer, async (req, res) => {
     try {
         const userId = req.auth.sub;
@@ -193,7 +268,7 @@ router.get("/me", requireCustomer, async (req, res) => {
         });
         if (!user)
             return res.status(404).json({ error: "Not found" });
-        return res.json({ user });
+        return res.json({ user: await attachActivityImages(user) });
     }
     catch (err) {
         console.error("[auth] customer me error:", err?.message || err);
@@ -531,6 +606,159 @@ router.delete("/me/saved-locations/:locationId", requireCustomer, async (req, re
     }
     catch (err) {
         console.error("[auth] remove saved location error:", err?.message || err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+// ---------------------------------------------------------------------------
+// Customer-owned reviews. A customer manages their own reviews from /profile:
+// list, edit (rating + text), delete. Ownership is enforced by customerId on
+// every write — a customer can only touch their own rows, and business sessions
+// can't reach these routes (requireCustomer rejects them). Business replies are
+// edited via the separate owner-only reply routes in routes/locations.ts.
+// ---------------------------------------------------------------------------
+/**
+ * Enrich a review row with the location/business display fields the profile
+ * card needs (restaurant name, location label, link target).
+ */
+async function buildCustomerReviewEntry(review) {
+    const loc = await prisma.location.findUnique({
+        where: { id: review.locationId },
+        select: {
+            id: true,
+            businessId: true,
+            name: true,
+            displayName: true,
+            area: true,
+            city: true,
+            address: true,
+            restaurantProfile: true,
+        },
+    });
+    const biz = loc
+        ? await prisma.business.findUnique({
+            where: { id: loc.businessId },
+            select: { name: true, username: true },
+        })
+        : null;
+    const rp = (loc?.restaurantProfile || {});
+    return {
+        id: review.id,
+        locationId: review.locationId,
+        businessUsername: biz?.username ?? null,
+        rating: typeof review.rating === "number" ? review.rating : 0,
+        description: review.description ?? null,
+        createdAt: review.createdAt,
+        updatedAt: review.updatedAt,
+        businessReply: review.businessReply ?? null,
+        businessReplyCreatedAt: review.businessReplyCreatedAt ?? null,
+        businessReplyUpdatedAt: review.businessReplyUpdatedAt ?? null,
+        // Display context (null when the location/business was deleted).
+        restaurantName: rp.displayName || biz?.name || loc?.displayName || loc?.name || "Restaurant",
+        locationName: rp.shortAddress || loc?.displayName || loc?.area || loc?.city || loc?.address || null,
+    };
+}
+/**
+ * GET /auth/me/reviews  (customer, protected)
+ * Returns the logged-in customer's reviews, newest first. Defensively dedupes
+ * by locationId (keeping the most recent) so any legacy duplicate rows don't
+ * surface two cards for the same restaurant.
+ */
+router.get("/me/reviews", requireCustomer, async (req, res) => {
+    try {
+        const userId = req.auth.sub;
+        const rows = await prisma.review.findMany({
+            where: { customerId: userId },
+            orderBy: { createdAt: "desc" },
+        });
+        // Most-recent-per-location wins (rows already sorted desc).
+        const seen = new Set();
+        const deduped = rows.filter((r) => {
+            if (seen.has(r.locationId))
+                return false;
+            seen.add(r.locationId);
+            return true;
+        });
+        const reviews = await Promise.all(deduped.map(buildCustomerReviewEntry));
+        return res.json({ reviews });
+    }
+    catch (err) {
+        console.error("[auth] list customer reviews error:", err?.message || err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+/**
+ * PATCH /auth/me/reviews/:reviewId  (customer, protected)
+ * Body: { rating?, description? }. Updates the customer's own review only.
+ * Does NOT touch the business reply.
+ */
+router.patch("/me/reviews/:reviewId", requireCustomer, async (req, res) => {
+    try {
+        const userId = req.auth.sub;
+        const reviewId = String(req.params.reviewId || "").trim();
+        if (!SAVED_OBJECT_ID_RE.test(reviewId)) {
+            return res.status(404).json({ error: "Review not found" });
+        }
+        const existing = await prisma.review.findFirst({
+            where: { id: reviewId, customerId: userId },
+            select: { id: true },
+        });
+        if (!existing)
+            return res.status(404).json({ error: "Review not found" });
+        const { rating, description } = req.body || {};
+        const data = {};
+        if (rating !== undefined) {
+            if (typeof rating !== "number" || !Number.isFinite(rating)) {
+                return res.status(400).json({ error: "rating must be a number" });
+            }
+            const ratingInt = Math.round(rating);
+            if (ratingInt < 1 || ratingInt > 5) {
+                return res.status(400).json({ error: "rating must be between 1 and 5" });
+            }
+            data.rating = ratingInt;
+        }
+        if (description !== undefined) {
+            if (description !== null && typeof description !== "string") {
+                return res.status(400).json({ error: "description must be a string" });
+            }
+            data.description =
+                typeof description === "string" && description.trim()
+                    ? description.trim()
+                    : null;
+        }
+        if (Object.keys(data).length === 0) {
+            return res.status(400).json({ error: "Nothing to update" });
+        }
+        const saved = await prisma.review.update({ where: { id: reviewId }, data });
+        return res.json({ review: await buildCustomerReviewEntry(saved) });
+    }
+    catch (err) {
+        console.error("[auth] update customer review error:", err?.message || err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+/**
+ * DELETE /auth/me/reviews/:reviewId  (customer, protected)
+ * Removes the customer's own review. Any attached business reply lives on the
+ * same row, so it's removed with it.
+ */
+router.delete("/me/reviews/:reviewId", requireCustomer, async (req, res) => {
+    try {
+        const userId = req.auth.sub;
+        const reviewId = String(req.params.reviewId || "").trim();
+        if (!SAVED_OBJECT_ID_RE.test(reviewId)) {
+            return res.status(404).json({ error: "Review not found" });
+        }
+        const existing = await prisma.review.findFirst({
+            where: { id: reviewId, customerId: userId },
+            select: { id: true },
+        });
+        if (!existing)
+            return res.status(404).json({ error: "Review not found" });
+        await prisma.review.delete({ where: { id: reviewId } });
+        return res.json({ success: true });
+    }
+    catch (err) {
+        console.error("[auth] delete customer review error:", err?.message || err);
         return res.status(500).json({ error: "Server error" });
     }
 });
@@ -1372,6 +1600,33 @@ router.get("/business/:username/queue/token/:queueToken/status", async (req, res
                 : [];
             const admittedCustomer = admittedCustomers.find((c) => c.queueToken === queueToken);
             if (admittedCustomer) {
+                // Terminal states set by the business after admitting override the live
+                // hold window. Once arrival is confirmed (or marked no-show) the
+                // customer's page must leave the "It's Your Turn" countdown for good,
+                // even on refresh/reopen — the backend is the source of truth here.
+                if (admittedCustomer.finalStatus === "arrived") {
+                    return res.json({
+                        admitted: false,
+                        removed: false,
+                        checkedIn: true,
+                        status: "arrived",
+                        customer: admittedCustomer,
+                        address: location.address,
+                        businessName: business.name,
+                        message: "Arrival confirmed",
+                    });
+                }
+                if (admittedCustomer.finalStatus === "no_show") {
+                    return res.json({
+                        admitted: false,
+                        removed: true,
+                        status: "no_show",
+                        customer: admittedCustomer,
+                        address: location.address,
+                        businessName: business.name,
+                        message: "Marked as a no-show",
+                    });
+                }
                 const hold = admittedHoldInfo(admittedCustomer.admittedAt);
                 return res.json({
                     admitted: true,
@@ -1515,6 +1770,27 @@ router.get("/business/:username/queue/:customerId/status", async (req, res) => {
                 : [];
             const admittedById = admittedCustomers.find((c) => idOf(c) === customerId);
             if (admittedById) {
+                // Terminal states set by the business after admitting override the live
+                // hold window (see the token-based endpoint above for the rationale).
+                if (admittedById.finalStatus === "arrived") {
+                    return res.json({
+                        admitted: false,
+                        removed: false,
+                        checkedIn: true,
+                        status: "arrived",
+                        customer: admittedById,
+                        message: "Arrival confirmed",
+                    });
+                }
+                if (admittedById.finalStatus === "no_show") {
+                    return res.json({
+                        admitted: false,
+                        removed: true,
+                        status: "no_show",
+                        customer: admittedById,
+                        message: "Marked as a no-show",
+                    });
+                }
                 const hold = admittedHoldInfo(admittedById.admittedAt);
                 return res.json({
                     admitted: true,

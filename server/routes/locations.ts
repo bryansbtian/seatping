@@ -20,6 +20,12 @@ import { uploadImageBuffer, deleteImageByPublicId } from "../lib/cloudinary.js";
 
 const router = Router();
 
+// Minimal shape of a multer upload. We avoid annotating with the ambient
+// `Express.Multer.File` global namespace because it doesn't reliably resolve in
+// clean CI/deploy builds (the multer→express global namespace merge can fail),
+// which broke `tsc` with "Cannot find namespace 'Express'".
+type UploadedFile = { buffer: Buffer; mimetype: string; originalname: string; size: number };
+
 // ---------------------------------------------------------------------------
 // PUBLIC: live search suggestions for the homepage hero search input.
 //   GET /api/locations/search-suggestions?query=imperial&limit=3
@@ -254,7 +260,7 @@ router.post(
         return res.status(400).json({ error: uploadErrorMessage(err) });
       }
 
-      const file = (req as any).file as Express.Multer.File | undefined;
+      const file = (req as any).file as UploadedFile | undefined;
       if (!file) {
         return res.status(400).json({ error: "No image file provided." });
       }
@@ -346,7 +352,7 @@ router.post(
         return res.status(400).json({ error: uploadErrorMessage(err) });
       }
 
-      const files = ((req as any).files as Express.Multer.File[]) || [];
+      const files = ((req as any).files as UploadedFile[]) || [];
       if (files.length === 0) {
         return res.status(400).json({ error: "No image files provided." });
       }

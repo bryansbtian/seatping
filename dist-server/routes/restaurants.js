@@ -45,6 +45,7 @@ function publicProfile(rp) {
         priceRange: safe.priceRange ?? null,
         currency: safe.currency ?? null,
         menu: Array.isArray(safe.menu) ? safe.menu : [],
+        menuUrl: typeof safe.menuUrl === "string" && safe.menuUrl ? safe.menuUrl : null,
         openingHours: safe.openingHours && typeof safe.openingHours === "object"
             ? safe.openingHours
             : null,
@@ -130,6 +131,7 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
                     : [],
                 // Menu
                 menu: profile.menu,
+                menuUrl: profile.menuUrl,
                 // Reviews
                 rating,
                 reviewCount,

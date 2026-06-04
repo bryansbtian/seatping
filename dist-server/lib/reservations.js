@@ -244,6 +244,7 @@ export async function syncCustomerReservation(reservation, opts = {}) {
     const entry = {
         id: reservation.id,
         manageToken: reservation.manageToken ?? null,
+        locationId: reservation.locationId ?? null,
         businessUsername: reservation.businessUsername ?? null,
         businessName: opts.businessName ?? null,
         locationName: opts.locationName ?? null,
