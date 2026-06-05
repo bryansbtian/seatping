@@ -36,6 +36,26 @@ import {
   Legend,
 } from "recharts";
 import { Message } from "@mynaui/icons-react";
+import {
+  DEFAULT_TIMEZONE,
+  getDateKeyInTimezone,
+  getTodayKeyInTimezone,
+  getHourInTimezone,
+  formatDateLabelInTimezone,
+  addDaysToDateKey,
+  startOfWeekDateKey,
+} from "@/lib/timezones";
+
+/**
+ * The selected location's IANA timezone (e.g. "Asia/Jakarta"), read from its
+ * opening-hours config. All dashboard analytics bucket activity by this zone's
+ * calendar day so the numbers reflect the restaurant's business day regardless
+ * of where the owner opens the dashboard. Falls back to the platform default.
+ */
+function getLocationTimezone(location: any): string {
+  const tz = location?.restaurantProfile?.openingHours?.timezone;
+  return typeof tz === "string" && tz ? tz : DEFAULT_TIMEZONE;
+}
 
 // Rounded-rectangle styling shared by every chart tooltip popup.
 const TOOLTIP_CONTENT_STYLE = {
@@ -108,28 +128,31 @@ const BusinessDashboard = () => {
     const removedCustomers = currentLocation.removedCustomers || [];
     const currentQueue = queueData.length;
 
+    // All "today" comparisons use the location's local calendar day so the
+    // dashboard reflects the restaurant's business day, not the viewer's browser
+    // timezone or UTC.
+    const tz = getLocationTimezone(currentLocation);
+    const todayKey = getTodayKeyInTimezone(tz);
+
     // Reservations for this location dated today that still occupy a table
     // (pending / confirmed / arrived) — matches the "Today" reservations tab.
-    const todayDate = new Date();
-    const todayYmd = `${todayDate.getFullYear()}-${String(
-      todayDate.getMonth() + 1,
-    ).padStart(2, "0")}-${String(todayDate.getDate()).padStart(2, "0")}`;
+    // reservationDateTime is a naive wall-clock string already in the
+    // restaurant's local timezone, so its date part is the local date.
     const reservationsToday = (currentLocation.reservations || []).filter(
       (r: any) => {
         const d = String(r?.reservationDateTime || "").split("T")[0];
         return (
-          d === todayYmd &&
+          d === todayKey &&
           ["pending", "confirmed", "arrived"].includes(r?.status)
         );
       },
     ).length;
 
-    // Filter for today's customers
-    const today = new Date().toDateString();
-    const todayAdmitted = admittedCustomers.filter((customer: any) => {
-      const admittedDate = new Date(customer.admittedAt);
-      return admittedDate.toDateString() === today;
-    });
+    // Filter for today's customers (admittedAt/leftAt are real instants).
+    const todayAdmitted = admittedCustomers.filter(
+      (customer: any) =>
+        getDateKeyInTimezone(customer.admittedAt, tz) === todayKey,
+    );
 
     // Filter out no-shows from served count
     const todayServed = todayAdmitted.filter((customer: any) => {
@@ -141,16 +164,16 @@ const BusinessDashboard = () => {
       return customer.finalStatus === "no_show";
     }).length;
 
-    const todayRemoved = removedCustomers.filter((customer: any) => {
-      const removedDate = new Date(customer.removedAt || customer.leftAt);
-      return removedDate.toDateString() === today;
-    });
+    const todayRemoved = removedCustomers.filter(
+      (customer: any) =>
+        getDateKeyInTimezone(customer.removedAt || customer.leftAt, tz) ===
+        todayKey,
+    );
 
     // Count customers who left today (not removed by business)
-    const leftToday = removedCustomers.filter((customer: any) => {
-      const leftDate = new Date(customer.leftAt);
-      return leftDate.toDateString() === today;
-    }).length;
+    const leftToday = removedCustomers.filter(
+      (customer: any) => getDateKeyInTimezone(customer.leftAt, tz) === todayKey,
+    ).length;
 
     // Calculate average wait time (served customers only, excluding no-shows)
     let totalWaitTime = 0;
@@ -180,7 +203,8 @@ const BusinessDashboard = () => {
     // Fold reservation outcomes into today's totals: a reservation marked
     // arrived/completed counts as served; a no-show counts toward "left".
     const reservations = currentLocation.reservations || [];
-    const isToday = (iso: any) => iso && new Date(iso).toDateString() === today;
+    const isToday = (iso: any) =>
+      !!iso && getDateKeyInTimezone(iso, tz) === todayKey;
     let reservationsServedToday = 0;
     let reservationNoShowsToday = 0;
     for (const r of reservations) {
@@ -570,12 +594,22 @@ const BusinessDashboard = () => {
 
   // Get current date
   const getCurrentDate = () => {
-    const now = new Date();
-    return now.toLocaleDateString("en-US", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+    // Show the restaurant's local "today", not the viewer's browser date.
+    const tz = getLocationTimezone(currentLocation);
+    try {
+      return new Date().toLocaleDateString("en-US", {
+        timeZone: tz,
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return new Date().toLocaleDateString("en-US", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    }
   };
 
   // Analytics utility functions
@@ -593,25 +627,14 @@ const BusinessDashboard = () => {
     const admittedCustomers = currentLocation.admittedCustomers || [];
     const removedCustomers = currentLocation.removedCustomers || [];
 
-    // ---- helpers
-    const startOfWeek = (d: Date) => {
-      const x = new Date(d);
-      x.setHours(0, 0, 0, 0);
-      // Sunday-start weeks. For Monday-start use: x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-      x.setDate(x.getDate() - x.getDay());
-      return x;
-    };
-
-    const fmtWeekLabel = (start: Date) =>
-      `Week of ${start.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      })}`;
+    // Every bucket key is the location's local calendar date, so the chart is
+    // identical no matter where the owner opens the dashboard.
+    const tz = getLocationTimezone(currentLocation);
 
     // ---- DAILY: last 7 calendar days
     if (analyticsTimeframe === "daily") {
-      const now = new Date();
       const days = 7;
+      const todayKey = getTodayKeyInTimezone(tz);
 
       const dataMap = new Map<
         string,
@@ -619,24 +642,22 @@ const BusinessDashboard = () => {
       >();
       const waitTimes = new Map<string, number[]>();
 
-      // seed 7 days
+      // seed 7 days (oldest → today), keyed/labelled in the location timezone
       for (let i = days - 1; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        const key = d.toISOString().slice(0, 10);
-        const label = d.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
+        const key = addDaysToDateKey(todayKey, -i);
+        dataMap.set(key, {
+          date: formatDateLabelInTimezone(key),
+          served: 0,
+          avgWait: 0,
+          noShows: 0,
         });
-        dataMap.set(key, { date: label, served: 0, avgWait: 0, noShows: 0 });
         waitTimes.set(key, []);
       }
 
       // served + wait (exclude no-shows from served count)
       for (const c of admittedCustomers) {
         if (!c.admittedAt) continue;
-        const admit = new Date(c.admittedAt);
-        const key = admit.toISOString().slice(0, 10);
+        const key = getDateKeyInTimezone(c.admittedAt, tz);
         if (!dataMap.has(key)) continue;
 
         // Only count as served if not a no-show
@@ -665,14 +686,14 @@ const BusinessDashboard = () => {
       // no-shows per day - include both removed customers and admitted no-shows
       for (const c of removedCustomers) {
         if (c.status === "left" && c.leftAt) {
-          const key = new Date(c.leftAt).toISOString().slice(0, 10);
+          const key = getDateKeyInTimezone(c.leftAt, tz);
           if (dataMap.has(key)) dataMap.get(key)!.noShows += 1;
         }
       }
       // Add admitted customers marked as no-show
       for (const c of admittedCustomers) {
         if (c.finalStatus === "no_show" && c.admittedAt) {
-          const key = new Date(c.admittedAt).toISOString().slice(0, 10);
+          const key = getDateKeyInTimezone(c.admittedAt, tz);
           if (dataMap.has(key)) dataMap.get(key)!.noShows += 1;
         }
       }
@@ -681,11 +702,11 @@ const BusinessDashboard = () => {
         if (r?.status === "arrived" || r?.status === "completed") {
           const ts = r.arrivedAt || r.completedAt;
           if (ts) {
-            const key = new Date(ts).toISOString().slice(0, 10);
+            const key = getDateKeyInTimezone(ts, tz);
             if (dataMap.has(key)) dataMap.get(key)!.served += 1;
           }
         } else if (r?.status === "no_show" && r.noShowAt) {
-          const key = new Date(r.noShowAt).toISOString().slice(0, 10);
+          const key = getDateKeyInTimezone(r.noShowAt, tz);
           if (dataMap.has(key)) dataMap.get(key)!.noShows += 1;
         }
       }
@@ -695,7 +716,9 @@ const BusinessDashboard = () => {
 
     // ---- WEEKLY: last 5 calendar weeks (oldest → newest)
     const weeks = 5;
-    const now = new Date();
+    // Week math runs on location-local date keys (Sunday-start), so weeks line
+    // up with the restaurant's calendar rather than the browser's.
+    const thisWeekStartKey = startOfWeekDateKey(getTodayKeyInTimezone(tz));
 
     type Row = {
       _key: string; // ISO date of week start for stable sorting
@@ -708,15 +731,12 @@ const BusinessDashboard = () => {
     const weekRows = new Map<string, Row>();
     const weekWaitTimes = new Map<string, number[]>();
 
-    // seed 5 weeks using each week's start date as the key
+    // seed 5 weeks using each week's start date (key) as the map key
     for (let i = weeks - 1; i >= 0; i--) {
-      const start = startOfWeek(
-        new Date(now.getFullYear(), now.getMonth(), now.getDate() - i * 7),
-      );
-      const key = start.toISOString().slice(0, 10);
+      const key = addDaysToDateKey(thisWeekStartKey, -i * 7);
       weekRows.set(key, {
         _key: key,
-        date: fmtWeekLabel(start),
+        date: `Week of ${formatDateLabelInTimezone(key)}`,
         served: 0,
         avgWait: 0,
         noShows: 0,
@@ -724,7 +744,8 @@ const BusinessDashboard = () => {
       weekWaitTimes.set(key, []);
     }
 
-    const weekKeyFrom = (d: Date) => startOfWeek(d).toISOString().slice(0, 10);
+    const weekKeyFrom = (iso: any) =>
+      startOfWeekDateKey(getDateKeyInTimezone(iso, tz));
 
     // served + wait per week (exclude no-shows from served count)
     for (const c of admittedCustomers) {
@@ -793,6 +814,7 @@ const BusinessDashboard = () => {
     if (!currentLocation) return [];
 
     const admittedCustomers = currentLocation.admittedCustomers || [];
+    const tz = getLocationTimezone(currentLocation);
     const hourMap = new Map<number, number>();
 
     // Initialize all hours
@@ -800,11 +822,11 @@ const BusinessDashboard = () => {
       hourMap.set(i, 0);
     }
 
-    // Count customers per hour (exclude no-shows)
+    // Count customers per hour of the restaurant's local day (exclude no-shows)
     admittedCustomers.forEach((customer: any) => {
       if (customer.finalStatus !== "no_show") {
-        const joinDate = new Date(customer.joinedAt);
-        const hour = joinDate.getHours();
+        const hour = getHourInTimezone(customer.joinedAt, tz);
+        if (Number.isNaN(hour)) return;
         hourMap.set(hour, (hourMap.get(hour) || 0) + 1);
       }
     });
@@ -1373,7 +1395,7 @@ const BusinessDashboard = () => {
                           {customer.queueToken &&
                             queueEtas[customer.queueToken] && (
                               <p className="text-xs md:text-sm font-medium text-indigo-600 mt-1">
-                                Estimated wait:{" "}
+                                Estimated Wait:{" "}
                                 {queueEtas[customer.queueToken].displayText}
                               </p>
                             )}
@@ -1524,6 +1546,7 @@ const BusinessDashboard = () => {
             reservations={currentLocation?.reservations || []}
             businessUsername={me?.username || ""}
             locationId={currentLocation?.id || ""}
+            timeZone={getLocationTimezone(currentLocation)}
             locationLabel={
               currentLocation
                 ? locLabel(currentLocation, selectedLocationIndex)
@@ -1809,7 +1832,10 @@ const BusinessDashboard = () => {
                           tickLine={false}
                         />
 
-                        <Tooltip cursor={false} contentStyle={TOOLTIP_CONTENT_STYLE} />
+                        <Tooltip
+                          cursor={false}
+                          contentStyle={TOOLTIP_CONTENT_STYLE}
+                        />
                         <Bar
                           yAxisId="left"
                           dataKey="customers"
@@ -1863,7 +1889,10 @@ const BusinessDashboard = () => {
                           tickLine={false}
                         />
 
-                        <Tooltip cursor={false} contentStyle={TOOLTIP_CONTENT_STYLE} />
+                        <Tooltip
+                          cursor={false}
+                          contentStyle={TOOLTIP_CONTENT_STYLE}
+                        />
                         <Bar
                           yAxisId="left"
                           dataKey="count"

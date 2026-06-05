@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { cn } from "@/lib/utils";
-import { HeroDashboardScreen } from "@/components/landing/ProductPreviews";
+import { HeroDashboardPreview } from "@/components/landing/ProductPreviews";
 
 // Card width inside the carousel: ~1 card on mobile, ~2 on tablet, exactly 3
 // on desktop (gap-5 = 1.25rem, so two gaps = 2.5rem across the 3 visible cards).
@@ -82,7 +82,7 @@ function TestimonialCard({
     <div
       data-card
       className={cn(
-        "relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white to-slate-50 p-6 shadow-sm",
+        "relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white to-slate-50 p-5 shadow-sm sm:p-6",
         TESTIMONIAL_W,
       )}
     >
@@ -118,7 +118,7 @@ function TestimonialCard({
         <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-600">
           “{quote}”
         </p>
-        <div className="mt-5 flex items-center justify-between">
+        <div className="mt-5 flex flex-col items-start gap-2 min-[321px]:flex-row min-[321px]:items-center min-[321px]:justify-between min-[321px]:gap-0">
           <div className="flex items-center gap-0.5">
             {Array.from({ length: 5 }).map((_, i) => (
               <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
@@ -171,46 +171,73 @@ const LandingPage = () => {
       <Header variant="business" />
 
       {/* ============================================================ */}
-      {/* 1. HERO copy left, iPad with the real dashboard on the right */}
+      {/* 1. HERO compact, above-the-fold: headline + subheadline +     */}
+      {/*    CTAs, then a cropped dashboard teaser emerging below.       */}
       {/* ============================================================ */}
-      <section className="relative overflow-hidden px-4 pt-24 md:pt-28 pb-10 md:pb-12">
-        {/* subtle SeatPing-brand glow behind the device (keeps the bg clean) */}
+      <section className="relative overflow-hidden px-4 pt-24 pb-10 md:pt-32 md:pb-14">
+        {/* Barely-visible brand accents: faint concentric rings on the left
+            and a soft teal glow behind the device. Kept subtle so the hero
+            stays calm and white. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-32 -z-10 h-[26rem] w-[36rem] max-w-[90vw] -translate-x-1/2 rounded-full bg-teal-100/40 blur-3xl"
+          className="pointer-events-none absolute -left-32 top-1/3 hidden h-[42rem] w-[42rem] -translate-y-1/2 rounded-full border border-slate-200/60 md:block"
         />
-        <div className="container relative mx-auto max-w-5xl">
-          {/* Centered copy + CTA */}
-          <div className="mx-auto max-w-2xl text-center animate-fade-in-up">
-            <h1 className="text-3xl font-semibold leading-[1.1] tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
-              One Dashboard for Queues and Reservations
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-10 top-1/3 hidden h-[26rem] w-[26rem] -translate-y-1/2 rounded-full border border-slate-200/50 md:block"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-40 h-[22rem] w-[34rem] max-w-[90%] -translate-x-1/2 rounded-full bg-teal-100/40 blur-3xl"
+        />
+
+        <div className="container relative mx-auto max-w-6xl">
+          {/* Headline + subheadline + CTA, top-center */}
+          <div className="mx-auto max-w-3xl text-center animate-fade-in-up">
+            <h1 className="text-3xl font-semibold leading-[1.1] tracking-tight text-slate-900 sm:text-4xl md:text-5xl lg:text-6xl">
+              One Dashboard for{" "}
+              <span className="sm:whitespace-nowrap">
+                Queues and Reservations
+              </span>
             </h1>
-            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-600 md:text-lg">
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-slate-600 sm:mt-4 sm:text-base md:text-lg">
               Manage walk-ins, bookings, and guest updates in one place.
             </p>
-            <div className="mt-6 flex justify-center">
+            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button
                 size="lg"
                 asChild
-                className="h-12 rounded-xl bg-slate-900 px-8 text-sm text-white shadow-sm transition-all duration-300 hover:bg-slate-800 hover:shadow-lg"
+                className="h-11 w-full rounded-xl bg-slate-900 px-8 text-sm text-white shadow-sm transition-all duration-300 hover:bg-slate-800 hover:shadow-lg sm:h-12 sm:w-auto"
               >
                 <Link to="/sales">
                   <span className="font-medium">Book a Demo</span>
                 </Link>
               </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                asChild
+                className="h-11 w-full rounded-xl border-slate-300 bg-white px-8 text-sm text-slate-900 shadow-sm transition-all duration-300 hover:bg-slate-50 hover:shadow-md sm:h-12 sm:w-auto"
+              >
+                <Link to="/business/signup">
+                  <span className="font-medium">Get Started</span>
+                </Link>
+              </Button>
             </div>
           </div>
 
-          {/* iPad below the CTA, centered, showing the SeatPing dashboard */}
-          <div className="relative mx-auto mt-8 w-full max-w-[940px] animate-fade-in-up animation-delay-200">
-            <div className="relative rounded-[1.75rem] border border-slate-200 bg-slate-900 p-2.5 shadow-2xl shadow-slate-300/50 ring-1 ring-slate-900/10">
-              {/* front camera */}
-              <span className="absolute left-1/2 top-1.5 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-white/25" />
-              {/* screen */}
-              <div className="overflow-hidden rounded-[1.2rem] bg-slate-50 p-3">
-                <HeroDashboardScreen />
-              </div>
+          {/* Product sneak peek: one scalable desktop dashboard window that
+              shrinks cleanly down to phones, cropped so it emerges from the
+              lower part of the hero and fades into the page. */}
+          <div className="relative mx-auto mt-8 max-w-5xl animate-fade-in-up animation-delay-200 sm:mt-10 md:mt-12">
+            <div className="max-h-[300px] overflow-hidden sm:max-h-[420px] md:max-h-[500px]">
+              <HeroDashboardPreview />
             </div>
+            {/* fade so the dashboard dissolves into the page */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/85 to-transparent sm:h-28"
+            />
           </div>
         </div>
       </section>
@@ -218,16 +245,16 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* TESTIMONIALS trust before the final CTA                      */}
       {/* ============================================================ */}
-      <section className="border-t border-slate-200 bg-slate-50 px-4 py-16 md:py-20">
+      <section className="border-t border-slate-200 bg-slate-50 px-4 py-12 sm:py-16 md:py-20">
         <div className="container mx-auto max-w-6xl scroll-animate">
           {/* Heading row: headline on the left, scroll control on the right */}
           <div className="flex items-end justify-between gap-6">
             <div className="max-w-2xl">
-              <h2 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl md:text-4xl lg:text-5xl">
                 Built for Teams That Manage{" "}
                 <span className="text-slate-400">Guests Every Day</span>
               </h2>
-              <p className="mt-3 text-base text-slate-500">
+              <p className="mt-2 text-sm text-slate-500 sm:mt-3 sm:text-base">
                 Designed for growing restaurants, cafés, salons, and service
                 teams.
               </p>
@@ -245,7 +272,7 @@ const LandingPage = () => {
           {/* Carousel: scrollable row, 1 card on mobile, ~2 on tablet, 3 on desktop */}
           <div
             ref={testimonialsRef}
-            className="mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 sm:mt-10 sm:gap-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {TESTIMONIALS.map((t) => (
               <TestimonialCard key={t.name} {...t} />
@@ -257,7 +284,7 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 5. FINAL CTA light gradient, scribble headline, value cards */}
       {/* ============================================================ */}
-      <section className="relative overflow-hidden border-y border-slate-200 bg-slate-50 px-4 py-14 md:py-20">
+      <section className="relative overflow-hidden border-y border-slate-200 bg-slate-50 px-4 py-12 sm:py-14 md:py-20">
         {/* soft accent-tinted gradient background */}
         <div
           aria-hidden
@@ -273,7 +300,7 @@ const LandingPage = () => {
               is struck through (same scribble as the sales page), "smooth
               service" is the penned-in fix on the line below. */}
           <h2
-            className="text-4xl font-bold leading-[1.12] tracking-tight text-slate-900 sm:text-5xl md:text-6xl"
+            className="text-2xl font-bold leading-[1.12] tracking-tight text-slate-900 sm:text-4xl md:text-5xl lg:text-6xl"
             aria-label="Turn Every Arrival Into Smooth Service"
           >
             <span aria-hidden className="block">
@@ -305,13 +332,13 @@ const LandingPage = () => {
             </span>
           </h2>
 
-          <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600">
+          <p className="mx-auto mt-4 max-w-2xl text-base text-slate-600 sm:mt-5 sm:text-lg">
             Set up queues, reservations, notifications, and location settings
             with no extra hardware and no complicated onboarding.
           </p>
 
           {/* CTA button */}
-          <div className="mt-7 flex justify-center">
+          <div className="mt-6 flex justify-center sm:mt-7">
             <Button
               size="lg"
               asChild

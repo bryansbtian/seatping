@@ -15,15 +15,33 @@
 //
 // Timezone note: reservation datetimes are stored as naive local wall-clock
 // strings (`YYYY-MM-DDTHH:MM`, no offset) — the restaurant's local clock is the
-// source of truth. We compare them against the server clock, matching how the
-// rest of the reservation code treats these values.
+// source of truth. To decide when a reservation is "~2 hours away" we must
+// anchor that wall-clock time to a real instant using the *restaurant's* IANA
+// timezone (e.g. Asia/Jakarta), not the server's clock — otherwise the reminder
+// fires relative to wherever the server happens to run.
 
 import { prisma } from "./prisma.js";
-import { splitDateTime, formatTimeLabel } from "./reservations.js";
+import {
+  splitDateTime,
+  formatTimeLabel,
+  zonedWallTimeToMs,
+} from "./reservations.js";
 import { sendReservationReminderEmail } from "./email.js";
 
 // Send when a confirmed reservation is this close (or closer) and still upcoming.
 const REMINDER_WINDOW_MINUTES = 120;
+
+/**
+ * Restaurant's IANA timezone, read from its public opening-hours config
+ * (location.restaurantProfile.openingHours.timezone). Falls back to the platform
+ * default when a restaurant hasn't set one. Mirrors `locationTimeZone` in
+ * server/routes/reservations.ts.
+ */
+function locationTimeZone(location: any): string {
+  const oh = (location?.restaurantProfile as any)?.openingHours;
+  const tz = oh && typeof oh === "object" ? oh.timezone : undefined;
+  return typeof tz === "string" && tz ? tz : "Asia/Jakarta";
+}
 
 function readableDate(date: string): string {
   const d = new Date(`${date}T00:00:00`);
@@ -36,24 +54,32 @@ function readableDate(date: string): string {
   });
 }
 
-/** Minutes from `now` until the reservation start; NaN if unparseable. */
-function minutesUntil(reservationDateTime: string, now: Date): number {
+/**
+ * Minutes from `now` until the reservation start; NaN if unparseable. The
+ * reservation's wall-clock time is interpreted in the restaurant's `timeZone`
+ * so "2 hours before" lands on the right real-world instant.
+ */
+function minutesUntil(
+  reservationDateTime: string,
+  now: Date,
+  timeZone: string,
+): number {
   const { date, time } = splitDateTime(reservationDateTime);
-  const start = new Date(`${date}T${time || "00:00"}:00`);
-  if (Number.isNaN(start.getTime())) return NaN;
-  return (start.getTime() - now.getTime()) / 60000;
+  const startMs = zonedWallTimeToMs(date, time || "00:00", timeZone);
+  if (Number.isNaN(startMs)) return NaN;
+  return (startMs - now.getTime()) / 60000;
 }
 
 /**
  * A reservation is due for a reminder when it is confirmed, has an email, hasn't
  * already been reminded, and is upcoming within the reminder window.
  */
-function isDueForReminder(r: any, now: Date): boolean {
+function isDueForReminder(r: any, now: Date, timeZone: string): boolean {
   if (!r || typeof r !== "object") return false;
   if (r.status !== "confirmed") return false; // not cancelled/completed/no_show/pending
   if (!r.email) return false;
   if (r.reminderEmailSentAt) return false;
-  const mins = minutesUntil(r.reservationDateTime, now);
+  const mins = minutesUntil(r.reservationDateTime, now, timeZone);
   if (Number.isNaN(mins)) return false;
   return mins > 0 && mins <= REMINDER_WINDOW_MINUTES;
 }
@@ -75,7 +101,8 @@ export async function runReservationReminderSweep(): Promise<void> {
     const list = Array.isArray(location.reservations)
       ? (location.reservations as any[])
       : [];
-    const due = list.filter((r) => isDueForReminder(r, now));
+    const timeZone = locationTimeZone(location);
+    const due = list.filter((r) => isDueForReminder(r, now, timeZone));
     if (due.length === 0) continue;
 
     // Resolve the business name once per business.

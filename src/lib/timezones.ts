@@ -72,6 +72,116 @@ function listZones(): string[] {
   return FALLBACK_ZONES;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Timezone-aware date keys for dashboard analytics                   */
+/*                                                                     */
+/*  Dashboards must group activity by the *restaurant's* local calendar */
+/*  day — not UTC, and not whatever timezone the viewer's browser is in. */
+/*  These turn an instant into a "YYYY-MM-DD" key (and a short label) in */
+/*  a given IANA timezone, plus pure calendar-math helpers that operate  */
+/*  on those keys so day/week bucketing stays DST- and offset-safe.     */
+/* ------------------------------------------------------------------ */
+
+/** "YYYY-MM-DD" for an instant, in the given IANA timezone. */
+export function getDateKeyInTimezone(
+  date: Date | string | number,
+  timezone: string = DEFAULT_TIMEZONE,
+): string {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return "";
+  try {
+    // en-CA renders as YYYY-MM-DD.
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+  } catch {
+    return new Intl.DateTimeFormat("en-CA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+  }
+}
+
+/** Today's "YYYY-MM-DD" in the given timezone. */
+export function getTodayKeyInTimezone(
+  timezone: string = DEFAULT_TIMEZONE,
+): string {
+  return getDateKeyInTimezone(new Date(), timezone);
+}
+
+/** Hour of day (0–23) for an instant, in the given timezone. */
+export function getHourInTimezone(
+  date: Date | string | number,
+  timezone: string = DEFAULT_TIMEZONE,
+): number {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return NaN;
+  try {
+    const hour = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour: "2-digit",
+      hour12: false,
+    }).format(d);
+    return hour === "24" ? 0 : Number(hour);
+  } catch {
+    return d.getHours();
+  }
+}
+
+/**
+ * Short "Mon D" label (e.g. "Jun 5") for a date.
+ *
+ * - If given a "YYYY-MM-DD" key, the calendar date itself is formatted (anchored
+ *   at UTC noon so it can never roll to an adjacent day), independent of any
+ *   timezone — so a label always matches the key it was built from.
+ * - If given an instant (Date / ISO string / epoch), it is formatted in
+ *   `timezone`.
+ */
+export function formatDateLabelInTimezone(
+  date: Date | string | number,
+  timezone: string = DEFAULT_TIMEZONE,
+): string {
+  if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [y, m, d] = date.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString("en-US", {
+      timeZone: "UTC",
+      month: "short",
+      day: "numeric",
+    });
+  }
+  const dt = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(dt.getTime())) return "";
+  try {
+    return dt.toLocaleDateString("en-US", {
+      timeZone: timezone,
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+}
+
+/** Add `delta` whole days to a "YYYY-MM-DD" key (pure calendar math). */
+export function addDaysToDateKey(key: string, delta: number): string {
+  const [y, m, d] = key.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + delta);
+  return dt.toISOString().slice(0, 10);
+}
+
+/** "YYYY-MM-DD" of the Sunday that starts the week containing `key`. */
+export function startOfWeekDateKey(key: string): string {
+  const [y, m, d] = key.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() - dt.getUTCDay());
+  return dt.toISOString().slice(0, 10);
+}
+
 export const TIMEZONE_OPTIONS: TimezoneOption[] = (() => {
   const now = new Date();
   const withOffset = listZones().map((tz) => {

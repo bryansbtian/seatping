@@ -9,6 +9,7 @@ import { useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { DEFAULT_TIMEZONE, getTodayKeyInTimezone } from "@/lib/timezones";
 import {
   Card,
   CardContent,
@@ -93,19 +94,13 @@ function readableDate(date: string) {
   });
 }
 
-function localDateStr(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
 export default function ReservationsManager({
   reservations,
   businessUsername,
   locationId,
   locationLabel,
   reservationsEnabled,
+  timeZone,
   onUpdated,
 }: {
   reservations: Reservation[];
@@ -113,6 +108,8 @@ export default function ReservationsManager({
   locationId: string;
   locationLabel: string;
   reservationsEnabled: boolean;
+  /** Restaurant's IANA timezone; "today" is computed in this zone. */
+  timeZone?: string;
   onUpdated: (user: any) => void;
 }) {
   const { toast } = useToast();
@@ -122,7 +119,10 @@ export default function ReservationsManager({
   // count is breakpoint-driven (2 on mobile, 4 on tablet/desktop) via CSS.
   const [expanded, setExpanded] = useState(false);
 
-  const todayStr = localDateStr(new Date());
+  // "Today" is the restaurant's local calendar date (reservationDateTime is a
+  // naive wall-clock value in that same zone), so the tab is correct no matter
+  // where the owner views the dashboard from.
+  const todayStr = getTodayKeyInTimezone(timeZone || DEFAULT_TIMEZONE);
 
   const buckets = useMemo(() => {
     const list = Array.isArray(reservations) ? reservations : [];
