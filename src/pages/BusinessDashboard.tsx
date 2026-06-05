@@ -851,11 +851,11 @@ const BusinessDashboard = () => {
 
     const admittedCustomers = currentLocation.admittedCustomers || [];
     const buckets = [
-      { range: "0-5 min", min: 0, max: 5, count: 0 },
-      { range: "5-10 min", min: 5, max: 10, count: 0 },
-      { range: "10-15 min", min: 10, max: 15, count: 0 },
-      { range: "15-30 min", min: 15, max: 30, count: 0 },
-      { range: "30+ min", min: 30, max: Infinity, count: 0 },
+      { range: "0-5 mins", min: 0, max: 5, count: 0 },
+      { range: "5-10 mins", min: 5, max: 10, count: 0 },
+      { range: "10-15 mins", min: 10, max: 15, count: 0 },
+      { range: "15-30 mins", min: 15, max: 30, count: 0 },
+      { range: "30+ mins", min: 30, max: Infinity, count: 0 },
     ];
 
     admittedCustomers.forEach((customer: any) => {

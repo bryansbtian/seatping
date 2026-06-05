@@ -7,6 +7,16 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { cn } from "@/lib/utils";
 import { HeroDashboardPreview } from "@/components/landing/ProductPreviews";
+import WhyChooseSeatPing, {
+  SeatPingFeatureGrid,
+} from "@/components/landing/WhyChooseSeatPing";
+import {
+  SECTION_PADDING,
+  SECTION_CONTENT_GAP,
+  DISPLAY_HEADING,
+  SECTION_HEADING,
+  SECTION_SUBTITLE,
+} from "@/components/landing/section";
 
 // Card width inside the carousel: ~1 card on mobile, ~2 on tablet, exactly 3
 // on desktop (gap-5 = 1.25rem, so two gaps = 2.5rem across the 3 visible cards).
@@ -194,13 +204,13 @@ const LandingPage = () => {
         <div className="container relative mx-auto max-w-6xl">
           {/* Headline + subheadline + CTA, top-center */}
           <div className="mx-auto max-w-3xl text-center animate-fade-in-up">
-            <h1 className="text-3xl font-semibold leading-[1.1] tracking-tight text-slate-900 sm:text-4xl md:text-5xl lg:text-6xl">
+            <h1 className={DISPLAY_HEADING}>
               One Dashboard for{" "}
               <span className="sm:whitespace-nowrap">
                 Queues and Reservations
               </span>
             </h1>
-            <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-slate-600 sm:mt-4 sm:text-base md:text-lg">
+            <p className={cn("mx-auto mt-4 max-w-xl", SECTION_SUBTITLE)}>
               Manage walk-ins, bookings, and guest updates in one place.
             </p>
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -243,18 +253,28 @@ const LandingPage = () => {
       </section>
 
       {/* ============================================================ */}
+      {/* 2. PRODUCT SECTION #1 why choose SeatPing + 4 feature cards  */}
+      {/* ============================================================ */}
+      <WhyChooseSeatPing />
+
+      {/* ============================================================ */}
+      {/* 3. PRODUCT SECTION #2 larger feature grid                    */}
+      {/* ============================================================ */}
+      <SeatPingFeatureGrid />
+
+      {/* ============================================================ */}
       {/* TESTIMONIALS trust before the final CTA                      */}
       {/* ============================================================ */}
-      <section className="border-t border-slate-200 bg-slate-50 px-4 py-12 sm:py-16 md:py-20">
+      <section className={cn("border-t border-slate-200 bg-slate-50", SECTION_PADDING)}>
         <div className="container mx-auto max-w-6xl scroll-animate">
           {/* Heading row: headline on the left, scroll control on the right */}
           <div className="flex items-end justify-between gap-6">
             <div className="max-w-2xl">
-              <h2 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl md:text-4xl lg:text-5xl">
+              <h2 className={SECTION_HEADING}>
                 Built for Teams That Manage{" "}
                 <span className="text-slate-400">Guests Every Day</span>
               </h2>
-              <p className="mt-2 text-sm text-slate-500 sm:mt-3 sm:text-base">
+              <p className={cn("mt-4", SECTION_SUBTITLE)}>
                 Designed for growing restaurants, cafés, salons, and service
                 teams.
               </p>
@@ -272,7 +292,10 @@ const LandingPage = () => {
           {/* Carousel: scrollable row, 1 card on mobile, ~2 on tablet, 3 on desktop */}
           <div
             ref={testimonialsRef}
-            className="mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 sm:mt-10 sm:gap-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className={cn(
+              SECTION_CONTENT_GAP,
+              "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 sm:gap-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            )}
           >
             {TESTIMONIALS.map((t) => (
               <TestimonialCard key={t.name} {...t} />
@@ -284,7 +307,7 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 5. FINAL CTA light gradient, scribble headline, value cards */}
       {/* ============================================================ */}
-      <section className="relative overflow-hidden border-y border-slate-200 bg-slate-50 px-4 py-12 sm:py-14 md:py-20">
+      <section className={cn("relative overflow-hidden border-y border-slate-200 bg-slate-50", SECTION_PADDING)}>
         {/* soft accent-tinted gradient background */}
         <div
           aria-hidden
@@ -300,7 +323,7 @@ const LandingPage = () => {
               is struck through (same scribble as the sales page), "smooth
               service" is the penned-in fix on the line below. */}
           <h2
-            className="text-2xl font-bold leading-[1.12] tracking-tight text-slate-900 sm:text-4xl md:text-5xl lg:text-6xl"
+            className={DISPLAY_HEADING}
             aria-label="Turn Every Arrival Into Smooth Service"
           >
             <span aria-hidden className="block">
@@ -332,7 +355,7 @@ const LandingPage = () => {
             </span>
           </h2>
 
-          <p className="mx-auto mt-4 max-w-2xl text-base text-slate-600 sm:mt-5 sm:text-lg">
+          <p className={cn("mx-auto mt-4 max-w-2xl", SECTION_SUBTITLE)}>
             Set up queues, reservations, notifications, and location settings
             with no extra hardware and no complicated onboarding.
           </p>
