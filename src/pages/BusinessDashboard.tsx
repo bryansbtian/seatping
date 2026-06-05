@@ -1453,8 +1453,8 @@ const BusinessDashboard = () => {
                       Awaiting Arrival Confirmation
                     </CardTitle>
                     <CardDescription className="text-amber-700 text-sm">
-                      Customers admitted in the last 5 minutes - confirm their
-                      arrival
+                      Confirm arrivals for customers admitted in the last 5
+                      minutes
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-4 md:p-6">
