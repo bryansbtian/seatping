@@ -19,6 +19,7 @@ import BusinessHeader from "@/components/BusinessHeader";
 import BusinessTrialBanner from "@/components/BusinessTrialBanner";
 import LocationManagement from "@/components/LocationManagement";
 import Footer from "@/components/Footer";
+import SEO, { BUSINESS_DESCRIPTION } from "@/components/SEO";
 
 interface BusinessMe {
   name: string;
@@ -50,6 +51,10 @@ const BusinessSettings = () => {
 
   return (
     <>
+      <SEO
+        title="Business Settings | SeatPing"
+        description={BUSINESS_DESCRIPTION}
+      />
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100">
         <div className="container mx-auto px-4 py-8">

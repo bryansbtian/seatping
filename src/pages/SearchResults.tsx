@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -395,6 +396,11 @@ export default function SearchResults() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
+      <SEO
+        title="Search Restaurants | SeatPing"
+        description={CUSTOMER_DESCRIPTION}
+        canonical="/search"
+      />
       <Header />
 
       {/* Dark SeatPing search bar. Sits flush below the fixed header. */}

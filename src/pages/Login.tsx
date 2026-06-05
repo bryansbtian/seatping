@@ -13,6 +13,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { api } from "@/lib/api";
 
 const Login = () => {
@@ -64,6 +65,11 @@ const Login = () => {
 
   return (
     <>
+      <SEO
+        title="Log In | SeatPing"
+        description={CUSTOMER_DESCRIPTION}
+        canonical="/login"
+      />
       <Header />
       {/* Full-height flex column: the fixed header is overlaid on top (hence the
           pt-* on <main> so the card clears it), the form is vertically centered

@@ -188,7 +188,7 @@ export function MiniPerformanceCard({ className }: { className?: string }) {
           className="flex flex-col justify-center rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm"
         >
           <p className="truncate text-[10px] text-slate-600">{s.label}</p>
-          <div className="mt-0.5 flex items-center justify-between">
+          <div className="mt-2 flex items-center justify-between">
             <p className="text-xl font-semibold text-slate-800">{s.value}</p>
             <span
               className={cn(

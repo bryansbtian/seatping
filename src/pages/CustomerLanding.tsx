@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/carousel";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import ReservationSearchBar from "@/components/ReservationSearchBar";
 
 // Hero + card imagery (remote placeholders). The slate fallback background keeps
@@ -101,6 +102,11 @@ const CustomerLanding = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="SeatPing | Find Restaurants, Book Tables, and Join Queues"
+        description={CUSTOMER_DESCRIPTION}
+        canonical="/"
+      />
       <Header />
 
       {/* ===================== HERO ===================== */}

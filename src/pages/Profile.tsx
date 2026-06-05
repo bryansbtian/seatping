@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -219,6 +220,11 @@ const Profile = () => {
 
   return (
     <>
+      <SEO
+        title="My Profile | SeatPing"
+        description={CUSTOMER_DESCRIPTION}
+        canonical="/profile"
+      />
       <Header />
       <main className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 pb-12 pt-24 sm:pb-16">
         <div className="mx-auto w-full max-w-3xl space-y-5 sm:space-y-6">

@@ -13,6 +13,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SEO, { BUSINESS_DESCRIPTION } from "@/components/SEO";
 import { api } from "@/lib/api";
 
 // Business login. Reads from the `businesses` collection via /auth/business/login.
@@ -57,6 +58,11 @@ const BusinessLogin = () => {
 
   return (
     <>
+      <SEO
+        title="Business Login | SeatPing"
+        description={BUSINESS_DESCRIPTION}
+        canonical="/business/login"
+      />
       <Header variant="business" />
       {/* Full-height flex column matching the customer login layout: fixed
           header overlaid on top (pt-* on <main> clears it), card centered in the

@@ -19,6 +19,7 @@ import { api } from "@/lib/api";
 import NotFound from "@/pages/NotFound";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SEO from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -531,6 +532,13 @@ export default function RestaurantPage() {
 
   return (
     <PageShell hideHeader={navTakeover}>
+      <SEO
+        title={`${r.name} | SeatPing`}
+        description={`Book a table or join the queue at ${r.name}${
+          locationText ? ` in ${locationText}` : ""
+        } with SeatPing.`}
+        canonical={`/${r.businessUsername}/${r.locationId}`}
+      />
       {/* Hero banner — full-bleed, edge to edge */}
       <div className="relative h-56 w-full overflow-hidden bg-slate-100 sm:h-72 md:h-96">
         {heroImage ? (

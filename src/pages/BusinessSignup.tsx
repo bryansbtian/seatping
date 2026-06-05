@@ -13,6 +13,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SEO, { BUSINESS_DESCRIPTION } from "@/components/SEO";
 import { api } from "@/lib/api";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 
@@ -117,6 +118,11 @@ const BusinessSignup = () => {
 
   return (
     <>
+      <SEO
+        title="Create a Business Account | SeatPing"
+        description={BUSINESS_DESCRIPTION}
+        canonical="/business/signup"
+      />
       <Header variant="business" />
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 py-8 pt-24">
         <Card className="w-full max-w-md lg:max-w-2xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
