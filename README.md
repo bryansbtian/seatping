@@ -174,11 +174,14 @@ in JSON arrays on the Location document:
 Contended single-document writes (location credits, slot counters) are wrapped
 in `withWriteRetry` (server/lib/dbRetry.ts) to absorb MongoDB write conflicts
 (P2034) under load. The legacy `queue` / `admittedCustomers` / `removedCustomers`
-/ `reservations` JSON fields on Location are retained as a fallback and are no
-longer written; remove them once the migration is confirmed in production.
+/ `reservations` JSON fields on Location were removed from the schema once the
+migration was verified in production (Phase 7). Their raw values still exist in
+older Mongo documents (unmapped) and can be recovered by re-adding the fields to
+the schema if ever needed.
 
-Migrate existing JSON data with `npx tsx scripts/migrate-to-models.ts` (dry run)
-then `--commit`. It is idempotent and never deletes the JSON fields.
+The one-off `scripts/migrate-to-models.ts` (run dry, then `--commit`) handled the
+original JSON-to-model migration; it is idempotent and never deleted JSON data,
+and is retained as a historical record.
 
 ## Background jobs
 

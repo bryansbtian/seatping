@@ -111,9 +111,6 @@ export function buildLocationData(business, location) {
         longitude: typeof d.longitude === "number" ? d.longitude : null,
         googlePlaceId: d.googlePlaceId?.trim() || null,
         googleMapsUrl: d.googleMapsUrl?.trim() || null,
-        queue: [],
-        admittedCustomers: [],
-        removedCustomers: [],
         credits,
         baseCredits,
     };

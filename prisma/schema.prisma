@@ -96,12 +96,10 @@ model Location {
   googlePlaceId String?
   googleMapsUrl String?
 
-  // DEPRECATED (kept as fallback until the model migration is verified in prod).
-  // Live queue state now lives in the QueueEntry model; these arrays are no
-  // longer written after Phase 3. Do not add new reads of these fields.
-  queue             Json @default("[]")
-  admittedCustomers Json @default("[]")
-  removedCustomers  Json @default("[]")
+  // Live queue state lives in the QueueEntry model; reservations in the
+  // Reservation model. The former Location.queue / admittedCustomers /
+  // removedCustomers / reservations JSON arrays were removed in Phase 7 (their
+  // raw data remains in existing Mongo documents, just unmapped).
 
   // Unified credits. Consumed only when a customer chooses "Wait Anywhere"
   // (1 credit, any channel). `baseCredits` is the monthly refill target.
@@ -112,9 +110,6 @@ model Location {
   reservationsEnabled Boolean @default(true)
 
   reservationSettings Json @default("{}")
-  // DEPRECATED (see note on `queue`): reservations now live in the Reservation
-  // model. Kept as a fallback until the migration is verified in prod.
-  reservations        Json @default("[]")
   restaurantProfile   Json @default("{}")
 
   // Denormalized from restaurantProfile.isPublished so search/suggestions can
