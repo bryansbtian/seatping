@@ -1,8 +1,15 @@
 import express from "express";
 import { prisma } from "../lib/prisma.js";
 import { computeNextRefillDate } from "../lib/trial.js";
+import { requireAdmin } from "../lib/auth.js";
 
 const router = express.Router();
+
+// Every admin route requires a valid admin session (httpOnly admin JWT cookie),
+// issued by POST /auth/admin/login. This router was previously unauthenticated;
+// the gate below closes that hole. Login itself lives on the auth router, so it
+// is unaffected.
+router.use(requireAdmin);
 
 // Admin manages BUSINESS accounts (businesses collection) and their locations
 // (locations collection). The "customer" wording in these routes refers to a

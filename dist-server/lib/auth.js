@@ -1,12 +1,14 @@
 // server/lib/auth.ts
 import jwt from "jsonwebtoken";
-// Customer and business sessions use SEPARATE cookies so they can coexist in the
-// same browser. Logging in as a business must never clobber a logged-in
-// customer (and vice versa) — e.g. joining a queue as a customer and admitting
-// as the business from the same device both stay logged in.
+// Customer, business, and admin sessions use SEPARATE cookies so they can
+// coexist in the same browser. Logging in as a business must never clobber a
+// logged-in customer (and vice versa) — e.g. joining a queue as a customer and
+// admitting as the business from the same device both stay logged in. The admin
+// cookie gates the internal /admin and /tickets consoles.
 const COOKIE_NAMES = {
     customer: "sp_auth_customer",
     business: "sp_auth_business",
+    admin: "sp_auth_admin",
 };
 // Legacy single-cookie name (pre account-type separation). We never read it, but
 // we clear it on logout so old sessions don't linger.
@@ -97,6 +99,7 @@ export function clearAuthCookie(res, accountType) {
 export function clearAllAuthCookies(res) {
     clearAuthCookie(res, "customer");
     clearAuthCookie(res, "business");
+    clearAuthCookie(res, "admin");
     res.clearCookie(LEGACY_COOKIE_NAME, {
         httpOnly: true,
         sameSite: "lax",
@@ -151,6 +154,7 @@ export function requireAccountType(accountType) {
 }
 export const requireCustomer = requireAccountType("customer");
 export const requireBusiness = requireAccountType("business");
+export const requireAdmin = requireAccountType("admin");
 /**
  * Read the current session without failing the request.
  * Returns the account type + display name, or null for no/legacy session.

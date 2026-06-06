@@ -52,6 +52,14 @@ function locationTimeZone(location) {
     const tz = oh && typeof oh === "object" ? oh.timezone : undefined;
     return typeof tz === "string" && tz ? tz : "Asia/Jakarta";
 }
+/**
+ * Restaurant's weekly opening hours JSON, used to clip reservation slots to the
+ * times the restaurant is actually open. Returns undefined when not configured.
+ */
+function locationOpeningHours(location) {
+    const oh = location?.restaurantProfile?.openingHours;
+    return oh && typeof oh === "object" ? oh : undefined;
+}
 function readableDate(date) {
     const d = new Date(`${date}T00:00:00`);
     if (Number.isNaN(d.getTime()))
@@ -151,6 +159,7 @@ router.get("/:businessUsername/:locationId/availability", async (req, res) => {
             date,
             partySize,
             timeZone: locationTimeZone(location),
+            openingHours: locationOpeningHours(location),
         });
         return res.json({
             reservationsEnabled: true,
@@ -197,6 +206,7 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
             time: String(time || ""),
             partySize: size,
             timeZone: locationTimeZone(location),
+            openingHours: locationOpeningHours(location),
         });
         if (error)
             return res.status(400).json({ error });
@@ -352,6 +362,7 @@ router.put("/manage/:manageToken", async (req, res) => {
             partySize,
             excludeId: reservation.id,
             timeZone: locationTimeZone(location),
+            openingHours: locationOpeningHours(location),
         });
         if (error)
             return res.status(400).json({ error });

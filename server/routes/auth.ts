@@ -23,6 +23,7 @@ import {
   requireBusiness,
   readSession,
 } from "../lib/auth.js";
+import { rateLimit } from "../lib/rateLimit.js";
 import {
   CustomerSignUpSchema,
   BusinessSignUpSchema,
@@ -1173,6 +1174,72 @@ router.post("/business/login", async (req, res) => {
 router.post("/business/logout", (_req, res) => {
   clearAuthCookie(res, "business");
   res.json({ ok: true });
+});
+
+// ===========================================================================
+// ADMIN AUTH — gates the internal /admin and /tickets consoles.
+// Credentials live ONLY on the server, in env vars (ADMIN_USERNAME +
+// ADMIN_PASSWORD_HASH, a bcrypt hash). On success we issue an httpOnly admin
+// JWT cookie (accountType "admin"); requireAdmin guards the admin routers.
+// ===========================================================================
+
+// Brute-force throttle: max 5 attempts per IP per 15 minutes.
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: "Too many login attempts. Please try again later.",
+});
+
+/**
+ * POST /auth/admin/login
+ * Body: { username, password }. Validates against ADMIN_USERNAME +
+ * ADMIN_PASSWORD_HASH (bcrypt) entirely on the server. Always returns the same
+ * generic error so it never reveals whether the username or password was wrong
+ * (or whether admin auth is configured at all).
+ */
+router.post("/admin/login", adminLoginLimiter, async (req, res) => {
+  const GENERIC = "Invalid credentials.";
+  try {
+    const username = String(req.body?.username || "");
+    const password = String(req.body?.password || "");
+
+    const expectedUser = process.env.ADMIN_USERNAME;
+    const passwordHash = process.env.ADMIN_PASSWORD_HASH;
+    if (!expectedUser || !passwordHash) {
+      console.error("[ADMIN] ADMIN_USERNAME / ADMIN_PASSWORD_HASH not configured");
+      return res.status(401).json({ error: GENERIC });
+    }
+
+    // Always run bcrypt.compare (even on username mismatch) to avoid leaking
+    // which field was wrong via timing, then combine both checks.
+    const passwordOk = await bcrypt.compare(password, passwordHash);
+    const usernameOk = username === expectedUser;
+    if (!usernameOk || !passwordOk) {
+      return res.status(401).json({ error: GENERIC });
+    }
+
+    const token = signJwt({ sub: "admin", accountType: "admin", name: "Admin" });
+    setAuthCookie(res, token, "admin");
+    return res.json({ ok: true });
+  } catch (err: any) {
+    console.error("[ADMIN] login error:", err?.message || err);
+    return res.status(401).json({ error: GENERIC });
+  }
+});
+
+/** POST /auth/admin/logout — clears the admin cookie. */
+router.post("/admin/logout", (_req, res) => {
+  clearAuthCookie(res, "admin");
+  res.json({ ok: true });
+});
+
+/**
+ * GET /auth/admin/session — lets the admin UI know if a valid admin cookie
+ * exists (so a refresh doesn't force a re-login). Never throws.
+ */
+router.get("/admin/session", (req, res) => {
+  const session = readSession(req, "admin");
+  res.json({ authenticated: session?.accountType === "admin" });
 });
 
 /**

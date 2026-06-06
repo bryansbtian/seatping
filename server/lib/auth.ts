@@ -2,15 +2,17 @@
 import jwt, { SignOptions, JwtPayload, Secret } from "jsonwebtoken";
 import type { Response, Request, NextFunction } from "express";
 
-export type AccountType = "customer" | "business";
+export type AccountType = "customer" | "business" | "admin";
 
-// Customer and business sessions use SEPARATE cookies so they can coexist in the
-// same browser. Logging in as a business must never clobber a logged-in
-// customer (and vice versa) — e.g. joining a queue as a customer and admitting
-// as the business from the same device both stay logged in.
+// Customer, business, and admin sessions use SEPARATE cookies so they can
+// coexist in the same browser. Logging in as a business must never clobber a
+// logged-in customer (and vice versa) — e.g. joining a queue as a customer and
+// admitting as the business from the same device both stay logged in. The admin
+// cookie gates the internal /admin and /tickets consoles.
 const COOKIE_NAMES: Record<AccountType, string> = {
   customer: "sp_auth_customer",
   business: "sp_auth_business",
+  admin: "sp_auth_admin",
 };
 // Legacy single-cookie name (pre account-type separation). We never read it, but
 // we clear it on logout so old sessions don't linger.
@@ -110,6 +112,7 @@ export function clearAuthCookie(res: Response, accountType: AccountType) {
 export function clearAllAuthCookies(res: Response) {
   clearAuthCookie(res, "customer");
   clearAuthCookie(res, "business");
+  clearAuthCookie(res, "admin");
   res.clearCookie(LEGACY_COOKIE_NAME, {
     httpOnly: true,
     sameSite: "lax",
@@ -166,6 +169,7 @@ export function requireAccountType(accountType: AccountType) {
 
 export const requireCustomer = requireAccountType("customer");
 export const requireBusiness = requireAccountType("business");
+export const requireAdmin = requireAccountType("admin");
 
 /**
  * Read the current session without failing the request.

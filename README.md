@@ -215,5 +215,17 @@ Scalability features (optional; graceful fallback when unset):
 - `PUBLIC_BASE_URL` — public origin QStash calls back for the worker (defaults to
   `FRONTEND_URL`).
 
+Admin console auth (required for the `/admin` and `/tickets` routers):
+
+- `ADMIN_USERNAME` — admin login username.
+- `ADMIN_PASSWORD_HASH` — bcrypt hash of the admin password (never store the
+  plaintext). Generate with:
+  `node -e 'console.log(require("bcrypt").hashSync(process.argv[1],12))' 'your-password'`
+
+The `/admin/*` and `/tickets/*` routers require a valid admin session (httpOnly
+cookie from `POST /auth/admin/login`, which validates against the two vars above).
+If they are unset, admin login always fails closed. There is no admin password in
+the frontend bundle.
+
 Note: sub-daily Vercel Cron schedules require a paid Vercel plan; on the free
 plan the crons fall back to daily.

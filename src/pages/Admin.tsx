@@ -132,25 +132,66 @@ const Admin = () => {
     }
   }, [isAuthenticated, filter]);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Restore an existing admin session on load so a refresh doesn't force a
+  // re-login (the httpOnly admin cookie is the source of truth).
+  useEffect(() => {
+    let active = true;
+    fetch("/auth/admin/session", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (active && d?.authenticated) setIsAuthenticated(true);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
-    if (
-      loginForm.username === "adminSeatPing" &&
-      loginForm.password === "seatping2025@"
-    ) {
-      setIsAuthenticated(true);
-      toast({
-        title: "Success",
-        description: "Admin access granted",
+  // Credentials are validated ONLY on the server (POST /auth/admin/login), which
+  // sets an httpOnly admin cookie. No admin password lives in this bundle.
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const res = await fetch("/auth/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(loginForm),
       });
-    } else {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setIsAuthenticated(true);
+        setLoginForm({ username: "", password: "" });
+        toast({ title: "Success", description: "Admin access granted" });
+      } else {
+        toast({
+          title: "Error",
+          description: data?.error || "Invalid credentials.",
+          variant: "destructive",
+        });
+      }
+    } catch {
       toast({
         title: "Error",
-        description: "Invalid credentials",
+        description: "Invalid credentials.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/auth/admin/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // Ignore network errors — we clear local state regardless.
+    }
+    setIsAuthenticated(false);
   };
 
   const handleSearchCustomer = async () => {
@@ -575,7 +616,7 @@ const Admin = () => {
               Manage customer accounts and support tickets
             </p>
           </div>
-          <Button variant="outline" onClick={() => setIsAuthenticated(false)}>
+          <Button variant="outline" onClick={handleLogout}>
             Log Out
           </Button>
         </div>

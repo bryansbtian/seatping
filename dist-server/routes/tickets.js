@@ -1,7 +1,13 @@
 import express from 'express';
 import { prisma } from '../lib/prisma.js';
 import { sendEmail, renderEmail, p, calloutBox, esc } from '../lib/email.js';
+import { requireAdmin } from '../lib/auth.js';
 const router = express.Router();
+// This router is the admin support console (list/read/respond/assign/delete).
+// It was previously unauthenticated, exposing customer PII; every route now
+// requires an admin session. Public ticket CREATION lives in feedback.ts and
+// sales.ts (unaffected), so locking this router down does not break submissions.
+router.use(requireAdmin);
 // Get all tickets with optional filtering
 router.get('/', async (req, res) => {
     try {
