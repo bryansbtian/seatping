@@ -140,17 +140,18 @@ const CustomerLanding = () => {
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 animate-fade-in-up animation-delay-200">
             <Button
               size="lg"
+              variant="outline"
               onClick={() => navigate("/search")}
-              className="group w-full sm:w-auto rounded-xl bg-white text-slate-900 px-8 shadow-sm hover:bg-slate-100 hover:shadow-lg hover:scale-105 transition-all duration-300"
+              className="w-full rounded-xl px-8 shadow-sm transition-transform hover:scale-105 hover:border-slate-200 hover:bg-white hover:text-slate-900 sm:w-auto"
             >
               <Utensils className="h-4 w-4" />
-              <span className="font-medium">Book a Table</span>
+              <span className="font-medium">Book Table</span>
             </Button>
             <Button
               size="lg"
-              variant="outline"
+              variant="inverseOutline"
               onClick={scrollToFeatured}
-              className="group w-full sm:w-auto rounded-xl border-white/40 bg-white/10 text-white px-8 backdrop-blur-sm hover:bg-white/20 hover:text-white hover:scale-105 transition-all duration-300"
+              className="w-full rounded-xl px-8 backdrop-blur-sm transition-transform hover:scale-105 hover:border-white/70 hover:bg-white/10 hover:text-white sm:w-auto"
             >
               <Compass className="h-4 w-4" />
               <span className="font-medium">Discover Restaurants</span>
@@ -283,7 +284,7 @@ const CustomerLanding = () => {
                                 {r.rating.toFixed(1)}
                                 <span className="font-normal text-slate-500">
                                   {r.reviewCount > 0
-                                    ? `(${r.reviewCount} review${r.reviewCount === 1 ? "" : "s"})`
+                                    ? `(${r.reviewCount} Review${r.reviewCount === 1 ? "" : "s"})`
                                     : "Reviews"}
                                 </span>
                               </span>
@@ -320,7 +321,7 @@ const CustomerLanding = () => {
                           mt-auto pins them to the bottom so cards align. */}
                           <div className="mt-auto grid grid-cols-1 gap-3 pt-4 sm:grid-cols-2">
                             <Button
-                              className="w-full min-w-0 justify-center whitespace-nowrap px-3 bg-slate-900 text-white hover:bg-slate-800"
+                              className="w-full min-w-0 justify-center whitespace-nowrap px-3"
                               onClick={(e) => {
                                 // Stop the card's onClick from double-firing.
                                 e.stopPropagation();
@@ -333,7 +334,7 @@ const CustomerLanding = () => {
                             <Button
                               variant="outline"
                               aria-label={`Join queue at ${r.name}`}
-                              className="w-full min-w-0 justify-center whitespace-nowrap px-3 border-slate-200 text-slate-900 hover:bg-slate-50"
+                              className="w-full min-w-0 justify-center whitespace-nowrap px-3"
                               asChild
                             >
                               <Link

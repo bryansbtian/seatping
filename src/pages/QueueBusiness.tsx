@@ -27,7 +27,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -683,7 +683,7 @@ export default function QueueBusiness() {
           <Card className="w-full max-w-xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
             <CardHeader className="text-center">
               <CardTitle className="text-xl sm:text-2xl text-primary">
-                {step === 2 ? "Join the Queue" : restaurantName}
+                {step === 2 ? "Join The Queue" : restaurantName}
               </CardTitle>
               {step !== 5 && (
                 <CardDescription>
@@ -1143,9 +1143,11 @@ export default function QueueBusiness() {
 
                   <Button
                     type="submit"
+                    variant="outline"
                     className="w-full"
                     disabled={joiningQueue || loadingAddresses}
                   >
+                    <Users className="h-4 w-4" />
                     {joiningQueue ? "Joining..." : "Join Queue"}
                   </Button>
                 </form>
@@ -1213,7 +1215,11 @@ export default function QueueBusiness() {
                   </p>
 
                   <div className="flex gap-2">
-                    <Button className="flex-1" onClick={leaveQueue}>
+                    <Button
+                      variant="destructiveOutline"
+                      className="flex-1"
+                      onClick={leaveQueue}
+                    >
                       Leave Queue
                     </Button>
                   </div>

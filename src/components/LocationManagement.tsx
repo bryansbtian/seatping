@@ -280,7 +280,7 @@ export default function LocationManagement({
 
   return (
     <>
-      <Card className="bg-white rounded-xl shadow-sm border-0">
+      <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
             Location Management
@@ -301,7 +301,7 @@ export default function LocationManagement({
               <Button
                 onClick={addLocation}
                 disabled={loading || atMax}
-                className="hidden lg:inline-flex bg-indigo-600 hover:bg-indigo-700 text-white text-sm md:text-base"
+                className="hidden text-sm md:text-base lg:inline-flex"
               >
                 <Plus size={16} className="mr-2" /> Add Location
               </Button>
@@ -364,7 +364,7 @@ export default function LocationManagement({
               <Button
                 onClick={addLocation}
                 disabled={loading || atMax}
-                className="lg:hidden w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm md:text-base"
+                className="w-full text-sm md:text-base lg:hidden"
               >
                 <Plus size={16} className="mr-2" /> Add Location
               </Button>
@@ -512,8 +512,8 @@ export default function LocationManagement({
                           <AlertDialogTrigger asChild>
                             <Button
                               size="sm"
-                              variant="outline"
-                              className="h-10 w-full justify-center text-red-600 hover:bg-red-50 hover:text-red-700 lg:w-10 lg:px-0"
+                              variant="destructiveOutline"
+                              className="h-10 w-full justify-center lg:w-10 lg:px-0"
                               disabled={loading}
                             >
                               <Trash2 size={16} className="mr-2 lg:mr-0" />
@@ -538,7 +538,8 @@ export default function LocationManagement({
                               </AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => removeLocation(index)}
-                                className="bg-red-600 hover:bg-red-700 w-full md:w-auto"
+                                variant="destructive"
+                                className="w-full md:w-auto"
                               >
                                 Remove Location
                               </AlertDialogAction>
@@ -666,7 +667,7 @@ export default function LocationManagement({
                 <Copy size={16} className="mr-2" /> Copy Link
               </Button>
               <Button
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white sm:flex-1"
+                className="w-full sm:flex-1"
                 onClick={downloadQrCode}
                 disabled={!qrDataUrl}
               >

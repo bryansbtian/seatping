@@ -19,6 +19,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -102,17 +103,6 @@ function Pill({
     </span>
   );
 }
-
-const STATUS_STYLE: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-700",
-  confirmed: "bg-emerald-100 text-emerald-700",
-  arrived: "bg-blue-100 text-blue-700",
-};
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  confirmed: "Confirmed",
-  arrived: "Arrived",
-};
 
 /* ---------------------------------------------------------------- */
 /*  Sample data                                                      */
@@ -464,14 +454,7 @@ export function ReservationsCardPreview({
                       <p className="font-semibold text-gray-800 text-sm md:text-base">
                         {r.name}
                       </p>
-                      <Badge
-                        className={cn(
-                          "border-0 text-[10px]",
-                          STATUS_STYLE[r.status],
-                        )}
-                      >
-                        {STATUS_LABEL[r.status]}
-                      </Badge>
+                      <StatusBadge status={r.status} className="text-[10px]" />
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
                       <span className="inline-flex items-center gap-1">
@@ -690,9 +673,7 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
               <p className="font-semibold text-gray-800 text-sm">
                 Sofia Almeida
               </p>
-              <Badge className="border-0 bg-emerald-100 text-emerald-700 text-[10px]">
-                Confirmed
-              </Badge>
+              <StatusBadge status="confirmed" className="text-[10px]" />
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
               <span className="inline-flex items-center gap-1">
@@ -917,9 +898,7 @@ function HeroDashboardWindow() {
                 <p className="text-base font-semibold text-gray-800">
                   Olivia Bennett
                 </p>
-                <Badge className="border-0 bg-emerald-100 text-[10px] text-emerald-700">
-                  Confirmed
-                </Badge>
+                <StatusBadge status="confirmed" className="text-[10px]" />
               </div>
               <div className="mt-1.5 flex items-center gap-x-3 text-xs text-slate-600">
                 <span className="inline-flex items-center gap-1">
@@ -1144,9 +1123,10 @@ function PhoneScreenContent() {
               <p className="truncate text-[11px] font-semibold text-gray-800">
                 Sofia Almeida
               </p>
-              <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[8px] font-medium text-emerald-700">
-                Confirmed
-              </span>
+              <StatusBadge
+                status="confirmed"
+                className="px-1.5 py-0.5 text-[8px]"
+              />
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] text-slate-600">
               <span className="inline-flex items-center gap-0.5">
@@ -1623,9 +1603,7 @@ export function ReservationMiniCard({ className }: { className?: string }) {
       <div className="rounded-xl border border-slate-200 p-3">
         <div className="flex items-center gap-2">
           <p className="font-semibold text-gray-800 text-sm">Sofia Almeida</p>
-          <Badge className="border-0 bg-emerald-100 text-emerald-700 text-[10px]">
-            Confirmed
-          </Badge>
+          <StatusBadge status="confirmed" className="text-[10px]" />
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
           <span className="inline-flex items-center gap-1">

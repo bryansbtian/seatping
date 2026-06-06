@@ -6,8 +6,8 @@
 //   /:businessUsername/:locationId
 //
 // Data comes from GET /api/restaurants/:businessUsername/:locationId
-// (public-safe fields only). No reservation booking flow is wired here yet —
-// the action card shows "Join Queue" (active) + a disabled "Book Table".
+// (public-safe fields only). Reservation and queue actions are rendered by
+// ReservationBooking.
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Link,
@@ -555,8 +555,8 @@ export default function RestaurantPage() {
         {r.photos.length > 0 && (
           <Button
             size="sm"
-            variant="secondary"
-            className="absolute bottom-4 right-4 bg-white/95 text-slate-900 shadow-sm hover:bg-white"
+            variant="outline"
+            className="absolute bottom-4 right-4 shadow-sm"
             onClick={() => setPhotosOpen(true)}
           >
             <ImageIcon className="h-4 w-4" />
@@ -592,7 +592,7 @@ export default function RestaurantPage() {
                   {r.rating.toFixed(1)}
                   <span className="font-normal text-slate-500">
                     ({r.reviewCount}{" "}
-                    {r.reviewCount === 1 ? "review" : "reviews"})
+                    {r.reviewCount === 1 ? "Review" : "Reviews"})
                   </span>
                 </span>
               ) : (
@@ -1495,7 +1495,6 @@ function WriteReviewBlock({
         <Button
           type="submit"
           disabled={submitting}
-          className="bg-slate-900 text-white hover:bg-slate-800"
         >
           {submitting ? "Posting..." : "Post Review"}
         </Button>

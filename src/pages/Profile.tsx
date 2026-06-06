@@ -4,7 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -202,6 +202,12 @@ const Profile = () => {
   const activeQueue = queue.filter((q) => q.active || q.status === "waiting");
   const pastQueue = queue.filter((q) => !(q.active || q.status === "waiting"));
 
+  // Nearest reservation first. Copy before sorting because profile data is
+  // React state, and keep incomplete legacy entries visible at the end.
+  const upcomingReservations = [
+    ...(profile?.upcomingReservations || []),
+  ].sort((a, b) => upcomingReservationTs(a) - upcomingReservationTs(b));
+
   // Dining History = past reservations + past queue visits, newest first.
   const diningHistory: HistoryItem[] = [
     ...(profile?.pastReservations || []).map((r) => ({
@@ -274,7 +280,7 @@ const Profile = () => {
               <ActivitySection
                 title="Tables Coming Up"
                 emptyState="Your upcoming reservations will appear here."
-                items={profile.upcomingReservations || []}
+                items={upcomingReservations}
                 limits={{ mobile: 2, tablet: 2, desktop: 3 }}
                 keyOf={(r) => r.id}
                 renderItem={(r) => <ReservationCard r={r} />}
@@ -349,6 +355,13 @@ const Profile = () => {
 type HistoryItem =
   | { kind: "reservation"; key: string; ts: number; r: Reservation }
   | { kind: "queue"; key: string; ts: number; q: QueueActivity };
+
+/** Upcoming reservations sort chronologically; incomplete legacy rows go last. */
+function upcomingReservationTs(r: Reservation): number {
+  if (!r.date || !r.time) return Number.POSITIVE_INFINITY;
+  const ts = Date.parse(`${r.date}T${r.time}`);
+  return Number.isNaN(ts) ? Number.POSITIVE_INFINITY : ts;
+}
 
 /** Best-effort sort timestamp for a reservation (date + time, else createdAt). */
 function reservationTs(r: Reservation): number {
@@ -744,38 +757,6 @@ function ActivityThumb({
   return <BusinessThumb name={name} />;
 }
 
-// Human label + badge tone for a reservation or queue status.
-const STATUS_LABELS: Record<string, string> = {
-  confirmed: "Confirmed",
-  pending: "Pending",
-  arrived: "Served",
-  completed: "Completed",
-  cancelled: "Cancelled",
-  no_show: "No-Show",
-  waiting: "Waiting",
-  admitted: "Admitted",
-  removed: "Removed",
-  left: "Left queue",
-};
-
-function StatusBadge({ status }: { status?: string }) {
-  if (!status) return null;
-  const tone =
-    status === "confirmed" || status === "admitted" || status === "waiting"
-      ? "default"
-      : status === "completed" || status === "arrived"
-        ? "secondary"
-        : "outline";
-  return (
-    <Badge
-      variant={tone as any}
-      className="shrink-0 px-2 py-0.5 text-[10px] capitalize sm:px-2.5 sm:text-xs"
-    >
-      {STATUS_LABELS[status] || status.replace(/_/g, " ")}
-    </Badge>
-  );
-}
-
 function ReservationCard({
   r,
   typeLabel,
@@ -802,14 +783,17 @@ function ReservationCard({
             </p>
             <div className="flex shrink-0 items-center gap-1.5">
               {typeLabel && (
-                <Badge
-                  variant="outline"
+                <StatusBadge
+                  status={typeLabel.toLowerCase()}
                   className="shrink-0 px-2 py-0.5 text-[10px] sm:px-2.5 sm:text-xs"
-                >
-                  {typeLabel}
-                </Badge>
+                />
               )}
-              <StatusBadge status={r.status} />
+              {r.status && (
+                <StatusBadge
+                  status={r.status === "arrived" ? "served" : r.status}
+                  className="px-2 py-0.5 text-[10px] sm:px-2.5 sm:text-xs"
+                />
+              )}
             </div>
           </div>
           {r.locationName && (
@@ -890,14 +874,17 @@ function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
             </p>
             <div className="flex shrink-0 items-center gap-1.5">
               {typeLabel && (
-                <Badge
-                  variant="outline"
+                <StatusBadge
+                  status={typeLabel.toLowerCase()}
                   className="shrink-0 px-2 py-0.5 text-[10px] sm:px-2.5 sm:text-xs"
-                >
-                  {typeLabel}
-                </Badge>
+                />
               )}
-              <StatusBadge status={q.status} />
+              {q.status && (
+                <StatusBadge
+                  status={q.status === "arrived" ? "served" : q.status}
+                  className="px-2 py-0.5 text-[10px] sm:px-2.5 sm:text-xs"
+                />
+              )}
             </div>
           </div>
           {q.locationName && (
@@ -988,14 +975,14 @@ function SavedRestaurantCard({
           )}
         </div>
         <Button
-          variant="ghost"
+          variant="destructiveOutline"
           size="icon"
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
           }}
           aria-label={`Remove ${name} from saved`}
-          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+          className="h-8 w-8 shrink-0"
         >
           <X className="h-4 w-4" />
         </Button>
@@ -1164,11 +1151,11 @@ function ProfileReviewCard({
               <Pencil className="h-4 w-4" />
             </Button>
             <Button
-              variant="ghost"
+              variant="destructiveOutline"
               size="icon"
               onClick={onDelete}
               aria-label="Delete review"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              className="h-8 w-8"
             >
               <Trash2 className="h-4 w-4" />
             </Button>

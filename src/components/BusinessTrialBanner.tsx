@@ -80,8 +80,8 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
               </div>
               <div className="flex justify-end">
                 <Button
-                  variant="outline"
-                  className="border-2 border-white text-white bg-white/10 hover:bg-white hover:text-red-600"
+                  variant="inverseOutline"
+                  className="border-2"
                   onClick={() => (window.location.href = "/sales")}
                 >
                   Contact SeatPing
@@ -115,8 +115,8 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
             </div>
             <div className="flex justify-end">
               <Button
-                variant="outline"
-                className="border-2 border-white text-white bg-white/10 hover:bg-white hover:text-indigo-600"
+                variant="inverseOutline"
+                className="border-2"
                 onClick={() => (window.location.href = "/sales")}
               >
                 Contact SeatPing
@@ -145,9 +145,9 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
             </div>
             <div className="flex justify-end">
               <Button
-                variant="outline"
+                variant="inverseOutline"
                 size="sm"
-                className="border-white text-white hover:bg-white hover:text-gray-700 text-xs md:text-sm"
+                className="text-xs md:text-sm"
                 onClick={() => (window.location.href = "/sales")}
               >
                 Contact SeatPing

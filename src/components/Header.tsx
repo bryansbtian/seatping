@@ -121,7 +121,7 @@ const Header = ({
               <Button
                 type="submit"
                 size="sm"
-                className="absolute right-1 top-1 h-8 rounded-full bg-slate-900 px-4 text-white hover:bg-slate-800"
+                className="absolute right-1 top-1 h-8 rounded-full px-4"
               >
                 Search
               </Button>

@@ -12,6 +12,7 @@ import NotFound from "@/pages/NotFound";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -40,24 +41,6 @@ type Slot = {
   label: string;
   available: boolean;
   remaining: number;
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending Confirmation",
-  confirmed: "Confirmed",
-  arrived: "Arrived",
-  completed: "Completed",
-  cancelled: "Cancelled",
-  no_show: "No-Show",
-};
-
-const STATUS_STYLE: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-700",
-  confirmed: "bg-emerald-100 text-emerald-700",
-  arrived: "bg-blue-100 text-blue-700",
-  completed: "bg-slate-200 text-slate-700",
-  cancelled: "bg-red-100 text-red-700",
-  no_show: "bg-red-100 text-red-700",
 };
 
 function localDateStr(d: Date): string {
@@ -253,15 +236,15 @@ export default function ManageReservation() {
               <Card className="mt-6 border border-slate-200 shadow-sm">
                 <CardContent className="space-y-4 p-6 lg:p-8">
                   <div className="flex items-center justify-between gap-3">
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium",
-                        STATUS_STYLE[reservation.status] ||
-                          "bg-slate-100 text-slate-600",
-                      )}
-                    >
-                      {STATUS_LABEL[reservation.status] || reservation.status}
-                    </span>
+                    <StatusBadge
+                      status={reservation.status}
+                      label={
+                        reservation.status === "pending"
+                          ? "Pending Confirmation"
+                          : undefined
+                      }
+                      className="px-2.5 py-1 text-xs"
+                    />
                     <span className="min-w-0 flex-1 text-right text-xs font-medium text-slate-700 sm:text-sm">
                       {reservation.name}
                     </span>
@@ -308,14 +291,14 @@ export default function ManageReservation() {
                       ) : (
                         <div className="flex flex-col gap-2 pt-1 sm:flex-row">
                           <Button
-                            className="flex-1 bg-slate-900 text-white hover:bg-slate-800"
+                            className="flex-1"
                             onClick={() => setEditing(true)}
                           >
                             Change
                           </Button>
                           <Button
-                            variant="outline"
-                            className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                            variant="destructiveOutline"
+                            className="flex-1"
                             onClick={() => setCancelOpen(true)}
                           >
                             Cancel Reservation
@@ -380,7 +363,7 @@ export default function ManageReservation() {
 
                       <div className="flex flex-col gap-2 sm:flex-row">
                         <Button
-                          className="flex-1 bg-slate-900 text-white hover:bg-slate-800"
+                          className="flex-1"
                           disabled={!date || !time || saving}
                           onClick={saveChanges}
                         >
@@ -424,7 +407,7 @@ export default function ManageReservation() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={cancelling}>Keep It</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
+              variant="destructive"
               disabled={cancelling}
               onClick={(e) => {
                 e.preventDefault();

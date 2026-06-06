@@ -435,7 +435,7 @@ export default function FeaturedRestaurantsManager() {
                 type="button"
                 onClick={addFeatured}
                 disabled={adding || !selectedLocationId}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white sm:w-auto"
+                className="w-full sm:w-auto"
               >
                 {adding ? (
                   <Loader2 size={16} className="mr-2 animate-spin" />
@@ -553,9 +553,8 @@ export default function FeaturedRestaurantsManager() {
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
-                        variant="outline"
+                        variant="destructiveOutline"
                         size="sm"
-                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
                       >
                         <Trash2 size={16} className="mr-2 sm:mr-0" />
                         <span className="sm:hidden">Remove</span>
@@ -579,7 +578,7 @@ export default function FeaturedRestaurantsManager() {
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => removeFeatured(f)}
-                          className="bg-red-600 hover:bg-red-700"
+                          variant="destructive"
                         >
                           Remove
                         </AlertDialogAction>

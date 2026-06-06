@@ -98,7 +98,7 @@ function TestimonialCard({
       )}
     >
       {/* Soft cloudy SeatPing-brand mist: a pale blue-gray haze in the top-left
-          and a subtle navy/teal wash in the bottom-right. Large blurs keep it
+          and a subtle navy/indigo wash in the bottom-right. Large blurs keep it
           atmospheric (not a pattern); the centre stays clean behind the text. */}
       <div
         aria-hidden
@@ -106,11 +106,11 @@ function TestimonialCard({
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-sky-200/40 blur-3xl"
+        className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-indigo-100/45 blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-14 -right-12 h-48 w-48 rounded-full bg-teal-200/40 blur-3xl"
+        className="pointer-events-none absolute -bottom-14 -right-12 h-48 w-48 rounded-full bg-indigo-200/35 blur-3xl"
       />
       <div
         aria-hidden
@@ -192,7 +192,7 @@ const LandingPage = () => {
       {/* ============================================================ */}
       <section className="relative overflow-hidden px-4 pt-24 pb-10 md:pt-32 md:pb-14">
         {/* Barely-visible brand accents: faint concentric rings on the left
-            and a soft teal glow behind the device. Kept subtle so the hero
+            and a soft indigo glow behind the device. Kept subtle so the hero
             stays calm and white. */}
         <div
           aria-hidden
@@ -204,7 +204,7 @@ const LandingPage = () => {
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-40 h-[22rem] w-[34rem] max-w-[90%] -translate-x-1/2 rounded-full bg-teal-100/40 blur-3xl"
+          className="pointer-events-none absolute left-1/2 top-40 h-[22rem] w-[34rem] max-w-[90%] -translate-x-1/2 rounded-full bg-indigo-100/35 blur-3xl"
         />
 
         <div className="container relative mx-auto max-w-6xl">
@@ -223,7 +223,7 @@ const LandingPage = () => {
               <Button
                 size="lg"
                 asChild
-                className="h-11 w-full rounded-xl bg-slate-900 px-8 text-sm text-white shadow-sm transition-all duration-300 hover:bg-slate-800 hover:shadow-lg sm:h-12 sm:w-auto"
+                className="h-11 w-full rounded-xl px-8 text-sm shadow-sm sm:h-12 sm:w-auto"
               >
                 <Link to="/sales">
                   <span className="font-medium">Book a Demo</span>
@@ -233,7 +233,7 @@ const LandingPage = () => {
                 size="lg"
                 variant="outline"
                 asChild
-                className="h-11 w-full rounded-xl border-slate-300 bg-white px-8 text-sm text-slate-900 shadow-sm transition-all duration-300 hover:bg-slate-50 hover:shadow-md sm:h-12 sm:w-auto"
+                className="h-11 w-full rounded-xl px-8 text-sm shadow-sm sm:h-12 sm:w-auto"
               >
                 <Link to="/business/signup">
                   <span className="font-medium">Get Started</span>
@@ -317,11 +317,11 @@ const LandingPage = () => {
         {/* soft accent-tinted gradient background */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-emerald-50/60 via-slate-50 to-slate-50"
+          className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-indigo-50/60 via-slate-50 to-slate-50"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-[40rem] max-w-[90vw] -translate-x-1/2 rounded-full bg-emerald-100/40 blur-3xl"
+          className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-[40rem] max-w-[90vw] -translate-x-1/2 rounded-full bg-indigo-100/35 blur-3xl"
         />
 
         <div className="container mx-auto max-w-4xl text-center scroll-animate">
@@ -343,7 +343,7 @@ const LandingPage = () => {
                   aria-hidden="true"
                   viewBox="0 0 120 16"
                   preserveAspectRatio="none"
-                  className="pointer-events-none absolute inset-x-0 top-[62%] h-[0.55em] w-full -translate-y-1/2 text-success"
+                  className="pointer-events-none absolute inset-x-0 top-[62%] h-[0.55em] w-full -translate-y-1/2 text-indigo-500"
                 >
                   <path
                     d="M3 9 C 28 3, 46 14, 66 7 S 100 3, 117 9"
@@ -356,7 +356,7 @@ const LandingPage = () => {
               </span>
             </span>
             {/* penned-in correction, on the line below */}
-            <span className="mt-1.5 block font-hand text-[1.12em] font-bold leading-none text-success">
+            <span className="mt-1.5 block font-hand text-[1.12em] font-bold leading-none text-indigo-600">
               Smooth Service
             </span>
           </h2>
@@ -371,7 +371,7 @@ const LandingPage = () => {
             <Button
               size="lg"
               asChild
-              className="rounded-xl bg-slate-900 px-8 text-white shadow-sm transition-all duration-300 hover:bg-slate-800 hover:shadow-lg"
+              className="rounded-xl px-8 shadow-sm"
             >
               <Link to="/sales">
                 <span className="font-medium">Book a Demo</span>

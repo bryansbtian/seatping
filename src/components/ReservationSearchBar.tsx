@@ -229,7 +229,7 @@ const ReservationSearchBar = () => {
           <Button
             type="submit"
             size="lg"
-            className="h-12 w-full rounded-xl bg-slate-900 text-white px-8 hover:bg-slate-800 transition-colors md:col-span-full xl:col-auto"
+            className="h-12 w-full rounded-xl px-8 md:col-span-full xl:col-auto"
           >
             <Search className="h-4 w-4" />
             <span className="font-medium">Search</span>

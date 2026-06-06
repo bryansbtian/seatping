@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/StatusBadge";
 import {
   Card,
   CardHeader,
@@ -10,6 +11,7 @@ import {
 import { useEffect, useState, useRef, useMemo } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import BusinessHeader from "@/components/BusinessHeader";
 import ReservationsManager from "@/components/ReservationsManager";
 import {
@@ -67,6 +69,7 @@ const TOOLTIP_CONTENT_STYLE = {
 };
 
 const BusinessDashboard = () => {
+  const isMobile = useIsMobile();
   const [me, setMe] = useState<any | null>(null);
   const [selectedLocationIndex, setSelectedLocationIndex] = useState(0);
   // Per-customer queue ETAs (keyed by queueToken), from the shared backend helper.
@@ -833,6 +836,10 @@ const BusinessDashboard = () => {
     });
 
     return Array.from(hourMap.entries())
+      .filter(([, count]) => count > 0) // Only show hours with traffic
+      .sort((a, b) => b[1] - a[1]) // Busiest first
+      .slice(0, 8) // Cap at the 8 busiest hours so the chart stays readable
+      .sort((a, b) => a[0] - b[0]) // Back to chronological order for the axis
       .map(([hour, count]) => ({
         hour:
           hour === 0
@@ -843,8 +850,7 @@ const BusinessDashboard = () => {
                 ? "12 PM"
                 : `${hour - 12} PM`,
         customers: count,
-      }))
-      .filter((entry) => entry.customers > 0); // Only show hours with traffic
+      }));
   };
 
   const getWaitTimeDistribution = () => {
@@ -931,8 +937,8 @@ const BusinessDashboard = () => {
                       </div>
                       <div className="flex justify-end">
                         <Button
-                          variant="outline"
-                          className="border-2 border-white text-white bg-white/10 hover:bg-white hover:text-red-600"
+                          variant="inverseOutline"
+                          className="border-2"
                           onClick={() => (window.location.href = "/sales")}
                         >
                           Contact SeatPing
@@ -965,8 +971,8 @@ const BusinessDashboard = () => {
                       </div>
                       <div className="flex justify-end">
                         <Button
-                          variant="outline"
-                          className="border-2 border-white text-white bg-white/10 hover:bg-white hover:text-indigo-600"
+                          variant="inverseOutline"
+                          className="border-2"
                           onClick={() => (window.location.href = "/sales")}
                         >
                           Contact SeatPing
@@ -998,8 +1004,7 @@ const BusinessDashboard = () => {
                     </div>
                     <div className="flex justify-end">
                       <Button
-                        variant="outline"
-                        className="border-white text-white hover:bg-white hover:text-teal-600"
+                        variant="inverseOutline"
                         onClick={() => (window.location.href = "/sales")}
                       >
                         Contact SeatPing
@@ -1011,7 +1016,7 @@ const BusinessDashboard = () => {
             )}
 
           {/* Dashboard Header - Mobile Version */}
-          <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-4 lg:hidden">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 md:p-6 mb-4 lg:hidden">
             {/* Header (no date here) */}
             <div className="mb-4">
               <h2 className="text-xl md:text-2xl font-semibold text-slate-800 leading-tight">
@@ -1065,7 +1070,7 @@ const BusinessDashboard = () => {
           </div>
 
           {/* Dashboard Header - Desktop Version */}
-          <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6 hidden lg:block">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 md:p-6 mb-6 hidden lg:block">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h2 className="text-xl md:text-2xl font-semibold text-slate-800">
@@ -1178,7 +1183,7 @@ const BusinessDashboard = () => {
 
           {/* Stats Cards - Desktop Version */}
           <div className="hidden lg:grid grid-cols-5 gap-4 mb-6">
-            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex flex-col gap-2">
                 <p className="text-slate-600 text-xs md:text-sm">
                   Current Queue
@@ -1194,7 +1199,7 @@ const BusinessDashboard = () => {
               </div>
             </Card>
 
-            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex flex-col gap-2">
                 <p className="text-slate-600 text-xs md:text-sm">
                   Reservations Today
@@ -1210,7 +1215,7 @@ const BusinessDashboard = () => {
               </div>
             </Card>
 
-            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex flex-col gap-2">
                 <p className="text-slate-600 text-xs md:text-sm">
                   Avg Queue Wait Time
@@ -1226,7 +1231,7 @@ const BusinessDashboard = () => {
               </div>
             </Card>
 
-            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex flex-col gap-2">
                 <p className="text-slate-600 text-xs md:text-sm">
                   Served Today
@@ -1242,7 +1247,7 @@ const BusinessDashboard = () => {
               </div>
             </Card>
 
-            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border-0">
+            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex flex-col gap-2">
                 <p className="text-slate-600 text-xs md:text-sm">Left Today</p>
                 <div className="flex items-center justify-between">
@@ -1258,7 +1263,7 @@ const BusinessDashboard = () => {
           </div>
 
           {/* Queue Management */}
-          <Card className="bg-white rounded-xl shadow-sm border-0 mb-6">
+          <Card className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
             <CardHeader className="border-b border-gray-100 p-4 md:p-6">
               {/* Mobile Layout */}
               <div className="md:hidden">
@@ -1409,7 +1414,8 @@ const BusinessDashboard = () => {
                       <div className="flex items-center space-x-2 md:space-x-3">
                         <Button
                           size="sm"
-                          className="bg-green-600 hover:bg-green-700 text-white flex-1 md:flex-none"
+                          variant="success"
+                          className="flex-1 md:flex-none"
                           onClick={() => admitCustomer(index)}
                           disabled={loading}
                         >
@@ -1417,7 +1423,7 @@ const BusinessDashboard = () => {
                         </Button>
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant="destructiveOutline"
                           onClick={() => removeCustomer(index)}
                           disabled={loading}
                           className="flex-1 md:flex-none"
@@ -1516,7 +1522,8 @@ const BusinessDashboard = () => {
                               <div className="flex items-center gap-2 md:gap-3">
                                 <Button
                                   size="sm"
-                                  className="bg-green-600 hover:bg-green-700 text-white flex-1 md:flex-none"
+                                  variant="success"
+                                  className="flex-1 md:flex-none"
                                   onClick={() => confirmArrival(customer)}
                                   disabled={loading}
                                 >
@@ -1524,8 +1531,8 @@ const BusinessDashboard = () => {
                                 </Button>
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  className="border-red-500 text-red-600 hover:bg-red-50 flex-1 md:flex-none"
+                                  variant="destructiveOutline"
+                                  className="flex-1 md:flex-none"
                                   onClick={() => markNoShow(customer)}
                                   disabled={loading}
                                 >
@@ -1585,7 +1592,7 @@ const BusinessDashboard = () => {
               .slice(-5); // Show only the last 5 most recent
 
             return (
-              <Card className="bg-white rounded-xl shadow-sm border-0 mb-6">
+              <Card className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
                   <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
                     <Users className="w-5 h-5" />
@@ -1608,18 +1615,17 @@ const BusinessDashboard = () => {
                       {recentlyLeftCustomers.map(
                         (customer: any, index: number) => {
                           const statusBadge = (
-                            <Badge
-                              variant={
+                            <StatusBadge
+                              status={
+                                customer.status === "left" ? "left" : "removed"
+                              }
+                              label={
                                 customer.status === "left"
-                                  ? "secondary"
-                                  : "destructive"
+                                  ? "Left Queue"
+                                  : "Removed by Business"
                               }
                               className="inline-flex h-6 items-center justify-center px-3 text-xs leading-none md:h-7"
-                            >
-                              {customer.status === "left"
-                                ? "Left Queue"
-                                : "Removed by Business"}
-                            </Badge>
+                            />
                           );
                           return (
                             <div
@@ -1681,7 +1687,7 @@ const BusinessDashboard = () => {
           {/* Analytics Section */}
           <div className="mb-6 space-y-6">
             {/* Daily/Weekly Summary Graph */}
-            <Card className="bg-white rounded-xl shadow-sm border-0">
+            <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
               <CardHeader className="border-b border-slate-100 p-4 md:p-6">
                 <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
                   <div>
@@ -1800,7 +1806,7 @@ const BusinessDashboard = () => {
             {/* Peak Hours and Wait Time Distribution */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Peak Hours Heatmap */}
-              <Card className="bg-white rounded-xl shadow-sm border-0">
+              <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
                   <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
                     <Clock className="w-5 h-5" />
@@ -1812,16 +1818,17 @@ const BusinessDashboard = () => {
                 </CardHeader>
                 <CardContent className="p-4 md:p-6">
                   {peakHoursData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={400}>
+                    <ResponsiveContainer width="100%" height={300}>
                       <BarChart
                         data={peakHoursData}
-                        margin={{ top: 8, right: 16, left: 28, bottom: 8 }}
+                        margin={{ top: 8, right: 16, left: 28, bottom: 0 }}
                       >
                         <XAxis
                           dataKey="hour"
-                          angle={-45}
-                          textAnchor="end"
-                          height={80}
+                          height={40}
+                          interval={isMobile ? "preserveStartEnd" : 0}
+                          minTickGap={isMobile ? 16 : 0}
+                          tick={{ fontSize: 12 }}
                         />
 
                         {/* Left axis (visible) */}
@@ -1844,7 +1851,7 @@ const BusinessDashboard = () => {
                         <Bar
                           yAxisId="left"
                           dataKey="customers"
-                          fill="#3b82f6"
+                          fill="#4f46e5"
                           name="Customers"
                           radius={[8, 8, 0, 0]}
                         />
@@ -1862,7 +1869,7 @@ const BusinessDashboard = () => {
               </Card>
 
               {/* Wait Time Distribution */}
-              <Card className="bg-white rounded-xl shadow-sm border-0">
+              <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
                   <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
                     <BarChart3 className="w-5 h-5" />
@@ -1874,12 +1881,16 @@ const BusinessDashboard = () => {
                 </CardHeader>
                 <CardContent className="p-4 md:p-6">
                   {waitTimeDistribution.some((b) => b.count > 0) ? (
-                    <ResponsiveContainer width="100%" height={400}>
+                    <ResponsiveContainer width="100%" height={300}>
                       <BarChart
                         data={waitTimeDistribution}
-                        margin={{ top: 8, right: 16, left: 28, bottom: 8 }}
+                        margin={{ top: 8, right: 16, left: 28, bottom: 0 }}
                       >
-                        <XAxis dataKey="range" height={80} />
+                        <XAxis
+                          dataKey="range"
+                          height={40}
+                          tick={{ fontSize: 12 }}
+                        />
 
                         {/* Left axis (visible) */}
                         <YAxis yAxisId="left" width={40} />
@@ -1901,7 +1912,7 @@ const BusinessDashboard = () => {
                         <Bar
                           yAxisId="left"
                           dataKey="count"
-                          fill="#10b981"
+                          fill="#64748b"
                           name="Customers"
                           radius={[8, 8, 0, 0]}
                         />

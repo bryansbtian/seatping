@@ -391,7 +391,7 @@ export default function SearchResults() {
     if (activeQuery) {
       return `${count} ${count === 1 ? "result" : "results"} for "${activeQuery}"`;
     }
-    return `${count} ${count === 1 ? "restaurant" : "restaurants"} available`;
+    return `${count} ${count === 1 ? "Restaurant" : "Restaurants"} Available`;
   })();
 
   return (
@@ -509,8 +509,9 @@ export default function SearchResults() {
               <Button
                 type="submit"
                 size="lg"
+                variant="outline"
                 disabled={!inputQuery.trim()}
-                className="h-12 w-full rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-colors md:col-span-full md:bg-white md:text-slate-900 md:hover:bg-slate-100 xl:col-auto"
+                className="h-12 w-full rounded-xl md:col-span-full xl:col-auto"
               >
                 <SearchIcon className="h-4 w-4" />
                 <span className="font-medium">Search</span>
@@ -816,7 +817,7 @@ function RestaurantCard({
               <Button
                 asChild
                 onClick={(e) => e.stopPropagation()}
-                className="flex-1 min-w-0 justify-center whitespace-nowrap px-3 text-sm bg-slate-900 text-white hover:bg-slate-800"
+                className="flex-1 min-w-0 justify-center whitespace-nowrap px-3"
               >
                 <Link to={bookPath}>
                   <Utensils className="h-4 w-4" />
@@ -841,7 +842,7 @@ function RestaurantCard({
                 variant="outline"
                 aria-label={`Join queue at ${r.name}`}
                 onClick={(e) => e.stopPropagation()}
-                className="flex-1 min-w-0 justify-center whitespace-nowrap px-3 text-sm border-slate-200 text-slate-900 hover:bg-slate-50"
+                className="flex-1 min-w-0 justify-center whitespace-nowrap px-3"
               >
                 <Link to={queuePath}>
                   <Users className="h-4 w-4" />
@@ -1148,7 +1149,7 @@ function MobileFiltersDialog({
             Clear
           </Button>
           <Button
-            className="flex-1 bg-slate-900 text-white hover:bg-slate-800"
+            className="flex-1"
             onClick={() => onOpenChange(false)}
           >
             Show Results

@@ -80,8 +80,7 @@ const BusinessSettings = () => {
                     </div>
                     <div className="flex justify-end">
                       <Button
-                        variant="outline"
-                        className="border-white text-white hover:bg-white hover:text-teal-600"
+                        variant="inverseOutline"
                         onClick={() => (window.location.href = "/sales")}
                       >
                         Contact SeatPing
@@ -104,7 +103,7 @@ const BusinessSettings = () => {
 
           <div className="space-y-4 md:space-y-6">
             {/* Business Information */}
-            <Card className="bg-white rounded-xl shadow-sm border-0">
+            <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
               <CardHeader className="p-4 md:p-6">
                 <CardTitle className="text-lg md:text-xl text-gray-800">
                   Business Information

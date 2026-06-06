@@ -919,8 +919,8 @@ export default function RestaurantProfileEditor({
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
-                  className="w-full text-red-600 hover:bg-red-50 hover:text-red-700 sm:w-auto"
+                  variant="destructiveOutline"
+                  className="w-full sm:w-auto"
                   disabled={bannerUploading}
                   onClick={removeBanner}
                 >
@@ -1214,7 +1214,7 @@ export default function RestaurantProfileEditor({
           <Button
             onClick={save}
             disabled={saving}
-            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="w-full sm:w-auto"
           >
             {saving ? "Saving..." : "Save Changes"}
           </Button>
@@ -1427,7 +1427,7 @@ function MenuSection({
                 type="button"
                 onClick={saveItem}
                 disabled={!form.draft.name.trim()}
-                className="w-full bg-indigo-600 text-white hover:bg-indigo-700 sm:w-auto"
+                className="w-full sm:w-auto"
               >
                 Save Item
               </Button>
@@ -1494,10 +1494,10 @@ function MenuSection({
                       </Button>
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="destructiveOutline"
                         size="sm"
                         onClick={() => remove(index)}
-                        className="flex-1 gap-1.5 border-red-200 text-red-600 hover:bg-red-50 sm:flex-none"
+                        className="flex-1 gap-1.5 sm:flex-none"
                       >
                         <Trash2 size={14} /> Delete
                       </Button>

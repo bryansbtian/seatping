@@ -147,7 +147,6 @@ export function EditReviewDialog({
           <Button
             onClick={save}
             disabled={saving}
-            className="bg-slate-900 text-white hover:bg-slate-800"
           >
             {saving ? "Saving…" : "Save Changes"}
           </Button>

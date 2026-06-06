@@ -24,7 +24,7 @@ const FloatingStat = ({
   <div
     className={`flex max-w-[280px] items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-4 py-3 shadow-xl backdrop-blur-md ${className}`}
   >
-    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-success/20 text-success">
+    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-indigo-500/20 text-indigo-200">
       {icon}
     </span>
     <div className="min-w-0">
@@ -119,7 +119,7 @@ const Sales = () => {
     <>
       <Header />
 
-      <main className="bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 pb-12 pt-24 sm:pb-16 sm:pt-28">
+      <main className="bg-gradient-to-br from-slate-50 via-white to-indigo-50/70 px-4 pb-12 pt-24 sm:pb-16 sm:pt-28">
         <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-2 lg:items-stretch lg:gap-14">
           {/* Left — headline + form */}
           <div className="mx-auto w-full max-w-xl lg:mx-0">
@@ -136,7 +136,7 @@ const Sales = () => {
                   aria-hidden="true"
                   viewBox="0 0 120 16"
                   preserveAspectRatio="none"
-                  className="pointer-events-none absolute inset-x-0 top-[62%] h-[0.55em] w-full -translate-y-1/2 text-success"
+                  className="pointer-events-none absolute inset-x-0 top-[62%] h-[0.55em] w-full -translate-y-1/2 text-indigo-500"
                 >
                   <path
                     d="M3 9 C 28 3, 46 14, 66 7 S 100 3, 117 9"
@@ -147,7 +147,7 @@ const Sales = () => {
                   />
                 </svg>
               </span>{" "}
-              <span className="text-success">Seconds</span>
+              <span className="text-indigo-600">Seconds</span>
             </h1>
             <p className="mt-4 text-base sm:text-lg text-slate-600">
               Tell us about your business and we'll get back to you with the

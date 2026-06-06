@@ -407,13 +407,7 @@ export default function ReservationBooking({
         <div className="space-y-2">
           {reservationsEnabled ? (
             <Button
-              variant={queueEnabled ? "outline" : "default"}
-              className={cn(
-                "w-full",
-                queueEnabled
-                  ? "border-slate-200 text-slate-700 hover:bg-slate-50"
-                  : "bg-slate-900 text-white hover:bg-slate-800",
-              )}
+              className="w-full"
               disabled={!canBook}
               onClick={() => setModalOpen(true)}
             >
@@ -437,8 +431,9 @@ export default function ReservationBooking({
           )}
           {queueEnabled !== false && (
             <Button
+              variant="outline"
               asChild
-              className="w-full bg-slate-900 text-white hover:bg-slate-800"
+              className="w-full"
             >
               <Link to={queueHref}>
                 <Users className="h-4 w-4" />
@@ -657,7 +652,7 @@ function BookingModal({
                 {manageToken && (
                   <Button
                     asChild
-                    className="flex-1 bg-slate-900 text-white hover:bg-slate-800"
+                    className="flex-1"
                   >
                     <Link to={`/reservations/manage/${manageToken}`}>
                       Manage Reservation
@@ -799,7 +794,7 @@ function BookingModal({
                 )}
 
                 <Button
-                  className="w-full bg-slate-900 text-white hover:bg-slate-800"
+                  className="w-full"
                   disabled={!canSubmit || submitting}
                   onClick={submit}
                 >

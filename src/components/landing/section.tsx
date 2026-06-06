@@ -45,7 +45,7 @@ export const CARD_CONTAINER =
   "rounded-2xl border border-slate-200/80 bg-white shadow-sm";
 
 /**
- * Small uppercase pill label with a blue accent icon, used at the top of each
+ * Small uppercase pill label with a navy accent icon, used at the top of each
  * section. Consistent border, background, shadow, and icon sizing everywhere.
  */
 export function SectionPill({
@@ -64,7 +64,7 @@ export function SectionPill({
         className,
       )}
     >
-      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-white">
+      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-white">
         <Icon className="h-2.5 w-2.5" />
       </span>
       {children}

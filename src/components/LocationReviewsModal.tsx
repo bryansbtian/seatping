@@ -495,7 +495,7 @@ export default function LocationReviewsModal({
                           <Button
                             type="button"
                             size="sm"
-                            variant="ghost"
+                            variant="outline"
                             onClick={() => startReply(r.id, r.businessReply)}
                             disabled={isSubmitting}
                           >
@@ -506,8 +506,7 @@ export default function LocationReviewsModal({
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="ghost"
-                                className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                variant="destructiveOutline"
                                 disabled={isSubmitting}
                               >
                                 <Trash2 className="h-3.5 w-3.5" /> Delete
@@ -527,7 +526,7 @@ export default function LocationReviewsModal({
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => deleteReply(r)}
-                                  className="bg-red-600 hover:bg-red-700"
+                                  variant="destructive"
                                 >
                                   Delete reply
                                 </AlertDialogAction>
@@ -585,7 +584,7 @@ export default function LocationReviewsModal({
                           <Button
                             type="button"
                             size="sm"
-                            variant="ghost"
+                            variant="outline"
                             onClick={() => cancelReply(r.id)}
                             disabled={isSubmitting}
                             className="flex-1 sm:flex-none"
@@ -599,7 +598,7 @@ export default function LocationReviewsModal({
                             disabled={
                               isSubmitting || !draftTrimmed || overLimit
                             }
-                            className="flex-1 bg-slate-900 text-white hover:bg-slate-800 sm:flex-none"
+                            className="flex-1 sm:flex-none"
                           >
                             {isSubmitting ? (
                               <>
@@ -607,9 +606,9 @@ export default function LocationReviewsModal({
                                 Saving...
                               </>
                             ) : r.businessReply ? (
-                              "Save reply"
+                              "Save Reply"
                             ) : (
-                              "Post reply"
+                              "Post Reply"
                             )}
                           </Button>
                         </div>

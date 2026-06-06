@@ -18,7 +18,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/StatusBadge";
+import { statusLabel } from "@/lib/statusStyles";
 import {
   CalendarDays,
   CalendarClock,
@@ -50,24 +51,6 @@ type Reservation = {
 type TabKey = "today" | "upcoming" | "past" | "cancelled" | "no_shows";
 
 const ACTIVE = ["pending", "confirmed", "arrived"];
-
-const STATUS_STYLE: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-700",
-  confirmed: "bg-emerald-100 text-emerald-700",
-  arrived: "bg-blue-100 text-blue-700",
-  completed: "bg-slate-200 text-slate-700",
-  cancelled: "bg-red-100 text-red-700",
-  no_show: "bg-red-100 text-red-700",
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  confirmed: "Confirmed",
-  arrived: "Arrived",
-  completed: "Completed",
-  cancelled: "Cancelled",
-  no_show: "No-Show",
-};
 
 function splitDateTime(dt: string) {
   const [date, rest] = String(dt || "").split("T");
@@ -181,7 +164,7 @@ export default function ReservationsManager({
       onUpdated(res.user);
       toast({
         title: "Reservation updated",
-        description: `${r.name} marked ${STATUS_LABEL[status] || status}.`,
+        description: `${r.name} marked ${statusLabel(status)}.`,
       });
     } catch (e: any) {
       toast({
@@ -195,7 +178,7 @@ export default function ReservationsManager({
   };
 
   return (
-    <Card className="bg-white rounded-xl shadow-sm border-0 mb-6">
+    <Card className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
       <CardHeader className="border-b border-gray-100 p-4 md:p-6">
         <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
           <div>
@@ -382,14 +365,7 @@ function ReservationCard({
             <p className="font-semibold text-gray-800 text-sm md:text-base">
               {r.name}
             </p>
-            <Badge
-              className={cn(
-                "border-0 text-[10px]",
-                STATUS_STYLE[r.status] || "bg-slate-100 text-slate-600",
-              )}
-            >
-              {STATUS_LABEL[r.status] || r.status}
-            </Badge>
+            <StatusBadge status={r.status} className="text-[10px]" />
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
             <span className="inline-flex items-center gap-1">
@@ -419,15 +395,14 @@ function ReservationCard({
             <Button
               key={a.status}
               size="sm"
-              variant={a.variant === "destructive" ? "outline" : "default"}
+              variant={
+                a.variant === "destructive"
+                  ? "destructiveOutline"
+                  : "default"
+              }
               disabled={busy}
               onClick={() => onChange(r, a.status)}
-              className={cn(
-                "h-8 text-xs",
-                a.variant === "destructive"
-                  ? "border-red-200 text-red-600 hover:bg-red-50"
-                  : "bg-slate-900 text-white hover:bg-slate-800",
-              )}
+              className="h-8 text-xs"
             >
               {busy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

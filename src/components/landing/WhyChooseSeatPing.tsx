@@ -3,7 +3,7 @@
  *
  * Two stacked sections customised for SeatPing:
  *   1. {@link WhyChooseSeatPing} — pill, headline, subtitle, and a 4-up row of
- *      compact feature cards, each turning brand blue on hover.
+ *      compact feature cards, each turning brand navy on hover.
  *   2. {@link SeatPingFeatureGrid} — a two-column block with an expandable
  *      feature accordion on the left and a product "snapshot" visual on the right.
  *
@@ -51,13 +51,20 @@ import {
 /*  Mini visuals — small, reusable, lightweight                       */
 /* ================================================================== */
 
+const MINI_GLASS_SURFACE =
+  "relative isolate overflow-hidden border border-slate-200 bg-white shadow-sm transition-[background-color,border-color,box-shadow,backdrop-filter,transform] duration-500 ease-out before:pointer-events-none before:absolute before:inset-0 before:z-0 before:bg-[linear-gradient(135deg,rgba(255,255,255,0.78)_0%,rgba(255,255,255,0.22)_48%,rgba(255,255,255,0.68)_100%)] before:opacity-0 before:transition-opacity before:duration-500 before:ease-out group-hover:-translate-y-0.5 group-hover:border-white/60 group-hover:bg-white/45 group-hover:shadow-[0_14px_32px_rgba(15,23,42,0.22),inset_0_1px_0_rgba(255,255,255,0.85)] group-hover:backdrop-blur-2xl group-hover:backdrop-saturate-150 group-hover:before:opacity-100 [&>*]:relative [&>*]:z-10";
+
+const MINI_GLASS_INSET =
+  "border border-slate-200 bg-slate-50 transition-[background-color,border-color,box-shadow,backdrop-filter] duration-500 ease-out group-hover:border-white/50 group-hover:bg-white/35 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_8px_20px_rgba(15,23,42,0.1)] group-hover:backdrop-blur-lg group-hover:backdrop-saturate-150";
+
 /** 1 · Queue Management card — mirrors the dashboard's Queue Management surface
  *  (title + "N customers" badge, ranked guest row, Admit / Remove). */
 export function MiniQueueCard({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex h-full w-full flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm",
+        MINI_GLASS_SURFACE,
+        "flex h-full w-full flex-col rounded-xl p-3",
         className,
       )}
     >
@@ -70,7 +77,12 @@ export function MiniQueueCard({ className }: { className?: string }) {
           2 customers
         </span>
       </div>
-      <div className="flex flex-1 flex-col justify-center rounded-lg bg-gray-50 p-2.5">
+      <div
+        className={cn(
+          MINI_GLASS_INSET,
+          "flex flex-1 flex-col justify-center rounded-lg p-2.5",
+        )}
+      >
         <div className="flex items-start gap-2">
           <span className="mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[9px] font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
             #1
@@ -106,7 +118,8 @@ export function MiniReservationCard({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex h-full w-full flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm",
+        MINI_GLASS_SURFACE,
+        "flex h-full w-full flex-col rounded-xl p-3",
         className,
       )}
     >
@@ -116,7 +129,12 @@ export function MiniReservationCard({ className }: { className?: string }) {
           Reservations Management
         </span>
       </div>
-      <div className="flex flex-1 flex-col justify-center rounded-xl border border-slate-200 p-3">
+      <div
+        className={cn(
+          MINI_GLASS_INSET,
+          "flex flex-1 flex-col justify-center rounded-xl p-3",
+        )}
+      >
         <div className="flex items-center gap-2">
           <p className="truncate text-[12px] font-semibold text-gray-800">
             Sofia Almeida
@@ -174,8 +192,8 @@ export function MiniPerformanceCard({ className }: { className?: string }) {
       label: "Reservations Today",
       value: "12",
       icon: Calendar,
-      tint: "bg-blue-100",
-      fg: "text-blue-600",
+      tint: "bg-indigo-100",
+      fg: "text-indigo-600",
     },
   ];
   return (
@@ -185,7 +203,10 @@ export function MiniPerformanceCard({ className }: { className?: string }) {
       {stats.map((s) => (
         <div
           key={s.label}
-          className="flex flex-col justify-center rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm"
+          className={cn(
+            MINI_GLASS_SURFACE,
+            "flex flex-col justify-center rounded-xl p-2.5",
+          )}
         >
           <p className="truncate text-[10px] text-slate-600">{s.label}</p>
           <div className="mt-2 flex items-center justify-between">
@@ -231,7 +252,10 @@ export function MiniLocationCard({ className }: { className?: string }) {
       {locations.map((loc) => (
         <div
           key={loc.name}
-          className="flex flex-1 flex-col justify-center rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-sm"
+          className={cn(
+            MINI_GLASS_SURFACE,
+            "flex flex-1 flex-col justify-center rounded-xl px-2 py-1.5",
+          )}
         >
           {/* line 1: location name (full width) + actions */}
           <div className="flex items-center gap-1.5">
@@ -272,13 +296,13 @@ export function MiniNotificationCard({ className }: { className?: string }) {
       icon: Phone,
       label: "SMS",
       text: "Your Table Is Ready 🎉",
-      tint: "bg-blue-50 text-blue-600",
+      tint: "bg-slate-100 text-slate-700",
     },
     {
       icon: MessageSquare,
       label: "WhatsApp",
       text: "You're Next In Line",
-      tint: "bg-teal-50 text-teal-600",
+      tint: "bg-indigo-50 text-indigo-600",
     },
     {
       icon: Mail,
@@ -328,7 +352,7 @@ export function MiniRestaurantProfileCard({
       )}
     >
       {/* banner */}
-      <div className="relative h-16 bg-gradient-to-r from-blue-500 to-indigo-500">
+      <div className="relative h-16 bg-gradient-to-r from-slate-900 to-indigo-700">
         <div className="absolute -bottom-4 left-3 flex h-12 w-12 items-center justify-center rounded-xl border-2 border-white bg-slate-900 text-sm font-semibold text-white">
           CM
         </div>
@@ -422,8 +446,8 @@ function FeatureAccordion() {
             className={cn(
               "block w-full rounded-2xl border p-4 text-left transition-all duration-300 sm:p-5",
               active
-                ? "border-blue-200 bg-blue-50/70 shadow-sm"
-                : "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30",
+                ? "border-slate-300 bg-slate-100/80 shadow-sm"
+                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
             )}
           >
             <div className="flex items-center gap-3">
@@ -431,7 +455,7 @@ function FeatureAccordion() {
                 className={cn(
                   "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-300",
                   active
-                    ? "bg-blue-600 text-white"
+                    ? "bg-slate-900 text-white"
                     : "bg-slate-100 text-slate-600",
                 )}
               >
@@ -559,13 +583,13 @@ function ServiceSnapshot({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-50 p-5 sm:p-7",
+        "relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-100 via-white to-indigo-50/70 p-5 sm:p-7",
         className,
       )}
     >
       <div className="mx-auto max-w-sm space-y-3">
         {/* Peak Hours */}
-        <div className="rounded-2xl bg-white p-4 shadow-lg shadow-blue-900/5">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5">
           <div className="flex items-center gap-1.5">
             <Clock className="h-4 w-4 text-slate-700" />
             <p className="text-sm font-semibold text-slate-900">Peak Hours</p>
@@ -575,14 +599,14 @@ function ServiceSnapshot({ className }: { className?: string }) {
           </p>
           <MiniBarChart
             data={peakHours}
-            color="#3b82f6"
+            color="#4f46e5"
             max={24}
             yTicks={[0, 6, 12, 18, 24]}
           />
         </div>
 
         {/* Wait Time Distribution */}
-        <div className="rounded-2xl bg-white p-4 shadow-lg shadow-blue-900/5">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5">
           <div className="flex items-center gap-1.5">
             <BarChart3 className="h-4 w-4 text-slate-700" />
             <p className="text-sm font-semibold text-slate-900">
@@ -594,7 +618,7 @@ function ServiceSnapshot({ className }: { className?: string }) {
           </p>
           <MiniBarChart
             data={waitDistribution}
-            color="#10b981"
+            color="#64748b"
             max={48}
             yTicks={[0, 12, 24, 36, 48]}
           />
@@ -609,7 +633,7 @@ function ServiceSnapshot({ className }: { className?: string }) {
 /* ================================================================== */
 
 /** Compact feature card for the top 4-up row. Light by default, turning brand
- *  blue on hover (gradient, white text, brand-blue icon). */
+ *  navy on hover (gradient, white text, restrained indigo icon). */
 function SmallFeatureCard({
   icon: Icon,
   title,
@@ -622,17 +646,17 @@ function SmallFeatureCard({
   visual: React.ReactNode;
 }) {
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white to-blue-50/40 p-4 shadow-sm transition-[border-color,box-shadow,transform] duration-500 ease-out hover:-translate-y-0.5 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/20 sm:p-5">
-      {/* Blue gradient that fades in on hover. Gradients (background-image) can't
+    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm transition-[border-color,box-shadow,transform] duration-500 ease-out hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-lg hover:shadow-slate-900/15 sm:p-5">
+      {/* Navy gradient that fades in on hover. Gradients (background-image) can't
           be transitioned, so we cross-fade this overlay with opacity instead,
           which animates smoothly. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-600 opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-900 to-slate-800 opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
       />
       <div className="relative flex flex-1 flex-col">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition-colors duration-500 ease-out group-hover:text-blue-600">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition-colors duration-500 ease-out group-hover:text-indigo-600">
             <Icon className="h-5 w-5" />
           </span>
           <h3
@@ -646,7 +670,7 @@ function SmallFeatureCard({
         </div>
         <p
           className={cn(
-            "mt-3 transition-colors duration-500 ease-out group-hover:text-blue-50/90",
+            "mt-3 transition-colors duration-500 ease-out group-hover:text-slate-200",
             CARD_DESCRIPTION,
           )}
         >
@@ -675,7 +699,7 @@ export default function WhyChooseSeatPing() {
       {/* soft brand wash */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-20 right-0 h-72 w-[36rem] max-w-[90vw] rounded-full bg-blue-100/40 blur-3xl"
+        className="pointer-events-none absolute -top-20 right-0 h-72 w-[36rem] max-w-[90vw] rounded-full bg-indigo-100/35 blur-3xl"
       />
 
       <div className="container relative mx-auto max-w-6xl scroll-animate">
