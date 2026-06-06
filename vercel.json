@@ -9,6 +9,10 @@
       "destination": "/api/server"
     },
     {
+      "source": "/admin",
+      "destination": "/index.html"
+    },
+    {
       "source": "/admin/:path*",
       "destination": "/api/server"
     },
