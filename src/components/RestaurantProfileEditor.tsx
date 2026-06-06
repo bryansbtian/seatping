@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 import {
   Card,
   CardContent,
@@ -1666,17 +1667,39 @@ function MenuSection({
           </div>
         ))}
 
-        {/* Primary add button — hidden while the form is open to avoid two
-            "add" affordances at once. */}
         {!form && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={openAdd}
-            className="w-full sm:w-auto"
-          >
-            <Plus size={16} className="mr-2" /> Add Menu Item
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={openAdd}
+              className="w-full sm:w-auto"
+            >
+              <Plus size={16} className="mr-2" /> Add Menu Item
+            </Button>
+            {menu.length > 0 && (
+              <ConfirmModal
+                title="Clear Menu?"
+                description={`This will remove ${menu.length} menu item${menu.length === 1 ? "" : "s"} from this location. This action cannot be undone.`}
+                helperText="You can upload a new CSV or add menu items again after clearing."
+                cancelText="Cancel"
+                confirmText="Clear Menu"
+                loadingText="Clearing..."
+                successMessage="Menu cleared successfully."
+                errorMessage="Failed to clear menu. Please try again."
+                onConfirm={async () => {
+                  // Simulate a short delay to show the "Clearing..." state
+                  await new Promise((resolve) => setTimeout(resolve, 600));
+                  setMenu([]);
+                }}
+                trigger={
+                  <Button type="button" variant="destructiveOutline" className="w-full sm:w-auto">
+                    <Trash2 size={16} className="mr-2" /> Clear Menu
+                  </Button>
+                }
+              />
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
