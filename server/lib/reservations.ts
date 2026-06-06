@@ -91,6 +91,48 @@ function timeToMinutes(t: string): number {
   return h * 60 + m;
 }
 
+// Weekday index (0=Sun) → key used in the restaurant's openingHours JSON.
+const DAY_KEYS = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+];
+
+/**
+ * The day's opening window (minutes since midnight) for the calendar `date`,
+ * read from the restaurant's weekly opening hours. Reservation slots are clipped
+ * to this so a restaurant that opens 15:00–17:00 never offers slots outside that
+ * range even if its reservation hours are wider. Returns:
+ *   - `null` when that weekday is explicitly closed (no slots should show)
+ *   - `undefined` when hours aren't configured or are incomplete/invalid for the
+ *     day, so callers fall back to reservation hours without restricting.
+ * Sets `overnight` for spans where close <= open (e.g. 18:00–02:00).
+ */
+function dayOpenWindow(
+  openingHours: any,
+  date: string,
+): { openMin: number; closeMin: number; overnight: boolean } | null | undefined {
+  if (!openingHours || typeof openingHours !== "object") return undefined;
+  if (!DATE_RE.test(date)) return undefined;
+  const [y, mo, d] = date.split("-").map(Number);
+  // Weekday derives purely from the calendar date (UTC midnight avoids any
+  // local-timezone day shift); the date is already the restaurant-local day.
+  const dow = new Date(Date.UTC(y, mo - 1, d)).getUTCDay();
+  const day = openingHours[DAY_KEYS[dow]];
+  if (!day || typeof day !== "object") return undefined;
+  if (!day.enabled) return null; // explicitly closed this weekday
+  const open = String(day.open || "");
+  const close = String(day.close || "");
+  if (!TIME_RE.test(open) || !TIME_RE.test(close)) return undefined;
+  const openMin = timeToMinutes(open);
+  const closeMin = timeToMinutes(close);
+  return { openMin, closeMin, overnight: closeMin <= openMin };
+}
+
 function minutesToTime(mins: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -262,8 +304,15 @@ export function computeAvailability(params: {
    * of where the server runs (UTC in production). Falls back to server-local.
    */
   timeZone?: string;
+  /**
+   * The restaurant's public weekly opening hours JSON. When configured, slots
+   * are clipped to the day's open window so reservation hours that are wider
+   * than opening hours never surface bookable times while the restaurant is
+   * closed. Omit/undefined to leave slots unrestricted by opening hours.
+   */
+  openingHours?: any;
 }): { slots: Slot[]; partyTooLarge: boolean; outsideWindow: boolean } {
-  const { settings, reservations, date, partySize, timeZone } = params;
+  const { settings, reservations, date, partySize, timeZone, openingHours } = params;
   const now = params.now || new Date();
 
   const partyTooLarge = partySize > settings.maxPartySize;
@@ -280,7 +329,21 @@ export function computeAvailability(params: {
   const endMin = timeToMinutes(settings.reservationEndTime);
   const earliestBookableMs = now.getTime() + settings.minNoticeMinutes * 60000;
 
+  // Clip slots to the day's opening hours when configured. `null` means the
+  // restaurant is closed this weekday → no slots at all; `undefined` means
+  // hours aren't set/are incomplete → fall back to reservation hours.
+  const openWindow = dayOpenWindow(openingHours, date);
+  if (openWindow === null) return { slots, partyTooLarge, outsideWindow };
+
   for (let m = startMin; m < endMin; m += 30) {
+    // Skip slots that fall outside the day's open window so the page only
+    // shows times the restaurant is actually open.
+    if (openWindow) {
+      const inHours = openWindow.overnight
+        ? m >= openWindow.openMin || m < openWindow.closeMin
+        : m >= openWindow.openMin && m < openWindow.closeMin;
+      if (!inHours) continue;
+    }
     const time = minutesToTime(m);
     const hour = Math.floor(m / 60);
     const used = activeGuestsInHour(reservations, date, hour, params.excludeId);
@@ -324,8 +387,9 @@ export function validateReservationRequest(params: {
   now?: Date;
   excludeId?: string;
   timeZone?: string;
+  openingHours?: any;
 }): string | null {
-  const { settings, reservations, date, time, partySize, timeZone } = params;
+  const { settings, reservations, date, time, partySize, timeZone, openingHours } = params;
   const now = params.now || new Date();
 
   if (!DATE_RE.test(date)) return "A valid date is required.";
@@ -345,6 +409,7 @@ export function validateReservationRequest(params: {
     now,
     excludeId: params.excludeId,
     timeZone,
+    openingHours,
   });
   if (outsideWindow) {
     return `Reservations can only be made up to ${settings.bookingWindowDays} days in advance.`;
