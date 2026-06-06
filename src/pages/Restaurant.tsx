@@ -1301,9 +1301,11 @@ function MenuList({
     shown += take.length;
   }
 
+  // Format prices consistently as e.g. "IDR 100,000" — fixed locale so the
+  // thousands separator is always a comma regardless of the viewer's locale.
   const priceLabel = (it: MenuItem) =>
     typeof it.price === "number" && Number.isFinite(it.price)
-      ? `${it.currency || fallbackCurrency || ""} ${it.price.toLocaleString()}`.trim()
+      ? `${it.currency || fallbackCurrency || ""} ${it.price.toLocaleString("en-US")}`.trim()
       : "";
 
   return (

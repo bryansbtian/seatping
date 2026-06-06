@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import Papa from "papaparse";
 import { api } from "@/lib/api";
 import { uploadBanner, uploadPhoto } from "@/lib/imageUpload";
 import { useToast } from "@/hooks/use-toast";
@@ -1211,11 +1212,7 @@ export default function RestaurantProfileEditor({
               </p>
             </div>
           </div>
-          <Button
-            onClick={save}
-            disabled={saving}
-            className="w-full sm:w-auto"
-          >
+          <Button onClick={save} disabled={saving} className="w-full sm:w-auto">
             {saving ? "Saving..." : "Save Changes"}
           </Button>
         </CardContent>
@@ -1230,10 +1227,29 @@ export default function RestaurantProfileEditor({
 
 const UNCATEGORIZED = "Other";
 
-/** Display a price with its currency code, e.g. "IDR 50,000". */
+/** Display a price with its currency code, e.g. "IDR 50,000". Uses a fixed
+ * locale so the thousands separator is always a comma regardless of the
+ * viewer's browser locale. */
 function formatMenuPrice(price: number | undefined, currency: string): string {
   if (price === undefined || price === null || Number.isNaN(price)) return "";
-  return `${currency} ${price.toLocaleString()}`;
+  return `${currency} ${price.toLocaleString("en-US")}`;
+}
+
+/**
+ * Normalize a raw CSV price cell into a number. Accepts plain numbers and a
+ * range of formatted inputs, stripping currency symbols and thousands commas:
+ *   "100000" | "100,000" | "Rp 100,000" | "IDR 100,000"  →  100000
+ * Returns undefined when no numeric value can be read (e.g. blank or "N/A").
+ */
+function parseCsvPrice(raw: string): number | undefined {
+  if (!raw) return undefined;
+  // Keep only digits, comma and dot; drops "Rp", "IDR", spaces, symbols, etc.
+  let s = raw.replace(/[^0-9.,]/g, "");
+  if (!s) return undefined;
+  // Comma is only ever a thousands separator in the supported formats.
+  s = s.replace(/,/g, "");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : undefined;
 }
 
 /**
@@ -1266,6 +1282,95 @@ function MenuSection({
     index: number | null;
     draft: MenuItem;
   } | null>(null);
+
+  // CSV import state: a structured error (title + detail) or a success summary.
+  const [csvError, setCsvError] = useState<{
+    title: string;
+    detail: string;
+  } | null>(null);
+  const [csvSuccess, setCsvSuccess] = useState<string | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+  // Columns the CSV must contain (case-insensitive; checked after trimming).
+  const REQUIRED_COLUMNS = ["name", "category", "description", "price"];
+
+  const handleCsvFile = (file: File) => {
+    setCsvError(null);
+    setCsvSuccess(null);
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      setCsvError({
+        title: "Invalid CSV Format",
+        detail: "Please choose a file with a .csv extension.",
+      });
+      return;
+    }
+    Papa.parse<Record<string, string>>(file, {
+      header: true,
+      skipEmptyLines: "greedy", // ignore blank and whitespace-only rows
+      transformHeader: (h) => h.trim().toLowerCase(),
+      complete: (results) => {
+        const fields = results.meta.fields ?? [];
+        const missing = REQUIRED_COLUMNS.filter((c) => !fields.includes(c));
+        if (missing.length > 0) {
+          setCsvError({
+            title: "Invalid CSV Format",
+            detail: `Missing required column(s): ${missing.join(
+              ", ",
+            )}. The CSV must include: name, category, description, price.`,
+          });
+          return;
+        }
+        const imported: MenuItem[] = [];
+        let skipped = 0; // rows with no name
+        let pricelessRows = 0; // rows whose price could not be read
+        for (const row of results.data) {
+          const name = (row.name ?? "").trim();
+          const category = (row.category ?? "").trim();
+          const description = (row.description ?? "").trim();
+          const priceRaw = (row.price ?? "").trim();
+          // Ignore fully empty rows (trailing blanks, duplicate empty rows).
+          if (!name && !category && !description && !priceRaw) continue;
+          // A row without a name is not a usable menu item — skip with a count.
+          if (!name) {
+            skipped++;
+            continue;
+          }
+          const price = parseCsvPrice(priceRaw);
+          if (priceRaw && price === undefined) pricelessRows++;
+          imported.push({ name, category, description, price, currency });
+        }
+        if (imported.length === 0) {
+          setCsvError({
+            title: "No Menu Items Found",
+            detail:
+              skipped > 0
+                ? `${skipped} row(s) were skipped because they have no name.`
+                : "The CSV did not contain any menu items.",
+          });
+          return;
+        }
+        setMenu((m) => [...m, ...imported]);
+        const notes: string[] = [];
+        if (skipped > 0) notes.push(`${skipped} Skipped (No Name)`);
+        if (pricelessRows > 0)
+          notes.push(`${pricelessRows} With An Unreadable Price`);
+        const count = `${imported.length} Menu Item${
+          imported.length === 1 ? "" : "s"
+        } Imported`;
+        setCsvSuccess(notes.length ? `${count} · ${notes.join(" · ")}` : count);
+      },
+      error: (err) => {
+        setCsvError({ title: "Could Not Read CSV", detail: err.message });
+      },
+    });
+  };
+
+  const onCsvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleCsvFile(file);
+    // Reset so selecting the same file again re-triggers onChange.
+    e.target.value = "";
+  };
 
   const emptyDraft = (): MenuItem => ({
     name: "",
@@ -1336,7 +1441,7 @@ function MenuSection({
       <CardContent className="space-y-4 p-4 md:p-6 pt-0">
         {/* Option 1: link to an external/full menu. */}
         <div className="space-y-1.5">
-          <Label htmlFor="menu-url">Menu link</Label>
+          <Label htmlFor="menu-url">Menu Link</Label>
           <Input
             id="menu-url"
             type="url"
@@ -1355,6 +1460,58 @@ function MenuSection({
           <span className="h-px flex-1 bg-slate-200" />
           <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
             or add highlight items
+          </span>
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        {/* Option 2a: bulk import items from a CSV file. */}
+        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+                <Upload size={15} /> Upload Menu CSV
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                CSV Must Include: Name, Category, Description, Price
+              </p>
+            </div>
+            <input
+              ref={csvInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={onCsvChange}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => csvInputRef.current?.click()}
+              className="w-full gap-1.5 sm:w-auto"
+            >
+              <Upload size={14} /> Choose CSV
+            </Button>
+          </div>
+          {csvError && (
+            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
+              <p className="text-sm font-semibold text-red-600">
+                {csvError.title}
+              </p>
+              <p className="mt-0.5 text-xs text-red-600">{csvError.detail}</p>
+            </div>
+          )}
+          {csvSuccess && (
+            <p className="mt-3 text-sm font-medium text-emerald-600">
+              {csvSuccess}
+            </p>
+          )}
+        </div>
+
+        {/* Divider before the manual single-item flow. */}
+        <div className="flex items-center gap-3 py-1">
+          <span className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+            or add one at a time
           </span>
           <span className="h-px flex-1 bg-slate-200" />
         </div>
