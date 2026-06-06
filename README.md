@@ -186,10 +186,14 @@ then `--commit`. It is idempotent and never deletes the JSON fields.
   return immediately. When QStash is configured they are published to a queue
   and delivered via `POST /api/jobs/notify` (signature-verified) with retries;
   otherwise they fall back to fire-and-forget inline sends.
-- Scheduled work runs via Vercel Cron (`vercel.json` → `crons`):
+- Scheduled work hits `CRON_SECRET`-protected endpoints:
   `/api/cron/credit-refill` (daily) and `/api/cron/reservation-reminders`
-  (hourly), protected by `CRON_SECRET`. The legacy `setInterval` sweeps still run
-  for long-lived/local servers (they are skipped on Vercel).
+  (hourly). `credit-refill` runs as a native Vercel Cron (`vercel.json` →
+  `crons`, daily — the Hobby plan only allows once-per-day crons).
+  `reservation-reminders` needs hourly cadence, so it is driven by a QStash
+  Schedule that POSTs the endpoint with a forwarded
+  `Authorization: Bearer <CRON_SECRET>` header (no Hobby cron limit). The legacy
+  `setInterval` sweeps still run for long-lived/local servers (skipped on Vercel).
 
 ## Environment variables
 

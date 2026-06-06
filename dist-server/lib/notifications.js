@@ -20,7 +20,18 @@ import Telnyx from "telnyx";
 import { sendQueueJoinConfirmationEmail, sendQueueYourTurnEmail, sendReservationConfirmationEmail, sendNewReservationBusinessEmail, sendReservationReminderEmail, } from "./email.js";
 import { sendQueueJoinedWhatsApp, sendQueueAdmittedWhatsApp, } from "./whatsapp.js";
 const qstashToken = process.env.QSTASH_TOKEN;
-let qstash = qstashToken ? new Client({ token: qstashToken }) : null;
+// Pin the region endpoint explicitly. The default host (qstash.upstash.io)
+// geo-routes to the nearest region, which can land on the wrong one and 404
+// ("user not found in this region"). Our account is us-east-1, so set
+// QSTASH_URL=https://qstash-us-east-1.upstash.io. Falls back to the SDK default
+// when unset.
+const qstashBaseUrl = process.env.QSTASH_URL;
+let qstash = qstashToken
+    ? new Client({
+        token: qstashToken,
+        ...(qstashBaseUrl ? { baseUrl: qstashBaseUrl } : {}),
+    })
+    : null;
 /** Public base URL QStash uses to call the worker back. */
 function workerUrl() {
     const base = process.env.PUBLIC_BASE_URL ||
