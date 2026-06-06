@@ -45,6 +45,14 @@
       "destination": "/api/server"
     },
     {
+      "source": "/api/jobs/:path*",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/cron/:path*",
+      "destination": "/api/server"
+    },
+    {
       "source": "/tickets/:path*",
       "destination": "/api/server"
     },
@@ -53,10 +61,20 @@
       "destination": "/index.html"
     }
   ],
+  "crons": [
+    {
+      "path": "/api/cron/credit-refill",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/reservation-reminders",
+      "schedule": "0 * * * *"
+    }
+  ],
   "functions": {
     "api/server.ts": {
       "memory": 1024,
-      "maxDuration": 10
+      "maxDuration": 60
     }
   }
 }

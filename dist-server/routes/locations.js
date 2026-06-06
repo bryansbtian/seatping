@@ -60,7 +60,10 @@ router.get("/search-suggestions", async (req, res) => {
         const limit = Math.min(3, Math.max(1, Number.isFinite(rawLimit) ? rawLimit : 3));
         if (!q)
             return res.json({ suggestions: [] });
+        // Only published locations are suggestible — filter at the DB via the
+        // indexed `isPublished` column instead of loading the whole collection.
         const locations = await prisma.location.findMany({
+            where: { isPublished: true },
             include: { photos: { orderBy: { createdAt: "asc" }, take: 1 } },
         });
         const businessIds = Array.from(new Set(locations.map((l) => l.businessId).filter(Boolean)));

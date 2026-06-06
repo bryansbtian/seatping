@@ -15,13 +15,26 @@
 //
 // Timezone note: reservation datetimes are stored as naive local wall-clock
 // strings (`YYYY-MM-DDTHH:MM`, no offset) — the restaurant's local clock is the
-// source of truth. We compare them against the server clock, matching how the
-// rest of the reservation code treats these values.
+// source of truth. To decide when a reservation is "~2 hours away" we must
+// anchor that wall-clock time to a real instant using the *restaurant's* IANA
+// timezone (e.g. Asia/Jakarta), not the server's clock — otherwise the reminder
+// fires relative to wherever the server happens to run.
 import { prisma } from "./prisma.js";
-import { splitDateTime, formatTimeLabel } from "./reservations.js";
-import { sendReservationReminderEmail } from "./email.js";
+import { splitDateTime, formatTimeLabel, zonedWallTimeToMs, } from "./reservations.js";
+import { enqueueNotification } from "./notifications.js";
 // Send when a confirmed reservation is this close (or closer) and still upcoming.
 const REMINDER_WINDOW_MINUTES = 120;
+/**
+ * Restaurant's IANA timezone, read from its public opening-hours config
+ * (location.restaurantProfile.openingHours.timezone). Falls back to the platform
+ * default when a restaurant hasn't set one. Mirrors `locationTimeZone` in
+ * server/routes/reservations.ts.
+ */
+function locationTimeZone(location) {
+    const oh = location?.restaurantProfile?.openingHours;
+    const tz = oh && typeof oh === "object" ? oh.timezone : undefined;
+    return typeof tz === "string" && tz ? tz : "Asia/Jakarta";
+}
 function readableDate(date) {
     const d = new Date(`${date}T00:00:00`);
     if (Number.isNaN(d.getTime()))
@@ -33,51 +46,53 @@ function readableDate(date) {
         year: "numeric",
     });
 }
-/** Minutes from `now` until the reservation start; NaN if unparseable. */
-function minutesUntil(reservationDateTime, now) {
-    const { date, time } = splitDateTime(reservationDateTime);
-    const start = new Date(`${date}T${time || "00:00"}:00`);
-    if (Number.isNaN(start.getTime()))
-        return NaN;
-    return (start.getTime() - now.getTime()) / 60000;
-}
 /**
- * A reservation is due for a reminder when it is confirmed, has an email, hasn't
- * already been reminded, and is upcoming within the reminder window.
+ * Minutes from `now` until the reservation start; NaN if unparseable. The
+ * reservation's wall-clock time is interpreted in the restaurant's `timeZone`
+ * so "2 hours before" lands on the right real-world instant.
  */
-function isDueForReminder(r, now) {
-    if (!r || typeof r !== "object")
-        return false;
-    if (r.status !== "confirmed")
-        return false; // not cancelled/completed/no_show/pending
-    if (!r.email)
-        return false;
-    if (r.reminderEmailSentAt)
-        return false;
-    const mins = minutesUntil(r.reservationDateTime, now);
-    if (Number.isNaN(mins))
-        return false;
-    return mins > 0 && mins <= REMINDER_WINDOW_MINUTES;
+function minutesUntil(reservationDateTime, now, timeZone) {
+    const { date, time } = splitDateTime(reservationDateTime);
+    const startMs = zonedWallTimeToMs(date, time || "00:00", timeZone);
+    if (Number.isNaN(startMs))
+        return NaN;
+    return (startMs - now.getTime()) / 60000;
 }
 /**
- * Scan all locations and send any due 2-hour reminders, marking each one as
- * sent so it never fires twice. Best-effort: failures are logged and retried on
- * the next sweep (we only stamp `reminderEmailSentAt` after a successful send).
+ * Sweep due 2-hour reminders. Now an indexed query on the Reservation model
+ * (status CONFIRMED + reminderEmailSentAt unset) instead of scanning every
+ * location's JSON array. Each due reminder is enqueued for background delivery
+ * and the row is stamped so it never fires twice (dedup survives restarts; the
+ * timezone-aware window check is applied per location).
  */
 export async function runReservationReminderSweep() {
     const now = new Date();
     const frontend = process.env.FRONTEND_URL || "https://www.seatping.biz";
     let sentCount = 0;
-    const locations = await prisma.location.findMany();
+    // Candidate set: confirmed, not yet reminded. Tiny vs. the whole collection.
+    const candidates = await prisma.reservation.findMany({
+        where: { status: "CONFIRMED", reminderEmailSentAt: null },
+    });
+    if (candidates.length === 0)
+        return;
+    // Resolve each candidate's location (for timezone + address) once.
+    const locationIds = Array.from(new Set(candidates.map((r) => r.locationId)));
+    const locations = await prisma.location.findMany({
+        where: { id: { in: locationIds } },
+    });
+    const locById = new Map(locations.map((l) => [l.id, l]));
     const businessNameCache = new Map();
-    for (const location of locations) {
-        const list = Array.isArray(location.reservations)
-            ? location.reservations
-            : [];
-        const due = list.filter((r) => isDueForReminder(r, now));
-        if (due.length === 0)
+    for (const r of candidates) {
+        const location = locById.get(r.locationId);
+        if (!location)
             continue;
-        // Resolve the business name once per business.
+        if (!r.email)
+            continue;
+        const timeZone = locationTimeZone(location);
+        const mins = minutesUntil(r.reservationDateTime, now, timeZone);
+        if (Number.isNaN(mins) || mins <= 0 || mins > REMINDER_WINDOW_MINUTES)
+            continue;
+        // Business name (cached per business).
         let businessName = businessNameCache.get(location.businessId);
         if (businessName === undefined) {
             const business = await prisma.business.findUnique({
@@ -88,51 +103,34 @@ export async function runReservationReminderSweep() {
             businessNameCache.set(location.businessId, businessName);
         }
         const locationName = location.displayName || location.name || businessName;
-        const sentIds = new Set();
-        for (const r of due) {
-            const { date, time } = splitDateTime(r.reservationDateTime);
-            try {
-                const ok = await sendReservationReminderEmail({
-                    email: r.email,
-                    firstName: r.firstName || r.name || "there",
-                    businessName,
-                    address: location.address || locationName,
-                    dateLabel: readableDate(date),
-                    timeLabel: formatTimeLabel(time),
-                    partySize: Number(r.partySize) || 1,
-                    manageUrl: r.manageToken
-                        ? `${frontend}/reservations/manage/${r.manageToken}`
-                        : undefined,
-                });
-                if (ok) {
-                    sentIds.add(r.id);
-                    sentCount++;
-                }
-                else {
-                    console.error("[RESERVATION-REMINDER] send returned false for:", r.email);
-                }
-            }
-            catch (e) {
-                console.error("[RESERVATION-REMINDER] send failed:", e?.message || e);
-            }
-        }
-        if (sentIds.size === 0)
-            continue;
-        // Stamp the ones we sent. We map over the list we read; this matches the
-        // read-modify-write pattern used by the reservation manage endpoints.
-        const stamp = new Date().toISOString();
-        const nextList = list.map((r) => sentIds.has(r?.id) ? { ...r, reminderEmailSentAt: stamp } : r);
+        const { date, time } = splitDateTime(r.reservationDateTime);
         try {
-            await prisma.location.update({
-                where: { id: location.id },
-                data: { reservations: nextList },
+            await enqueueNotification({
+                type: "reservation_reminder",
+                email: r.email,
+                firstName: r.firstName || r.name || "there",
+                businessName,
+                address: location.address || locationName,
+                dateLabel: readableDate(date),
+                timeLabel: formatTimeLabel(time),
+                partySize: Number(r.guestCount) || 1,
+                manageUrl: r.manageToken
+                    ? `${frontend}/reservations/manage/${r.manageToken}`
+                    : undefined,
             });
+            // Stamp immediately so a duplicate sweep can't re-enqueue. Single-row,
+            // indexed update (no array RMW).
+            await prisma.reservation.update({
+                where: { id: r.id },
+                data: { reminderEmailSentAt: new Date() },
+            });
+            sentCount++;
         }
         catch (e) {
-            console.error("[RESERVATION-REMINDER] failed to persist reminder flags for location", location.id, e?.message || e);
+            console.error("[RESERVATION-REMINDER] enqueue/stamp failed:", e?.message || e);
         }
     }
     if (sentCount > 0) {
-        console.log(`[RESERVATION-REMINDER] sweep done — sent ${sentCount} reminder(s)`);
+        console.log(`[RESERVATION-REMINDER] sweep done — enqueued ${sentCount} reminder(s)`);
     }
 }

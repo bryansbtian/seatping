@@ -1,0 +1,188 @@
+// server/lib/liveData.ts
+//
+// The compatibility layer between the new QueueEntry / Reservation models and
+// the legacy embedded-array shapes the frontend still consumes. The dashboard
+// reads `location.queue`, `.admittedCustomers`, `.removedCustomers`, and
+// `.reservations` from the /auth/business/me payload (see serializeLocation in
+// business.ts) and the customer-facing pages read the same shapes from the
+// status endpoints. To migrate the storage without touching the UI, every read
+// path reconstructs those exact arrays from the new rows using the helpers here.
+//
+// Keep these serializers byte-compatible with the objects the old write paths
+// produced (server/routes/auth.ts queue handlers, server/routes/reservations.ts).
+/** Stable composite id the (unchanged) frontend sends for admit/remove/etc. */
+export function legacyKeyOf(firstName, lastName, joinedAt) {
+    return `${firstName ?? ""}${lastName ?? ""}${joinedAt ?? ""}`;
+}
+/** ISO string (or null) from a Date|string|null without throwing. */
+function iso(v) {
+    if (!v)
+        return null;
+    if (v instanceof Date)
+        return v.toISOString();
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+// ---------------------------------------------------------------------------
+// QueueEntry -> legacy customer object
+// ---------------------------------------------------------------------------
+/** Fields common to every reconstructed queue/admitted/removed customer object. */
+function queueBase(e) {
+    const joinedAt = iso(e.joinedAt);
+    return {
+        firstName: e.firstName,
+        lastName: e.lastName,
+        name: `${e.firstName} ${e.lastName}`.trim(),
+        numGuests: e.guestCount,
+        partySize: e.guestCount,
+        phoneNumber: e.phone ?? "",
+        countryCode: e.countryCode ?? "+1",
+        email: e.email ?? "",
+        notificationMethod: e.notificationMethod ?? "",
+        locationId: e.locationId,
+        businessUsername: undefined, // filled by caller if needed
+        customerId: e.customerId ?? null,
+        smsConsent: e.smsConsent ?? false,
+        smsMarketingConsent: e.smsMarketingConsent ?? false,
+        joinedAt,
+        queueToken: e.queueToken,
+    };
+}
+/**
+ * Serialize ONE QueueEntry into the legacy customer object appropriate to its
+ * status (waiting / admitted / removed shapes). Used by the single-ticket status
+ * endpoints; reconstructQueueArrays builds the bulk arrays from the same base.
+ */
+export function queueEntryToLegacy(e, opts = {}) {
+    const o = queueBase(e);
+    if (opts.businessUsername != null)
+        o.businessUsername = opts.businessUsername;
+    if (e.status === "ADMITTED" || e.status === "ARRIVED" || e.status === "NO_SHOW") {
+        o.status = "admitted";
+        o.admittedAt = iso(e.admittedAt);
+        o.finalStatus =
+            e.finalStatus ??
+                (e.status === "ARRIVED" ? "arrived" : e.status === "NO_SHOW" ? "no_show" : "pending");
+        o.confirmedAt = iso(e.arrivedAt);
+        o.noShowMarkedAt = iso(e.noShowAt);
+    }
+    else if (e.status === "REMOVED" || e.status === "LEFT") {
+        o.status = e.status === "LEFT" ? "left" : "removed";
+        o.removedAt = iso(e.removedAt);
+        o.leftAt = iso(e.leftAt);
+    }
+    else if (opts.position != null) {
+        o.position = opts.position;
+    }
+    return o;
+}
+/**
+ * Rebuild the three legacy arrays (queue / admittedCustomers / removedCustomers)
+ * for one location from its QueueEntry rows. `businessUsername` is stamped onto
+ * each object to match the legacy join payload.
+ */
+export function reconstructQueueArrays(rows, businessUsername) {
+    const waiting = rows
+        .filter((r) => r.status === "WAITING")
+        .sort((a, b) => +new Date(a.joinedAt) - +new Date(b.joinedAt));
+    const admittedRows = rows
+        .filter((r) => r.status === "ADMITTED" ||
+        r.status === "ARRIVED" ||
+        r.status === "NO_SHOW")
+        .sort((a, b) => +new Date(a.admittedAt ?? a.joinedAt) -
+        +new Date(b.admittedAt ?? b.joinedAt));
+    const removedRows = rows
+        .filter((r) => r.status === "REMOVED" || r.status === "LEFT")
+        .sort((a, b) => +new Date(a.removedAt ?? a.leftAt ?? a.joinedAt) -
+        +new Date(b.removedAt ?? b.leftAt ?? b.joinedAt));
+    const stamp = (o) => {
+        if (businessUsername != null)
+            o.businessUsername = businessUsername;
+        return o;
+    };
+    const queue = waiting.map((e, i) => stamp({ ...queueBase(e), position: i + 1 }));
+    const admittedCustomers = admittedRows.map((e) => {
+        const finalStatus = e.finalStatus ??
+            (e.status === "ARRIVED"
+                ? "arrived"
+                : e.status === "NO_SHOW"
+                    ? "no_show"
+                    : "pending");
+        return stamp({
+            ...queueBase(e),
+            status: "admitted",
+            admittedAt: iso(e.admittedAt),
+            finalStatus,
+            confirmedAt: iso(e.arrivedAt),
+            noShowMarkedAt: iso(e.noShowAt),
+        });
+    });
+    const removedCustomers = removedRows.map((e) => stamp({
+        ...queueBase(e),
+        status: e.status === "LEFT" ? "left" : "removed",
+        removedAt: iso(e.removedAt),
+        leftAt: iso(e.leftAt),
+    }));
+    return { queue, admittedCustomers, removedCustomers };
+}
+// ---------------------------------------------------------------------------
+// Reservation row <-> legacy reservation object
+// ---------------------------------------------------------------------------
+const RES_ENUM_TO_LEGACY = {
+    PENDING: "pending",
+    CONFIRMED: "confirmed",
+    ARRIVED: "arrived",
+    COMPLETED: "completed",
+    CANCELLED: "cancelled",
+    NO_SHOW: "no_show",
+};
+const RES_LEGACY_TO_ENUM = {
+    pending: "PENDING",
+    confirmed: "CONFIRMED",
+    arrived: "ARRIVED",
+    completed: "COMPLETED",
+    cancelled: "CANCELLED",
+    no_show: "NO_SHOW",
+};
+export function reservationStatusToLegacy(status) {
+    return RES_ENUM_TO_LEGACY[status] ?? "confirmed";
+}
+export function reservationStatusToEnum(status) {
+    return RES_LEGACY_TO_ENUM[String(status || "").toLowerCase()] ?? "CONFIRMED";
+}
+/**
+ * Rebuild the legacy reservation object (the shape the dashboard + customer
+ * profile expect): lowercase `status`, `partySize`, and all timestamp fields.
+ * `includeToken` controls whether `manageToken` is exposed (owner lists yes,
+ * public lists no).
+ */
+export function reservationRowToLegacy(r, opts = {}) {
+    const base = {
+        id: r.id,
+        locationId: r.locationId,
+        businessUsername: r.businessUsername ?? null,
+        customerId: r.customerId ?? null,
+        firstName: r.firstName ?? "",
+        lastName: r.lastName ?? "",
+        name: r.name ?? `${r.firstName ?? ""} ${r.lastName ?? ""}`.trim(),
+        contactMethod: r.contactMethod ?? "email",
+        phone: r.phone ?? "",
+        countryCode: r.countryCode ?? "",
+        email: r.email ?? "",
+        partySize: Number(r.guestCount) || 0,
+        reservationDateTime: r.reservationDateTime ?? null,
+        notes: r.notes ?? "",
+        status: reservationStatusToLegacy(r.status),
+        source: r.source ?? "seatping_public",
+        createdAt: iso(r.createdAt),
+        updatedAt: iso(r.updatedAt),
+        cancelledAt: iso(r.cancelledAt),
+        arrivedAt: iso(r.arrivedAt),
+        completedAt: iso(r.completedAt),
+        noShowAt: iso(r.noShowAt),
+        reminderEmailSentAt: iso(r.reminderEmailSentAt),
+    };
+    if (opts.includeToken)
+        return { ...base, manageToken: r.manageToken ?? null };
+    return base;
+}

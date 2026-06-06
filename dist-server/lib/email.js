@@ -361,7 +361,7 @@ export const sendReservationConfirmationEmail = async (params) => {
             ["Name", esc(`${firstName} ${lastName}`.trim())],
             ["Date", esc(dateLabel)],
             ["Time", esc(timeLabel)],
-            ["Number of Guests", `${Number(partySize)} ${partySize === 1 ? "guest" : "guests"}`],
+            ["Number of Guests", `${Number(partySize)} ${partySize === 1 ? "Guest" : "Guests"}`],
         ])}
       ${emailButton(manageUrl, "Manage Reservation")}
       ${p(`Need to change your time, number of guests, or cancel? Use the button above — no login required.`)}
@@ -393,7 +393,7 @@ export const sendReservationReminderEmail = async (params) => {
             ["Location", esc(address)],
             ["Date", esc(dateLabel)],
             ["Time", esc(timeLabel)],
-            ["Number of Guests", `${Number(partySize)} ${partySize === 1 ? "guest" : "guests"}`],
+            ["Number of Guests", `${Number(partySize)} ${partySize === 1 ? "Guest" : "Guests"}`],
         ])}
       ${manageUrl ? emailButton(manageUrl, "Manage Reservation") : ""}
       ${manageUrl ? fallbackLink(manageUrl) : ""}
@@ -453,7 +453,7 @@ export const sendNewReservationBusinessEmail = async (params) => {
         rows.push(["Phone", esc(customerPhone)]);
     rows.push(["Date", esc(dateLabel)]);
     rows.push(["Time", esc(timeLabel)]);
-    rows.push(["Number of Guests", `${Number(partySize)} ${partySize === 1 ? "guest" : "guests"}`]);
+    rows.push(["Number of Guests", `${Number(partySize)} ${partySize === 1 ? "Guest" : "Guests"}`]);
     rows.push(["Status", pending ? "Pending Confirmation" : "Confirmed"]);
     const html = renderEmail({
         heading: pending ? "New Reservation Request" : "New Reservation",

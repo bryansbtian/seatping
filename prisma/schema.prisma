@@ -96,6 +96,9 @@ model Location {
   googlePlaceId String?
   googleMapsUrl String?
 
+  // DEPRECATED (kept as fallback until the model migration is verified in prod).
+  // Live queue state now lives in the QueueEntry model; these arrays are no
+  // longer written after Phase 3. Do not add new reads of these fields.
   queue             Json @default("[]")
   admittedCustomers Json @default("[]")
   removedCustomers  Json @default("[]")
@@ -109,8 +112,15 @@ model Location {
   reservationsEnabled Boolean @default(true)
 
   reservationSettings Json @default("{}")
+  // DEPRECATED (see note on `queue`): reservations now live in the Reservation
+  // model. Kept as a fallback until the migration is verified in prod.
   reservations        Json @default("[]")
   restaurantProfile   Json @default("{}")
+
+  // Denormalized from restaurantProfile.isPublished so search/suggestions can
+  // filter at the DB level (indexed) instead of loading every location. Kept in
+  // sync wherever the restaurant profile is saved.
+  isPublished Boolean @default(false)
 
   // Hero/banner image for the public location page (one per location). Uploaded
   // to Cloudinary from the backend; `publicId` lets us delete the old asset when
@@ -133,6 +143,7 @@ model Location {
   @@map("locations")
   @@index([businessId])
   @@index([businessUsername])
+  @@index([isPublished])
 }
 
 /// Gallery image for a location's public page. Files live in Cloudinary; only
@@ -231,4 +242,137 @@ model Ticket {
   @@index([status])
   @@index([type])
   @@index([createdAt])
+}
+
+// ===========================================================================
+// Scalability models (Phase 1+). High-contention queue + reservation state was
+// previously stored as Json arrays on Location, which forced read-modify-write
+// updates that lost entries and overbooked under concurrency. These models give
+// us indexed, atomically-updatable rows. The legacy Json fields on Location are
+// kept as a fallback until the migration is verified in production.
+// ===========================================================================
+
+/// One person/party in a location's waitlist. The full lifecycle lives on a
+/// single row so transitions are atomic, status-guarded updates (no array RMW).
+enum QueueStatus {
+  WAITING
+  ADMITTED
+  ARRIVED
+  NO_SHOW
+  REMOVED
+  LEFT
+}
+
+model QueueEntry {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  // Customer-facing token used by the live status page. Stable per ticket.
+  queueToken String @unique
+  // firstName+lastName+joinedAt — the composite id the (unchanged) dashboard
+  // sends to admit/remove/arrival/no-show endpoints. Indexed for O(1) resolve.
+  legacyKey String
+
+  locationId String  @db.ObjectId
+  businessId String  @db.ObjectId
+  // Logged-in customer who joined, if any (guests are null).
+  customerId String? @db.ObjectId
+
+  firstName          String
+  lastName           String
+  guestCount         Int
+  notificationMethod String
+  phone              String?
+  countryCode        String?
+  email              String?
+  // SMS consent captured at join time (compliance). Persisted, not just echoed.
+  smsConsent          Boolean @default(false)
+  smsMarketingConsent Boolean @default(false)
+
+  status      QueueStatus @default(WAITING)
+  // Mirrors the legacy admitted-record sub-status ("pending" | "arrived" |
+  // "no_show") so the reconstructed admittedCustomers array is byte-compatible.
+  finalStatus String?
+
+  joinedAt   DateTime
+  admittedAt DateTime?
+  arrivedAt  DateTime?
+  noShowAt   DateTime?
+  removedAt  DateTime?
+  leftAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([locationId, status])
+  @@index([businessId])
+  @@index([legacyKey])
+  @@index([customerId])
+  @@map("queue_entries")
+}
+
+/// A booking. PENDING/ARRIVED are retained beyond the four core statuses to
+/// preserve existing capacity logic (ACTIVE = PENDING|CONFIRMED|ARRIVED) and the
+/// dashboard's arrival/no-show/complete transitions.
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  ARRIVED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model Reservation {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  manageToken      String  @unique
+  locationId       String  @db.ObjectId
+  businessId       String  @db.ObjectId
+  businessUsername String?
+  customerId       String? @db.ObjectId
+
+  firstName     String
+  lastName      String
+  name          String?
+  guestCount    Int // == legacy partySize
+  email         String
+  phone         String?
+  countryCode   String?
+  contactMethod String?
+
+  // Naive local wall-clock "YYYY-MM-DDTHH:MM" (unchanged convention).
+  reservationDateTime String
+  status              ReservationStatus @default(CONFIRMED)
+  notes               String?
+  source              String?
+
+  reminderEmailSentAt DateTime?
+  cancelledAt         DateTime?
+  arrivedAt           DateTime?
+  completedAt         DateTime?
+  noShowAt            DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([locationId, status])
+  @@index([businessId])
+  @@index([reservationDateTime])
+  @@index([customerId])
+  @@map("reservations_v2")
+}
+
+/// Atomic per-hour reservation capacity counter — the overbooking guard. A
+/// single-document conditional `$inc` enforces maxReservedGuestsPerHour without
+/// a transaction, so concurrent bookings can never exceed the cap.
+model SlotCounter {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  locationId     String @db.ObjectId
+  dateKey        String // "YYYY-MM-DD"
+  hour           Int // 0-23
+  reservedGuests Int    @default(0)
+
+  @@unique([locationId, dateKey, hour])
+  @@map("slot_counters")
 }

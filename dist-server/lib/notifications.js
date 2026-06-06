@@ -1,0 +1,164 @@
+// server/lib/notifications.ts
+//
+// Background notification dispatch. Notifications (SMS via Telnyx, WhatsApp via
+// Kapso, email via SMTP) used to be sent synchronously inside request handlers,
+// so a slow provider blocked the user's request and could blow the Vercel 10s
+// function limit. Now handlers call `enqueueNotification(job)` and return
+// immediately; the actual send happens out-of-band.
+//
+// Delivery strategy:
+//   - QStash configured (prod)  -> publish the job to QStash, which POSTs it back
+//     to /api/jobs/notify with at-least-once delivery + retries.
+//   - QStash NOT configured (dev / before tokens are set) -> run the send inline
+//     as fire-and-forget so local development still delivers without an external
+//     queue. The caller never waits on the provider either way.
+//
+// `processNotification` is the single dispatcher used by BOTH the inline path and
+// the QStash worker route, so behavior is identical regardless of transport.
+import { Client } from "@upstash/qstash";
+import Telnyx from "telnyx";
+import { sendQueueJoinConfirmationEmail, sendQueueYourTurnEmail, sendReservationConfirmationEmail, sendNewReservationBusinessEmail, sendReservationReminderEmail, } from "./email.js";
+import { sendQueueJoinedWhatsApp, sendQueueAdmittedWhatsApp, } from "./whatsapp.js";
+const qstashToken = process.env.QSTASH_TOKEN;
+let qstash = qstashToken ? new Client({ token: qstashToken }) : null;
+/** Public base URL QStash uses to call the worker back. */
+function workerUrl() {
+    const base = process.env.PUBLIC_BASE_URL ||
+        process.env.FRONTEND_URL ||
+        "https://www.seatping.biz";
+    return `${base.replace(/\/$/, "")}/api/jobs/notify`;
+}
+/**
+ * Hand a notification off for background delivery. Returns quickly: a QStash
+ * publish is a single fast HTTP call; the inline fallback is fire-and-forget.
+ * Never throws into the caller — a notification failure must not fail the action.
+ */
+export async function enqueueNotification(job) {
+    if (qstash) {
+        try {
+            await qstash.publishJSON({ url: workerUrl(), body: job, retries: 3 });
+            return;
+        }
+        catch (err) {
+            console.error("[NOTIFY] QStash publish failed, falling back to inline send:", err?.message || err);
+        }
+    }
+    // Dev / unconfigured / publish-failed: send inline without blocking the caller.
+    void processNotification(job).catch((err) => console.error("[NOTIFY] inline send failed:", err?.message || err));
+}
+// ---------------------------------------------------------------------------
+// Senders
+// ---------------------------------------------------------------------------
+async function sendSms(countryCode, phoneNumber, text) {
+    const apiKey = process.env.TELNYX_API_KEY;
+    const from = process.env.TELNYX_PHONE_NUMBER;
+    if (!apiKey || !from) {
+        console.error("[NOTIFY] Missing Telnyx credentials — cannot send SMS");
+        return;
+    }
+    if (!phoneNumber)
+        return;
+    const telnyx = new Telnyx({ apiKey });
+    const to = (countryCode || "+1") + phoneNumber.trim().replace(/\D/g, "");
+    const message = await telnyx.messages.send({ from, to, text });
+    console.log("[NOTIFY] SMS sent:", message?.data?.id, "to", to);
+}
+/**
+ * Execute one notification job. Called by the inline fallback and by the QStash
+ * worker route. Each sub-send is isolated so one failure never blocks another.
+ */
+export async function processNotification(job) {
+    switch (job.type) {
+        case "queue_join": {
+            if (job.channel === "sms") {
+                await sendSms(job.countryCode, job.phoneNumber, `Hi ${job.firstName}! You've joined the queue at ${job.restaurantName}. You're #${job.position} in line. We'll text you when it's almost your turn.`);
+            }
+            else if (job.channel === "whatsapp") {
+                await sendQueueJoinedWhatsApp({
+                    countryCode: job.countryCode || "+1",
+                    phoneNumber: job.phoneNumber || "",
+                    customerName: job.firstName,
+                    businessName: job.restaurantName,
+                    position: job.position,
+                });
+            }
+            else if (job.channel === "email" && job.email) {
+                await sendQueueJoinConfirmationEmail(job.email, job.firstName, job.lastName, job.restaurantName, job.address, job.position);
+            }
+            return;
+        }
+        case "queue_admitted": {
+            if (job.channel === "sms") {
+                await sendSms(job.countryCode, job.phoneNumber, `Good news! It's your turn at ${job.restaurantName}. Please proceed to the host within the next 5 minutes. Thank you for using SeatPing!`);
+            }
+            else if (job.channel === "whatsapp") {
+                await sendQueueAdmittedWhatsApp({
+                    countryCode: job.countryCode || "+1",
+                    phoneNumber: job.phoneNumber || "",
+                    businessName: job.restaurantName,
+                });
+            }
+            else if (job.channel === "email" && job.email) {
+                await sendQueueYourTurnEmail(job.email, job.restaurantName);
+            }
+            return;
+        }
+        case "reservation_created": {
+            if (job.customerEmail) {
+                try {
+                    await sendReservationConfirmationEmail({
+                        email: job.customerEmail,
+                        firstName: job.firstName,
+                        lastName: job.lastName,
+                        businessName: job.businessName,
+                        address: job.address,
+                        dateLabel: job.dateLabel,
+                        timeLabel: job.timeLabel,
+                        partySize: job.partySize,
+                        status: job.status,
+                        manageUrl: job.manageUrl,
+                        cancellationPolicy: job.cancellationPolicy,
+                    });
+                }
+                catch (e) {
+                    console.error("[NOTIFY] reservation customer email failed:", e?.message || e);
+                }
+            }
+            if (job.businessEmail) {
+                try {
+                    await sendNewReservationBusinessEmail({
+                        to: job.businessEmail,
+                        businessName: job.businessName,
+                        locationName: job.locationName,
+                        customerName: job.customerName,
+                        customerEmail: job.customerEmail || "",
+                        customerPhone: job.customerPhone,
+                        dateLabel: job.dateLabel,
+                        timeLabel: job.timeLabel,
+                        partySize: job.partySize,
+                        status: job.status,
+                        notes: job.notes,
+                        dashboardUrl: job.dashboardUrl,
+                    });
+                }
+                catch (e) {
+                    console.error("[NOTIFY] reservation business email failed:", e?.message || e);
+                }
+            }
+            return;
+        }
+        case "reservation_reminder": {
+            await sendReservationReminderEmail({
+                email: job.email,
+                firstName: job.firstName,
+                businessName: job.businessName,
+                address: job.address,
+                dateLabel: job.dateLabel,
+                timeLabel: job.timeLabel,
+                partySize: job.partySize,
+                manageUrl: job.manageUrl,
+            });
+            return;
+        }
+    }
+}

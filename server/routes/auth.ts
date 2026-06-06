@@ -49,11 +49,20 @@ import {
   sendQueueJoinedWhatsApp,
   sendQueueAdmittedWhatsApp,
 } from "../lib/whatsapp.js";
-import { assembleBusinessMe } from "../lib/business.js";
+import { assembleBusinessMe, augmentLocationWithLiveLists } from "../lib/business.js";
 import { deleteImageByPublicId } from "../lib/cloudinary.js";
 import { normalizeSettings, syncCustomerReservation } from "../lib/reservations.js";
 import { syncCustomerQueue } from "../lib/queueSync.js";
 import { etaForToken, etaForAllQueueCustomers } from "../lib/queueEta.js";
+import {
+  queueEntryToLegacy,
+  legacyKeyOf,
+  reservationStatusToEnum,
+  reservationRowToLegacy,
+} from "../lib/liveData.js";
+import { applyStatusCapacityDelta } from "../lib/reservationCapacity.js";
+import { enqueueNotification } from "../lib/notifications.js";
+import { withWriteRetry } from "../lib/dbRetry.js";
 import crypto from "crypto";
 
 const router = Router();
@@ -1358,6 +1367,9 @@ router.put("/business/locations/:locationId", requireBusiness, async (req, res) 
           .json({ error: "restaurantProfile must be an object" });
       }
       data.restaurantProfile = restaurantProfile;
+      // Keep the indexed `isPublished` column in sync with the profile flag so
+      // search/suggestions can filter at the DB level.
+      data.isPublished = (restaurantProfile as any).isPublished === true;
     }
     if (address !== undefined) {
       if (typeof address !== "string" || !address.trim()) {
@@ -1444,32 +1456,40 @@ router.patch(
           .json({ error: "Location not found or access denied" });
       }
 
-      const list = Array.isArray(location.reservations)
-        ? (location.reservations as any[])
-        : [];
-      const idx = list.findIndex((r) => r?.id === reservationId);
-      if (idx === -1) {
+      // Reservation lives in its own model now; look it up by id, scoped to the
+      // owned location.
+      const existing = await prisma.reservation.findFirst({
+        where: { id: reservationId, locationId, businessId },
+      });
+      if (!existing) {
         return res.status(404).json({ error: "Reservation not found" });
       }
 
-      const now = new Date().toISOString();
-      const timestampField: Record<string, string> = {
+      const now = new Date();
+      const newEnum = reservationStatusToEnum(status);
+      const timestampField: Record<string, "cancelledAt" | "arrivedAt" | "completedAt" | "noShowAt"> = {
         cancelled: "cancelledAt",
         arrived: "arrivedAt",
         completed: "completedAt",
         no_show: "noShowAt",
       };
-      const updated = {
-        ...list[idx],
-        status,
-        updatedAt: now,
-        ...(timestampField[status] ? { [timestampField[status]]: now } : {}),
-      };
-      const nextList = list.map((r, i) => (i === idx ? updated : r));
 
-      await prisma.location.update({
-        where: { id: location.id },
-        data: { reservations: nextList as any },
+      // Keep the per-hour capacity counter in step with the status change before
+      // we persist (release seats on cancel/complete/no_show, re-add on revive).
+      await applyStatusCapacityDelta({
+        locationId,
+        reservationDateTime: existing.reservationDateTime,
+        guestCount: existing.guestCount,
+        oldStatus: existing.status,
+        newStatus: newEnum,
+      });
+
+      const updated = await prisma.reservation.update({
+        where: { id: existing.id },
+        data: {
+          status: newEnum,
+          ...(timestampField[status] ? { [timestampField[status]]: now } : {}),
+        },
       });
 
       // Keep the customer's profile copy in sync (no-op for guest bookings).
@@ -1477,7 +1497,7 @@ router.patch(
         where: { id: businessId },
         select: { name: true },
       });
-      await syncCustomerReservation(updated, {
+      await syncCustomerReservation(reservationRowToLegacy(updated), {
         businessName: biz?.name ?? null,
         locationName: location.displayName || location.name || biz?.name || null,
       });
@@ -1631,20 +1651,29 @@ router.post("/business/:username/queue", async (req, res) => {
       });
     }
 
-    const queue = Array.isArray(location.queue) ? (location.queue as any[]) : [];
-
     // Every notification channel consumes 1 credit at join time — SMS,
     // WhatsApp, and email alike.
     const consumesCredit =
       notificationMethod === "sms" ||
       notificationMethod === "whatsapp" ||
       notificationMethod === "email";
-    const locationCredits = (location as any).credits || 0;
-    if (consumesCredit && locationCredits <= 0) {
-      return res.status(400).json({
-        error:
-          "This location has no credits remaining for notifications. Please contact the business.",
-      });
+
+    // Atomic, race-safe credit deduction: a single guarded update only succeeds
+    // when credits are still > 0, so concurrent joins can never overspend or go
+    // negative. `count === 0` means no credits were available.
+    if (consumesCredit) {
+      const charged = await withWriteRetry(() =>
+        prisma.location.updateMany({
+          where: { id: location.id, credits: { gt: 0 } },
+          data: { credits: { decrement: 1 } },
+        }),
+      );
+      if (charged.count === 0) {
+        return res.status(400).json({
+          error:
+            "This location has no credits remaining for notifications. Please contact the business.",
+        });
+      }
     }
 
     const queueToken = crypto.randomBytes(16).toString("hex");
@@ -1655,37 +1684,55 @@ router.post("/business/:username/queue", async (req, res) => {
     const queueCustomerId =
       queueSession?.accountType === "customer" ? queueSession.sub : null;
 
-    const customer = {
-      firstName,
-      lastName,
-      // Combined name kept for code/UI that expects a single `name` field.
-      name: `${firstName} ${lastName}`.trim(),
-      numGuests: Number(numGuests),
-      partySize: Number(numGuests),
-      phoneNumber: phoneNumber || "",
-      countryCode: countryCode || "+1",
-      email: email || "",
-      notificationMethod: notificationMethod || "",
-      locationId: location.id,
-      businessUsername: username,
-      customerId: queueCustomerId,
-      smsConsent: smsConsent || false,
-      smsMarketingConsent: smsMarketingConsent || false,
-      joinedAt: new Date().toISOString(),
-      position: queue.length + 1,
-      queueToken,
-    };
+    const joinedAt = new Date();
 
-    // Deduct exactly 1 credit at join time for the cost-bearing channels.
-    await prisma.location.update({
-      where: { id: location.id },
-      data: {
-        queue: [...queue, customer] as any,
-        ...(consumesCredit
-          ? { credits: Math.max(0, locationCredits - 1) }
-          : {}),
+    // Create the queue ticket as its own row. No array RMW, so concurrent joins
+    // cannot lose or overwrite each other.
+    let entry;
+    try {
+      entry = await prisma.queueEntry.create({
+        data: {
+          queueToken,
+          legacyKey: legacyKeyOf(firstName, lastName, joinedAt.toISOString()),
+          locationId: location.id,
+          businessId: business.id,
+          customerId: queueCustomerId,
+          firstName: String(firstName),
+          lastName: String(lastName),
+          guestCount: Number(numGuests) || 0,
+          notificationMethod: String(notificationMethod || ""),
+          phone: phoneNumber || null,
+          countryCode: countryCode || "+1",
+          email: email || null,
+          smsConsent: Boolean(smsConsent),
+          smsMarketingConsent: Boolean(smsMarketingConsent),
+          status: "WAITING",
+          joinedAt,
+        },
+      });
+    } catch (createErr) {
+      // Refund the credit we optimistically charged if the ticket couldn't be saved.
+      if (consumesCredit) {
+        await withWriteRetry(() =>
+          prisma.location.update({
+            where: { id: location.id },
+            data: { credits: { increment: 1 } },
+          }),
+        ).catch(() => {});
+      }
+      throw createErr;
+    }
+
+    // Position = rank among everyone currently WAITING (joinedAt order).
+    const position = await prisma.queueEntry.count({
+      where: {
+        locationId: location.id,
+        status: "WAITING",
+        joinedAt: { lte: joinedAt },
       },
     });
+
+    const customer = queueEntryToLegacy(entry, { position, businessUsername: username });
 
     await syncCustomerQueue(customer, {
       status: "waiting",
@@ -1705,67 +1752,31 @@ router.post("/business/:username/queue", async (req, res) => {
       location.name ||
       businessName;
 
-    if (notificationMethod) {
-      if (notificationMethod === "sms" && phoneNumber) {
-        try {
-          const telnyxApiKey = process.env.TELNYX_API_KEY;
-          const telnyxPhoneNumber = process.env.TELNYX_PHONE_NUMBER;
-          if (telnyxApiKey && telnyxPhoneNumber) {
-            const telnyx = new Telnyx({ apiKey: telnyxApiKey });
-            const customerCountryCode = countryCode || "+1";
-            const phoneDigitsOnly = phoneNumber.trim().replace(/\D/g, "");
-            const formattedPhone = customerCountryCode + phoneDigitsOnly;
-            const message = await telnyx.messages.send({
-              from: telnyxPhoneNumber,
-              to: formattedPhone,
-              text: `Hi ${firstName}! You've joined the queue at ${restaurantName}. You're #${customer.position} in line. We'll text you when it's almost your turn.`,
-            });
-            console.log("[QUEUE-JOIN] SMS confirmation sent:", message.data?.id, "to", formattedPhone);
-          } else {
-            console.error("[QUEUE-JOIN] Missing Telnyx credentials - cannot send SMS confirmation");
-          }
-        } catch (error: any) {
-          console.error("[QUEUE-JOIN] Failed to send SMS confirmation:", error?.message || error);
-        }
-      }
-
-      if (notificationMethod === "whatsapp" && phoneNumber) {
-        sendQueueJoinedWhatsApp({
-          countryCode: countryCode || "+1",
-          phoneNumber,
-          customerName: firstName,
-          businessName: restaurantName,
-          position: customer.position,
-        }).catch((error: any) =>
-          console.error("[QUEUE-JOIN] Error sending WhatsApp confirmation:", error?.message || error)
-        );
-      }
-
-      if (notificationMethod === "email" && email) {
-        try {
-          const emailSent = await sendQueueJoinConfirmationEmail(
-            email,
-            firstName,
-            lastName,
-            restaurantName,
-            location.address,
-            customer.position
-          );
-          if (emailSent) {
-            console.log("[QUEUE-JOIN] Email confirmation sent to:", email);
-          } else {
-            console.error("[QUEUE-JOIN] Failed to send email confirmation to:", email);
-          }
-        } catch (error: any) {
-          console.error("[QUEUE-JOIN] Error sending email confirmation:", error?.message || error);
-        }
-      }
+    // Hand the confirmation off for background delivery — the request returns
+    // immediately and never waits on Telnyx / WhatsApp / SMTP.
+    if (
+      notificationMethod === "sms" ||
+      notificationMethod === "whatsapp" ||
+      notificationMethod === "email"
+    ) {
+      await enqueueNotification({
+        type: "queue_join",
+        channel: notificationMethod,
+        firstName: String(firstName),
+        lastName: String(lastName),
+        countryCode: countryCode || "+1",
+        phoneNumber: phoneNumber || "",
+        email: email || "",
+        restaurantName,
+        address: location.address,
+        position,
+      });
     }
 
     return res.json({
       success: true,
       customer,
-      position: customer.position,
+      position,
       businessName: business.name,
       queueToken,
     });
@@ -1818,99 +1829,91 @@ router.get("/business/:username/queue/token/:queueToken/status", async (req, res
     });
     if (!business) return res.status(404).json({ error: "Business not found" });
 
-    const locations = await prisma.location.findMany({
-      where: { businessId: business.id },
+    // Indexed O(1) lookup (queueToken is unique) instead of scanning locations.
+    const entry = await prisma.queueEntry.findUnique({ where: { queueToken } });
+    if (!entry || entry.businessId !== business.id) {
+      return res.json({
+        admitted: false,
+        removed: false,
+        message: "Queue session not found or expired",
+      });
+    }
+
+    const location = await prisma.location.findUnique({
+      where: { id: entry.locationId },
+      select: { address: true },
     });
+    const address = location?.address ?? "";
 
-    for (const location of locations) {
-      const queue = Array.isArray(location.queue) ? (location.queue as any[]) : [];
-      const customerIndex = queue.findIndex((c: any) => c.queueToken === queueToken);
-      if (customerIndex !== -1) {
-        return res.json({
-          admitted: false,
-          removed: false,
-          position: customerIndex + 1,
-          customer: queue[customerIndex],
-          address: location.address,
-          businessName: business.name,
-          message: "Customer is still waiting in queue",
-        });
-      }
+    if (entry.status === "WAITING") {
+      const position = await prisma.queueEntry.count({
+        where: {
+          locationId: entry.locationId,
+          status: "WAITING",
+          joinedAt: { lte: entry.joinedAt },
+        },
+      });
+      return res.json({
+        admitted: false,
+        removed: false,
+        position,
+        customer: queueEntryToLegacy(entry, { position, businessUsername: username }),
+        address,
+        businessName: business.name,
+        message: "Customer is still waiting in queue",
+      });
     }
 
-    for (const location of locations) {
-      const admittedCustomers = Array.isArray(location.admittedCustomers)
-        ? (location.admittedCustomers as any[])
-        : [];
-      const admittedCustomer = admittedCustomers.find((c: any) => c.queueToken === queueToken);
-      if (admittedCustomer) {
-        // Terminal states set by the business after admitting override the live
-        // hold window. Once arrival is confirmed (or marked no-show) the
-        // customer's page must leave the "It's Your Turn" countdown for good,
-        // even on refresh/reopen — the backend is the source of truth here.
-        if (admittedCustomer.finalStatus === "arrived") {
-          return res.json({
-            admitted: false,
-            removed: false,
-            checkedIn: true,
-            status: "arrived",
-            customer: admittedCustomer,
-            address: location.address,
-            businessName: business.name,
-            message: "Arrival confirmed",
-          });
-        }
-        if (admittedCustomer.finalStatus === "no_show") {
-          return res.json({
-            admitted: false,
-            removed: true,
-            status: "no_show",
-            customer: admittedCustomer,
-            address: location.address,
-            businessName: business.name,
-            message: "Marked as a no-show",
-          });
-        }
-        const hold = admittedHoldInfo(admittedCustomer.admittedAt);
-        return res.json({
-          admitted: true,
-          removed: false,
-          expired: hold.expired,
-          admittedAt: hold.admittedAt,
-          turnExpiresAt: hold.turnExpiresAt,
-          customer: admittedCustomer,
-          address: location.address,
-          businessName: business.name,
-          message: hold.expired
-            ? "Hold window has expired"
-            : "Customer has been admitted",
-        });
-      }
-
-      const removedCustomers = Array.isArray(location.removedCustomers)
-        ? (location.removedCustomers as any[])
-        : [];
-      const removedCustomer = removedCustomers.find((c: any) => c.queueToken === queueToken);
-      if (removedCustomer) {
-        return res.json({
-          admitted: false,
-          removed: true,
-          status: removedCustomer.status || "removed",
-          customer: removedCustomer,
-          address: location.address,
-          businessName: business.name,
-          message:
-            removedCustomer.status === "left"
-              ? "Customer has left the queue"
-              : "Customer has been removed from queue",
-        });
-      }
+    if (entry.status === "ARRIVED") {
+      return res.json({
+        admitted: false,
+        removed: false,
+        checkedIn: true,
+        status: "arrived",
+        customer: queueEntryToLegacy(entry, { businessUsername: username }),
+        address,
+        businessName: business.name,
+        message: "Arrival confirmed",
+      });
+    }
+    if (entry.status === "NO_SHOW") {
+      return res.json({
+        admitted: false,
+        removed: true,
+        status: "no_show",
+        customer: queueEntryToLegacy(entry, { businessUsername: username }),
+        address,
+        businessName: business.name,
+        message: "Marked as a no-show",
+      });
+    }
+    if (entry.status === "ADMITTED") {
+      const hold = admittedHoldInfo(entry.admittedAt ? entry.admittedAt.toISOString() : null);
+      return res.json({
+        admitted: true,
+        removed: false,
+        expired: hold.expired,
+        admittedAt: hold.admittedAt,
+        turnExpiresAt: hold.turnExpiresAt,
+        customer: queueEntryToLegacy(entry, { businessUsername: username }),
+        address,
+        businessName: business.name,
+        message: hold.expired ? "Hold window has expired" : "Customer has been admitted",
+      });
     }
 
+    // REMOVED / LEFT
     return res.json({
       admitted: false,
-      removed: false,
-      message: "Queue session not found or expired",
+      removed: true,
+      status: entry.status === "LEFT" ? "left" : "removed",
+      customer: queueEntryToLegacy(entry, { businessUsername: username }),
+      address,
+      businessName: business.name,
+      message:
+        entry.status === "LEFT"
+          ? "Customer has left the queue"
+          : "Customer has been removed from queue",
     });
   } catch (err: any) {
     console.error("[auth] check customer status by token error:", err?.message || err);
@@ -1942,13 +1945,21 @@ router.get(
       });
       if (!business) return res.status(404).json({ error: "Business not found" });
 
-      const locations = await prisma.location.findMany({
-        where: { businessId: business.id },
+      // Resolve the ticket's location by indexed token lookup, then compute the
+      // ETA against that one location's reconstructed live lists.
+      const entry = await prisma.queueEntry.findUnique({
+        where: { queueToken },
+        select: { locationId: true, businessId: true, status: true },
       });
-
-      for (const location of locations) {
-        const eta = etaForToken(location, queueToken);
-        if (eta) return res.json({ eta });
+      if (entry && entry.businessId === business.id && entry.status === "WAITING") {
+        const locationRow = await prisma.location.findUnique({
+          where: { id: entry.locationId },
+        });
+        if (locationRow) {
+          const location = await augmentLocationWithLiveLists(locationRow);
+          const eta = etaForToken(location, queueToken);
+          if (eta) return res.json({ eta });
+        }
       }
 
       // Not currently waiting (admitted/removed/expired) — no ETA to give.
@@ -1972,14 +1983,15 @@ router.get(
     try {
       const businessId = (req as any).auth.sub as string;
       const locationId = String(req.params.locationId || "").trim();
-      const location = await prisma.location.findFirst({
+      const locationRow = await prisma.location.findFirst({
         where: { id: locationId, businessId },
       });
-      if (!location) {
+      if (!locationRow) {
         return res
           .status(404)
           .json({ error: "Location not found or access denied" });
       }
+      const location = await augmentLocationWithLiveLists(locationRow);
       return res.json({ etas: etaForAllQueueCustomers(location) });
     } catch (err: any) {
       console.error("[auth] queue-etas error:", err?.message || err);
@@ -2005,84 +2017,82 @@ router.get("/business/:username/queue/:customerId/status", async (req, res) => {
     });
     if (!business) return res.status(404).json({ error: "Business not found" });
 
-    const locations = await prisma.location.findMany({
-      where: { businessId: business.id },
+    // `customerId` is the legacy composite key (firstName+lastName+joinedAt).
+    // Resolve via the indexed legacyKey, scoped to this business. Prefer an
+    // active (WAITING/ADMITTED) row if a name repeats across terminal entries.
+    const matches = await prisma.queueEntry.findMany({
+      where: { businessId: business.id, legacyKey: customerId },
     });
-
-    const idOf = (c: any) => c.firstName + c.lastName + c.joinedAt;
-
-    for (const location of locations) {
-      const queue = Array.isArray(location.queue) ? (location.queue as any[]) : [];
-      const idx = queue.findIndex((c: any) => idOf(c) === customerId);
-      if (idx !== -1) {
-        return res.json({
-          admitted: false,
-          removed: false,
-          position: idx + 1,
-          message: "Customer is still waiting in queue",
-        });
-      }
+    const RANK: Record<string, number> = {
+      WAITING: 0,
+      ADMITTED: 1,
+      ARRIVED: 2,
+      NO_SHOW: 3,
+      REMOVED: 4,
+      LEFT: 5,
+    };
+    const entry = matches.sort((a, b) => RANK[a.status] - RANK[b.status])[0];
+    if (!entry) {
+      return res.json({ admitted: false, removed: false, message: "Customer not found" });
     }
 
-    for (const location of locations) {
-      const admittedCustomers = Array.isArray(location.admittedCustomers)
-        ? (location.admittedCustomers as any[])
-        : [];
-      const admittedById = admittedCustomers.find((c: any) => idOf(c) === customerId);
-      if (admittedById) {
-        // Terminal states set by the business after admitting override the live
-        // hold window (see the token-based endpoint above for the rationale).
-        if (admittedById.finalStatus === "arrived") {
-          return res.json({
-            admitted: false,
-            removed: false,
-            checkedIn: true,
-            status: "arrived",
-            customer: admittedById,
-            message: "Arrival confirmed",
-          });
-        }
-        if (admittedById.finalStatus === "no_show") {
-          return res.json({
-            admitted: false,
-            removed: true,
-            status: "no_show",
-            customer: admittedById,
-            message: "Marked as a no-show",
-          });
-        }
-        const hold = admittedHoldInfo(admittedById.admittedAt);
-        return res.json({
-          admitted: true,
-          removed: false,
-          expired: hold.expired,
-          admittedAt: hold.admittedAt,
-          turnExpiresAt: hold.turnExpiresAt,
-          customer: admittedById,
-          message: hold.expired
-            ? "Hold window has expired"
-            : "Customer has been admitted",
-        });
-      }
-
-      const removedCustomers = Array.isArray(location.removedCustomers)
-        ? (location.removedCustomers as any[])
-        : [];
-      const removedCustomer = removedCustomers.find((c: any) => idOf(c) === customerId);
-      if (removedCustomer) {
-        return res.json({
-          admitted: false,
-          removed: true,
-          status: removedCustomer.status || "removed",
-          message:
-            removedCustomer.status === "left"
-              ? "Customer has left the queue"
-              : "Customer has been removed from queue",
-        });
-      }
+    if (entry.status === "WAITING") {
+      const position = await prisma.queueEntry.count({
+        where: {
+          locationId: entry.locationId,
+          status: "WAITING",
+          joinedAt: { lte: entry.joinedAt },
+        },
+      });
+      return res.json({
+        admitted: false,
+        removed: false,
+        position,
+        message: "Customer is still waiting in queue",
+      });
+    }
+    if (entry.status === "ARRIVED") {
+      return res.json({
+        admitted: false,
+        removed: false,
+        checkedIn: true,
+        status: "arrived",
+        customer: queueEntryToLegacy(entry),
+        message: "Arrival confirmed",
+      });
+    }
+    if (entry.status === "NO_SHOW") {
+      return res.json({
+        admitted: false,
+        removed: true,
+        status: "no_show",
+        customer: queueEntryToLegacy(entry),
+        message: "Marked as a no-show",
+      });
+    }
+    if (entry.status === "ADMITTED") {
+      const hold = admittedHoldInfo(entry.admittedAt ? entry.admittedAt.toISOString() : null);
+      return res.json({
+        admitted: true,
+        removed: false,
+        expired: hold.expired,
+        admittedAt: hold.admittedAt,
+        turnExpiresAt: hold.turnExpiresAt,
+        customer: queueEntryToLegacy(entry),
+        message: hold.expired ? "Hold window has expired" : "Customer has been admitted",
+      });
     }
 
-    return res.json({ admitted: false, removed: false, message: "Customer not found" });
+    // REMOVED / LEFT
+    return res.json({
+      admitted: false,
+      removed: true,
+      status: entry.status === "LEFT" ? "left" : "removed",
+      message:
+        entry.status === "LEFT"
+          ? "Customer has left the queue"
+          : "Customer has been removed from queue",
+    });
   } catch (err: any) {
     console.error("[auth] check customer status error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
@@ -2109,130 +2119,76 @@ router.post(
         return res.status(404).json({ error: "Business not found or access denied" });
       }
 
-      const locations = await prisma.location.findMany({ where: { businessId: business.id } });
-      const idOf = (c: any) => c.firstName + c.lastName + c.joinedAt;
+      // Resolve the WAITING ticket by indexed legacyKey, scoped to this business.
+      const entry = await prisma.queueEntry.findFirst({
+        where: { businessId: business.id, legacyKey: customerId, status: "WAITING" },
+      });
+      if (!entry) {
+        return res.status(404).json({ error: "Customer not found in queue" });
+      }
 
-      let admittedCustomer: any = null;
-      let targetLocation: any = null;
+      // Guarded transition: only a row that is still WAITING flips to ADMITTED,
+      // so two concurrent admits (or admit racing a leave) can't double-process.
+      const admittedAt = new Date();
+      const result = await withWriteRetry(() =>
+        prisma.queueEntry.updateMany({
+          where: { id: entry.id, status: "WAITING" },
+          data: { status: "ADMITTED", admittedAt, finalStatus: "pending" },
+        }),
+      );
+      if (result.count === 0) {
+        return res.status(409).json({ error: "Customer is no longer waiting" });
+      }
 
-      for (const location of locations) {
-        const queue = Array.isArray(location.queue) ? (location.queue as any[]) : [];
-        const idx = queue.findIndex((c: any) => idOf(c) === customerId);
-        if (idx === -1) continue;
+      const location = await prisma.location.findUnique({
+        where: { id: entry.locationId },
+      });
+      const businessName = business.name || "The business";
+      const rpAdmit = (location?.restaurantProfile || {}) as any;
+      const restaurantName =
+        rpAdmit.displayName ||
+        location?.displayName ||
+        location?.name ||
+        businessName;
 
-        admittedCustomer = queue[idx];
-        targetLocation = location;
+      const admittedEntry = {
+        ...entry,
+        status: "ADMITTED" as const,
+        admittedAt,
+        finalStatus: "pending",
+      };
+      const customer = queueEntryToLegacy(admittedEntry, { businessUsername: username });
 
-        // Credits are charged at join time (per cost-bearing channel), not on admit.
-        admittedCustomer.status = "admitted";
-        admittedCustomer.admittedAt = new Date().toISOString();
-        admittedCustomer.finalStatus = "pending";
+      await syncCustomerQueue(customer, {
+        status: "admitted",
+        businessUsername: username,
+        businessName: business.name,
+        locationName: location?.displayName || location?.name || business.name,
+        locationId: entry.locationId,
+      });
 
-        {
-          const businessName = business.name || "The business";
-          // Customer-facing notifications use the restaurant's public name.
-          const rpAdmit = (location.restaurantProfile || {}) as any;
-          const restaurantName =
-            rpAdmit.displayName ||
-            location.displayName ||
-            location.name ||
-            businessName;
-
-          if (
-            admittedCustomer.notificationMethod === "sms" &&
-            admittedCustomer.phoneNumber &&
-            admittedCustomer.phoneNumber.trim() !== ""
-          ) {
-            try {
-              const telnyxApiKey = process.env.TELNYX_API_KEY;
-              const telnyxPhoneNumber = process.env.TELNYX_PHONE_NUMBER;
-              if (!telnyxApiKey || !telnyxPhoneNumber) {
-                throw new Error("Telnyx credentials not configured");
-              }
-              const telnyx = new Telnyx({ apiKey: telnyxApiKey });
-              const customerCountryCode = admittedCustomer.countryCode || "+1";
-              const phoneDigitsOnly = admittedCustomer.phoneNumber.trim().replace(/\D/g, "");
-              const formattedPhone = customerCountryCode + phoneDigitsOnly;
-              const message = await telnyx.messages.send({
-                from: telnyxPhoneNumber,
-                to: formattedPhone,
-                text: `Good news! It's your turn at ${restaurantName}. Please proceed to the host within the next 5 minutes. Thank you for using SeatPing!`,
-              });
-              console.log("SMS notification sent:", message.data?.id, "to", formattedPhone);
-            } catch (error: any) {
-              console.error("Failed to send SMS notification:", error?.message || error);
-            }
-          } else if (
-            admittedCustomer.notificationMethod === "whatsapp" &&
-            admittedCustomer.phoneNumber &&
-            admittedCustomer.phoneNumber.trim() !== ""
-          ) {
-            try {
-              const sent = await sendQueueAdmittedWhatsApp({
-                countryCode: admittedCustomer.countryCode || "+1",
-                phoneNumber: admittedCustomer.phoneNumber,
-                businessName: restaurantName,
-              });
-              if (!sent) {
-                console.error("[ADMIT] WhatsApp queue_admitted send returned false for:", admittedCustomer.phoneNumber);
-              }
-            } catch (error: any) {
-              console.error("[ADMIT] Failed to send WhatsApp notification:", error?.message || error);
-            }
-          } else if (
-            admittedCustomer.notificationMethod === "email" &&
-            admittedCustomer.email &&
-            admittedCustomer.email.trim() !== ""
-          ) {
-            try {
-              const emailSent = await sendQueueYourTurnEmail(
-                admittedCustomer.email,
-                restaurantName
-              );
-              if (emailSent) {
-                console.log("Email notification sent to:", admittedCustomer.email);
-              } else {
-                console.error("Failed to send email notification to:", admittedCustomer.email);
-              }
-            } catch (error: any) {
-              console.error("Failed to send email notification:", error?.message || error);
-            }
-          } else {
-            console.log("No valid notification method or contact info - skipping notification");
-          }
-        }
-
-        const admitted = Array.isArray(location.admittedCustomers)
-          ? (location.admittedCustomers as any[])
-          : [];
-        admitted.push(admittedCustomer);
-        queue.splice(idx, 1);
-
-        // No credit changes on admit — credits were charged at join time.
-        await prisma.location.update({
-          where: { id: location.id },
-          data: {
-            queue: queue as any,
-            admittedCustomers: admitted as any,
-          },
-        });
-
-        await syncCustomerQueue(admittedCustomer, {
-          status: "admitted",
-          businessUsername: username,
-          businessName: business.name,
-          locationName: location.displayName || location.name || business.name,
-          locationId: location.id,
-        });
-
-        return res.json({
-          success: true,
-          customer: admittedCustomer,
-          message: "Customer has been admitted",
+      // Background "it's your turn" notification — returns immediately.
+      if (
+        entry.notificationMethod === "sms" ||
+        entry.notificationMethod === "whatsapp" ||
+        entry.notificationMethod === "email"
+      ) {
+        await enqueueNotification({
+          type: "queue_admitted",
+          channel: entry.notificationMethod,
+          firstName: entry.firstName,
+          countryCode: entry.countryCode || "+1",
+          phoneNumber: entry.phone || "",
+          email: entry.email || "",
+          restaurantName,
         });
       }
 
-      return res.status(404).json({ error: "Customer not found in queue" });
+      return res.json({
+        success: true,
+        customer,
+        message: "Customer has been admitted",
+      });
     } catch (err: any) {
       console.error("[auth] admit customer error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
@@ -2260,33 +2216,39 @@ router.post(
         return res.status(404).json({ error: "Business not found or access denied" });
       }
 
-      const locations = await prisma.location.findMany({ where: { businessId: business.id } });
-      const idOf = (c: any) => c.firstName + c.lastName + c.joinedAt;
-
-      for (const location of locations) {
-        const admitted = Array.isArray(location.admittedCustomers)
-          ? (location.admittedCustomers as any[])
-          : [];
-        const idx = admitted.findIndex((c: any) => idOf(c) === customerId);
-        if (idx === -1) continue;
-
-        admitted[idx].finalStatus = "arrived";
-        admitted[idx].confirmedAt = new Date().toISOString();
-        await prisma.location.update({
-          where: { id: location.id },
-          data: { admittedCustomers: admitted as any },
-        });
-        await syncCustomerQueue(admitted[idx], {
-          status: "arrived",
-          businessUsername: username,
-          businessName: business.name,
-          locationName: location.displayName || location.name || business.name,
-          locationId: location.id,
-        });
-        return res.json({ success: true, message: "Customer arrival confirmed" });
+      const entry = await prisma.queueEntry.findFirst({
+        where: { businessId: business.id, legacyKey: customerId, status: "ADMITTED" },
+      });
+      if (!entry) {
+        return res.status(404).json({ error: "Admitted customer not found" });
       }
 
-      return res.status(404).json({ error: "Admitted customer not found" });
+      const arrivedAt = new Date();
+      const result = await withWriteRetry(() =>
+        prisma.queueEntry.updateMany({
+          where: { id: entry.id, status: "ADMITTED" },
+          data: { status: "ARRIVED", finalStatus: "arrived", arrivedAt },
+        }),
+      );
+      if (result.count === 0) {
+        return res.status(409).json({ error: "Customer is no longer admitted" });
+      }
+
+      const location = await prisma.location.findUnique({ where: { id: entry.locationId } });
+      const arrivedEntry = {
+        ...entry,
+        status: "ARRIVED" as const,
+        finalStatus: "arrived",
+        arrivedAt,
+      };
+      await syncCustomerQueue(queueEntryToLegacy(arrivedEntry, { businessUsername: username }), {
+        status: "arrived",
+        businessUsername: username,
+        businessName: business.name,
+        locationName: location?.displayName || location?.name || business.name,
+        locationId: entry.locationId,
+      });
+      return res.json({ success: true, message: "Customer arrival confirmed" });
     } catch (err: any) {
       console.error("[auth] confirm arrival error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
@@ -2314,33 +2276,39 @@ router.post(
         return res.status(404).json({ error: "Business not found or access denied" });
       }
 
-      const locations = await prisma.location.findMany({ where: { businessId: business.id } });
-      const idOf = (c: any) => c.firstName + c.lastName + c.joinedAt;
-
-      for (const location of locations) {
-        const admitted = Array.isArray(location.admittedCustomers)
-          ? (location.admittedCustomers as any[])
-          : [];
-        const idx = admitted.findIndex((c: any) => idOf(c) === customerId);
-        if (idx === -1) continue;
-
-        admitted[idx].finalStatus = "no_show";
-        admitted[idx].noShowMarkedAt = new Date().toISOString();
-        await prisma.location.update({
-          where: { id: location.id },
-          data: { admittedCustomers: admitted as any },
-        });
-        await syncCustomerQueue(admitted[idx], {
-          status: "no_show",
-          businessUsername: username,
-          businessName: business.name,
-          locationName: location.displayName || location.name || business.name,
-          locationId: location.id,
-        });
-        return res.json({ success: true, message: "Customer marked as no-show" });
+      const entry = await prisma.queueEntry.findFirst({
+        where: { businessId: business.id, legacyKey: customerId, status: "ADMITTED" },
+      });
+      if (!entry) {
+        return res.status(404).json({ error: "Admitted customer not found" });
       }
 
-      return res.status(404).json({ error: "Admitted customer not found" });
+      const noShowAt = new Date();
+      const result = await withWriteRetry(() =>
+        prisma.queueEntry.updateMany({
+          where: { id: entry.id, status: "ADMITTED" },
+          data: { status: "NO_SHOW", finalStatus: "no_show", noShowAt },
+        }),
+      );
+      if (result.count === 0) {
+        return res.status(409).json({ error: "Customer is no longer admitted" });
+      }
+
+      const location = await prisma.location.findUnique({ where: { id: entry.locationId } });
+      const noShowEntry = {
+        ...entry,
+        status: "NO_SHOW" as const,
+        finalStatus: "no_show",
+        noShowAt,
+      };
+      await syncCustomerQueue(queueEntryToLegacy(noShowEntry, { businessUsername: username }), {
+        status: "no_show",
+        businessUsername: username,
+        businessName: business.name,
+        locationName: location?.displayName || location?.name || business.name,
+        locationId: entry.locationId,
+      });
+      return res.json({ success: true, message: "Customer marked as no-show" });
     } catch (err: any) {
       console.error("[auth] mark no-show error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
@@ -2368,45 +2336,46 @@ router.delete(
         return res.status(404).json({ error: "Business not found or access denied" });
       }
 
-      const locations = await prisma.location.findMany({ where: { businessId: business.id } });
-      const idOf = (c: any) => c.firstName + c.lastName + c.joinedAt;
-
-      for (const location of locations) {
-        const queue = Array.isArray(location.queue) ? (location.queue as any[]) : [];
-        const idx = queue.findIndex((c: any) => idOf(c) === customerId);
-        if (idx === -1) continue;
-
-        const removedCustomer = queue[idx];
-        removedCustomer.status = "removed";
-        removedCustomer.removedAt = new Date().toISOString();
-
-        const removed = Array.isArray(location.removedCustomers)
-          ? (location.removedCustomers as any[])
-          : [];
-        removed.push(removedCustomer);
-        queue.splice(idx, 1);
-
-        await prisma.location.update({
-          where: { id: location.id },
-          data: { queue: queue as any, removedCustomers: removed as any },
-        });
-
-        await syncCustomerQueue(removedCustomer, {
-          status: "removed",
-          businessUsername: username,
-          businessName: business.name,
-          locationName: location.displayName || location.name || business.name,
-          locationId: location.id,
-        });
-
-        return res.json({
-          success: true,
-          customer: removedCustomer,
-          message: "Customer has been removed from queue",
-        });
+      // A business can remove someone who is still WAITING or already ADMITTED.
+      const entry = await prisma.queueEntry.findFirst({
+        where: {
+          businessId: business.id,
+          legacyKey: customerId,
+          status: { in: ["WAITING", "ADMITTED"] },
+        },
+      });
+      if (!entry) {
+        return res.status(404).json({ error: "Customer not found in queue" });
       }
 
-      return res.status(404).json({ error: "Customer not found in queue" });
+      const removedAt = new Date();
+      const result = await withWriteRetry(() =>
+        prisma.queueEntry.updateMany({
+          where: { id: entry.id, status: { in: ["WAITING", "ADMITTED"] } },
+          data: { status: "REMOVED", removedAt },
+        }),
+      );
+      if (result.count === 0) {
+        return res.status(409).json({ error: "Customer is no longer in the queue" });
+      }
+
+      const location = await prisma.location.findUnique({ where: { id: entry.locationId } });
+      const removedEntry = { ...entry, status: "REMOVED" as const, removedAt };
+      const removedCustomer = queueEntryToLegacy(removedEntry, { businessUsername: username });
+
+      await syncCustomerQueue(removedCustomer, {
+        status: "removed",
+        businessUsername: username,
+        businessName: business.name,
+        locationName: location?.displayName || location?.name || business.name,
+        locationId: entry.locationId,
+      });
+
+      return res.json({
+        success: true,
+        customer: removedCustomer,
+        message: "Customer has been removed from queue",
+      });
     } catch (err: any) {
       console.error("[auth] remove customer error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
@@ -2432,35 +2401,33 @@ router.post("/business/:username/queue/:customerId/leave", async (req, res) => {
     });
     if (!business) return res.status(404).json({ error: "Business not found" });
 
-    const locations = await prisma.location.findMany({ where: { businessId: business.id } });
-    const idOf = (c: any) => c.firstName + c.lastName + c.joinedAt;
+    // Customer can only leave while still WAITING. Guarded so a leave racing an
+    // admit doesn't double-process the same ticket.
+    const entry = await prisma.queueEntry.findFirst({
+      where: { businessId: business.id, legacyKey: customerId, status: "WAITING" },
+    });
+    if (entry) {
+      const leftAt = new Date();
+      const result = await withWriteRetry(() =>
+        prisma.queueEntry.updateMany({
+          where: { id: entry.id, status: "WAITING" },
+          data: { status: "LEFT", leftAt },
+        }),
+      );
+      if (result.count === 0) {
+        return res.status(409).json({ error: "You are no longer waiting in the queue" });
+      }
 
-    for (const location of locations) {
-      const queue = Array.isArray(location.queue) ? (location.queue as any[]) : [];
-      const idx = queue.findIndex((c: any) => idOf(c) === customerId);
-      if (idx === -1) continue;
-
-      const removedCustomer = queue[idx];
-      removedCustomer.status = "left";
-      removedCustomer.leftAt = new Date().toISOString();
-
-      const removed = Array.isArray(location.removedCustomers)
-        ? (location.removedCustomers as any[])
-        : [];
-      removed.push(removedCustomer);
-      queue.splice(idx, 1);
-
-      await prisma.location.update({
-        where: { id: location.id },
-        data: { queue: queue as any, removedCustomers: removed as any },
-      });
+      const location = await prisma.location.findUnique({ where: { id: entry.locationId } });
+      const leftEntry = { ...entry, status: "LEFT" as const, leftAt };
+      const removedCustomer = queueEntryToLegacy(leftEntry, { businessUsername: username });
 
       await syncCustomerQueue(removedCustomer, {
         status: "left",
         businessUsername: username,
         businessName: business.name,
-        locationName: location.displayName || location.name || business.name,
-        locationId: location.id,
+        locationName: location?.displayName || location?.name || business.name,
+        locationId: entry.locationId,
       });
 
       return res.json({

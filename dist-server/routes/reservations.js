@@ -16,9 +16,11 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
-import { normalizeSettings, computeAvailability, validateReservationRequest, buildReservationDateTime, splitDateTime, formatTimeLabel, serializeReservation, syncCustomerReservation, } from "../lib/reservations.js";
+import { normalizeSettings, computeAvailability, validateReservationRequest, buildReservationDateTime, splitDateTime, formatTimeLabel, syncCustomerReservation, } from "../lib/reservations.js";
 import { readSession } from "../lib/auth.js";
-import { sendReservationConfirmationEmail, sendNewReservationBusinessEmail, } from "../lib/email.js";
+import { reservationRowToLegacy } from "../lib/liveData.js";
+import { bucketOf, tryReserveCapacity, releaseCapacity, addCapacity, } from "../lib/reservationCapacity.js";
+import { enqueueNotification } from "../lib/notifications.js";
 const router = Router();
 const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 /** Resolve a (businessUsername, locationId) pair to the business + location. */
@@ -70,60 +72,41 @@ function baseUrl(req) {
     return `${proto}://${req.get("host")}`;
 }
 /**
- * Send reservation emails (best-effort — email is the only customer channel and
- * no path consumes notification credits):
- *   1. Confirmation/request to the customer (if they gave an email).
- *   2. A heads-up to the business owner that a booking came in.
- * Each send is isolated so one failure never blocks the other or the request.
+ * Hand off reservation emails for background delivery (email is the only
+ * customer channel and no path consumes notification credits):
+ *   1. Confirmation to the customer (if they gave an email).
+ *   2. A heads-up to the business owner.
+ * Returns immediately — the request never waits on SMTP.
  */
 async function notifyReservation(reservation, business, location, settings, manageUrl) {
     const { date, time } = splitDateTime(reservation.reservationDateTime);
-    const dateLabel = readableDate(date);
-    const timeLabel = formatTimeLabel(time);
-    // 1. Customer confirmation.
-    if (reservation.email) {
-        try {
-            await sendReservationConfirmationEmail({
-                email: reservation.email,
-                firstName: reservation.firstName,
-                lastName: reservation.lastName,
-                businessName: business.name || "the restaurant",
-                address: location.address,
-                dateLabel,
-                timeLabel,
-                partySize: reservation.partySize,
-                status: reservation.status,
-                manageUrl,
-                cancellationPolicy: settings.cancellationPolicy,
-            });
-        }
-        catch (e) {
-            console.error("[RESERVATION] customer confirmation email failed:", e?.message || e);
-        }
-    }
-    // 2. Business notification (to the business account email — no per-location
-    // email field exists yet; prefer one here if it's added later).
-    if (business.email) {
-        try {
-            await sendNewReservationBusinessEmail({
-                to: business.email,
-                businessName: business.name || "your restaurant",
-                locationName: location.displayName || location.name || location.address,
-                customerName: reservation.name || `${reservation.firstName} ${reservation.lastName}`.trim(),
-                customerEmail: reservation.email || "",
-                customerPhone: reservation.phone || undefined,
-                dateLabel,
-                timeLabel,
-                partySize: reservation.partySize,
-                status: reservation.status,
-                notes: reservation.notes || undefined,
-                dashboardUrl: `${process.env.FRONTEND_URL || "https://www.seatping.biz"}/business`,
-            });
-        }
-        catch (e) {
-            console.error("[RESERVATION] business notification email failed:", e?.message || e);
-        }
-    }
+    await enqueueNotification({
+        type: "reservation_created",
+        customerEmail: reservation.email || undefined,
+        firstName: reservation.firstName,
+        lastName: reservation.lastName,
+        businessName: business.name || "the restaurant",
+        address: location.address,
+        dateLabel: readableDate(date),
+        timeLabel: formatTimeLabel(time),
+        partySize: reservation.partySize,
+        status: reservation.status,
+        manageUrl,
+        cancellationPolicy: settings.cancellationPolicy,
+        businessEmail: business.email || undefined,
+        locationName: location.displayName || location.name || location.address,
+        customerName: reservation.name || `${reservation.firstName} ${reservation.lastName}`.trim(),
+        customerPhone: reservation.phone || undefined,
+        notes: reservation.notes || undefined,
+        dashboardUrl: `${process.env.FRONTEND_URL || "https://www.seatping.biz"}/business`,
+    });
+}
+/** Active reservations for a location as legacy-shaped objects (for validation). */
+async function activeReservationsForValidation(locationId) {
+    const rows = await prisma.reservation.findMany({
+        where: { locationId, status: { in: ["PENDING", "CONFIRMED", "ARRIVED"] } },
+    });
+    return rows.map((r) => reservationRowToLegacy(r));
 }
 /**
  * GET settings — public reservation configuration for a location. Always
@@ -161,9 +144,7 @@ router.get("/:businessUsername/:locationId/availability", async (req, res) => {
         const date = String(req.query.date || "").trim();
         const partySize = Number(req.query.partySize || 0);
         const settings = normalizeSettings(location.reservationSettings);
-        const reservations = Array.isArray(location.reservations)
-            ? location.reservations
-            : [];
+        const reservations = await activeReservationsForValidation(location.id);
         const { slots, partyTooLarge, outsideWindow } = computeAvailability({
             settings,
             reservations,
@@ -205,10 +186,10 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
             return res.status(400).json({ error: "A valid email is required." });
         }
         const settings = normalizeSettings(location.reservationSettings);
-        const reservations = Array.isArray(location.reservations)
-            ? location.reservations
-            : [];
+        const reservations = await activeReservationsForValidation(location.id);
         const size = Number(partySize);
+        // Non-capacity validation (party size, booking window, notice, hours) against
+        // the live model data.
         const error = validateReservationRequest({
             settings,
             reservations,
@@ -219,44 +200,55 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
         });
         if (error)
             return res.status(400).json({ error });
+        const reservationDateTime = buildReservationDateTime(String(date), String(time));
+        const { dateKey, hour } = bucketOf(reservationDateTime);
+        // Atomic overbooking guard: a single guarded counter increment. If it fails,
+        // the hour bucket is full — no row is created, so we can never overbook even
+        // under simultaneous requests for the last seats.
+        const reserved = await tryReserveCapacity(location.id, dateKey, hour, size, settings.maxReservedGuestsPerHour);
+        if (!reserved) {
+            return res
+                .status(400)
+                .json({ error: `${formatTimeLabel(String(time))} is fully booked. Please choose another time.` });
+        }
         // Link the reservation to the logged-in customer (if any) so it shows up in
         // their profile. Guests book without an account (customerId stays null).
         const session = readSession(req);
         const customerId = session?.accountType === "customer" ? session.sub : null;
-        const nowIso = new Date().toISOString();
         // Reservations are auto-confirmed for now (the manual-approval option is no
         // longer exposed in the business UI).
-        const status = "confirmed";
-        const reservation = {
-            id: crypto.randomBytes(12).toString("hex"),
-            locationId: location.id,
-            businessUsername: business.username,
-            customerId,
-            firstName: String(firstName).trim(),
-            lastName: String(lastName).trim(),
-            name: `${String(firstName).trim()} ${String(lastName).trim()}`.trim(),
-            contactMethod: "email",
-            phone: "",
-            countryCode: "",
-            email: String(email).trim(),
-            partySize: size,
-            reservationDateTime: buildReservationDateTime(String(date), String(time)),
-            notes: notes ? String(notes).trim().slice(0, 1000) : "",
-            status,
-            manageToken: crypto.randomBytes(24).toString("hex"),
-            source: "seatping_public",
-            createdAt: nowIso,
-            updatedAt: nowIso,
-            cancelledAt: null,
-            arrivedAt: null,
-            completedAt: null,
-            noShowAt: null,
-        };
-        await prisma.location.update({
-            where: { id: location.id },
-            data: { reservations: [...reservations, reservation] },
-        });
-        const manageUrl = `${baseUrl(req)}/reservations/manage/${reservation.manageToken}`;
+        const manageToken = crypto.randomBytes(24).toString("hex");
+        let row;
+        try {
+            row = await prisma.reservation.create({
+                data: {
+                    manageToken,
+                    locationId: location.id,
+                    businessId: business.id,
+                    businessUsername: business.username,
+                    customerId,
+                    firstName: String(firstName).trim(),
+                    lastName: String(lastName).trim(),
+                    name: `${String(firstName).trim()} ${String(lastName).trim()}`.trim(),
+                    contactMethod: "email",
+                    phone: "",
+                    countryCode: "",
+                    email: String(email).trim(),
+                    guestCount: size,
+                    reservationDateTime,
+                    notes: notes ? String(notes).trim().slice(0, 1000) : "",
+                    status: "CONFIRMED",
+                    source: "seatping_public",
+                },
+            });
+        }
+        catch (createErr) {
+            // Release the seats we optimistically reserved if the row couldn't be saved.
+            await releaseCapacity(location.id, dateKey, hour, size).catch(() => { });
+            throw createErr;
+        }
+        const reservation = reservationRowToLegacy(row, { includeToken: true });
+        const manageUrl = `${baseUrl(req)}/reservations/manage/${manageToken}`;
         await notifyReservation(reservation, business, location, settings, manageUrl);
         await syncCustomerReservation(reservation, {
             businessName: business.name,
@@ -264,8 +256,8 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
         });
         return res.json({
             success: true,
-            reservation: serializeReservation(reservation, { includeToken: true }),
-            manageToken: reservation.manageToken,
+            reservation,
+            manageToken,
             manageUrl,
         });
     }
@@ -275,22 +267,24 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
     }
 });
 /**
- * Find a reservation + its location by manage token. Reservations are JSON on
- * the Location model, so we scan locations and match in memory. Tokens are
- * 24-byte random hex, so this is effectively a unique lookup.
+ * Find a reservation + its location by manage token. Now an indexed O(1) lookup
+ * (manageToken is @unique) instead of scanning every location's JSON array.
  */
 async function findByManageToken(manageToken) {
     if (!manageToken)
         return null;
-    const all = await prisma.location.findMany();
-    for (const loc of all) {
-        const list = Array.isArray(loc.reservations) ? loc.reservations : [];
-        const reservation = list.find((r) => r?.manageToken === manageToken);
-        if (reservation)
-            return { location: loc, reservation, list };
-    }
-    return null;
+    const reservation = await prisma.reservation.findUnique({ where: { manageToken } });
+    if (!reservation)
+        return null;
+    const location = await prisma.location.findUnique({
+        where: { id: reservation.locationId },
+    });
+    if (!location)
+        return null;
+    return { location, reservation };
 }
+/** Terminal enum statuses that can no longer be changed/cancelled. */
+const TERMINAL_ENUM = ["CANCELLED", "COMPLETED", "NO_SHOW"];
 /** GET reservation by manage token (customer self-service view). */
 router.get("/manage/:manageToken", async (req, res) => {
     try {
@@ -318,7 +312,7 @@ router.get("/manage/:manageToken", async (req, res) => {
             location.city ||
             null;
         return res.json({
-            reservation: serializeReservation(reservation, { includeToken: true }),
+            reservation: reservationRowToLegacy(reservation, { includeToken: true }),
             settings,
             restaurant: {
                 businessUsername: business?.username ?? null,
@@ -341,18 +335,18 @@ router.put("/manage/:manageToken", async (req, res) => {
         const found = await findByManageToken(String(req.params.manageToken || "").trim());
         if (!found)
             return res.status(404).json({ error: "Reservation not found" });
-        const { location, reservation, list } = found;
-        if (["cancelled", "completed", "no_show"].includes(reservation.status)) {
+        const { location, reservation } = found;
+        if (TERMINAL_ENUM.includes(reservation.status)) {
             return res.status(400).json({ error: "This reservation can no longer be changed." });
         }
         const current = splitDateTime(reservation.reservationDateTime);
         const date = String(req.body?.date || current.date);
         const time = String(req.body?.time || current.time);
-        const partySize = req.body?.partySize !== undefined ? Number(req.body.partySize) : reservation.partySize;
+        const partySize = req.body?.partySize !== undefined ? Number(req.body.partySize) : reservation.guestCount;
         const settings = normalizeSettings(location.reservationSettings);
         const error = validateReservationRequest({
             settings,
-            reservations: list,
+            reservations: await activeReservationsForValidation(location.id),
             date,
             time,
             partySize,
@@ -361,19 +355,26 @@ router.put("/manage/:manageToken", async (req, res) => {
         });
         if (error)
             return res.status(400).json({ error });
-        const updated = {
-            ...reservation,
-            partySize,
-            reservationDateTime: buildReservationDateTime(date, time),
-            updatedAt: new Date().toISOString(),
-        };
-        const nextList = list.map((r) => (r.id === reservation.id ? updated : r));
-        await prisma.location.update({
-            where: { id: location.id },
-            data: { reservations: nextList },
+        // Move capacity atomically: free this reservation's current seats, then try
+        // to claim the new bucket. If the new bucket is full, restore the old hold.
+        const oldBucket = bucketOf(reservation.reservationDateTime);
+        const newDateTime = buildReservationDateTime(date, time);
+        const newBucket = bucketOf(newDateTime);
+        await releaseCapacity(location.id, oldBucket.dateKey, oldBucket.hour, reservation.guestCount);
+        const reserved = await tryReserveCapacity(location.id, newBucket.dateKey, newBucket.hour, partySize, settings.maxReservedGuestsPerHour);
+        if (!reserved) {
+            // Restore the original hold so we don't lose the seat on a failed change.
+            await addCapacity(location.id, oldBucket.dateKey, oldBucket.hour, reservation.guestCount);
+            return res
+                .status(400)
+                .json({ error: `${formatTimeLabel(time)} is fully booked. Please choose another time.` });
+        }
+        const updated = await prisma.reservation.update({
+            where: { id: reservation.id },
+            data: { guestCount: partySize, reservationDateTime: newDateTime },
         });
         await syncManageChange(location, updated);
-        return res.json({ reservation: serializeReservation(updated, { includeToken: true }) });
+        return res.json({ reservation: reservationRowToLegacy(updated, { includeToken: true }) });
     }
     catch (err) {
         console.error("[reservations] manage update error:", err?.message || err);
@@ -381,14 +382,14 @@ router.put("/manage/:manageToken", async (req, res) => {
     }
 });
 /** Re-sync a logged-in customer's profile copy after a manage-link change. */
-async function syncManageChange(location, reservation) {
-    if (!reservation?.customerId)
+async function syncManageChange(location, reservationRow) {
+    if (!reservationRow?.customerId)
         return;
     const biz = await prisma.business.findUnique({
         where: { id: location.businessId },
         select: { name: true },
     });
-    await syncCustomerReservation(reservation, {
+    await syncCustomerReservation(reservationRowToLegacy(reservationRow), {
         businessName: biz?.name ?? null,
         locationName: location.displayName || location.name || biz?.name || null,
     });
@@ -399,22 +400,22 @@ router.post("/manage/:manageToken/cancel", async (req, res) => {
         const found = await findByManageToken(String(req.params.manageToken || "").trim());
         if (!found)
             return res.status(404).json({ error: "Reservation not found" });
-        const { location, reservation, list } = found;
-        if (reservation.status === "cancelled") {
-            return res.json({ reservation: serializeReservation(reservation, { includeToken: true }) });
+        const { location, reservation } = found;
+        if (reservation.status === "CANCELLED") {
+            return res.json({ reservation: reservationRowToLegacy(reservation, { includeToken: true }) });
         }
-        if (["completed", "no_show"].includes(reservation.status)) {
+        if (["COMPLETED", "NO_SHOW"].includes(reservation.status)) {
             return res.status(400).json({ error: "This reservation can no longer be cancelled." });
         }
-        const now = new Date().toISOString();
-        const updated = { ...reservation, status: "cancelled", cancelledAt: now, updatedAt: now };
-        const nextList = list.map((r) => (r.id === reservation.id ? updated : r));
-        await prisma.location.update({
-            where: { id: location.id },
-            data: { reservations: nextList },
+        // Free the seats this reservation was holding.
+        const { dateKey, hour } = bucketOf(reservation.reservationDateTime);
+        await releaseCapacity(location.id, dateKey, hour, reservation.guestCount);
+        const updated = await prisma.reservation.update({
+            where: { id: reservation.id },
+            data: { status: "CANCELLED", cancelledAt: new Date() },
         });
         await syncManageChange(location, updated);
-        return res.json({ reservation: serializeReservation(updated, { includeToken: true }) });
+        return res.json({ reservation: reservationRowToLegacy(updated, { includeToken: true }) });
     }
     catch (err) {
         console.error("[reservations] manage cancel error:", err?.message || err);

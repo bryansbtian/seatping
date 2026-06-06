@@ -104,9 +104,20 @@ router.get("/restaurants", async (req, res) => {
   try {
     const q = String(req.query.query || "").trim();
 
-    // Pull every location with its owning business + first photo. Filtering is
-    // done in JS because cuisine types and description live in a JSON column.
+    // Pagination is opt-in: when a `limit` is supplied we page; otherwise we
+    // return all matches (the results page filters/sorts client-side and has no
+    // pager). Either way we only ever load PUBLISHED locations — the indexed
+    // `isPublished` filter keeps this off the full collection. (Cuisine /
+    // description live in a JSON column, so final matching stays in JS over this
+    // bounded published set; an Atlas Search index is the next step at scale.)
+    const rawLimit = parseInt(String(req.query.limit ?? ""), 10);
+    const paginate = Number.isFinite(rawLimit) && rawLimit > 0;
+    const limit = paginate ? Math.min(100, rawLimit) : Infinity;
+    const rawPage = parseInt(String(req.query.page ?? "1"), 10);
+    const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+
     const locations = await prisma.location.findMany({
+      where: { isPublished: true },
       orderBy: { createdAt: "desc" },
       include: {
         photos: { orderBy: { createdAt: "asc" }, take: 1 },
@@ -122,9 +133,13 @@ router.get("/restaurants", async (req, res) => {
     });
     const businessById = new Map(businesses.map((b) => [b.id, b]));
 
-    const filtered = locations.filter((loc) =>
+    const matched = locations.filter((loc) =>
       matchesQuery(loc, businessById.get(loc.businessId), q),
     );
+    const total = matched.length;
+    const filtered = paginate
+      ? matched.slice((page - 1) * limit, (page - 1) * limit + limit)
+      : matched;
 
     const locationIds = filtered.map((l) => l.id);
     const summaries =
@@ -195,7 +210,14 @@ router.get("/restaurants", async (req, res) => {
       };
     });
 
-    return res.json({ query: q, results });
+    return res.json({
+      query: q,
+      results,
+      total,
+      ...(paginate
+        ? { page, limit, hasMore: page * limit < total }
+        : {}),
+    });
   } catch (err: any) {
     console.error("[search] error:", err?.message || err);
     return res.status(500).json({ error: "Search failed." });

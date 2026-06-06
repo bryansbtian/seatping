@@ -18,6 +18,8 @@ import featuredRouter from "./routes/featured.js";
 import restaurantsRouter from "./routes/restaurants.js";
 import reservationsRouter from "./routes/reservations.js";
 import searchRouter from "./routes/search.js";
+import jobsRouter from "./routes/jobs.js";
+import cronRouter from "./routes/cron.js";
 import { runDailyCreditRefillSweep } from "./lib/trial.js";
 import { runReservationReminderSweep } from "./lib/reservationReminders.js";
 
@@ -33,6 +35,10 @@ app.use(
     credentials: true,
   })
 );
+
+// QStash worker is mounted BEFORE the JSON body parser: signature verification
+// must run against the raw request bytes (the router parses its own raw body).
+app.use("/api/jobs", jobsRouter);
 
 // Body parsers. (Billing is handled manually outside the app — no payment
 // webhook needs the raw request body, so parsers can be mounted first.)
@@ -54,6 +60,7 @@ app.use("/api/featured-restaurants", featuredRouter);
 app.use("/api/restaurants", restaurantsRouter);
 app.use("/api/reservations", reservationsRouter);
 app.use("/api/search", searchRouter);
+app.use("/api/cron", cronRouter);
 app.use("/tickets", ticketsRouter);
 
 // Serve static files from the React app in production

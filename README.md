@@ -158,3 +158,55 @@ SeatPing modernizes the waiting and booking experience with a lightweight digita
 - Email utilities
 - Google Maps and Places integration
 - Image upload service
+
+## Data model and concurrency
+
+Live queue and reservation state live in dedicated, indexed Prisma models, not
+in JSON arrays on the Location document:
+
+- `QueueEntry` — one row per waitlist ticket; status transitions
+  (WAITING/ADMITTED/ARRIVED/NO_SHOW/REMOVED/LEFT) are atomic, status-guarded
+  updates, so concurrent admits/leaves can't lose or double-process entries.
+- `Reservation` — one row per booking, looked up by indexed `manageToken`.
+- `SlotCounter` — atomic per-hour capacity counter; a guarded `$inc` enforces
+  `maxReservedGuestsPerHour`, so simultaneous bookings can never overbook.
+
+Contended single-document writes (location credits, slot counters) are wrapped
+in `withWriteRetry` (server/lib/dbRetry.ts) to absorb MongoDB write conflicts
+(P2034) under load. The legacy `queue` / `admittedCustomers` / `removedCustomers`
+/ `reservations` JSON fields on Location are retained as a fallback and are no
+longer written; remove them once the migration is confirmed in production.
+
+Migrate existing JSON data with `npx tsx scripts/migrate-to-models.ts` (dry run)
+then `--commit`. It is idempotent and never deletes the JSON fields.
+
+## Background jobs
+
+- Notifications (SMS/WhatsApp/email) are sent out-of-band so user requests
+  return immediately. When QStash is configured they are published to a queue
+  and delivered via `POST /api/jobs/notify` (signature-verified) with retries;
+  otherwise they fall back to fire-and-forget inline sends.
+- Scheduled work runs via Vercel Cron (`vercel.json` → `crons`):
+  `/api/cron/credit-refill` (daily) and `/api/cron/reservation-reminders`
+  (hourly), protected by `CRON_SECRET`. The legacy `setInterval` sweeps still run
+  for long-lived/local servers (they are skipped on Vercel).
+
+## Environment variables
+
+Core: `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CLIENT_ORIGIN`,
+`FRONTEND_URL`, `EMAIL_PASSWORD`, `TELNYX_API_KEY`, `TELNYX_PHONE_NUMBER`,
+`KAPSO_API_KEY`, `KAPSO_PHONE_NUMBER_ID`, `CLOUDINARY_*`,
+`VITE_GOOGLE_MAPS_API_KEY`.
+
+Scalability features (optional; graceful fallback when unset):
+
+- `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY` —
+  enable async notification delivery via QStash. Without them, notifications send
+  inline (fine for local dev).
+- `CRON_SECRET` — required for the Vercel Cron endpoints to run. Set it in the
+  Vercel project so Cron requests are authorized.
+- `PUBLIC_BASE_URL` — public origin QStash calls back for the worker (defaults to
+  `FRONTEND_URL`).
+
+Note: sub-daily Vercel Cron schedules require a paid Vercel plan; on the free
+plan the crons fall back to daily.
