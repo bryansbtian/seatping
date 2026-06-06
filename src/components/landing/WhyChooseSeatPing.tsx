@@ -26,7 +26,6 @@ import {
   Star,
   Pencil,
   QrCode,
-  Bell,
   Zap,
   Activity,
   Building2,
@@ -257,13 +256,16 @@ export function MiniLocationCard({ className }: { className?: string }) {
             "flex flex-1 flex-col justify-center rounded-xl px-2 py-1.5",
           )}
         >
-          {/* line 1: location name (full width) + actions */}
+          {/* line 1: location name + credits (beside the name) + actions */}
           <div className="flex items-center gap-1.5">
             <MapPin className="h-3 w-3 shrink-0 text-gray-400" />
-            <p className="min-w-0 flex-1 truncate text-[11px] font-semibold text-gray-800">
+            <p className="min-w-0 truncate text-[11px] font-semibold text-gray-800">
               {loc.name}
             </p>
-            <div className="flex shrink-0 items-center gap-1">
+            <span className="shrink-0 rounded-full bg-indigo-50 px-1.5 py-0.5 text-[8px] font-medium leading-none text-indigo-700">
+              Credits: {loc.credits}
+            </span>
+            <div className="ml-auto flex shrink-0 items-center gap-1">
               {[Pencil, Star, QrCode].map((Icon, i) => (
                 <span
                   key={i}
@@ -274,14 +276,11 @@ export function MiniLocationCard({ className }: { className?: string }) {
               ))}
             </div>
           </div>
-          {/* line 2: address + credits */}
+          {/* line 2: address */}
           <div className="mt-0.5 flex items-center gap-1.5 pl-[18px]">
             <p className="min-w-0 flex-1 truncate text-[9px] text-slate-500">
               {loc.address}
             </p>
-            <span className="shrink-0 rounded-full bg-indigo-50 px-1.5 py-0.5 text-[8px] font-medium leading-none text-indigo-700">
-              Credits: {loc.credits}
-            </span>
           </div>
         </div>
       ))}
@@ -688,65 +687,146 @@ function SmallFeatureCard({
 /*  Section #1 — Why choose SeatPing (header + 4-up feature cards)     */
 /* ================================================================== */
 
-export default function WhyChooseSeatPing() {
+/* ── Stacked-card scroll section ── */
+
+/** One card in the sticky deck. Pure CSS `position: sticky`: each card pins a
+ *  little lower than the previous one (top = --pin + index·--peek), so as you
+ *  scroll down, each card slides up and stacks under the ones already pinned —
+ *  leaving a thin deck-edge of each earlier card peeking behind the active one.
+ *  The card content is vertically centered. A small responsive margin separates
+ *  each card in the normal flow, while the last card stays flush with the end
+ *  of the deck. */
+function StackCard({
+  feat,
+  index,
+  isLast,
+}: {
+  feat: {
+    title: string;
+    description: string;
+    icon: React.ElementType;
+    visual: React.ReactNode;
+  };
+  index: number;
+  isLast: boolean;
+}) {
+  const Icon = feat.icon;
   return (
-    <section
-      className={cn(
-        "relative overflow-hidden border-t border-slate-200 bg-white",
-        SECTION_PADDING,
-      )}
+    <div
+      className={cn("sticky w-full", !isLast && "mb-6 sm:mb-8")}
+      style={{
+        top: `calc(var(--pin) + ${index} * var(--peek))`,
+        zIndex: index + 1,
+      }}
     >
+      {/* Flex (not grid) so both columns stretch to the card's full height and
+          their content is genuinely centered vertically — no top-heavy gap.
+          Mobile stacks the two blocks and centers them as a group. */}
+      <div className="flex min-h-0 flex-col justify-center overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xl shadow-slate-900/[0.06] md:min-h-[16rem] md:flex-row md:justify-normal lg:min-h-[17rem]">
+        {/* Left: icon + title + description, vertically centered. */}
+        <div className="flex flex-col justify-center p-4 sm:p-5 md:w-1/2 md:p-6 lg:p-7">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm sm:h-10 sm:w-10">
+              <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+            </span>
+            <h3
+              className={cn(
+                CARD_TITLE,
+                "text-lg text-slate-900 sm:text-xl lg:text-2xl",
+              )}
+            >
+              {feat.title}
+            </h3>
+          </div>
+
+          <p
+            className={cn(
+              CARD_DESCRIPTION,
+              "mt-2.5 max-w-md text-sm leading-relaxed sm:mt-3 sm:text-base",
+            )}
+          >
+            {feat.description}
+          </p>
+        </div>
+
+        {/* Right: the existing mini UI preview, vertically centered. */}
+        <div className="flex items-center justify-center border-t border-slate-100 bg-slate-50/60 p-4 sm:p-5 md:w-1/2 md:border-l md:border-t-0 md:p-6 lg:p-7">
+          <div className="w-full max-w-[15rem] sm:max-w-xs md:max-w-sm">
+            {feat.visual}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function WhyChooseSeatPing() {
+  const FEATURES = [
+    {
+      title: "Smart Queue Management",
+      description:
+        "Track every walk-in, admit guests in order, and notify them the moment a table opens up.",
+      icon: ListOrdered,
+      visual: <MiniQueueCard className="w-full" />,
+    },
+    {
+      title: "Reservation Management",
+      description:
+        "Take bookings in advance and keep tonight's tables organised without the paper book.",
+      icon: CalendarDays,
+      visual: <MiniReservationCard className="w-full" />,
+    },
+    {
+      title: "Daily Summary",
+      description:
+        "See served guests, average wait, and no-shows at a glance, updated through the day.",
+      icon: TrendingUp,
+      visual: <MiniPerformanceCard className="w-full" />,
+    },
+    {
+      title: "Location Management",
+      description:
+        "Set hours, capacity, and queue settings for each location from one place.",
+      icon: MapPin,
+      visual: <MiniLocationCard className="w-full" />,
+    },
+  ];
+
+  return (
+    <section className="relative border-t border-slate-200 bg-white">
       {/* soft brand wash */}
       <div
         aria-hidden
         className="pointer-events-none absolute -top-20 right-0 h-72 w-[36rem] max-w-[90vw] rounded-full bg-indigo-100/35 blur-3xl"
       />
 
-      <div className="container relative mx-auto max-w-6xl scroll-animate">
-        {/* header */}
-        <div className="max-w-3xl">
-          <SectionPill icon={Bell}>Designed for Guest Flow</SectionPill>
-          <h2 className={cn("mt-4", SECTION_HEADING)}>
+      <div className="container relative mx-auto max-w-5xl px-4 pt-14 sm:pt-16 md:pt-20">
+        {/* Section header — scrolls normally with the page */}
+        <div className="mx-auto max-w-3xl scroll-animate text-center">
+          <h2 className={SECTION_HEADING}>
             A Smarter Way to Manage Queues, Reservations, and Guest Flow
           </h2>
-          <p className={cn("mt-4 max-w-2xl", SECTION_SUBTITLE)}>
+          <p className={cn("mx-auto mt-4 max-w-2xl", SECTION_SUBTITLE)}>
             Give customers a smoother waiting experience while helping staff
             manage queues, reservations, and daily operations from one simple
             dashboard.
           </p>
         </div>
 
-        {/* top 4-up feature cards */}
-        <div
-          className={cn(
-            SECTION_CONTENT_GAP,
-            "grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4",
-          )}
-        >
-          <SmallFeatureCard
-            icon={ListOrdered}
-            title="Smart Queue Management"
-            description="Track every walk-in, admit guests in order, and notify them the moment a table opens up."
-            visual={<MiniQueueCard />}
-          />
-          <SmallFeatureCard
-            icon={CalendarDays}
-            title="Reservation Management"
-            description="Take bookings in advance and keep tonight's tables organised without the paper book."
-            visual={<MiniReservationCard />}
-          />
-          <SmallFeatureCard
-            icon={TrendingUp}
-            title="Daily Summary"
-            description="See served guests, average wait, and no-shows at a glance, updated through the day."
-            visual={<MiniPerformanceCard />}
-          />
-          <SmallFeatureCard
-            icon={MapPin}
-            title="Location Management"
-            description="Set hours, capacity, and queue settings for each location from one place."
-            visual={<MiniLocationCard />}
-          />
+        {/* Sticky stacked-card deck.
+            --pin:  where the first card pins (clears the fixed site nav).
+            --peek: how far each card pins below the previous one. Mobile keeps
+                    enough room for wrapped titles on narrow phones, then
+                    tightens once titles fit on one line. */}
+        <div className="relative mt-10 pb-14 sm:mt-12 md:pb-20 [--peek:4.75rem] [--pin:5rem] min-[361px]:[--peek:4rem] md:[--peek:3rem] md:[--pin:6rem]">
+          {FEATURES.map((feat, idx) => (
+            <StackCard
+              key={feat.title}
+              feat={feat}
+              index={idx}
+              isLast={idx === FEATURES.length - 1}
+            />
+          ))}
         </div>
       </div>
     </section>
