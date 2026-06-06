@@ -35,6 +35,7 @@ import { FieldTrigger, OptionRow } from "@/components/TimeSelect";
 import {
   Calendar as CalendarIcon,
   CheckCircle2,
+  Clock3,
   Copy,
   Loader2,
   MapPin,
@@ -59,6 +60,14 @@ type Slot = {
   available: boolean;
   remaining: number;
   reason?: "full" | "too_soon" | "party_too_large" | "closed";
+};
+
+type AvailabilityNotice = {
+  status: "available" | "closed" | "outside_operating_hours";
+  dayName?: string | null;
+  hoursLabel?: string | null;
+  message?: string;
+  helper?: string;
 };
 
 type Props = {
@@ -113,8 +122,8 @@ export default function ReservationBooking({
   autoOpen,
 }: Props) {
   const [settings, setSettings] = useState<ReservationSettings | null>(null);
-  const [partySize, setPartySize] = useState(
-    initialPartySize && initialPartySize > 0 ? initialPartySize : 2,
+  const [partySize, setPartySize] = useState<number | "larger">(
+    initialPartySize && initialPartySize > 0 ? (initialPartySize > 10 ? "larger" : initialPartySize) : 2,
   );
   // Default the date to today (instead of an empty "Pick a date" placeholder)
   // so the time slots load right away. A prefilled date from search wins.
@@ -131,6 +140,8 @@ export default function ReservationBooking({
     timeRef.current = time;
   }, [time]);
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [availabilityNotice, setAvailabilityNotice] =
+    useState<AvailabilityNotice | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slotsLoaded, setSlotsLoaded] = useState(false);
 
@@ -194,8 +205,9 @@ export default function ReservationBooking({
 
   // Fetch availability whenever date or number of guests changes.
   useEffect(() => {
-    if (!reservationsEnabled || !date) {
+    if (!reservationsEnabled || !date || partySize === "larger") {
       setSlots([]);
+      setAvailabilityNotice(null);
       setSlotsLoaded(false);
       return;
     }
@@ -210,6 +222,7 @@ export default function ReservationBooking({
         if (cancelled) return;
         const next: Slot[] = Array.isArray(d?.slots) ? d.slots : [];
         setSlots(next);
+        setAvailabilityNotice(d?.availability || null);
         setSlotsLoaded(true);
         // Reconcile the current/prefilled time against the freshly loaded slots:
         //  • available  → keep it selected
@@ -232,6 +245,7 @@ export default function ReservationBooking({
       .catch(() => {
         if (!cancelled) {
           setSlots([]);
+          setAvailabilityNotice(null);
           setSlotsLoaded(true);
         }
       })
@@ -245,9 +259,10 @@ export default function ReservationBooking({
 
   const selectedSlot = slots.find((s) => s.time === time);
   const canBook = Boolean(
-    date && time && partySize > 0 && selectedSlot?.available,
+    date && time && partySize !== "larger" && partySize > 0 && selectedSlot?.available,
   );
   const anyAvailable = slots.some((s) => s.available);
+  const isClosed = availabilityNotice?.status === "closed" || availabilityNotice?.status === "outside_operating_hours";
 
   return (
     <Card className="border border-slate-200 shadow-sm">
@@ -312,7 +327,11 @@ export default function ReservationBooking({
             {/* Time slots */}
             <div className="space-y-2">
               <Label className="text-xs text-slate-500">Time</Label>
-              {!date ? (
+              {partySize === "larger" ? (
+                <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
+                  For larger parties, please contact the restaurant directly.
+                </p>
+              ) : !date ? (
                 <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
                   Pick a date to see available times.
                 </p>
@@ -322,9 +341,7 @@ export default function ReservationBooking({
                   availability…
                 </div>
               ) : slots.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
-                  No reservation times for this date.
-                </p>
+                <AvailabilityEmptyState notice={availabilityNotice} />
               ) : (
                 <>
                   <div className="grid grid-cols-3 gap-2">
@@ -406,14 +423,20 @@ export default function ReservationBooking({
         {/* Actions — Book Table sits above Join Queue. */}
         <div className="space-y-2">
           {reservationsEnabled ? (
-            <Button
-              className="w-full"
-              disabled={!canBook}
-              onClick={() => setModalOpen(true)}
-            >
-              <Utensils className="h-4 w-4" />
-              <span>Book Table</span>
-            </Button>
+            isClosed ? (
+              <Button asChild className="w-full" variant="default">
+                <Link to="/search">Explore Other Restaurants</Link>
+              </Button>
+            ) : (
+              <Button
+                className="w-full"
+                disabled={!canBook}
+                onClick={() => setModalOpen(true)}
+              >
+                <Utensils className="h-4 w-4" />
+                <span>Book Table</span>
+              </Button>
+            )
           ) : (
             <Button
               variant="outline"
@@ -424,7 +447,7 @@ export default function ReservationBooking({
               <span>Reservations Unavailable</span>
             </Button>
           )}
-          {reservationsEnabled && (!date || !time) && (
+          {reservationsEnabled && (!date || !time) && partySize !== "larger" && !isClosed && (
             <p className="text-center text-xs text-slate-400">
               Select number of guests, date, and time to book.
             </p>
@@ -492,7 +515,7 @@ function BookingModal({
   locationId: string;
   restaurantName: string;
   settings: ReservationSettings;
-  initialPartySize: number;
+  initialPartySize: number | "larger";
   initialDate: string;
   initialTime: string;
   maxDateStr: string;
@@ -503,10 +526,12 @@ function BookingModal({
 }) {
   const { toast } = useToast();
 
-  const [partySize, setPartySize] = useState(initialPartySize);
+  const [partySize, setPartySize] = useState<number | "larger">(initialPartySize);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [availabilityNotice, setAvailabilityNotice] =
+    useState<AvailabilityNotice | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
   // Prefilled from the logged-in customer's account when available.
@@ -521,7 +546,13 @@ function BookingModal({
 
   // Re-fetch availability when the editable controls change (within the modal).
   useEffect(() => {
-    if (!date || confirmation) return;
+    if (!date || confirmation || partySize === "larger") {
+      if (partySize === "larger") {
+        setSlots([]);
+        setAvailabilityNotice(null);
+      }
+      return;
+    }
     let cancelled = false;
     setLoadingSlots(true);
     api(
@@ -533,11 +564,17 @@ function BookingModal({
         if (cancelled) return;
         const next: Slot[] = Array.isArray(d?.slots) ? d.slots : [];
         setSlots(next);
+        setAvailabilityNotice(d?.availability || null);
         // Drop the chosen time if it's no longer bookable.
         const stillOk = next.find((s) => s.time === time && s.available);
         if (!stillOk) setTime("");
       })
-      .catch(() => !cancelled && setSlots([]))
+      .catch(() => {
+        if (!cancelled) {
+          setSlots([]);
+          setAvailabilityNotice(null);
+        }
+      })
       .finally(() => !cancelled && setLoadingSlots(false));
     return () => {
       cancelled = true;
@@ -547,8 +584,18 @@ function BookingModal({
 
   const maxParty = settings.maxPartySize;
   const contactValid = email.trim().length > 3 && email.includes("@");
-  const canSubmit =
-    firstName.trim() && lastName.trim() && date && time && contactValid;
+  const selectedSlot = slots.find((slot) => slot.time === time);
+  const isClosed = availabilityNotice?.status === "closed" || availabilityNotice?.status === "outside_operating_hours";
+  const canSubmit = Boolean(
+    firstName.trim() &&
+      lastName.trim() &&
+      date &&
+      time &&
+      partySize !== "larger" &&
+      contactValid &&
+      selectedSlot?.available &&
+      !loadingSlots,
+  );
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -667,40 +714,48 @@ function BookingModal({
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle>Book a Table</DialogTitle>
-                <DialogDescription>{restaurantName}</DialogDescription>
+                <DialogTitle className="max-[320px]:text-base text-lg">Book a Table</DialogTitle>
+                <DialogDescription className="max-[320px]:text-xs text-sm">{restaurantName}</DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4">
                 {/* Editable party / date / time — homepage-style fields. */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">
+                    <Label className="max-[320px]:text-[10px] text-xs text-slate-500">
                       Number of Guests
                     </Label>
                     <PartyField
                       value={partySize}
                       onChange={setPartySize}
                       max={maxParty}
+                      className="max-[320px]:h-9 max-[320px]:text-[11px]"
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Date</Label>
+                    <Label className="max-[320px]:text-[10px] text-xs text-slate-500">Date</Label>
                     <DateField
                       value={date}
                       onChange={setDate}
                       todayStr={todayStr}
                       maxDateStr={maxDateStr}
+                      className="max-[320px]:h-9 max-[320px]:text-[11px]"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-500">Time</Label>
-                  {loadingSlots ? (
-                    <div className="flex items-center gap-2 py-1 text-sm text-slate-500">
+                  <Label className="max-[320px]:text-[10px] text-xs text-slate-500">Time</Label>
+                  {partySize === "larger" ? (
+                    <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 max-[320px]:p-2.5 max-[320px]:text-xs text-sm text-slate-600">
+                      For larger parties, please contact the restaurant directly.
+                    </div>
+                  ) : loadingSlots ? (
+                    <div className="flex items-center gap-2 py-1 max-[320px]:text-xs text-sm text-slate-500">
                       <Loader2 className="h-4 w-4 animate-spin" /> Checking…
                     </div>
+                  ) : slots.length === 0 ? (
+                    <AvailabilityEmptyState notice={availabilityNotice} />
                   ) : (
                     <div className="grid grid-cols-4 gap-1.5">
                       {slots.map((s) => (
@@ -708,12 +763,9 @@ function BookingModal({
                           key={s.time}
                           type="button"
                           disabled={!s.available}
-                          onClick={() => {
-                            setTime(s.time);
-                            setFullNotice("");
-                          }}
+                          onClick={() => setTime(s.time)}
                           className={cn(
-                            "rounded-md border px-1 py-1.5 text-xs font-medium transition",
+                            "rounded-md border px-1 py-1.5 max-[320px]:py-1 max-[320px]:text-[10px] text-xs font-medium transition",
                             s.time === time
                               ? "border-slate-900 bg-slate-900 text-white"
                               : s.available
@@ -728,14 +780,24 @@ function BookingModal({
                   )}
                 </div>
 
-                <div className="border-t border-slate-100" />
+                {isClosed && (
+                  <div className="pt-2">
+                    <Button asChild className="w-full h-10 text-sm sm:h-11 sm:text-base" variant="default">
+                      <Link to="/search">Explore Other Restaurants</Link>
+                    </Button>
+                  </div>
+                )}
 
-                {/* Contact details */}
-                <div className="grid grid-cols-2 gap-3">
+                {!isClosed && partySize !== "larger" && (
+                  <>
+                    <div className="border-t border-slate-100" />
+
+                    {/* Contact details */}
+                    <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label
                       htmlFor="bk-first"
-                      className="text-xs text-slate-500"
+                      className="max-[320px]:text-[10px] text-xs text-slate-500"
                     >
                       First Name
                     </Label>
@@ -743,22 +805,24 @@ function BookingModal({
                       id="bk-first"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
+                      className="max-[320px]:h-8 max-[320px]:text-[11px]"
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="bk-last" className="text-xs text-slate-500">
+                    <Label htmlFor="bk-last" className="max-[320px]:text-[10px] text-xs text-slate-500">
                       Last Name
                     </Label>
                     <Input
                       id="bk-last"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
+                      className="max-[320px]:h-8 max-[320px]:text-[11px]"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="bk-email" className="text-xs text-slate-500">
+                  <Label htmlFor="bk-email" className="max-[320px]:text-[10px] text-xs text-slate-500">
                     Email
                   </Label>
                   <Input
@@ -767,14 +831,15 @@ function BookingModal({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
+                    className="max-[320px]:h-8 max-[320px]:text-[11px]"
                   />
-                  <p className="text-xs text-slate-400">
+                  <p className="max-[320px]:text-[10px] text-xs text-slate-400">
                     We'll send your confirmation and manage link here.
                   </p>
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="bk-notes" className="text-xs text-slate-500">
+                  <Label htmlFor="bk-notes" className="max-[320px]:text-[10px] text-xs text-slate-500">
                     Notes (Optional)
                   </Label>
                   <Textarea
@@ -783,11 +848,12 @@ function BookingModal({
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Allergies, special requests, seating preference…"
+                    className="max-[320px]:min-h-0 max-[320px]:text-[11px]"
                   />
                 </div>
 
                 {settings.cancellationPolicy && (
-                  <p className="rounded-md bg-slate-50 p-2.5 text-xs text-slate-500">
+                  <p className="rounded-md bg-slate-50 p-2.5 max-[320px]:p-2 max-[320px]:text-[10px] text-xs text-slate-500">
                     <span className="font-medium text-slate-600">Policy: </span>
                     {settings.cancellationPolicy}
                   </p>
@@ -801,6 +867,8 @@ function BookingModal({
                   {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                   <span>Confirm Reservation</span>
                 </Button>
+                  </>
+                )}
               </div>
             </>
           )}
@@ -815,6 +883,29 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between">
       <span className="text-slate-500">{label}</span>
       <span className="font-medium text-slate-900">{value}</span>
+    </div>
+  );
+}
+
+function AvailabilityEmptyState({
+  notice,
+}: {
+  notice: AvailabilityNotice | null;
+}) {
+  const message =
+    notice?.message || "No reservation times are available for this date.";
+  const helper =
+    notice?.helper || "Choose another date to view available reservation times.";
+
+  return (
+    <div className="flex gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600">
+        <Clock3 className="h-4 w-4" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-slate-900">{message}</p>
+        <p className="mt-0.5 text-xs leading-5 text-slate-500">{helper}</p>
+      </div>
     </div>
   );
 }
@@ -883,8 +974,8 @@ export function PartyField({
   max,
   className,
 }: {
-  value: number;
-  onChange: (v: number) => void;
+  value: number | "larger";
+  onChange: (v: number | "larger") => void;
   max: number;
   className?: string;
 }) {
@@ -897,14 +988,14 @@ export function PartyField({
           aria-label={`Number of guests: ${value}`}
           className={className}
         >
-          {value} {value === 1 ? "Guest" : "Guests"}
+          {value === "larger" ? "Larger Party" : `${value} ${value === 1 ? "Guest" : "Guests"}`}
         </FieldTrigger>
       </PopoverTrigger>
       <PopoverContent
         className="w-44 max-h-72 overflow-y-auto p-1"
         align="start"
       >
-        {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
+        {Array.from({ length: Math.min(max, 10) }, (_, i) => i + 1).map((n) => (
           <OptionRow
             key={n}
             selected={n === value}
@@ -916,6 +1007,17 @@ export function PartyField({
             {n} {n === 1 ? "Guest" : "Guests"}
           </OptionRow>
         ))}
+        {max > 10 && (
+          <OptionRow
+            selected={value === "larger"}
+            onSelect={() => {
+              onChange("larger");
+              setOpen(false);
+            }}
+          >
+            Larger Party
+          </OptionRow>
+        )}
       </PopoverContent>
     </Popover>
   );

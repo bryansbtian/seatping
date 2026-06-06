@@ -27,6 +27,7 @@ import { queueEntryToLegacy, legacyKeyOf, reservationStatusToEnum, reservationRo
 import { applyStatusCapacityDelta } from "../lib/reservationCapacity.js";
 import { enqueueNotification } from "../lib/notifications.js";
 import { withWriteRetry } from "../lib/dbRetry.js";
+import { getLocationOperatingStatus } from "../lib/operatingHours.js";
 import crypto from "crypto";
 const router = Router();
 // ===========================================================================
@@ -1392,6 +1393,7 @@ router.get("/business/:username/addresses", async (req, res) => {
                 address: true,
                 displayName: true,
                 name: true,
+                queueEnabled: true,
                 restaurantProfile: true,
                 area: true,
                 city: true,
@@ -1404,6 +1406,7 @@ router.get("/business/:username/addresses", async (req, res) => {
         // TODO(location): Use displayName as the customer-facing location label across reservations and queues.
         const addresses = locations.map((location) => {
             const rp = (location.restaurantProfile || {});
+            const operatingStatus = getLocationOperatingStatus(location);
             return {
                 id: location.id,
                 address: location.address,
@@ -1419,6 +1422,15 @@ router.get("/business/:username/addresses", async (req, res) => {
                 longitude: location.longitude,
                 googleMapsUrl: location.googleMapsUrl,
                 businessName: business.name,
+                queueEnabled: location.queueEnabled ?? true,
+                operatingStatus: {
+                    configured: operatingStatus.configured,
+                    isOpen: operatingStatus.isOpen,
+                    timezone: operatingStatus.timezone,
+                    localDate: operatingStatus.date,
+                    dayName: operatingStatus.dayName,
+                    todayHours: operatingStatus.hoursLabel,
+                },
             };
         });
         return res.json({ addresses });
@@ -1486,6 +1498,25 @@ router.post("/business/:username/queue", async (req, res) => {
         if (!location) {
             return res.status(404).json({
                 error: "This queue link is invalid or no longer available.",
+            });
+        }
+        if (!(location.queueEnabled ?? true)) {
+            return res.status(400).json({
+                error: "Queue joining is not available at this location.",
+            });
+        }
+        const operatingStatus = getLocationOperatingStatus(location);
+        if (operatingStatus.isOpen === false) {
+            return res.status(400).json({
+                error: "This location is currently closed. Queue joining is only available during operating hours.",
+                operatingStatus: {
+                    configured: operatingStatus.configured,
+                    isOpen: operatingStatus.isOpen,
+                    timezone: operatingStatus.timezone,
+                    localDate: operatingStatus.date,
+                    dayName: operatingStatus.dayName,
+                    todayHours: operatingStatus.hoursLabel,
+                },
             });
         }
         // Every notification channel consumes 1 credit at join time — SMS,

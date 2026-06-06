@@ -17,6 +17,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { normalizeSettings, computeAvailability, validateReservationRequest, buildReservationDateTime, splitDateTime, formatTimeLabel, syncCustomerReservation, } from "../lib/reservations.js";
+import { getLocationOpeningHours, getLocationTimezone, } from "../lib/operatingHours.js";
 import { readSession } from "../lib/auth.js";
 import { reservationRowToLegacy } from "../lib/liveData.js";
 import { bucketOf, tryReserveCapacity, releaseCapacity, addCapacity, } from "../lib/reservationCapacity.js";
@@ -39,26 +40,6 @@ async function resolveLocation(businessUsername, locationId) {
     if (!location)
         return null;
     return { business, location };
-}
-/**
- * Restaurant's IANA timezone, read from its public opening-hours config
- * (location.restaurantProfile.openingHours.timezone). Availability and the
- * minimum-notice check are evaluated in this zone so slots that have already
- * passed locally are unbookable regardless of the server's timezone. Falls back
- * to the platform default when a restaurant hasn't set one.
- */
-function locationTimeZone(location) {
-    const oh = location?.restaurantProfile?.openingHours;
-    const tz = oh && typeof oh === "object" ? oh.timezone : undefined;
-    return typeof tz === "string" && tz ? tz : "Asia/Jakarta";
-}
-/**
- * Restaurant's weekly opening hours JSON, used to clip reservation slots to the
- * times the restaurant is actually open. Returns undefined when not configured.
- */
-function locationOpeningHours(location) {
-    const oh = location?.restaurantProfile?.openingHours;
-    return oh && typeof oh === "object" ? oh : undefined;
 }
 function readableDate(date) {
     const d = new Date(`${date}T00:00:00`);
@@ -153,14 +134,35 @@ router.get("/:businessUsername/:locationId/availability", async (req, res) => {
         const partySize = Number(req.query.partySize || 0);
         const settings = normalizeSettings(location.reservationSettings);
         const reservations = await activeReservationsForValidation(location.id);
-        const { slots, partyTooLarge, outsideWindow } = computeAvailability({
+        const { slots, partyTooLarge, outsideWindow, operatingStatus } = computeAvailability({
             settings,
             reservations,
             date,
             partySize,
-            timeZone: locationTimeZone(location),
-            openingHours: locationOpeningHours(location),
+            timeZone: getLocationTimezone(location),
+            openingHours: getLocationOpeningHours(location),
         });
+        const availability = operatingStatus.isClosed
+            ? {
+                status: "closed",
+                dayName: operatingStatus.dayName,
+                hoursLabel: operatingStatus.hoursLabel,
+                message: `This restaurant is closed on ${operatingStatus.dayName || "this date"}.`,
+                helper: "Choose another date to view available reservation times.",
+            }
+            : operatingStatus.configured && slots.length === 0 && !outsideWindow
+                ? {
+                    status: "outside_operating_hours",
+                    dayName: operatingStatus.dayName,
+                    hoursLabel: operatingStatus.hoursLabel,
+                    message: "No reservation times are available because the restaurant is closed during reservation hours on this date.",
+                    helper: "Choose another date to view available reservation times.",
+                }
+                : {
+                    status: "available",
+                    dayName: operatingStatus.dayName,
+                    hoursLabel: operatingStatus.hoursLabel,
+                };
         return res.json({
             reservationsEnabled: true,
             settings,
@@ -168,6 +170,7 @@ router.get("/:businessUsername/:locationId/availability", async (req, res) => {
             partySize,
             partyTooLarge,
             outsideWindow,
+            availability,
             slots,
         });
     }
@@ -205,8 +208,8 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
             date: String(date || ""),
             time: String(time || ""),
             partySize: size,
-            timeZone: locationTimeZone(location),
-            openingHours: locationOpeningHours(location),
+            timeZone: getLocationTimezone(location),
+            openingHours: getLocationOpeningHours(location),
         });
         if (error)
             return res.status(400).json({ error });
@@ -361,8 +364,8 @@ router.put("/manage/:manageToken", async (req, res) => {
             time,
             partySize,
             excludeId: reservation.id,
-            timeZone: locationTimeZone(location),
-            openingHours: locationOpeningHours(location),
+            timeZone: getLocationTimezone(location),
+            openingHours: getLocationOpeningHours(location),
         });
         if (error)
             return res.status(400).json({ error });

@@ -165,6 +165,72 @@ function normalizeUrl(url: string): string {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
+function getRestaurantStatus(openingHours: OpeningHours | null): { isOpen: boolean; text: string; color: string } | null {
+  if (!openingHours) return null;
+  const timezone = openingHours.timezone || "Asia/Jakarta";
+  let currentHourMinute: string;
+  let currentDayName: string;
+  
+  try {
+    const dtfTime = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+    let timeStr = dtfTime.format(new Date());
+    if (timeStr.startsWith("24:")) timeStr = "00" + timeStr.slice(2);
+    currentHourMinute = timeStr;
+    
+    const dtfDay = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "long"
+    });
+    currentDayName = dtfDay.format(new Date()).toLowerCase();
+  } catch {
+    const d = new Date();
+    currentHourMinute = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    currentDayName = todayDayKey();
+  }
+
+  const today = openingHours[currentDayName];
+  if (today?.enabled && today.open && today.close) {
+    if (currentHourMinute >= today.open && currentHourMinute < today.close) {
+      return {
+        isOpen: true,
+        text: `Open · Closes at ${formatTimeLabel(today.close)}`,
+        color: "text-green-600 font-medium"
+      };
+    }
+  }
+
+  // It's closed right now. Find when it opens next.
+  if (today?.enabled && today.open && currentHourMinute < today.open) {
+    return {
+      isOpen: false,
+      text: `Closed · Opens at ${formatTimeLabel(today.open)}`,
+      color: "text-red-600 font-medium"
+    };
+  }
+
+  const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const currentIndex = days.indexOf(currentDayName);
+  for (let i = 1; i <= 7; i++) {
+    const nextDay = days[(currentIndex + i) % 7];
+    const hours = openingHours[nextDay];
+    if (hours?.enabled && hours.open) {
+      const dayLabel = i === 1 ? "Tomorrow" : formatDayLabel(nextDay);
+      return {
+        isOpen: false,
+        text: `Closed · Opens ${dayLabel} at ${formatTimeLabel(hours.open)}`,
+        color: "text-red-600 font-medium"
+      };
+    }
+  }
+
+  return { isOpen: false, text: "Closed", color: "text-red-600 font-medium" };
+}
+
 /** Five filled/empty stars for a numeric rating. */
 function Stars({ rating }: { rating: number }) {
   const filled = Math.round(rating);
@@ -620,6 +686,15 @@ export default function RestaurantPage() {
                 </span>
               )}
             </div>
+            {(() => {
+              const status = getRestaurantStatus(r.openingHours);
+              if (!status) return null;
+              return (
+                <div className="mt-1.5 text-sm">
+                  <span className={status.color}>{status.text}</span>
+                </div>
+              );
+            })()}
             {r.tagline && (
               <p className="mt-3 text-sm sm:text-base text-slate-600">
                 {r.tagline}

@@ -1,0 +1,291 @@
+export const DEFAULT_LOCATION_TIMEZONE = "Asia/Jakarta";
+
+const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DAY_KEYS = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+] as const;
+
+type DayKey = (typeof DAY_KEYS)[number];
+type DayHours = {
+  enabled?: unknown;
+  open?: unknown;
+  close?: unknown;
+};
+type OpeningHours = Partial<Record<DayKey, DayHours>> & {
+  timezone?: unknown;
+};
+
+export type OperatingWindow = {
+  openMin: number;
+  closeMin: number;
+  sourceDay: DayKey;
+};
+
+export type DateOperatingStatus = {
+  configured: boolean;
+  date: string;
+  dayKey: DayKey | null;
+  dayName: string | null;
+  windows: OperatingWindow[];
+  isClosed: boolean;
+  hoursLabel: string | null;
+};
+
+export type CurrentOperatingStatus = DateOperatingStatus & {
+  timezone: string;
+  localMinute: number;
+  isOpen: boolean | null;
+};
+
+function timeToMinutes(time: string): number {
+  const [hour, minute] = time.split(":").map(Number);
+  return hour * 60 + minute;
+}
+
+function dayIndexForDate(date: string): number | null {
+  if (!DATE_RE.test(date)) return null;
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
+function previousDayIndex(dayIndex: number): number {
+  return (dayIndex + 6) % 7;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizedDay(openingHours: unknown, key: DayKey): {
+  configured: boolean;
+  enabled: boolean;
+  openMin: number;
+  closeMin: number;
+  open: string;
+  close: string;
+} | null {
+  if (!isRecord(openingHours)) return null;
+  const raw = openingHours[key] as DayHours | undefined;
+  if (!isRecord(raw)) return null;
+  if (raw.enabled === false) {
+    return {
+      configured: true,
+      enabled: false,
+      openMin: 0,
+      closeMin: 0,
+      open: "",
+      close: "",
+    };
+  }
+  const open = String(raw.open || "");
+  const close = String(raw.close || "");
+  if (!TIME_RE.test(open) || !TIME_RE.test(close)) return null;
+  return {
+    configured: true,
+    enabled: true,
+    openMin: timeToMinutes(open),
+    closeMin: timeToMinutes(close),
+    open,
+    close,
+  };
+}
+
+export function formatOperatingTime(time: string): string {
+  if (!TIME_RE.test(time)) return time;
+  const [hourText, minute] = time.split(":");
+  const hour24 = Number(hourText);
+  const suffix = hour24 >= 12 ? "PM" : "AM";
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${minute} ${suffix}`;
+}
+
+function datePartsInTimezone(at: Date, timezone: string): {
+  date: string;
+  minute: number;
+} {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(at);
+  const values: Record<string, string> = {};
+  for (const part of parts) {
+    if (part.type !== "literal") values[part.type] = part.value;
+  }
+  const hour = values.hour === "24" ? 0 : Number(values.hour);
+  return {
+    date: `${values.year}-${values.month}-${values.day}`,
+    minute: hour * 60 + Number(values.minute),
+  };
+}
+
+export function getOpeningHoursTimezone(openingHours: unknown): string {
+  const timezone = isRecord(openingHours) ? openingHours.timezone : undefined;
+  if (typeof timezone !== "string" || !timezone.trim()) {
+    return DEFAULT_LOCATION_TIMEZONE;
+  }
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format(new Date());
+    return timezone;
+  } catch {
+    return DEFAULT_LOCATION_TIMEZONE;
+  }
+}
+
+export function getLocationOpeningHours(
+  location: unknown,
+): OpeningHours | undefined {
+  if (!isRecord(location) || !isRecord(location.restaurantProfile)) {
+    return undefined;
+  }
+  const openingHours = location.restaurantProfile.openingHours;
+  return isRecord(openingHours) ? (openingHours as OpeningHours) : undefined;
+}
+
+export function getLocationTimezone(location: unknown): string {
+  return getOpeningHoursTimezone(getLocationOpeningHours(location));
+}
+
+/**
+ * Return the operating windows that fall on a restaurant-local calendar date.
+ * A previous day's overnight shift contributes its after-midnight portion.
+ */
+export function getDateOperatingStatus(
+  openingHours: unknown,
+  date: string,
+): DateOperatingStatus {
+  const dayIndex = dayIndexForDate(date);
+  if (
+    dayIndex === null ||
+    !openingHours ||
+    typeof openingHours !== "object"
+  ) {
+    return {
+      configured: false,
+      date,
+      dayKey: null,
+      dayName: null,
+      windows: [],
+      isClosed: false,
+      hoursLabel: null,
+    };
+  }
+
+  const dayKey = DAY_KEYS[dayIndex];
+  const previousKey = DAY_KEYS[previousDayIndex(dayIndex)];
+  const current = normalizedDay(openingHours, dayKey);
+  const previous = normalizedDay(openingHours, previousKey);
+  const windows: OperatingWindow[] = [];
+
+  // Previous-day overnight spill, e.g. Monday 18:00-02:00 contributes
+  // Tuesday 00:00-02:00.
+  if (
+    previous?.enabled &&
+    previous.closeMin <= previous.openMin &&
+    previous.closeMin > 0
+  ) {
+    windows.push({
+      openMin: 0,
+      closeMin: previous.closeMin,
+      sourceDay: previousKey,
+    });
+  }
+
+  if (current?.enabled) {
+    if (current.openMin === current.closeMin) {
+      // Matching times follow the existing SeatPing behavior: open 24 hours.
+      windows.push({ openMin: 0, closeMin: 1440, sourceDay: dayKey });
+    } else if (current.closeMin < current.openMin) {
+      windows.push({
+        openMin: current.openMin,
+        closeMin: 1440,
+        sourceDay: dayKey,
+      });
+    } else {
+      windows.push({
+        openMin: current.openMin,
+        closeMin: current.closeMin,
+        sourceDay: dayKey,
+      });
+    }
+  }
+
+  const configured = Boolean(current || windows.length);
+  const hoursLabels: string[] = [];
+  if (
+    previous?.enabled &&
+    previous.closeMin <= previous.openMin &&
+    previous.closeMin > 0
+  ) {
+    hoursLabels.push(
+      `${formatOperatingTime("00:00")} - ${formatOperatingTime(previous.close)}`,
+    );
+  }
+  if (current?.enabled) {
+    hoursLabels.push(
+      `${formatOperatingTime(current.open)} - ${formatOperatingTime(current.close)}`,
+    );
+  }
+  const hoursLabel =
+    hoursLabels.length > 0 ? hoursLabels.join(", ") : current ? "Closed" : null;
+
+  return {
+    configured,
+    date,
+    dayKey,
+    dayName: dayKey.charAt(0).toUpperCase() + dayKey.slice(1),
+    windows,
+    isClosed: configured && windows.length === 0,
+    hoursLabel,
+  };
+}
+
+export function isMinuteWithinOperatingHours(
+  status: DateOperatingStatus,
+  minute: number,
+): boolean {
+  if (!status.configured) return true;
+  return status.windows.some(
+    (window) => minute >= window.openMin && minute < window.closeMin,
+  );
+}
+
+export function getCurrentOperatingStatus(
+  openingHours: unknown,
+  at: Date = new Date(),
+): CurrentOperatingStatus {
+  const timezone = getOpeningHoursTimezone(openingHours);
+  let local: { date: string; minute: number };
+  try {
+    local = datePartsInTimezone(at, timezone);
+  } catch {
+    local = datePartsInTimezone(at, DEFAULT_LOCATION_TIMEZONE);
+  }
+  const dateStatus = getDateOperatingStatus(openingHours, local.date);
+  return {
+    ...dateStatus,
+    timezone,
+    localMinute: local.minute,
+    isOpen: dateStatus.configured
+      ? isMinuteWithinOperatingHours(dateStatus, local.minute)
+      : null,
+  };
+}
+
+export function getLocationOperatingStatus(
+  location: unknown,
+  at: Date = new Date(),
+): CurrentOperatingStatus {
+  return getCurrentOperatingStatus(getLocationOpeningHours(location), at);
+}

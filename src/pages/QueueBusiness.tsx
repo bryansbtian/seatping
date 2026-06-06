@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import NotFound from "@/pages/NotFound";
@@ -27,7 +27,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Check, ChevronsUpDown, Users } from "lucide-react";
+import { Check, ChevronsUpDown, Clock3, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -62,6 +62,15 @@ type AddressOption = {
   city?: string | null;
   country?: string | null;
   googleMapsUrl?: string | null;
+  queueEnabled?: boolean;
+  operatingStatus?: {
+    configured: boolean;
+    isOpen: boolean | null;
+    timezone: string;
+    localDate: string;
+    dayName: string | null;
+    todayHours: string | null;
+  };
 };
 
 /** API call to get addresses (locations) for this business. */
@@ -327,6 +336,24 @@ export default function QueueBusiness() {
       }
     })();
   }, [businessUsername, locationId, storageKey, navigate, toast, searchParams]);
+
+  // Keep the public open/closed state fresh if this page remains open across an
+  // opening or closing boundary. The backend still performs the final check.
+  useEffect(() => {
+    if (step !== 2 || !businessUsername || !locationId) return;
+    let cancelled = false;
+    const refreshLocationStatus = async () => {
+      const list = await fetchAddressesForBusiness(businessUsername);
+      if (cancelled) return;
+      const match = list.find((location) => location.id === locationId);
+      if (match) setSelectedLocation(match);
+    };
+    const interval = setInterval(refreshLocationStatus, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [step, businessUsername, locationId]);
 
   // Prefill the join form from the logged-in customer's account (if any).
   // Guest / business sessions return 401 and are ignored. Only empty fields are
@@ -664,6 +691,12 @@ export default function QueueBusiness() {
   // Public restaurant name for this location, falling back to the business name.
   const restaurantName =
     selectedLocation?.restaurantName || businessName || `@${businessUsername}`;
+  const queueUnavailable = selectedLocation?.queueEnabled === false;
+  const queueClosed = selectedLocation?.operatingStatus?.isOpen === false;
+  const queueBlocked = queueUnavailable || queueClosed;
+  const todayHours =
+    selectedLocation?.operatingStatus?.todayHours ||
+    (queueClosed ? "Closed" : "Hours not available");
 
   // Invalid / expired QR link — treat it like any other dead link and show
   // the standard 404 page instead of a bespoke "Queue Link Unavailable" card.
@@ -683,21 +716,71 @@ export default function QueueBusiness() {
           <Card className="w-full max-w-xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
             <CardHeader className="text-center">
               <CardTitle className="text-xl sm:text-2xl text-primary">
-                {step === 2 ? "Join The Queue" : restaurantName}
+                {step === 2
+                  ? queueUnavailable
+                    ? "Queue Unavailable"
+                    : queueClosed
+                      ? "Restaurant Closed"
+                      : "Join The Queue"
+                  : restaurantName}
               </CardTitle>
               {step !== 5 && (
                 <CardDescription>
                   {step === 2 &&
-                    (selectedLabel
-                      ? `You're joining the queue at ${selectedLabel}. We'll notify you when your it's your turn.`
-                      : "Enter your details to join the queue.")}
+                    (queueUnavailable
+                      ? `${restaurantName} is not currently accepting queue entries at this location.`
+                      : queueClosed
+                        ? `${restaurantName} is currently closed. Please come back during operating hours to join the queue.`
+                        : selectedLabel
+                          ? `You're joining the queue at ${selectedLabel}. We'll notify you when it's your turn.`
+                          : "Enter your details to join the queue.")}
                   {step === 4 && "Queue Status"}
                 </CardDescription>
               )}
             </CardHeader>
 
             <CardContent>
-              {step === 2 && (
+              {step === 2 && queueBlocked && (
+                <div className="space-y-6 py-4">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm">
+                        <Clock3 className="h-6 w-6" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-lg text-slate-900">
+                          {restaurantName}
+                        </p>
+                        {selectedLabel && (
+                          <p className="mt-0.5 text-sm text-slate-500">
+                            {selectedLabel}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-5 border-t border-slate-200 pt-5">
+                      <p className="text-sm font-medium text-slate-900">
+                        Today's Hours
+                      </p>
+                      <p className="mt-1 text-base text-slate-500">
+                        {queueUnavailable ? "Queue unavailable" : todayHours}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <p className="text-center text-sm text-slate-500">
+                      {queueUnavailable
+                        ? "Please contact the restaurant for assistance."
+                        : "Queue joining will be available again during operating hours."}
+                    </p>
+                    <Button asChild className="w-full h-11 text-base" variant="default">
+                      <Link to="/search">Explore Other Restaurants</Link>
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {step === 2 && !queueBlocked && (
                 <form onSubmit={joinQueue} className="space-y-4">
                   {/* Location is fixed by the QR/URL — shown read-only, never
                     selectable by the customer. */}

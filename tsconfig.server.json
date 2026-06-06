@@ -16,5 +16,5 @@
     "noEmit": false
   },
   "include": ["server/**/*"],
-  "exclude": ["node_modules", "dist", "dist-server"]
+  "exclude": ["node_modules", "dist", "dist-server", "server/**/*.test.ts"]
 }
