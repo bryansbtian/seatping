@@ -233,9 +233,13 @@ export function getDateOperatingStatus(
     );
   }
   if (current?.enabled) {
-    hoursLabels.push(
-      `${formatOperatingTime(current.open)} - ${formatOperatingTime(current.close)}`,
-    );
+    if (current.open === "00:00" && current.close === "00:00") {
+      hoursLabels.push("Open 24 Hours");
+    } else {
+      hoursLabels.push(
+        `${formatOperatingTime(current.open)} - ${formatOperatingTime(current.close)}`,
+      );
+    }
   }
   const hoursLabel =
     hoursLabels.length > 0 ? hoursLabels.join(", ") : current ? "Closed" : null;

@@ -129,6 +129,7 @@ function formatDayLabel(d: string) {
 
 function formatHoursForDay(day: DayHours | undefined) {
   if (!day || day.enabled === false) return "Closed";
+  if (day.open === "00:00" && day.close === "00:00") return "Open 24 Hours";
   return `${formatTimeLabel(day.open)} – ${formatTimeLabel(day.close)}`;
 }
 
@@ -195,6 +196,13 @@ function getRestaurantStatus(openingHours: OpeningHours | null): { isOpen: boole
 
   const today = openingHours[currentDayName];
   if (today?.enabled && today.open && today.close) {
+    if (today.open === "00:00" && today.close === "00:00") {
+      return {
+        isOpen: true,
+        text: "Open 24 Hours",
+        color: "text-green-600 font-medium"
+      };
+    }
     if (currentHourMinute >= today.open && currentHourMinute < today.close) {
       return {
         isOpen: true,
@@ -206,6 +214,13 @@ function getRestaurantStatus(openingHours: OpeningHours | null): { isOpen: boole
 
   // It's closed right now. Find when it opens next.
   if (today?.enabled && today.open && currentHourMinute < today.open) {
+    if (today.open === "00:00" && today.close === "00:00") {
+      return {
+        isOpen: false, // Wait, if it's 24 hours, it's never "closed right now". This case won't be hit for 24h because "00:00" < "00:00" is false.
+        text: "Closed",
+        color: "text-red-600 font-medium"
+      };
+    }
     return {
       isOpen: false,
       text: `Closed · Opens at ${formatTimeLabel(today.open)}`,
@@ -220,6 +235,13 @@ function getRestaurantStatus(openingHours: OpeningHours | null): { isOpen: boole
     const hours = openingHours[nextDay];
     if (hours?.enabled && hours.open) {
       const dayLabel = i === 1 ? "Tomorrow" : formatDayLabel(nextDay);
+      if (hours.open === "00:00" && hours.close === "00:00") {
+        return {
+          isOpen: false,
+          text: `Closed · Opens ${dayLabel} at 12:00 AM`,
+          color: "text-red-600 font-medium"
+        };
+      }
       return {
         isOpen: false,
         text: `Closed · Opens ${dayLabel} at ${formatTimeLabel(hours.open)}`,
