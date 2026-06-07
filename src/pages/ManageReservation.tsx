@@ -89,7 +89,10 @@ export default function ManageReservation() {
   const [editing, setEditing] = useState(false);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
-  const [partySize, setPartySize] = useState(2);
+  // Mirrors ReservationBooking: PartyField can emit "larger" for big parties,
+  // which is not a bookable size (the customer must contact the restaurant), so
+  // it never gets sent to the availability or update APIs.
+  const [partySize, setPartySize] = useState<number | "larger">(2);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -121,7 +124,12 @@ export default function ManageReservation() {
 
   // Fetch availability while editing.
   useEffect(() => {
-    if (!editing || !restaurant || !date) return;
+    // "larger" is not a bookable size, so skip the availability lookup entirely
+    // (never put "larger" in the query string) and clear any stale slots.
+    if (!editing || !restaurant || !date || partySize === "larger") {
+      setSlots([]);
+      return;
+    }
     let cancelled = false;
     setLoadingSlots(true);
     api(
@@ -155,7 +163,9 @@ export default function ManageReservation() {
     ["cancelled", "completed", "no_show"].includes(reservation.status);
 
   const saveChanges = async () => {
-    if (!date || !time) return;
+    // Never submit a "larger" party: the backend doesn't accept it, so the UI
+    // routes those customers to contact the restaurant instead.
+    if (!date || !time || partySize === "larger") return;
     setSaving(true);
     try {
       const d = await api(`/api/reservations/manage/${token}`, {
@@ -332,7 +342,11 @@ export default function ManageReservation() {
 
                       <div className="space-y-1">
                         <Label className="text-xs text-slate-500">Time</Label>
-                        {loadingSlots ? (
+                        {partySize === "larger" ? (
+                          <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
+                            For larger parties, please contact the restaurant directly.
+                          </p>
+                        ) : loadingSlots ? (
                           <div className="flex items-center gap-2 py-1 text-sm text-slate-500">
                             <Loader2 className="h-4 w-4 animate-spin" />{" "}
                             Checking…
@@ -364,7 +378,7 @@ export default function ManageReservation() {
                       <div className="flex flex-col gap-2 sm:flex-row">
                         <Button
                           className="flex-1"
-                          disabled={!date || !time || saving}
+                          disabled={!date || !time || partySize === "larger" || saving}
                           onClick={saveChanges}
                         >
                           {saving && (

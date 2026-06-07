@@ -83,7 +83,9 @@ const Header = ({
 
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
-    fetch("/auth/logout", { method: "POST", credentials: "include" }).then(
+    // Customer-only logout: clears the customer cookie and leaves any business
+    // (or admin) session in the same browser untouched.
+    fetch("/auth/customer/logout", { method: "POST", credentials: "include" }).then(
       () => (window.location.href = "/"),
     );
   };

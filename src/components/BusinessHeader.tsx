@@ -6,7 +6,9 @@ const BusinessHeader = () => {
 
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
-    fetch("/auth/logout", {
+    // Business-only logout: clears the business cookie and leaves any customer
+    // (or admin) session in the same browser untouched.
+    fetch("/auth/business/logout", {
       method: "POST",
       credentials: "include",
     }).then(() => (window.location.href = "/"));

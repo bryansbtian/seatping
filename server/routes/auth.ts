@@ -18,7 +18,6 @@ import {
   signJwt,
   setAuthCookie,
   clearAuthCookie,
-  clearAllAuthCookies,
   requireCustomer,
   requireBusiness,
   readSession,
@@ -249,12 +248,24 @@ router.post("/login", async (req, res) => {
 });
 
 /**
- * POST /auth/logout  (clears the session cookie for either account type)
- * Shared by both the customer and business headers, so it clears every session
- * cookie — it can't know which account type is logging out.
+ * POST /auth/customer/logout  (clears ONLY the customer session cookie)
+ * Used by the customer-facing header. A business (or admin) session in the same
+ * browser must survive a customer logout, so this never touches their cookies.
+ */
+router.post("/customer/logout", (_req, res) => {
+  clearAuthCookie(res, "customer");
+  res.json({ ok: true });
+});
+
+/**
+ * POST /auth/logout  (deprecated alias, now customer-only)
+ * Kept for backward compatibility with older clients. It used to clear EVERY
+ * session cookie, which logged a business/admin out of the same browser by
+ * accident. It now clears only the customer cookie. New code should call the
+ * explicit /auth/customer/logout, /auth/business/logout, or /auth/admin/logout.
  */
 router.post("/logout", (_req, res) => {
-  clearAllAuthCookies(res);
+  clearAuthCookie(res, "customer");
   res.json({ ok: true });
 });
 
