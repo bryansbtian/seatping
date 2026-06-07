@@ -10,7 +10,13 @@
     "build": "vite build && tsc --project tsconfig.server.json",
     "start": "NODE_ENV=production node dist-server/index.js",
     "lint": "eslint . --ext .ts,.tsx",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "loadtest:smoke": "k6 run loadtest/smoke.js",
+    "loadtest:search": "k6 run loadtest/search.js",
+    "loadtest:reservation": "k6 run loadtest/reservation.js",
+    "loadtest:queue": "k6 run loadtest/queue.js",
+    "loadtest:queue-status": "k6 run loadtest/queue-status.js",
+    "loadtest:ratelimit": "k6 run loadtest/ratelimit.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
