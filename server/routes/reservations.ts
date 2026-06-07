@@ -245,22 +245,40 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
     }
 
     // Anti-abuse throttle: this route creates DB rows, holds capacity, and
-    // emails the supplied address. Limit per IP, and per (location + email) so
-    // a single inbox can't be bombed and one location can't be flooded with
-    // fake bookings from one source.
+    // emails the supplied address. We use three layers:
+    //
+    //  - reservation-create-ip (60/hr): a broad, deliberately loose backstop.
+    //    Many legitimate customers share a single source IP (venue/mall/office
+    //    WiFi, mobile carrier CGNAT), so this must NOT be tight or it would
+    //    block real guests booking from the same network. It only catches an
+    //    obviously runaway single source.
+    //  - reservation-create-target (3/hr per location+email): the real
+    //    anti-abuse control. Keyed on the contact identity, so it stops one
+    //    inbox from being bombed and one person from spamming fake bookings,
+    //    regardless of how many IPs they rotate through.
+    //  - reservation-create-location (150/hr per location): a per-venue
+    //    backstop so a single location can't be flooded with bookings faster
+    //    than any real restaurant could ever take them. Sits well above
+    //    realistic demand; capacity checks below remain the real seat guard.
     if (
       await limitGuard(req, res, [
         {
           name: "reservation-create-ip",
           key: clientIp(req),
           windowMs: HOURS(1),
-          max: 15,
+          max: 60,
         },
         {
           name: "reservation-create-target",
           key: `${location.id}:${String(email).toLowerCase().trim()}`,
           windowMs: HOURS(1),
           max: 3,
+        },
+        {
+          name: "reservation-create-location",
+          key: location.id,
+          windowMs: HOURS(1),
+          max: 150,
         },
       ])
     )
