@@ -214,6 +214,13 @@ Scalability features (optional; graceful fallback when unset):
   Vercel project so Cron requests are authorized.
 - `PUBLIC_BASE_URL` — public origin QStash calls back for the worker (defaults to
   `FRONTEND_URL`).
+- `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` — enable production-grade,
+  globally-consistent rate limiting (Upstash Redis + `@upstash/ratelimit`).
+  Required on Vercel: each serverless instance has its own memory, so without
+  Redis the limiter is per-instance only and effectively bypassable. When unset
+  (local dev), the limiter falls back to an in-memory store automatically, so
+  development is never blocked. Create a Redis database in the Upstash console
+  and copy its REST URL + token.
 
 Admin console auth (required for the `/admin` and `/tickets` routers):
 

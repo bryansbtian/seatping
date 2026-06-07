@@ -9,6 +9,7 @@
 // card. Returns featured-style summaries (rating + reviewCount) too.
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { limitGuard, clientIp, MINUTES } from "../lib/rateLimit.js";
 
 const router = Router();
 
@@ -102,6 +103,15 @@ function matchesQuery(loc: any, business: any, q: string): boolean {
  */
 router.get("/restaurants", async (req, res) => {
   try {
+    // Unauthenticated DB-heavy search: throttle per IP to cap query/function
+    // load. Generous enough for normal typing/browsing.
+    if (
+      await limitGuard(req, res, [
+        { name: "search-restaurants-ip", key: clientIp(req), windowMs: MINUTES(1), max: 60 },
+      ])
+    )
+      return;
+
     const q = String(req.query.query || "").trim();
 
     // Pagination is opt-in: when a `limit` is supplied we page; otherwise we

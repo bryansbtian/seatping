@@ -49,6 +49,8 @@
     "@types/papaparse": "^5.5.2",
     "@types/qrcode": "^1.5.5",
     "@upstash/qstash": "^2.11.0",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
     "bcrypt": "^6.0.0",

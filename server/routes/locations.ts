@@ -15,6 +15,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import multer from "multer";
 import { prisma } from "../lib/prisma.js";
 import { requireBusiness } from "../lib/auth.js";
+import { limitGuard, clientIp, MINUTES } from "../lib/rateLimit.js";
 import { assembleBusinessMe, serializePhoto } from "../lib/business.js";
 import {
   uploadImageBuffer,
@@ -66,6 +67,15 @@ function fieldScore(value: any, needle: string): number {
 
 router.get("/search-suggestions", async (req, res) => {
   try {
+    // Public, unauthenticated, fires on every keystroke in the hero search.
+    // Throttle per IP at a level that allows fast typing but caps scripted load.
+    if (
+      await limitGuard(req, res, [
+        { name: "suggestions-ip", key: clientIp(req), windowMs: MINUTES(1), max: 120 },
+      ])
+    )
+      return;
+
     const q = String(req.query.query || "").trim().toLowerCase();
     const rawLimit = parseInt(String(req.query.limit || "3"), 10);
     const limit = Math.min(3, Math.max(1, Number.isFinite(rawLimit) ? rawLimit : 3));
@@ -167,6 +177,26 @@ router.get("/search-suggestions", async (req, res) => {
 
 // Every route below here mutates media, so a business session is always required.
 router.use(requireBusiness);
+
+// Per-business throttle for the dashboard mutation routes below. Keyed by the
+// authenticated business id (falls back to IP if somehow absent), so one
+// account's automation/abuse can't hammer uploads/edits. Generous for normal
+// dashboard use (which batches several calls per save).
+router.use(async (req, res, next) => {
+  const businessId = (req as any).auth?.sub as string | undefined;
+  if (
+    await limitGuard(req, res, [
+      {
+        name: "biz-dashboard",
+        key: businessId || clientIp(req),
+        windowMs: MINUTES(1),
+        max: 120,
+      },
+    ])
+  )
+    return;
+  next();
+});
 
 // ---------------------------------------------------------------------------
 // Upload constraints (images only, 5MB each, max 10 photos per location).

@@ -22,12 +22,17 @@ import jobsRouter from "./routes/jobs.js";
 import cronRouter from "./routes/cron.js";
 import { runDailyCreditRefillSweep } from "./lib/trial.js";
 import { runReservationReminderSweep } from "./lib/reservationReminders.js";
+import { logRateLimitStatus, rateLimit } from "./lib/rateLimit.js";
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Behind Vercel's proxy: trust the first proxy hop so req.ip and
+// x-forwarded-for parsing (used by the rate limiter) reflect the real client.
+app.set("trust proxy", 1);
 
 app.use(
   cors({
@@ -49,6 +54,24 @@ app.use(cookieParser());
 app.use((req, _res, next) => {
   console.log(`[api] ${req.method} ${req.originalUrl}`);
   next();
+});
+
+// Global per-IP backstop so no endpoint is ever fully unthrottled. Generous
+// enough that normal browsing (the SPA fires several API calls per page) is
+// never blocked; it only trips scripted floods. Per-route limiters above this
+// stay much stricter. Machine-to-machine routes are exempt: the QStash worker
+// (/api/jobs) is mounted before the body parsers and never reaches here, and
+// Vercel Cron (/api/cron) is authorized by CRON_SECRET, so we skip it.
+const globalLimiter = rateLimit({
+  name: "global-ip",
+  windowMs: 60 * 1000,
+  max: 200,
+});
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/cron") || req.path.startsWith("/api/jobs")) {
+    return next();
+  }
+  return globalLimiter(req, res, next);
 });
 
 app.use("/auth", authRouter);
@@ -80,6 +103,7 @@ const PORT = Number(process.env.PORT || 4000);
 if (process.env.VERCEL !== '1') {
   app.listen(PORT, () => {
     console.log(`[api] listening on http://localhost:${PORT}`);
+    logRateLimitStatus();
   });
 
   // Daily credit refill sweep — runs once at startup, then every 24 hours.

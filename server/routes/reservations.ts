@@ -39,6 +39,7 @@ import {
   addCapacity,
 } from "../lib/reservationCapacity.js";
 import { enqueueNotification } from "../lib/notifications.js";
+import { limitGuard, clientIp, MINUTES, HOURS } from "../lib/rateLimit.js";
 import type { Reservation } from "@prisma/client";
 
 const router = Router();
@@ -243,6 +244,28 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
       return res.status(400).json({ error: "A valid email is required." });
     }
 
+    // Anti-abuse throttle: this route creates DB rows, holds capacity, and
+    // emails the supplied address. Limit per IP, and per (location + email) so
+    // a single inbox can't be bombed and one location can't be flooded with
+    // fake bookings from one source.
+    if (
+      await limitGuard(req, res, [
+        {
+          name: "reservation-create-ip",
+          key: clientIp(req),
+          windowMs: HOURS(1),
+          max: 15,
+        },
+        {
+          name: "reservation-create-target",
+          key: `${location.id}:${String(email).toLowerCase().trim()}`,
+          windowMs: HOURS(1),
+          max: 3,
+        },
+      ])
+    )
+      return;
+
     const settings = normalizeSettings(location.reservationSettings);
     const reservations = await activeReservationsForValidation(location.id);
     const size = Number(partySize);
@@ -406,7 +429,17 @@ router.get("/manage/:manageToken", async (req, res) => {
 /** PUT change date/time/party size by manage token. Re-runs availability. */
 router.put("/manage/:manageToken", async (req, res) => {
   try {
-    const found = await findByManageToken(String(req.params.manageToken || "").trim());
+    const manageToken = String(req.params.manageToken || "").trim();
+    // Throttle changes (re-runs availability + emails) per IP and per token.
+    if (
+      await limitGuard(req, res, [
+        { name: "reservation-manage-ip", key: clientIp(req), windowMs: MINUTES(10), max: 20 },
+        { name: "reservation-manage-token", key: manageToken, windowMs: MINUTES(10), max: 10 },
+      ])
+    )
+      return;
+
+    const found = await findByManageToken(manageToken);
     if (!found) return res.status(404).json({ error: "Reservation not found" });
     const { location, reservation } = found;
 
@@ -483,7 +516,17 @@ async function syncManageChange(location: any, reservationRow: Reservation) {
 /** POST cancel by manage token. */
 router.post("/manage/:manageToken/cancel", async (req, res) => {
   try {
-    const found = await findByManageToken(String(req.params.manageToken || "").trim());
+    const manageToken = String(req.params.manageToken || "").trim();
+    // Throttle cancellations (releases capacity + emails) per IP and per token.
+    if (
+      await limitGuard(req, res, [
+        { name: "reservation-manage-ip", key: clientIp(req), windowMs: MINUTES(10), max: 20 },
+        { name: "reservation-manage-token", key: manageToken, windowMs: MINUTES(10), max: 10 },
+      ])
+    )
+      return;
+
+    const found = await findByManageToken(manageToken);
     if (!found) return res.status(404).json({ error: "Reservation not found" });
     const { location, reservation } = found;
 
