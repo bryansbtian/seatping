@@ -20,10 +20,14 @@ import jobsRouter from "./routes/jobs.js";
 import cronRouter from "./routes/cron.js";
 import { runDailyCreditRefillSweep } from "./lib/trial.js";
 import { runReservationReminderSweep } from "./lib/reservationReminders.js";
+import { logRateLimitStatus, rateLimit } from "./lib/rateLimit.js";
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
+// Behind Vercel's proxy: trust the first proxy hop so req.ip and
+// x-forwarded-for parsing (used by the rate limiter) reflect the real client.
+app.set("trust proxy", 1);
 app.use(cors({
     origin: process.env.CLIENT_ORIGIN ?? "https://www.seatping.biz",
     credentials: true,
@@ -39,6 +43,36 @@ app.use(cookieParser());
 app.use((req, _res, next) => {
     console.log(`[api] ${req.method} ${req.originalUrl}`);
     next();
+});
+// Global per-IP backstop so no endpoint is ever fully unthrottled. Generous
+// enough that normal browsing (the SPA fires several API calls per page) is
+// never blocked; it only trips scripted floods. Per-route limiters above this
+// stay much stricter. Machine-to-machine routes are exempt: the QStash worker
+// (/api/jobs) is mounted before the body parsers and never reaches here, and
+// Vercel Cron (/api/cron) is authorized by CRON_SECRET, so we skip it.
+const globalLimiter = rateLimit({
+    name: "global-ip",
+    windowMs: 60 * 1000,
+    max: 200,
+});
+// Read-only customer polling on the live waiting screen: QueueBusiness.tsx polls
+// queue status every ~2s and ETA every ~30s. On shared venue WiFi / mobile
+// carrier CGNAT many waiting customers share one public IP, so these GETs must
+// NOT count against the global per-IP backstop or a busy venue would get 429'd
+// mid-wait. They are read-only and gated by a secret queueToken (or the derived
+// customerId), so exempting them is safe. Matches:
+//   GET /auth/business/:username/queue/token/:queueToken/status
+//   GET /auth/business/:username/queue/:customerId/status
+//   GET /auth/business/:username/queue/token/:queueToken/eta
+// It does NOT match the POST join (no /status|/eta suffix) or any write route.
+const CUSTOMER_POLL_EXEMPT_RE = /^\/auth\/business\/[^/]+\/queue\/.+\/(status|eta)$/;
+app.use((req, res, next) => {
+    if (req.path.startsWith("/api/cron") ||
+        req.path.startsWith("/api/jobs") ||
+        (req.method === "GET" && CUSTOMER_POLL_EXEMPT_RE.test(req.path))) {
+        return next();
+    }
+    return globalLimiter(req, res, next);
 });
 app.use("/auth", authRouter);
 app.use("/admin", adminRouter);
@@ -65,6 +99,7 @@ const PORT = Number(process.env.PORT || 4000);
 if (process.env.VERCEL !== '1') {
     app.listen(PORT, () => {
         console.log(`[api] listening on http://localhost:${PORT}`);
+        logRateLimitStatus();
     });
     // Daily credit refill sweep — runs once at startup, then every 24 hours.
     const DAILY_MS = 24 * 60 * 60 * 1000;

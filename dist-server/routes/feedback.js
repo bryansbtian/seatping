@@ -1,6 +1,7 @@
 import express from 'express';
 import { sendFeedbackEmail, sendFeedbackConfirmationEmail } from '../lib/email.js';
 import { prisma } from '../lib/prisma.js';
+import { limitGuard, clientIp, HOURS } from '../lib/rateLimit.js';
 const router = express.Router();
 // Helper function to generate unique ticket number
 const generateTicketNumber = async (type) => {
@@ -25,6 +26,15 @@ router.post('/submit', express.json(), async (req, res) => {
     try {
         console.log('[feedback] Received feedback submission:', req.body);
         const data = req.body;
+        // Anti-abuse throttle: this route sends two emails (team + confirmation to
+        // the supplied address) and creates a ticket row. Limit per IP and per
+        // sender email so it can't be used to email-bomb or flood the ticket table.
+        const senderEmail = String(data?.email || '').toLowerCase().trim();
+        if (await limitGuard(req, res, [
+            { name: 'feedback-ip', key: clientIp(req), windowMs: HOURS(1), max: 10 },
+            { name: 'feedback-email', key: senderEmail, windowMs: HOURS(1), max: 3 },
+        ]))
+            return;
         // Basic validation
         if (!data.name || !data.email || !data.subject || !data.message || !data.feedbackType) {
             console.error('[feedback] Missing required fields');

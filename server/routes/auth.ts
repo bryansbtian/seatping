@@ -68,7 +68,7 @@ import {
   reservationRowToLegacy,
 } from "../lib/liveData.js";
 import { applyStatusCapacityDelta } from "../lib/reservationCapacity.js";
-import { enqueueNotification } from "../lib/notifications.js";
+import { enqueueNotification, canNotifyRecipient } from "../lib/notifications.js";
 import { withWriteRetry } from "../lib/dbRetry.js";
 import { getLocationOperatingStatus } from "../lib/operatingHours.js";
 import crypto from "crypto";
@@ -1788,7 +1788,11 @@ router.post("/business/:username/queue", async (req, res) => {
       .trim();
     if (
       await limitGuard(req, res, [
-        { name: "queue-join-ip", key: clientIp(req), windowMs: HOURS(1), max: 10 },
+        // Per-IP backstop is generous: at a real venue many legitimate customers
+        // join from the same WiFi / carrier CGNAT IP. The precise anti-abuse
+        // control is the per-(location + contact) limiter below, so the IP cap
+        // can be loose without weakening recipient-specific protection.
+        { name: "queue-join-ip", key: clientIp(req), windowMs: HOURS(1), max: 60 },
         {
           name: "queue-join-target",
           key: targetLoc && targetContact ? `${targetLoc}:${targetContact}` : null,
@@ -1838,6 +1842,26 @@ router.post("/business/:username/queue", async (req, res) => {
           dayName: operatingStatus.dayName,
           todayHours: operatingStatus.hoursLabel,
         },
+      });
+    }
+
+    // P3A: pre-flight the per-recipient daily notification cap BEFORE doing any
+    // side effects. If this contact has already hit its daily cap for this
+    // channel, the eventual enqueueNotification() would silently drop the
+    // message — so bail out now, before charging a credit or creating a queue
+    // entry. This is a non-consuming peek; the single quota consume still
+    // happens inside enqueueNotification() at actual send time (so QStash
+    // retries, which hit the worker directly, never double-count).
+    const capRecipient =
+      notificationMethod === "email" ? email : phoneNumber;
+    const withinDailyCap = await canNotifyRecipient(
+      notificationMethod,
+      capRecipient,
+    );
+    if (!withinDailyCap) {
+      return res.status(429).json({
+        error:
+          "Too many notifications have been sent to this contact today. Please use a different contact method or try again tomorrow.",
       });
     }
 

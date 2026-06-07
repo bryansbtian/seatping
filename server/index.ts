@@ -67,8 +67,26 @@ const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 200,
 });
+
+// Read-only customer polling on the live waiting screen: QueueBusiness.tsx polls
+// queue status every ~2s and ETA every ~30s. On shared venue WiFi / mobile
+// carrier CGNAT many waiting customers share one public IP, so these GETs must
+// NOT count against the global per-IP backstop or a busy venue would get 429'd
+// mid-wait. They are read-only and gated by a secret queueToken (or the derived
+// customerId), so exempting them is safe. Matches:
+//   GET /auth/business/:username/queue/token/:queueToken/status
+//   GET /auth/business/:username/queue/:customerId/status
+//   GET /auth/business/:username/queue/token/:queueToken/eta
+// It does NOT match the POST join (no /status|/eta suffix) or any write route.
+const CUSTOMER_POLL_EXEMPT_RE =
+  /^\/auth\/business\/[^/]+\/queue\/.+\/(status|eta)$/;
+
 app.use((req, res, next) => {
-  if (req.path.startsWith("/api/cron") || req.path.startsWith("/api/jobs")) {
+  if (
+    req.path.startsWith("/api/cron") ||
+    req.path.startsWith("/api/jobs") ||
+    (req.method === "GET" && CUSTOMER_POLL_EXEMPT_RE.test(req.path))
+  ) {
     return next();
   }
   return globalLimiter(req, res, next);

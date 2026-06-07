@@ -29,6 +29,7 @@ import {
   sendQueueJoinedWhatsApp,
   sendQueueAdmittedWhatsApp,
 } from "./whatsapp.js";
+import { consumeQuota, peekQuota, DAYS } from "./rateLimit.js";
 
 export type NotificationChannel = "sms" | "whatsapp" | "email";
 
@@ -102,6 +103,92 @@ let qstash: Client | null = qstashToken
     })
   : null;
 
+// Per-recipient daily cap: defense-in-depth beyond per-location credits and the
+// per-request rate limits. Even if those are somehow bypassed across windows, a
+// single phone number or email can never receive more than this many messages
+// per channel per rolling day. Generous enough that real customers never hit it
+// (a normal flow is ~1-2 messages); only sustained abuse does. Backed by Redis
+// in prod (cross-instance, survives the whole day), per-process in dev.
+const NOTIFY_DAILY_MAX = Number(
+  process.env.NOTIFY_DAILY_MAX_PER_RECIPIENT || 20,
+);
+
+/** The exact daily-cap key for a (channel, recipient). Single source of truth so
+ * the pre-flight peek and the real consume can never key differently. */
+function dailyCapKey(
+  channel: NotificationChannel,
+  recipient: string,
+): string {
+  return `${channel}:${recipient.toLowerCase()}`;
+}
+
+/** Returns true if a message to this recipient/channel is within the daily cap.
+ * CONSUMES one unit of quota. */
+async function withinDailyRecipientCap(
+  channel: NotificationChannel,
+  recipient: string | undefined,
+): Promise<boolean> {
+  if (!recipient) return true;
+  return consumeQuota(
+    "notify-daily",
+    dailyCapKey(channel, recipient),
+    DAYS(1),
+    NOTIFY_DAILY_MAX,
+  );
+}
+
+/**
+ * Pre-flight check (does NOT consume quota): is this recipient still under the
+ * daily cap for this channel right now? Callers use this to gate side effects
+ * (e.g. deducting a credit / creating a queue entry) BEFORE the real send, then
+ * let enqueueNotification() perform the single quota-consuming check. Returns
+ * true for an empty recipient or on a store error (fail open).
+ */
+export async function canNotifyRecipient(
+  channel: NotificationChannel,
+  recipient: string | undefined,
+): Promise<boolean> {
+  if (!recipient) return true;
+  return peekQuota(
+    "notify-daily",
+    dailyCapKey(channel, recipient),
+    DAYS(1),
+    NOTIFY_DAILY_MAX,
+  );
+}
+
+/**
+ * Enforce the per-recipient daily cap for the customer-facing recipient(s) of a
+ * job. Only the abuse-exposed, customer-directed sends are capped:
+ *   - queue_join (anonymous, can spend credits / SMS-bomb a number)
+ *   - reservation_created customer email (anonymous, can email-bomb an address)
+ * queue_admitted and reservation_reminder are business/cron-initiated and must
+ * never be suppressed, so they are not capped. Business heads-up emails are not
+ * capped either (a busy venue legitimately gets many). Returns the job to send
+ * (possibly with an over-cap customer email stripped), or null to drop entirely.
+ */
+async function applyRecipientCap(
+  job: NotificationJob,
+): Promise<NotificationJob | null> {
+  if (job.type === "queue_join") {
+    const recipient = job.channel === "email" ? job.email : job.phoneNumber;
+    if (!(await withinDailyRecipientCap(job.channel, recipient))) {
+      console.warn(
+        `[NOTIFY] daily per-recipient cap reached (${job.channel}) — dropping queue_join notification`,
+      );
+      return null;
+    }
+  } else if (job.type === "reservation_created" && job.customerEmail) {
+    if (!(await withinDailyRecipientCap("email", job.customerEmail))) {
+      console.warn(
+        "[NOTIFY] daily cap reached for reservation customer email — sending business heads-up only",
+      );
+      return { ...job, customerEmail: undefined };
+    }
+  }
+  return job;
+}
+
 /** Public base URL QStash uses to call the worker back. */
 function workerUrl(): string {
   const base =
@@ -117,6 +204,13 @@ function workerUrl(): string {
  * Never throws into the caller — a notification failure must not fail the action.
  */
 export async function enqueueNotification(job: NotificationJob): Promise<void> {
+  // Enforce the per-recipient daily cap once, here at enqueue time (one count
+  // per intended notification). QStash retries hit /api/jobs/notify ->
+  // processNotification directly, so they never double-count.
+  const capped = await applyRecipientCap(job);
+  if (capped === null) return; // recipient over their daily cap — drop silently
+  job = capped;
+
   if (qstash) {
     try {
       await qstash.publishJSON({ url: workerUrl(), body: job, retries: 3 });

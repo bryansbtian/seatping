@@ -221,6 +221,14 @@ Scalability features (optional; graceful fallback when unset):
   (local dev), the limiter falls back to an in-memory store automatically, so
   development is never blocked. Create a Redis database in the Upstash console
   and copy its REST URL + token.
+- `NOTIFY_DAILY_MAX_PER_RECIPIENT` — optional cap (default `20`) on how many
+  messages a single phone/email can receive per channel per rolling day. A
+  defense-in-depth backstop against notification bombing; real customers never
+  hit it. Uses the same Upstash Redis store as rate limiting.
+- `DB_MAX_POOL_SIZE` — optional bound (default `10`) on the MongoDB connection
+  pool size per serverless instance, appended to `DATABASE_URL` at runtime
+  unless the URL already sets `maxPoolSize`. Keeps a traffic spike (many Vercel
+  instances) from exhausting the Atlas connection limit.
 
 Admin console auth (required for the `/admin` and `/tickets` routers):
 

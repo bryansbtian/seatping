@@ -14,7 +14,7 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "../lib/prisma.js";
 import { signJwt, setAuthCookie, clearAuthCookie, clearAllAuthCookies, requireCustomer, requireBusiness, readSession, } from "../lib/auth.js";
-import { rateLimit } from "../lib/rateLimit.js";
+import { rateLimit, limitGuard, clientIp, MINUTES, HOURS, } from "../lib/rateLimit.js";
 import { CustomerSignUpSchema, BusinessSignUpSchema, LoginSchema, CustomerUpdateSchema, ChangePasswordSchema, } from "../lib/validation.js";
 import { DEFAULT_BASE_CREDITS, enforceTrialExpiration, buildLocationData, checkAndRefillMonthlyCredits, } from "../lib/trial.js";
 import { sendEmail, sendPasswordResetEmail, sendBusinessOnboardingEmail, sendCustomerWelcomeEmail, sendPasswordChangeConfirmationEmail, } from "../lib/email.js";
@@ -25,7 +25,7 @@ import { syncCustomerQueue } from "../lib/queueSync.js";
 import { etaForToken, etaForAllQueueCustomers } from "../lib/queueEta.js";
 import { queueEntryToLegacy, legacyKeyOf, reservationStatusToEnum, reservationRowToLegacy, } from "../lib/liveData.js";
 import { applyStatusCapacityDelta } from "../lib/reservationCapacity.js";
-import { enqueueNotification } from "../lib/notifications.js";
+import { enqueueNotification, canNotifyRecipient } from "../lib/notifications.js";
 import { withWriteRetry } from "../lib/dbRetry.js";
 import { getLocationOperatingStatus } from "../lib/operatingHours.js";
 import crypto from "crypto";
@@ -83,6 +83,11 @@ router.get("/session", (req, res) => {
  */
 router.post("/signup", async (req, res) => {
     try {
+        // Throttle account creation (bcrypt + row write) per IP.
+        if (await limitGuard(req, res, [
+            { name: "signup-ip", key: clientIp(req), windowMs: HOURS(1), max: 5 },
+        ]))
+            return;
         const parsed = CustomerSignUpSchema.safeParse(req.body);
         if (!parsed.success) {
             return res
@@ -137,6 +142,14 @@ router.post("/signup", async (req, res) => {
  */
 router.post("/login", async (req, res) => {
     try {
+        // Brute-force throttle: per IP, plus a tighter per-identifier limit so a
+        // single account can't be hammered from many IPs.
+        const loginId = String(req.body?.emailOrUsername || "").toLowerCase().trim();
+        if (await limitGuard(req, res, [
+            { name: "login-ip", key: clientIp(req), windowMs: MINUTES(15), max: 10 },
+            { name: "login-id", key: loginId, windowMs: MINUTES(15), max: 5 },
+        ]))
+            return;
         const parsed = LoginSchema.safeParse(req.body);
         if (!parsed.success) {
             return res
@@ -781,6 +794,13 @@ router.post("/forgot-password", async (req, res) => {
             return res.status(400).json({ error: "email is required" });
         }
         const normalized = email.toLowerCase();
+        // Throttle reset-email sends per target address and per IP, so a known
+        // account can't be email-bombed with reset links.
+        if (await limitGuard(req, res, [
+            { name: "forgot-email", key: normalized, windowMs: HOURS(1), max: 3 },
+            { name: "forgot-ip", key: clientIp(req), windowMs: HOURS(1), max: 10 },
+        ]))
+            return;
         // Reset within the account type the request came from (customer login vs
         // business login), so a shared email resets the correct account. Defaults
         // to customer for older clients that don't send a type.
@@ -848,6 +868,11 @@ router.post("/forgot-password", async (req, res) => {
  */
 router.post("/reset-password", async (req, res) => {
     try {
+        // Throttle reset-token guessing (and the bcrypt hash it triggers) per IP.
+        if (await limitGuard(req, res, [
+            { name: "reset-ip", key: clientIp(req), windowMs: MINUTES(15), max: 10 },
+        ]))
+            return;
         const { token, newPassword } = req.body || {};
         if (!token || !newPassword) {
             return res
@@ -900,6 +925,11 @@ router.post("/reset-password", async (req, res) => {
  */
 router.get("/exists", async (req, res) => {
     try {
+        // Throttle username-enumeration probing per IP.
+        if (await limitGuard(req, res, [
+            { name: "exists-ip", key: clientIp(req), windowMs: MINUTES(10), max: 30 },
+        ]))
+            return;
         const username = String(req.query.username || "").trim();
         if (!username)
             return res.status(400).json({ error: "username is required" });
@@ -919,6 +949,11 @@ router.get("/exists", async (req, res) => {
  */
 router.post("/business/signup", async (req, res) => {
     try {
+        // Throttle business account creation per IP.
+        if (await limitGuard(req, res, [
+            { name: "biz-signup-ip", key: clientIp(req), windowMs: HOURS(1), max: 5 },
+        ]))
+            return;
         const parsed = BusinessSignUpSchema.safeParse(req.body);
         if (!parsed.success) {
             return res
@@ -982,6 +1017,13 @@ router.post("/business/signup", async (req, res) => {
  */
 router.post("/business/login", async (req, res) => {
     try {
+        // Brute-force throttle: per IP, plus a tighter per-identifier limit.
+        const loginId = String(req.body?.emailOrUsername || "").toLowerCase().trim();
+        if (await limitGuard(req, res, [
+            { name: "biz-login-ip", key: clientIp(req), windowMs: MINUTES(15), max: 10 },
+            { name: "biz-login-id", key: loginId, windowMs: MINUTES(15), max: 5 },
+        ]))
+            return;
         const parsed = LoginSchema.safeParse(req.body);
         if (!parsed.success) {
             return res
@@ -1033,6 +1075,7 @@ router.post("/business/logout", (_req, res) => {
 // ===========================================================================
 // Brute-force throttle: max 5 attempts per IP per 15 minutes.
 const adminLoginLimiter = rateLimit({
+    name: "admin-login",
     windowMs: 15 * 60 * 1000,
     max: 5,
     message: "Too many login attempts. Please try again later.",
@@ -1480,6 +1523,27 @@ router.post("/business/:username/queue", async (req, res) => {
         else {
             return res.status(400).json({ error: "Invalid notification method" });
         }
+        // Anti-abuse throttle: this route can spend a business's notification
+        // credits and send SMS/WhatsApp to the supplied number. Limit per IP, and
+        // per (location + contact) so one number can't be bombed at one location.
+        const targetLoc = String(locationId || address || "").trim();
+        const targetContact = String(phoneNumber || email || "")
+            .toLowerCase()
+            .trim();
+        if (await limitGuard(req, res, [
+            // Per-IP backstop is generous: at a real venue many legitimate customers
+            // join from the same WiFi / carrier CGNAT IP. The precise anti-abuse
+            // control is the per-(location + contact) limiter below, so the IP cap
+            // can be loose without weakening recipient-specific protection.
+            { name: "queue-join-ip", key: clientIp(req), windowMs: HOURS(1), max: 60 },
+            {
+                name: "queue-join-target",
+                key: targetLoc && targetContact ? `${targetLoc}:${targetContact}` : null,
+                windowMs: MINUTES(10),
+                max: 3,
+            },
+        ]))
+            return;
         const business = await prisma.business.findUnique({
             where: { username },
             select: { id: true, name: true },
@@ -1517,6 +1581,20 @@ router.post("/business/:username/queue", async (req, res) => {
                     dayName: operatingStatus.dayName,
                     todayHours: operatingStatus.hoursLabel,
                 },
+            });
+        }
+        // P3A: pre-flight the per-recipient daily notification cap BEFORE doing any
+        // side effects. If this contact has already hit its daily cap for this
+        // channel, the eventual enqueueNotification() would silently drop the
+        // message — so bail out now, before charging a credit or creating a queue
+        // entry. This is a non-consuming peek; the single quota consume still
+        // happens inside enqueueNotification() at actual send time (so QStash
+        // retries, which hit the worker directly, never double-count).
+        const capRecipient = notificationMethod === "email" ? email : phoneNumber;
+        const withinDailyCap = await canNotifyRecipient(notificationMethod, capRecipient);
+        if (!withinDailyCap) {
+            return res.status(429).json({
+                error: "Too many notifications have been sent to this contact today. Please use a different contact method or try again tomorrow.",
             });
         }
         // Every notification channel consumes 1 credit at join time — SMS,

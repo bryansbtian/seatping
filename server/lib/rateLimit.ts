@@ -119,6 +119,14 @@ function memoryLimit(
   return { success: true, retryAfterSec: 0 };
 }
 
+/** Non-consuming read: would the NEXT memoryLimit() call succeed? */
+function memoryPeek(fullKey: string, windowMs: number, max: number): boolean {
+  const now = Date.now();
+  const existing = memoryBuckets.get(fullKey);
+  if (!existing || now >= existing.resetAt) return true; // fresh window
+  return existing.count < max; // a +1 consume would still be <= max
+}
+
 // ---------------------------------------------------------------------------
 // Redis limiter cache — one Ratelimit instance per (window, max) config.
 // ---------------------------------------------------------------------------
@@ -253,6 +261,58 @@ export async function limitGuard(
   return true;
 }
 
+/**
+ * Consume one unit from a named quota and report whether it was within the cap.
+ * Non-HTTP counterpart to limitGuard — for background policy like per-recipient
+ * daily notification caps. Returns true when the action is allowed (and counts
+ * it), false when the cap is already reached. Empty keys are always allowed.
+ * Fails open (allows) on a store error, same as the HTTP guard.
+ */
+export async function consumeQuota(
+  name: string,
+  key: string | null | undefined,
+  windowMs: number,
+  max: number,
+): Promise<boolean> {
+  if (key == null || String(key).trim() === "") return true;
+  const { success } = await checkOne(
+    `${name}:${String(key).trim()}`,
+    windowMs,
+    max,
+  );
+  return success;
+}
+
+/**
+ * Non-consuming check: would a subsequent consumeQuota() for this key currently
+ * succeed (i.e. is there at least one unit left in the window)? Does NOT count
+ * against the quota — use it for a pre-flight gate before committing side
+ * effects, then call consumeQuota() at the real action point. Empty keys and
+ * store errors return true (fail open), matching consumeQuota.
+ */
+export async function peekQuota(
+  name: string,
+  key: string | null | undefined,
+  windowMs: number,
+  max: number,
+): Promise<boolean> {
+  if (key == null || String(key).trim() === "") return true;
+  const fullKey = `${name}:${String(key).trim()}`;
+  if (redis) {
+    try {
+      const { remaining } = await getRedisLimiter(windowMs, max).getRemaining(
+        fullKey,
+      );
+      return remaining > 0;
+    } catch (err) {
+      console.error("[rate-limit] redis peek error, allowing:", err);
+      return true; // fail open
+    }
+  }
+  return memoryPeek(fullKey, windowMs, max);
+}
+
 // Common window constants for callers.
 export const MINUTES = (n: number) => n * 60 * 1000;
 export const HOURS = (n: number) => n * 60 * 60 * 1000;
+export const DAYS = (n: number) => n * 24 * 60 * 60 * 1000;
