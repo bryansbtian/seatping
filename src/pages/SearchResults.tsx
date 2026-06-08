@@ -826,14 +826,13 @@ function RestaurantCard({
               </Button>
             ) : (
               !r.reservationsEnabled && (
-                <Button
-                  disabled
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex-1 min-w-0 justify-center whitespace-nowrap px-3 text-sm"
-                  variant="ghost"
+                <div
+                  aria-disabled="true"
+                  title="Reservations unavailable"
+                  className="flex h-10 flex-1 min-w-0 cursor-not-allowed select-none items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-400"
                 >
                   Reservations Unavailable
-                </Button>
+                </div>
               )
             )}
             {queuePath && r.queueEnabled && (
