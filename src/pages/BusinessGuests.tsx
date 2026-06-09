@@ -35,7 +35,9 @@ import {
   RefreshCw,
   Plus,
   Inbox,
+  Download,
 } from "lucide-react";
+import Papa from "papaparse";
 
 // ---------------------------------------------------------------------------
 // Types (mirror the /api/guests payloads)
@@ -277,6 +279,48 @@ const BusinessGuests = () => {
   const currentLocationLabel =
     locations.find((l) => l.id === locationId)?.label || "";
 
+  // Export the currently-shown (filtered) guests to a CSV download.
+  const exportCsv = useCallback(() => {
+    if (!guests.length) return;
+    const rows = guests.map((g) => ({
+      Name: g.fullName || "",
+      Phone: formatPhone(g.normalizedPhone, g.phone) || "",
+      Email: g.email || "",
+      Status: g.returning ? "Returning" : "New",
+      Tags: g.tags.join("; "),
+      "Total Visits": g.totalVisits,
+      Waitlist: g.waitlistVisitCount,
+      Upcoming: g.upcomingReservationCount,
+      "Past Reservations": g.pastReservationCount,
+      "No-Shows": g.noShowCount,
+      Cancelled: g.cancelledCount,
+      "First Visit": g.firstVisitAt
+        ? fmtDate(g.firstVisitAt, locationTimezone)
+        : "",
+      "Last Visit": g.lastVisitAt
+        ? fmtDate(g.lastVisitAt, locationTimezone)
+        : "",
+      "Has Notes": g.hasNotes ? "Yes" : "No",
+    }));
+    const csv = Papa.unparse(rows);
+    const blob = new Blob(["﻿" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const safeLabel = (currentLocationLabel || "guests")
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase();
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `guests-${safeLabel || "export"}-${dateStr}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [guests, locationTimezone, currentLocationLabel]);
+
   return (
     <>
       <SEO title="Guests | SeatPing" description={BUSINESS_DESCRIPTION} />
@@ -450,17 +494,28 @@ const BusinessGuests = () => {
                     : `${guests.length} ${guests.length === 1 ? "Guest" : "Guests"}`}
                 </CardDescription>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchGuests}
-                disabled={loading || !locationId}
-              >
-                <RefreshCw
-                  className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
-                />
-                <span className="hidden sm:inline ml-2">Refresh</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportCsv}
+                  disabled={loading || guests.length === 0}
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline ml-2">Export</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchGuests}
+                  disabled={loading || !locationId}
+                >
+                  <RefreshCw
+                    className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                  />
+                  <span className="hidden sm:inline ml-2">Refresh</span>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               {error ? (

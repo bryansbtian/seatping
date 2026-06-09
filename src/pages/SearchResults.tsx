@@ -829,7 +829,7 @@ function RestaurantCard({
                 <div
                   aria-disabled="true"
                   title="Reservations unavailable"
-                  className="flex h-10 flex-1 min-w-0 cursor-not-allowed select-none items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-400"
+                  className="flex h-10 flex-1 min-w-0 cursor-not-allowed select-none items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-400 max-[320px]:px-2 max-[320px]:text-xs"
                 >
                   Reservations Unavailable
                 </div>

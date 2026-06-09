@@ -245,7 +245,7 @@ const CustomerLanding = () => {
                   return (
                     <CarouselItem
                       key={r.id}
-                      className="pl-4 basis-[80%] sm:basis-1/2 lg:basis-1/3 xl:basis-1/4"
+                      className="pl-4 basis-[88%] sm:basis-[70%] lg:basis-1/2 xl:basis-1/3"
                     >
                       <Card
                         className={`h-full overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl transition-shadow duration-300 flex flex-col ${
@@ -326,7 +326,7 @@ const CustomerLanding = () => {
                               <div
                                 aria-disabled="true"
                                 title="Reservations unavailable"
-                                className="flex h-10 w-full min-w-0 cursor-not-allowed select-none items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-400"
+                                className="flex h-10 w-full min-w-0 cursor-not-allowed select-none items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-400 max-[320px]:px-2 max-[320px]:text-xs"
                               >
                                 Reservations Unavailable
                               </div>
