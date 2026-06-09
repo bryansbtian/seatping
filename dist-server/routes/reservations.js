@@ -23,6 +23,7 @@ import { reservationRowToLegacy } from "../lib/liveData.js";
 import { bucketOf, tryReserveCapacity, releaseCapacity, addCapacity, } from "../lib/reservationCapacity.js";
 import { enqueueNotification } from "../lib/notifications.js";
 import { limitGuard, clientIp, MINUTES, HOURS } from "../lib/rateLimit.js";
+import { syncGuestFromReservation, touchGuestByReservationId, } from "../lib/guests.js";
 const router = Router();
 const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 /** Resolve a (businessUsername, locationId) pair to the business + location. */
@@ -199,21 +200,39 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
             return res.status(400).json({ error: "A valid email is required." });
         }
         // Anti-abuse throttle: this route creates DB rows, holds capacity, and
-        // emails the supplied address. Limit per IP, and per (location + email) so
-        // a single inbox can't be bombed and one location can't be flooded with
-        // fake bookings from one source.
+        // emails the supplied address. We use three layers:
+        //
+        //  - reservation-create-ip (60/hr): a broad, deliberately loose backstop.
+        //    Many legitimate customers share a single source IP (venue/mall/office
+        //    WiFi, mobile carrier CGNAT), so this must NOT be tight or it would
+        //    block real guests booking from the same network. It only catches an
+        //    obviously runaway single source.
+        //  - reservation-create-target (3/hr per location+email): the real
+        //    anti-abuse control. Keyed on the contact identity, so it stops one
+        //    inbox from being bombed and one person from spamming fake bookings,
+        //    regardless of how many IPs they rotate through.
+        //  - reservation-create-location (150/hr per location): a per-venue
+        //    backstop so a single location can't be flooded with bookings faster
+        //    than any real restaurant could ever take them. Sits well above
+        //    realistic demand; capacity checks below remain the real seat guard.
         if (await limitGuard(req, res, [
             {
                 name: "reservation-create-ip",
                 key: clientIp(req),
                 windowMs: HOURS(1),
-                max: 15,
+                max: 60,
             },
             {
                 name: "reservation-create-target",
                 key: `${location.id}:${String(email).toLowerCase().trim()}`,
                 windowMs: HOURS(1),
                 max: 3,
+            },
+            {
+                name: "reservation-create-location",
+                key: location.id,
+                windowMs: HOURS(1),
+                max: 150,
             },
         ]))
             return;
@@ -287,6 +306,8 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
             businessName: business.name,
             locationName: location.displayName || location.name || business.name,
         });
+        // Guest CRM: create/update the guest profile for this booking.
+        await syncGuestFromReservation(row, { businessUsername: business.username });
         return res.json({
             success: true,
             reservation,
@@ -415,6 +436,9 @@ router.put("/manage/:manageToken", async (req, res) => {
             data: { guestCount: partySize, reservationDateTime: newDateTime },
         });
         await syncManageChange(location, updated);
+        // Guest CRM: a reschedule/party-size change can move a booking between
+        // upcoming and past, so refresh the guest profile.
+        await touchGuestByReservationId(updated.id);
         return res.json({ reservation: reservationRowToLegacy(updated, { includeToken: true }) });
     }
     catch (err) {
@@ -463,6 +487,8 @@ router.post("/manage/:manageToken/cancel", async (req, res) => {
             data: { status: "CANCELLED", cancelledAt: new Date() },
         });
         await syncManageChange(location, updated);
+        // Guest CRM: a cancellation changes the guest's cancelled count.
+        await touchGuestByReservationId(updated.id);
         return res.json({ reservation: reservationRowToLegacy(updated, { includeToken: true }) });
     }
     catch (err) {

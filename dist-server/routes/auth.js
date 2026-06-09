@@ -13,7 +13,7 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "../lib/prisma.js";
-import { signJwt, setAuthCookie, clearAuthCookie, clearAllAuthCookies, requireCustomer, requireBusiness, readSession, } from "../lib/auth.js";
+import { signJwt, setAuthCookie, clearAuthCookie, requireCustomer, requireBusiness, readSession, } from "../lib/auth.js";
 import { rateLimit, limitGuard, clientIp, MINUTES, HOURS, } from "../lib/rateLimit.js";
 import { CustomerSignUpSchema, BusinessSignUpSchema, LoginSchema, CustomerUpdateSchema, ChangePasswordSchema, } from "../lib/validation.js";
 import { DEFAULT_BASE_CREDITS, enforceTrialExpiration, buildLocationData, checkAndRefillMonthlyCredits, } from "../lib/trial.js";
@@ -22,12 +22,13 @@ import { assembleBusinessMe, augmentLocationWithLiveLists } from "../lib/busines
 import { deleteImageByPublicId } from "../lib/cloudinary.js";
 import { normalizeSettings, syncCustomerReservation } from "../lib/reservations.js";
 import { syncCustomerQueue } from "../lib/queueSync.js";
+import { syncGuestFromQueueEntry, touchGuestByQueueEntryId, touchGuestByReservationId, } from "../lib/guests.js";
 import { etaForToken, etaForAllQueueCustomers } from "../lib/queueEta.js";
 import { queueEntryToLegacy, legacyKeyOf, reservationStatusToEnum, reservationRowToLegacy, } from "../lib/liveData.js";
 import { applyStatusCapacityDelta } from "../lib/reservationCapacity.js";
 import { enqueueNotification, canNotifyRecipient } from "../lib/notifications.js";
 import { withWriteRetry } from "../lib/dbRetry.js";
-import { getLocationOperatingStatus } from "../lib/operatingHours.js";
+import { getLocationOperatingStatus, getLocationTimezone, getNowWallClockInTimezone, } from "../lib/operatingHours.js";
 import crypto from "crypto";
 const router = Router();
 // ===========================================================================
@@ -179,12 +180,23 @@ router.post("/login", async (req, res) => {
     }
 });
 /**
- * POST /auth/logout  (clears the session cookie for either account type)
- * Shared by both the customer and business headers, so it clears every session
- * cookie — it can't know which account type is logging out.
+ * POST /auth/customer/logout  (clears ONLY the customer session cookie)
+ * Used by the customer-facing header. A business (or admin) session in the same
+ * browser must survive a customer logout, so this never touches their cookies.
+ */
+router.post("/customer/logout", (_req, res) => {
+    clearAuthCookie(res, "customer");
+    res.json({ ok: true });
+});
+/**
+ * POST /auth/logout  (deprecated alias, now customer-only)
+ * Kept for backward compatibility with older clients. It used to clear EVERY
+ * session cookie, which logged a business/admin out of the same browser by
+ * accident. It now clears only the customer cookie. New code should call the
+ * explicit /auth/customer/logout, /auth/business/logout, or /auth/admin/logout.
  */
 router.post("/logout", (_req, res) => {
-    clearAllAuthCookies(res);
+    clearAuthCookie(res, "customer");
     res.json({ ok: true });
 });
 /**
@@ -1371,6 +1383,19 @@ router.patch("/business/locations/:locationId/reservations/:reservationId", requ
         if (!existing) {
             return res.status(404).json({ error: "Reservation not found" });
         }
+        // A reservation can only be marked arrived / no-show once its booked time
+        // has actually passed in the LOCATION's timezone. This guards the API
+        // directly (not just the hidden UI buttons) so a future reservation can
+        // never be flipped to arrived/no-show, regardless of the caller.
+        if (status === "arrived" || status === "no_show") {
+            const nowLocal = getNowWallClockInTimezone(getLocationTimezone(location));
+            const bookedLocal = String(existing.reservationDateTime || "").slice(0, 16);
+            if (bookedLocal && bookedLocal > nowLocal) {
+                return res.status(400).json({
+                    error: "This reservation is in the future. You can only mark it arrived or no-show after the reserved time.",
+                });
+            }
+        }
         const now = new Date();
         const newEnum = reservationStatusToEnum(status);
         const timestampField = {
@@ -1404,6 +1429,9 @@ router.patch("/business/locations/:locationId/reservations/:reservationId", requ
             businessName: biz?.name ?? null,
             locationName: location.displayName || location.name || biz?.name || null,
         });
+        // Guest CRM: arrival/no-show/cancel/complete all change the guest's
+        // upcoming/past/no-show/cancelled counts.
+        await touchGuestByReservationId(updated.id);
         const me = await assembleBusinessMe(businessId);
         return res.json({ user: me });
     }
@@ -1673,6 +1701,9 @@ router.post("/business/:username/queue", async (req, res) => {
             locationName: location.displayName || location.name || business.name,
             locationId: location.id,
         });
+        // Guest CRM: create/update the guest profile for this waitlist join. Never
+        // blocks the response (failures are swallowed inside the helper).
+        await syncGuestFromQueueEntry(entry, { businessUsername: username });
         const businessName = business.name || "the business";
         // Customer-facing notifications use the restaurant's public name (from the
         // restaurant profile), not the parent business/account name.
@@ -2174,6 +2205,8 @@ router.post("/business/:username/admitted/:customerId/mark-no-show", requireBusi
             locationName: location?.displayName || location?.name || business.name,
             locationId: entry.locationId,
         });
+        // Guest CRM: a no-show changes the guest's no-show count.
+        await touchGuestByQueueEntryId(entry.id);
         return res.json({ success: true, message: "Customer marked as no-show" });
     }
     catch (err) {

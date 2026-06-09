@@ -60,7 +60,7 @@ export function SearchSuggestInput({
   date,
   time,
   people,
-  placeholder = "Restaurants, cuisines, or areas",
+  placeholder = "Restaurants, Cuisines, Or Areas",
   className,
   inputClassName,
 }: SearchSuggestInputProps) {
@@ -135,7 +135,10 @@ export function SearchSuggestInput({
   };
 
   return (
-    <div ref={searchBoxRef} className={cn("relative w-full min-w-0", className)}>
+    <div
+      ref={searchBoxRef}
+      className={cn("relative w-full min-w-0", className)}
+    >
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none max-[360px]:left-2" />
       <Input
         value={value}
@@ -209,7 +212,9 @@ export function SearchSuggestInput({
                       {suggestionSubtitle(s) && (
                         <span className="flex items-center gap-1 truncate text-xs text-slate-500">
                           <MapPin className="h-3 w-3 shrink-0 text-slate-400" />
-                          <span className="truncate">{suggestionSubtitle(s)}</span>
+                          <span className="truncate">
+                            {suggestionSubtitle(s)}
+                          </span>
                         </span>
                       )}
                     </span>

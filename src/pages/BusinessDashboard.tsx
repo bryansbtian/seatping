@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { GuestStatusBadge } from "@/components/GuestBadge";
 import {
   Card,
   CardHeader,
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { api } from "@/lib/api";
+import { formatPhone as formatPhoneIntl } from "@/lib/phone";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import BusinessHeader from "@/components/BusinessHeader";
@@ -540,26 +542,20 @@ const BusinessDashboard = () => {
     }
   };
 
-  // Format a phone number with its country code. The country code (defaulting
-  // to +1) is normalized to a leading "+" and leading zeros are stripped from
-  // the national number. US/Canada (+1) numbers get locale-aware NANP grouping,
-  // e.g. ("+1", "2069313369") -> "+1 (206) 931-3369"; other countries are shown
-  // as clean international digits since correct grouping is country-specific.
+  // Format a phone number with its country code, using the same shared
+  // formatter as the Guests page (src/lib/phone.ts) so phone display is
+  // identical across the dashboard and the Guest CRM, e.g.
+  // ("+62", "8118308669") -> "+62 811-8308-669". Builds the normalized
+  // (country-code-included) digits and delegates; falls back to the raw
+  // national number when no country code is present.
   const formatPhone = (countryCode?: string, phoneNumber?: string) => {
-    const national = String(phoneNumber || "")
-      .replace(/\D/g, "")
-      .replace(/^0+/, "");
+    const national = String(phoneNumber || "").replace(/\D/g, "");
     if (!national) return "";
-    const rawCode = String(countryCode || "")
-      .trim()
-      .replace(/[^\d+]/g, "");
-    const digits = rawCode.replace(/^\+/, "");
-    const code = digits ? `+${digits}` : "+1";
-    if (code === "+1" && national.length === 10) {
-      const formatted = `(${national.slice(0, 3)}) ${national.slice(3, 6)}-${national.slice(6)}`;
-      return `${code} ${formatted}`;
-    }
-    return `${code} ${national}`;
+    const codeDigits = String(countryCode || "").replace(/\D/g, "");
+    const result = codeDigits
+      ? formatPhoneIntl(`${codeDigits}${national}`, null)
+      : formatPhoneIntl(null, national);
+    return result ?? "";
   };
 
   // One clean "Channel: contact" line based on the contact the customer actually
@@ -1381,8 +1377,11 @@ const BusinessDashboard = () => {
                           #{index + 1}
                         </span>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-800 text-sm md:text-base">
+                          <h3 className="font-semibold text-gray-800 text-sm md:text-base flex items-center gap-2 flex-wrap">
                             {customer.firstName} {customer.lastName}
+                            {customer.isReturning && (
+                              <GuestStatusBadge returning />
+                            )}
                           </h3>
                           <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
                             <span className="whitespace-nowrap">
@@ -1492,8 +1491,11 @@ const BusinessDashboard = () => {
                                   </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h3 className="font-semibold text-gray-800 text-sm md:text-base">
+                                  <h3 className="font-semibold text-gray-800 text-sm md:text-base flex items-center gap-2 flex-wrap">
                                     {customer.firstName} {customer.lastName}
+                                    {customer.isReturning && (
+                                      <GuestStatusBadge returning />
+                                    )}
                                   </h3>
                                   <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
                                     <span className="whitespace-nowrap">
@@ -1624,7 +1626,6 @@ const BusinessDashboard = () => {
                                   ? "Left Queue"
                                   : "Removed by Business"
                               }
-                              className="inline-flex h-6 items-center justify-center px-3 text-xs leading-none md:h-7"
                             />
                           );
                           return (

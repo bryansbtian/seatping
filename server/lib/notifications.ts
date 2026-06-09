@@ -261,7 +261,7 @@ export async function processNotification(job: NotificationJob): Promise<void> {
         await sendSms(
           job.countryCode,
           job.phoneNumber,
-          `Hi ${job.firstName}! You've joined the queue at ${job.restaurantName}. You're #${job.position} in line. We'll text you when it's almost your turn.`,
+          `Hi ${job.firstName}! You've joined the queue at ${job.restaurantName}. You're #${job.position} in line. We'll text you when it's your turn.`,
         );
       } else if (job.channel === "whatsapp") {
         await sendQueueJoinedWhatsApp({

@@ -20,6 +20,7 @@ import Profile from "./pages/Profile";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import BusinessDashboard from "./pages/BusinessDashboard";
+import BusinessGuests from "./pages/BusinessGuests";
 import BusinessSettings from "./pages/BusinessSettings";
 import { useEffect, useState } from "react";
 import NotFound from "./pages/NotFound";
@@ -163,6 +164,15 @@ const App = () => (
             element={
               <RequireBusiness>
                 <BusinessDashboard />
+              </RequireBusiness>
+            }
+          />
+          {/* Guest CRM — business accounts only. */}
+          <Route
+            path="/business/guests"
+            element={
+              <RequireBusiness>
+                <BusinessGuests />
               </RequireBusiness>
             }
           />

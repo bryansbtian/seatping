@@ -61,15 +61,11 @@ const Header = ({
     if (variant !== "customer") return;
     let active = true;
     fetch("/auth/session", { credentials: "include" })
-      .then((r) =>
-        r.ok ? r.json() : { customer: null, business: null },
-      )
+      .then((r) => (r.ok ? r.json() : { customer: null, business: null }))
       .then((data: Session) => {
         if (active) setSession(data);
       })
-      .catch(
-        () => active && setSession({ customer: null, business: null }),
-      );
+      .catch(() => active && setSession({ customer: null, business: null }));
     return () => {
       active = false;
     };
@@ -85,9 +81,10 @@ const Header = ({
     e.preventDefault();
     // Customer-only logout: clears the customer cookie and leaves any business
     // (or admin) session in the same browser untouched.
-    fetch("/auth/customer/logout", { method: "POST", credentials: "include" }).then(
-      () => (window.location.href = "/"),
-    );
+    fetch("/auth/customer/logout", {
+      method: "POST",
+      credentials: "include",
+    }).then(() => (window.location.href = "/"));
   };
 
   const submitSearch = (e: React.FormEvent) => {
@@ -116,7 +113,7 @@ const Header = ({
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Restaurants, cuisines, or areas"
+                placeholder="Restaurants, Cuisines, Or Areas"
                 aria-label="Search restaurants"
                 className="h-10 rounded-full border-slate-200 pl-9 pr-24"
               />

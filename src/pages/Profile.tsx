@@ -785,13 +785,11 @@ function ReservationCard({
               {typeLabel && (
                 <StatusBadge
                   status={typeLabel.toLowerCase()}
-                  className="shrink-0 px-2 py-0.5 text-[10px] sm:px-2.5 sm:text-xs"
                 />
               )}
               {r.status && (
                 <StatusBadge
                   status={r.status === "arrived" ? "served" : r.status}
-                  className="px-2 py-0.5 text-[10px] sm:px-2.5 sm:text-xs"
                 />
               )}
             </div>
@@ -876,13 +874,11 @@ function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
               {typeLabel && (
                 <StatusBadge
                   status={typeLabel.toLowerCase()}
-                  className="shrink-0 px-2 py-0.5 text-[10px] sm:px-2.5 sm:text-xs"
                 />
               )}
               {q.status && (
                 <StatusBadge
                   status={q.status === "arrived" ? "served" : q.status}
-                  className="px-2 py-0.5 text-[10px] sm:px-2.5 sm:text-xs"
                 />
               )}
             </div>

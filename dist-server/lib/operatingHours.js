@@ -109,6 +109,24 @@ export function getLocationTimezone(location) {
     return getOpeningHoursTimezone(getLocationOpeningHours(location));
 }
 /**
+ * The current local wall-clock in a timezone as "YYYY-MM-DDTHH:MM". Reservation
+ * datetimes are stored in this same naive-local-wall-clock frame, so comparing
+ * the two strings answers "has this reservation time already passed for the
+ * location right now?" without any timezone-offset math.
+ */
+export function getNowWallClockInTimezone(timezone) {
+    let parts;
+    try {
+        parts = datePartsInTimezone(new Date(), timezone);
+    }
+    catch {
+        parts = datePartsInTimezone(new Date(), DEFAULT_LOCATION_TIMEZONE);
+    }
+    const hh = String(Math.floor(parts.minute / 60)).padStart(2, "0");
+    const mm = String(parts.minute % 60).padStart(2, "0");
+    return `${parts.date}T${hh}:${mm}`;
+}
+/**
  * Return the operating windows that fall on a restaurant-local calendar date.
  * A previous day's overnight shift contributes its after-midnight portion.
  */

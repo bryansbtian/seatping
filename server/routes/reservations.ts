@@ -40,6 +40,10 @@ import {
 } from "../lib/reservationCapacity.js";
 import { enqueueNotification } from "../lib/notifications.js";
 import { limitGuard, clientIp, MINUTES, HOURS } from "../lib/rateLimit.js";
+import {
+  syncGuestFromReservation,
+  touchGuestByReservationId,
+} from "../lib/guests.js";
 import type { Reservation } from "@prisma/client";
 
 const router = Router();
@@ -366,6 +370,9 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
       locationName: location.displayName || location.name || business.name,
     });
 
+    // Guest CRM: create/update the guest profile for this booking.
+    await syncGuestFromReservation(row, { businessUsername: business.username });
+
     return res.json({
       success: true,
       reservation,
@@ -510,6 +517,9 @@ router.put("/manage/:manageToken", async (req, res) => {
       data: { guestCount: partySize, reservationDateTime: newDateTime },
     });
     await syncManageChange(location, updated);
+    // Guest CRM: a reschedule/party-size change can move a booking between
+    // upcoming and past, so refresh the guest profile.
+    await touchGuestByReservationId(updated.id);
 
     return res.json({ reservation: reservationRowToLegacy(updated, { includeToken: true }) });
   } catch (err: any) {
@@ -564,6 +574,8 @@ router.post("/manage/:manageToken/cancel", async (req, res) => {
       data: { status: "CANCELLED", cancelledAt: new Date() },
     });
     await syncManageChange(location, updated);
+    // Guest CRM: a cancellation changes the guest's cancelled count.
+    await touchGuestByReservationId(updated.id);
 
     return res.json({ reservation: reservationRowToLegacy(updated, { includeToken: true }) });
   } catch (err: any) {

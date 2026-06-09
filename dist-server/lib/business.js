@@ -5,6 +5,7 @@
 // same location shape — including the banner fields + uploaded gallery photos.
 import { prisma } from "./prisma.js";
 import { reconstructQueueArrays, reservationRowToLegacy, } from "./liveData.js";
+import { loadGuestBadgeMap, badgeForContact } from "./guests.js";
 /** Empty live lists (used as a safe fallback). */
 const EMPTY_LIVE = {
     queue: [],
@@ -133,15 +134,34 @@ export async function assembleBusinessMe(businessId) {
         arr.push(r);
         resByLoc.set(r.locationId, arr);
     }
+    // Guest CRM: load the repeat-guest lookup once for the whole business, then
+    // stamp a "Returning"/"New" badge onto every live queue + reservation row so
+    // the dashboard can show it without any client-side guessing.
+    const guestBadgeMap = await loadGuestBadgeMap(businessId);
     const serializedLocations = locations.map((loc) => {
         const { queue, admittedCustomers, removedCustomers } = reconstructQueueArrays(queueByLoc.get(loc.id) ?? [], business.username);
         const reservations = (resByLoc.get(loc.id) ?? []).map((r) => reservationRowToLegacy(r, { includeToken: true }));
         return serializeLocation(loc, {
-            queue,
-            admittedCustomers,
+            queue: queue.map((c) => stampGuestBadge(c, guestBadgeMap, "queue")),
+            admittedCustomers: admittedCustomers.map((c) => stampGuestBadge(c, guestBadgeMap, "queue")),
             removedCustomers,
-            reservations,
+            reservations: reservations.map((r) => stampGuestBadge(r, guestBadgeMap, "reservation")),
         });
     });
     return { ...business, locations: serializedLocations };
+}
+/**
+ * Annotate a legacy queue/reservation object with its guest badge. Queue rows
+ * carry the contact as `phoneNumber`; reservation rows as `phone`. Adds
+ * `guestVisits` + `isReturning` (false/0 when the guest isn't recognized yet).
+ */
+function stampGuestBadge(item, map, kind) {
+    const badge = badgeForContact(map, {
+        phone: kind === "queue" ? item.phoneNumber : item.phone,
+        countryCode: item.countryCode,
+        email: item.email,
+    });
+    item.guestVisits = badge?.totalVisits ?? 0;
+    item.isReturning = badge?.returning ?? false;
+    return item;
 }

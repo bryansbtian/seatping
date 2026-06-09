@@ -9,7 +9,11 @@ import { useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { DEFAULT_TIMEZONE, getTodayKeyInTimezone } from "@/lib/timezones";
+import {
+  DEFAULT_TIMEZONE,
+  getTodayKeyInTimezone,
+  getNowWallClockInTimezone,
+} from "@/lib/timezones";
 import {
   Card,
   CardContent,
@@ -19,6 +23,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
+import { GuestStatusBadge } from "@/components/GuestBadge";
+import { formatPhone } from "@/lib/phone";
 import { statusLabel } from "@/lib/statusStyles";
 import {
   CalendarDays,
@@ -46,6 +52,9 @@ type Reservation = {
   status: string;
   source: string;
   createdAt: string;
+  // Guest CRM: stamped server-side from the guest profile (repeat detection).
+  isReturning?: boolean;
+  guestVisits?: number;
 };
 
 type TabKey = "today" | "upcoming" | "past" | "cancelled" | "no_shows";
@@ -106,6 +115,10 @@ export default function ReservationsManager({
   // naive wall-clock value in that same zone), so the tab is correct no matter
   // where the owner views the dashboard from.
   const todayStr = getTodayKeyInTimezone(timeZone || DEFAULT_TIMEZONE);
+  // Current local wall-clock in the restaurant's timezone, used to decide
+  // whether a reservation time has already passed (and so can be marked
+  // arrived / no-show). Never the browser's timezone.
+  const nowLocal = getNowWallClockInTimezone(timeZone || DEFAULT_TIMEZONE);
 
   const buckets = useMemo(() => {
     const list = Array.isArray(reservations) ? reservations : [];
@@ -261,6 +274,7 @@ export default function ReservationsManager({
                   r={r}
                   busy={busyId === r.id}
                   onChange={changeStatus}
+                  nowLocal={nowLocal}
                 />
               </div>
             );
@@ -299,10 +313,15 @@ function ContactLine({ r }: { r: Reservation }) {
       : r.contactMethod === "whatsapp"
         ? MessageSquare
         : Phone;
+  const codeDigits = String(r.countryCode || "").replace(/\D/g, "");
+  const nationalDigits = String(r.phone || "").replace(/\D/g, "");
   const value =
     r.contactMethod === "email"
       ? r.email
-      : `${r.countryCode || ""} ${r.phone}`.trim();
+      : (codeDigits
+          ? formatPhone(`${codeDigits}${nationalDigits}`, null)
+          : formatPhone(null, nationalDigits)) ||
+        `${r.countryCode || ""} ${r.phone}`.trim();
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
       <Icon className="h-3.5 w-3.5" />
@@ -319,12 +338,20 @@ function ReservationCard({
   r,
   busy,
   onChange,
+  nowLocal,
 }: {
   r: Reservation;
   busy: boolean;
   onChange: (r: Reservation, status: string) => void;
+  /** Restaurant-local "YYYY-MM-DDTHH:MM" now, for arrived/no-show eligibility. */
+  nowLocal: string;
 }) {
   const { date, time } = splitDateTime(r.reservationDateTime);
+
+  // Has the reservation time already passed in the restaurant's timezone?
+  // Arrived / No-Show are only valid after the booked time; before it, a future
+  // reservation can only be cancelled.
+  const hasPassed = r.reservationDateTime.slice(0, 16) <= nowLocal;
 
   // Action sets vary by current status (no actions for terminal states).
   const actions: { label: string; status: string; variant?: "destructive" }[] =
@@ -337,12 +364,15 @@ function ReservationCard({
       variant: "destructive",
     });
   } else if (r.status === "confirmed") {
-    actions.push({ label: "Mark Arrived", status: "arrived" });
-    actions.push({
-      label: "No-Show",
-      status: "no_show",
-      variant: "destructive",
-    });
+    // Only allow marking arrived / no-show once the booked time has passed.
+    if (hasPassed) {
+      actions.push({ label: "Mark Arrived", status: "arrived" });
+      actions.push({
+        label: "No-Show",
+        status: "no_show",
+        variant: "destructive",
+      });
+    }
     actions.push({
       label: "Cancel",
       status: "cancelled",
@@ -361,11 +391,12 @@ function ReservationCard({
     <div className="rounded-xl border border-slate-200 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold text-gray-800 text-sm md:text-base">
               {r.name}
             </p>
-            <StatusBadge status={r.status} className="text-[10px]" />
+            <StatusBadge status={r.status} />
+            {r.isReturning && <GuestStatusBadge returning />}
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
             <span className="inline-flex items-center gap-1">

@@ -42,6 +42,9 @@ const BusinessHeader = () => {
           <Link to="/business/dashboard" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
             Dashboard
           </Link>
+          <Link to="/business/guests" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
+            Guests
+          </Link>
           <Link to="/business/settings" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
             Settings
           </Link>
@@ -83,6 +86,13 @@ const BusinessHeader = () => {
               onClick={() => setOpen(false)}
             >
               Dashboard
+            </Link>
+            <Link
+              to="/business/guests"
+              className="block px-4 py-2 text-slate-900 hover:bg-slate-50 rounded-lg transition-colors font-medium"
+              onClick={() => setOpen(false)}
+            >
+              Guests
             </Link>
             <Link
               to="/business/settings"

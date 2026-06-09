@@ -113,6 +113,37 @@ export function getTodayKeyInTimezone(
   return getDateKeyInTimezone(new Date(), timezone);
 }
 
+/**
+ * The current local wall-clock in the given timezone as "YYYY-MM-DDTHH:MM".
+ * Reservation datetimes are stored in this same naive-local-wall-clock frame,
+ * so comparing the two strings answers "has this reservation time already
+ * passed for the restaurant right now?" without any timezone-offset math.
+ */
+export function getNowWallClockInTimezone(
+  timezone: string = DEFAULT_TIMEZONE,
+): string {
+  const now = new Date();
+  const date = getDateKeyInTimezone(now, timezone);
+  let hh = "00";
+  let mm = "00";
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(now);
+    const v: Record<string, string> = {};
+    for (const p of parts) if (p.type !== "literal") v[p.type] = p.value;
+    hh = v.hour === "24" ? "00" : (v.hour ?? "00");
+    mm = v.minute ?? "00";
+  } catch {
+    hh = String(now.getHours()).padStart(2, "0");
+    mm = String(now.getMinutes()).padStart(2, "0");
+  }
+  return `${date}T${hh}:${mm}`;
+}
+
 /** Hour of day (0–23) for an instant, in the given timezone. */
 export function getHourInTimezone(
   date: Date | string | number,

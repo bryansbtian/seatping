@@ -59,6 +59,11 @@ import { assembleBusinessMe, augmentLocationWithLiveLists } from "../lib/busines
 import { deleteImageByPublicId } from "../lib/cloudinary.js";
 import { normalizeSettings, syncCustomerReservation } from "../lib/reservations.js";
 import { syncCustomerQueue } from "../lib/queueSync.js";
+import {
+  syncGuestFromQueueEntry,
+  touchGuestByQueueEntryId,
+  touchGuestByReservationId,
+} from "../lib/guests.js";
 import { etaForToken, etaForAllQueueCustomers } from "../lib/queueEta.js";
 import {
   queueEntryToLegacy,
@@ -69,7 +74,11 @@ import {
 import { applyStatusCapacityDelta } from "../lib/reservationCapacity.js";
 import { enqueueNotification, canNotifyRecipient } from "../lib/notifications.js";
 import { withWriteRetry } from "../lib/dbRetry.js";
-import { getLocationOperatingStatus } from "../lib/operatingHours.js";
+import {
+  getLocationOperatingStatus,
+  getLocationTimezone,
+  getNowWallClockInTimezone,
+} from "../lib/operatingHours.js";
 import crypto from "crypto";
 
 const router = Router();
@@ -1614,6 +1623,26 @@ router.patch(
         return res.status(404).json({ error: "Reservation not found" });
       }
 
+      // A reservation can only be marked arrived / no-show once its booked time
+      // has actually passed in the LOCATION's timezone. This guards the API
+      // directly (not just the hidden UI buttons) so a future reservation can
+      // never be flipped to arrived/no-show, regardless of the caller.
+      if (status === "arrived" || status === "no_show") {
+        const nowLocal = getNowWallClockInTimezone(
+          getLocationTimezone(location),
+        );
+        const bookedLocal = String(existing.reservationDateTime || "").slice(
+          0,
+          16,
+        );
+        if (bookedLocal && bookedLocal > nowLocal) {
+          return res.status(400).json({
+            error:
+              "This reservation is in the future. You can only mark it arrived or no-show after the reserved time.",
+          });
+        }
+      }
+
       const now = new Date();
       const newEnum = reservationStatusToEnum(status);
       const timestampField: Record<string, "cancelledAt" | "arrivedAt" | "completedAt" | "noShowAt"> = {
@@ -1650,6 +1679,10 @@ router.patch(
         businessName: biz?.name ?? null,
         locationName: location.displayName || location.name || biz?.name || null,
       });
+
+      // Guest CRM: arrival/no-show/cancel/complete all change the guest's
+      // upcoming/past/no-show/cancelled counts.
+      await touchGuestByReservationId(updated.id);
 
       const me = await assembleBusinessMe(businessId);
       return res.json({ user: me });
@@ -1966,6 +1999,10 @@ router.post("/business/:username/queue", async (req, res) => {
       locationName: location.displayName || location.name || business.name,
       locationId: location.id,
     });
+
+    // Guest CRM: create/update the guest profile for this waitlist join. Never
+    // blocks the response (failures are swallowed inside the helper).
+    await syncGuestFromQueueEntry(entry, { businessUsername: username });
 
     const businessName = business.name || "the business";
     // Customer-facing notifications use the restaurant's public name (from the
@@ -2533,6 +2570,8 @@ router.post(
         locationName: location?.displayName || location?.name || business.name,
         locationId: entry.locationId,
       });
+      // Guest CRM: a no-show changes the guest's no-show count.
+      await touchGuestByQueueEntryId(entry.id);
       return res.json({ success: true, message: "Customer marked as no-show" });
     } catch (err: any) {
       console.error("[auth] mark no-show error:", err?.message || err);

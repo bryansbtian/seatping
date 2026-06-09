@@ -253,7 +253,6 @@ export default function ManageReservation() {
                           ? "Pending Confirmation"
                           : undefined
                       }
-                      className="px-2.5 py-1 text-xs"
                     />
                     <span className="min-w-0 flex-1 text-right text-xs font-medium text-slate-700 sm:text-sm">
                       {reservation.name}

@@ -18,6 +18,7 @@ import featuredRouter from "./routes/featured.js";
 import restaurantsRouter from "./routes/restaurants.js";
 import reservationsRouter from "./routes/reservations.js";
 import searchRouter from "./routes/search.js";
+import guestsRouter from "./routes/guests.js";
 import jobsRouter from "./routes/jobs.js";
 import cronRouter from "./routes/cron.js";
 import { runDailyCreditRefillSweep } from "./lib/trial.js";
@@ -101,6 +102,7 @@ app.use("/api/featured-restaurants", featuredRouter);
 app.use("/api/restaurants", restaurantsRouter);
 app.use("/api/reservations", reservationsRouter);
 app.use("/api/search", searchRouter);
+app.use("/api/guests", guestsRouter);
 app.use("/api/cron", cronRouter);
 app.use("/tickets", ticketsRouter);
 

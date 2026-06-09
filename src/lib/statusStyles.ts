@@ -1,3 +1,10 @@
+// Shared sizing + typography for every status / tag pill across the app
+// (StatusBadge, GuestStatusBadge, GuestTagBadge). Colors vary by status type,
+// but these dimensions must never differ — keep this the single source of truth
+// so pills match on the dashboard, reservations, guests, drawer, and /profile.
+export const PILL_BASE_CLASS =
+  "shrink-0 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-medium leading-normal";
+
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
   confirmed: "Confirmed",
