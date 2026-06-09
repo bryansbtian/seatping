@@ -76,16 +76,60 @@ export function normalizePhone(
 // ---------------------------------------------------------------------------
 
 /** Parse the naive "YYYY-MM-DDTHH:MM" wall-clock string into a Date (or null). */
-function parseReservationDateTime(v: string | null | undefined): Date | null {
-  if (!v) return null;
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d;
+/** Offset (timezone - UTC) in ms for an instant in the given IANA timezone. */
+function tzOffsetMs(instant: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(instant);
+  const m: Record<string, string> = {};
+  for (const p of parts) if (p.type !== "literal") m[p.type] = p.value;
+  const asUtc = Date.UTC(
+    Number(m.year),
+    Number(m.month) - 1,
+    Number(m.day),
+    m.hour === "24" ? 0 : Number(m.hour),
+    Number(m.minute),
+    Number(m.second),
+  );
+  return asUtc - instant.getTime();
 }
 
-function formatVisitDate(d: Date | null): string | null {
+/**
+ * Convert a naive local wall-clock "YYYY-MM-DDTHH:MM" (in `timeZone`) to a real
+ * UTC instant. So a reservation booked for 8pm Jakarta becomes the correct
+ * absolute moment, and first/last-visit dates are stored as true instants that
+ * format back to the right local date in any timezone.
+ */
+function zonedWallClockToUtc(
+  wallClock: string | null | undefined,
+  timeZone: string,
+): Date | null {
+  if (!wallClock) return null;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(wallClock)) {
+    const d = new Date(wallClock);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const naive = Date.parse(`${wallClock.slice(0, 16)}:00Z`);
+  if (Number.isNaN(naive)) return null;
+  const offset = tzOffsetMs(new Date(naive), timeZone);
+  return new Date(naive - offset);
+}
+
+function formatVisitDate(d: Date | null, timeZone?: string): string | null {
   if (!d) return null;
   try {
-    return d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+    return d.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      ...(timeZone ? { timeZone } : {}),
+    });
   } catch {
     return null;
   }
@@ -163,7 +207,6 @@ export function computeStats(
   let cancelled = 0;
   for (const r of reservationRows) {
     if (typeof r.guestCount === "number") partySizes.push(r.guestCount);
-    const when = parseReservationDateTime(r.reservationDateTime);
     // Has this reservation's local wall-clock time already passed for the
     // location? Compares the stored "YYYY-MM-DDTHH:MM" against the location's
     // current local time in the same frame.
@@ -178,16 +221,21 @@ export function computeStats(
         resNoShow += 1;
         break;
       case "COMPLETED":
-      case "ARRIVED":
+      case "ARRIVED": {
         past += 1;
         // Showed up → feeds first/last visit dates only once its time has
-        // actually passed in the location's timezone.
-        if (when && alreadyHappened) completedVisitDates.push(when);
+        // actually passed in the location's timezone. Store the true UTC
+        // instant (converted from the local wall-clock) so the date renders
+        // correctly in the location's timezone later.
+        const instant = zonedWallClockToUtc(r.reservationDateTime, timezone);
+        if (instant && alreadyHappened) completedVisitDates.push(instant);
         break;
+      }
       default: {
-        // PENDING / CONFIRMED — upcoming if in the future, otherwise it has
-        // already happened (the business just never marked it complete).
-        if (when && when.getTime() >= now) upcoming += 1;
+        // PENDING / CONFIRMED — upcoming if its local time hasn't passed in the
+        // location's timezone yet, otherwise it has already happened (the
+        // business just never marked it complete).
+        if (!alreadyHappened) upcoming += 1;
         else past += 1;
       }
     }
@@ -216,7 +264,7 @@ export function computeStats(
  * Deterministic, safe guest summary built only from real history (no external
  * AI). Falls back to a graceful message when there isn't enough data.
  */
-export function buildSummary(stats: GuestStats): string {
+export function buildSummary(stats: GuestStats, timeZone?: string): string {
   if (stats.totalVisits <= 0) {
     return "New guest. More history will appear after future visits.";
   }
@@ -230,7 +278,7 @@ export function buildSummary(stats: GuestStats): string {
     const people = stats.typicalPartySize === 1 ? "person" : "people";
     parts.push(`Usually books for ${stats.typicalPartySize} ${people}.`);
   }
-  const last = formatVisitDate(stats.lastVisitAt);
+  const last = formatVisitDate(stats.lastVisitAt, timeZone);
   if (last) parts.push(`Last visited on ${last}.`);
   if (stats.upcomingReservationCount > 0) {
     parts.push(
@@ -277,11 +325,8 @@ export async function recomputeGuestStats(guestId: string): Promise<void> {
     }),
   ]);
 
-  const stats = computeStats(
-    queueRows,
-    reservationRows,
-    getLocationTimezone(location),
-  );
+  const timeZone = getLocationTimezone(location);
+  const stats = computeStats(queueRows, reservationRows, timeZone);
   await prisma.guestProfile.update({
     where: { id: guest.id },
     data: {
@@ -293,7 +338,7 @@ export async function recomputeGuestStats(guestId: string): Promise<void> {
       cancelledCount: stats.cancelledCount,
       firstVisitAt: stats.firstVisitAt,
       lastVisitAt: stats.lastVisitAt,
-      summary: buildSummary(stats),
+      summary: buildSummary(stats, timeZone),
     },
   });
 }

@@ -12,6 +12,7 @@ import { requireBusiness } from "../lib/auth.js";
 import { rateLimit } from "../lib/rateLimit.js";
 import { isReturning, recomputeGuestStats, SUGGESTED_GUEST_TAGS, } from "../lib/guests.js";
 import { reservationStatusToLegacy } from "../lib/liveData.js";
+import { getLocationTimezone } from "../lib/operatingHours.js";
 const router = Router();
 // All guest routes are owner reads/writes behind business auth; a generous
 // per-IP cap is plenty and protects the search endpoint from scripted scans.
@@ -31,7 +32,13 @@ async function ownedLocation(businessId, locationId) {
         return null;
     return prisma.location.findFirst({
         where: { id: locationId, businessId },
-        select: { id: true, name: true, displayName: true, address: true },
+        select: {
+            id: true,
+            name: true,
+            displayName: true,
+            address: true,
+            restaurantProfile: true,
+        },
     });
 }
 function locationLabel(loc) {
@@ -141,7 +148,11 @@ router.get("/", async (req, res) => {
             take: 500,
         });
         return res.json({
-            location: { id: location.id, label: locationLabel(location) },
+            location: {
+                id: location.id,
+                label: locationLabel(location),
+                timezone: getLocationTimezone(location),
+            },
             guests: guests.map(serializeGuestRow),
         });
     }
@@ -164,9 +175,17 @@ router.get("/:guestId", async (req, res) => {
             return res.status(404).json({ error: "Guest not found" });
         const location = await prisma.location.findFirst({
             where: { id: guest.locationId, businessId },
-            select: { id: true, name: true, displayName: true, address: true },
+            select: {
+                id: true,
+                name: true,
+                displayName: true,
+                address: true,
+                restaurantProfile: true,
+            },
         });
         const locLabel = location ? locationLabel(location) : "Location";
+        // Every visit-history time is rendered in the restaurant's own timezone.
+        const locTz = getLocationTimezone(location);
         const [queueRows, reservationRows] = await Promise.all([
             guest.sourceQueueEntryIds.length
                 ? prisma.queueEntry.findMany({
@@ -187,6 +206,8 @@ router.get("/:guestId", async (req, res) => {
             status: legacyQueueStatus(q),
             partySize: q.guestCount,
             at: q.joinedAt ? new Date(q.joinedAt).toISOString() : null,
+            // joinedAt is a real instant → render it in the location's timezone.
+            atLabel: q.joinedAt ? formatInstantInTz(q.joinedAt, locTz) : null,
             location: locLabel,
             notes: null,
         }))
@@ -203,6 +224,9 @@ router.get("/:guestId", async (req, res) => {
                 status: legacyStatus,
                 partySize: r.guestCount,
                 at: when && !Number.isNaN(when.getTime()) ? when.toISOString() : null,
+                // reservationDateTime is already a naive local wall-clock in the
+                // location's timezone → render its literal components, no conversion.
+                atLabel: formatWallClockLabel(r.reservationDateTime),
                 location: locLabel,
                 notes: r.notes || null,
                 upcoming,
@@ -229,7 +253,7 @@ router.get("/:guestId", async (req, res) => {
                 createdAt: guest.createdAt,
                 updatedAt: guest.updatedAt,
                 businessUsername: guest.businessUsername,
-                location: { id: guest.locationId, label: locLabel },
+                location: { id: guest.locationId, label: locLabel, timezone: locTz },
             },
             timeline,
             upcomingReservations,
@@ -408,5 +432,40 @@ function timeDesc(a, b) {
 }
 function timeAsc(a, b) {
     return (a ? Date.parse(a) : 0) - (b ? Date.parse(b) : 0);
+}
+const VISIT_LABEL_OPTS = {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+};
+/** Format a real instant (e.g. a queue joinedAt) in the location's timezone. */
+function formatInstantInTz(date, timeZone) {
+    const d = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(d.getTime()))
+        return null;
+    try {
+        return d.toLocaleString("en-US", { ...VISIT_LABEL_OPTS, timeZone });
+    }
+    catch {
+        return d.toLocaleString("en-US", VISIT_LABEL_OPTS);
+    }
+}
+/**
+ * Format a naive local wall-clock "YYYY-MM-DDTHH:MM" (already in the location's
+ * timezone) by its literal components — render it as UTC so the displayed
+ * date/time exactly match the stored value, no timezone shift.
+ */
+function formatWallClockLabel(wallClock) {
+    if (!wallClock)
+        return null;
+    const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(wallClock)
+        ? `${wallClock}:00Z`
+        : wallClock;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime()))
+        return null;
+    return d.toLocaleString("en-US", { ...VISIT_LABEL_OPTS, timeZone: "UTC" });
 }
 export default router;

@@ -68,6 +68,8 @@ type TimelineEvent = {
   status: string;
   partySize: number;
   at: string | null;
+  // Preformatted date/time in the location's timezone (from the server).
+  atLabel: string | null;
   location: string;
   notes: string | null;
 };
@@ -79,7 +81,7 @@ type GuestDetail = {
     normalizedEmail: string | null;
     createdAt: string;
     updatedAt: string;
-    location: { id: string; label: string };
+    location: { id: string; label: string; timezone?: string | null };
   };
   timeline: TimelineEvent[];
   upcomingReservations: TimelineEvent[];
@@ -94,7 +96,7 @@ type TypeFilter = "all" | "new" | "returning";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function fmtDate(value: string | null): string {
+function fmtDate(value: string | null, timeZone?: string): string {
   if (!value) return "--";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "--";
@@ -102,6 +104,7 @@ function fmtDate(value: string | null): string {
     month: "short",
     day: "numeric",
     year: "numeric",
+    ...(timeZone ? { timeZone } : {}),
   });
 }
 
@@ -165,6 +168,11 @@ const BusinessGuests = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [guests, setGuests] = useState<GuestRow[]>([]);
+  // The selected location's IANA timezone, so dates render in the restaurant's
+  // own timezone (not the viewer's browser).
+  const [locationTimezone, setLocationTimezone] = useState<string | undefined>(
+    undefined,
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -211,7 +219,10 @@ const BusinessGuests = () => {
     if (hasNoShow) params.set("hasNoShow", "true");
 
     api(`/api/guests?${params.toString()}`)
-      .then((d) => setGuests(d?.guests ?? []))
+      .then((d) => {
+        setGuests(d?.guests ?? []);
+        setLocationTimezone(d?.location?.timezone ?? undefined);
+      })
       .catch((e) => setError(e?.message || "Failed to load guests."))
       .finally(() => setLoading(false));
   }, [
@@ -270,8 +281,8 @@ const BusinessGuests = () => {
     <>
       <SEO title="Guests | SeatPing" description={BUSINESS_DESCRIPTION} />
       <BusinessHeader />
-      <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100">
-        <div className="container mx-auto px-4 py-8">
+      <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100 flex flex-col">
+        <div className="container mx-auto px-4 py-8 flex-1 w-full">
           {/* Page header — mirrors the Settings page header exactly. */}
           <div className="mb-6">
             <h1 className="text-xl md:text-2xl font-semibold text-gray-800">
@@ -479,6 +490,7 @@ const BusinessGuests = () => {
               ) : (
                 <GuestsTable
                   guests={guests}
+                  timeZone={locationTimezone}
                   onSelect={(id) => setSelectedId(id)}
                 />
               )}
@@ -533,9 +545,11 @@ function FilterToggle({
 // ---------------------------------------------------------------------------
 function GuestsTable({
   guests,
+  timeZone,
   onSelect,
 }: {
   guests: GuestRow[];
+  timeZone?: string;
   onSelect: (id: string) => void;
 }) {
   return (
@@ -627,7 +641,7 @@ function GuestsTable({
                     {g.totalVisits}
                   </td>
                   <td className="px-6 py-3 text-slate-600 whitespace-nowrap">
-                    {fmtDate(g.lastVisitAt)}
+                    {fmtDate(g.lastVisitAt, timeZone)}
                   </td>
                   <td className="px-6 py-3 text-center tabular-nums">
                     {g.upcomingReservationCount > 0 ? (
@@ -702,7 +716,7 @@ function GuestsTable({
                       </strong>{" "}
                       Visits
                     </span>
-                    <span>Last: {fmtDate(g.lastVisitAt)}</span>
+                    <span>Last: {fmtDate(g.lastVisitAt, timeZone)}</span>
                     {g.upcomingReservationCount > 0 && (
                       <span className="text-blue-700">
                         {g.upcomingReservationCount} Upcoming
@@ -980,13 +994,13 @@ function GuestDetailDrawer({
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-500">First Visit</span>
                       <span className="font-medium text-slate-800 tabular-nums">
-                        {fmtDate(g.firstVisitAt)}
+                        {fmtDate(g.firstVisitAt, g.location.timezone ?? undefined)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-500">Last Visit</span>
                       <span className="font-medium text-slate-800 tabular-nums">
-                        {fmtDate(g.lastVisitAt)}
+                        {fmtDate(g.lastVisitAt, g.location.timezone ?? undefined)}
                       </span>
                     </div>
                   </div>
@@ -1175,7 +1189,7 @@ function HistorySection({
               <span className="absolute -left-[5px] mt-1.5 w-2.5 h-2.5 rounded-full bg-indigo-400" />
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-medium text-slate-700">
-                  {fmtDateTime(e.at)}
+                  {e.atLabel ?? fmtDateTime(e.at)}
                 </span>
                 <StatusBadge status={e.status} />
               </div>

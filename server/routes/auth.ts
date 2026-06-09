@@ -2510,6 +2510,9 @@ router.post(
         locationName: location?.displayName || location?.name || business.name,
         locationId: entry.locationId,
       });
+      // Guest CRM: arriving turns this waitlist join into a real visit, so the
+      // guest's Total Visits / Waitlist / last-visit date must refresh.
+      await touchGuestByQueueEntryId(entry.id);
       return res.json({ success: true, message: "Customer arrival confirmed" });
     } catch (err: any) {
       console.error("[auth] confirm arrival error:", err?.message || err);

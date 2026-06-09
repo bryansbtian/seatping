@@ -8,8 +8,6 @@ export const RETURNING_THRESHOLD = 2;
 export const SUGGESTED_GUEST_TAGS = [
     "VIP",
     "Regular",
-    "No-Show Risk",
-    "Birthday",
     "Allergy",
     "Prefers Window Seat",
     "High Spender",
@@ -47,17 +45,53 @@ export function normalizePhone(phone, countryCode) {
 // Stats recompute + summary
 // ---------------------------------------------------------------------------
 /** Parse the naive "YYYY-MM-DDTHH:MM" wall-clock string into a Date (or null). */
-function parseReservationDateTime(v) {
-    if (!v)
-        return null;
-    const d = new Date(v);
-    return Number.isNaN(d.getTime()) ? null : d;
+/** Offset (timezone - UTC) in ms for an instant in the given IANA timezone. */
+function tzOffsetMs(instant, timeZone) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23",
+    }).formatToParts(instant);
+    const m = {};
+    for (const p of parts)
+        if (p.type !== "literal")
+            m[p.type] = p.value;
+    const asUtc = Date.UTC(Number(m.year), Number(m.month) - 1, Number(m.day), m.hour === "24" ? 0 : Number(m.hour), Number(m.minute), Number(m.second));
+    return asUtc - instant.getTime();
 }
-function formatVisitDate(d) {
+/**
+ * Convert a naive local wall-clock "YYYY-MM-DDTHH:MM" (in `timeZone`) to a real
+ * UTC instant. So a reservation booked for 8pm Jakarta becomes the correct
+ * absolute moment, and first/last-visit dates are stored as true instants that
+ * format back to the right local date in any timezone.
+ */
+function zonedWallClockToUtc(wallClock, timeZone) {
+    if (!wallClock)
+        return null;
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(wallClock)) {
+        const d = new Date(wallClock);
+        return Number.isNaN(d.getTime()) ? null : d;
+    }
+    const naive = Date.parse(`${wallClock.slice(0, 16)}:00Z`);
+    if (Number.isNaN(naive))
+        return null;
+    const offset = tzOffsetMs(new Date(naive), timeZone);
+    return new Date(naive - offset);
+}
+function formatVisitDate(d, timeZone) {
     if (!d)
         return null;
     try {
-        return d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+        return d.toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            ...(timeZone ? { timeZone } : {}),
+        });
     }
     catch {
         return null;
@@ -94,20 +128,24 @@ export function computeStats(queueRows, reservationRows, timezone = DEFAULT_LOCA
     // cancellations, still-upcoming bookings, and future-dated rows are excluded
     // so "Last Visit" never points at a no-show or a future date.
     const completedVisitDates = [];
+    // "Waitlist" counts only the waitlist guests who were admitted/arrived (i.e.
+    // actually showed up) — not no-shows or people who left. So it's a real
+    // visit count and Total Visits = Waitlist + Past Reservations adds up.
     let waitlistVisitCount = 0;
     let queueNoShows = 0;
     for (const q of queueRows) {
-        waitlistVisitCount += 1;
         if (q.status === "NO_SHOW")
             queueNoShows += 1;
         if (typeof q.guestCount === "number")
             partySizes.push(q.guestCount);
-        // A waitlist join counts as a completed visit only if the guest arrived
-        // and the join already happened (never a future timestamp).
-        if (q.status === "ARRIVED" && q.joinedAt) {
-            const joined = new Date(q.joinedAt);
-            if (joined.getTime() <= now)
-                completedVisitDates.push(joined);
+        if (q.status === "ARRIVED") {
+            waitlistVisitCount += 1;
+            // Arrived waitlist visits feed first/last visit dates once they've passed.
+            if (q.joinedAt) {
+                const joined = new Date(q.joinedAt);
+                if (joined.getTime() <= now)
+                    completedVisitDates.push(joined);
+            }
         }
     }
     let upcoming = 0;
@@ -117,7 +155,6 @@ export function computeStats(queueRows, reservationRows, timezone = DEFAULT_LOCA
     for (const r of reservationRows) {
         if (typeof r.guestCount === "number")
             partySizes.push(r.guestCount);
-        const when = parseReservationDateTime(r.reservationDateTime);
         // Has this reservation's local wall-clock time already passed for the
         // location? Compares the stored "YYYY-MM-DDTHH:MM" against the location's
         // current local time in the same frame.
@@ -131,26 +168,32 @@ export function computeStats(queueRows, reservationRows, timezone = DEFAULT_LOCA
                 resNoShow += 1;
                 break;
             case "COMPLETED":
-            case "ARRIVED":
+            case "ARRIVED": {
                 past += 1;
-                // Showed up → counts as a completed visit, but only once its time has
-                // actually passed in the location's timezone.
-                if (when && alreadyHappened)
-                    completedVisitDates.push(when);
+                // Showed up → feeds first/last visit dates only once its time has
+                // actually passed in the location's timezone. Store the true UTC
+                // instant (converted from the local wall-clock) so the date renders
+                // correctly in the location's timezone later.
+                const instant = zonedWallClockToUtc(r.reservationDateTime, timezone);
+                if (instant && alreadyHappened)
+                    completedVisitDates.push(instant);
                 break;
+            }
             default: {
-                // PENDING / CONFIRMED — upcoming if in the future, otherwise it has
-                // already happened (the business just never marked it complete).
-                if (when && when.getTime() >= now)
+                // PENDING / CONFIRMED — upcoming if its local time hasn't passed in the
+                // location's timezone yet, otherwise it has already happened (the
+                // business just never marked it complete).
+                if (!alreadyHappened)
                     upcoming += 1;
                 else
                     past += 1;
             }
         }
     }
-    // Visit records = every waitlist join + every non-cancelled reservation. This
-    // is what drives New vs Returning and the "N visits" summary.
-    const totalVisits = waitlistVisitCount + (reservationRows.length - cancelled);
+    // Total Visits = admitted/arrived waitlist visits + past reservations.
+    // Drives New vs Returning and the "N visits" summary. (No-shows, cancelled,
+    // left-the-queue, and still-upcoming bookings are NOT visits.)
+    const totalVisits = waitlistVisitCount + past;
     const sorted = completedVisitDates.sort((a, b) => a.getTime() - b.getTime());
     return {
         totalVisits,
@@ -168,7 +211,7 @@ export function computeStats(queueRows, reservationRows, timezone = DEFAULT_LOCA
  * Deterministic, safe guest summary built only from real history (no external
  * AI). Falls back to a graceful message when there isn't enough data.
  */
-export function buildSummary(stats) {
+export function buildSummary(stats, timeZone) {
     if (stats.totalVisits <= 0) {
         return "New guest. More history will appear after future visits.";
     }
@@ -183,7 +226,7 @@ export function buildSummary(stats) {
         const people = stats.typicalPartySize === 1 ? "person" : "people";
         parts.push(`Usually books for ${stats.typicalPartySize} ${people}.`);
     }
-    const last = formatVisitDate(stats.lastVisitAt);
+    const last = formatVisitDate(stats.lastVisitAt, timeZone);
     if (last)
         parts.push(`Last visited on ${last}.`);
     if (stats.upcomingReservationCount > 0) {
@@ -222,7 +265,8 @@ export async function recomputeGuestStats(guestId) {
             select: { restaurantProfile: true },
         }),
     ]);
-    const stats = computeStats(queueRows, reservationRows, getLocationTimezone(location));
+    const timeZone = getLocationTimezone(location);
+    const stats = computeStats(queueRows, reservationRows, timeZone);
     await prisma.guestProfile.update({
         where: { id: guest.id },
         data: {
@@ -234,7 +278,7 @@ export async function recomputeGuestStats(guestId) {
             cancelledCount: stats.cancelledCount,
             firstVisitAt: stats.firstVisitAt,
             lastVisitAt: stats.lastVisitAt,
-            summary: buildSummary(stats),
+            summary: buildSummary(stats, timeZone),
         },
     });
 }

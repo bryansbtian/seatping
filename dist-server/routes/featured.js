@@ -71,6 +71,10 @@ router.get("/", async (_req, res) => {
                 bannerImageUrl,
                 rating: summary.rating,
                 reviewCount: summary.reviewCount,
+                // Whether this location currently takes reservations / queue joins, so
+                // the card can disable "Book Table" when reservations are off.
+                reservationsEnabled: loc.reservationsEnabled ?? true,
+                queueEnabled: loc.queueEnabled ?? true,
             };
         });
         return res.json({ featured });

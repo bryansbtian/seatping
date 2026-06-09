@@ -45,6 +45,8 @@ type FeaturedRestaurant = {
   bannerImageUrl: string | null;
   rating: number | null;
   reviewCount: number;
+  reservationsEnabled?: boolean;
+  queueEnabled?: boolean;
 };
 
 const CustomerLanding = () => {
@@ -320,17 +322,27 @@ const CustomerLanding = () => {
                           {/* Buttons — stacked on mobile, side-by-side from sm up.
                           mt-auto pins them to the bottom so cards align. */}
                           <div className="mt-auto grid grid-cols-1 gap-3 pt-4 sm:grid-cols-2">
-                            <Button
-                              className="w-full min-w-0 justify-center whitespace-nowrap px-3"
-                              onClick={(e) => {
-                                // Stop the card's onClick from double-firing.
-                                e.stopPropagation();
-                                if (detailsHref) navigate(detailsHref);
-                              }}
-                            >
-                              <Utensils className="h-4 w-4" />
-                              <span>Book Table</span>
-                            </Button>
+                            {r.reservationsEnabled === false ? (
+                              <div
+                                aria-disabled="true"
+                                title="Reservations unavailable"
+                                className="flex h-10 w-full min-w-0 cursor-not-allowed select-none items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-400"
+                              >
+                                Reservations Unavailable
+                              </div>
+                            ) : (
+                              <Button
+                                className="w-full min-w-0 justify-center whitespace-nowrap px-3"
+                                onClick={(e) => {
+                                  // Stop the card's onClick from double-firing.
+                                  e.stopPropagation();
+                                  if (detailsHref) navigate(detailsHref);
+                                }}
+                              >
+                                <Utensils className="h-4 w-4" />
+                                <span>Book Table</span>
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               aria-label={`Join queue at ${r.name}`}
