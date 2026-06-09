@@ -49,6 +49,14 @@
       "destination": "/api/server"
     },
     {
+      "source": "/api/guests/:path*",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/guests",
+      "destination": "/api/server"
+    },
+    {
       "source": "/api/jobs/:path*",
       "destination": "/api/server"
     },
