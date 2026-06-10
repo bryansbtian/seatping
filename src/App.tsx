@@ -34,6 +34,7 @@ import Restaurant from "./pages/Restaurant";
 import ManageReservation from "./pages/ManageReservation";
 import SearchResults from "./pages/SearchResults";
 import Admin from "./pages/Admin";
+import { LanguageProvider } from "@/lib/i18n";
 
 const queryClient = new QueryClient();
 
@@ -163,7 +164,9 @@ const App = () => (
             path="/business/dashboard"
             element={
               <RequireBusiness>
-                <BusinessDashboard />
+                <LanguageProvider>
+                  <BusinessDashboard />
+                </LanguageProvider>
               </RequireBusiness>
             }
           />
@@ -172,7 +175,9 @@ const App = () => (
             path="/business/guests"
             element={
               <RequireBusiness>
-                <BusinessGuests />
+                <LanguageProvider>
+                  <BusinessGuests />
+                </LanguageProvider>
               </RequireBusiness>
             }
           />
@@ -181,7 +186,9 @@ const App = () => (
             path="/business/settings"
             element={
               <RequireBusiness>
-                <BusinessSettings />
+                <LanguageProvider>
+                  <BusinessSettings />
+                </LanguageProvider>
               </RequireBusiness>
             }
           />

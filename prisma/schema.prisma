@@ -56,6 +56,11 @@ model Business {
 
   baseCredits Int @default(300)
 
+  // Operator UI language for the business dashboard area (/business/*). "en" or
+  // "id". Optional so legacy documents that predate this field read back as null
+  // and fall back to English in code. New businesses default to English.
+  language String? @default("en")
+
   // Anchor for the monthly credit-refill cycle. Set to the activation moment
   // when an admin turns `trial` off; null while on trial. (Formerly planStartedAt.)
   creditsStartedAt    DateTime?

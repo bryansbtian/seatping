@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import BusinessHeader from "@/components/BusinessHeader";
 import ReservationsManager from "@/components/ReservationsManager";
+import { useLang } from "@/lib/i18n";
 import {
   Users,
   Clock,
@@ -72,6 +73,7 @@ const TOOLTIP_CONTENT_STYLE = {
 
 const BusinessDashboard = () => {
   const isMobile = useIsMobile();
+  const { t, tStatus, lang } = useLang();
   const [me, setMe] = useState<any | null>(null);
   const [selectedLocationIndex, setSelectedLocationIndex] = useState(0);
   // Per-customer queue ETAs (keyed by queueToken), from the shared backend helper.
@@ -400,13 +402,15 @@ const BusinessDashboard = () => {
       setMe(updated.user);
 
       toast({
-        title: "Customer admitted",
-        description: `${customer.firstName} ${customer.lastName} has been admitted and will proceed to their turn.`,
+        title: t("dash.toast.admitted.title"),
+        description: t("dash.toast.admitted.desc", {
+          name: `${customer.firstName} ${customer.lastName}`,
+        }),
       });
     } catch (error: any) {
       toast({
-        title: "Failed to admit customer",
-        description: error.message || "Please try again.",
+        title: t("dash.toast.admitFailed.title"),
+        description: error.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -433,13 +437,15 @@ const BusinessDashboard = () => {
       setMe(updated.user);
 
       toast({
-        title: "Customer removed",
-        description: `${customer.firstName} ${customer.lastName} has been removed from the queue.`,
+        title: t("dash.toast.removed.title"),
+        description: t("dash.toast.removed.desc", {
+          name: `${customer.firstName} ${customer.lastName}`,
+        }),
       });
     } catch (error: any) {
       toast({
-        title: "Failed to remove customer",
-        description: error.message || "Please try again.",
+        title: t("dash.toast.removeFailed.title"),
+        description: error.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -467,13 +473,15 @@ const BusinessDashboard = () => {
       setMe(updated.user);
 
       toast({
-        title: "Arrival confirmed",
-        description: `${customer.firstName} ${customer.lastName} has been marked as arrived.`,
+        title: t("dash.toast.arrivalConfirmed.title"),
+        description: t("dash.toast.arrivalConfirmed.desc", {
+          name: `${customer.firstName} ${customer.lastName}`,
+        }),
       });
     } catch (error: any) {
       toast({
-        title: "Failed to confirm arrival",
-        description: error.message || "Please try again.",
+        title: t("dash.toast.confirmFailed.title"),
+        description: error.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -501,13 +509,15 @@ const BusinessDashboard = () => {
       setMe(updated.user);
 
       toast({
-        title: "Marked as no-show",
-        description: `${customer.firstName} ${customer.lastName} has been marked as a no-show.`,
+        title: t("dash.toast.noShow.title"),
+        description: t("dash.toast.noShow.desc", {
+          name: `${customer.firstName} ${customer.lastName}`,
+        }),
       });
     } catch (error: any) {
       toast({
-        title: "Failed to mark no-show",
-        description: error.message || "Please try again.",
+        title: t("dash.toast.noShowFailed.title"),
+        description: error.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -522,10 +532,10 @@ const BusinessDashboard = () => {
     const diffMs = now.getTime() - joined.getTime();
     const diffMins = Math.floor(diffMs / 60000);
 
-    if (diffMins < 1) return "Just Now";
-    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1) return t("dash.justNow");
+    if (diffMins < 60) return t("dash.minAgo", { n: diffMins });
     const diffHours = Math.floor(diffMins / 60);
-    return `${diffHours}h ${diffMins % 60}m ago`;
+    return t("dash.hourMinAgo", { h: diffHours, m: diffMins % 60 });
   };
 
   // Display label for a notification channel (SMS / WhatsApp / Email).
@@ -736,7 +746,7 @@ const BusinessDashboard = () => {
       const key = addDaysToDateKey(thisWeekStartKey, -i * 7);
       weekRows.set(key, {
         _key: key,
-        date: `Week of ${formatDateLabelInTimezone(key)}`,
+        date: t("dash.weekOf", { date: formatDateLabelInTimezone(key) }),
         served: 0,
         avgWait: 0,
         noShows: 0,
@@ -854,11 +864,11 @@ const BusinessDashboard = () => {
 
     const admittedCustomers = currentLocation.admittedCustomers || [];
     const buckets = [
-      { range: "0-5 mins", min: 0, max: 5, count: 0 },
-      { range: "5-10 mins", min: 5, max: 10, count: 0 },
-      { range: "10-15 mins", min: 10, max: 15, count: 0 },
-      { range: "15-30 mins", min: 15, max: 30, count: 0 },
-      { range: "30+ mins", min: 30, max: Infinity, count: 0 },
+      { range: t("dash.bucket.0to5"), min: 0, max: 5, count: 0 },
+      { range: t("dash.bucket.5to10"), min: 5, max: 10, count: 0 },
+      { range: t("dash.bucket.10to15"), min: 10, max: 15, count: 0 },
+      { range: t("dash.bucket.15to30"), min: 15, max: 30, count: 0 },
+      { range: t("dash.bucket.30plus"), min: 30, max: Infinity, count: 0 },
     ];
 
     admittedCustomers.forEach((customer: any) => {
@@ -889,7 +899,7 @@ const BusinessDashboard = () => {
   const dailyWeeklySummary = useMemo(
     () => getDailyWeeklySummaryData(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentLocation, analyticsTimeframe],
+    [currentLocation, analyticsTimeframe, lang],
   );
   const peakHoursData = getPeakHoursData();
   const waitTimeDistribution = getWaitTimeDistribution();
@@ -924,11 +934,10 @@ const BusinessDashboard = () => {
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
                       <div>
                         <h3 className="text-lg md:text-xl font-semibold">
-                          Trial Expired
+                          {t("banner.trialExpired.title")}
                         </h3>
                         <p className="text-sm md:text-base opacity-90">
-                          Your free trial has ended. Please contact SeatPing to
-                          continue using your business dashboard.
+                          {t("banner.trialExpired.body")}
                         </p>
                       </div>
                       <div className="flex justify-end">
@@ -937,7 +946,7 @@ const BusinessDashboard = () => {
                           className="border-2"
                           onClick={() => (window.location.href = "/sales")}
                         >
-                          Contact SeatPing
+                          {t("common.contactSeatPing")}
                         </Button>
                       </div>
                     </div>
@@ -950,17 +959,19 @@ const BusinessDashboard = () => {
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
                       <div>
                         <h3 className="text-lg md:text-xl font-semibold">
-                          You're on a Free Trial!
+                          {t("banner.trialActive.title")}
                         </h3>
                         <p className="text-sm md:text-base opacity-90">
-                          Contact SeatPing when you're ready to activate your
-                          account.
+                          {t("banner.trialActive.body")}
                         </p>
                         {trialTimeLeft && (
                           <div className="mt-2 flex items-center space-x-2 text-indigo-100">
                             <span className="text-sm font-medium">
-                              Trial expires in: {trialTimeLeft.days}d{" "}
-                              {trialTimeLeft.hours}h {trialTimeLeft.minutes}m
+                              {t("banner.trialActive.countdown", {
+                                days: trialTimeLeft.days,
+                                hours: trialTimeLeft.hours,
+                                minutes: trialTimeLeft.minutes,
+                              })}
                             </span>
                           </div>
                         )}
@@ -971,7 +982,7 @@ const BusinessDashboard = () => {
                           className="border-2"
                           onClick={() => (window.location.href = "/sales")}
                         >
-                          Contact SeatPing
+                          {t("common.contactSeatPing")}
                         </Button>
                       </div>
                     </div>
@@ -991,11 +1002,10 @@ const BusinessDashboard = () => {
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
                     <div>
                       <h3 className="text-lg md:text-xl font-semibold">
-                        ⚠️ No Credits Available
+                        {t("banner.noCredits.title")}
                       </h3>
                       <p className="text-sm md:text-base opacity-90">
-                        You have no credits available. Please contact SeatPing
-                        to top up credits or adjust your account.
+                        {t("banner.noCredits.body")}
                       </p>
                     </div>
                     <div className="flex justify-end">
@@ -1003,7 +1013,7 @@ const BusinessDashboard = () => {
                         variant="inverseOutline"
                         onClick={() => (window.location.href = "/sales")}
                       >
-                        Contact SeatPing
+                        {t("common.contactSeatPing")}
                       </Button>
                     </div>
                   </div>
@@ -1016,10 +1026,10 @@ const BusinessDashboard = () => {
             {/* Header (no date here) */}
             <div className="mb-4">
               <h2 className="text-xl md:text-2xl font-semibold text-slate-800 leading-tight">
-                Hello {me?.name || "Business Owner"}!
+                {t("dash.hello", { name: me?.name || t("dash.ownerFallback") })}
               </h2>
               <p className="text-slate-600 text-sm md:text-base">
-                Here is your daily statistic
+                {t("dash.dailyStat")}
               </p>
             </div>
 
@@ -1029,7 +1039,9 @@ const BusinessDashboard = () => {
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs text-slate-600 mb-1">Credits</p>
+                      <p className="text-xs text-slate-600 mb-1">
+                        {t("dash.credits")}
+                      </p>
                       <p className="text-xl md:text-2xl font-semibold text-slate-800">
                         {currentLocation?.credits || 0}
                       </p>
@@ -1058,7 +1070,7 @@ const BusinessDashboard = () => {
                     </option>
                   ))
                 ) : (
-                  <option value={0}>No locations</option>
+                  <option value={0}>{t("dash.noLocations")}</option>
                 )}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
@@ -1070,15 +1082,19 @@ const BusinessDashboard = () => {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h2 className="text-xl md:text-2xl font-semibold text-slate-800">
-                  Hello {me?.name || "Business Owner"}!
+                  {t("dash.hello", {
+                    name: me?.name || t("dash.ownerFallback"),
+                  })}
                 </h2>
                 <p className="text-slate-600 text-sm md:text-base">
-                  Here is your daily statistic
+                  {t("dash.dailyStat")}
                 </p>
                 {currentLocation && (
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
-                      Credits: {currentLocation?.credits || 0}
+                      {t("dash.creditsPill", {
+                        n: currentLocation?.credits || 0,
+                      })}
                     </span>
                   </div>
                 )}
@@ -1104,7 +1120,7 @@ const BusinessDashboard = () => {
                         </option>
                       ))
                     ) : (
-                      <option value={0}>No locations</option>
+                      <option value={0}>{t("dash.noLocations")}</option>
                     )}
                   </select>
                   <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -1119,36 +1135,36 @@ const BusinessDashboard = () => {
           <Card className="mb-6 bg-white rounded-xl shadow-sm border border-slate-200 lg:hidden">
             <div className="p-4">
               <p className="text-sm font-semibold text-slate-800 mb-3">
-                Today's Summary
+                {t("dash.todaysSummary")}
               </p>
               <div className="divide-y divide-slate-100">
                 {[
                   {
-                    label: "Current Queue",
+                    label: t("dash.stat.currentQueue"),
                     value: todayStats.currentQueue,
                     icon: Users,
                     tint: "bg-indigo-100 text-indigo-600",
                   },
                   {
-                    label: "Reservations Today",
+                    label: t("dash.stat.reservationsToday"),
                     value: todayStats.reservationsToday,
                     icon: Calendar,
                     tint: "bg-blue-100 text-blue-600",
                   },
                   {
-                    label: "Avg Queue Wait",
+                    label: t("dash.stat.avgQueueWait"),
                     value: `${todayStats.avgWaitTime}m`,
                     icon: Clock,
                     tint: "bg-teal-100 text-teal-600",
                   },
                   {
-                    label: "Served Today",
+                    label: t("dash.stat.servedToday"),
                     value: todayStats.totalServed,
                     icon: TrendingUp,
                     tint: "bg-emerald-100 text-emerald-600",
                   },
                   {
-                    label: "Left Today",
+                    label: t("dash.stat.leftToday"),
                     value: todayStats.leftToday,
                     icon: LogOut,
                     tint: "bg-teal-100 text-teal-600",
@@ -1182,7 +1198,7 @@ const BusinessDashboard = () => {
             <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex flex-col gap-2">
                 <p className="text-slate-600 text-xs md:text-sm">
-                  Current Queue
+                  {t("dash.stat.currentQueue")}
                 </p>
                 <div className="flex items-center justify-between">
                   <p className="text-2xl md:text-3xl font-semibold text-slate-800">
@@ -1198,7 +1214,7 @@ const BusinessDashboard = () => {
             <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex flex-col gap-2">
                 <p className="text-slate-600 text-xs md:text-sm">
-                  Reservations Today
+                  {t("dash.stat.reservationsToday")}
                 </p>
                 <div className="flex items-center justify-between">
                   <p className="text-2xl md:text-3xl font-semibold text-slate-800">
@@ -1214,7 +1230,7 @@ const BusinessDashboard = () => {
             <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex flex-col gap-2">
                 <p className="text-slate-600 text-xs md:text-sm">
-                  Avg Queue Wait Time
+                  {t("dash.stat.avgQueueWaitTime")}
                 </p>
                 <div className="flex items-center justify-between">
                   <p className="text-2xl md:text-3xl font-semibold text-slate-800">
@@ -1230,7 +1246,7 @@ const BusinessDashboard = () => {
             <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex flex-col gap-2">
                 <p className="text-slate-600 text-xs md:text-sm">
-                  Served Today
+                  {t("dash.stat.servedToday")}
                 </p>
                 <div className="flex items-center justify-between">
                   <p className="text-2xl md:text-3xl font-semibold text-slate-800">
@@ -1245,7 +1261,9 @@ const BusinessDashboard = () => {
 
             <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex flex-col gap-2">
-                <p className="text-slate-600 text-xs md:text-sm">Left Today</p>
+                <p className="text-slate-600 text-xs md:text-sm">
+                  {t("dash.stat.leftToday")}
+                </p>
                 <div className="flex items-center justify-between">
                   <p className="text-2xl md:text-3xl font-semibold text-slate-800">
                     {todayStats.leftToday}
@@ -1266,20 +1284,26 @@ const BusinessDashboard = () => {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-lg text-gray-800">
                     <ListOrdered className="w-5 h-5" />
-                    Queue Management
+                    {t("dash.queue.title")}
                   </CardTitle>
                   <Badge
                     variant="secondary"
                     className="bg-indigo-100 text-indigo-700 text-[10px] sm:text-xs px-2 py-1 sm:px-3 whitespace-nowrap max-[374px]:hidden"
                   >
-                    {queueData.length}{" "}
-                    {queueData.length === 1 ? "customer" : "customers"}
+                    {t(
+                      queueData.length === 1
+                        ? "dash.queue.customerOne"
+                        : "dash.queue.customerMany",
+                      { n: queueData.length },
+                    )}
                   </Badge>
                 </div>
                 <CardDescription className="text-gray-600 text-sm mb-3 mt-0.5">
                   {currentLocation
-                    ? `Managing queue for: ${locLabel(currentLocation, selectedLocationIndex)}`
-                    : "No Location Selected"}
+                    ? t("dash.queue.managingFor", {
+                        label: locLabel(currentLocation, selectedLocationIndex),
+                      })
+                    : t("dash.queue.noLocationSelected")}
                 </CardDescription>
                 <Button
                   size="sm"
@@ -1289,13 +1313,13 @@ const BusinessDashboard = () => {
                       const res = await api("/auth/business/me");
                       setMe(res.user);
                       toast({
-                        title: "Queue refreshed",
-                        description: "Queue data has been updated.",
+                        title: t("dash.toast.queueRefreshed.title"),
+                        description: t("dash.toast.queueRefreshed.desc"),
                       });
                     } catch (error: any) {
                       toast({
-                        title: "Failed to refresh",
-                        description: error.message || "Please try again.",
+                        title: t("dash.toast.refreshFailed.title"),
+                        description: error.message || t("common.pleaseTryAgain"),
                         variant: "destructive",
                       });
                     }
@@ -1304,7 +1328,7 @@ const BusinessDashboard = () => {
                   className="flex items-center space-x-2 w-full"
                 >
                   <RefreshCw size={16} />
-                  <span>Refresh</span>
+                  <span>{t("common.refresh")}</span>
                 </Button>
               </div>
 
@@ -1313,12 +1337,17 @@ const BusinessDashboard = () => {
                 <div>
                   <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
                     <ListOrdered className="w-5 h-5" />
-                    Queue Management
+                    {t("dash.queue.title")}
                   </CardTitle>
                   <CardDescription className="text-gray-600 text-sm">
                     {currentLocation
-                      ? `Managing queue for: ${locLabel(currentLocation, selectedLocationIndex)}`
-                      : "No Location Selected"}
+                      ? t("dash.queue.managingFor", {
+                          label: locLabel(
+                            currentLocation,
+                            selectedLocationIndex,
+                          ),
+                        })
+                      : t("dash.queue.noLocationSelected")}
                   </CardDescription>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -1330,13 +1359,14 @@ const BusinessDashboard = () => {
                         const res = await api("/auth/business/me");
                         setMe(res.user);
                         toast({
-                          title: "Queue refreshed",
-                          description: "Queue data has been updated.",
+                          title: t("dash.toast.queueRefreshed.title"),
+                          description: t("dash.toast.queueRefreshed.desc"),
                         });
                       } catch (error: any) {
                         toast({
-                          title: "Failed to refresh",
-                          description: error.message || "Please try again.",
+                          title: t("dash.toast.refreshFailed.title"),
+                          description:
+                            error.message || t("common.pleaseTryAgain"),
                           variant: "destructive",
                         });
                       }
@@ -1345,14 +1375,18 @@ const BusinessDashboard = () => {
                     className="flex items-center space-x-2"
                   >
                     <RefreshCw size={16} />
-                    <span>Refresh</span>
+                    <span>{t("common.refresh")}</span>
                   </Button>
                   <Badge
                     variant="secondary"
                     className="bg-indigo-100 text-indigo-700"
                   >
-                    {queueData.length}{" "}
-                    {queueData.length === 1 ? "customer" : "customers"}
+                    {t(
+                      queueData.length === 1
+                        ? "dash.queue.customerOne"
+                        : "dash.queue.customerMany",
+                      { n: queueData.length },
+                    )}
                   </Badge>
                 </div>
               </div>
@@ -1361,9 +1395,7 @@ const BusinessDashboard = () => {
               {queueData.length === 0 ? (
                 <div className="flex flex-col items-center py-10 text-center text-slate-400">
                   <Users className="h-8 w-8" />
-                  <p className="mt-2 text-sm">
-                    No customers in queue at this location.
-                  </p>
+                  <p className="mt-2 text-sm">{t("dash.queue.empty")}</p>
                 </div>
               ) : (
                 <div className="space-y-3 md:space-y-4">
@@ -1385,12 +1417,18 @@ const BusinessDashboard = () => {
                           </h3>
                           <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
                             <span className="whitespace-nowrap">
-                              Joined: {formatTimeSince(customer.joinedAt)}
+                              {t("dash.queue.joined", {
+                                time: formatTimeSince(customer.joinedAt),
+                              })}
                             </span>
                             <span className="text-gray-400">•</span>
                             <span className="whitespace-nowrap">
-                              {customer.numGuests}{" "}
-                              {customer.numGuests === 1 ? "Guest" : "Guests"}
+                              {t(
+                                customer.numGuests === 1
+                                  ? "dash.guestOne"
+                                  : "dash.guestMany",
+                                { n: customer.numGuests },
+                              )}
                             </span>
                           </div>
 
@@ -1404,8 +1442,10 @@ const BusinessDashboard = () => {
                           {customer.queueToken &&
                             queueEtas[customer.queueToken] && (
                               <p className="text-xs md:text-sm font-medium text-indigo-600 mt-1">
-                                Estimated Wait:{" "}
-                                {queueEtas[customer.queueToken].displayText}
+                                {t("dash.queue.estimatedWait", {
+                                  text: queueEtas[customer.queueToken]
+                                    .displayText,
+                                })}
                               </p>
                             )}
                         </div>
@@ -1418,7 +1458,7 @@ const BusinessDashboard = () => {
                           onClick={() => admitCustomer(index)}
                           disabled={loading}
                         >
-                          Admit
+                          {t("dash.admit")}
                         </Button>
                         <Button
                           size="sm"
@@ -1427,7 +1467,7 @@ const BusinessDashboard = () => {
                           disabled={loading}
                           className="flex-1 md:flex-none"
                         >
-                          Remove
+                          {t("dash.remove")}
                         </Button>
                       </div>
                     </div>
@@ -1455,11 +1495,10 @@ const BusinessDashboard = () => {
                   <CardHeader className="border-b border-amber-200 p-4 md:p-6">
                     <CardTitle className="text-lg md:text-xl text-amber-800 flex items-center gap-2">
                       <Clock className="w-5 h-5" />
-                      Awaiting Arrival Confirmation
+                      {t("dash.awaiting.title")}
                     </CardTitle>
                     <CardDescription className="text-amber-700 text-sm">
-                      Confirm arrivals for customers admitted in the last 5
-                      minutes
+                      {t("dash.awaiting.desc")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-4 md:p-6">
@@ -1499,22 +1538,27 @@ const BusinessDashboard = () => {
                                   </h3>
                                   <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
                                     <span className="whitespace-nowrap">
-                                      Admitted:{" "}
-                                      {formatTimeSince(customer.admittedAt)}
+                                      {t("dash.admitted", {
+                                        time: formatTimeSince(
+                                          customer.admittedAt,
+                                        ),
+                                      })}
                                     </span>
                                     <span className="text-gray-400">•</span>
                                     <span className="whitespace-nowrap">
-                                      {customer.numGuests}{" "}
-                                      {customer.numGuests === 1
-                                        ? "Guest"
-                                        : "Guests"}
+                                      {t(
+                                        customer.numGuests === 1
+                                          ? "dash.guestOne"
+                                          : "dash.guestMany",
+                                        { n: customer.numGuests },
+                                      )}
                                     </span>
 
                                     {timeRemaining.expired && (
                                       <>
                                         <span className="text-gray-400">•</span>
                                         <span className="text-red-600 font-semibold whitespace-nowrap">
-                                          Time Expired
+                                          {t("dash.timeExpired")}
                                         </span>
                                       </>
                                     )}
@@ -1529,7 +1573,7 @@ const BusinessDashboard = () => {
                                   onClick={() => confirmArrival(customer)}
                                   disabled={loading}
                                 >
-                                  Arrived
+                                  {t("dash.arrived")}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -1538,7 +1582,7 @@ const BusinessDashboard = () => {
                                   onClick={() => markNoShow(customer)}
                                   disabled={loading}
                                 >
-                                  No Show
+                                  {t("dash.noShow")}
                                 </Button>
                               </div>
                             </div>
@@ -1598,19 +1642,17 @@ const BusinessDashboard = () => {
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
                   <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
                     <Users className="w-5 h-5" />
-                    <span>Recently Left Customers</span>
+                    <span>{t("dash.left.title")}</span>
                   </CardTitle>
                   <CardDescription className="text-gray-600 text-sm">
-                    Customers who have left the queue recently
+                    {t("dash.left.desc")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 md:p-6">
                   {recentlyLeftCustomers.length === 0 ? (
                     <div className="flex flex-col items-center py-10 text-center text-slate-400">
                       <Users className="h-8 w-8" />
-                      <p className="mt-2 text-sm">
-                        No customers have left recently.
-                      </p>
+                      <p className="mt-2 text-sm">{t("dash.left.empty")}</p>
                     </div>
                   ) : (
                     <div className="space-y-3 md:space-y-4">
@@ -1623,8 +1665,8 @@ const BusinessDashboard = () => {
                               }
                               label={
                                 customer.status === "left"
-                                  ? "Left Queue"
-                                  : "Removed by Business"
+                                  ? t("dash.left.leftQueue")
+                                  : t("dash.left.removedByBusiness")
                               }
                             />
                           );
@@ -1641,8 +1683,8 @@ const BusinessDashboard = () => {
                                   <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
                                     <span className="whitespace-nowrap">
                                       {customer.status === "left"
-                                        ? "Left"
-                                        : "Removed"}
+                                        ? t("dash.left.left")
+                                        : t("dash.left.removed")}
                                       :{" "}
                                       {formatTimeSince(
                                         customer.leftAt || customer.removedAt,
@@ -1650,10 +1692,12 @@ const BusinessDashboard = () => {
                                     </span>
                                     <span className="text-gray-400">•</span>
                                     <span className="whitespace-nowrap">
-                                      {customer.numGuests}{" "}
-                                      {customer.numGuests === 1
-                                        ? "Guest"
-                                        : "Guests"}
+                                      {t(
+                                        customer.numGuests === 1
+                                          ? "dash.guestOne"
+                                          : "dash.guestMany",
+                                        { n: customer.numGuests },
+                                      )}
                                     </span>
                                   </div>
 
@@ -1694,10 +1738,10 @@ const BusinessDashboard = () => {
                   <div>
                     <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
                       <TrendingUp className="w-5 h-5" />
-                      <span>Performance Summary</span>
+                      <span>{t("dash.perf.title")}</span>
                     </CardTitle>
                     <CardDescription className="text-gray-600 text-sm">
-                      Track customers served, wait times, and no-shows
+                      {t("dash.perf.desc")}
                     </CardDescription>
                   </div>
                   <div className="flex space-x-2">
@@ -1708,7 +1752,7 @@ const BusinessDashboard = () => {
                       }
                       onClick={() => changeAnalyticsTimeframe("daily")}
                     >
-                      Daily
+                      {t("dash.daily")}
                     </Button>
                     <Button
                       size="sm"
@@ -1717,7 +1761,7 @@ const BusinessDashboard = () => {
                       }
                       onClick={() => changeAnalyticsTimeframe("weekly")}
                     >
-                      Weekly
+                      {t("dash.weekly")}
                     </Button>
                   </div>
                 </div>
@@ -1769,7 +1813,7 @@ const BusinessDashboard = () => {
                           stroke="#3b82f6"
                           strokeWidth={2}
                           dot={false}
-                          name="Customers Served"
+                          name={t("dash.legend.served")}
                         />
                         <Line
                           yAxisId="left"
@@ -1778,7 +1822,7 @@ const BusinessDashboard = () => {
                           stroke="#10b981"
                           strokeWidth={2}
                           dot={false}
-                          name="Avg Wait Time (min)"
+                          name={t("dash.legend.avgWait")}
                         />
                         <Line
                           yAxisId="left"
@@ -1787,17 +1831,14 @@ const BusinessDashboard = () => {
                           stroke="#f59e0b"
                           strokeWidth={2}
                           dot={false}
-                          name="No-Shows"
+                          name={t("dash.legend.noShows")}
                         />
                       </LineChart>
                     </ResponsiveContainer>
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center text-center">
                       <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500">
-                        No data available yet. Start serving customers to see
-                        analytics!
-                      </p>
+                      <p className="text-gray-500">{t("dash.noData")}</p>
                     </div>
                   )}
                 </div>
@@ -1811,10 +1852,10 @@ const BusinessDashboard = () => {
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
                   <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
                     <Clock className="w-5 h-5" />
-                    <span>Peak Hours</span>
+                    <span>{t("dash.peak.title")}</span>
                   </CardTitle>
                   <CardDescription className="text-gray-600 text-sm">
-                    When does your business get the most traffic?
+                    {t("dash.peak.desc")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 md:p-6">
@@ -1853,7 +1894,7 @@ const BusinessDashboard = () => {
                           yAxisId="left"
                           dataKey="customers"
                           fill="#4f46e5"
-                          name="Customers"
+                          name={t("dash.peak.legend")}
                           radius={[8, 8, 0, 0]}
                         />
                       </BarChart>
@@ -1861,9 +1902,7 @@ const BusinessDashboard = () => {
                   ) : (
                     <div className="text-center py-12">
                       <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500">
-                        No peak hour data available yet
-                      </p>
+                      <p className="text-gray-500">{t("dash.peak.noData")}</p>
                     </div>
                   )}
                 </CardContent>
@@ -1874,10 +1913,10 @@ const BusinessDashboard = () => {
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
                   <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
                     <BarChart3 className="w-5 h-5" />
-                    <span>Wait Time Distribution</span>
+                    <span>{t("dash.waitDist.title")}</span>
                   </CardTitle>
                   <CardDescription className="text-gray-600 text-sm">
-                    How efficient is your service?
+                    {t("dash.waitDist.desc")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 md:p-6">
@@ -1914,7 +1953,7 @@ const BusinessDashboard = () => {
                           yAxisId="left"
                           dataKey="count"
                           fill="#64748b"
-                          name="Customers"
+                          name={t("dash.waitDist.legend")}
                           radius={[8, 8, 0, 0]}
                         />
                       </BarChart>
@@ -1923,7 +1962,7 @@ const BusinessDashboard = () => {
                     <div className="text-center py-12">
                       <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-500">
-                        No wait time data available yet
+                        {t("dash.waitDist.noData")}
                       </p>
                     </div>
                   )}

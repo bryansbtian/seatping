@@ -3,6 +3,7 @@
 // banner shown on /business/settings so /business/profile and others can reuse it.
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useLang } from "@/lib/i18n";
 
 type MeLike = {
   trial?: boolean;
@@ -11,6 +12,7 @@ type MeLike = {
 } | null;
 
 export default function BusinessTrialBanner({ me }: { me: MeLike }) {
+  const { t } = useLang();
   const [trialTimeLeft, setTrialTimeLeft] = useState<{
     days: number;
     hours: number;
@@ -71,11 +73,10 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
               <div>
                 <h3 className="text-lg md:text-xl font-semibold">
-                  Trial Expired
+                  {t("banner.trialExpired.title")}
                 </h3>
                 <p className="text-sm md:text-base opacity-90">
-                  Your free trial has ended. Please contact SeatPing to continue
-                  using your business dashboard.
+                  {t("banner.trialExpired.body")}
                 </p>
               </div>
               <div className="flex justify-end">
@@ -84,7 +85,7 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
                   className="border-2"
                   onClick={() => (window.location.href = "/sales")}
                 >
-                  Contact SeatPing
+                  {t("common.contactSeatPing")}
                 </Button>
               </div>
             </div>
@@ -99,16 +100,19 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
             <div>
               <h3 className="text-lg md:text-xl font-semibold">
-                You're on a Free Trial!
+                {t("banner.trialActive.title")}
               </h3>
               <p className="text-sm md:text-base opacity-90">
-                Contact SeatPing when you're ready to activate your account.
+                {t("banner.trialActive.body")}
               </p>
               {trialTimeLeft && (
                 <div className="mt-2 flex items-center space-x-2 text-indigo-100">
                   <span className="text-sm font-medium">
-                    Trial expires in: {trialTimeLeft.days}d {trialTimeLeft.hours}h{" "}
-                    {trialTimeLeft.minutes}m
+                    {t("banner.trialActive.countdown", {
+                      days: trialTimeLeft.days,
+                      hours: trialTimeLeft.hours,
+                      minutes: trialTimeLeft.minutes,
+                    })}
                   </span>
                 </div>
               )}
@@ -119,7 +123,7 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
                 className="border-2"
                 onClick={() => (window.location.href = "/sales")}
               >
-                Contact SeatPing
+                {t("common.contactSeatPing")}
               </Button>
             </div>
           </div>
@@ -136,11 +140,10 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
             <div>
               <h4 className="text-sm md:text-base font-semibold">
-                Your trial has expired
+                {t("banner.trialExpiredShort.title")}
               </h4>
               <p className="text-xs md:text-sm opacity-80">
-                Please contact SeatPing to continue using your business
-                dashboard.
+                {t("banner.trialExpiredShort.body")}
               </p>
             </div>
             <div className="flex justify-end">
@@ -150,7 +153,7 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
                 className="text-xs md:text-sm"
                 onClick={() => (window.location.href = "/sales")}
               >
-                Contact SeatPing
+                {t("common.contactSeatPing")}
               </Button>
             </div>
           </div>

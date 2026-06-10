@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useLang } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -98,6 +99,7 @@ export default function LocationManagement({
   onChanged: (updatedUser: any) => void;
 }) {
   const { toast } = useToast();
+  const { t } = useLang();
   const [loading, setLoading] = useState(false);
   const [newLocationAddress, setNewLocationAddress] = useState("");
   const [newLocationDisplayName, setNewLocationDisplayName] = useState("");
@@ -145,8 +147,8 @@ export default function LocationManagement({
       setQrDataUrl(dataUrl);
     } catch {
       toast({
-        title: "Error",
-        description: "Failed to generate QR code. Please try again.",
+        title: t("loc.toast.qrError.title"),
+        description: t("loc.toast.qrError.desc"),
         variant: "destructive",
       });
     }
@@ -157,13 +159,13 @@ export default function LocationManagement({
     try {
       await navigator.clipboard.writeText(queueUrlFor(qrLocation));
       toast({
-        title: "Link copied",
-        description: "The queue link has been copied to your clipboard.",
+        title: t("loc.toast.linkCopied.title"),
+        description: t("loc.toast.linkCopied.desc"),
       });
     } catch {
       toast({
-        title: "Couldn't copy link",
-        description: "Copy the link manually from the box above.",
+        title: t("loc.toast.copyFailed.title"),
+        description: t("loc.toast.copyFailed.desc"),
         variant: "destructive",
       });
     }
@@ -186,24 +188,24 @@ export default function LocationManagement({
   const addLocation = async () => {
     if (!newLocationDisplayName.trim()) {
       toast({
-        title: "Location Display Name required",
-        description: "Enter the short name customers will see.",
+        title: t("loc.toast.displayNameRequired.title"),
+        description: t("loc.toast.displayNameRequired.desc"),
         variant: "destructive",
       });
       return;
     }
     if (!newLocationAddress.trim()) {
       toast({
-        title: "Address required",
-        description: "Search for or type your location address.",
+        title: t("loc.toast.addressRequired.title"),
+        description: t("loc.toast.addressRequired.desc"),
         variant: "destructive",
       });
       return;
     }
     if (atMax) {
       toast({
-        title: "Limit reached",
-        description: `You have reached the maximum locations (${maxLocations}).`,
+        title: t("loc.toast.limitReached.title"),
+        description: t("loc.toast.limitReached.desc", { max: maxLocations }),
         variant: "destructive",
       });
       return;
@@ -214,9 +216,8 @@ export default function LocationManagement({
       // Manual / non-geocoded entry is allowed, but warn that map data is missing.
       if (!place?.googlePlaceId || place?.latitude == null) {
         toast({
-          title: "Saved without map data",
-          description:
-            "We couldn't capture coordinates for this address. Re-search it later to enable maps features.",
+          title: t("loc.toast.savedNoMap.title"),
+          description: t("loc.toast.savedNoMap.desc"),
         });
       }
       const updated = await api("/auth/business/locations", {
@@ -238,13 +239,13 @@ export default function LocationManagement({
       setNewLocationDisplayName("");
       setNewLocationPlace(null);
       toast({
-        title: "Location added",
-        description: "New location has been added successfully.",
+        title: t("loc.toast.added.title"),
+        description: t("loc.toast.added.desc"),
       });
     } catch (e: any) {
       toast({
-        title: "Failed to add location",
-        description: e?.message || "Please try again.",
+        title: t("loc.toast.addFailed.title"),
+        description: e?.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -264,13 +265,13 @@ export default function LocationManagement({
       });
       onChanged(updated.user);
       toast({
-        title: "Location removed",
-        description: "Location has been removed successfully.",
+        title: t("loc.toast.removed.title"),
+        description: t("loc.toast.removed.desc"),
       });
     } catch (e: any) {
       toast({
-        title: "Failed to remove location",
-        description: e?.message || "Please try again.",
+        title: t("loc.toast.removeFailed.title"),
+        description: e?.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -283,11 +284,14 @@ export default function LocationManagement({
       <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
-            Location Management
+            {t("loc.title")}
           </CardTitle>
           <CardDescription className="text-gray-600 text-sm md:text-base">
-            Add and manage your business locations ({locations.length}/
-            {maxLocations} {maxLocations === 1 ? "location" : "locations"} used)
+            {t("loc.desc", {
+              count: locations.length,
+              max: maxLocations,
+              locWord: t(maxLocations === 1 ? "loc.location" : "loc.locations"),
+            })}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 md:space-y-6 p-4 md:p-6 pt-0">
@@ -296,14 +300,14 @@ export default function LocationManagement({
             {/* Header row: title + Add Location button (top-right on sm+) */}
             <div className="flex items-center justify-between gap-3 mb-3 md:mb-4">
               <h3 className="text-base md:text-lg font-semibold text-gray-800">
-                Add New Location
+                {t("loc.addNew")}
               </h3>
               <Button
                 onClick={addLocation}
                 disabled={loading || atMax}
                 className="hidden text-sm md:text-base lg:inline-flex"
               >
-                <Plus size={16} className="mr-2" /> Add Location
+                <Plus size={16} className="mr-2" /> {t("loc.addBtn")}
               </Button>
             </div>
             <div className="space-y-4">
@@ -314,11 +318,11 @@ export default function LocationManagement({
                     htmlFor="newLocationDisplayName"
                     className="text-sm md:text-base"
                   >
-                    Location Display Name
+                    {t("loc.displayName")}
                   </Label>
                   <Input
                     id="newLocationDisplayName"
-                    placeholder="Senopati, PIK, SCBD, or Main Branch"
+                    placeholder={t("loc.displayName.placeholder")}
                     value={newLocationDisplayName}
                     onChange={(e) => setNewLocationDisplayName(e.target.value)}
                     disabled={atMax}
@@ -327,15 +331,14 @@ export default function LocationManagement({
                     }`}
                   />
                   <p className="text-xs text-gray-500">
-                    This is the short location name customers will see when
-                    joining a queue or booking a table.
+                    {t("loc.displayName.help")}
                   </p>
                 </div>
 
                 {/* Address search (Google Places autocomplete) */}
                 <div className="space-y-1.5">
                   <Label htmlFor="newLocation" className="text-sm md:text-base">
-                    Search Address
+                    {t("loc.searchAddress")}
                   </Label>
                   <AddressAutocomplete
                     id="newLocation"
@@ -351,7 +354,7 @@ export default function LocationManagement({
                       setNewLocationPlace(d);
                       setNewLocationAddress(d.address);
                     }}
-                    placeholder="Search for your business address"
+                    placeholder={t("loc.searchAddress.placeholder")}
                     disabled={atMax}
                     className={`text-sm md:text-base ${
                       atMax ? "bg-gray-100 cursor-not-allowed" : ""
@@ -366,13 +369,12 @@ export default function LocationManagement({
                 disabled={loading || atMax}
                 className="w-full text-sm md:text-base lg:hidden"
               >
-                <Plus size={16} className="mr-2" /> Add Location
+                <Plus size={16} className="mr-2" /> {t("loc.addBtn")}
               </Button>
             </div>
             {atMax && (
               <p className="text-xs md:text-sm text-red-600 mt-2">
-                You have reached the maximum number of locations for your
-                account.
+                {t("loc.atMax")}
               </p>
             )}
           </div>
@@ -380,16 +382,16 @@ export default function LocationManagement({
           {/* Existing Locations */}
           <div>
             <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-3 md:mb-4">
-              Current Locations
+              {t("loc.current")}
             </h3>
             {locations.length === 0 ? (
               <div className="text-center py-6 md:py-8">
                 <MapPin className="w-10 h-10 md:w-12 md:h-12 text-gray-300 mx-auto mb-3 md:mb-4" />
                 <p className="text-gray-500 text-sm md:text-base">
-                  No locations added yet.
+                  {t("loc.none")}
                 </p>
                 <p className="text-xs md:text-sm text-gray-400 mt-1">
-                  Add your first location above to get started.
+                  {t("loc.none.help")}
                 </p>
               </div>
             ) : (
@@ -420,16 +422,15 @@ export default function LocationManagement({
                               {location.displayName ||
                                 location.name ||
                                 location.address ||
-                                "Unnamed location"}
+                                t("loc.unnamed")}
                             </p>
                             <span className="inline-flex w-fit shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
-                              Credits: {location?.credits || 0}
+                              {t("loc.credits", { n: location?.credits || 0 })}
                             </span>
                           </div>
                           {!location.displayName && (
                             <p className="text-xs text-amber-600">
-                              Add a Location Display Name so customers see a
-                              friendly name.
+                              {t("loc.addDisplayNameHint")}
                             </p>
                           )}
 
@@ -450,8 +451,8 @@ export default function LocationManagement({
                                     className="text-xs font-medium text-indigo-600 hover:underline"
                                   >
                                     {isExpanded
-                                      ? "Hide Full Address"
-                                      : "View Full Address"}
+                                      ? t("loc.hideFullAddress")
+                                      : t("loc.viewFullAddress")}
                                   </button>
                                 )}
                                 {location.googleMapsUrl && (
@@ -461,7 +462,7 @@ export default function LocationManagement({
                                     rel="noopener noreferrer"
                                     className="text-xs font-medium text-indigo-600 hover:underline"
                                   >
-                                    View on Maps
+                                    {t("loc.viewOnMaps")}
                                   </a>
                                 )}
                               </div>
@@ -486,8 +487,8 @@ export default function LocationManagement({
                           className="h-10 w-full justify-center lg:w-auto"
                           onClick={() => setEditing(location)}
                         >
-                          <Pencil size={16} className="mr-2" /> Edit Restaurant
-                          Profile
+                          <Pencil size={16} className="mr-2" />{" "}
+                          {t("loc.editProfile")}
                         </Button>
                         <Button
                           size="sm"
@@ -498,7 +499,8 @@ export default function LocationManagement({
                             setIsReviewsModalOpen(true);
                           }}
                         >
-                          <Star size={16} className="mr-2" /> View Reviews
+                          <Star size={16} className="mr-2" />{" "}
+                          {t("loc.viewReviews")}
                         </Button>
                         <Button
                           size="sm"
@@ -506,7 +508,7 @@ export default function LocationManagement({
                           className="h-10 w-full justify-center lg:w-auto"
                           onClick={() => openQrModal(location)}
                         >
-                          <QrCode size={16} className="mr-2" /> QR Code
+                          <QrCode size={16} className="mr-2" /> {t("loc.qrCode")}
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
@@ -517,31 +519,33 @@ export default function LocationManagement({
                               disabled={loading}
                             >
                               <Trash2 size={16} className="mr-2 lg:mr-0" />
-                              <span className="lg:hidden">Remove Location</span>
+                              <span className="lg:hidden">
+                                {t("loc.removeLocation")}
+                              </span>
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent className="max-w-sm md:max-w-lg mx-4">
                             <AlertDialogHeader>
                               <AlertDialogTitle className="text-base md:text-lg">
-                                Remove Location
+                                {t("loc.removeLocation")}
                               </AlertDialogTitle>
                               <AlertDialogDescription className="text-sm md:text-base">
-                                Are you sure you want to remove "
-                                {location.displayName || location.address}"?
-                                This action cannot be undone and will remove all
-                                customers from the queue at this location.
+                                {t("loc.remove.confirmBody", {
+                                  name:
+                                    location.displayName || location.address,
+                                })}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter className="flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
                               <AlertDialogCancel className="w-full md:w-auto">
-                                Cancel
+                                {t("common.cancel")}
                               </AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => removeLocation(index)}
                                 variant="destructive"
                                 className="w-full md:w-auto"
                               >
-                                Remove Location
+                                {t("loc.removeLocation")}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -566,7 +570,7 @@ export default function LocationManagement({
       >
         <DialogContent className="fixed left-1/2 top-1/2 z-50 mx-auto w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-2xl p-4 sm:max-w-2xl sm:p-6 max-sm:text-xs [&_.text-2xl]:max-sm:text-base [&_.text-xl]:max-sm:text-sm [&_.text-lg]:max-sm:text-sm [&_.text-base]:max-sm:text-xs [&_.text-sm]:max-sm:text-xs [&_label]:max-sm:text-xs [&_p]:max-sm:text-xs [&_input]:max-sm:h-9 [&_input]:max-sm:text-xs [&_textarea]:max-sm:text-xs [&_select]:max-sm:text-xs max-[374px]:text-[10px] [&_.text-2xl]:max-[374px]:text-xs [&_.text-xl]:max-[374px]:text-[11px] [&_.text-lg]:max-[374px]:text-[11px] [&_.text-base]:max-[374px]:text-[10px] [&_.text-sm]:max-[374px]:text-[10px] [&_label]:max-[374px]:text-[10px] [&_p]:max-[374px]:text-[10px] [&_input]:max-[374px]:h-7 [&_input]:max-[374px]:text-[10px] [&_textarea]:max-[374px]:text-[10px] [&_select]:max-[374px]:text-[10px]">
           <DialogHeader className="text-left">
-            <DialogTitle>Edit Restaurant Profile</DialogTitle>
+            <DialogTitle>{t("loc.editProfile")}</DialogTitle>
             <DialogDescription>
               {editing?.displayName || editing?.address}
             </DialogDescription>
@@ -618,7 +622,7 @@ export default function LocationManagement({
       >
         <DialogContent className="w-[calc(100%-2rem)] max-w-md overflow-x-hidden rounded-xl">
           <DialogHeader>
-            <DialogTitle>Location QR Code</DialogTitle>
+            <DialogTitle>{t("loc.qrModal.title")}</DialogTitle>
             <DialogDescription>
               {qrLocation?.displayName ||
                 qrLocation?.name ||
@@ -633,12 +637,12 @@ export default function LocationManagement({
                 {qrDataUrl ? (
                   <img
                     src={qrDataUrl}
-                    alt="Queue QR Code"
+                    alt={t("loc.qrModal.title")}
                     className="mx-auto h-56 w-56"
                   />
                 ) : (
                   <div className="flex h-56 w-56 items-center justify-center text-sm text-gray-400">
-                    Generating…
+                    {t("loc.qrModal.generating")}
                   </div>
                 )}
               </div>
@@ -646,15 +650,14 @@ export default function LocationManagement({
 
             {/* Queue URL */}
             <div className="space-y-1.5">
-              <Label className="text-sm">Queue Link</Label>
+              <Label className="text-sm">{t("loc.qrModal.queueLink")}</Label>
               <code className="block break-all rounded-md bg-gray-100 px-3 py-2 font-mono text-xs text-indigo-600">
                 {qrLocation ? queueUrlFor(qrLocation) : ""}
               </code>
             </div>
 
             <p className="text-center text-xs text-gray-500">
-              Customers who scan this code join the queue for this location
-              automatically.
+              {t("loc.qrModal.help")}
             </p>
 
             {/* Actions */}
@@ -664,14 +667,15 @@ export default function LocationManagement({
                 className="w-full sm:flex-1"
                 onClick={copyQueueLink}
               >
-                <Copy size={16} className="mr-2" /> Copy Link
+                <Copy size={16} className="mr-2" /> {t("loc.qrModal.copyLink")}
               </Button>
               <Button
                 className="w-full sm:flex-1"
                 onClick={downloadQrCode}
                 disabled={!qrDataUrl}
               >
-                <Download size={16} className="mr-2" /> Download QR Code
+                <Download size={16} className="mr-2" />{" "}
+                {t("loc.qrModal.downloadQr")}
               </Button>
             </div>
           </div>

@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { TimeSelect, ALL_DAY_TIME_OPTIONS } from "@/components/TimeSelect";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
 import { DEFAULT_TIMEZONE } from "@/lib/timezones";
+import { useLang, type TKey } from "@/lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Public restaurant profile editor. Reads/writes location.restaurantProfile
@@ -140,13 +141,14 @@ const ACCEPTED_IMAGE_TYPES = [
   "image/webp",
 ];
 
-/** Client-side guard mirroring the server validation; returns an error or null. */
-function validateImageFile(file: File): string | null {
+/** Client-side guard mirroring the server validation; returns a translation key
+ * for the error (so the caller can localize it) or null when valid. */
+function validateImageFile(file: File): TKey | null {
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-    return "Only JPG, PNG, and WEBP images are allowed.";
+    return "rpe.err.imageType";
   }
   if (file.size > MAX_FILE_BYTES) {
-    return "Each image must be 25MB or smaller.";
+    return "rpe.err.imageSize";
   }
   return null;
 }
@@ -163,6 +165,7 @@ export default function RestaurantProfileEditor({
   onMediaChange?: (updatedUser: any) => void;
 }) {
   const { toast } = useToast();
+  const { t } = useLang();
   const rp = location.restaurantProfile || {};
   const details = rp.details || {};
 
@@ -276,8 +279,8 @@ export default function RestaurantProfileEditor({
     const err = validateImageFile(file);
     if (err) {
       toast({
-        title: "Invalid image",
-        description: err,
+        title: t("rpe.toast.invalidImage.title"),
+        description: t(err),
         variant: "destructive",
       });
       return;
@@ -290,13 +293,13 @@ export default function RestaurantProfileEditor({
       setBanner(res.banner ?? null);
       onMediaChange?.(res.user);
       toast({
-        title: "Banner updated",
-        description: "Your banner image was uploaded.",
+        title: t("rpe.toast.bannerUpdated.title"),
+        description: t("rpe.toast.bannerUpdated.desc"),
       });
     } catch (e: any) {
       toast({
-        title: "Banner upload failed",
-        description: e?.message || "Please try again.",
+        title: t("rpe.toast.bannerFailed.title"),
+        description: e?.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -312,11 +315,11 @@ export default function RestaurantProfileEditor({
       });
       setBanner(null);
       onMediaChange?.(res.user);
-      toast({ title: "Banner removed" });
+      toast({ title: t("rpe.toast.bannerRemoved.title") });
     } catch (e: any) {
       toast({
-        title: "Failed to remove banner",
-        description: e?.message || "Please try again.",
+        title: t("rpe.toast.bannerRemoveFailed.title"),
+        description: e?.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -332,11 +335,14 @@ export default function RestaurantProfileEditor({
 
     if (files.length > remainingSlots) {
       toast({
-        title: "Too many photos",
+        title: t("rpe.toast.tooManyPhotos.title"),
         description:
           remainingSlots === 0
-            ? `This location already has the maximum of ${MAX_PHOTOS} photos.`
-            : `You can add ${remainingSlots} more photo(s) (max ${MAX_PHOTOS} per location).`,
+            ? t("rpe.toast.tooManyPhotos.full", { max: MAX_PHOTOS })
+            : t("rpe.toast.tooManyPhotos.some", {
+                n: remainingSlots,
+                max: MAX_PHOTOS,
+              }),
         variant: "destructive",
       });
       return;
@@ -345,8 +351,8 @@ export default function RestaurantProfileEditor({
       const err = validateImageFile(f);
       if (err) {
         toast({
-          title: "Invalid image",
-          description: `${f.name}: ${err}`,
+          title: t("rpe.toast.invalidImage.title"),
+          description: `${f.name}: ${t(err)}`,
           variant: "destructive",
         });
         return;
@@ -366,13 +372,13 @@ export default function RestaurantProfileEditor({
         lastUser = res.user;
       }
       toast({
-        title: "Photos uploaded",
-        description: `${added.length} photo${added.length === 1 ? "" : "s"} added.`,
+        title: t("rpe.toast.photosUploaded.title"),
+        description: t("rpe.toast.photosUploaded.desc", { n: added.length }),
       });
     } catch (e: any) {
       toast({
-        title: "Photo upload failed",
-        description: e?.message || "Please try again.",
+        title: t("rpe.toast.photoFailed.title"),
+        description: e?.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -394,8 +400,8 @@ export default function RestaurantProfileEditor({
     } catch (e: any) {
       setPhotos(prev); // roll back on failure
       toast({
-        title: "Failed to remove photo",
-        description: e?.message || "Please try again.",
+        title: t("rpe.toast.photoRemoveFailed.title"),
+        description: e?.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     }
@@ -416,8 +422,8 @@ export default function RestaurantProfileEditor({
       onMediaChange?.(res.user);
     } catch (e: any) {
       toast({
-        title: "Failed to save alt text",
-        description: e?.message || "Please try again.",
+        title: t("rpe.toast.altFailed.title"),
+        description: e?.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     }
@@ -426,8 +432,8 @@ export default function RestaurantProfileEditor({
   const save = async () => {
     if (!displayName.trim()) {
       toast({
-        title: "Restaurant name required",
-        description: "Give your restaurant a public name.",
+        title: t("rpe.toast.nameRequired.title"),
+        description: t("rpe.toast.nameRequired.desc"),
         variant: "destructive",
       });
       return;
@@ -492,13 +498,13 @@ export default function RestaurantProfileEditor({
       });
       onSaved(res.user);
       toast({
-        title: "Profile saved",
-        description: "Your restaurant profile was updated.",
+        title: t("rpe.toast.profileSaved.title"),
+        description: t("rpe.toast.profileSaved.desc"),
       });
     } catch (err: any) {
       toast({
-        title: "Save failed",
-        description: err?.message || "Please try again.",
+        title: t("rpe.toast.saveFailed.title"),
+        description: err?.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -515,10 +521,10 @@ export default function RestaurantProfileEditor({
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
-            Public Restaurant Profile
+            {t("rpe.overview.title")}
           </CardTitle>
           <CardDescription className={sectionDesc}>
-            This information powers your customer-facing restaurant page.
+            {t("rpe.overview.desc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
@@ -528,59 +534,58 @@ export default function RestaurantProfileEditor({
               Short Address (e.g. "Imperial Group" / "Plaza Indonesia"). */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="displayName">Restaurant Name</Label>
+              <Label htmlFor="displayName">{t("rpe.field.restaurantName")}</Label>
               <Input
                 id="displayName"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Chinese Restaurant"
+                placeholder={t("rpe.field.restaurantName.ph")}
               />
               <p className="text-xs text-muted-foreground">
-                The main name shown on cards and your public page.
+                {t("rpe.field.restaurantName.help")}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="shortAddress">Short Address</Label>
+              <Label htmlFor="shortAddress">{t("rpe.field.shortAddress")}</Label>
               <Input
                 id="shortAddress"
                 value={shortAddress}
                 onChange={(e) => setShortAddress(e.target.value)}
-                placeholder="Plaza Indonesia"
+                placeholder={t("rpe.field.shortAddress.ph")}
               />
               <p className="text-xs text-muted-foreground">
-                The mall, area, or branch shown under the name (e.g. "Plaza
-                Indonesia").
+                {t("rpe.field.shortAddress.help")}
               </p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="tagline">Short Tagline</Label>
+            <Label htmlFor="tagline">{t("rpe.field.tagline")}</Label>
             <Input
               id="tagline"
               value={tagline}
               onChange={(e) => setTagline(e.target.value)}
-              placeholder="Modern Japanese dining in Jakarta"
+              placeholder={t("rpe.field.tagline.ph")}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">About / Description</Label>
+            <Label htmlFor="description">{t("rpe.field.description")}</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              placeholder="A warm dining experience for reservations, queues, and group meals."
+              placeholder={t("rpe.field.description.ph")}
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>Cuisine Type</Label>
+              <Label>{t("rpe.field.cuisine")}</Label>
               <Select value={cuisine} onValueChange={setCuisine}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select Cuisine" />
+                  <SelectValue placeholder={t("rpe.field.cuisine.ph")} />
                 </SelectTrigger>
                 <SelectContent>
                   {CUISINE_OPTIONS.map((c) => (
@@ -592,10 +597,10 @@ export default function RestaurantProfileEditor({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Price Range</Label>
+              <Label>{t("rpe.field.priceRange")}</Label>
               <Select value={priceRange} onValueChange={setPriceRange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Price range" />
+                  <SelectValue placeholder={t("rpe.field.priceRange.ph")} />
                 </SelectTrigger>
                 <SelectContent>
                   {PRICE_RANGE_OPTIONS.map((p) => (
@@ -607,10 +612,10 @@ export default function RestaurantProfileEditor({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Currency</Label>
+              <Label>{t("rpe.field.currency")}</Label>
               <Select value={currency} onValueChange={setCurrency}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Currency" />
+                  <SelectValue placeholder={t("rpe.field.currency.ph")} />
                 </SelectTrigger>
                 <SelectContent>
                   {CURRENCY_OPTIONS.map((c) => (
@@ -631,18 +636,22 @@ export default function RestaurantProfileEditor({
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
-            Opening Hours
+            {t("rpe.hours.title")}
           </CardTitle>
           <CardDescription className={sectionDesc}>
-            Set your timezone and the days/times your restaurant is open.
+            {t("rpe.hours.desc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 p-4 md:p-6 pt-0">
           {/* Timezone — sits before Monday, separated by a divider line. */}
           <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="font-medium text-slate-800">Timezone</p>
-              <p className="text-xs text-muted-foreground">Set your timezone</p>
+              <p className="font-medium text-slate-800">
+                {t("rpe.hours.timezone")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("rpe.hours.timezoneHelp")}
+              </p>
             </div>
             <TimezoneSelect
               value={timezone}
@@ -666,7 +675,7 @@ export default function RestaurantProfileEditor({
                   className="grid grid-cols-2 items-center gap-x-3 gap-y-3 py-2 sm:grid-cols-[7rem_1fr_auto]"
                 >
                   <span className="font-medium capitalize text-slate-800">
-                    {d}
+                    {t(`rpe.day.${d}` as TKey)}
                   </span>
                   <div className="justify-self-end sm:order-3">
                     <Switch
@@ -689,7 +698,7 @@ export default function RestaurantProfileEditor({
                       options={ALL_DAY_TIME_OPTIONS}
                       disabled={!day.enabled}
                       portal={false}
-                      label="From"
+                      label={t("rpe.hours.from")}
                       aria-label={`${d} open time`}
                       className="w-full min-w-0 sm:flex-1"
                     />
@@ -699,13 +708,13 @@ export default function RestaurantProfileEditor({
                       options={ALL_DAY_TIME_OPTIONS}
                       disabled={!day.enabled}
                       portal={false}
-                      label="To"
+                      label={t("rpe.hours.to")}
                       aria-label={`${d} close time`}
                       className="w-full min-w-0 sm:flex-1"
                     />
                     {!day.enabled && (
                       <span className="shrink-0 text-xs font-medium text-slate-400 sm:ml-1">
-                        Closed
+                        {t("rpe.hours.closed")}
                       </span>
                     )}
                   </div>
@@ -723,19 +732,18 @@ export default function RestaurantProfileEditor({
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
-            Reservations
+            {t("rpe.res.title")}
           </CardTitle>
           <CardDescription className={sectionDesc}>
-            Allow customers to book a table in advance.
+            {t("rpe.res.desc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
           <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-4">
             <div>
-              <p className="font-medium text-gray-800">Enable Reservations</p>
+              <p className="font-medium text-gray-800">{t("rpe.res.enable")}</p>
               <p className="text-xs text-muted-foreground">
-                Customers can always join the waitlist; reservations are
-                optional.
+                {t("rpe.res.enableHelp")}
               </p>
             </div>
             <Switch
@@ -746,14 +754,10 @@ export default function RestaurantProfileEditor({
 
           {reservationsEnabled && (
             <div className="space-y-4 border-t border-slate-200 pt-4">
-              <p className={sectionDesc}>
-                Control when and how many guests you accept. Availability is
-                calculated from max number of guests and max reserved guests per
-                hour.
-              </p>
+              <p className={sectionDesc}>{t("rpe.res.controlHelp")}</p>
               {/* Reservation hours */}
               <div className="space-y-2">
-                <Label>Reservation Hours</Label>
+                <Label>{t("rpe.res.hours")}</Label>
                 <div className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3 sm:flex-row sm:items-center">
                   <TimeSelect
                     value={reservationSettings.reservationStartTime}
@@ -764,7 +768,7 @@ export default function RestaurantProfileEditor({
                     className="w-full min-w-0 sm:flex-1"
                   />
                   <span className="shrink-0 text-center text-sm text-slate-400">
-                    to
+                    {t("rpe.res.to")}
                   </span>
                   <TimeSelect
                     value={reservationSettings.reservationEndTime}
@@ -776,14 +780,13 @@ export default function RestaurantProfileEditor({
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Defaults to your operating hours. Customers can only book
-                  within this window.
+                  {t("rpe.res.hoursHelp")}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="maxPartySize">Max Number of Guests</Label>
+                  <Label htmlFor="maxPartySize">{t("rpe.res.maxGuests")}</Label>
                   <Input
                     id="maxPartySize"
                     type="number"
@@ -794,13 +797,11 @@ export default function RestaurantProfileEditor({
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Largest group accepted per reservation (e.g. 8).
+                    {t("rpe.res.maxGuestsHelp")}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="maxPerHour">
-                    Max Reserved Guests Per Hour
-                  </Label>
+                  <Label htmlFor="maxPerHour">{t("rpe.res.maxPerHour")}</Label>
                   <Input
                     id="maxPerHour"
                     type="number"
@@ -813,11 +814,13 @@ export default function RestaurantProfileEditor({
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Total reserved guests allowed in any hour (e.g. 40).
+                    {t("rpe.res.maxPerHourHelp")}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="bookingWindow">Booking Window (Days)</Label>
+                  <Label htmlFor="bookingWindow">
+                    {t("rpe.res.bookingWindow")}
+                  </Label>
                   <Input
                     id="bookingWindow"
                     type="number"
@@ -828,11 +831,11 @@ export default function RestaurantProfileEditor({
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    How far in advance customers can book (e.g. 30).
+                    {t("rpe.res.bookingWindowHelp")}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="minNotice">Minimum Notice (Minutes)</Label>
+                  <Label htmlFor="minNotice">{t("rpe.res.minNotice")}</Label>
                   <Input
                     id="minNotice"
                     type="number"
@@ -843,15 +846,14 @@ export default function RestaurantProfileEditor({
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Customers can't book closer than this to the reservation
-                    time.
+                    {t("rpe.res.minNoticeHelp")}
                   </p>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="cancellationPolicy">
-                  Cancellation Policy / Notes (Optional)
+                  {t("rpe.res.cancellation")}
                 </Label>
                 <Textarea
                   id="cancellationPolicy"
@@ -860,10 +862,10 @@ export default function RestaurantProfileEditor({
                     setRS({ cancellationPolicy: e.target.value })
                   }
                   rows={3}
-                  placeholder="e.g. Please cancel at least 2 hours in advance. Tables are held for 15 minutes."
+                  placeholder={t("rpe.res.cancellation.ph")}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Shown to customers before they confirm a booking.
+                  {t("rpe.res.cancellationHelp")}
                 </p>
               </div>
             </div>
@@ -875,11 +877,10 @@ export default function RestaurantProfileEditor({
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
-            Banner Image
+            {t("rpe.banner.title")}
           </CardTitle>
           <CardDescription className={sectionDesc}>
-            The main hero image at the top of your public page. Use a wide image
-            (around 16:9). JPG, PNG, or WEBP, up to 25MB.
+            {t("rpe.banner.desc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
@@ -905,7 +906,7 @@ export default function RestaurantProfileEditor({
                 {bannerUploading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />{" "}
-                    Uploading...
+                    {t("rpe.banner.uploading")}
                   </div>
                 )}
               </div>
@@ -917,7 +918,7 @@ export default function RestaurantProfileEditor({
                   disabled={bannerUploading}
                   onClick={() => bannerInputRef.current?.click()}
                 >
-                  <Upload size={16} className="mr-2" /> Replace Banner
+                  <Upload size={16} className="mr-2" /> {t("rpe.banner.replace")}
                 </Button>
                 <Button
                   type="button"
@@ -926,7 +927,7 @@ export default function RestaurantProfileEditor({
                   disabled={bannerUploading}
                   onClick={removeBanner}
                 >
-                  <Trash2 size={16} className="mr-2" /> Remove Banner
+                  <Trash2 size={16} className="mr-2" /> {t("rpe.banner.remove")}
                 </Button>
               </div>
             </div>
@@ -940,16 +941,18 @@ export default function RestaurantProfileEditor({
               {bannerUploading ? (
                 <>
                   <Loader2 className="h-7 w-7 animate-spin" />
-                  <span className="text-sm font-medium">Uploading...</span>
+                  <span className="text-sm font-medium">
+                    {t("rpe.banner.uploading")}
+                  </span>
                 </>
               ) : (
                 <>
                   <ImagePlus className="h-7 w-7" />
                   <span className="text-sm font-medium">
-                    Upload a banner image
+                    {t("rpe.banner.upload")}
                   </span>
                   <span className="text-xs text-slate-400">
-                    Wide image recommended (16:9)
+                    {t("rpe.banner.recommend")}
                   </span>
                 </>
               )}
@@ -962,11 +965,10 @@ export default function RestaurantProfileEditor({
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
-            Photos
+            {t("rpe.photos.title")}
           </CardTitle>
           <CardDescription className={sectionDesc}>
-            Gallery images for your public page ({photos.length}/{MAX_PHOTOS}
-            ). JPG, PNG, or WEBP, up to 25MB each.
+            {t("rpe.photos.desc", { n: photos.length, max: MAX_PHOTOS })}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
@@ -982,8 +984,8 @@ export default function RestaurantProfileEditor({
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               {remainingSlots > 0
-                ? `You can add ${remainingSlots} more photo${remainingSlots === 1 ? "" : "s"}.`
-                : `Maximum of ${MAX_PHOTOS} photos reached.`}
+                ? t("rpe.photos.canAdd", { n: remainingSlots })
+                : t("rpe.photos.maxReached", { max: MAX_PHOTOS })}
             </p>
             <Button
               type="button"
@@ -995,11 +997,11 @@ export default function RestaurantProfileEditor({
               {photosUploading ? (
                 <>
                   <Loader2 size={16} className="mr-2 animate-spin" />{" "}
-                  Uploading...
+                  {t("rpe.photos.uploading")}
                 </>
               ) : (
                 <>
-                  <Upload size={16} className="mr-2" /> Upload Photos
+                  <Upload size={16} className="mr-2" /> {t("rpe.photos.upload")}
                 </>
               )}
             </Button>
@@ -1007,7 +1009,7 @@ export default function RestaurantProfileEditor({
 
           {photos.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No photos added yet.
+              {t("rpe.photos.none")}
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -1035,7 +1037,7 @@ export default function RestaurantProfileEditor({
                     value={p.altText || ""}
                     onChange={(e) => setPhotoAltLocal(p.id, e.target.value)}
                     onBlur={(e) => savePhotoAlt(p.id, e.target.value)}
-                    placeholder="Alt text (optional)"
+                    placeholder={t("rpe.photos.altPlaceholder")}
                     className="h-8 rounded-none border-0 border-t text-xs focus-visible:ring-0"
                   />
                 </div>
@@ -1060,35 +1062,35 @@ export default function RestaurantProfileEditor({
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
-            Details
+            {t("rpe.details.title")}
           </CardTitle>
           <CardDescription className={sectionDesc}>
-            Address and contact information shown on your public page.
+            {t("rpe.details.desc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
           <div className="space-y-2">
-            <Label htmlFor="address">Address</Label>
+            <Label htmlFor="address">{t("rpe.details.address")}</Label>
             <Input
               id="address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="12 Senopati St, Jakarta"
+              placeholder={t("rpe.details.address.ph")}
             />
             {/* TODO(location): Add Google Places or maps autocomplete for address search later. */}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="area">Area / Neighborhood</Label>
+              <Label htmlFor="area">{t("rpe.details.area")}</Label>
               <Input
                 id="area"
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
-                placeholder="Senopati, SCBD, PIK, Kemang"
+                placeholder={t("rpe.details.area.ph")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="city">City</Label>
+              <Label htmlFor="city">{t("rpe.details.city")}</Label>
               <Input
                 id="city"
                 value={city}
@@ -1096,7 +1098,7 @@ export default function RestaurantProfileEditor({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="country">Country</Label>
+              <Label htmlFor="country">{t("rpe.details.country")}</Label>
               <Input
                 id="country"
                 value={country}
@@ -1106,7 +1108,7 @@ export default function RestaurantProfileEditor({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="rp-phone">Phone</Label>
+              <Label htmlFor="rp-phone">{t("rpe.details.phone")}</Label>
               <Input
                 id="rp-phone"
                 value={phone}
@@ -1115,7 +1117,7 @@ export default function RestaurantProfileEditor({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
+              <Label htmlFor="website">{t("rpe.details.website")}</Label>
               <Input
                 id="website"
                 value={website}
@@ -1124,7 +1126,7 @@ export default function RestaurantProfileEditor({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="instagram">Instagram</Label>
+              <Label htmlFor="instagram">{t("rpe.details.instagram")}</Label>
               <Input
                 id="instagram"
                 value={instagram}
@@ -1133,7 +1135,7 @@ export default function RestaurantProfileEditor({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="maps">Google Maps URL</Label>
+              <Label htmlFor="maps">{t("rpe.details.maps")}</Label>
               <Input
                 id="maps"
                 value={googleMapsUrl}
@@ -1149,10 +1151,10 @@ export default function RestaurantProfileEditor({
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
-            Restaurant Page Preview
+            {t("rpe.preview.title")}
           </CardTitle>
           <CardDescription className={sectionDesc}>
-            A rough preview of how your public page header may look.
+            {t("rpe.preview.desc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 md:p-6 pt-0">
@@ -1169,28 +1171,28 @@ export default function RestaurantProfileEditor({
               />
             ) : (
               <div className="flex h-44 w-full items-center justify-center bg-gradient-to-br from-indigo-100 to-slate-100 text-slate-400">
-                <ImageIcon className="mr-2 h-6 w-6" /> No banner yet
+                <ImageIcon className="mr-2 h-6 w-6" /> {t("rpe.preview.noBanner")}
               </div>
             )}
             <div className="space-y-2 p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-xl font-semibold text-gray-900">
-                  {displayName || "Your Restaurant"}
+                  {displayName || t("rpe.preview.yourRestaurant")}
                 </h3>
                 {isPublished ? (
                   <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                    Published
+                    {t("rpe.preview.published")}
                   </span>
                 ) : (
                   <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-                    Draft
+                    {t("rpe.preview.draft")}
                   </span>
                 )}
               </div>
               <p className="text-sm text-gray-500">
                 {[cuisine, priceRange, [area, city].filter(Boolean).join(", ")]
                   .filter(Boolean)
-                  .join(" · ") || "Cuisine · Price · Location"}
+                  .join(" · ") || t("rpe.preview.placeholder")}
               </p>
               {address && <p className="text-sm text-gray-600">{address}</p>}
               {description && (
@@ -1207,14 +1209,16 @@ export default function RestaurantProfileEditor({
           <div className="flex items-center gap-3">
             <Switch checked={isPublished} onCheckedChange={setIsPublished} />
             <div>
-              <p className="font-medium text-gray-800">Publish Profile</p>
+              <p className="font-medium text-gray-800">
+                {t("rpe.publish.title")}
+              </p>
               <p className="text-xs text-muted-foreground">
-                When on, your profile is ready for the public page.
+                {t("rpe.publish.help")}
               </p>
             </div>
           </div>
           <Button onClick={save} disabled={saving} className="w-full sm:w-auto">
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? t("rpe.saving") : t("rpe.save")}
           </Button>
         </CardContent>
       </Card>
@@ -1277,6 +1281,7 @@ function MenuSection({
   cardCls: string;
   sectionDesc: string;
 }) {
+  const { t } = useLang();
   // The form is open when `form` is non-null. index === null → adding a new
   // item; index === number → editing the item at that position.
   const [form, setForm] = useState<{
@@ -1300,8 +1305,8 @@ function MenuSection({
     setCsvSuccess(null);
     if (!file.name.toLowerCase().endsWith(".csv")) {
       setCsvError({
-        title: "Invalid CSV Format",
-        detail: "Please choose a file with a .csv extension.",
+        title: t("rpe.csv.invalidFormat.title"),
+        detail: t("rpe.csv.invalidFormat.ext"),
       });
       return;
     }
@@ -1314,10 +1319,8 @@ function MenuSection({
         const missing = REQUIRED_COLUMNS.filter((c) => !fields.includes(c));
         if (missing.length > 0) {
           setCsvError({
-            title: "Invalid CSV Format",
-            detail: `Missing required column(s): ${missing.join(
-              ", ",
-            )}. The CSV must include: name, category, description, price.`,
+            title: t("rpe.csv.invalidFormat.title"),
+            detail: t("rpe.csv.missingCols", { cols: missing.join(", ") }),
           });
           return;
         }
@@ -1342,26 +1345,27 @@ function MenuSection({
         }
         if (imported.length === 0) {
           setCsvError({
-            title: "No Menu Items Found",
+            title: t("rpe.csv.noItems.title"),
             detail:
               skipped > 0
-                ? `${skipped} row(s) were skipped because they have no name.`
-                : "The CSV did not contain any menu items.",
+                ? t("rpe.csv.noItems.skipped", { n: skipped })
+                : t("rpe.csv.noItems.empty"),
           });
           return;
         }
         setMenu((m) => [...m, ...imported]);
         const notes: string[] = [];
-        if (skipped > 0) notes.push(`${skipped} Skipped (No Name)`);
+        if (skipped > 0) notes.push(t("rpe.csv.skippedNote", { n: skipped }));
         if (pricelessRows > 0)
-          notes.push(`${pricelessRows} With An Unreadable Price`);
-        const count = `${imported.length} Menu Item${
-          imported.length === 1 ? "" : "s"
-        } Imported`;
+          notes.push(t("rpe.csv.pricelessNote", { n: pricelessRows }));
+        const count = t(
+          imported.length === 1 ? "rpe.csv.importedOne" : "rpe.csv.importedMany",
+          { n: imported.length },
+        );
         setCsvSuccess(notes.length ? `${count} · ${notes.join(" · ")}` : count);
       },
       error: (err) => {
-        setCsvError({ title: "Could Not Read CSV", detail: err.message });
+        setCsvError({ title: t("rpe.csv.couldNotRead"), detail: err.message });
       },
     });
   };
@@ -1431,18 +1435,20 @@ function MenuSection({
   return (
     <Card className={cardCls}>
       <CardHeader className="p-4 md:p-6">
-        <CardTitle className="text-lg md:text-xl text-gray-800">Menu</CardTitle>
+        <CardTitle className="text-lg md:text-xl text-gray-800">
+          {t("rpe.menu.title")}
+        </CardTitle>
         <CardDescription className={sectionDesc}>
-          Add a few highlight items customers should know about.
+          {t("rpe.menu.desc")}
         </CardDescription>
         <p className="text-xs text-muted-foreground md:text-sm">
-          These items will appear on your public restaurant page.
+          {t("rpe.menu.subdesc")}
         </p>
       </CardHeader>
       <CardContent className="space-y-4 p-4 md:p-6 pt-0">
         {/* Option 1: link to an external/full menu. */}
         <div className="space-y-1.5">
-          <Label htmlFor="menu-url">Menu Link</Label>
+          <Label htmlFor="menu-url">{t("rpe.menu.link")}</Label>
           <Input
             id="menu-url"
             type="url"
@@ -1452,7 +1458,7 @@ function MenuSection({
             onChange={(e) => setMenuUrl(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">
-            Add a full menu link so customers can view it from your page.
+            {t("rpe.menu.linkHelp")}
           </p>
         </div>
 
@@ -1460,7 +1466,7 @@ function MenuSection({
         <div className="flex items-center gap-3 py-1">
           <span className="h-px flex-1 bg-slate-200" />
           <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
-            or add highlight items
+            {t("rpe.menu.orHighlight")}
           </span>
           <span className="h-px flex-1 bg-slate-200" />
         </div>
@@ -1470,10 +1476,10 @@ function MenuSection({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
-                <Upload size={15} /> Upload Menu CSV
+                <Upload size={15} /> {t("rpe.menu.uploadCsv")}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                CSV Must Include: Name, Category, Description, Price
+                {t("rpe.menu.csvInclude")}
               </p>
             </div>
             <input
@@ -1490,7 +1496,7 @@ function MenuSection({
               onClick={() => csvInputRef.current?.click()}
               className="w-full gap-1.5 sm:w-auto"
             >
-              <Upload size={14} /> Choose CSV
+              <Upload size={14} /> {t("rpe.menu.chooseCsv")}
             </Button>
           </div>
           {csvError && (
@@ -1512,7 +1518,7 @@ function MenuSection({
         <div className="flex items-center gap-3 py-1">
           <span className="h-px flex-1 bg-slate-200" />
           <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
-            or add one at a time
+            {t("rpe.menu.orOneAtATime")}
           </span>
           <span className="h-px flex-1 bg-slate-200" />
         </div>
@@ -1521,35 +1527,39 @@ function MenuSection({
         {form && (
           <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 shadow-sm">
             <p className="text-sm font-semibold text-gray-800">
-              {form.index === null ? "Add Menu Item" : "Edit Menu Item"}
+              {form.index === null
+                ? t("rpe.menu.addItem")
+                : t("rpe.menu.editItem")}
             </p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="menu-name">Item name</Label>
+                <Label htmlFor="menu-name">{t("rpe.menu.itemName")}</Label>
                 <Input
                   id="menu-name"
-                  placeholder="e.g. Pad Thai"
+                  placeholder={t("rpe.menu.itemName.ph")}
                   value={form.draft.name}
                   onChange={(e) => setDraft({ name: e.target.value })}
                   autoFocus
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="menu-category">Category</Label>
+                <Label htmlFor="menu-category">{t("rpe.menu.category")}</Label>
                 <Input
                   id="menu-category"
-                  placeholder="e.g. Mains, Drinks, Desserts"
+                  placeholder={t("rpe.menu.category.ph")}
                   value={form.draft.category || ""}
                   onChange={(e) => setDraft({ category: e.target.value })}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="menu-price">Price ({currency})</Label>
+                <Label htmlFor="menu-price">
+                  {t("rpe.menu.price", { currency })}
+                </Label>
                 <Input
                   id="menu-price"
                   type="number"
                   inputMode="decimal"
-                  placeholder="e.g. 50000"
+                  placeholder={t("rpe.menu.price.ph")}
                   value={form.draft.price ?? ""}
                   onChange={(e) =>
                     setDraft({
@@ -1563,10 +1573,12 @@ function MenuSection({
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="menu-description">Description</Label>
+              <Label htmlFor="menu-description">
+                {t("rpe.menu.description")}
+              </Label>
               <Textarea
                 id="menu-description"
-                placeholder="A short description (optional)"
+                placeholder={t("rpe.menu.description.ph")}
                 rows={2}
                 value={form.draft.description || ""}
                 onChange={(e) => setDraft({ description: e.target.value })}
@@ -1579,7 +1591,7 @@ function MenuSection({
                 onClick={cancel}
                 className="w-full sm:w-auto"
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button
                 type="button"
@@ -1587,7 +1599,7 @@ function MenuSection({
                 disabled={!form.draft.name.trim()}
                 className="w-full sm:w-auto"
               >
-                Save Item
+                {t("rpe.menu.saveItem")}
               </Button>
             </div>
           </div>
@@ -1597,7 +1609,7 @@ function MenuSection({
         {menu.length === 0 && !form && (
           <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
             <p className="text-sm text-muted-foreground">
-              No menu items yet. Add your first highlight item.
+              {t("rpe.menu.empty")}
             </p>
           </div>
         )}
@@ -1648,7 +1660,7 @@ function MenuSection({
                         onClick={() => openEdit(index)}
                         className="flex-1 gap-1.5 sm:flex-none"
                       >
-                        <Pencil size={14} /> Edit
+                        <Pencil size={14} /> {t("rpe.menu.edit")}
                       </Button>
                       <Button
                         type="button"
@@ -1657,7 +1669,7 @@ function MenuSection({
                         onClick={() => remove(index)}
                         className="flex-1 gap-1.5 sm:flex-none"
                       >
-                        <Trash2 size={14} /> Delete
+                        <Trash2 size={14} /> {t("rpe.menu.delete")}
                       </Button>
                     </div>
                   </div>
@@ -1675,18 +1687,18 @@ function MenuSection({
               onClick={openAdd}
               className="w-full sm:w-auto"
             >
-              <Plus size={16} className="mr-2" /> Add Menu Item
+              <Plus size={16} className="mr-2" /> {t("rpe.menu.addItem")}
             </Button>
             {menu.length > 0 && (
               <ConfirmModal
-                title="Clear Menu?"
-                description={`This will remove ${menu.length} menu item${menu.length === 1 ? "" : "s"} from this location. This action cannot be undone.`}
-                helperText="You can upload a new CSV or add menu items again after clearing."
-                cancelText="Cancel"
-                confirmText="Clear Menu"
-                loadingText="Clearing..."
-                successMessage="Menu cleared successfully."
-                errorMessage="Failed to clear menu. Please try again."
+                title={t("rpe.menu.clearTitle")}
+                description={t("rpe.menu.clearDesc", { n: menu.length })}
+                helperText={t("rpe.menu.clearHelper")}
+                cancelText={t("common.cancel")}
+                confirmText={t("rpe.menu.clear")}
+                loadingText={t("rpe.menu.clearing")}
+                successMessage={t("rpe.menu.clearSuccess")}
+                errorMessage={t("rpe.menu.clearError")}
                 onConfirm={async () => {
                   // Simulate a short delay to show the "Clearing..." state
                   await new Promise((resolve) => setTimeout(resolve, 600));
@@ -1694,7 +1706,7 @@ function MenuSection({
                 }}
                 trigger={
                   <Button type="button" variant="destructiveOutline" className="w-full sm:w-auto">
-                    <Trash2 size={16} className="mr-2" /> Clear Menu
+                    <Trash2 size={16} className="mr-2" /> {t("rpe.menu.clear")}
                   </Button>
                 }
               />

@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PILL_BASE_CLASS } from "@/lib/statusStyles";
+import { useLang } from "@/lib/i18n";
 import { X } from "lucide-react";
 
 // Shared Guest CRM badge styling so the dashboard "Returning"/"New" chips and
@@ -34,6 +35,8 @@ export function GuestStatusBadge({
   returning: boolean;
   className?: string;
 }) {
+  // Business-only badge; useLang falls back to English outside a provider.
+  const { t } = useLang();
   return (
     <Badge
       variant="outline"
@@ -45,7 +48,7 @@ export function GuestStatusBadge({
         className,
       )}
     >
-      {returning ? "Returning" : "New"}
+      {returning ? t("badge.returning") : t("badge.new")}
     </Badge>
   );
 }

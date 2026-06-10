@@ -1,0 +1,1306 @@
+// src/lib/i18n.tsx
+//
+// Lightweight i18n for the BUSINESS OPERATOR area only (/business/dashboard,
+// /business/guests, /business/settings). Customer-facing pages are intentionally
+// untouched. There is no heavy dependency: a typed dictionary + a React context
+// that holds the current language and persists it to the backend.
+//
+// Usage:
+//   const { t, lang, setLang } = useLang();
+//   <h1>{t("settings.title")}</h1>
+//   <p>{t("guests.atLocation", { label })}</p>
+//
+// Missing Indonesian strings fall back to English automatically; an unknown key
+// falls back to the key itself so nothing ever renders blank.
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { api } from "@/lib/api";
+
+export type Lang = "en" | "id";
+
+const STORAGE_KEY = "seatping.business.lang";
+
+// ---------------------------------------------------------------------------
+// English dictionary — the single source of truth. Every key the UI can ask for
+// lives here; `id` below only needs to override the ones that differ.
+// ---------------------------------------------------------------------------
+const en = {
+  // Header / nav
+  "nav.dashboard": "Dashboard",
+  "nav.guests": "Guests",
+  "nav.settings": "Settings",
+  "nav.logout": "Log Out",
+  "nav.openMenu": "Open menu",
+
+  // Shared
+  "common.refresh": "Refresh",
+  "common.tryAgain": "Try Again",
+  "common.somethingWrong": "Something Went Wrong",
+  "common.somethingWentWrong": "Something went wrong",
+  "common.pleaseTryAgain": "Please try again.",
+  "common.view": "View",
+  "common.cancel": "Cancel",
+  "common.contactSeatPing": "Contact SeatPing",
+
+  // Banners (trial + credits)
+  "banner.trialExpired.title": "Trial Expired",
+  "banner.trialExpired.body":
+    "Your free trial has ended. Please contact SeatPing to continue using your business dashboard.",
+  "banner.trialActive.title": "You're on a Free Trial!",
+  "banner.trialActive.body":
+    "Contact SeatPing when you're ready to activate your account.",
+  "banner.trialActive.countdown":
+    "Trial expires in: {days}d {hours}h {minutes}m",
+  "banner.trialExpiredShort.title": "Your trial has expired",
+  "banner.trialExpiredShort.body":
+    "Please contact SeatPing to continue using your business dashboard.",
+  "banner.noCredits.title": "⚠️ No Credits Available",
+  "banner.noCredits.body":
+    "You have no credits available. Please contact SeatPing to top up credits or adjust your account.",
+
+  // Settings page
+  "settings.title": "Settings",
+  "settings.subtitle": "Manage your business information and locations.",
+  "settings.businessInfo.title": "Business Information",
+  "settings.businessInfo.desc":
+    "Your business details and account information",
+  "settings.field.businessName": "Business Name",
+  "settings.field.username": "Username",
+  "settings.field.email": "Email",
+  "settings.field.phone": "Phone Number",
+  "settings.prefs.title": "Preferences",
+  "settings.prefs.desc":
+    "Customize how the operator dashboard works for you",
+  "settings.language.label": "Language",
+  "settings.language.desc":
+    "Choose the language for your dashboard, guests, and settings pages.",
+  "settings.language.saved": "Language updated",
+  "settings.language.saveError": "Could not update language",
+
+  // Location management
+  "loc.title": "Location Management",
+  "loc.desc":
+    "Add and manage your business locations ({count}/{max} {locWord} used)",
+  "loc.location": "location",
+  "loc.locations": "locations",
+  "loc.addNew": "Add New Location",
+  "loc.addBtn": "Add Location",
+  "loc.displayName": "Location Display Name",
+  "loc.displayName.placeholder": "Senopati, PIK, SCBD, or Main Branch",
+  "loc.displayName.help":
+    "This is the short location name customers will see when joining a queue or booking a table.",
+  "loc.searchAddress": "Search Address",
+  "loc.searchAddress.placeholder": "Search for your business address",
+  "loc.atMax":
+    "You have reached the maximum number of locations for your account.",
+  "loc.current": "Current Locations",
+  "loc.none": "No locations added yet.",
+  "loc.none.help": "Add your first location above to get started.",
+  "loc.credits": "Credits: {n}",
+  "loc.addDisplayNameHint":
+    "Add a Location Display Name so customers see a friendly name.",
+  "loc.unnamed": "Unnamed location",
+  "loc.hideFullAddress": "Hide Full Address",
+  "loc.viewFullAddress": "View Full Address",
+  "loc.viewOnMaps": "View on Maps",
+  "loc.editProfile": "Edit Restaurant Profile",
+  "loc.viewReviews": "View Reviews",
+  "loc.qrCode": "QR Code",
+  "loc.removeLocation": "Remove Location",
+  "loc.remove.confirmBody":
+    'Are you sure you want to remove "{name}"? This action cannot be undone and will remove all customers from the queue at this location.',
+  "loc.qrModal.title": "Location QR Code",
+  "loc.qrModal.generating": "Generating…",
+  "loc.qrModal.queueLink": "Queue Link",
+  "loc.qrModal.help":
+    "Customers who scan this code join the queue for this location automatically.",
+  "loc.qrModal.copyLink": "Copy Link",
+  "loc.qrModal.downloadQr": "Download QR Code",
+  // Location toasts
+  "loc.toast.displayNameRequired.title": "Location Display Name required",
+  "loc.toast.displayNameRequired.desc":
+    "Enter the short name customers will see.",
+  "loc.toast.addressRequired.title": "Address required",
+  "loc.toast.addressRequired.desc":
+    "Search for or type your location address.",
+  "loc.toast.limitReached.title": "Limit reached",
+  "loc.toast.limitReached.desc":
+    "You have reached the maximum locations ({max}).",
+  "loc.toast.savedNoMap.title": "Saved without map data",
+  "loc.toast.savedNoMap.desc":
+    "We couldn't capture coordinates for this address. Re-search it later to enable maps features.",
+  "loc.toast.added.title": "Location added",
+  "loc.toast.added.desc": "New location has been added successfully.",
+  "loc.toast.addFailed.title": "Failed to add location",
+  "loc.toast.removed.title": "Location removed",
+  "loc.toast.removed.desc": "Location has been removed successfully.",
+  "loc.toast.removeFailed.title": "Failed to remove location",
+  "loc.toast.qrError.title": "Error",
+  "loc.toast.qrError.desc": "Failed to generate QR code. Please try again.",
+  "loc.toast.linkCopied.title": "Link copied",
+  "loc.toast.linkCopied.desc":
+    "The queue link has been copied to your clipboard.",
+  "loc.toast.copyFailed.title": "Couldn't copy link",
+  "loc.toast.copyFailed.desc": "Copy the link manually from the box above.",
+
+  // Guests page
+  "guests.title": "Guests",
+  "guests.subtitle":
+    "Manage guest profiles, visit history, tags, and notes from reservations and waitlists.",
+  "guests.noLocations": "No Locations",
+  "guests.search.placeholder": "Search Name, Phone, Email, Or Tag",
+  "guests.filters": "Filters",
+  "guests.status": "Status",
+  "guests.filter.all": "All",
+  "guests.filter.new": "New",
+  "guests.filter.returning": "Returning",
+  "guests.showOnly": "Show Only",
+  "guests.filter.hasUpcoming": "Has Upcoming Reservations",
+  "guests.filter.hasNotes": "Has Notes",
+  "guests.filter.noShowHistory": "No-Show History",
+  "guests.tags": "Tags",
+  "guests.clearFilters": "Clear Filters",
+  "guests.atLocation": "Guests At {label}",
+  "guests.heading": "Guests",
+  "guests.countOne": "{n} Guest",
+  "guests.countMany": "{n} Guests",
+  "guests.export": "Export",
+  "guests.empty.noLocations.title": "No Locations Yet",
+  "guests.empty.noLocations.body":
+    "Add a location to start tracking guests from reservations and waitlist joins.",
+  "guests.empty.noMatch.title": "No Guests Match Your Filters",
+  "guests.empty.noMatch.body": "Try clearing your search or filters.",
+  "guests.empty.none.title": "No Guests Yet",
+  "guests.empty.none.body":
+    "Guests appear here automatically after someone joins your waitlist or books a reservation.",
+  "guests.col.guest": "Guest",
+  "guests.col.contact": "Contact",
+  "guests.col.tags": "Tags",
+  "guests.col.totalVisits": "Total Visits",
+  "guests.col.lastVisit": "Last Visit",
+  "guests.col.upcoming": "Upcoming",
+  "guests.col.notes": "Notes",
+  "guests.col.actions": "Actions",
+  "guests.noShowCountOne": "{n} No-Show",
+  "guests.noShowCountMany": "{n} No-Shows",
+  "guests.visitsWord": "Visits",
+  "guests.lastLabel": "Last",
+  "guests.upcomingCount": "{n} Upcoming",
+  "guests.defaultName": "Guest",
+  // Detail drawer
+  "guests.noPhone": "No Phone",
+  "guests.noEmail": "No Email",
+  "guests.firstVisit": "First Visit",
+  "guests.lastVisit": "Last Visit",
+  "guests.stat.totalVisits": "Total Visits",
+  "guests.stat.waitlist": "Waitlist",
+  "guests.stat.upcoming": "Upcoming",
+  "guests.stat.pastRes": "Past Res.",
+  "guests.stat.noShows": "No-Shows",
+  "guests.stat.cancelled": "Cancelled",
+  "guests.summary": "Summary",
+  "guests.summary.empty":
+    "New guest. More history will appear after future visits.",
+  "guests.noTags": "No Tags Yet",
+  "guests.addTag.placeholder": "Add A Tag",
+  "guests.internalNotes": "Internal Notes",
+  "guests.notes.placeholder":
+    "Private notes about this guest (only your team can see these).",
+  "guests.saveNotes": "Save Notes",
+  "guests.saving": "Saving...",
+  "guests.upcomingReservations": "Upcoming Reservations",
+  "guests.visitHistory": "Visit History",
+  "guests.noVisitHistory": "No visit history yet.",
+  "guests.nothingHere": "Nothing here yet.",
+  "guests.source.waitlist": "Waitlist",
+  "guests.source.reservation": "Reservation",
+  "guests.guestOne": "{n} Guest",
+  "guests.guestMany": "{n} Guests",
+  "guests.loading": "Loading...",
+  // Guests toasts
+  "guests.toast.notesSaved": "Notes saved",
+  "guests.toast.notesError": "Could not save notes",
+  "guests.toast.tagAddError": "Could not add tag",
+  "guests.toast.tagRemoveError": "Could not remove tag",
+
+  // Dashboard
+  "dash.hello": "Hello {name}!",
+  "dash.ownerFallback": "Business Owner",
+  "dash.dailyStat": "Here is your daily statistic",
+  "dash.credits": "Credits",
+  "dash.creditsPill": "Credits: {n}",
+  "dash.noLocations": "No locations",
+  "dash.todaysSummary": "Today's Summary",
+  "dash.stat.currentQueue": "Current Queue",
+  "dash.stat.reservationsToday": "Reservations Today",
+  "dash.stat.avgQueueWait": "Avg Queue Wait",
+  "dash.stat.avgQueueWaitTime": "Avg Queue Wait Time",
+  "dash.stat.servedToday": "Served Today",
+  "dash.stat.leftToday": "Left Today",
+  "dash.queue.title": "Queue Management",
+  "dash.queue.managingFor": "Managing queue for: {label}",
+  "dash.queue.noLocationSelected": "No Location Selected",
+  "dash.queue.customerOne": "{n} customer",
+  "dash.queue.customerMany": "{n} customers",
+  "dash.queue.empty": "No customers in queue at this location.",
+  "dash.queue.joined": "Joined: {time}",
+  "dash.guestOne": "{n} Guest",
+  "dash.guestMany": "{n} Guests",
+  "dash.queue.estimatedWait": "Estimated Wait: {text}",
+  "dash.admit": "Admit",
+  "dash.remove": "Remove",
+  "dash.justNow": "Just Now",
+  "dash.minAgo": "{n}m ago",
+  "dash.hourMinAgo": "{h}h {m}m ago",
+  "dash.awaiting.title": "Awaiting Arrival Confirmation",
+  "dash.awaiting.desc":
+    "Confirm arrivals for customers admitted in the last 5 minutes",
+  "dash.admitted": "Admitted: {time}",
+  "dash.timeExpired": "Time Expired",
+  "dash.arrived": "Arrived",
+  "dash.noShow": "No Show",
+  "dash.left.title": "Recently Left Customers",
+  "dash.left.desc": "Customers who have left the queue recently",
+  "dash.left.empty": "No customers have left recently.",
+  "dash.left.left": "Left",
+  "dash.left.removed": "Removed",
+  "dash.left.leftQueue": "Left Queue",
+  "dash.left.removedByBusiness": "Removed by Business",
+  "dash.perf.title": "Performance Summary",
+  "dash.perf.desc": "Track customers served, wait times, and no-shows",
+  "dash.daily": "Daily",
+  "dash.weekly": "Weekly",
+  "dash.weekOf": "Week of {date}",
+  "dash.legend.served": "Customers Served",
+  "dash.legend.avgWait": "Avg Wait Time (min)",
+  "dash.legend.noShows": "No-Shows",
+  "dash.noData":
+    "No data available yet. Start serving customers to see analytics!",
+  "dash.peak.title": "Peak Hours",
+  "dash.peak.desc": "When does your business get the most traffic?",
+  "dash.peak.legend": "Customers",
+  "dash.peak.noData": "No peak hour data available yet",
+  "dash.waitDist.title": "Wait Time Distribution",
+  "dash.waitDist.desc": "How efficient is your service?",
+  "dash.waitDist.legend": "Customers",
+  "dash.waitDist.noData": "No wait time data available yet",
+  "dash.bucket.0to5": "0-5 mins",
+  "dash.bucket.5to10": "5-10 mins",
+  "dash.bucket.10to15": "10-15 mins",
+  "dash.bucket.15to30": "15-30 mins",
+  "dash.bucket.30plus": "30+ mins",
+  // Dashboard toasts
+  "dash.toast.queueRefreshed.title": "Queue refreshed",
+  "dash.toast.queueRefreshed.desc": "Queue data has been updated.",
+  "dash.toast.refreshFailed.title": "Failed to refresh",
+  "dash.toast.admitted.title": "Customer admitted",
+  "dash.toast.admitted.desc":
+    "{name} has been admitted and will proceed to their turn.",
+  "dash.toast.admitFailed.title": "Failed to admit customer",
+  "dash.toast.removed.title": "Customer removed",
+  "dash.toast.removed.desc": "{name} has been removed from the queue.",
+  "dash.toast.removeFailed.title": "Failed to remove customer",
+  "dash.toast.arrivalConfirmed.title": "Arrival confirmed",
+  "dash.toast.arrivalConfirmed.desc": "{name} has been marked as arrived.",
+  "dash.toast.confirmFailed.title": "Failed to confirm arrival",
+  "dash.toast.noShow.title": "Marked as no-show",
+  "dash.toast.noShow.desc": "{name} has been marked as a no-show.",
+  "dash.toast.noShowFailed.title": "Failed to mark no-show",
+
+  // Reservations manager
+  "res.title": "Reservations Management",
+  "res.noLocationSelected": "No Location Selected",
+  "res.bookingsFor": "Bookings for: {label}",
+  "res.disabled": "Reservations are disabled for this location.",
+  "res.tab.today": "Today",
+  "res.tab.upcoming": "Upcoming",
+  "res.tab.past": "Past",
+  "res.tab.cancelled": "Cancelled",
+  "res.tab.noShows": "No-Shows",
+  "res.enableHint":
+    "Enable reservations in Settings to start accepting bookings.",
+  "res.empty": "No reservations here.",
+  "res.viewLess": "View Less",
+  "res.viewAll": "View All ({n})",
+  "res.action.confirm": "Confirm",
+  "res.action.cancel": "Cancel",
+  "res.action.markArrived": "Mark Arrived",
+  "res.action.noShow": "No-Show",
+  "res.action.markCompleted": "Mark Completed",
+  "res.toast.updated.title": "Reservation updated",
+  "res.toast.updated.desc": "{name} marked {status}.",
+  "res.toast.updateFailed.title": "Update failed",
+
+  // Status labels (shared)
+  "status.pending": "Pending",
+  "status.confirmed": "Confirmed",
+  "status.arrived": "Arrived",
+  "status.admitted": "Admitted",
+  "status.completed": "Completed",
+  "status.served": "Served",
+  "status.cancelled": "Cancelled",
+  "status.no_show": "No-Show",
+  "status.waiting": "Waiting",
+  "status.removed": "Removed",
+  "status.left": "Left Queue",
+  "status.past": "Past",
+  "status.reservation": "Reservation",
+  "status.queue": "Queue",
+
+  // Guest New/Returning badge
+  "badge.returning": "Returning",
+  "badge.new": "New",
+
+  // Restaurant profile editor (Edit Restaurant Profile modal)
+  "rpe.toast.invalidImage.title": "Invalid image",
+  "rpe.err.imageType": "Only JPG, PNG, and WEBP images are allowed.",
+  "rpe.err.imageSize": "Each image must be 25MB or smaller.",
+  "rpe.toast.bannerUpdated.title": "Banner updated",
+  "rpe.toast.bannerUpdated.desc": "Your banner image was uploaded.",
+  "rpe.toast.bannerFailed.title": "Banner upload failed",
+  "rpe.toast.bannerRemoved.title": "Banner removed",
+  "rpe.toast.bannerRemoveFailed.title": "Failed to remove banner",
+  "rpe.toast.tooManyPhotos.title": "Too many photos",
+  "rpe.toast.tooManyPhotos.full":
+    "This location already has the maximum of {max} photos.",
+  "rpe.toast.tooManyPhotos.some":
+    "You can add {n} more photo(s) (max {max} per location).",
+  "rpe.toast.photosUploaded.title": "Photos uploaded",
+  "rpe.toast.photosUploaded.desc": "{n} photo(s) added.",
+  "rpe.toast.photoFailed.title": "Photo upload failed",
+  "rpe.toast.photoRemoveFailed.title": "Failed to remove photo",
+  "rpe.toast.altFailed.title": "Failed to save alt text",
+  "rpe.toast.nameRequired.title": "Restaurant name required",
+  "rpe.toast.nameRequired.desc": "Give your restaurant a public name.",
+  "rpe.toast.profileSaved.title": "Profile saved",
+  "rpe.toast.profileSaved.desc": "Your restaurant profile was updated.",
+  "rpe.toast.saveFailed.title": "Save failed",
+  "rpe.overview.title": "Public Restaurant Profile",
+  "rpe.overview.desc":
+    "This information powers your customer-facing restaurant page.",
+  "rpe.field.restaurantName": "Restaurant Name",
+  "rpe.field.restaurantName.ph": "Chinese Restaurant",
+  "rpe.field.restaurantName.help":
+    "The main name shown on cards and your public page.",
+  "rpe.field.shortAddress": "Short Address",
+  "rpe.field.shortAddress.ph": "Plaza Indonesia",
+  "rpe.field.shortAddress.help":
+    'The mall, area, or branch shown under the name (e.g. "Plaza Indonesia").',
+  "rpe.field.tagline": "Short Tagline",
+  "rpe.field.tagline.ph": "Modern Japanese dining in Jakarta",
+  "rpe.field.description": "About / Description",
+  "rpe.field.description.ph":
+    "A warm dining experience for reservations, queues, and group meals.",
+  "rpe.field.cuisine": "Cuisine Type",
+  "rpe.field.cuisine.ph": "Select Cuisine",
+  "rpe.field.priceRange": "Price Range",
+  "rpe.field.priceRange.ph": "Price range",
+  "rpe.field.currency": "Currency",
+  "rpe.field.currency.ph": "Currency",
+  "rpe.hours.title": "Opening Hours",
+  "rpe.hours.desc":
+    "Set your timezone and the days/times your restaurant is open.",
+  "rpe.hours.timezone": "Timezone",
+  "rpe.hours.timezoneHelp": "Set your timezone",
+  "rpe.hours.from": "From",
+  "rpe.hours.to": "To",
+  "rpe.hours.closed": "Closed",
+  "rpe.day.monday": "Monday",
+  "rpe.day.tuesday": "Tuesday",
+  "rpe.day.wednesday": "Wednesday",
+  "rpe.day.thursday": "Thursday",
+  "rpe.day.friday": "Friday",
+  "rpe.day.saturday": "Saturday",
+  "rpe.day.sunday": "Sunday",
+  "rpe.res.title": "Reservations",
+  "rpe.res.desc": "Allow customers to book a table in advance.",
+  "rpe.res.enable": "Enable Reservations",
+  "rpe.res.enableHelp":
+    "Customers can always join the waitlist; reservations are optional.",
+  "rpe.res.controlHelp":
+    "Control when and how many guests you accept. Availability is calculated from max number of guests and max reserved guests per hour.",
+  "rpe.res.hours": "Reservation Hours",
+  "rpe.res.to": "to",
+  "rpe.res.hoursHelp":
+    "Defaults to your operating hours. Customers can only book within this window.",
+  "rpe.res.maxGuests": "Max Number of Guests",
+  "rpe.res.maxGuestsHelp": "Largest group accepted per reservation (e.g. 8).",
+  "rpe.res.maxPerHour": "Max Reserved Guests Per Hour",
+  "rpe.res.maxPerHourHelp":
+    "Total reserved guests allowed in any hour (e.g. 40).",
+  "rpe.res.bookingWindow": "Booking Window (Days)",
+  "rpe.res.bookingWindowHelp":
+    "How far in advance customers can book (e.g. 30).",
+  "rpe.res.minNotice": "Minimum Notice (Minutes)",
+  "rpe.res.minNoticeHelp":
+    "Customers can't book closer than this to the reservation time.",
+  "rpe.res.cancellation": "Cancellation Policy / Notes (Optional)",
+  "rpe.res.cancellation.ph":
+    "e.g. Please cancel at least 2 hours in advance. Tables are held for 15 minutes.",
+  "rpe.res.cancellationHelp":
+    "Shown to customers before they confirm a booking.",
+  "rpe.banner.title": "Banner Image",
+  "rpe.banner.desc":
+    "The main hero image at the top of your public page. Use a wide image (around 16:9). JPG, PNG, or WEBP, up to 25MB.",
+  "rpe.banner.uploading": "Uploading...",
+  "rpe.banner.replace": "Replace Banner",
+  "rpe.banner.remove": "Remove Banner",
+  "rpe.banner.upload": "Upload a banner image",
+  "rpe.banner.recommend": "Wide image recommended (16:9)",
+  "rpe.photos.title": "Photos",
+  "rpe.photos.desc":
+    "Gallery images for your public page ({n}/{max}). JPG, PNG, or WEBP, up to 25MB each.",
+  "rpe.photos.canAdd": "You can add {n} more photo(s).",
+  "rpe.photos.maxReached": "Maximum of {max} photos reached.",
+  "rpe.photos.upload": "Upload Photos",
+  "rpe.photos.uploading": "Uploading...",
+  "rpe.photos.none": "No photos added yet.",
+  "rpe.photos.altPlaceholder": "Alt text (optional)",
+  "rpe.menu.title": "Menu",
+  "rpe.menu.desc": "Add a few highlight items customers should know about.",
+  "rpe.menu.subdesc": "These items will appear on your public restaurant page.",
+  "rpe.menu.link": "Menu Link",
+  "rpe.menu.linkHelp":
+    "Add a full menu link so customers can view it from your page.",
+  "rpe.menu.orHighlight": "or add highlight items",
+  "rpe.menu.uploadCsv": "Upload Menu CSV",
+  "rpe.menu.csvInclude": "CSV Must Include: Name, Category, Description, Price",
+  "rpe.menu.chooseCsv": "Choose CSV",
+  "rpe.menu.orOneAtATime": "or add one at a time",
+  "rpe.menu.addItem": "Add Menu Item",
+  "rpe.menu.editItem": "Edit Menu Item",
+  "rpe.menu.itemName": "Item name",
+  "rpe.menu.itemName.ph": "e.g. Pad Thai",
+  "rpe.menu.category": "Category",
+  "rpe.menu.category.ph": "e.g. Mains, Drinks, Desserts",
+  "rpe.menu.price": "Price ({currency})",
+  "rpe.menu.price.ph": "e.g. 50000",
+  "rpe.menu.description": "Description",
+  "rpe.menu.description.ph": "A short description (optional)",
+  "rpe.menu.saveItem": "Save Item",
+  "rpe.menu.empty": "No menu items yet. Add your first highlight item.",
+  "rpe.menu.edit": "Edit",
+  "rpe.menu.delete": "Delete",
+  "rpe.menu.clearTitle": "Clear Menu?",
+  "rpe.menu.clearDesc":
+    "This will remove {n} menu item(s) from this location. This action cannot be undone.",
+  "rpe.menu.clearHelper":
+    "You can upload a new CSV or add menu items again after clearing.",
+  "rpe.menu.clear": "Clear Menu",
+  "rpe.menu.clearing": "Clearing...",
+  "rpe.menu.clearSuccess": "Menu cleared successfully.",
+  "rpe.menu.clearError": "Failed to clear menu. Please try again.",
+  "rpe.csv.invalidFormat.title": "Invalid CSV Format",
+  "rpe.csv.invalidFormat.ext": "Please choose a file with a .csv extension.",
+  "rpe.csv.missingCols":
+    "Missing required column(s): {cols}. The CSV must include: name, category, description, price.",
+  "rpe.csv.noItems.title": "No Menu Items Found",
+  "rpe.csv.noItems.skipped":
+    "{n} row(s) were skipped because they have no name.",
+  "rpe.csv.noItems.empty": "The CSV did not contain any menu items.",
+  "rpe.csv.couldNotRead": "Could Not Read CSV",
+  "rpe.csv.skippedNote": "{n} Skipped (No Name)",
+  "rpe.csv.pricelessNote": "{n} With An Unreadable Price",
+  "rpe.csv.importedOne": "{n} Menu Item Imported",
+  "rpe.csv.importedMany": "{n} Menu Items Imported",
+  "rpe.details.title": "Details",
+  "rpe.details.desc":
+    "Address and contact information shown on your public page.",
+  "rpe.details.address": "Address",
+  "rpe.details.address.ph": "12 Senopati St, Jakarta",
+  "rpe.details.area": "Area / Neighborhood",
+  "rpe.details.area.ph": "Senopati, SCBD, PIK, Kemang",
+  "rpe.details.city": "City",
+  "rpe.details.country": "Country",
+  "rpe.details.phone": "Phone",
+  "rpe.details.website": "Website",
+  "rpe.details.instagram": "Instagram",
+  "rpe.details.maps": "Google Maps URL",
+  "rpe.preview.title": "Restaurant Page Preview",
+  "rpe.preview.desc": "A rough preview of how your public page header may look.",
+  "rpe.preview.noBanner": "No banner yet",
+  "rpe.preview.yourRestaurant": "Your Restaurant",
+  "rpe.preview.published": "Published",
+  "rpe.preview.draft": "Draft",
+  "rpe.preview.placeholder": "Cuisine · Price · Location",
+  "rpe.publish.title": "Publish Profile",
+  "rpe.publish.help": "When on, your profile is ready for the public page.",
+  "rpe.save": "Save Changes",
+  "rpe.saving": "Saving...",
+
+  // Customer reviews (View Reviews modal)
+  "rev.title": "Customer Reviews",
+  "rev.subtitle": "Reviews for {name}",
+  "rev.thisLocation": "this location",
+  "rev.countOne": "{n} Review",
+  "rev.countMany": "{n} Reviews",
+  "rev.filter.ratingAria": "Filter by rating",
+  "rev.filter.allRatings": "All Ratings",
+  "rev.filter.stars": "{n} Stars",
+  "rev.filter.star1": "1 Star",
+  "rev.filter.replyAria": "Filter by reply status",
+  "rev.filter.allReplies": "All Replies",
+  "rev.filter.replied": "Replied",
+  "rev.filter.unreplied": "Unreplied",
+  "rev.sort.aria": "Sort reviews",
+  "rev.sort.newest": "Newest First",
+  "rev.sort.oldest": "Oldest First",
+  "rev.sort.highest": "Highest Rating",
+  "rev.sort.lowest": "Lowest Rating",
+  "rev.sort.unrepliedFirst": "Unreplied First",
+  "rev.loading": "Loading reviews...",
+  "rev.failedLoad": "Failed to load reviews.",
+  "rev.empty.title": "No Reviews Yet.",
+  "rev.empty.body":
+    "Customer reviews will appear here once customers submit feedback.",
+  "rev.noMatch": "No reviews match these filters.",
+  "rev.anonymous": "Anonymous",
+  "rev.partyOf": "Party of {n}",
+  "rev.walkIn": "Walk-in",
+  "rev.reservation": "Reservation",
+  "rev.yourReply": "Your reply",
+  "rev.editReply": "Edit Reply",
+  "rev.delete": "Delete",
+  "rev.deleteTitle": "Delete this reply?",
+  "rev.deleteDesc":
+    "The customer's review will stay — only your response is removed.",
+  "rev.deleteReply": "Delete reply",
+  "rev.repliedOn": "Replied {date}",
+  "rev.edited": "Edited {date}",
+  "rev.editYourReply": "Edit your reply",
+  "rev.replyToThis": "Reply to this review",
+  "rev.replyPlaceholder": "Thank you for visiting us...",
+  "rev.saveReply": "Save Reply",
+  "rev.postReply": "Post Reply",
+  "rev.reply": "Reply",
+  "rev.saving": "Saving...",
+  "rev.loadMore": "Load More Reviews",
+  "rev.showing": "Showing {shown} of {total}",
+  "rev.filteredFrom": " (filtered from {total})",
+  "rev.toast.replyUpdated": "Reply updated",
+  "rev.toast.replyPosted": "Reply posted",
+  "rev.toast.replySaveFailed": "Failed to save reply",
+  "rev.toast.replyRemoved": "Reply removed",
+  "rev.toast.replyDeleteFailed": "Failed to delete reply",
+} as const;
+
+export type TKey = keyof typeof en;
+
+// ---------------------------------------------------------------------------
+// Indonesian overrides. Only keys that differ are listed; anything omitted
+// falls back to English at lookup time. Brand name "SeatPing" is kept verbatim.
+// ---------------------------------------------------------------------------
+const id: Partial<Record<TKey, string>> = {
+  // Header / nav
+  "nav.dashboard": "Dasbor",
+  "nav.guests": "Tamu",
+  "nav.settings": "Pengaturan",
+  "nav.logout": "Keluar",
+  "nav.openMenu": "Buka menu",
+
+  // Shared
+  "common.refresh": "Segarkan",
+  "common.tryAgain": "Coba Lagi",
+  "common.somethingWrong": "Terjadi Kesalahan",
+  "common.somethingWentWrong": "Terjadi kesalahan",
+  "common.pleaseTryAgain": "Silakan coba lagi.",
+  "common.view": "Lihat",
+  "common.cancel": "Batal",
+  "common.contactSeatPing": "Hubungi SeatPing",
+
+  // Banners
+  "banner.trialExpired.title": "Masa Uji Coba Berakhir",
+  "banner.trialExpired.body":
+    "Masa uji coba gratis Anda telah berakhir. Silakan hubungi SeatPing untuk terus menggunakan dasbor bisnis Anda.",
+  "banner.trialActive.title": "Anda Sedang Dalam Uji Coba Gratis!",
+  "banner.trialActive.body":
+    "Hubungi SeatPing saat Anda siap mengaktifkan akun Anda.",
+  "banner.trialActive.countdown":
+    "Uji coba berakhir dalam: {days}h {hours}j {minutes}m",
+  "banner.trialExpiredShort.title": "Masa uji coba Anda telah berakhir",
+  "banner.trialExpiredShort.body":
+    "Silakan hubungi SeatPing untuk terus menggunakan dasbor bisnis Anda.",
+  "banner.noCredits.title": "⚠️ Tidak Ada Kredit Tersedia",
+  "banner.noCredits.body":
+    "Anda tidak memiliki kredit tersedia. Silakan hubungi SeatPing untuk menambah kredit atau menyesuaikan akun Anda.",
+
+  // Settings
+  "settings.title": "Pengaturan",
+  "settings.subtitle": "Kelola informasi dan lokasi bisnis Anda.",
+  "settings.businessInfo.title": "Informasi Bisnis",
+  "settings.businessInfo.desc": "Detail bisnis dan informasi akun Anda",
+  "settings.field.businessName": "Nama Bisnis",
+  "settings.field.username": "Nama Pengguna",
+  "settings.field.email": "Email",
+  "settings.field.phone": "Nomor Telepon",
+  "settings.prefs.title": "Preferensi",
+  "settings.prefs.desc": "Sesuaikan cara kerja dasbor operator untuk Anda",
+  "settings.language.label": "Bahasa",
+  "settings.language.desc":
+    "Pilih bahasa untuk halaman dasbor, tamu, dan pengaturan Anda.",
+  "settings.language.saved": "Bahasa diperbarui",
+  "settings.language.saveError": "Gagal memperbarui bahasa",
+
+  // Location management
+  "loc.title": "Manajemen Lokasi",
+  "loc.desc":
+    "Tambah dan kelola lokasi bisnis Anda ({count}/{max} {locWord} digunakan)",
+  "loc.location": "lokasi",
+  "loc.locations": "lokasi",
+  "loc.addNew": "Tambah Lokasi Baru",
+  "loc.addBtn": "Tambah Lokasi",
+  "loc.displayName": "Nama Tampilan Lokasi",
+  "loc.displayName.placeholder": "Senopati, PIK, SCBD, atau Cabang Utama",
+  "loc.displayName.help":
+    "Ini adalah nama lokasi singkat yang akan dilihat pelanggan saat bergabung ke antrean atau memesan meja.",
+  "loc.searchAddress": "Cari Alamat",
+  "loc.searchAddress.placeholder": "Cari alamat bisnis Anda",
+  "loc.atMax": "Anda telah mencapai jumlah maksimum lokasi untuk akun Anda.",
+  "loc.current": "Lokasi Saat Ini",
+  "loc.none": "Belum ada lokasi yang ditambahkan.",
+  "loc.none.help": "Tambahkan lokasi pertama Anda di atas untuk memulai.",
+  "loc.credits": "Kredit: {n}",
+  "loc.addDisplayNameHint":
+    "Tambahkan Nama Tampilan Lokasi agar pelanggan melihat nama yang ramah.",
+  "loc.unnamed": "Lokasi tanpa nama",
+  "loc.hideFullAddress": "Sembunyikan Alamat Lengkap",
+  "loc.viewFullAddress": "Lihat Alamat Lengkap",
+  "loc.viewOnMaps": "Lihat di Peta",
+  "loc.editProfile": "Edit Profil Restoran",
+  "loc.viewReviews": "Lihat Ulasan",
+  "loc.qrCode": "Kode QR",
+  "loc.removeLocation": "Hapus Lokasi",
+  "loc.remove.confirmBody":
+    'Apakah Anda yakin ingin menghapus "{name}"? Tindakan ini tidak dapat dibatalkan dan akan menghapus semua pelanggan dari antrean di lokasi ini.',
+  "loc.qrModal.title": "Kode QR Lokasi",
+  "loc.qrModal.generating": "Membuat…",
+  "loc.qrModal.queueLink": "Tautan Antrean",
+  "loc.qrModal.help":
+    "Pelanggan yang memindai kode ini otomatis bergabung ke antrean lokasi ini.",
+  "loc.qrModal.copyLink": "Salin Tautan",
+  "loc.qrModal.downloadQr": "Unduh Kode QR",
+  "loc.toast.displayNameRequired.title": "Nama Tampilan Lokasi wajib diisi",
+  "loc.toast.displayNameRequired.desc":
+    "Masukkan nama singkat yang akan dilihat pelanggan.",
+  "loc.toast.addressRequired.title": "Alamat wajib diisi",
+  "loc.toast.addressRequired.desc": "Cari atau ketik alamat lokasi Anda.",
+  "loc.toast.limitReached.title": "Batas tercapai",
+  "loc.toast.limitReached.desc":
+    "Anda telah mencapai jumlah maksimum lokasi ({max}).",
+  "loc.toast.savedNoMap.title": "Disimpan tanpa data peta",
+  "loc.toast.savedNoMap.desc":
+    "Kami tidak dapat menangkap koordinat untuk alamat ini. Cari ulang nanti untuk mengaktifkan fitur peta.",
+  "loc.toast.added.title": "Lokasi ditambahkan",
+  "loc.toast.added.desc": "Lokasi baru telah berhasil ditambahkan.",
+  "loc.toast.addFailed.title": "Gagal menambahkan lokasi",
+  "loc.toast.removed.title": "Lokasi dihapus",
+  "loc.toast.removed.desc": "Lokasi telah berhasil dihapus.",
+  "loc.toast.removeFailed.title": "Gagal menghapus lokasi",
+  "loc.toast.qrError.title": "Kesalahan",
+  "loc.toast.qrError.desc": "Gagal membuat kode QR. Silakan coba lagi.",
+  "loc.toast.linkCopied.title": "Tautan disalin",
+  "loc.toast.linkCopied.desc": "Tautan antrean telah disalin ke papan klip Anda.",
+  "loc.toast.copyFailed.title": "Tidak dapat menyalin tautan",
+  "loc.toast.copyFailed.desc": "Salin tautan secara manual dari kotak di atas.",
+
+  // Guests
+  "guests.title": "Tamu",
+  "guests.subtitle":
+    "Kelola profil tamu, riwayat kunjungan, tag, dan catatan dari reservasi dan daftar tunggu.",
+  "guests.noLocations": "Tidak Ada Lokasi",
+  "guests.search.placeholder": "Cari Nama, Telepon, Email, atau Tag",
+  "guests.filters": "Filter",
+  "guests.status": "Status",
+  "guests.filter.all": "Semua",
+  "guests.filter.new": "Baru",
+  "guests.filter.returning": "Kembali",
+  "guests.showOnly": "Tampilkan Hanya",
+  "guests.filter.hasUpcoming": "Ada Reservasi Mendatang",
+  "guests.filter.hasNotes": "Ada Catatan",
+  "guests.filter.noShowHistory": "Riwayat Tidak Hadir",
+  "guests.tags": "Tag",
+  "guests.clearFilters": "Hapus Filter",
+  "guests.atLocation": "Tamu di {label}",
+  "guests.heading": "Tamu",
+  "guests.countOne": "{n} Tamu",
+  "guests.countMany": "{n} Tamu",
+  "guests.export": "Ekspor",
+  "guests.empty.noLocations.title": "Belum Ada Lokasi",
+  "guests.empty.noLocations.body":
+    "Tambahkan lokasi untuk mulai melacak tamu dari reservasi dan antrean.",
+  "guests.empty.noMatch.title": "Tidak Ada Tamu yang Cocok dengan Filter Anda",
+  "guests.empty.noMatch.body": "Coba hapus pencarian atau filter Anda.",
+  "guests.empty.none.title": "Belum Ada Tamu",
+  "guests.empty.none.body":
+    "Tamu muncul di sini secara otomatis setelah seseorang bergabung ke daftar tunggu atau memesan reservasi.",
+  "guests.col.guest": "Tamu",
+  "guests.col.contact": "Kontak",
+  "guests.col.tags": "Tag",
+  "guests.col.totalVisits": "Total Kunjungan",
+  "guests.col.lastVisit": "Kunjungan Terakhir",
+  "guests.col.upcoming": "Mendatang",
+  "guests.col.notes": "Catatan",
+  "guests.col.actions": "Tindakan",
+  "guests.noShowCountOne": "{n} Tidak Hadir",
+  "guests.noShowCountMany": "{n} Tidak Hadir",
+  "guests.visitsWord": "Kunjungan",
+  "guests.lastLabel": "Terakhir",
+  "guests.upcomingCount": "{n} Mendatang",
+  "guests.defaultName": "Tamu",
+  "guests.noPhone": "Tidak Ada Telepon",
+  "guests.noEmail": "Tidak Ada Email",
+  "guests.firstVisit": "Kunjungan Pertama",
+  "guests.lastVisit": "Kunjungan Terakhir",
+  "guests.stat.totalVisits": "Total Kunjungan",
+  "guests.stat.waitlist": "Daftar Tunggu",
+  "guests.stat.upcoming": "Mendatang",
+  "guests.stat.pastRes": "Reservasi Lalu",
+  "guests.stat.noShows": "Tidak Hadir",
+  "guests.stat.cancelled": "Dibatalkan",
+  "guests.summary": "Ringkasan",
+  "guests.summary.empty":
+    "Tamu baru. Riwayat lebih lanjut akan muncul setelah kunjungan berikutnya.",
+  "guests.noTags": "Belum Ada Tag",
+  "guests.addTag.placeholder": "Tambah Tag",
+  "guests.internalNotes": "Catatan Internal",
+  "guests.notes.placeholder":
+    "Catatan pribadi tentang tamu ini (hanya tim Anda yang dapat melihatnya).",
+  "guests.saveNotes": "Simpan Catatan",
+  "guests.saving": "Menyimpan...",
+  "guests.upcomingReservations": "Reservasi Mendatang",
+  "guests.visitHistory": "Riwayat Kunjungan",
+  "guests.noVisitHistory": "Belum ada riwayat kunjungan.",
+  "guests.nothingHere": "Belum ada apa-apa di sini.",
+  "guests.source.waitlist": "Daftar Tunggu",
+  "guests.source.reservation": "Reservasi",
+  "guests.guestOne": "{n} Tamu",
+  "guests.guestMany": "{n} Tamu",
+  "guests.loading": "Memuat...",
+  "guests.toast.notesSaved": "Catatan disimpan",
+  "guests.toast.notesError": "Gagal menyimpan catatan",
+  "guests.toast.tagAddError": "Gagal menambah tag",
+  "guests.toast.tagRemoveError": "Gagal menghapus tag",
+
+  // Dashboard
+  "dash.hello": "Halo {name}!",
+  "dash.ownerFallback": "Pemilik Bisnis",
+  "dash.dailyStat": "Berikut statistik harian Anda",
+  "dash.credits": "Kredit",
+  "dash.creditsPill": "Kredit: {n}",
+  "dash.noLocations": "Tidak ada lokasi",
+  "dash.todaysSummary": "Ringkasan Hari Ini",
+  "dash.stat.currentQueue": "Antrean Saat Ini",
+  "dash.stat.reservationsToday": "Reservasi Hari Ini",
+  "dash.stat.avgQueueWait": "Rata-rata Tunggu Antrean",
+  "dash.stat.avgQueueWaitTime": "Rata-rata Waktu Tunggu Antrean",
+  "dash.stat.servedToday": "Dilayani Hari Ini",
+  "dash.stat.leftToday": "Pergi Hari Ini",
+  "dash.queue.title": "Manajemen Antrean",
+  "dash.queue.managingFor": "Mengelola antrean untuk: {label}",
+  "dash.queue.noLocationSelected": "Tidak Ada Lokasi Dipilih",
+  "dash.queue.customerOne": "{n} pelanggan",
+  "dash.queue.customerMany": "{n} pelanggan",
+  "dash.queue.empty": "Tidak ada pelanggan dalam antrean di lokasi ini.",
+  "dash.queue.joined": "Bergabung: {time}",
+  "dash.guestOne": "{n} Tamu",
+  "dash.guestMany": "{n} Tamu",
+  "dash.queue.estimatedWait": "Perkiraan Tunggu: {text}",
+  "dash.admit": "Terima",
+  "dash.remove": "Hapus",
+  "dash.justNow": "Baru Saja",
+  "dash.minAgo": "{n}m lalu",
+  "dash.hourMinAgo": "{h}j {m}m lalu",
+  "dash.awaiting.title": "Menunggu Konfirmasi Kedatangan",
+  "dash.awaiting.desc":
+    "Konfirmasi kedatangan pelanggan yang diterima dalam 5 menit terakhir",
+  "dash.admitted": "Diterima: {time}",
+  "dash.timeExpired": "Waktu Habis",
+  "dash.arrived": "Tiba",
+  "dash.noShow": "Tidak Hadir",
+  "dash.left.title": "Pelanggan yang Baru Pergi",
+  "dash.left.desc": "Pelanggan yang baru saja meninggalkan antrean",
+  "dash.left.empty": "Tidak ada pelanggan yang baru pergi.",
+  "dash.left.left": "Pergi",
+  "dash.left.removed": "Dihapus",
+  "dash.left.leftQueue": "Keluar Antrean",
+  "dash.left.removedByBusiness": "Dihapus oleh Bisnis",
+  "dash.perf.title": "Ringkasan Performa",
+  "dash.perf.desc": "Lacak pelanggan dilayani, waktu tunggu, dan ketidakhadiran",
+  "dash.daily": "Harian",
+  "dash.weekly": "Mingguan",
+  "dash.weekOf": "Minggu {date}",
+  "dash.legend.served": "Pelanggan Dilayani",
+  "dash.legend.avgWait": "Rata-rata Waktu Tunggu (mnt)",
+  "dash.legend.noShows": "Tidak Hadir",
+  "dash.noData":
+    "Belum ada data. Mulai layani pelanggan untuk melihat analitik!",
+  "dash.peak.title": "Jam Sibuk",
+  "dash.peak.desc": "Kapan bisnis Anda paling ramai?",
+  "dash.peak.legend": "Pelanggan",
+  "dash.peak.noData": "Belum ada data jam sibuk",
+  "dash.waitDist.title": "Distribusi Waktu Tunggu",
+  "dash.waitDist.desc": "Seberapa efisien layanan Anda?",
+  "dash.waitDist.legend": "Pelanggan",
+  "dash.waitDist.noData": "Belum ada data waktu tunggu",
+  "dash.bucket.0to5": "0-5 mnt",
+  "dash.bucket.5to10": "5-10 mnt",
+  "dash.bucket.10to15": "10-15 mnt",
+  "dash.bucket.15to30": "15-30 mnt",
+  "dash.bucket.30plus": "30+ mnt",
+  "dash.toast.queueRefreshed.title": "Antrean disegarkan",
+  "dash.toast.queueRefreshed.desc": "Data antrean telah diperbarui.",
+  "dash.toast.refreshFailed.title": "Gagal menyegarkan",
+  "dash.toast.admitted.title": "Pelanggan diterima",
+  "dash.toast.admitted.desc":
+    "{name} telah diterima dan akan melanjutkan ke gilirannya.",
+  "dash.toast.admitFailed.title": "Gagal menerima pelanggan",
+  "dash.toast.removed.title": "Pelanggan dihapus",
+  "dash.toast.removed.desc": "{name} telah dihapus dari antrean.",
+  "dash.toast.removeFailed.title": "Gagal menghapus pelanggan",
+  "dash.toast.arrivalConfirmed.title": "Kedatangan dikonfirmasi",
+  "dash.toast.arrivalConfirmed.desc": "{name} telah ditandai tiba.",
+  "dash.toast.confirmFailed.title": "Gagal mengonfirmasi kedatangan",
+  "dash.toast.noShow.title": "Ditandai tidak hadir",
+  "dash.toast.noShow.desc": "{name} telah ditandai tidak hadir.",
+  "dash.toast.noShowFailed.title": "Gagal menandai tidak hadir",
+
+  // Reservations
+  "res.title": "Manajemen Reservasi",
+  "res.noLocationSelected": "Tidak Ada Lokasi Dipilih",
+  "res.bookingsFor": "Pemesanan untuk: {label}",
+  "res.disabled": "Reservasi dinonaktifkan untuk lokasi ini.",
+  "res.tab.today": "Hari Ini",
+  "res.tab.upcoming": "Mendatang",
+  "res.tab.past": "Lalu",
+  "res.tab.cancelled": "Dibatalkan",
+  "res.tab.noShows": "Tidak Hadir",
+  "res.enableHint":
+    "Aktifkan reservasi di Pengaturan untuk mulai menerima pemesanan.",
+  "res.empty": "Tidak ada reservasi di sini.",
+  "res.viewLess": "Tampilkan Lebih Sedikit",
+  "res.viewAll": "Tampilkan Semua ({n})",
+  "res.action.confirm": "Konfirmasi",
+  "res.action.cancel": "Batal",
+  "res.action.markArrived": "Tandai Tiba",
+  "res.action.noShow": "Tidak Hadir",
+  "res.action.markCompleted": "Tandai Selesai",
+  "res.toast.updated.title": "Reservasi diperbarui",
+  "res.toast.updated.desc": "{name} ditandai {status}.",
+  "res.toast.updateFailed.title": "Pembaruan gagal",
+
+  // Status labels
+  "status.pending": "Menunggu",
+  "status.confirmed": "Dikonfirmasi",
+  "status.arrived": "Tiba",
+  "status.admitted": "Diterima",
+  "status.completed": "Selesai",
+  "status.served": "Dilayani",
+  "status.cancelled": "Dibatalkan",
+  "status.no_show": "Tidak Hadir",
+  "status.waiting": "Menunggu",
+  "status.removed": "Dihapus",
+  "status.left": "Keluar Antrean",
+  "status.past": "Lalu",
+  "status.reservation": "Reservasi",
+  "status.queue": "Antrean",
+
+  // Badge
+  "badge.returning": "Kembali",
+  "badge.new": "Baru",
+
+  // Restaurant profile editor
+  "rpe.toast.invalidImage.title": "Gambar tidak valid",
+  "rpe.err.imageType": "Hanya gambar JPG, PNG, dan WEBP yang diizinkan.",
+  "rpe.err.imageSize": "Setiap gambar harus berukuran 25MB atau lebih kecil.",
+  "rpe.toast.bannerUpdated.title": "Banner diperbarui",
+  "rpe.toast.bannerUpdated.desc": "Gambar banner Anda telah diunggah.",
+  "rpe.toast.bannerFailed.title": "Unggah banner gagal",
+  "rpe.toast.bannerRemoved.title": "Banner dihapus",
+  "rpe.toast.bannerRemoveFailed.title": "Gagal menghapus banner",
+  "rpe.toast.tooManyPhotos.title": "Terlalu banyak foto",
+  "rpe.toast.tooManyPhotos.full":
+    "Lokasi ini sudah memiliki maksimum {max} foto.",
+  "rpe.toast.tooManyPhotos.some":
+    "Anda dapat menambahkan {n} foto lagi (maks {max} per lokasi).",
+  "rpe.toast.photosUploaded.title": "Foto diunggah",
+  "rpe.toast.photosUploaded.desc": "{n} foto ditambahkan.",
+  "rpe.toast.photoFailed.title": "Unggah foto gagal",
+  "rpe.toast.photoRemoveFailed.title": "Gagal menghapus foto",
+  "rpe.toast.altFailed.title": "Gagal menyimpan teks alt",
+  "rpe.toast.nameRequired.title": "Nama restoran wajib diisi",
+  "rpe.toast.nameRequired.desc": "Beri restoran Anda nama publik.",
+  "rpe.toast.profileSaved.title": "Profil disimpan",
+  "rpe.toast.profileSaved.desc": "Profil restoran Anda telah diperbarui.",
+  "rpe.toast.saveFailed.title": "Penyimpanan gagal",
+  "rpe.overview.title": "Profil Restoran Publik",
+  "rpe.overview.desc":
+    "Informasi ini menggerakkan halaman restoran yang dilihat pelanggan.",
+  "rpe.field.restaurantName": "Nama Restoran",
+  "rpe.field.restaurantName.ph": "Restoran Tionghoa",
+  "rpe.field.restaurantName.help":
+    "Nama utama yang ditampilkan pada kartu dan halaman publik Anda.",
+  "rpe.field.shortAddress": "Alamat Singkat",
+  "rpe.field.shortAddress.ph": "Plaza Indonesia",
+  "rpe.field.shortAddress.help":
+    'Mal, area, atau cabang yang ditampilkan di bawah nama (mis. "Plaza Indonesia").',
+  "rpe.field.tagline": "Tagline Singkat",
+  "rpe.field.tagline.ph": "Santapan Jepang modern di Jakarta",
+  "rpe.field.description": "Tentang / Deskripsi",
+  "rpe.field.description.ph":
+    "Pengalaman bersantap yang hangat untuk reservasi, antrean, dan makan bersama.",
+  "rpe.field.cuisine": "Jenis Masakan",
+  "rpe.field.cuisine.ph": "Pilih Masakan",
+  "rpe.field.priceRange": "Kisaran Harga",
+  "rpe.field.priceRange.ph": "Kisaran harga",
+  "rpe.field.currency": "Mata Uang",
+  "rpe.field.currency.ph": "Mata Uang",
+  "rpe.hours.title": "Jam Buka",
+  "rpe.hours.desc":
+    "Atur zona waktu dan hari/jam restoran Anda buka.",
+  "rpe.hours.timezone": "Zona Waktu",
+  "rpe.hours.timezoneHelp": "Atur zona waktu Anda",
+  "rpe.hours.from": "Dari",
+  "rpe.hours.to": "Sampai",
+  "rpe.hours.closed": "Tutup",
+  "rpe.day.monday": "Senin",
+  "rpe.day.tuesday": "Selasa",
+  "rpe.day.wednesday": "Rabu",
+  "rpe.day.thursday": "Kamis",
+  "rpe.day.friday": "Jumat",
+  "rpe.day.saturday": "Sabtu",
+  "rpe.day.sunday": "Minggu",
+  "rpe.res.title": "Reservasi",
+  "rpe.res.desc": "Izinkan pelanggan memesan meja terlebih dahulu.",
+  "rpe.res.enable": "Aktifkan Reservasi",
+  "rpe.res.enableHelp":
+    "Pelanggan selalu dapat bergabung ke daftar tunggu; reservasi bersifat opsional.",
+  "rpe.res.controlHelp":
+    "Kendalikan kapan dan berapa banyak tamu yang Anda terima. Ketersediaan dihitung dari jumlah tamu maksimum dan tamu reservasi maksimum per jam.",
+  "rpe.res.hours": "Jam Reservasi",
+  "rpe.res.to": "sampai",
+  "rpe.res.hoursHelp":
+    "Default ke jam operasional Anda. Pelanggan hanya dapat memesan dalam rentang ini.",
+  "rpe.res.maxGuests": "Jumlah Tamu Maksimum",
+  "rpe.res.maxGuestsHelp": "Kelompok terbesar yang diterima per reservasi (mis. 8).",
+  "rpe.res.maxPerHour": "Tamu Reservasi Maksimum Per Jam",
+  "rpe.res.maxPerHourHelp":
+    "Total tamu reservasi yang diizinkan dalam satu jam (mis. 40).",
+  "rpe.res.bookingWindow": "Rentang Pemesanan (Hari)",
+  "rpe.res.bookingWindowHelp":
+    "Seberapa jauh ke depan pelanggan dapat memesan (mis. 30).",
+  "rpe.res.minNotice": "Pemberitahuan Minimum (Menit)",
+  "rpe.res.minNoticeHelp":
+    "Pelanggan tidak dapat memesan lebih dekat dari ini ke waktu reservasi.",
+  "rpe.res.cancellation": "Kebijakan Pembatalan / Catatan (Opsional)",
+  "rpe.res.cancellation.ph":
+    "mis. Harap batalkan setidaknya 2 jam sebelumnya. Meja ditahan selama 15 menit.",
+  "rpe.res.cancellationHelp":
+    "Ditampilkan kepada pelanggan sebelum mereka mengonfirmasi pemesanan.",
+  "rpe.banner.title": "Gambar Banner",
+  "rpe.banner.desc":
+    "Gambar utama di bagian atas halaman publik Anda. Gunakan gambar lebar (sekitar 16:9). JPG, PNG, atau WEBP, hingga 25MB.",
+  "rpe.banner.uploading": "Mengunggah...",
+  "rpe.banner.replace": "Ganti Banner",
+  "rpe.banner.remove": "Hapus Banner",
+  "rpe.banner.upload": "Unggah gambar banner",
+  "rpe.banner.recommend": "Gambar lebar direkomendasikan (16:9)",
+  "rpe.photos.title": "Foto",
+  "rpe.photos.desc":
+    "Gambar galeri untuk halaman publik Anda ({n}/{max}). JPG, PNG, atau WEBP, masing-masing hingga 25MB.",
+  "rpe.photos.canAdd": "Anda dapat menambahkan {n} foto lagi.",
+  "rpe.photos.maxReached": "Maksimum {max} foto tercapai.",
+  "rpe.photos.upload": "Unggah Foto",
+  "rpe.photos.uploading": "Mengunggah...",
+  "rpe.photos.none": "Belum ada foto yang ditambahkan.",
+  "rpe.photos.altPlaceholder": "Teks alt (opsional)",
+  "rpe.menu.title": "Menu",
+  "rpe.menu.desc": "Tambahkan beberapa item unggulan yang harus diketahui pelanggan.",
+  "rpe.menu.subdesc": "Item ini akan muncul di halaman restoran publik Anda.",
+  "rpe.menu.link": "Tautan Menu",
+  "rpe.menu.linkHelp":
+    "Tambahkan tautan menu lengkap agar pelanggan dapat melihatnya dari halaman Anda.",
+  "rpe.menu.orHighlight": "atau tambahkan item unggulan",
+  "rpe.menu.uploadCsv": "Unggah CSV Menu",
+  "rpe.menu.csvInclude":
+    "CSV Harus Memuat: name, category, description, price",
+  "rpe.menu.chooseCsv": "Pilih CSV",
+  "rpe.menu.orOneAtATime": "atau tambahkan satu per satu",
+  "rpe.menu.addItem": "Tambah Item Menu",
+  "rpe.menu.editItem": "Edit Item Menu",
+  "rpe.menu.itemName": "Nama item",
+  "rpe.menu.itemName.ph": "mis. Pad Thai",
+  "rpe.menu.category": "Kategori",
+  "rpe.menu.category.ph": "mis. Utama, Minuman, Pencuci Mulut",
+  "rpe.menu.price": "Harga ({currency})",
+  "rpe.menu.price.ph": "mis. 50000",
+  "rpe.menu.description": "Deskripsi",
+  "rpe.menu.description.ph": "Deskripsi singkat (opsional)",
+  "rpe.menu.saveItem": "Simpan Item",
+  "rpe.menu.empty": "Belum ada item menu. Tambahkan item unggulan pertama Anda.",
+  "rpe.menu.edit": "Edit",
+  "rpe.menu.delete": "Hapus",
+  "rpe.menu.clearTitle": "Bersihkan Menu?",
+  "rpe.menu.clearDesc":
+    "Ini akan menghapus {n} item menu dari lokasi ini. Tindakan ini tidak dapat dibatalkan.",
+  "rpe.menu.clearHelper":
+    "Anda dapat mengunggah CSV baru atau menambahkan item menu lagi setelah membersihkan.",
+  "rpe.menu.clear": "Bersihkan Menu",
+  "rpe.menu.clearing": "Membersihkan...",
+  "rpe.menu.clearSuccess": "Menu berhasil dibersihkan.",
+  "rpe.menu.clearError": "Gagal membersihkan menu. Silakan coba lagi.",
+  "rpe.csv.invalidFormat.title": "Format CSV Tidak Valid",
+  "rpe.csv.invalidFormat.ext": "Silakan pilih file dengan ekstensi .csv.",
+  "rpe.csv.missingCols":
+    "Kolom wajib tidak ada: {cols}. CSV harus memuat: name, category, description, price.",
+  "rpe.csv.noItems.title": "Tidak Ada Item Menu Ditemukan",
+  "rpe.csv.noItems.skipped":
+    "{n} baris dilewati karena tidak memiliki nama.",
+  "rpe.csv.noItems.empty": "CSV tidak memuat item menu apa pun.",
+  "rpe.csv.couldNotRead": "Tidak Dapat Membaca CSV",
+  "rpe.csv.skippedNote": "{n} Dilewati (Tanpa Nama)",
+  "rpe.csv.pricelessNote": "{n} Dengan Harga Tidak Terbaca",
+  "rpe.csv.importedOne": "{n} Item Menu Diimpor",
+  "rpe.csv.importedMany": "{n} Item Menu Diimpor",
+  "rpe.details.title": "Detail",
+  "rpe.details.desc":
+    "Informasi alamat dan kontak yang ditampilkan di halaman publik Anda.",
+  "rpe.details.address": "Alamat",
+  "rpe.details.address.ph": "Jl. Senopati 12, Jakarta",
+  "rpe.details.area": "Area / Lingkungan",
+  "rpe.details.area.ph": "Senopati, SCBD, PIK, Kemang",
+  "rpe.details.city": "Kota",
+  "rpe.details.country": "Negara",
+  "rpe.details.phone": "Telepon",
+  "rpe.details.website": "Situs Web",
+  "rpe.details.instagram": "Instagram",
+  "rpe.details.maps": "URL Google Maps",
+  "rpe.preview.title": "Pratinjau Halaman Restoran",
+  "rpe.preview.desc": "Pratinjau kasar tampilan header halaman publik Anda.",
+  "rpe.preview.noBanner": "Belum ada banner",
+  "rpe.preview.yourRestaurant": "Restoran Anda",
+  "rpe.preview.published": "Diterbitkan",
+  "rpe.preview.draft": "Draf",
+  "rpe.preview.placeholder": "Masakan · Harga · Lokasi",
+  "rpe.publish.title": "Terbitkan Profil",
+  "rpe.publish.help": "Saat aktif, profil Anda siap untuk halaman publik.",
+  "rpe.save": "Simpan Perubahan",
+  "rpe.saving": "Menyimpan...",
+
+  // Customer reviews
+  "rev.title": "Ulasan Pelanggan",
+  "rev.subtitle": "Ulasan untuk {name}",
+  "rev.thisLocation": "lokasi ini",
+  "rev.countOne": "{n} Ulasan",
+  "rev.countMany": "{n} Ulasan",
+  "rev.filter.ratingAria": "Filter berdasarkan rating",
+  "rev.filter.allRatings": "Semua Rating",
+  "rev.filter.stars": "{n} Bintang",
+  "rev.filter.star1": "1 Bintang",
+  "rev.filter.replyAria": "Filter berdasarkan status balasan",
+  "rev.filter.allReplies": "Semua Balasan",
+  "rev.filter.replied": "Dibalas",
+  "rev.filter.unreplied": "Belum Dibalas",
+  "rev.sort.aria": "Urutkan ulasan",
+  "rev.sort.newest": "Terbaru Dulu",
+  "rev.sort.oldest": "Terlama Dulu",
+  "rev.sort.highest": "Rating Tertinggi",
+  "rev.sort.lowest": "Rating Terendah",
+  "rev.sort.unrepliedFirst": "Belum Dibalas Dulu",
+  "rev.loading": "Memuat ulasan...",
+  "rev.failedLoad": "Gagal memuat ulasan.",
+  "rev.empty.title": "Belum Ada Ulasan.",
+  "rev.empty.body":
+    "Ulasan pelanggan akan muncul di sini setelah pelanggan mengirimkan masukan.",
+  "rev.noMatch": "Tidak ada ulasan yang cocok dengan filter ini.",
+  "rev.anonymous": "Anonim",
+  "rev.partyOf": "Rombongan {n}",
+  "rev.walkIn": "Tanpa Reservasi",
+  "rev.reservation": "Reservasi",
+  "rev.yourReply": "Balasan Anda",
+  "rev.editReply": "Edit Balasan",
+  "rev.delete": "Hapus",
+  "rev.deleteTitle": "Hapus balasan ini?",
+  "rev.deleteDesc":
+    "Ulasan pelanggan akan tetap ada, hanya respons Anda yang dihapus.",
+  "rev.deleteReply": "Hapus balasan",
+  "rev.repliedOn": "Dibalas {date}",
+  "rev.edited": "Diedit {date}",
+  "rev.editYourReply": "Edit balasan Anda",
+  "rev.replyToThis": "Balas ulasan ini",
+  "rev.replyPlaceholder": "Terima kasih telah berkunjung...",
+  "rev.saveReply": "Simpan Balasan",
+  "rev.postReply": "Kirim Balasan",
+  "rev.reply": "Balas",
+  "rev.saving": "Menyimpan...",
+  "rev.loadMore": "Muat Lebih Banyak Ulasan",
+  "rev.showing": "Menampilkan {shown} dari {total}",
+  "rev.filteredFrom": " (difilter dari {total})",
+  "rev.toast.replyUpdated": "Balasan diperbarui",
+  "rev.toast.replyPosted": "Balasan dikirim",
+  "rev.toast.replySaveFailed": "Gagal menyimpan balasan",
+  "rev.toast.replyRemoved": "Balasan dihapus",
+  "rev.toast.replyDeleteFailed": "Gagal menghapus balasan",
+};
+
+const DICTS: Record<Lang, Partial<Record<TKey, string>>> = { en, id };
+
+type Params = Record<string, string | number>;
+
+function format(str: string, params?: Params): string {
+  if (!params) return str;
+  return str.replace(/\{(\w+)\}/g, (_, k: string) =>
+    k in params ? String(params[k]) : `{${k}}`,
+  );
+}
+
+/** Translate a key for a language, with English then key fallback. */
+export function translate(lang: Lang, key: TKey, params?: Params): string {
+  const raw = DICTS[lang][key] ?? en[key] ?? key;
+  return format(raw, params);
+}
+
+// Status aliases mirror src/lib/statusStyles.ts so a raw status string maps to
+// the same canonical key the status-color helper uses.
+const STATUS_ALIASES: Record<string, string> = {
+  canceled: "cancelled",
+  complete: "completed",
+  checked_in: "served",
+  no_showed: "no_show",
+  no_shows: "no_show",
+  noshow: "no_show",
+  removed_by_business: "removed",
+  reservation_booking: "reservation",
+  waitlist: "queue",
+};
+
+/** Translated label for a status string (falls back to the canonical English). */
+export function translateStatus(lang: Lang, status: string): string {
+  const normalized = String(status || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  const canonical = STATUS_ALIASES[normalized] || normalized;
+  const key = `status.${canonical}` as TKey;
+  if (key in en) return translate(lang, key);
+  // Unknown status: Title Case the raw value so it still reads cleanly.
+  return canonical
+    .split("_")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+// ---------------------------------------------------------------------------
+// React context
+// ---------------------------------------------------------------------------
+interface LangContextValue {
+  lang: Lang;
+  ready: boolean;
+  t: (key: TKey, params?: Params) => string;
+  tStatus: (status: string) => string;
+  setLang: (lang: Lang) => Promise<void>;
+}
+
+function readStoredLang(): Lang {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY);
+    if (v === "en" || v === "id") return v;
+  } catch {
+    /* localStorage unavailable (SSR / privacy mode) */
+  }
+  return "en";
+}
+
+function persistLang(lang: Lang) {
+  try {
+    localStorage.setItem(STORAGE_KEY, lang);
+  } catch {
+    /* ignore */
+  }
+}
+
+// Default value so any consumer rendered outside a provider (e.g. shared badges
+// reused on customer pages) safely gets English instead of throwing.
+const DEFAULT_VALUE: LangContextValue = {
+  lang: "en",
+  ready: true,
+  t: (key, params) => translate("en", key, params),
+  tStatus: (status) => translateStatus("en", status),
+  setLang: async () => {},
+};
+
+const LangContext = createContext<LangContextValue>(DEFAULT_VALUE);
+
+/**
+ * Wraps a business operator page. Initializes from localStorage immediately (no
+ * flash between operator pages), then syncs the authoritative value from the
+ * backend. `setLang` persists to the database and reverts the UI on failure.
+ */
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(() => readStoredLang());
+  const [ready, setReady] = useState(false);
+  const langRef = useRef(lang);
+  langRef.current = lang;
+
+  // Pull the saved language from the server on mount so a fresh browser (empty
+  // localStorage) still renders in the operator's chosen language.
+  useEffect(() => {
+    let cancelled = false;
+    api("/auth/business/language")
+      .then((d) => {
+        if (cancelled) return;
+        if (d?.language === "en" || d?.language === "id") {
+          setLangState(d.language);
+          persistLang(d.language);
+        }
+      })
+      .catch(() => {
+        /* non-fatal: keep the localStorage value */
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const setLang = useCallback(async (next: Lang) => {
+    const prev = langRef.current;
+    if (next === prev) return;
+    // Optimistic update so the UI flips immediately.
+    setLangState(next);
+    persistLang(next);
+    try {
+      await api("/auth/business/language", {
+        method: "PUT",
+        body: JSON.stringify({ language: next }),
+      });
+    } catch (e) {
+      // Revert on failure and let the caller surface an error toast.
+      setLangState(prev);
+      persistLang(prev);
+      throw e;
+    }
+  }, []);
+
+  const value: LangContextValue = {
+    lang,
+    ready,
+    t: (key, params) => translate(lang, key, params),
+    tStatus: (status) => translateStatus(lang, status),
+    setLang,
+  };
+
+  return <LangContext.Provider value={value}>{children}</LangContext.Provider>;
+}
+
+export function useLang(): LangContextValue {
+  return useContext(LangContext);
+}

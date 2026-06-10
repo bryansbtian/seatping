@@ -25,6 +25,7 @@ import { GuestStatusBadge, GuestTagBadge } from "@/components/GuestBadge";
 import { api } from "@/lib/api";
 import { formatPhone } from "@/lib/phone";
 import { useToast } from "@/hooks/use-toast";
+import { useLang, type TKey } from "@/lib/i18n";
 import {
   Search,
   ChevronDown,
@@ -123,16 +124,19 @@ function fmtDateTime(value: string | null): string {
   });
 }
 
-function guestName(g: {
-  fullName: string | null;
-  phone: string | null;
-  email: string | null;
-}) {
-  return g.fullName || g.phone || g.email || "Guest";
+function guestName(
+  g: {
+    fullName: string | null;
+    phone: string | null;
+    email: string | null;
+  },
+  fallback = "Guest",
+) {
+  return g.fullName || g.phone || g.email || fallback;
 }
 
-function errMsg(e: unknown): string {
-  return e instanceof Error ? e.message : "Something went wrong";
+function errMsg(e: unknown, fallback = "Something went wrong"): string {
+  return e instanceof Error ? e.message : fallback;
 }
 
 function initials(name: string): string {
@@ -155,6 +159,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 // Page
 // ---------------------------------------------------------------------------
 const BusinessGuests = () => {
+  const { t } = useLang();
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [locationId, setLocationId] = useState<string>("");
@@ -330,11 +335,10 @@ const BusinessGuests = () => {
           {/* Page header — mirrors the Settings page header exactly. */}
           <div className="mb-6">
             <h1 className="text-xl md:text-2xl font-semibold text-gray-800">
-              Guests
+              {t("guests.title")}
             </h1>
             <p className="text-gray-600 text-sm md:text-base">
-              Manage guest profiles, visit history, tags, and notes from
-              reservations and waitlists.
+              {t("guests.subtitle")}
             </p>
           </div>
 
@@ -360,7 +364,7 @@ const BusinessGuests = () => {
                         </option>
                       ))
                     ) : (
-                      <option value="">No Locations</option>
+                      <option value="">{t("guests.noLocations")}</option>
                     )}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
@@ -371,7 +375,7 @@ const BusinessGuests = () => {
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search Name, Phone, Email, Or Tag"
+                    placeholder={t("guests.search.placeholder")}
                     className="pl-9 bg-slate-50 border-slate-200 rounded-xl"
                   />
                 </div>
@@ -383,7 +387,7 @@ const BusinessGuests = () => {
                 >
                   <span className="flex items-center gap-2">
                     <SlidersHorizontal className="w-4 h-4" />
-                    Filters
+                    {t("guests.filters")}
                   </span>
                   {activeFilterCount > 0 && (
                     <span className="ml-2 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold w-5 h-5">
@@ -400,20 +404,24 @@ const BusinessGuests = () => {
                 {/* New / Returning */}
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-medium text-slate-500 mr-1">
-                    Status
+                    {t("guests.status")}
                   </span>
-                  {(["all", "new", "returning"] as TypeFilter[]).map((t) => (
+                  {(["all", "new", "returning"] as TypeFilter[]).map((tf) => (
                     <button
-                      key={t}
+                      key={tf}
                       type="button"
-                      onClick={() => setTypeFilter(t)}
+                      onClick={() => setTypeFilter(tf)}
                       className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                        typeFilter === t
+                        typeFilter === tf
                           ? "border-indigo-300 bg-indigo-100 text-indigo-700"
                           : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                       }`}
                     >
-                      {t === "all" ? "All" : t === "new" ? "New" : "Returning"}
+                      {tf === "all"
+                        ? t("guests.filter.all")
+                        : tf === "new"
+                          ? t("guests.filter.new")
+                          : t("guests.filter.returning")}
                     </button>
                   ))}
                 </div>
@@ -421,22 +429,22 @@ const BusinessGuests = () => {
                 {/* Boolean toggles */}
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-medium text-slate-500 mr-1">
-                    Show Only
+                    {t("guests.showOnly")}
                   </span>
                   <FilterToggle
                     active={hasUpcoming}
                     onClick={() => setHasUpcoming((v) => !v)}
-                    label="Has Upcoming Reservations"
+                    label={t("guests.filter.hasUpcoming")}
                   />
                   <FilterToggle
                     active={hasNotes}
                     onClick={() => setHasNotes((v) => !v)}
-                    label="Has Notes"
+                    label={t("guests.filter.hasNotes")}
                   />
                   <FilterToggle
                     active={hasNoShow}
                     onClick={() => setHasNoShow((v) => !v)}
-                    label="No-Show History"
+                    label={t("guests.filter.noShowHistory")}
                   />
                 </div>
 
@@ -444,7 +452,7 @@ const BusinessGuests = () => {
                 {filterableTags.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-medium text-slate-500 mr-1">
-                      Tags
+                      {t("guests.tags")}
                     </span>
                     {filterableTags.map((tag) => (
                       <button
@@ -472,7 +480,7 @@ const BusinessGuests = () => {
                     onClick={clearFilters}
                     className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
                   >
-                    Clear Filters
+                    {t("guests.clearFilters")}
                   </button>
                 )}
               </div>
@@ -485,13 +493,18 @@ const BusinessGuests = () => {
               <div>
                 <CardTitle className="text-lg md:text-xl text-slate-800">
                   {currentLocationLabel
-                    ? `Guests At ${currentLocationLabel}`
-                    : "Guests"}
+                    ? t("guests.atLocation", { label: currentLocationLabel })
+                    : t("guests.heading")}
                 </CardTitle>
                 <CardDescription className="text-sm">
                   {loading
-                    ? "Loading..."
-                    : `${guests.length} ${guests.length === 1 ? "Guest" : "Guests"}`}
+                    ? t("guests.loading")
+                    : t(
+                        guests.length === 1
+                          ? "guests.countOne"
+                          : "guests.countMany",
+                        { n: guests.length },
+                      )}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -502,7 +515,9 @@ const BusinessGuests = () => {
                   disabled={loading || guests.length === 0}
                 >
                   <Download className="w-4 h-4" />
-                  <span className="hidden sm:inline ml-2">Export</span>
+                  <span className="hidden sm:inline ml-2">
+                    {t("guests.export")}
+                  </span>
                 </Button>
                 <Button
                   variant="outline"
@@ -513,7 +528,9 @@ const BusinessGuests = () => {
                   <RefreshCw
                     className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
                   />
-                  <span className="hidden sm:inline ml-2">Refresh</span>
+                  <span className="hidden sm:inline ml-2">
+                    {t("common.refresh")}
+                  </span>
                 </Button>
               </div>
             </CardHeader>
@@ -526,20 +543,20 @@ const BusinessGuests = () => {
                 <LoadingState />
               ) : !locations.length ? (
                 <EmptyState
-                  title="No Locations Yet"
-                  body="Add a location to start tracking guests from reservations and waitlist joins."
+                  title={t("guests.empty.noLocations.title")}
+                  body={t("guests.empty.noLocations.body")}
                 />
               ) : guests.length === 0 ? (
                 <EmptyState
                   title={
                     activeFilterCount > 0 || debouncedSearch
-                      ? "No Guests Match Your Filters"
-                      : "No Guests Yet"
+                      ? t("guests.empty.noMatch.title")
+                      : t("guests.empty.none.title")
                   }
                   body={
                     activeFilterCount > 0 || debouncedSearch
-                      ? "Try clearing your search or filters."
-                      : "Guests appear here automatically after someone joins your waitlist or books a reservation."
+                      ? t("guests.empty.noMatch.body")
+                      : t("guests.empty.none.body")
                   }
                 />
               ) : (
@@ -607,6 +624,7 @@ function GuestsTable({
   timeZone?: string;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useLang();
   return (
     <>
       {/* Desktop table */}
@@ -614,21 +632,31 @@ function GuestsTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
-              <th className="px-6 py-3 font-medium">Guest</th>
-              <th className="px-6 py-3 font-medium">Contact</th>
-              <th className="px-6 py-3 font-medium">Tags</th>
-              <th className="px-6 py-3 font-medium text-center">
-                Total Visits
+              <th className="px-6 py-3 font-medium">{t("guests.col.guest")}</th>
+              <th className="px-6 py-3 font-medium">
+                {t("guests.col.contact")}
               </th>
-              <th className="px-6 py-3 font-medium">Last Visit</th>
-              <th className="px-6 py-3 font-medium text-center">Upcoming</th>
-              <th className="px-6 py-3 font-medium text-center">Notes</th>
-              <th className="px-6 py-3 font-medium text-right">Actions</th>
+              <th className="px-6 py-3 font-medium">{t("guests.col.tags")}</th>
+              <th className="px-6 py-3 font-medium text-center">
+                {t("guests.col.totalVisits")}
+              </th>
+              <th className="px-6 py-3 font-medium">
+                {t("guests.col.lastVisit")}
+              </th>
+              <th className="px-6 py-3 font-medium text-center">
+                {t("guests.col.upcoming")}
+              </th>
+              <th className="px-6 py-3 font-medium text-center">
+                {t("guests.col.notes")}
+              </th>
+              <th className="px-6 py-3 font-medium text-right">
+                {t("guests.col.actions")}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {guests.map((g) => {
-              const name = guestName(g);
+              const name = guestName(g, t("guests.defaultName"));
               const phoneDisplay = formatPhone(g.normalizedPhone, g.phone);
               return (
                 <tr
@@ -648,8 +676,12 @@ function GuestsTable({
                         </div>
                         {g.noShowCount > 0 && (
                           <span className="text-xs text-red-600">
-                            {g.noShowCount} No-Show
-                            {g.noShowCount === 1 ? "" : "s"}
+                            {t(
+                              g.noShowCount === 1
+                                ? "guests.noShowCountOne"
+                                : "guests.noShowCountMany",
+                              { n: g.noShowCount },
+                            )}
                           </span>
                         )}
                       </div>
@@ -723,7 +755,7 @@ function GuestsTable({
                         onSelect(g.id);
                       }}
                     >
-                      View
+                      {t("common.view")}
                     </Button>
                   </td>
                 </tr>
@@ -736,7 +768,7 @@ function GuestsTable({
       {/* Mobile cards */}
       <div className="md:hidden divide-y divide-slate-100">
         {guests.map((g) => {
-          const name = guestName(g);
+          const name = guestName(g, t("guests.defaultName"));
           const phoneDisplay = formatPhone(g.normalizedPhone, g.phone);
           return (
             <button
@@ -769,12 +801,16 @@ function GuestsTable({
                       <strong className="text-slate-800">
                         {g.totalVisits}
                       </strong>{" "}
-                      Visits
+                      {t("guests.visitsWord")}
                     </span>
-                    <span>Last: {fmtDate(g.lastVisitAt, timeZone)}</span>
+                    <span>
+                      {t("guests.lastLabel")}: {fmtDate(g.lastVisitAt, timeZone)}
+                    </span>
                     {g.upcomingReservationCount > 0 && (
                       <span className="text-blue-700">
-                        {g.upcomingReservationCount} Upcoming
+                        {t("guests.upcomingCount", {
+                          n: g.upcomingReservationCount,
+                        })}
                       </span>
                     )}
                     {g.hasNotes && (
@@ -842,14 +878,15 @@ function ErrorState({
   message: string;
   onRetry: () => void;
 }) {
+  const { t } = useLang();
   return (
     <div className="px-6 py-16 text-center">
       <h3 className="text-base font-semibold text-slate-800">
-        Something Went Wrong
+        {t("common.somethingWrong")}
       </h3>
       <p className="text-sm text-slate-500 mt-1">{message}</p>
       <Button variant="outline" size="sm" onClick={onRetry} className="mt-4">
-        Try Again
+        {t("common.tryAgain")}
       </Button>
     </div>
   );
@@ -870,6 +907,7 @@ function GuestDetailDrawer({
   onRowChange: (row: GuestRow) => void;
 }) {
   const { toast } = useToast();
+  const { t } = useLang();
   const [detail, setDetail] = useState<GuestDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -914,11 +952,11 @@ function GuestDetailDrawer({
       });
       applyGuest(d.guest);
       notesDirtyRef.current = false;
-      toast({ title: "Notes saved" });
+      toast({ title: t("guests.toast.notesSaved") });
     } catch (e) {
       toast({
-        title: "Could not save notes",
-        description: errMsg(e),
+        title: t("guests.toast.notesError"),
+        description: errMsg(e, t("common.somethingWentWrong")),
         variant: "destructive",
       });
     } finally {
@@ -939,8 +977,8 @@ function GuestDetailDrawer({
       setNewTag("");
     } catch (e) {
       toast({
-        title: "Could not add tag",
-        description: errMsg(e),
+        title: t("guests.toast.tagAddError"),
+        description: errMsg(e, t("common.somethingWentWrong")),
         variant: "destructive",
       });
     } finally {
@@ -959,8 +997,8 @@ function GuestDetailDrawer({
       applyGuest(d.guest);
     } catch (e) {
       toast({
-        title: "Could not remove tag",
-        description: errMsg(e),
+        title: t("guests.toast.tagRemoveError"),
+        description: errMsg(e, t("common.somethingWentWrong")),
         variant: "destructive",
       });
     } finally {
@@ -969,7 +1007,7 @@ function GuestDetailDrawer({
   };
 
   const g = detail?.guest;
-  const name = g ? guestName(g) : "Guest";
+  const name = g ? guestName(g, t("guests.defaultName")) : t("guests.defaultName");
   const availableSuggestions = suggestedTags.filter(
     (t) => !(g?.tags || []).some((x) => x.toLowerCase() === t.toLowerCase()),
   );
@@ -1031,7 +1069,9 @@ function GuestDetailDrawer({
                       <Phone className="w-4 h-4 text-slate-400 shrink-0" />
                       <span className="truncate">
                         {formatPhone(g.normalizedPhone, g.phone) ?? (
-                          <span className="text-slate-400">No Phone</span>
+                          <span className="text-slate-400">
+                            {t("guests.noPhone")}
+                          </span>
                         )}
                       </span>
                     </div>
@@ -1039,7 +1079,9 @@ function GuestDetailDrawer({
                       <Mail className="w-4 h-4 text-slate-400 shrink-0" />
                       <span className="truncate">
                         {g.email || (
-                          <span className="text-slate-400">No Email</span>
+                          <span className="text-slate-400">
+                            {t("guests.noEmail")}
+                          </span>
                         )}
                       </span>
                     </div>
@@ -1047,13 +1089,17 @@ function GuestDetailDrawer({
                   {/* Right column: First Visit, then Last Visit */}
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-slate-500">First Visit</span>
+                      <span className="text-slate-500">
+                        {t("guests.firstVisit")}
+                      </span>
                       <span className="font-medium text-slate-800 tabular-nums">
                         {fmtDate(g.firstVisitAt, g.location.timezone ?? undefined)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-slate-500">Last Visit</span>
+                      <span className="text-slate-500">
+                        {t("guests.lastVisit")}
+                      </span>
                       <span className="font-medium text-slate-800 tabular-nums">
                         {fmtDate(g.lastVisitAt, g.location.timezone ?? undefined)}
                       </span>
@@ -1064,23 +1110,29 @@ function GuestDetailDrawer({
                 {/* Stats — integrated row (no boxes). 3 cols on mobile, 6 on
                     tablet/desktop. */}
                 <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-3 sm:grid-cols-6 gap-y-3">
-                  <ProfileStat label="Total Visits" value={g.totalVisits} />
-                  <ProfileStat label="Waitlist" value={g.waitlistVisitCount} />
                   <ProfileStat
-                    label="Upcoming"
+                    label={t("guests.stat.totalVisits")}
+                    value={g.totalVisits}
+                  />
+                  <ProfileStat
+                    label={t("guests.stat.waitlist")}
+                    value={g.waitlistVisitCount}
+                  />
+                  <ProfileStat
+                    label={t("guests.stat.upcoming")}
                     value={g.upcomingReservationCount}
                   />
                   <ProfileStat
-                    label="Past Res."
+                    label={t("guests.stat.pastRes")}
                     value={g.pastReservationCount}
                   />
                   <ProfileStat
-                    label="No-Shows"
+                    label={t("guests.stat.noShows")}
                     value={g.noShowCount}
                     tone={g.noShowCount > 0 ? "red" : undefined}
                   />
                   <ProfileStat
-                    label="Cancelled"
+                    label={t("guests.stat.cancelled")}
                     value={g.cancelledCount}
                     tone={g.cancelledCount > 0 ? "red" : undefined}
                   />
@@ -1089,27 +1141,28 @@ function GuestDetailDrawer({
 
               {/* Summary */}
               <section>
-                <SectionHeading>Summary</SectionHeading>
+                <SectionHeading>{t("guests.summary")}</SectionHeading>
                 <p className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-3">
-                  {g.summary ||
-                    "New guest. More history will appear after future visits."}
+                  {g.summary || t("guests.summary.empty")}
                 </p>
               </section>
 
               {/* Tags editor */}
               <section>
-                <SectionHeading>Tags</SectionHeading>
+                <SectionHeading>{t("guests.tags")}</SectionHeading>
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {g.tags.length ? (
-                    g.tags.map((t) => (
+                    g.tags.map((tag) => (
                       <GuestTagBadge
-                        key={t}
-                        tag={t}
-                        onRemove={tagBusy ? undefined : () => removeTag(t)}
+                        key={tag}
+                        tag={tag}
+                        onRemove={tagBusy ? undefined : () => removeTag(tag)}
                       />
                     ))
                   ) : (
-                    <span className="text-sm text-slate-400">No Tags Yet</span>
+                    <span className="text-sm text-slate-400">
+                      {t("guests.noTags")}
+                    </span>
                   )}
                 </div>
                 <form
@@ -1122,7 +1175,7 @@ function GuestDetailDrawer({
                   <Input
                     value={newTag}
                     onChange={(e) => setNewTag(e.target.value)}
-                    placeholder="Add A Tag"
+                    placeholder={t("guests.addTag.placeholder")}
                     className="h-9 bg-slate-50 border-slate-200 text-xs sm:text-sm"
                     disabled={tagBusy}
                   />
@@ -1136,15 +1189,15 @@ function GuestDetailDrawer({
                 </form>
                 {availableSuggestions.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
-                    {availableSuggestions.map((t) => (
+                    {availableSuggestions.map((tag) => (
                       <button
-                        key={t}
+                        key={tag}
                         type="button"
                         disabled={tagBusy}
-                        onClick={() => addTag(t)}
+                        onClick={() => addTag(tag)}
                         className="text-xs px-2.5 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 transition-colors disabled:opacity-50"
                       >
-                        + {t}
+                        + {tag}
                       </button>
                     ))}
                   </div>
@@ -1153,14 +1206,14 @@ function GuestDetailDrawer({
 
               {/* Notes editor */}
               <section>
-                <SectionHeading>Internal Notes</SectionHeading>
+                <SectionHeading>{t("guests.internalNotes")}</SectionHeading>
                 <Textarea
                   value={notes}
                   onChange={(e) => {
                     setNotes(e.target.value);
                     notesDirtyRef.current = true;
                   }}
-                  placeholder="Private notes about this guest (only your team can see these)."
+                  placeholder={t("guests.notes.placeholder")}
                   className="bg-slate-50 border-slate-200 min-h-[90px] text-xs sm:text-sm"
                 />
                 <div className="flex justify-end mt-2">
@@ -1170,7 +1223,7 @@ function GuestDetailDrawer({
                     disabled={savingNotes || notes === (g.notes || "")}
                     className="text-xs sm:text-sm"
                   >
-                    {savingNotes ? "Saving..." : "Save Notes"}
+                    {savingNotes ? t("guests.saving") : t("guests.saveNotes")}
                   </Button>
                 </div>
               </section>
@@ -1178,16 +1231,16 @@ function GuestDetailDrawer({
               {/* Upcoming reservations */}
               {detail.upcomingReservations.length > 0 && (
                 <HistorySection
-                  title="Upcoming Reservations"
+                  title={t("guests.upcomingReservations")}
                   events={detail.upcomingReservations}
                 />
               )}
 
               {/* Visit history timeline */}
               <HistorySection
-                title="Visit History"
+                title={t("guests.visitHistory")}
                 events={detail.timeline}
-                emptyText="No visit history yet."
+                emptyText={t("guests.noVisitHistory")}
               />
             </div>
           </>
@@ -1230,12 +1283,13 @@ function HistorySection({
   events: TimelineEvent[];
   emptyText?: string;
 }) {
+  const { t, tStatus } = useLang();
   return (
     <section>
       <SectionHeading>{title}</SectionHeading>
       {events.length === 0 ? (
         <p className="text-sm text-slate-400">
-          {emptyText || "Nothing here yet."}
+          {emptyText || t("guests.nothingHere")}
         </p>
       ) : (
         <ol className="relative border-l border-slate-200 ml-1.5 space-y-3">
@@ -1246,13 +1300,20 @@ function HistorySection({
                 <span className="text-sm font-medium text-slate-700">
                   {e.atLabel ?? fmtDateTime(e.at)}
                 </span>
-                <StatusBadge status={e.status} />
+                <StatusBadge status={e.status} label={tStatus(e.status)} />
               </div>
               <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-2">
-                <span className="capitalize">{e.source}</span>
+                <span>
+                  {e.source === "reservation"
+                    ? t("guests.source.reservation")
+                    : t("guests.source.waitlist")}
+                </span>
                 <span>·</span>
                 <span>
-                  {e.partySize} {e.partySize === 1 ? "Guest" : "Guests"}
+                  {t(
+                    e.partySize === 1 ? "guests.guestOne" : "guests.guestMany",
+                    { n: e.partySize },
+                  )}
                 </span>
               </div>
               {e.notes && (

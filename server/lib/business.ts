@@ -131,12 +131,16 @@ export async function assembleBusinessMe(businessId: string) {
       trialDurationDays: true,
       maxLocations: true,
       baseCredits: true,
+      language: true,
       lastCreditRefillAt: true,
       nextCreditRefillAt: true,
       createdAt: true,
     },
   });
   if (!business) return null;
+
+  // Legacy businesses created before the language field default to English.
+  const language = (business as any).language ?? "en";
 
   const locations = await prisma.location.findMany({
     where: { businessId },
@@ -188,7 +192,7 @@ export async function assembleBusinessMe(businessId: string) {
     });
   });
 
-  return { ...business, locations: serializedLocations };
+  return { ...business, language, locations: serializedLocations };
 }
 
 /**

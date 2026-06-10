@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { GuestStatusBadge } from "@/components/GuestBadge";
 import { formatPhone } from "@/lib/phone";
-import { statusLabel } from "@/lib/statusStyles";
+import { useLang, type TKey } from "@/lib/i18n";
 import {
   CalendarDays,
   CalendarClock,
@@ -105,6 +105,7 @@ export default function ReservationsManager({
   onUpdated: (user: any) => void;
 }) {
   const { toast } = useToast();
+  const { t, tStatus } = useLang();
   const [tab, setTab] = useState<TabKey>("today");
   const [busyId, setBusyId] = useState<string | null>(null);
   // Collapsed by default so long lists don't clutter the card. The visible
@@ -158,11 +159,23 @@ export default function ReservationsManager({
   }, [reservations, todayStr]);
 
   const tabs: { key: TabKey; label: string; count: number }[] = [
-    { key: "today", label: "Today", count: buckets.today.length },
-    { key: "upcoming", label: "Upcoming", count: buckets.upcoming.length },
-    { key: "past", label: "Past", count: buckets.past.length },
-    { key: "cancelled", label: "Cancelled", count: buckets.cancelled.length },
-    { key: "no_shows", label: "No-Shows", count: buckets.no_shows.length },
+    { key: "today", label: t("res.tab.today"), count: buckets.today.length },
+    {
+      key: "upcoming",
+      label: t("res.tab.upcoming"),
+      count: buckets.upcoming.length,
+    },
+    { key: "past", label: t("res.tab.past"), count: buckets.past.length },
+    {
+      key: "cancelled",
+      label: t("res.tab.cancelled"),
+      count: buckets.cancelled.length,
+    },
+    {
+      key: "no_shows",
+      label: t("res.tab.noShows"),
+      count: buckets.no_shows.length,
+    },
   ];
 
   const visible = buckets[tab];
@@ -176,13 +189,16 @@ export default function ReservationsManager({
       );
       onUpdated(res.user);
       toast({
-        title: "Reservation updated",
-        description: `${r.name} marked ${statusLabel(status)}.`,
+        title: t("res.toast.updated.title"),
+        description: t("res.toast.updated.desc", {
+          name: r.name,
+          status: tStatus(status),
+        }),
       });
     } catch (e: any) {
       toast({
-        title: "Update failed",
-        description: e?.message || "Please try again.",
+        title: t("res.toast.updateFailed.title"),
+        description: e?.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -197,14 +213,14 @@ export default function ReservationsManager({
           <div>
             <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
               <CalendarDays className="w-5 h-5" />
-              Reservations Management
+              {t("res.title")}
             </CardTitle>
             <CardDescription className="text-gray-600 text-sm mt-0.5">
               {!locationId
-                ? "No Location Selected"
+                ? t("res.noLocationSelected")
                 : reservationsEnabled
-                  ? `Bookings for: ${locationLabel}`
-                  : "Reservations are disabled for this location."}
+                  ? t("res.bookingsFor", { label: locationLabel })
+                  : t("res.disabled")}
             </CardDescription>
           </div>
         </div>
@@ -247,14 +263,14 @@ export default function ReservationsManager({
       <CardContent className="p-4 md:p-6">
         {!reservationsEnabled && (
           <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-            Enable reservations in Settings to start accepting bookings.
+            {t("res.enableHint")}
           </p>
         )}
 
         {reservationsEnabled && visible.length === 0 && (
           <div className="flex flex-col items-center py-10 text-center text-slate-400">
             <CalendarClock className="h-8 w-8" />
-            <p className="mt-2 text-sm">No reservations here.</p>
+            <p className="mt-2 text-sm">{t("res.empty")}</p>
           </div>
         )}
 
@@ -275,6 +291,8 @@ export default function ReservationsManager({
                   busy={busyId === r.id}
                   onChange={changeStatus}
                   nowLocal={nowLocal}
+                  t={t}
+                  tStatus={tStatus}
                 />
               </div>
             );
@@ -297,7 +315,9 @@ export default function ReservationsManager({
               onClick={() => setExpanded((v) => !v)}
               className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
             >
-              {expanded ? "View Less" : `View All (${visible.length})`}
+              {expanded
+                ? t("res.viewLess")
+                : t("res.viewAll", { n: visible.length })}
             </Button>
           </div>
         )}
@@ -339,12 +359,16 @@ function ReservationCard({
   busy,
   onChange,
   nowLocal,
+  t,
+  tStatus,
 }: {
   r: Reservation;
   busy: boolean;
   onChange: (r: Reservation, status: string) => void;
   /** Restaurant-local "YYYY-MM-DDTHH:MM" now, for arrived/no-show eligibility. */
   nowLocal: string;
+  t: (key: TKey, params?: Record<string, string | number>) => string;
+  tStatus: (status: string) => string;
 }) {
   const { date, time } = splitDateTime(r.reservationDateTime);
 
@@ -354,34 +378,34 @@ function ReservationCard({
   const hasPassed = r.reservationDateTime.slice(0, 16) <= nowLocal;
 
   // Action sets vary by current status (no actions for terminal states).
-  const actions: { label: string; status: string; variant?: "destructive" }[] =
+  const actions: { labelKey: TKey; status: string; variant?: "destructive" }[] =
     [];
   if (r.status === "pending") {
-    actions.push({ label: "Confirm", status: "confirmed" });
+    actions.push({ labelKey: "res.action.confirm", status: "confirmed" });
     actions.push({
-      label: "Cancel",
+      labelKey: "res.action.cancel",
       status: "cancelled",
       variant: "destructive",
     });
   } else if (r.status === "confirmed") {
     // Only allow marking arrived / no-show once the booked time has passed.
     if (hasPassed) {
-      actions.push({ label: "Mark Arrived", status: "arrived" });
+      actions.push({ labelKey: "res.action.markArrived", status: "arrived" });
       actions.push({
-        label: "No-Show",
+        labelKey: "res.action.noShow",
         status: "no_show",
         variant: "destructive",
       });
     }
     actions.push({
-      label: "Cancel",
+      labelKey: "res.action.cancel",
       status: "cancelled",
       variant: "destructive",
     });
   } else if (r.status === "arrived") {
-    actions.push({ label: "Mark Completed", status: "completed" });
+    actions.push({ labelKey: "res.action.markCompleted", status: "completed" });
     actions.push({
-      label: "No-Show",
+      labelKey: "res.action.noShow",
       status: "no_show",
       variant: "destructive",
     });
@@ -395,7 +419,7 @@ function ReservationCard({
             <p className="font-semibold text-gray-800 text-sm md:text-base">
               {r.name}
             </p>
-            <StatusBadge status={r.status} />
+            <StatusBadge status={r.status} label={tStatus(r.status)} />
             {r.isReturning && <GuestStatusBadge returning />}
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
@@ -438,7 +462,7 @@ function ReservationCard({
               {busy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                a.label
+                t(a.labelKey)
               )}
             </Button>
           ))}

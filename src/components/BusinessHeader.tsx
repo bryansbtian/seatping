@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useLang } from "@/lib/i18n";
 
 const BusinessHeader = () => {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
 
   const handleLogout = (e: React.MouseEvent) => {
@@ -40,26 +42,26 @@ const BusinessHeader = () => {
         {/* Desktop / Tablet actions (sm and up) */}
         <div className="hidden sm:flex items-center gap-8">
           <Link to="/business/dashboard" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
-            Dashboard
+            {t("nav.dashboard")}
           </Link>
           <Link to="/business/guests" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
-            Guests
+            {t("nav.guests")}
           </Link>
           <Link to="/business/settings" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
-            Settings
+            {t("nav.settings")}
           </Link>
           <button
             onClick={handleLogout}
             className="text-slate-900 hover:text-slate-600 transition-colors font-medium cursor-pointer"
           >
-            Log Out
+            {t("nav.logout")}
           </button>
         </div>
 
         {/* Mobile hamburger */}
         <button
           type="button"
-          aria-label="Open menu"
+          aria-label={t("nav.openMenu")}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
           className="sm:hidden inline-flex items-center justify-center rounded-xl border border-border px-3 py-2 text-sm"
@@ -85,27 +87,27 @@ const BusinessHeader = () => {
               className="block px-4 py-2 text-slate-900 hover:bg-slate-50 rounded-lg transition-colors font-medium"
               onClick={() => setOpen(false)}
             >
-              Dashboard
+              {t("nav.dashboard")}
             </Link>
             <Link
               to="/business/guests"
               className="block px-4 py-2 text-slate-900 hover:bg-slate-50 rounded-lg transition-colors font-medium"
               onClick={() => setOpen(false)}
             >
-              Guests
+              {t("nav.guests")}
             </Link>
             <Link
               to="/business/settings"
               className="block px-4 py-2 text-slate-900 hover:bg-slate-50 rounded-lg transition-colors font-medium"
               onClick={() => setOpen(false)}
             >
-              Settings
+              {t("nav.settings")}
             </Link>
             <button
               onClick={handleLogout}
               className="block w-full text-left px-4 py-2 text-slate-900 hover:bg-slate-50 rounded-lg transition-colors font-medium cursor-pointer"
             >
-              Log Out
+              {t("nav.logout")}
             </button>
           </div>
         )}

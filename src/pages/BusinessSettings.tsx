@@ -18,8 +18,10 @@ import { api } from "@/lib/api";
 import BusinessHeader from "@/components/BusinessHeader";
 import BusinessTrialBanner from "@/components/BusinessTrialBanner";
 import LocationManagement from "@/components/LocationManagement";
+import LanguageSelector from "@/components/LanguageSelector";
 import Footer from "@/components/Footer";
 import SEO, { BUSINESS_DESCRIPTION } from "@/components/SEO";
+import { useLang } from "@/lib/i18n";
 
 interface BusinessMe {
   name: string;
@@ -34,6 +36,7 @@ interface BusinessMe {
 }
 
 const BusinessSettings = () => {
+  const { t } = useLang();
   const [me, setMe] = useState<BusinessMe | null>(null);
 
   const locations = me?.locations || [];
@@ -55,6 +58,7 @@ const BusinessSettings = () => {
         title="Business Settings | SeatPing"
         description={BUSINESS_DESCRIPTION}
       />
+      {/* SEO title stays in English (brand metadata, not operator UI). */}
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100">
         <div className="container mx-auto px-4 py-8">
@@ -71,11 +75,10 @@ const BusinessSettings = () => {
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
                     <div>
                       <h3 className="text-lg md:text-xl font-semibold">
-                        ⚠️ No Credits Available
+                        {t("banner.noCredits.title")}
                       </h3>
                       <p className="text-sm md:text-base opacity-90">
-                        You have no credits available. Please contact SeatPing to
-                        top up credits or adjust your account.
+                        {t("banner.noCredits.body")}
                       </p>
                     </div>
                     <div className="flex justify-end">
@@ -83,7 +86,7 @@ const BusinessSettings = () => {
                         variant="inverseOutline"
                         onClick={() => (window.location.href = "/sales")}
                       >
-                        Contact SeatPing
+                        {t("common.contactSeatPing")}
                       </Button>
                     </div>
                   </div>
@@ -94,10 +97,10 @@ const BusinessSettings = () => {
           {/* Settings header */}
           <div className="mb-6">
             <h1 className="text-xl md:text-2xl font-semibold text-gray-800">
-              Settings
+              {t("settings.title")}
             </h1>
             <p className="text-gray-600 text-sm md:text-base">
-              Manage your business information and locations.
+              {t("settings.subtitle")}
             </p>
           </div>
 
@@ -106,10 +109,10 @@ const BusinessSettings = () => {
             <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
               <CardHeader className="p-4 md:p-6">
                 <CardTitle className="text-lg md:text-xl text-gray-800">
-                  Business Information
+                  {t("settings.businessInfo.title")}
                 </CardTitle>
                 <CardDescription className="text-gray-600 text-sm md:text-base">
-                  Your business details and account information
+                  {t("settings.businessInfo.desc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 p-4 md:p-6 pt-0">
@@ -119,7 +122,7 @@ const BusinessSettings = () => {
                       htmlFor="businessName"
                       className="text-sm md:text-base"
                     >
-                      Business Name
+                      {t("settings.field.businessName")}
                     </Label>
                     <Input
                       id="businessName"
@@ -130,7 +133,7 @@ const BusinessSettings = () => {
                   </div>
                   <div>
                     <Label htmlFor="username" className="text-sm md:text-base">
-                      Username
+                      {t("settings.field.username")}
                     </Label>
                     <Input
                       id="username"
@@ -141,7 +144,7 @@ const BusinessSettings = () => {
                   </div>
                   <div>
                     <Label htmlFor="email" className="text-sm md:text-base">
-                      Email
+                      {t("settings.field.email")}
                     </Label>
                     <Input
                       id="email"
@@ -152,7 +155,7 @@ const BusinessSettings = () => {
                   </div>
                   <div>
                     <Label htmlFor="phone" className="text-sm md:text-base">
-                      Phone Number
+                      {t("settings.field.phone")}
                     </Label>
                     <Input
                       id="phone"
@@ -162,6 +165,21 @@ const BusinessSettings = () => {
                     />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Preferences — operator UI language lives here. */}
+            <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
+              <CardHeader className="p-4 md:p-6">
+                <CardTitle className="text-lg md:text-xl text-gray-800">
+                  {t("settings.prefs.title")}
+                </CardTitle>
+                <CardDescription className="text-gray-600 text-sm md:text-base">
+                  {t("settings.prefs.desc")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 md:p-6 pt-0">
+                <LanguageSelector />
               </CardContent>
             </Card>
 

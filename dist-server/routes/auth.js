@@ -1207,6 +1207,57 @@ router.put("/business/me", requireBusiness, async (req, res) => {
         return res.status(500).json({ error: "Server error" });
     }
 });
+// Operator UI language for the business dashboard area. Only these two values
+// are accepted; anything else is rejected so the column stays clean.
+const BUSINESS_LANGUAGES = ["en", "id"];
+/**
+ * GET /auth/business/language  (business, protected)
+ * Lightweight read so the operator pages can initialize their language without
+ * pulling the full `me` payload. Legacy businesses with no saved value fall back
+ * to English.
+ */
+router.get("/business/language", requireBusiness, async (req, res) => {
+    try {
+        const businessId = req.auth.sub;
+        const business = await prisma.business.findUnique({
+            where: { id: businessId },
+            select: { language: true },
+        });
+        if (!business)
+            return res.status(404).json({ error: "Not found" });
+        return res.json({ language: business.language || "en" });
+    }
+    catch (err) {
+        console.error("[auth] business get language error:", err?.message || err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+/**
+ * PUT /auth/business/language  (business, protected)
+ * Body: { language: "en" | "id" }. Updates the authenticated business's operator
+ * UI language only. The value is validated against the allowlist so the column
+ * can never hold an unsupported language code.
+ */
+router.put("/business/language", requireBusiness, async (req, res) => {
+    try {
+        const businessId = req.auth.sub;
+        const language = String(req.body?.language || "");
+        if (!BUSINESS_LANGUAGES.includes(language)) {
+            return res
+                .status(400)
+                .json({ error: "language must be one of: en, id" });
+        }
+        await prisma.business.update({
+            where: { id: businessId },
+            data: { language },
+        });
+        return res.json({ language });
+    }
+    catch (err) {
+        console.error("[auth] business set language error:", err?.message || err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
 /**
  * POST /auth/business/locations  (business, protected)
  * Body: { displayName, address, area?, city?, country?, latitude?, longitude?,

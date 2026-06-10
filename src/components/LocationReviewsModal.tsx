@@ -36,6 +36,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useLang } from "@/lib/i18n";
 import {
   Loader2,
   MessageSquare,
@@ -125,6 +126,7 @@ export default function LocationReviewsModal({
   onOpenChange: (open: boolean) => void;
 }) {
   const { toast } = useToast();
+  const { t } = useLang();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reviews, setReviews] = useState<Review[] | null>(null);
@@ -164,7 +166,7 @@ export default function LocationReviewsModal({
           setReviews(Array.isArray(res.reviews) ? res.reviews : []);
       })
       .catch((e: any) => {
-        if (!cancelled) setError(e?.message || "Failed to load reviews.");
+        if (!cancelled) setError(e?.message || t("rev.failedLoad"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -178,7 +180,7 @@ export default function LocationReviewsModal({
     location?.displayName ||
     location?.name ||
     location?.address ||
-    "this location";
+    t("rev.thisLocation");
 
   // Summary always uses ALL reviews — filters are for the list, not the totals.
   const total = reviews?.length ?? 0;
@@ -283,12 +285,14 @@ export default function LocationReviewsModal({
       replaceReview(res.review);
       cancelReply(review.id);
       toast({
-        title: review.businessReply ? "Reply updated" : "Reply posted",
+        title: review.businessReply
+          ? t("rev.toast.replyUpdated")
+          : t("rev.toast.replyPosted"),
       });
     } catch (e: any) {
       toast({
-        title: "Failed to save reply",
-        description: e?.message || "Please try again.",
+        title: t("rev.toast.replySaveFailed"),
+        description: e?.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -309,11 +313,11 @@ export default function LocationReviewsModal({
         { method: "DELETE" },
       );
       replaceReview(res.review);
-      toast({ title: "Reply removed" });
+      toast({ title: t("rev.toast.replyRemoved") });
     } catch (e: any) {
       toast({
-        title: "Failed to delete reply",
-        description: e?.message || "Please try again.",
+        title: t("rev.toast.replyDeleteFailed"),
+        description: e?.message || t("common.pleaseTryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -332,9 +336,9 @@ export default function LocationReviewsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="fixed left-1/2 top-1/2 z-50 mx-auto w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-2xl p-4 sm:max-w-3xl sm:p-6 max-sm:text-xs [&_.text-2xl]:max-sm:text-lg [&_.text-xl]:max-sm:text-base [&_.text-lg]:max-sm:text-sm [&_.text-base]:max-sm:text-sm [&_.text-sm]:max-sm:text-xs [&_input]:max-sm:h-8 [&_input]:max-sm:text-xs [&_textarea]:max-sm:text-xs [&_select]:max-sm:text-xs">
         <DialogHeader className="text-left">
-          <DialogTitle>Customer Reviews</DialogTitle>
+          <DialogTitle>{t("rev.title")}</DialogTitle>
           <DialogDescription className="break-words">
-            Reviews for {locationName}
+            {t("rev.subtitle", { name: locationName })}
           </DialogDescription>
         </DialogHeader>
 
@@ -348,7 +352,7 @@ export default function LocationReviewsModal({
               <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
             </div>
             <span className="text-sm text-muted-foreground">
-              {total} Review{total === 1 ? "" : "s"}
+              {t(total === 1 ? "rev.countOne" : "rev.countMany", { n: total })}
             </span>
           </div>
         )}
@@ -360,44 +364,48 @@ export default function LocationReviewsModal({
               value={ratingFilter}
               onValueChange={(v) => setRatingFilter(v as RatingFilter)}
             >
-              <SelectTrigger aria-label="Filter by rating">
-                <SelectValue placeholder="All Ratings" />
+              <SelectTrigger aria-label={t("rev.filter.ratingAria")}>
+                <SelectValue placeholder={t("rev.filter.allRatings")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Ratings</SelectItem>
-                <SelectItem value="5">5 Stars</SelectItem>
-                <SelectItem value="4">4 Stars</SelectItem>
-                <SelectItem value="3">3 Stars</SelectItem>
-                <SelectItem value="2">2 Stars</SelectItem>
-                <SelectItem value="1">1 Star</SelectItem>
+                <SelectItem value="all">{t("rev.filter.allRatings")}</SelectItem>
+                <SelectItem value="5">{t("rev.filter.stars", { n: 5 })}</SelectItem>
+                <SelectItem value="4">{t("rev.filter.stars", { n: 4 })}</SelectItem>
+                <SelectItem value="3">{t("rev.filter.stars", { n: 3 })}</SelectItem>
+                <SelectItem value="2">{t("rev.filter.stars", { n: 2 })}</SelectItem>
+                <SelectItem value="1">{t("rev.filter.star1")}</SelectItem>
               </SelectContent>
             </Select>
             <Select
               value={replyFilter}
               onValueChange={(v) => setReplyFilter(v as ReplyFilter)}
             >
-              <SelectTrigger aria-label="Filter by reply status">
-                <SelectValue placeholder="All Replies" />
+              <SelectTrigger aria-label={t("rev.filter.replyAria")}>
+                <SelectValue placeholder={t("rev.filter.allReplies")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Replies</SelectItem>
-                <SelectItem value="replied">Replied</SelectItem>
-                <SelectItem value="unreplied">Unreplied</SelectItem>
+                <SelectItem value="all">{t("rev.filter.allReplies")}</SelectItem>
+                <SelectItem value="replied">{t("rev.filter.replied")}</SelectItem>
+                <SelectItem value="unreplied">
+                  {t("rev.filter.unreplied")}
+                </SelectItem>
               </SelectContent>
             </Select>
             <Select
               value={sort}
               onValueChange={(v) => setSort(v as SortOption)}
             >
-              <SelectTrigger aria-label="Sort reviews">
+              <SelectTrigger aria-label={t("rev.sort.aria")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="newest">Newest First</SelectItem>
-                <SelectItem value="oldest">Oldest First</SelectItem>
-                <SelectItem value="highest">Highest Rating</SelectItem>
-                <SelectItem value="lowest">Lowest Rating</SelectItem>
-                <SelectItem value="unreplied-first">Unreplied First</SelectItem>
+                <SelectItem value="newest">{t("rev.sort.newest")}</SelectItem>
+                <SelectItem value="oldest">{t("rev.sort.oldest")}</SelectItem>
+                <SelectItem value="highest">{t("rev.sort.highest")}</SelectItem>
+                <SelectItem value="lowest">{t("rev.sort.lowest")}</SelectItem>
+                <SelectItem value="unreplied-first">
+                  {t("rev.sort.unrepliedFirst")}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -405,7 +413,7 @@ export default function LocationReviewsModal({
 
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" /> Loading reviews...
+            <Loader2 className="h-5 w-5 animate-spin" /> {t("rev.loading")}
           </div>
         ) : error ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -414,14 +422,14 @@ export default function LocationReviewsModal({
         ) : total === 0 ? (
           <div className="flex flex-col items-center justify-center gap-1 py-10 text-center">
             <MessageSquare className="mb-1 h-8 w-8 text-slate-300" />
-            <p className="font-medium text-gray-700">No Reviews Yet.</p>
+            <p className="font-medium text-gray-700">{t("rev.empty.title")}</p>
             <p className="text-sm text-muted-foreground">
-              Customer reviews will appear here once customers submit feedback.
+              {t("rev.empty.body")}
             </p>
           </div>
         ) : visibleReviews.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center text-sm text-slate-600">
-            No reviews match these filters.
+            {t("rev.noMatch")}
           </div>
         ) : (
           <div className="space-y-3">
@@ -445,7 +453,9 @@ export default function LocationReviewsModal({
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="font-medium text-gray-900 break-words">
-                        {r.customerName || r.customerUsername || "Anonymous"}
+                        {r.customerName ||
+                          r.customerUsername ||
+                          t("rev.anonymous")}
                       </p>
                       {r.customerName && r.customerUsername && (
                         <p className="text-xs text-muted-foreground break-words">
@@ -470,15 +480,15 @@ export default function LocationReviewsModal({
                   <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     <span>{formatDate(r.createdAt)}</span>
                     {typeof r.partySize === "number" && (
-                      <span>· Party of {r.partySize}</span>
+                      <span>· {t("rev.partyOf", { n: r.partySize })}</span>
                     )}
                     {r.serviceType && (
                       <span>
                         ·{" "}
                         {r.serviceType === "queue"
-                          ? "Walk-in"
+                          ? t("rev.walkIn")
                           : r.serviceType === "reservation"
-                            ? "Reservation"
+                            ? t("rev.reservation")
                             : r.serviceType}
                       </span>
                     )}
@@ -489,7 +499,7 @@ export default function LocationReviewsModal({
                     <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          Your reply
+                          {t("rev.yourReply")}
                         </p>
                         <div className="flex items-center gap-1">
                           <Button
@@ -499,7 +509,7 @@ export default function LocationReviewsModal({
                             onClick={() => startReply(r.id, r.businessReply)}
                             disabled={isSubmitting}
                           >
-                            <Pencil className="h-3.5 w-3.5" /> Edit Reply
+                            <Pencil className="h-3.5 w-3.5" /> {t("rev.editReply")}
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -509,26 +519,28 @@ export default function LocationReviewsModal({
                                 variant="destructiveOutline"
                                 disabled={isSubmitting}
                               >
-                                <Trash2 className="h-3.5 w-3.5" /> Delete
+                                <Trash2 className="h-3.5 w-3.5" />{" "}
+                                {t("rev.delete")}
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent className="max-w-sm">
                               <AlertDialogHeader>
                                 <AlertDialogTitle>
-                                  Delete this reply?
+                                  {t("rev.deleteTitle")}
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  The customer's review will stay — only your
-                                  response is removed.
+                                  {t("rev.deleteDesc")}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel>
+                                  {t("common.cancel")}
+                                </AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => deleteReply(r)}
                                   variant="destructive"
                                 >
-                                  Delete reply
+                                  {t("rev.deleteReply")}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -539,9 +551,17 @@ export default function LocationReviewsModal({
                         {r.businessReply}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Replied {formatDate(r.businessReplyCreatedAt)}
+                        {t("rev.repliedOn", {
+                          date: formatDate(r.businessReplyCreatedAt),
+                        })}
                         {wasEdited && (
-                          <> · Edited {formatDate(r.businessReplyUpdatedAt)}</>
+                          <>
+                            {" "}
+                            ·{" "}
+                            {t("rev.edited", {
+                              date: formatDate(r.businessReplyUpdatedAt),
+                            })}
+                          </>
                         )}
                       </p>
                     </div>
@@ -552,8 +572,8 @@ export default function LocationReviewsModal({
                     <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4 sm:p-5">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                         {r.businessReply
-                          ? "Edit your reply"
-                          : "Reply to this review"}
+                          ? t("rev.editYourReply")
+                          : t("rev.replyToThis")}
                       </p>
                       <Textarea
                         value={draft}
@@ -563,7 +583,7 @@ export default function LocationReviewsModal({
                             [r.id]: e.target.value,
                           }))
                         }
-                        placeholder="Thank you for visiting us..."
+                        placeholder={t("rev.replyPlaceholder")}
                         rows={3}
                         className="mt-3"
                       />
@@ -589,7 +609,7 @@ export default function LocationReviewsModal({
                             disabled={isSubmitting}
                             className="flex-1 sm:flex-none"
                           >
-                            Cancel
+                            {t("common.cancel")}
                           </Button>
                           <Button
                             type="button"
@@ -603,12 +623,12 @@ export default function LocationReviewsModal({
                             {isSubmitting ? (
                               <>
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />{" "}
-                                Saving...
+                                {t("rev.saving")}
                               </>
                             ) : r.businessReply ? (
-                              "Save Reply"
+                              t("rev.saveReply")
                             ) : (
-                              "Post Reply"
+                              t("rev.postReply")
                             )}
                           </Button>
                         </div>
@@ -625,7 +645,7 @@ export default function LocationReviewsModal({
                         variant="outline"
                         onClick={() => startReply(r.id)}
                       >
-                        <Reply className="h-4 w-4" /> Reply
+                        <Reply className="h-4 w-4" /> {t("rev.reply")}
                       </Button>
                     </div>
                   )}
@@ -650,14 +670,17 @@ export default function LocationReviewsModal({
                   )
                 }
               >
-                Load More Reviews
+                {t("rev.loadMore")}
               </Button>
             )}
             {(hasMore || filtersActive) && (
               <p className="text-xs text-muted-foreground">
-                Showing {pagedReviews.length} of {visibleReviews.length}
+                {t("rev.showing", {
+                  shown: pagedReviews.length,
+                  total: visibleReviews.length,
+                })}
                 {filtersActive && visibleReviews.length !== total
-                  ? ` (filtered from ${total})`
+                  ? t("rev.filteredFrom", { total })
                   : ""}
               </p>
             )}

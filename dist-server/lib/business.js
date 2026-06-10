@@ -104,6 +104,7 @@ export async function assembleBusinessMe(businessId) {
             trialDurationDays: true,
             maxLocations: true,
             baseCredits: true,
+            language: true,
             lastCreditRefillAt: true,
             nextCreditRefillAt: true,
             createdAt: true,
@@ -111,6 +112,8 @@ export async function assembleBusinessMe(businessId) {
     });
     if (!business)
         return null;
+    // Legacy businesses created before the language field default to English.
+    const language = business.language ?? "en";
     const locations = await prisma.location.findMany({
         where: { businessId },
         orderBy: { createdAt: "asc" },
@@ -148,7 +151,7 @@ export async function assembleBusinessMe(businessId) {
             reservations: reservations.map((r) => stampGuestBadge(r, guestBadgeMap, "reservation")),
         });
     });
-    return { ...business, locations: serializedLocations };
+    return { ...business, language, locations: serializedLocations };
 }
 /**
  * Annotate a legacy queue/reservation object with its guest badge. Queue rows
