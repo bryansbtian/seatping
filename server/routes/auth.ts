@@ -1666,22 +1666,23 @@ router.patch(
         return res.status(404).json({ error: "Reservation not found" });
       }
 
-      // A reservation can only be marked arrived / no-show once its booked time
-      // has actually passed in the LOCATION's timezone. This guards the API
-      // directly (not just the hidden UI buttons) so a future reservation can
-      // never be flipped to arrived/no-show, regardless of the caller.
+      // A reservation can only be marked arrived / no-show from its booked
+      // DATE onward, in the LOCATION's timezone (same-day is allowed so staff
+      // can record an early arrival, or a party they know isn't coming). This
+      // guards the API directly (not just the hidden UI buttons) so a
+      // future-dated reservation can never be flipped, regardless of the caller.
       if (status === "arrived" || status === "no_show") {
         const nowLocal = getNowWallClockInTimezone(
           getLocationTimezone(location),
         );
-        const bookedLocal = String(existing.reservationDateTime || "").slice(
+        const bookedDate = String(existing.reservationDateTime || "").slice(
           0,
-          16,
+          10,
         );
-        if (bookedLocal && bookedLocal > nowLocal) {
+        if (bookedDate && bookedDate > nowLocal.slice(0, 10)) {
           return res.status(400).json({
             error:
-              "This reservation is in the future. You can only mark it arrived or no-show after the reserved time.",
+              "This reservation is on a future date. You can only mark it arrived or no-show on the day of the reservation.",
           });
         }
       }

@@ -372,10 +372,12 @@ function ReservationCard({
 }) {
   const { date, time } = splitDateTime(r.reservationDateTime);
 
-  // Has the reservation time already passed in the restaurant's timezone?
-  // Arrived / No-Show are only valid after the booked time; before it, a future
-  // reservation can only be cancelled.
-  const hasPassed = r.reservationDateTime.slice(0, 16) <= nowLocal;
+  // Arrived / No-Show are valid from the booked DATE onward in the restaurant's
+  // timezone (same-day included, so staff can record an early arrival). Before
+  // that day, a future reservation can only be cancelled. Mirrors the server
+  // gate on the status PATCH.
+  const canMarkOutcome =
+    r.reservationDateTime.slice(0, 10) <= nowLocal.slice(0, 10);
 
   // Action sets vary by current status (no actions for terminal states).
   const actions: { labelKey: TKey; status: string; variant?: "destructive" }[] =
@@ -388,8 +390,7 @@ function ReservationCard({
       variant: "destructive",
     });
   } else if (r.status === "confirmed") {
-    // Only allow marking arrived / no-show once the booked time has passed.
-    if (hasPassed) {
+    if (canMarkOutcome) {
       actions.push({ labelKey: "res.action.markArrived", status: "arrived" });
       actions.push({
         labelKey: "res.action.noShow",
