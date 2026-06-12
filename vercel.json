@@ -93,10 +93,6 @@
     {
       "path": "/api/cron/credit-refill",
       "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/campaigns",
-      "schedule": "*/5 * * * *"
     }
   ],
   "functions": {

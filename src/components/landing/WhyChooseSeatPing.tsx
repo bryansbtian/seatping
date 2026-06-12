@@ -27,12 +27,12 @@ import {
   Pencil,
   QrCode,
   Zap,
-  Activity,
-  Building2,
   Plus,
   Minus,
   Check,
   BarChart3,
+  Contact,
+  Send,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -337,6 +337,112 @@ export function MiniNotificationCard({ className }: { className?: string }) {
   );
 }
 
+/** 6 · Guest CRM card — a guest profile auto-built from visits (name + repeat
+ *  badge, tags, visit history, contact). Tag colors mirror the Guest CRM page. */
+export function MiniGuestCard({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        MINI_GLASS_SURFACE,
+        "flex h-full w-full flex-col rounded-xl p-3",
+        className,
+      )}
+    >
+      <div className="mb-2.5 flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-800">
+          <Contact className="h-3.5 w-3.5" />
+          Guest Profile
+        </span>
+        <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-medium text-emerald-700">
+          Returning
+        </span>
+      </div>
+      <div
+        className={cn(
+          MINI_GLASS_INSET,
+          "flex flex-1 flex-col justify-center rounded-xl p-3",
+        )}
+      >
+        <p className="truncate text-[12px] font-semibold text-gray-800">
+          Sofia Almeida
+        </p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+          <span className="rounded-full border border-amber-200 bg-amber-100 px-1.5 py-0.5 text-[9px] font-medium text-amber-800">
+            VIP
+          </span>
+          <span className="rounded-full border border-blue-200 bg-blue-100 px-1.5 py-0.5 text-[9px] font-medium text-blue-700">
+            Regular
+          </span>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-slate-600">
+          <span className="inline-flex items-center gap-1">
+            <CalendarDays className="h-3.5 w-3.5" /> 7 Visits
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Clock className="h-3.5 w-3.5" /> Last: 3d Ago
+          </span>
+        </div>
+        <span className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
+          <Mail className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">sofia.almeida@example.com</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** 7 · Guest Campaigns card — a branded message sent to a saved audience
+ *  (campaign + status, audience group, the three channels). */
+export function MiniCampaignCard({ className }: { className?: string }) {
+  const channels = [
+    { icon: Phone, label: "SMS" },
+    { icon: MessageSquare, label: "WhatsApp" },
+    { icon: Mail, label: "Email" },
+  ];
+  return (
+    <div
+      className={cn(
+        MINI_GLASS_SURFACE,
+        "flex h-full w-full flex-col rounded-xl p-3",
+        className,
+      )}
+    >
+      <div className="mb-2.5 flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-800">
+          <Send className="h-3.5 w-3.5" />
+          Guest Campaigns
+        </span>
+        <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-medium text-emerald-700">
+          Sent
+        </span>
+      </div>
+      <div
+        className={cn(
+          MINI_GLASS_INSET,
+          "flex flex-1 flex-col justify-center rounded-xl p-3",
+        )}
+      >
+        <p className="truncate text-[12px] font-semibold text-gray-800">
+          We Miss You
+        </p>
+        <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded-full bg-indigo-50 px-1.5 py-0.5 text-[9px] font-medium text-indigo-700">
+          <Users className="h-3 w-3" /> Regulars · 128 Guests
+        </span>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {channels.map((c) => (
+            <span
+              key={c.label}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-medium text-slate-700"
+            >
+              <c.icon className="h-3 w-3" /> {c.label}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Public restaurant profile preview (photo, menu, reviews, CTAs). */
 export function MiniRestaurantProfileCard({
   className,
@@ -416,14 +522,14 @@ const ACCORDION_ITEMS: { icon: LucideIcon; title: string; body: string }[] = [
     body: "Take bookings in advance, set capacity per hour, and confirm, seat, or cancel from one organised day view.",
   },
   {
-    icon: Activity,
-    title: "Real-Time Performance Insights",
-    body: "Track served guests, average wait, and no-shows as the day unfolds, so you can staff up before it gets busy.",
+    icon: Contact,
+    title: "Guest CRM",
+    body: "Guest profiles build themselves from every reservation and waitlist visit, so you can see visit history, notes, tags, and who your regulars are.",
   },
   {
-    icon: Building2,
-    title: "Multi-Location Operations",
-    body: "Run every branch from one account, each with its own queue, opening hours, and settings.",
+    icon: Send,
+    title: "Guest Campaigns",
+    body: "Send SeatPing-branded SMS, WhatsApp, and Email messages to selected guests, smart audiences, or your saved groups, all from one place.",
   },
 ];
 
@@ -775,6 +881,20 @@ export default function WhyChooseSeatPing() {
         "Take bookings in advance and keep tonight's tables organised without the paper book.",
       icon: CalendarDays,
       visual: <MiniReservationCard className="w-full" />,
+    },
+    {
+      title: "Guest CRM",
+      description:
+        "Guest profiles build themselves from every visit, so you can track history, tags, notes, and your repeat guests.",
+      icon: Contact,
+      visual: <MiniGuestCard className="w-full" />,
+    },
+    {
+      title: "Guest Campaigns",
+      description:
+        "Send SeatPing-branded SMS, WhatsApp, and Email campaigns to selected guests, smart audiences, or saved groups.",
+      icon: Send,
+      visual: <MiniCampaignCard className="w-full" />,
     },
     {
       title: "Daily Summary",
