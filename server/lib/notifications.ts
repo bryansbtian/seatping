@@ -303,13 +303,17 @@ export async function processNotification(job: NotificationJob): Promise<void> {
           `Hi ${job.firstName}! You've joined the queue at ${job.restaurantName}. You're #${job.position} in line. We'll text you when it's your turn.`,
         );
       } else if (job.channel === "whatsapp") {
-        await sendQueueJoinedWhatsApp({
+        const ok = await sendQueueJoinedWhatsApp({
           countryCode: job.countryCode || "+1",
           phoneNumber: job.phoneNumber || "",
           customerName: job.firstName,
           businessName: job.restaurantName,
           position: job.position,
         });
+        // Throw on failure so the QStash worker returns non-2xx and the
+        // delivery is retried (a swallowed false meant the customer silently
+        // never got their confirmation).
+        if (!ok) throw new Error("WhatsApp queue_join send failed");
       } else if (job.channel === "email" && job.email) {
         await sendQueueJoinConfirmationEmail(
           job.email,
@@ -331,11 +335,14 @@ export async function processNotification(job: NotificationJob): Promise<void> {
           `Good news! It's your turn at ${job.restaurantName}. Please proceed to the host within the next 5 minutes. Thank you for using SeatPing!`,
         );
       } else if (job.channel === "whatsapp") {
-        await sendQueueAdmittedWhatsApp({
+        const ok = await sendQueueAdmittedWhatsApp({
           countryCode: job.countryCode || "+1",
           phoneNumber: job.phoneNumber || "",
           businessName: job.restaurantName,
         });
+        // "It's your turn" is the one message that must not be lost — throw so
+        // QStash retries instead of treating a failed send as delivered.
+        if (!ok) throw new Error("WhatsApp queue_admitted send failed");
       } else if (job.channel === "email" && job.email) {
         await sendQueueYourTurnEmail(job.email, job.restaurantName);
       }

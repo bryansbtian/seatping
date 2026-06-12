@@ -26,6 +26,11 @@ import { runDailyCreditRefillSweep } from "./lib/trial.js";
 import { runReservationReminderSweep } from "./lib/reservationReminders.js";
 import { runDueCampaignsSweep } from "./lib/campaignRunner.js";
 import { logRateLimitStatus, rateLimit } from "./lib/rateLimit.js";
+import { logEnvStatus } from "./lib/envCheck.js";
+import { prisma } from "./lib/prisma.js";
+
+// Surface missing production env vars at cold start (serverless included).
+logEnvStatus();
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -107,6 +112,28 @@ app.use((req, res, next) => {
     return next();
   }
   return globalLimiter(req, res, next);
+});
+
+/**
+ * GET /api/health — liveness + DB reachability, for uptime monitoring (e.g.
+ * UptimeRobot / Better Stack hitting it every minute). Returns 200 with
+ * db:"ok" when MongoDB answers a trivial query within 2.5s, 503 otherwise.
+ * No auth: it exposes nothing but up/down state.
+ */
+app.get("/api/health", async (_req, res) => {
+  const timeout = new Promise<"timeout">((resolve) =>
+    setTimeout(() => resolve("timeout"), 2500),
+  );
+  try {
+    const result = await Promise.race([
+      prisma.business.findFirst({ select: { id: true } }).then(() => "ok" as const),
+      timeout,
+    ]);
+    if (result === "ok") return res.json({ ok: true, db: "ok" });
+    return res.status(503).json({ ok: false, db: "timeout" });
+  } catch {
+    return res.status(503).json({ ok: false, db: "error" });
+  }
 });
 
 app.use("/auth", authRouter);

@@ -44,6 +44,7 @@ import {
   syncGuestFromReservation,
   touchGuestByReservationId,
 } from "../lib/guests.js";
+import { withWriteRetry } from "../lib/dbRetry.js";
 import type { Reservation } from "@prisma/client";
 
 const router = Router();
@@ -308,6 +309,26 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
     const reservationDateTime = buildReservationDateTime(String(date), String(time));
     const { dateKey, hour } = bucketOf(reservationDateTime);
 
+    // Duplicate-submit guard: the same email already holds an active booking for
+    // this exact slot at this location (double-click / refresh / re-submit).
+    // Reject rather than return the existing booking so the manage token is
+    // never disclosed to anyone but the original email recipient.
+    const duplicate = await prisma.reservation.findFirst({
+      where: {
+        locationId: location.id,
+        email: String(email).trim(),
+        reservationDateTime,
+        status: { in: ["PENDING", "CONFIRMED", "ARRIVED"] },
+      },
+      select: { id: true },
+    });
+    if (duplicate) {
+      return res.status(409).json({
+        error:
+          "A reservation for this email at this time already exists. Check your inbox for the confirmation and manage link.",
+      });
+    }
+
     // Atomic overbooking guard: a single guarded counter increment. If it fails,
     // the hour bucket is full — no row is created, so we can never overbook even
     // under simultaneous requests for the last seats.
@@ -565,13 +586,25 @@ router.post("/manage/:manageToken/cancel", async (req, res) => {
       return res.status(400).json({ error: "This reservation can no longer be cancelled." });
     }
 
-    // Free the seats this reservation was holding.
-    const { dateKey, hour } = bucketOf(reservation.reservationDateTime);
-    await releaseCapacity(location.id, dateKey, hour, reservation.guestCount);
-
-    const updated = await prisma.reservation.update({
+    // Guarded cancel: flip the status first, and only release the held seats if
+    // THIS request won the transition. Two concurrent cancels (or a cancel
+    // racing a staff status change) can otherwise double-release capacity,
+    // silently letting the hour overbook.
+    const claim = await withWriteRetry(() =>
+      prisma.reservation.updateMany({
+        where: {
+          id: reservation.id,
+          status: { in: ["PENDING", "CONFIRMED", "ARRIVED"] },
+        },
+        data: { status: "CANCELLED", cancelledAt: new Date() },
+      }),
+    );
+    if (claim.count === 1) {
+      const { dateKey, hour } = bucketOf(reservation.reservationDateTime);
+      await releaseCapacity(location.id, dateKey, hour, reservation.guestCount);
+    }
+    const updated = await prisma.reservation.findUniqueOrThrow({
       where: { id: reservation.id },
-      data: { status: "CANCELLED", cancelledAt: new Date() },
     });
     await syncManageChange(location, updated);
     // Guest CRM: a cancellation changes the guest's cancelled count.

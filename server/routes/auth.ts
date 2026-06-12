@@ -1696,8 +1696,27 @@ router.patch(
         no_show: "noShowAt",
       };
 
-      // Keep the per-hour capacity counter in step with the status change before
-      // we persist (release seats on cancel/complete/no_show, re-add on revive).
+      // Guarded transition: only flip the row if it's still in the status we
+      // loaded. Two staff acting on the same reservation at once can't both
+      // apply (and double-count the capacity delta below).
+      const claimed = await withWriteRetry(() =>
+        prisma.reservation.updateMany({
+          where: { id: existing.id, status: existing.status },
+          data: {
+            status: newEnum,
+            ...(timestampField[status] ? { [timestampField[status]]: now } : {}),
+          },
+        }),
+      );
+      if (claimed.count === 0) {
+        return res.status(409).json({
+          error: "This reservation was just updated by someone else. Please refresh.",
+        });
+      }
+
+      // Keep the per-hour capacity counter in step with the status change
+      // (release seats on cancel/complete/no_show, re-add on revive). Applied
+      // only after winning the guarded transition, so it runs exactly once.
       await applyStatusCapacityDelta({
         locationId,
         reservationDateTime: existing.reservationDateTime,
@@ -1706,12 +1725,8 @@ router.patch(
         newStatus: newEnum,
       });
 
-      const updated = await prisma.reservation.update({
+      const updated = await prisma.reservation.findUniqueOrThrow({
         where: { id: existing.id },
-        data: {
-          status: newEnum,
-          ...(timestampField[status] ? { [timestampField[status]]: now } : {}),
-        },
       });
 
       // Keep the customer's profile copy in sync (no-op for guest bookings).
@@ -1930,6 +1945,30 @@ router.post("/business/:username/queue", async (req, res) => {
           dayName: operatingStatus.dayName,
           todayHours: operatingStatus.hoursLabel,
         },
+      });
+    }
+
+    // Duplicate-join guard: one WAITING ticket per contact per location. A
+    // double-click / re-submit would otherwise create a second entry and charge
+    // a second credit. We reject (rather than echo the existing ticket) so a
+    // third party who knows someone's phone number can't retrieve their ticket
+    // details. The existing ticket keeps working and still gets its admit
+    // notification.
+    const existingWaiting = await prisma.queueEntry.findFirst({
+      where: {
+        locationId: location.id,
+        status: "WAITING",
+        ...(notificationMethod === "email"
+          ? { email: String(email) }
+          : { phone: String(phoneNumber) }),
+      },
+      select: { id: true },
+    });
+    if (existingWaiting) {
+      return res.status(409).json({
+        error:
+          "This contact is already in the queue at this location. You'll be notified when it's your turn.",
+        alreadyInQueue: true,
       });
     }
 

@@ -81,7 +81,15 @@
       "destination": "/api/server"
     },
     {
+      "source": "/tickets",
+      "destination": "/api/server"
+    },
+    {
       "source": "/tickets/:path*",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/health",
       "destination": "/api/server"
     },
     {

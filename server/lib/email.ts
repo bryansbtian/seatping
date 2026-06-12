@@ -2,15 +2,19 @@ import nodemailer from "nodemailer";
 
 // Create a transporter using SMTP
 const transporter = nodemailer.createTransport({
-  host: "smtp.porkbun.com", // Porkbun SMTP server for custom domain email
+  host: process.env.EMAIL_HOST || "smtp.porkbun.com", // Porkbun SMTP server for custom domain email
   port: 587,
   secure: false, // true for 465, false for other ports (587 uses STARTTLS)
   auth: {
-    user: "bryan.susanto@seatping.biz", // Custom domain email address
+    user: process.env.EMAIL_USER || "bryan.susanto@seatping.biz", // Custom domain email address
     pass: process.env.EMAIL_PASSWORD || "your-app-password-here", // Email password
   },
   tls: {
-    rejectUnauthorized: false,
+    // Verify the SMTP server's certificate (an unverified connection allows a
+    // network MITM to read every email, including password-reset links).
+    // EMAIL_TLS_INSECURE=1 is a temporary escape hatch if the provider's cert
+    // chain ever breaks — do not leave it set.
+    rejectUnauthorized: process.env.EMAIL_TLS_INSECURE !== "1",
   },
   // Increase timeouts for serverless environments
   connectionTimeout: 30000, // 30 seconds

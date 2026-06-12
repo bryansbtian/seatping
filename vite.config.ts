@@ -84,6 +84,10 @@ export default defineConfig(() => ({
         target: "http://localhost:4000",
         changeOrigin: true,
       },
+      "/api/health": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
     },
   },
   plugins: [react()],

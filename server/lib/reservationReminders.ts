@@ -81,9 +81,22 @@ export async function runReservationReminderSweep(): Promise<void> {
   const frontend = process.env.FRONTEND_URL || "https://www.seatping.biz";
   let sentCount = 0;
 
-  // Candidate set: confirmed, not yet reminded. Tiny vs. the whole collection.
+  // Candidate set: confirmed, not yet reminded, and within ±2 days of now.
+  // `reservationDateTime` is "YYYY-MM-DDTHH:MM", so lexicographic bounds work.
+  // The 2-day pad covers every timezone offset; anything outside it cannot be
+  // inside the 120-minute window, so the sweep stays small no matter how many
+  // future bookings exist.
+  const dayMs = 24 * 60 * 60 * 1000;
+  const boundStr = (d: Date) => d.toISOString().slice(0, 16);
   const candidates = await prisma.reservation.findMany({
-    where: { status: "CONFIRMED", reminderEmailSentAt: null },
+    where: {
+      status: "CONFIRMED",
+      reminderEmailSentAt: null,
+      reservationDateTime: {
+        gte: boundStr(new Date(now.getTime() - 2 * dayMs)),
+        lte: boundStr(new Date(now.getTime() + 2 * dayMs)),
+      },
+    },
   });
   if (candidates.length === 0) return;
 
