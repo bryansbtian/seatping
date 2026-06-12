@@ -635,7 +635,9 @@ function BookingModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-2xl p-0 sm:max-w-md">
+      {/* Full-bleed layout: re-assert max-sm:p-0/overflow-hidden over the
+          shared mobile modal styles so the body keeps its internal scroll. */}
+      <DialogContent className="flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-2xl p-0 max-sm:overflow-hidden max-sm:p-0 sm:max-w-md">
         {/* Body scrolls; DialogContent stays clipped so the X close button (top
             right) and the rounded card edges stay fixed on screen, including on
             mobile where the card is centered with margin around it. */}

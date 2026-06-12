@@ -111,7 +111,9 @@ const CampaignTemplatesAdmin = () => {
     <Card>
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
+          {/* space-y-1.5 matches CardHeader's title/description spacing, which
+              is lost here because the flex wrapper makes this a nested div. */}
+          <div className="space-y-1.5">
             <CardTitle>Campaign Templates</CardTitle>
             <CardDescription>Review and approve business-submitted custom templates.</CardDescription>
           </div>
@@ -348,9 +350,9 @@ function ReviewDialog({
           </div>
 
           {/* Internal review fields (admin-only) */}
-          <h4 className="text-sm font-semibold text-slate-800 pt-2">Internal Review (admin only)</h4>
+          <h4 className="text-sm font-semibold text-slate-800 pt-2">Internal Review (Admin Only)</h4>
           <div>
-            <Label className="text-xs">Internal notes</Label>
+            <Label className="text-xs">Internal Notes</Label>
             <Textarea
               value={internalReviewNotes}
               onChange={(e) => setInternalReviewNotes(e.target.value)}
@@ -360,26 +362,26 @@ function ReviewDialog({
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs">WhatsApp Meta status</Label>
+              <Label className="text-xs">WhatsApp Meta Status</Label>
               <Input value={whatsappMetaStatus} onChange={(e) => setWhatsappMetaStatus(e.target.value)} className="mt-1" placeholder="e.g. submitted / approved" />
             </div>
             <div>
-              <Label className="text-xs">Meta category</Label>
+              <Label className="text-xs">Meta Category</Label>
               <Input value={whatsappMetaCategory} onChange={(e) => setWhatsappMetaCategory(e.target.value)} className="mt-1" placeholder="MARKETING / UTILITY" />
             </div>
             <div>
-              <Label className="text-xs">Provider template name</Label>
+              <Label className="text-xs">Provider Template Name</Label>
               <Input value={whatsappProviderTemplateName} onChange={(e) => setWhatsappProviderTemplateName(e.target.value)} className="mt-1" placeholder="meta_template_name" />
               {template.slug && whatsappProviderTemplateName && whatsappProviderTemplateName !== template.slug && (
                 <p className="text-[11px] text-amber-600 mt-1">Differs from username ({template.slug}).</p>
               )}
             </div>
             <div>
-              <Label className="text-xs">Provider template ID</Label>
+              <Label className="text-xs">Provider Template ID</Label>
               <Input value={whatsappProviderTemplateId} onChange={(e) => setWhatsappProviderTemplateId(e.target.value)} className="mt-1" />
             </div>
             <div>
-              <Label className="text-xs">WhatsApp language</Label>
+              <Label className="text-xs">WhatsApp Language</Label>
               <Input value={whatsappLanguage} onChange={(e) => setWhatsappLanguage(e.target.value)} className="mt-1" placeholder="en" />
             </div>
           </div>
@@ -391,7 +393,7 @@ function ReviewDialog({
           {/* Approve / reject */}
           <div className="border-t border-slate-200 pt-3 space-y-3">
             <div>
-              <Label className="text-xs">Business-facing rejection reason</Label>
+              <Label className="text-xs">Business-Facing Rejection Reason</Label>
               <Textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}

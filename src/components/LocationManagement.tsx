@@ -524,12 +524,12 @@ export default function LocationManagement({
                               </span>
                             </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent className="max-w-sm md:max-w-lg mx-4">
+                          <AlertDialogContent className="max-w-sm md:max-w-lg">
                             <AlertDialogHeader>
-                              <AlertDialogTitle className="text-base md:text-lg">
+                              <AlertDialogTitle>
                                 {t("loc.removeLocation")}
                               </AlertDialogTitle>
-                              <AlertDialogDescription className="text-sm md:text-base">
+                              <AlertDialogDescription>
                                 {t("loc.remove.confirmBody", {
                                   name:
                                     location.displayName || location.address,
@@ -568,7 +568,9 @@ export default function LocationManagement({
           if (!open) setEditing(null);
         }}
       >
-        <DialogContent className="fixed left-1/2 top-1/2 z-50 mx-auto w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-2xl p-4 sm:max-w-2xl sm:p-6 max-sm:text-xs [&_.text-2xl]:max-sm:text-base [&_.text-xl]:max-sm:text-sm [&_.text-lg]:max-sm:text-sm [&_.text-base]:max-sm:text-xs [&_.text-sm]:max-sm:text-xs [&_label]:max-sm:text-xs [&_p]:max-sm:text-xs [&_input]:max-sm:h-9 [&_input]:max-sm:text-xs [&_textarea]:max-sm:text-xs [&_select]:max-sm:text-xs max-[374px]:text-[10px] [&_.text-2xl]:max-[374px]:text-xs [&_.text-xl]:max-[374px]:text-[11px] [&_.text-lg]:max-[374px]:text-[11px] [&_.text-base]:max-[374px]:text-[10px] [&_.text-sm]:max-[374px]:text-[10px] [&_label]:max-[374px]:text-[10px] [&_p]:max-[374px]:text-[10px] [&_input]:max-[374px]:h-7 [&_input]:max-[374px]:text-[10px] [&_textarea]:max-[374px]:text-[10px] [&_select]:max-[374px]:text-[10px]">
+        {/* Mobile sizing + typography come from the shared modal styles in
+            ui/dialog.tsx; only the desktop width/height differ here. */}
+        <DialogContent className="max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-2xl sm:max-w-2xl">
           <DialogHeader className="text-left">
             <DialogTitle>{t("loc.editProfile")}</DialogTitle>
             <DialogDescription>

@@ -706,7 +706,9 @@ const Admin = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Filters</CardTitle>
+                {/* Subsection header: text-lg; tab section headers keep the
+                    CardTitle default (text-2xl). */}
+                <CardTitle className="text-lg">Filters</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-4">
                 <div className="w-40">
@@ -804,7 +806,7 @@ const Admin = () => {
           <TabsContent value="customer" className="mt-6 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl">Customer Management</CardTitle>
+                <CardTitle>Customer Management</CardTitle>
                 <CardDescription>
                   Search and view business account details
                 </CardDescription>
@@ -881,7 +883,9 @@ const Admin = () => {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Account Information</CardTitle>
+                    <CardTitle className="text-lg">
+                      Account Information
+                    </CardTitle>
                     <CardDescription>
                       Business contact and identity details
                     </CardDescription>
@@ -957,9 +961,9 @@ const Admin = () => {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Trial & Access</CardTitle>
+                    <CardTitle className="text-lg">Trial & Access</CardTitle>
                     <CardDescription>
-                      Turn Trial off to activate paid access — credits start
+                      Turn Trial off to activate paid access. Credits start
                       then and refill monthly
                     </CardDescription>
                   </CardHeader>
@@ -987,7 +991,7 @@ const Admin = () => {
                       </div>
                       <div>
                         <Label className="text-muted-foreground">
-                          Trial Duration (days)
+                          Trial Duration (Days)
                         </Label>
                         {isEditing && editDraft ? (
                           <Input
@@ -1064,7 +1068,7 @@ const Admin = () => {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Locations</CardTitle>
+                    <CardTitle className="text-lg">Locations</CardTitle>
                     <CardDescription>
                       {selectedCustomer.locations.length === 0
                         ? "No locations registered"

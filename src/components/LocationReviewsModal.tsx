@@ -334,7 +334,9 @@ export default function LocationReviewsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fixed left-1/2 top-1/2 z-50 mx-auto w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-2xl p-4 sm:max-w-3xl sm:p-6 max-sm:text-xs [&_.text-2xl]:max-sm:text-lg [&_.text-xl]:max-sm:text-base [&_.text-lg]:max-sm:text-sm [&_.text-base]:max-sm:text-sm [&_.text-sm]:max-sm:text-xs [&_input]:max-sm:h-8 [&_input]:max-sm:text-xs [&_textarea]:max-sm:text-xs [&_select]:max-sm:text-xs">
+      {/* Mobile sizing + typography come from the shared modal styles in
+          ui/dialog.tsx; only the desktop width/height differ here. */}
+      <DialogContent className="max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-2xl sm:max-w-3xl">
         <DialogHeader className="text-left">
           <DialogTitle>{t("rev.title")}</DialogTitle>
           <DialogDescription className="break-words">

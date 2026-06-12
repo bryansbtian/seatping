@@ -276,9 +276,7 @@ export default function FeaturedRestaurantsManager() {
       {/* ===================== ADD FORM ===================== */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg md:text-xl">
-            Add Featured Restaurant
-          </CardTitle>
+          <CardTitle>Add Featured Restaurant</CardTitle>
           <CardDescription>
             Search a business by username, pick one of its locations, and feature
             it on the homepage.
@@ -287,7 +285,7 @@ export default function FeaturedRestaurantsManager() {
         <CardContent className="space-y-4">
           {/* Business search */}
           <div className="space-y-2">
-            <Label htmlFor="fr-username">Business username</Label>
+            <Label htmlFor="fr-username">Business Username</Label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 id="fr-username"
@@ -407,7 +405,7 @@ export default function FeaturedRestaurantsManager() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="fr-sort">Sort order (optional)</Label>
+                    <Label htmlFor="fr-sort">Sort Order (Optional)</Label>
                     <Input
                       id="fr-sort"
                       type="number"
@@ -452,9 +450,7 @@ export default function FeaturedRestaurantsManager() {
       {/* ===================== LIST ===================== */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg md:text-xl">
-            Current Featured Restaurants
-          </CardTitle>
+          <CardTitle>Current Featured Restaurants</CardTitle>
           <CardDescription>
             Sorted by sort order, then newest. Inactive entries are hidden from
             the homepage.

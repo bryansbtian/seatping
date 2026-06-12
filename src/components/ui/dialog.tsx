@@ -4,6 +4,23 @@ import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Shared mobile (max-sm) modal styling so every popup matches the Edit
+ * Restaurant Profile dialog: same width, capped height with internal scroll,
+ * rounded corners, padding, and one typography scale (with a smaller tier for
+ * phones under 375px). Baked into DialogContent and AlertDialogContent; a call
+ * site can opt out of a piece by re-asserting the same `max-sm:` utility
+ * (e.g. `max-sm:p-0` for full-bleed layouts).
+ */
+export const modalMobileClasses = [
+  // Frame: edge-to-edge width with margin, capped height, internal scroll.
+  "max-sm:w-[calc(100vw-2rem)] max-sm:max-w-md max-sm:max-h-[85vh] max-sm:overflow-y-auto max-sm:overflow-x-hidden max-sm:rounded-2xl max-sm:p-4",
+  // Typography scale for small screens.
+  "max-sm:text-xs [&_.text-2xl]:max-sm:text-base [&_.text-xl]:max-sm:text-sm [&_.text-lg]:max-sm:text-sm [&_.text-base]:max-sm:text-xs [&_.text-sm]:max-sm:text-xs [&_label]:max-sm:text-xs [&_p]:max-sm:text-xs [&_input]:max-sm:h-9 [&_input]:max-sm:text-xs [&_textarea]:max-sm:text-xs [&_select]:max-sm:text-xs",
+  // Extra-small phones (<375px).
+  "max-[374px]:text-[10px] [&_.text-2xl]:max-[374px]:text-xs [&_.text-xl]:max-[374px]:text-[11px] [&_.text-lg]:max-[374px]:text-[11px] [&_.text-base]:max-[374px]:text-[10px] [&_.text-sm]:max-[374px]:text-[10px] [&_label]:max-[374px]:text-[10px] [&_p]:max-[374px]:text-[10px] [&_input]:max-[374px]:h-7 [&_input]:max-[374px]:text-[10px] [&_textarea]:max-[374px]:text-[10px] [&_select]:max-[374px]:text-[10px]",
+].join(" ")
+
 const Dialog = DialogPrimitive.Root
 
 const DialogTrigger = DialogPrimitive.Trigger
@@ -37,6 +54,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-lg",
+        modalMobileClasses,
         className
       )}
       {...props}

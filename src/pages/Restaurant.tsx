@@ -1330,8 +1330,10 @@ function PhotosModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Centered modal: capped width/height per breakpoint with breathing room
           on every side. Only the photo grid scrolls — the header + close button
-          stay pinned. Rounded on all sizes (override the base sm:rounded-lg). */}
-      <DialogContent className="flex max-h-[85vh] w-full max-w-[94vw] flex-col gap-0 overflow-hidden rounded-xl p-0 sm:max-w-[88vw] lg:max-w-[960px]">
+          stay pinned. Full-bleed layout: re-assert max-sm:p-0/overflow-hidden
+          over the shared mobile modal styles so the grid keeps its internal
+          scroll. */}
+      <DialogContent className="flex max-h-[85vh] w-full max-w-[94vw] flex-col gap-0 overflow-hidden rounded-xl p-0 max-sm:overflow-hidden max-sm:p-0 sm:max-w-[88vw] lg:max-w-[960px]">
         <DialogHeader className="shrink-0 px-4 pb-3 pt-4 sm:px-6 sm:pr-12 sm:pt-6">
           <DialogTitle>Photos</DialogTitle>
           <DialogDescription className="break-words">

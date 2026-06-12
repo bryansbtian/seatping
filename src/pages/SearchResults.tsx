@@ -1034,7 +1034,9 @@ function MobileFiltersDialog({
     );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-2xl p-0 sm:max-w-md">
+      {/* Full-bleed layout: re-assert max-sm:p-0/overflow-hidden over the
+          shared mobile modal styles so the body keeps its internal scroll. */}
+      <DialogContent className="flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-2xl p-0 max-sm:overflow-hidden max-sm:p-0 sm:max-w-md">
         <DialogHeader className="border-b border-slate-100 p-4 text-left">
           <DialogTitle>Filters</DialogTitle>
         </DialogHeader>
