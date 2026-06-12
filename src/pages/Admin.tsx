@@ -40,6 +40,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import FeaturedRestaurantsManager from "@/components/FeaturedRestaurantsManager";
+import CampaignTemplatesAdmin from "@/components/CampaignTemplatesAdmin";
 
 interface Ticket {
   id: string;
@@ -622,10 +623,11 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="tickets" className="w-full">
-          <TabsList className="grid w-full grid-cols-1 h-auto sm:grid-cols-3">
+          <TabsList className="grid w-full grid-cols-1 h-auto sm:grid-cols-4">
             <TabsTrigger value="tickets">Ticket Management</TabsTrigger>
             <TabsTrigger value="customer">Customer Management</TabsTrigger>
             <TabsTrigger value="featured">Featured Restaurants</TabsTrigger>
+            <TabsTrigger value="campaigns">Campaign Templates</TabsTrigger>
           </TabsList>
 
           <TabsContent value="tickets" className="space-y-6 mt-6">
@@ -1217,6 +1219,10 @@ const Admin = () => {
 
           <TabsContent value="featured" className="mt-6">
             <FeaturedRestaurantsManager />
+          </TabsContent>
+
+          <TabsContent value="campaigns" className="mt-6">
+            <CampaignTemplatesAdmin />
           </TabsContent>
         </Tabs>
 

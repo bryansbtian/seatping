@@ -22,14 +22,20 @@ const transporter = nodemailer.createTransport({
     debug: false,
 });
 const FROM_ADDRESS = "bryan.susanto@seatping.biz";
-export const sendEmail = async (options, retries = 2) => {
+/**
+ * Send one email and return the full per-recipient provider result. Use this
+ * (over the boolean `sendEmail`) anywhere accurate delivery status matters, e.g.
+ * campaign sends that flip a CampaignRecipient to SENT/FAILED.
+ */
+export const sendEmailDetailed = async (options, retries = 2) => {
     let lastError = null;
+    const target = options.to.trim().toLowerCase();
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
             if (attempt > 0) {
                 console.log(`[EMAIL] Retry attempt ${attempt}/${retries} for:`, options.to);
                 // Wait before retrying (exponential backoff)
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
             }
             else {
                 console.log("[EMAIL] Attempting to send email to:", options.to);
@@ -39,21 +45,67 @@ export const sendEmail = async (options, retries = 2) => {
                 to: options.to,
                 subject: options.subject,
                 html: options.html,
+                ...(options.replyTo ? { replyTo: options.replyTo } : {}),
             };
             const info = await transporter.sendMail(mailOptions);
-            console.log("[EMAIL] Email sent successfully:", info.messageId);
-            return true;
+            const accepted = (info.accepted || []).map((a) => String(a));
+            const rejected = (info.rejected || []).map((a) => String(a));
+            const messageId = info.messageId || null;
+            const response = info.response || null;
+            // The SMTP server accepted the message AND this specific recipient.
+            const acceptedTarget = accepted.some((a) => a.toLowerCase() === target);
+            const rejectedTarget = rejected.some((a) => a.toLowerCase() === target);
+            // One structured line per recipient so delivery can be traced end to end.
+            console.log(`[EMAIL] Sent email to ${options.to} | messageId=${messageId} | ` +
+                `accepted=[${accepted.join(", ")}] | rejected=[${rejected.join(", ")}] | ` +
+                `response=${response}`);
+            if (!acceptedTarget || rejectedTarget) {
+                const reason = `Recipient not accepted by mail server (accepted=[${accepted.join(", ")}], rejected=[${rejected.join(", ")}], response=${response})`;
+                console.warn(`[EMAIL] ${options.to} NOT accepted — ${reason}`);
+                return {
+                    ok: false,
+                    recipient: options.to,
+                    messageId,
+                    response,
+                    accepted,
+                    rejected,
+                    envelope: info.envelope ?? null,
+                    error: reason,
+                };
+            }
+            return {
+                ok: true,
+                recipient: options.to,
+                messageId,
+                response,
+                accepted,
+                rejected,
+                envelope: info.envelope ?? null,
+            };
         }
         catch (error) {
             lastError = error;
-            console.error(`[EMAIL] Error sending email (attempt ${attempt + 1}/${retries + 1}):`, error?.message);
-            // If this is the last attempt, log the final failure
+            console.error(`[EMAIL] Error sending email to ${options.to} (attempt ${attempt + 1}/${retries + 1}):`, error?.message);
             if (attempt === retries) {
                 console.error("[EMAIL] All retry attempts failed. Final error:", lastError?.message || lastError);
             }
         }
     }
-    return false;
+    return {
+        ok: false,
+        recipient: options.to,
+        messageId: null,
+        response: null,
+        accepted: [],
+        rejected: [options.to],
+        envelope: null,
+        error: lastError?.message || String(lastError) || "Unknown send error",
+    };
+};
+/** Boolean convenience wrapper around {@link sendEmailDetailed}. */
+export const sendEmail = async (options, retries = 2) => {
+    const result = await sendEmailDetailed(options, retries);
+    return result.ok;
 };
 // ===========================================================================
 // SeatPing email design system

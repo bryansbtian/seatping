@@ -110,6 +110,10 @@ router.get("/", async (req, res) => {
         const hasNotes = String(req.query.hasNotes || "") === "true";
         const hasNoShow = String(req.query.hasNoShow || "") === "true";
         const where = { businessId, locationId };
+        const idsParam = String(req.query.ids || "").trim();
+        if (idsParam) {
+            where.id = { in: idsParam.split(",").map((i) => i.trim()).filter(Boolean) };
+        }
         if (search) {
             const digits = search.replace(/\D+/g, "");
             const or = [
@@ -118,10 +122,19 @@ router.get("/", async (req, res) => {
                 { lastName: { contains: search, mode: "insensitive" } },
                 { email: { contains: search, mode: "insensitive" } },
                 { phone: { contains: search, mode: "insensitive" } },
-                { tags: { has: search } },
             ];
             if (digits.length >= 3) {
                 or.push({ normalizedPhone: { contains: digits } });
+            }
+            const tagsRaw = (await prisma.guestProfile.findRaw({
+                filter: {
+                    businessId: { $oid: businessId },
+                    locationId: { $oid: locationId },
+                    tags: { $regex: search, $options: "i" },
+                },
+            }));
+            if (tagsRaw.length) {
+                or.push({ id: { in: tagsRaw.map((t) => t._id.$oid) } });
             }
             where.AND = [...(where.AND || []), { OR: or }];
         }

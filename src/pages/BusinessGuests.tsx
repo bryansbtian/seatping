@@ -451,7 +451,7 @@ const BusinessGuests = () => {
                 {/* Tag filters */}
                 {filterableTags.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-medium text-slate-500 mr-1">
+                    <span className="text-xs font-medium text-slate-500 mr-1 mt-0.5">
                       {t("guests.tags")}
                     </span>
                     {filterableTags.map((tag) => (
@@ -649,7 +649,7 @@ function GuestsTable({
               <th className="px-6 py-3 font-medium text-center">
                 {t("guests.col.notes")}
               </th>
-              <th className="px-6 py-3 font-medium text-right">
+              <th className="px-6 py-3 font-medium text-center">
                 {t("guests.col.actions")}
               </th>
             </tr>
@@ -746,7 +746,7 @@ function GuestsTable({
                       <span className="text-slate-300">--</span>
                     )}
                   </td>
-                  <td className="px-6 py-3 text-right">
+                  <td className="px-6 py-3 text-center">
                     <Button
                       variant="outline"
                       size="sm"

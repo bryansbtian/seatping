@@ -408,6 +408,19 @@ model GuestProfile {
   sourceReservationIds String[] @default([])
   sourceQueueEntryIds  String[] @default([])
 
+  // Marketing consent / opt-out (Phase 3B / Campaigns). Sending is conservative:
+  // a guest is excluded from a channel whenever its opt-out timestamp is set.
+  // The opt-in booleans default true (single opt-in posture for existing guests)
+  // and exist so an explicit double opt-in flow can flip them later without a
+  // schema change. `marketingOptOutAt` is a global "stop everything" stamp.
+  emailMarketingOptIn       Boolean   @default(true)
+  whatsappMarketingOptIn    Boolean   @default(true)
+  smsMarketingOptIn         Boolean   @default(true)
+  emailMarketingOptOutAt    DateTime?
+  whatsappMarketingOptOutAt DateTime?
+  smsMarketingOptOutAt      DateTime?
+  marketingOptOutAt         DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -420,6 +433,284 @@ model GuestProfile {
   @@index([lastVisitAt])
   @@index([fullName])
   @@map("guest_profiles")
+}
+
+// ===========================================================================
+// Guest Campaigns (Phase 3B). Businesses send SeatPing-branded Email / WhatsApp
+// / SMS campaigns to their guests, always "on behalf of" the restaurant. Every
+// channel must use a TEMPLATE — businesses never free-type an instant blast.
+//
+// Two template kinds:
+//   - SEATPING: curated + pre-approved by SeatPing, usable immediately.
+//   - CUSTOM:   one general request the business submits; SeatPing admin reviews
+//               it and prepares Email/SMS/WhatsApp (incl. Meta) internally. It is
+//               all-or-nothing: APPROVED means usable for ALL three channels.
+// Admin-only Meta tracking fields live on the same row but are never exposed to
+// the business-facing UI/serializers.
+// ===========================================================================
+
+enum CampaignChannel {
+  EMAIL
+  WHATSAPP
+  SMS
+}
+
+enum CampaignTemplateType {
+  SEATPING
+  CUSTOM
+}
+
+enum CampaignTemplateApprovalStatus {
+  DRAFT
+  PENDING_SEATPING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum CampaignStatus {
+  DRAFT
+  READY
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+  RECURRING
+  PAUSED
+}
+
+enum CampaignSendMode {
+  NOW
+  SCHEDULED
+  RECURRING
+}
+
+enum CampaignFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum CampaignRunType {
+  MANUAL
+  SCHEDULED
+  RECURRING
+}
+
+enum CampaignRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum CampaignRecipientStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  SKIPPED
+}
+
+/// A reusable campaign template. SeatPing templates have a null businessId;
+/// custom templates are owned by the submitting business. `body` is the shared
+/// message used to render all three channels; `variables` lists the fillable
+/// placeholders (e.g. ["firstName","offer"]).
+model CampaignTemplate {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  // Null for SeatPing-provided templates; set for business-submitted custom ones.
+  businessId       String? @db.ObjectId
+  businessUsername String?
+  locationId       String? @db.ObjectId
+
+  templateType   CampaignTemplateType
+  name           String
+  // Internal Meta-safe identifier derived from `name` (lowercase a-z0-9_). Used
+  // as the WhatsApp template name admins create in Meta. Globally unique for
+  // SeatPing templates; unique per business for custom ones (suffix _2, _3...).
+  slug           String?
+  purpose        String?
+  body           String
+  offerDetails   String?
+  ctaText        String?
+  ctaUrl         String?
+  variables      String[] @default([])
+  exampleValues  Json     @default("{}")
+
+  approvalStatus CampaignTemplateApprovalStatus @default(DRAFT)
+  rejectionReason String?
+
+  // SeatPing templates are sorted/grouped for the picker; higher = first.
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  // ---- Admin-only internal fields (never serialized to the business UI) ----
+  internalReviewNotes          String?
+  whatsappMetaStatus           String?
+  whatsappProviderTemplateName String?
+  whatsappProviderTemplateId   String?
+  whatsappMetaCategory         String?
+  whatsappLanguage             String? @default("en")
+  whatsappSubmittedAt          DateTime?
+  whatsappApprovedAt           DateTime?
+  whatsappRejectedAt           DateTime?
+  approvedBy                   String?
+  rejectedBy                   String?
+
+  submittedAt DateTime?
+  approvedAt  DateTime?
+  rejectedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([templateType])
+  @@index([approvalStatus])
+  @@index([slug])
+  @@map("campaign_templates")
+}
+
+/// One campaign send (or draft). Scoped by business + location.
+model Campaign {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  businessId       String  @db.ObjectId
+  businessUsername String?
+  locationId       String  @db.ObjectId
+
+  name       String
+  channel    CampaignChannel
+  templateId String          @db.ObjectId
+
+  // Variable values the business filled for this campaign's template.
+  templateValues Json @default("{}")
+
+  // Audience: a smart group key (e.g. "not_returned_30d") or "manual".
+  audienceType   String
+  audienceConfig Json   @default("{}")
+
+  status         CampaignStatus @default(DRAFT)
+  recipientCount Int            @default(0)
+  excludedCount  Int            @default(0)
+  sentCount      Int            @default(0)
+  failedCount    Int            @default(0)
+  skippedCount   Int            @default(0)
+
+  // ---- Timing (Phase 3B+) ----
+  // sendMode drives how the campaign is dispatched. SCHEDULED/RECURRING are
+  // picked up by the campaigns cron sweep when nextRunAt is due. Times are real
+  // UTC instants; `timezone` is the location's IANA zone used to interpret the
+  // operator's chosen wall-clock and to render it back.
+  sendMode  CampaignSendMode @default(NOW)
+  timezone  String?
+  scheduledAt DateTime?
+
+  recurrenceFrequency CampaignFrequency?
+  recurrenceStartAt   DateTime?
+  recurrenceEndAt     DateTime?
+  // Per-guest throttle for recurring campaigns: a guest won't be re-sent this
+  // campaign within this many days (default applied in code).
+  maxSendsPerGuestWindowDays Int?
+
+  nextRunAt DateTime?
+  lastRunAt DateTime?
+  isPaused  Boolean   @default(false)
+
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([businessId])
+  @@index([businessId, locationId])
+  @@index([status])
+  @@index([nextRunAt])
+  @@map("campaigns")
+}
+
+/// One execution of a campaign (manual send, scheduled fire, or a single
+/// recurring run). Holds that run's resolved counts + status so recurring
+/// campaigns keep a full per-run history.
+model CampaignRun {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  campaignId String @db.ObjectId
+  businessId String @db.ObjectId
+
+  runType      CampaignRunType
+  scheduledFor DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+
+  status         CampaignRunStatus @default(PENDING)
+  recipientCount Int               @default(0)
+  sentCount      Int               @default(0)
+  failedCount    Int               @default(0)
+  skippedCount   Int               @default(0)
+  errorMessage   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId])
+  @@index([businessId])
+  @@map("campaign_runs")
+}
+
+/// One resolved recipient of a campaign. Created at send time; carries the
+/// snapshot contact + per-recipient delivery state. A unique (campaignId,
+/// guestProfileId) guard prevents duplicate sends if /send is called twice.
+model CampaignRecipient {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  campaignId     String  @db.ObjectId
+  // The run this recipient belongs to. Dedup + counts are scoped per-run so a
+  // recurring campaign can send to the same guest across different runs.
+  runId          String  @db.ObjectId
+  businessId     String  @db.ObjectId
+  guestProfileId String  @db.ObjectId
+
+  channel CampaignChannel
+  email   String?
+  phone   String?
+
+  status       CampaignRecipientStatus @default(PENDING)
+  skipReason   String?
+  errorMessage String?
+
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  failedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // A guest appears at most once per run (idempotent against a double fire).
+  @@unique([runId, guestProfileId])
+  @@index([campaignId])
+  @@index([runId])
+  @@index([businessId])
+  @@index([campaignId, guestProfileId])
+  @@map("campaign_recipients")
+}
+
+/// Append-only delivery event log for a campaign (provider acks, errors, etc).
+model CampaignDeliveryLog {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  campaignId  String  @db.ObjectId
+  recipientId String? @db.ObjectId
+
+  eventType         String
+  providerMessageId String?
+  message           String?
+
+  createdAt DateTime @default(now())
+
+  @@index([campaignId])
+  @@index([recipientId])
+  @@map("campaign_delivery_logs")
 }
 
 /// Atomic per-hour reservation capacity counter — the overbooking guard. A
@@ -435,4 +726,24 @@ model SlotCounter {
 
   @@unique([locationId, dateKey, hour])
   @@map("slot_counters")
+}
+
+/// A reusable custom audience group created by the business.
+model SavedAudience {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  businessId       String  @db.ObjectId
+  businessUsername String?
+  locationId       String  @db.ObjectId
+
+  name        String
+  description String?
+  filters     Json    @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([businessId, locationId])
+  @@map("saved_audiences")
 }

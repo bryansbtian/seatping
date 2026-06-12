@@ -47,6 +47,9 @@ const BusinessHeader = () => {
           <Link to="/business/guests" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
             {t("nav.guests")}
           </Link>
+          <Link to="/business/campaigns" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
+            {t("nav.campaigns")}
+          </Link>
           <Link to="/business/settings" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
             {t("nav.settings")}
           </Link>
@@ -95,6 +98,13 @@ const BusinessHeader = () => {
               onClick={() => setOpen(false)}
             >
               {t("nav.guests")}
+            </Link>
+            <Link
+              to="/business/campaigns"
+              className="block px-4 py-2 text-slate-900 hover:bg-slate-50 rounded-lg transition-colors font-medium"
+              onClick={() => setOpen(false)}
+            >
+              {t("nav.campaigns")}
             </Link>
             <Link
               to="/business/settings"

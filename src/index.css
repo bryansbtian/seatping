@@ -320,4 +320,20 @@ All colors MUST be HSL.
   .pac-item {
     padding: 10px 12px;
   }
+
+  /* Smaller placeholder text on mobile so long hints fit without crowding the
+     field. Only the placeholder shrinks; typed input text keeps its size. */
+  input::placeholder,
+  textarea::placeholder {
+    font-size: 0.8125rem; /* 13px */
+  }
+}
+
+/* On the smallest phones (320px and below) shrink the root font so all
+   rem-based text + spacing scales down proportionally, preventing cramped,
+   overflowing layouts. 16px default -> 14px (~87.5%). */
+@media (max-width: 320px) {
+  html {
+    font-size: 14px;
+  }
 }

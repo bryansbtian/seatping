@@ -28,7 +28,10 @@ import {
 import {
   sendQueueJoinedWhatsApp,
   sendQueueAdmittedWhatsApp,
+  sendCampaignWhatsApp,
 } from "./whatsapp.js";
+import { sendEmailDetailed } from "./email.js";
+import { prisma } from "./prisma.js";
 import { consumeQuota, peekQuota, DAYS } from "./rateLimit.js";
 
 export type NotificationChannel = "sms" | "whatsapp" | "email";
@@ -87,6 +90,27 @@ export type NotificationJob =
       timeLabel: string;
       partySize: number;
       manageUrl?: string;
+    }
+  | {
+      // One campaign message to one resolved recipient. The dispatcher sends it
+      // and updates the CampaignRecipient row + appends a delivery log, so the
+      // same path works inline (dev) and via QStash (prod) with no double-count.
+      type: "campaign_message";
+      channel: NotificationChannel;
+      campaignId: string;
+      recipientId: string;
+      businessName: string;
+      replyTo?: string;
+      // Resolved contact (one of these is set for the channel).
+      email?: string;
+      phone?: string; // digits-only incl. country code (E.164 without '+')
+      // Rendered content.
+      subject?: string;
+      bodyText: string;
+      bodyHtml?: string;
+      whatsappTemplateName?: string | null;
+      whatsappLanguage?: string;
+      whatsappParams?: string[];
     };
 
 const qstashToken = process.env.QSTASH_TOKEN;
@@ -96,7 +120,10 @@ const qstashToken = process.env.QSTASH_TOKEN;
 // QSTASH_URL=https://qstash-us-east-1.upstash.io. Falls back to the SDK default
 // when unset.
 const qstashBaseUrl = process.env.QSTASH_URL;
-let qstash: Client | null = qstashToken
+// In development, QStash can't POST back to localhost — skip it entirely so
+// notifications are dispatched inline (directly calling Telnyx / email / WA).
+const isDev = process.env.NODE_ENV !== "production";
+let qstash: Client | null = !isDev && qstashToken
   ? new Client({
       token: qstashToken,
       ...(qstashBaseUrl ? { baseUrl: qstashBaseUrl } : {}),
@@ -236,18 +263,30 @@ async function sendSms(
   countryCode: string | undefined,
   phoneNumber: string | undefined,
   text: string,
-): Promise<void> {
+): Promise<string | null> {
   const apiKey = process.env.TELNYX_API_KEY;
   const from = process.env.TELNYX_PHONE_NUMBER;
   if (!apiKey || !from) {
     console.error("[NOTIFY] Missing Telnyx credentials — cannot send SMS");
-    return;
+    return null;
   }
-  if (!phoneNumber) return;
+  if (!phoneNumber) return null;
   const telnyx = new Telnyx({ apiKey });
   const to = (countryCode || "+1") + phoneNumber.trim().replace(/\D/g, "");
   const message = await telnyx.messages.send({ from, to, text });
-  console.log("[NOTIFY] SMS sent:", (message as any)?.data?.id, "to", to);
+  const id = (message as any)?.data?.id ?? null;
+  console.log("[NOTIFY] SMS sent:", id, "to", to);
+  return id ? String(id) : "sent";
+}
+
+/** Send an SMS to a full digits-only number (E.164 without '+'). For campaigns. */
+async function sendCampaignSms(
+  digits: string,
+  text: string,
+): Promise<string | null> {
+  // The normalized number already includes the country code, so prefix a single
+  // "+" and pass the rest as the local part (sendSms re-concatenates them).
+  return sendSms("+", digits, text);
 }
 
 /**
@@ -359,5 +398,133 @@ export async function processNotification(job: NotificationJob): Promise<void> {
       });
       return;
     }
+
+    case "campaign_message": {
+      await deliverCampaignMessage(job);
+      return;
+    }
+  }
+}
+
+/**
+ * Send one campaign message and record the outcome on its CampaignRecipient
+ * (+ a delivery log). Throws on a hard send failure so QStash retries; the
+ * recipient row is flipped to FAILED first so state is never lost even if the
+ * retry eventually gives up. A missing/already-sent recipient is a no-op
+ * (idempotent against duplicate deliveries).
+ */
+/** Content shape shared by the campaign dispatcher and the send-test path. */
+export interface CampaignSendContent {
+  channel: NotificationChannel;
+  businessName: string;
+  replyTo?: string;
+  email?: string;
+  phone?: string;
+  subject?: string;
+  bodyText: string;
+  bodyHtml?: string;
+  whatsappTemplateName?: string | null;
+  whatsappLanguage?: string;
+  whatsappParams?: string[];
+}
+
+/**
+ * Perform the raw provider send for a campaign message. Returns the provider
+ * message id on success; throws on any failure so callers can record + retry.
+ * No DB side effects — used by both the recipient dispatcher and send-test.
+ */
+export async function rawCampaignSend(
+  content: CampaignSendContent,
+): Promise<string> {
+  if (content.channel === "email") {
+    if (!content.email) throw new Error("No email address for recipient");
+    const result = await sendEmailDetailed({
+      to: content.email,
+      subject: content.subject || `A message from ${content.businessName}`,
+      html: content.bodyHtml || content.bodyText.replace(/\n/g, "<br>"),
+      ...(content.replyTo ? { replyTo: content.replyTo } : {}),
+    });
+    // Only treat as sent when the mail server actually accepted THIS recipient.
+    // A rejected/unaccepted address must surface as a failure (not a silent
+    // success) so the CampaignRecipient is marked FAILED with the reason.
+    if (!result.ok) {
+      throw new Error(result.error || "Email provider rejected the recipient");
+    }
+    console.log(
+      `[EMAIL] Sent campaign email to ${content.email}, messageId=${result.messageId}`,
+    );
+    // Return the real provider message id so it lands in the delivery log.
+    return result.messageId || "sent";
+  }
+  if (content.channel === "sms") {
+    if (!content.phone) throw new Error("No phone number for recipient");
+    const id = await sendCampaignSms(content.phone, content.bodyText);
+    if (!id) throw new Error("SMS provider returned failure");
+    return id;
+  }
+  // WhatsApp — requires an approved Meta template name.
+  if (!content.phone) throw new Error("No phone number for recipient");
+  if (!content.whatsappTemplateName) {
+    throw new Error("WhatsApp template is not available for this message");
+  }
+  const id = await sendCampaignWhatsApp({
+    toDigits: content.phone,
+    templateName: content.whatsappTemplateName,
+    language: content.whatsappLanguage,
+    bodyParams: content.whatsappParams || [content.bodyText],
+  });
+  if (!id) throw new Error("WhatsApp provider returned failure");
+  return id;
+}
+
+async function deliverCampaignMessage(
+  job: Extract<NotificationJob, { type: "campaign_message" }>,
+): Promise<void> {
+  const recipient = await prisma.campaignRecipient.findUnique({
+    where: { id: job.recipientId },
+  });
+  // Already delivered (or gone) — never send twice.
+  if (!recipient || recipient.status === "SENT" || recipient.status === "DELIVERED") {
+    return;
+  }
+
+  const logEvent = async (
+    eventType: string,
+    message?: string,
+    providerMessageId?: string | null,
+  ) => {
+    try {
+      await prisma.campaignDeliveryLog.create({
+        data: {
+          campaignId: job.campaignId,
+          recipientId: job.recipientId,
+          eventType,
+          message: message ?? null,
+          providerMessageId: providerMessageId ?? null,
+        },
+      });
+    } catch {
+      /* logging must never break the send */
+    }
+  };
+
+  try {
+    const providerMessageId = await rawCampaignSend(job);
+
+    await prisma.campaignRecipient.update({
+      where: { id: job.recipientId },
+      data: { status: "SENT", sentAt: new Date(), errorMessage: null },
+    });
+    await logEvent("sent", undefined, providerMessageId);
+  } catch (err: any) {
+    const message = err?.message || String(err);
+    await prisma.campaignRecipient
+      .update({
+        where: { id: job.recipientId },
+        data: { status: "FAILED", failedAt: new Date(), errorMessage: message.slice(0, 500) },
+      })
+      .catch(() => {});
+    await logEvent("failed", message.slice(0, 500));
+    throw err;
   }
 }

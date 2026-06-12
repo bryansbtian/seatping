@@ -72,7 +72,10 @@ export function GuestTagBadge({
       {onRemove && (
         <button
           type="button"
-          onClick={onRemove}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
           aria-label={`Remove ${tag}`}
           className="ml-0.5 -mr-1 inline-flex items-center justify-center rounded-full hover:bg-black/10 p-0.5 transition-colors"
         >

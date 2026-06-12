@@ -19,10 +19,13 @@ import restaurantsRouter from "./routes/restaurants.js";
 import reservationsRouter from "./routes/reservations.js";
 import searchRouter from "./routes/search.js";
 import guestsRouter from "./routes/guests.js";
+import campaignsRouter from "./routes/campaigns.js";
+import audiencesRouter from "./routes/audiences.js";
 import jobsRouter from "./routes/jobs.js";
 import cronRouter from "./routes/cron.js";
 import { runDailyCreditRefillSweep } from "./lib/trial.js";
 import { runReservationReminderSweep } from "./lib/reservationReminders.js";
+import { runDueCampaignsSweep } from "./lib/campaignRunner.js";
 import { logRateLimitStatus, rateLimit } from "./lib/rateLimit.js";
 
 // ES module equivalent of __dirname
@@ -103,6 +106,8 @@ app.use("/api/restaurants", restaurantsRouter);
 app.use("/api/reservations", reservationsRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/guests", guestsRouter);
+app.use("/api/campaigns", campaignsRouter);
+app.use("/api/audiences", audiencesRouter);
 app.use("/api/cron", cronRouter);
 app.use("/tickets", ticketsRouter);
 
@@ -149,6 +154,16 @@ if (process.env.VERCEL !== '1') {
       console.error("[RESERVATION-REMINDER] scheduled run failed:", err)
     );
   }, REMINDER_MS);
+
+  // Scheduled + recurring campaign dispatch — poll every minute in dev so
+  // scheduled sends fire near their chosen time. On Vercel this runs via
+  // /api/cron/campaigns instead (see vercel.json crons).
+  const CAMPAIGN_SWEEP_MS = 60 * 1000;
+  setInterval(() => {
+    runDueCampaignsSweep().catch((err) =>
+      console.error("[CAMPAIGN-SWEEP] scheduled run failed:", err)
+    );
+  }, CAMPAIGN_SWEEP_MS);
 }
 
 export default app;

@@ -34,9 +34,45 @@ const en = {
   // Header / nav
   "nav.dashboard": "Dashboard",
   "nav.guests": "Guests",
+  "nav.campaigns": "Campaigns",
   "nav.settings": "Settings",
   "nav.logout": "Log Out",
   "nav.openMenu": "Open menu",
+
+  // Campaigns page
+  "camp.title": "Campaigns",
+  "camp.subtitle":
+    "Send SeatPing-branded SMS, WhatsApp, and Email campaigns to your guests.",
+  "camp.tab.campaigns": "Campaigns",
+  "camp.tab.templates": "Templates",
+  "camp.tab.audiences": "Audiences",
+  "camp.tab.history": "History",
+  "camp.newCampaign": "New Campaign",
+  "camp.newTemplate": "New Custom Template",
+  "camp.location": "Location",
+  "camp.noLocations": "No Locations",
+  "camp.empty.campaigns.title": "No Campaigns Yet",
+  "camp.empty.campaigns.body":
+    "Create your first campaign to reach your guests by SMS, WhatsApp, or Email.",
+  "camp.empty.history.title": "No Sent Campaigns Yet",
+  "camp.empty.history.body":
+    "Once you send a campaign, its delivery history shows up here.",
+  "camp.empty.templates.title": "No Templates Yet",
+  "camp.empty.templates.body": "SeatPing templates load automatically.",
+  "camp.col.name": "Name",
+  "camp.col.channel": "Channel",
+  "camp.col.audience": "Audience",
+  "camp.col.template": "Template",
+  "camp.col.status": "Status",
+  "camp.col.recipients": "Recipients",
+  "camp.col.created": "Created",
+  "camp.col.sent": "Sent",
+  "camp.col.delivery": "Delivery",
+  "camp.col.actions": "Actions",
+  "camp.col.type": "Type",
+  "camp.col.updated": "Last Updated",
+  "camp.sender": "Sender",
+  "camp.senderLine": "SeatPing on behalf of {name}",
 
   // Shared
   "common.refresh": "Refresh",
@@ -600,9 +636,23 @@ const id: Partial<Record<TKey, string>> = {
   // Header / nav
   "nav.dashboard": "Dasbor",
   "nav.guests": "Tamu",
+  "nav.campaigns": "Kampanye",
   "nav.settings": "Pengaturan",
   "nav.logout": "Keluar",
   "nav.openMenu": "Buka menu",
+
+  // Campaigns page (visible chrome; deeper builder copy falls back to English)
+  "camp.title": "Kampanye",
+  "camp.subtitle":
+    "Kirim kampanye SMS, WhatsApp, dan Email berlabel SeatPing ke tamu Anda.",
+  "camp.tab.campaigns": "Kampanye",
+  "camp.tab.templates": "Templat",
+  "camp.tab.audiences": "Audiens",
+  "camp.tab.history": "Riwayat",
+  "camp.newCampaign": "Kampanye Baru",
+  "camp.newTemplate": "Templat Kustom Baru",
+  "camp.location": "Lokasi",
+  "camp.noLocations": "Tidak Ada Lokasi",
 
   // Shared
   "common.refresh": "Segarkan",

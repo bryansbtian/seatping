@@ -62,6 +62,54 @@ export async function sendQueueJoinedWhatsApp(params) {
         return false;
     }
 }
+/**
+ * Send a campaign WhatsApp message through an APPROVED Meta template. Campaign
+ * custom templates carry their provider template name (set by admin once Meta
+ * approves it); SeatPing templates may map to a curated marketing template. The
+ * template MUST already exist + be approved in Meta — we never free-form send.
+ * Returns the provider message id on success, or null on failure/misconfig.
+ */
+export async function sendCampaignWhatsApp(params) {
+    const client = getClient();
+    const phoneNumberId = process.env.KAPSO_PHONE_NUMBER_ID;
+    if (!client || !phoneNumberId) {
+        console.error("[WHATSAPP] Missing KAPSO creds — cannot send campaign message");
+        return null;
+    }
+    const to = params.toDigits.replace(/\D/g, "");
+    if (!to || !params.templateName) {
+        console.error("[WHATSAPP] Missing recipient or template name for campaign send");
+        return null;
+    }
+    try {
+        const result = await client.messages.sendTemplate({
+            phoneNumberId,
+            to,
+            template: {
+                name: params.templateName,
+                language: { code: params.language || "en" },
+                components: params.bodyParams.length
+                    ? [
+                        {
+                            type: "body",
+                            parameters: params.bodyParams.map((text) => ({
+                                type: "text",
+                                text: String(text),
+                            })),
+                        },
+                    ]
+                    : [],
+            },
+        });
+        const id = result?.messages?.[0]?.id || result?.data?.id || result?.id || null;
+        console.log("[WHATSAPP] campaign template sent to", to);
+        return id ? String(id) : "sent";
+    }
+    catch (error) {
+        console.error("[WHATSAPP] campaign send failed:", error?.message || error);
+        return null;
+    }
+}
 export async function sendQueueAdmittedWhatsApp(params) {
     const client = getClient();
     const phoneNumberId = process.env.KAPSO_PHONE_NUMBER_ID;

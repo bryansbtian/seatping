@@ -18,7 +18,9 @@
 import { Client } from "@upstash/qstash";
 import Telnyx from "telnyx";
 import { sendQueueJoinConfirmationEmail, sendQueueYourTurnEmail, sendReservationConfirmationEmail, sendNewReservationBusinessEmail, sendReservationReminderEmail, } from "./email.js";
-import { sendQueueJoinedWhatsApp, sendQueueAdmittedWhatsApp, } from "./whatsapp.js";
+import { sendQueueJoinedWhatsApp, sendQueueAdmittedWhatsApp, sendCampaignWhatsApp, } from "./whatsapp.js";
+import { sendEmailDetailed } from "./email.js";
+import { prisma } from "./prisma.js";
 import { consumeQuota, peekQuota, DAYS } from "./rateLimit.js";
 const qstashToken = process.env.QSTASH_TOKEN;
 // Pin the region endpoint explicitly. The default host (qstash.upstash.io)
@@ -27,7 +29,10 @@ const qstashToken = process.env.QSTASH_TOKEN;
 // QSTASH_URL=https://qstash-us-east-1.upstash.io. Falls back to the SDK default
 // when unset.
 const qstashBaseUrl = process.env.QSTASH_URL;
-let qstash = qstashToken
+// In development, QStash can't POST back to localhost — skip it entirely so
+// notifications are dispatched inline (directly calling Telnyx / email / WA).
+const isDev = process.env.NODE_ENV !== "production";
+let qstash = !isDev && qstashToken
     ? new Client({
         token: qstashToken,
         ...(qstashBaseUrl ? { baseUrl: qstashBaseUrl } : {}),
@@ -130,14 +135,22 @@ async function sendSms(countryCode, phoneNumber, text) {
     const from = process.env.TELNYX_PHONE_NUMBER;
     if (!apiKey || !from) {
         console.error("[NOTIFY] Missing Telnyx credentials — cannot send SMS");
-        return;
+        return null;
     }
     if (!phoneNumber)
-        return;
+        return null;
     const telnyx = new Telnyx({ apiKey });
     const to = (countryCode || "+1") + phoneNumber.trim().replace(/\D/g, "");
     const message = await telnyx.messages.send({ from, to, text });
-    console.log("[NOTIFY] SMS sent:", message?.data?.id, "to", to);
+    const id = message?.data?.id ?? null;
+    console.log("[NOTIFY] SMS sent:", id, "to", to);
+    return id ? String(id) : "sent";
+}
+/** Send an SMS to a full digits-only number (E.164 without '+'). For campaigns. */
+async function sendCampaignSms(digits, text) {
+    // The normalized number already includes the country code, so prefix a single
+    // "+" and pass the rest as the local part (sendSms re-concatenates them).
+    return sendSms("+", digits, text);
 }
 /**
  * Execute one notification job. Called by the inline fallback and by the QStash
@@ -236,5 +249,102 @@ export async function processNotification(job) {
             });
             return;
         }
+        case "campaign_message": {
+            await deliverCampaignMessage(job);
+            return;
+        }
+    }
+}
+/**
+ * Perform the raw provider send for a campaign message. Returns the provider
+ * message id on success; throws on any failure so callers can record + retry.
+ * No DB side effects — used by both the recipient dispatcher and send-test.
+ */
+export async function rawCampaignSend(content) {
+    if (content.channel === "email") {
+        if (!content.email)
+            throw new Error("No email address for recipient");
+        const result = await sendEmailDetailed({
+            to: content.email,
+            subject: content.subject || `A message from ${content.businessName}`,
+            html: content.bodyHtml || content.bodyText.replace(/\n/g, "<br>"),
+            ...(content.replyTo ? { replyTo: content.replyTo } : {}),
+        });
+        // Only treat as sent when the mail server actually accepted THIS recipient.
+        // A rejected/unaccepted address must surface as a failure (not a silent
+        // success) so the CampaignRecipient is marked FAILED with the reason.
+        if (!result.ok) {
+            throw new Error(result.error || "Email provider rejected the recipient");
+        }
+        console.log(`[EMAIL] Sent campaign email to ${content.email}, messageId=${result.messageId}`);
+        // Return the real provider message id so it lands in the delivery log.
+        return result.messageId || "sent";
+    }
+    if (content.channel === "sms") {
+        if (!content.phone)
+            throw new Error("No phone number for recipient");
+        const id = await sendCampaignSms(content.phone, content.bodyText);
+        if (!id)
+            throw new Error("SMS provider returned failure");
+        return id;
+    }
+    // WhatsApp — requires an approved Meta template name.
+    if (!content.phone)
+        throw new Error("No phone number for recipient");
+    if (!content.whatsappTemplateName) {
+        throw new Error("WhatsApp template is not available for this message");
+    }
+    const id = await sendCampaignWhatsApp({
+        toDigits: content.phone,
+        templateName: content.whatsappTemplateName,
+        language: content.whatsappLanguage,
+        bodyParams: content.whatsappParams || [content.bodyText],
+    });
+    if (!id)
+        throw new Error("WhatsApp provider returned failure");
+    return id;
+}
+async function deliverCampaignMessage(job) {
+    const recipient = await prisma.campaignRecipient.findUnique({
+        where: { id: job.recipientId },
+    });
+    // Already delivered (or gone) — never send twice.
+    if (!recipient || recipient.status === "SENT" || recipient.status === "DELIVERED") {
+        return;
+    }
+    const logEvent = async (eventType, message, providerMessageId) => {
+        try {
+            await prisma.campaignDeliveryLog.create({
+                data: {
+                    campaignId: job.campaignId,
+                    recipientId: job.recipientId,
+                    eventType,
+                    message: message ?? null,
+                    providerMessageId: providerMessageId ?? null,
+                },
+            });
+        }
+        catch {
+            /* logging must never break the send */
+        }
+    };
+    try {
+        const providerMessageId = await rawCampaignSend(job);
+        await prisma.campaignRecipient.update({
+            where: { id: job.recipientId },
+            data: { status: "SENT", sentAt: new Date(), errorMessage: null },
+        });
+        await logEvent("sent", undefined, providerMessageId);
+    }
+    catch (err) {
+        const message = err?.message || String(err);
+        await prisma.campaignRecipient
+            .update({
+            where: { id: job.recipientId },
+            data: { status: "FAILED", failedAt: new Date(), errorMessage: message.slice(0, 500) },
+        })
+            .catch(() => { });
+        await logEvent("failed", message.slice(0, 500));
+        throw err;
     }
 }

@@ -28,19 +28,47 @@ export interface EmailOptions {
   subject: string;
   html: string;
   from?: string; // Optional custom sender email
+  replyTo?: string; // Optional Reply-To (e.g. the business email for campaigns)
 }
 
 const FROM_ADDRESS = "bryan.susanto@seatping.biz";
 
-export const sendEmail = async (options: EmailOptions, retries = 2): Promise<boolean> => {
+/**
+ * Full result of an SMTP send attempt. `ok` is true ONLY when the mail server
+ * actually accepted the intended recipient (i.e. the address is in `accepted`
+ * and not in `rejected`). The provider strings let callers log/trace exactly
+ * what happened per recipient — accepting the message for relay is NOT the same
+ * as the inbox provider (e.g. Gmail) ultimately delivering it.
+ */
+export interface EmailSendResult {
+  ok: boolean;
+  recipient: string;
+  messageId: string | null;
+  response: string | null; // last raw SMTP response line, e.g. "250 OK ..."
+  accepted: string[];
+  rejected: string[];
+  envelope: any;
+  error?: string;
+}
+
+/**
+ * Send one email and return the full per-recipient provider result. Use this
+ * (over the boolean `sendEmail`) anywhere accurate delivery status matters, e.g.
+ * campaign sends that flip a CampaignRecipient to SENT/FAILED.
+ */
+export const sendEmailDetailed = async (
+  options: EmailOptions,
+  retries = 2,
+): Promise<EmailSendResult> => {
   let lastError: any = null;
+  const target = options.to.trim().toLowerCase();
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       if (attempt > 0) {
         console.log(`[EMAIL] Retry attempt ${attempt}/${retries} for:`, options.to);
         // Wait before retrying (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
       } else {
         console.log("[EMAIL] Attempting to send email to:", options.to);
       }
@@ -50,23 +78,86 @@ export const sendEmail = async (options: EmailOptions, retries = 2): Promise<boo
         to: options.to,
         subject: options.subject,
         html: options.html,
+        ...(options.replyTo ? { replyTo: options.replyTo } : {}),
       };
 
-      const info = await transporter.sendMail(mailOptions);
-      console.log("[EMAIL] Email sent successfully:", info.messageId);
-      return true;
+      const info: any = await transporter.sendMail(mailOptions);
+      const accepted: string[] = (info.accepted || []).map((a: any) => String(a));
+      const rejected: string[] = (info.rejected || []).map((a: any) => String(a));
+      const messageId: string | null = info.messageId || null;
+      const response: string | null = info.response || null;
+
+      // The SMTP server accepted the message AND this specific recipient.
+      const acceptedTarget = accepted.some((a) => a.toLowerCase() === target);
+      const rejectedTarget = rejected.some((a) => a.toLowerCase() === target);
+
+      // One structured line per recipient so delivery can be traced end to end.
+      console.log(
+        `[EMAIL] Sent email to ${options.to} | messageId=${messageId} | ` +
+          `accepted=[${accepted.join(", ")}] | rejected=[${rejected.join(", ")}] | ` +
+          `response=${response}`,
+      );
+
+      if (!acceptedTarget || rejectedTarget) {
+        const reason = `Recipient not accepted by mail server (accepted=[${accepted.join(
+          ", ",
+        )}], rejected=[${rejected.join(", ")}], response=${response})`;
+        console.warn(`[EMAIL] ${options.to} NOT accepted — ${reason}`);
+        return {
+          ok: false,
+          recipient: options.to,
+          messageId,
+          response,
+          accepted,
+          rejected,
+          envelope: info.envelope ?? null,
+          error: reason,
+        };
+      }
+
+      return {
+        ok: true,
+        recipient: options.to,
+        messageId,
+        response,
+        accepted,
+        rejected,
+        envelope: info.envelope ?? null,
+      };
     } catch (error: any) {
       lastError = error;
-      console.error(`[EMAIL] Error sending email (attempt ${attempt + 1}/${retries + 1}):`, error?.message);
-
-      // If this is the last attempt, log the final failure
+      console.error(
+        `[EMAIL] Error sending email to ${options.to} (attempt ${attempt + 1}/${retries + 1}):`,
+        error?.message,
+      );
       if (attempt === retries) {
-        console.error("[EMAIL] All retry attempts failed. Final error:", lastError?.message || lastError);
+        console.error(
+          "[EMAIL] All retry attempts failed. Final error:",
+          lastError?.message || lastError,
+        );
       }
     }
   }
 
-  return false;
+  return {
+    ok: false,
+    recipient: options.to,
+    messageId: null,
+    response: null,
+    accepted: [],
+    rejected: [options.to],
+    envelope: null,
+    error: lastError?.message || String(lastError) || "Unknown send error",
+  };
+};
+
+/** Boolean convenience wrapper around {@link sendEmailDetailed}. */
+export const sendEmail = async (
+  options: EmailOptions,
+  retries = 2,
+): Promise<boolean> => {
+  const result = await sendEmailDetailed(options, retries);
+  return result.ok;
 };
 
 // ===========================================================================

@@ -28,6 +28,10 @@ export default defineConfig(({ mode }) => ({
         target: "http://localhost:4000",
         changeOrigin: true,
       },
+      "/admin/campaign-templates": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
       "/api/feedback": {
         target: "http://localhost:4000",
         changeOrigin: true,
@@ -57,6 +61,14 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
       },
       "/api/guests": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
+      "/api/campaigns": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
+      "/api/audiences": {
         target: "http://localhost:4000",
         changeOrigin: true,
       },

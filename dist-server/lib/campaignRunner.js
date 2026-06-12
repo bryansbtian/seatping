@@ -1,0 +1,321 @@
+// server/lib/campaignRunner.ts
+//
+// Campaign execution engine (Phase 3B+). One place that actually turns a
+// campaign into messages — used by the immediate "Send Now" action, the
+// scheduled-send cron, and the recurring cron. Every run:
+//   - re-resolves the audience FRESH (so a scheduled/recurring send reflects the
+//     guest list at run time, not at create time),
+//   - re-applies opt-out + contact-validity filtering,
+//   - for recurring runs, skips guests already sent this campaign within the
+//     per-guest window (anti-spam),
+//   - records a CampaignRun with its own recipients (run-scoped dedup), then
+//     enqueues one background notification job per recipient.
+//
+// Nothing here is faked: a run only "completes" once its recipients reach a
+// terminal delivery state, reconciled from the CampaignRecipient rows.
+import { prisma } from "./prisma.js";
+import { enqueueNotification } from "./notifications.js";
+import { getLocationTimezone } from "./operatingHours.js";
+import { buildMessage, filterRecipients, resolveAudienceGuests, restaurantNameForLocation, advanceRecurrence, } from "./campaigns.js";
+const MAX_RECIPIENTS_PER_RUN = 2000;
+const DEFAULT_GUEST_WINDOW_DAYS = 30;
+/**
+ * Execute a single campaign run. Resolves the audience now, creates a
+ * CampaignRun + its recipients, and enqueues sends. Returns the run summary or
+ * an `error` string (caller decides how to surface it).
+ */
+export async function executeCampaignRun(campaignId, runType, scheduledFor) {
+    const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
+    if (!campaign)
+        return { error: "Campaign not found" };
+    const [business, location, template] = await Promise.all([
+        prisma.business.findUnique({
+            where: { id: campaign.businessId },
+            select: { id: true, name: true, email: true },
+        }),
+        prisma.location.findFirst({
+            where: { id: campaign.locationId, businessId: campaign.businessId },
+            select: {
+                id: true,
+                name: true,
+                displayName: true,
+                address: true,
+                restaurantProfile: true,
+            },
+        }),
+        prisma.campaignTemplate.findUnique({ where: { id: campaign.templateId } }),
+    ]);
+    if (!business)
+        return { error: "Business not found" };
+    if (!location)
+        return { error: "Location not found" };
+    if (!template)
+        return { error: "Template not found" };
+    // Re-check template usability at run time (a custom template may have changed).
+    const usable = template.templateType === "SEATPING"
+        ? template.isActive && template.approvalStatus === "APPROVED"
+        : template.approvalStatus === "APPROVED";
+    if (!usable)
+        return { error: "Template is not available for sending" };
+    const channel = campaign.channel;
+    const timezone = getLocationTimezone(location);
+    const guests = await resolveAudienceGuests({
+        businessId: campaign.businessId,
+        locationId: campaign.locationId,
+        audienceType: campaign.audienceType,
+        audienceConfig: campaign.audienceConfig || {},
+        timezone,
+    });
+    const filtered = filterRecipients(guests, channel);
+    // Recurring anti-spam: drop guests already sent this campaign within the
+    // per-guest window so a recurring rule never re-hits someone too often.
+    let eligible = filtered.eligible;
+    if (runType === "RECURRING") {
+        const windowDays = campaign.maxSendsPerGuestWindowDays ?? DEFAULT_GUEST_WINDOW_DAYS;
+        const cutoff = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+        const recent = await prisma.campaignRecipient.findMany({
+            where: {
+                campaignId,
+                status: { in: ["SENT", "DELIVERED"] },
+                sentAt: { gte: cutoff },
+            },
+            select: { guestProfileId: true },
+        });
+        const recentSet = new Set(recent.map((r) => r.guestProfileId));
+        eligible = eligible.filter((e) => !recentSet.has(e.guest.id));
+    }
+    if (eligible.length > MAX_RECIPIENTS_PER_RUN) {
+        eligible = eligible.slice(0, MAX_RECIPIENTS_PER_RUN);
+    }
+    const now = new Date();
+    // No one to send to — still record a completed (empty) run for history.
+    if (eligible.length === 0) {
+        const run = await prisma.campaignRun.create({
+            data: {
+                campaignId,
+                businessId: campaign.businessId,
+                runType,
+                scheduledFor: scheduledFor ?? null,
+                startedAt: now,
+                completedAt: now,
+                status: "COMPLETED",
+                recipientCount: 0,
+            },
+        });
+        return { runId: run.id, recipientCount: 0, excludedCount: filtered.excludedCount };
+    }
+    const run = await prisma.campaignRun.create({
+        data: {
+            campaignId,
+            businessId: campaign.businessId,
+            runType,
+            scheduledFor: scheduledFor ?? null,
+            startedAt: now,
+            status: "RUNNING",
+            recipientCount: eligible.length,
+        },
+    });
+    await prisma.campaignRecipient.createMany({
+        data: eligible.map((r) => ({
+            campaignId,
+            runId: run.id,
+            businessId: campaign.businessId,
+            guestProfileId: r.guest.id,
+            channel: channel,
+            email: r.email ?? null,
+            phone: r.phone ?? null,
+            status: "PENDING",
+        })),
+    });
+    const recipients = await prisma.campaignRecipient.findMany({
+        where: { runId: run.id },
+    });
+    const eligibleByGuest = new Map(eligible.map((r) => [r.guest.id, r]));
+    await prisma.campaignDeliveryLog.create({
+        data: {
+            campaignId,
+            eventType: "run_started",
+            message: `${runType} run sending to ${recipients.length} recipient(s) via ${channel}.`,
+        },
+    });
+    const restName = restaurantNameForLocation(location, business.name);
+    for (const recipient of recipients) {
+        const guest = eligibleByGuest.get(recipient.guestProfileId)?.guest;
+        const message = buildMessage(template, campaign.templateValues || {}, {
+            businessName: restName,
+            businessEmail: business.email,
+            locationName: location.displayName || location.name || "your location",
+            firstName: guest?.firstName || null,
+            guestName: guest?.fullName || null,
+        }, channel);
+        await enqueueNotification({
+            type: "campaign_message",
+            channel: channel.toLowerCase(),
+            campaignId,
+            recipientId: recipient.id,
+            businessName: restName,
+            replyTo: business.email || undefined,
+            email: recipient.email || undefined,
+            phone: recipient.phone || undefined,
+            subject: message.subject,
+            bodyText: message.text,
+            bodyHtml: message.html,
+            whatsappTemplateName: message.whatsappTemplateName,
+            whatsappLanguage: message.whatsappLanguage,
+            whatsappParams: message.whatsappParams,
+        });
+    }
+    return {
+        runId: run.id,
+        recipientCount: recipients.length,
+        excludedCount: filtered.excludedCount,
+    };
+}
+/**
+ * Recompute a run's delivery counts from its recipients; mark COMPLETED once
+ * none are still PENDING (FAILED if every send failed).
+ */
+export async function reconcileRun(run) {
+    if (run.status !== "RUNNING")
+        return run;
+    const grouped = await prisma.campaignRecipient.groupBy({
+        by: ["status"],
+        where: { runId: run.id },
+        _count: { _all: true },
+    });
+    const counts = {};
+    for (const g of grouped)
+        counts[g.status] = g._count._all;
+    const sent = (counts.SENT || 0) + (counts.DELIVERED || 0);
+    const failed = counts.FAILED || 0;
+    const skipped = counts.SKIPPED || 0;
+    const pending = counts.PENDING || 0;
+    const data = { sentCount: sent, failedCount: failed, skippedCount: skipped };
+    if (pending === 0) {
+        data.status = sent > 0 ? "COMPLETED" : "FAILED";
+        data.completedAt = new Date();
+    }
+    return prisma.campaignRun.update({ where: { id: run.id }, data });
+}
+/**
+ * Reconcile a campaign for display: reconcile its latest run, copy that run's
+ * counts onto the campaign, and flip a one-shot (Send Now / Scheduled) campaign
+ * from SENDING to SENT/FAILED once its run finishes. Recurring campaigns keep
+ * their RECURRING/PAUSED status; only their displayed counts refresh.
+ */
+export async function reconcileCampaign(c) {
+    const latest = await prisma.campaignRun.findFirst({
+        where: { campaignId: c.id },
+        orderBy: { createdAt: "desc" },
+    });
+    if (!latest)
+        return c;
+    const fresh = latest.status === "RUNNING" ? await reconcileRun(latest) : latest;
+    const data = {
+        recipientCount: fresh.recipientCount,
+        sentCount: fresh.sentCount,
+        failedCount: fresh.failedCount,
+        skippedCount: fresh.skippedCount,
+    };
+    if (c.status === "SENDING" && fresh.status !== "RUNNING") {
+        data.status = fresh.sentCount > 0 ? "SENT" : "FAILED";
+    }
+    return prisma.campaign.update({ where: { id: c.id }, data });
+}
+/**
+ * Cron sweep: fire any scheduled campaigns whose time has arrived and any
+ * recurring campaigns whose nextRunAt is due, then reconcile in-flight runs.
+ * Safe to call repeatedly — each campaign is claimed atomically before sending
+ * so two overlapping sweeps can never double-fire it.
+ */
+export async function runDueCampaignsSweep() {
+    const now = new Date();
+    let scheduledFired = 0;
+    let recurringFired = 0;
+    // ---- Scheduled (one-shot) ----
+    const dueScheduled = await prisma.campaign.findMany({
+        where: { status: "SCHEDULED", isPaused: false, nextRunAt: { lte: now } },
+        take: 50,
+    });
+    for (const c of dueScheduled) {
+        // Atomically claim: SCHEDULED -> SENDING so a concurrent sweep skips it.
+        const claim = await prisma.campaign.updateMany({
+            where: { id: c.id, status: "SCHEDULED" },
+            data: { status: "SENDING", sentAt: now, nextRunAt: null, lastRunAt: now },
+        });
+        if (claim.count === 0)
+            continue;
+        try {
+            const res = await executeCampaignRun(c.id, "SCHEDULED", c.scheduledAt);
+            if ("error" in res) {
+                await prisma.campaign.update({
+                    where: { id: c.id },
+                    data: { status: "FAILED" },
+                });
+            }
+            else {
+                await prisma.campaign.update({
+                    where: { id: c.id },
+                    data: { recipientCount: res.recipientCount, excludedCount: res.excludedCount },
+                });
+                scheduledFired += 1;
+            }
+        }
+        catch (err) {
+            console.error("[campaign-sweep] scheduled run failed:", err?.message || err);
+            await prisma.campaign
+                .update({ where: { id: c.id }, data: { status: "FAILED" } })
+                .catch(() => { });
+        }
+    }
+    // ---- Recurring ----
+    const dueRecurring = await prisma.campaign.findMany({
+        where: { status: "RECURRING", isPaused: false, nextRunAt: { lte: now } },
+        take: 50,
+    });
+    for (const c of dueRecurring) {
+        const tz = c.timezone || "Asia/Jakarta";
+        const freq = (c.recurrenceFrequency || "WEEKLY");
+        let next = advanceRecurrence(c.nextRunAt ?? now, freq, tz);
+        // Skip any missed windows so we don't fire a backlog at once.
+        while (next.getTime() <= now.getTime())
+            next = advanceRecurrence(next, freq, tz);
+        const ended = c.recurrenceEndAt ? next.getTime() > c.recurrenceEndAt.getTime() : false;
+        // Claim the slot by advancing nextRunAt first (idempotent against overlap).
+        const claim = await prisma.campaign.updateMany({
+            where: { id: c.id, status: "RECURRING", nextRunAt: c.nextRunAt },
+            data: {
+                lastRunAt: now,
+                nextRunAt: ended ? null : next,
+                ...(ended ? { status: "SENT" } : {}),
+            },
+        });
+        if (claim.count === 0)
+            continue;
+        try {
+            const res = await executeCampaignRun(c.id, "RECURRING");
+            if (!("error" in res))
+                recurringFired += 1;
+        }
+        catch (err) {
+            console.error("[campaign-sweep] recurring run failed:", err?.message || err);
+        }
+    }
+    // ---- Reconcile any in-flight runs from earlier sweeps ----
+    const running = await prisma.campaignRun.findMany({
+        where: { status: "RUNNING" },
+        take: 100,
+    });
+    for (const run of running) {
+        await reconcileRun(run).catch(() => { });
+    }
+    // Flip finished one-shot campaigns to terminal state.
+    const sending = await prisma.campaign.findMany({
+        where: { status: "SENDING" },
+        take: 100,
+    });
+    for (const c of sending) {
+        await reconcileCampaign(c).catch(() => { });
+    }
+    return { scheduled: scheduledFired, recurring: recurringFired };
+}

@@ -518,4 +518,247 @@ router.delete("/featured-restaurants/:id", async (req, res) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 });
+// ===========================================================================
+// Campaign Templates review (Phase 3B)
+//
+// Admin reviews business-submitted CUSTOM campaign templates and prepares them
+// for Email/SMS/WhatsApp (incl. the manual Meta template creation flow). These
+// routes are the ONLY place a template can move to APPROVED/REJECTED — the
+// business API never accepts an approval-state change. Admin-only Meta fields
+// are returned here but never by the business serializers.
+// ===========================================================================
+const CT_STATUSES = ["DRAFT", "PENDING_SEATPING_REVIEW", "APPROVED", "REJECTED"];
+function adminIdentity(req) {
+    const auth = req.auth || {};
+    return String(auth.name || auth.username || auth.sub || "admin");
+}
+/** Full template row for the admin console (includes internal Meta fields). */
+function serializeAdminTemplate(t) {
+    return {
+        id: t.id,
+        templateType: t.templateType,
+        businessId: t.businessId,
+        businessUsername: t.businessUsername,
+        locationId: t.locationId,
+        name: t.name,
+        slug: t.slug,
+        purpose: t.purpose,
+        body: t.body,
+        offerDetails: t.offerDetails,
+        ctaText: t.ctaText,
+        ctaUrl: t.ctaUrl,
+        variables: t.variables,
+        exampleValues: t.exampleValues ?? {},
+        approvalStatus: t.approvalStatus,
+        rejectionReason: t.rejectionReason,
+        internalReviewNotes: t.internalReviewNotes,
+        whatsappMetaStatus: t.whatsappMetaStatus,
+        whatsappProviderTemplateName: t.whatsappProviderTemplateName,
+        whatsappProviderTemplateId: t.whatsappProviderTemplateId,
+        whatsappMetaCategory: t.whatsappMetaCategory,
+        whatsappLanguage: t.whatsappLanguage,
+        whatsappSubmittedAt: t.whatsappSubmittedAt,
+        whatsappApprovedAt: t.whatsappApprovedAt,
+        whatsappRejectedAt: t.whatsappRejectedAt,
+        approvedBy: t.approvedBy,
+        rejectedBy: t.rejectedBy,
+        submittedAt: t.submittedAt,
+        approvedAt: t.approvedAt,
+        rejectedAt: t.rejectedAt,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+        business: t.business
+            ? { id: t.business.id, name: t.business.name, username: t.business.username, email: t.business.email }
+            : null,
+    };
+}
+/** GET /admin/campaign-templates?status=&search= — custom template submissions. */
+router.get("/campaign-templates", async (req, res) => {
+    try {
+        const where = { templateType: "CUSTOM" };
+        const status = String(req.query.status || "").toUpperCase();
+        if (status && CT_STATUSES.includes(status)) {
+            where.approvalStatus = status;
+        }
+        const search = String(req.query.search || "").trim();
+        if (search) {
+            where.OR = [
+                { name: { contains: search, mode: "insensitive" } },
+                { businessUsername: { contains: search, mode: "insensitive" } },
+                { body: { contains: search, mode: "insensitive" } },
+                { purpose: { contains: search, mode: "insensitive" } },
+            ];
+        }
+        const templates = await prisma.campaignTemplate.findMany({
+            where,
+            orderBy: [{ submittedAt: "desc" }, { createdAt: "desc" }],
+            take: 200,
+        });
+        // Join business display info (name searched separately since it lives on a
+        // different collection in MongoDB).
+        const businessIds = Array.from(new Set(templates.map((t) => t.businessId).filter(Boolean)));
+        const businesses = businessIds.length
+            ? await prisma.business.findMany({
+                where: { id: { in: businessIds } },
+                select: { id: true, name: true, username: true, email: true },
+            })
+            : [];
+        const bMap = new Map(businesses.map((b) => [b.id, b]));
+        // Status counts for the filter chips.
+        const grouped = await prisma.campaignTemplate.groupBy({
+            by: ["approvalStatus"],
+            where: { templateType: "CUSTOM" },
+            _count: { _all: true },
+        });
+        const counts = {};
+        for (const g of grouped)
+            counts[g.approvalStatus] = g._count._all;
+        return res.json({
+            templates: templates.map((t) => serializeAdminTemplate({ ...t, business: t.businessId ? bMap.get(t.businessId) : null })),
+            counts,
+        });
+    }
+    catch (error) {
+        console.error("[admin] list campaign templates error:", error?.message || error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+});
+/** GET /admin/campaign-templates/:id — full review detail. */
+router.get("/campaign-templates/:id", async (req, res) => {
+    try {
+        const id = String(req.params.id || "");
+        if (!OBJECT_ID_RE.test(id))
+            return res.status(404).json({ error: "Template not found" });
+        const t = await prisma.campaignTemplate.findUnique({ where: { id } });
+        if (!t)
+            return res.status(404).json({ error: "Template not found" });
+        const business = t.businessId
+            ? await prisma.business.findUnique({
+                where: { id: t.businessId },
+                select: { id: true, name: true, username: true, email: true },
+            })
+            : null;
+        let location = null;
+        if (t.locationId) {
+            const loc = await prisma.location.findUnique({ where: { id: t.locationId } });
+            if (loc)
+                location = pickLocation(loc);
+        }
+        return res.json({ template: serializeAdminTemplate({ ...t, business }), location });
+    }
+    catch (error) {
+        console.error("[admin] get campaign template error:", error?.message || error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+});
+/** PATCH /admin/campaign-templates/:id/review — update internal notes + Meta fields. */
+router.patch("/campaign-templates/:id/review", async (req, res) => {
+    try {
+        const id = String(req.params.id || "");
+        if (!OBJECT_ID_RE.test(id))
+            return res.status(404).json({ error: "Template not found" });
+        const t = await prisma.campaignTemplate.findUnique({ where: { id } });
+        if (!t)
+            return res.status(404).json({ error: "Template not found" });
+        const data = {};
+        const stringFields = [
+            "internalReviewNotes",
+            "whatsappMetaStatus",
+            "whatsappProviderTemplateName",
+            "whatsappProviderTemplateId",
+            "whatsappMetaCategory",
+            "whatsappLanguage",
+        ];
+        for (const f of stringFields) {
+            if (req.body?.[f] !== undefined) {
+                data[f] = req.body[f] === null ? null : String(req.body[f]).slice(0, 2000);
+            }
+        }
+        const dateFields = ["whatsappSubmittedAt", "whatsappApprovedAt", "whatsappRejectedAt"];
+        for (const f of dateFields) {
+            if (req.body?.[f] !== undefined) {
+                data[f] = req.body[f] ? new Date(req.body[f]) : null;
+            }
+        }
+        if (Object.keys(data).length === 0) {
+            return res.status(400).json({ error: "No reviewable fields provided" });
+        }
+        const updated = await prisma.campaignTemplate.update({ where: { id }, data });
+        return res.json({ template: serializeAdminTemplate(updated) });
+    }
+    catch (error) {
+        console.error("[admin] review campaign template error:", error?.message || error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+});
+/** POST /admin/campaign-templates/:id/approve — approve for all three channels. */
+router.post("/campaign-templates/:id/approve", async (req, res) => {
+    try {
+        const id = String(req.params.id || "");
+        if (!OBJECT_ID_RE.test(id))
+            return res.status(404).json({ error: "Template not found" });
+        const t = await prisma.campaignTemplate.findUnique({ where: { id } });
+        if (!t)
+            return res.status(404).json({ error: "Template not found" });
+        if (t.templateType !== "CUSTOM") {
+            return res.status(400).json({ error: "Only custom templates require approval" });
+        }
+        const now = new Date();
+        const updated = await prisma.campaignTemplate.update({
+            where: { id },
+            data: {
+                approvalStatus: "APPROVED",
+                approvedAt: now,
+                approvedBy: adminIdentity(req),
+                rejectionReason: null,
+                rejectedAt: null,
+                whatsappApprovedAt: t.whatsappApprovedAt ?? now,
+                ...(req.body?.whatsappProviderTemplateName !== undefined
+                    ? { whatsappProviderTemplateName: String(req.body.whatsappProviderTemplateName).slice(0, 500) }
+                    : {}),
+                ...(req.body?.whatsappMetaStatus !== undefined
+                    ? { whatsappMetaStatus: String(req.body.whatsappMetaStatus).slice(0, 200) }
+                    : {}),
+            },
+        });
+        return res.json({ template: serializeAdminTemplate(updated) });
+    }
+    catch (error) {
+        console.error("[admin] approve campaign template error:", error?.message || error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+});
+/** POST /admin/campaign-templates/:id/reject — reject with a business-facing reason. */
+router.post("/campaign-templates/:id/reject", async (req, res) => {
+    try {
+        const id = String(req.params.id || "");
+        if (!OBJECT_ID_RE.test(id))
+            return res.status(404).json({ error: "Template not found" });
+        const reason = String(req.body?.rejectionReason || "").trim();
+        if (!reason)
+            return res.status(400).json({ error: "A rejection reason is required" });
+        const t = await prisma.campaignTemplate.findUnique({ where: { id } });
+        if (!t)
+            return res.status(404).json({ error: "Template not found" });
+        if (t.templateType !== "CUSTOM") {
+            return res.status(400).json({ error: "Only custom templates can be rejected" });
+        }
+        const now = new Date();
+        const updated = await prisma.campaignTemplate.update({
+            where: { id },
+            data: {
+                approvalStatus: "REJECTED",
+                rejectionReason: reason.slice(0, 1000),
+                rejectedAt: now,
+                rejectedBy: adminIdentity(req),
+                whatsappRejectedAt: now,
+            },
+        });
+        return res.json({ template: serializeAdminTemplate(updated) });
+    }
+    catch (error) {
+        console.error("[admin] reject campaign template error:", error?.message || error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+});
 export default router;

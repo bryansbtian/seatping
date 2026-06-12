@@ -57,6 +57,22 @@
       "destination": "/api/server"
     },
     {
+      "source": "/api/campaigns/:path*",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/campaigns",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/audiences/:path*",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/audiences",
+      "destination": "/api/server"
+    },
+    {
       "source": "/api/jobs/:path*",
       "destination": "/api/server"
     },
@@ -77,6 +93,10 @@
     {
       "path": "/api/cron/credit-refill",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/campaigns",
+      "schedule": "*/5 * * * *"
     }
   ],
   "functions": {

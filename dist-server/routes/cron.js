@@ -12,6 +12,7 @@
 import { Router } from "express";
 import { runReservationReminderSweep } from "../lib/reservationReminders.js";
 import { runDailyCreditRefillSweep } from "../lib/trial.js";
+import { runDueCampaignsSweep } from "../lib/campaignRunner.js";
 const router = Router();
 function authorized(req) {
     const secret = process.env.CRON_SECRET;
@@ -41,6 +42,20 @@ router.all("/credit-refill", async (req, res) => {
     }
     catch (err) {
         console.error("[CRON] credit-refill failed:", err?.message || err);
+        return res.status(500).json({ error: "Sweep failed" });
+    }
+});
+// Scheduled + recurring campaign dispatch. Should run frequently (e.g. every
+// few minutes) so scheduled sends fire close to their chosen time.
+router.all("/campaigns", async (req, res) => {
+    if (!authorized(req))
+        return res.status(401).json({ error: "Unauthorized" });
+    try {
+        const result = await runDueCampaignsSweep();
+        return res.json({ ok: true, ...result });
+    }
+    catch (err) {
+        console.error("[CRON] campaigns failed:", err?.message || err);
         return res.status(500).json({ error: "Sweep failed" });
     }
 });
