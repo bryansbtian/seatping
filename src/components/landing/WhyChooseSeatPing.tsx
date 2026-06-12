@@ -38,7 +38,6 @@ import {
 import { cn } from "@/lib/utils";
 import {
   SECTION_PADDING,
-  SECTION_CONTENT_GAP,
   SECTION_HEADING,
   SECTION_SUBTITLE,
   CARD_TITLE,
@@ -727,62 +726,6 @@ function ServiceSnapshot({ className }: { className?: string }) {
             max={48}
             yTicks={[0, 12, 24, 36, 48]}
           />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ================================================================== */
-/*  Card shells                                                       */
-/* ================================================================== */
-
-/** Compact feature card for the top 4-up row. Light by default, turning brand
- *  navy on hover (gradient, white text, restrained indigo icon). */
-function SmallFeatureCard({
-  icon: Icon,
-  title,
-  description,
-  visual,
-}: {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  visual: React.ReactNode;
-}) {
-  return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm transition-[border-color,box-shadow,transform] duration-500 ease-out hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-lg hover:shadow-slate-900/15 sm:p-5">
-      {/* Navy gradient that fades in on hover. Gradients (background-image) can't
-          be transitioned, so we cross-fade this overlay with opacity instead,
-          which animates smoothly. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-900 to-slate-800 opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
-      />
-      <div className="relative flex flex-1 flex-col">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition-colors duration-500 ease-out group-hover:text-indigo-600">
-            <Icon className="h-5 w-5" />
-          </span>
-          <h3
-            className={cn(
-              CARD_TITLE,
-              "transition-colors duration-500 ease-out group-hover:text-white",
-            )}
-          >
-            {title}
-          </h3>
-        </div>
-        <p
-          className={cn(
-            "mt-3 transition-colors duration-500 ease-out group-hover:text-slate-200",
-            CARD_DESCRIPTION,
-          )}
-        >
-          {description}
-        </p>
-        <div className="mt-auto pt-4">
-          <div className="h-44">{visual}</div>
         </div>
       </div>
     </div>

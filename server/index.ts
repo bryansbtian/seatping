@@ -1,4 +1,4 @@
-// ⬅️ add this as the FIRST line so .env is loaded in dev/prod
+// Must stay the first import so .env is loaded before anything reads process.env.
 import "dotenv/config";
 
 import express from "express";
@@ -7,7 +7,6 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 
-// your existing imports...
 import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
 import salesRouter from "./routes/sales.js";
@@ -55,8 +54,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+/**
+ * Redact secrets from a URL before logging. Bearer-style tokens appear both as
+ * path segments (queue tokens are 32 hex chars, reservation manage tokens 48,
+ * password reset tokens 64) and as query params (e.g. /reset?token=...). A short
+ * prefix is kept so log lines can still be correlated with a specific token
+ * without exposing enough of it to replay. Mongo ObjectIds are 24 hex chars and
+ * stay readable for debugging.
+ */
+function redactUrlSecrets(url: string): string {
+  return url
+    .replace(/([?&][^?&=]*token[^?&=]*=)[^&#]+/gi, "$1[redacted]")
+    .replace(/[0-9a-f]{32,}/gi, (m) => `${m.slice(0, 6)}…`);
+}
+
 app.use((req, _res, next) => {
-  console.log(`[api] ${req.method} ${req.originalUrl}`);
+  console.log(`[api] ${req.method} ${redactUrlSecrets(req.originalUrl)}`);
   next();
 });
 

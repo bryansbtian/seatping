@@ -2,16 +2,15 @@
 //
 // Sends a one-time "your reservation is in ~2 hours" reminder to customers.
 //
-// Reservations live as JSON on the Location model (see server/lib/reservations.ts),
-// so there is no Reservation table to query — this sweep scans locations and
-// inspects their `reservations` arrays. Dedup state (`reminderEmailSentAt`) is
-// persisted on each reservation object, so the job is safe across restarts: a
-// reminder is only ever sent once, and a crash mid-run simply retries next tick.
+// Queries the Reservation model (status CONFIRMED + reminderEmailSentAt unset).
+// Dedup state (`reminderEmailSentAt`) is persisted on each reservation row, so
+// the job is safe across restarts: a reminder is only ever sent once, and a
+// crash mid-run simply retries next tick.
 //
 // This is intentionally a poll (not a per-reservation setTimeout) so it survives
-// process restarts. It's wired up in server/index.ts on the same interval-based
-// pattern as the daily credit sweep (and, like that sweep, only runs on a
-// long-lived server — not in a per-request serverless invocation).
+// process restarts. On a long-lived server it runs from the setInterval in
+// server/index.ts; on Vercel it is driven by a QStash Schedule hitting
+// /api/cron/reservation-reminders (see scripts/setup-qstash-schedules.ts).
 //
 // Timezone note: reservation datetimes are stored as naive local wall-clock
 // strings (`YYYY-MM-DDTHH:MM`, no offset) — the restaurant's local clock is the

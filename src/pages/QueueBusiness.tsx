@@ -321,7 +321,7 @@ export default function QueueBusiness() {
             }
           } catch (error) {
             localStorage.removeItem(storageKey);
-            console.log("Failed to restore queue state:", error);
+            console.warn("Failed to restore queue state:", error);
           }
         }
       } catch (error) {
@@ -456,8 +456,8 @@ export default function QueueBusiness() {
         } else if (response.position) {
           setPeopleAhead(Math.max(0, response.position - 1));
         }
-      } catch (error) {
-        console.log("Checking admission status...");
+      } catch {
+        // Transient poll failure; the next 2s tick retries.
       }
     };
 

@@ -41,7 +41,6 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { Message } from "@mynaui/icons-react";
 import {
   DEFAULT_TIMEZONE,
   getDateKeyInTimezone,
@@ -73,7 +72,7 @@ const TOOLTIP_CONTENT_STYLE = {
 
 const BusinessDashboard = () => {
   const isMobile = useIsMobile();
-  const { t, tStatus, lang } = useLang();
+  const { t, lang } = useLang();
   const [me, setMe] = useState<any | null>(null);
   const [selectedLocationIndex, setSelectedLocationIndex] = useState(0);
   // Per-customer queue ETAs (keyed by queueToken), from the shared backend helper.
@@ -94,21 +93,10 @@ const BusinessDashboard = () => {
     minutes: number;
   } | null>(null);
   const trialCountdownRef = useRef<NodeJS.Timeout | null>(null);
-  const [timerTick, setTimerTick] = useState(0); // For updating countdown timers
+  // State value is intentionally unused: the setter fires every second to
+  // re-render the live admitted-customer countdowns (getTimeRemaining).
+  const [, forceCountdownTick] = useState(0);
   const locations = (me?.locations as any[]) || [];
-  const maxLocations = me?.maxLocations ?? 1;
-  // Check if account is still in trial period (≤ 7 days old)
-  const onTrial =
-    me &&
-    (() => {
-      const createdAt = new Date(me.createdAt);
-      const trialDurationDays = me.trialDurationDays || 7;
-      const trialEndDate = new Date(
-        createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
-      );
-      const now = new Date();
-      return now <= trialEndDate;
-    })();
   const { toast } = useToast();
 
   // Get current location and queue
@@ -377,7 +365,7 @@ const BusinessDashboard = () => {
   // Update timer every second for admitted customers countdown
   useEffect(() => {
     const interval = setInterval(() => {
-      setTimerTick((prev) => prev + 1);
+      forceCountdownTick((prev) => prev + 1);
     }, 1000);
 
     return () => clearInterval(interval);

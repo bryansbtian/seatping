@@ -1,4 +1,3 @@
-import Telnyx from "telnyx";
 // server/routes/auth.ts
 //
 // Auth is split by account type:
@@ -20,6 +19,7 @@ import {
   clearAuthCookie,
   requireCustomer,
   requireBusiness,
+  requireAdmin,
   readSession,
 } from "../lib/auth.js";
 import {
@@ -48,13 +48,7 @@ import {
   sendBusinessOnboardingEmail,
   sendCustomerWelcomeEmail,
   sendPasswordChangeConfirmationEmail,
-  sendQueueJoinConfirmationEmail,
-  sendQueueYourTurnEmail,
 } from "../lib/email.js";
-import {
-  sendQueueJoinedWhatsApp,
-  sendQueueAdmittedWhatsApp,
-} from "../lib/whatsapp.js";
 import { assembleBusinessMe, augmentLocationWithLiveLists } from "../lib/business.js";
 import { deleteImageByPublicId } from "../lib/cloudinary.js";
 import { normalizeSettings, syncCustomerReservation } from "../lib/reservations.js";
@@ -1533,10 +1527,7 @@ router.post("/business/locations", requireBusiness, async (req, res) => {
  * PUT /auth/business/locations/:locationId  (business, protected)
  * Update a location the business owns: its public restaurant profile JSON
  * (`restaurantProfile`), `address`, and the `queueEnabled` / `reservationsEnabled`
- * toggles. Used by the redesigned /business/settings profile editor.
- *
- * TODO(public-restaurant-page): Use location.restaurantProfile to power the
- * public restaurant detail page (/restaurant/:slug).
+ * toggles. Used by the /business/settings profile editor.
  */
 router.put("/business/locations/:locationId", requireBusiness, async (req, res) => {
   try {
@@ -2768,9 +2759,11 @@ router.post("/business/:username/queue/:customerId/leave", async (req, res) => {
 // ===========================================================================
 
 /**
- * POST /auth/test-email (debugging)
+ * POST /auth/test-email (debugging, admin-only)
+ * Sends a test email to verify SMTP configuration. Admin-gated: an open version
+ * of this endpoint would let anyone send arbitrary emails from our domain.
  */
-router.post("/test-email", async (req, res) => {
+router.post("/test-email", requireAdmin, async (req, res) => {
   try {
     const { email } = req.body || {};
     if (!email || typeof email !== "string") {

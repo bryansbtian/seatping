@@ -19,16 +19,6 @@ function pickCuisine(rp: any): string | null {
   return Array.isArray(arr) && arr.length ? String(arr[0]) : null;
 }
 
-const DAY_KEYS = [
-  "sunday",
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-];
-
 /**
  * Whether the location is currently open, evaluated in the restaurant's own
  * timezone (openingHours.timezone). Returns null when hours aren't configured

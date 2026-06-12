@@ -31,7 +31,7 @@ import {
   getLocationTimezone,
 } from "../lib/operatingHours.js";
 import { readSession } from "../lib/auth.js";
-import { reservationRowToLegacy, reservationStatusToEnum } from "../lib/liveData.js";
+import { reservationRowToLegacy } from "../lib/liveData.js";
 import {
   bucketOf,
   tryReserveCapacity,

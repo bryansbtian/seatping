@@ -64,8 +64,7 @@ const campaignsLimiter = rateLimit({
 router.use(requireBusiness, campaignsLimiter);
 
 const CHANNELS: Channel[] = ["EMAIL", "WHATSAPP", "SMS"];
-// Safety caps for a first version of self-serve sending.
-const MAX_RECIPIENTS_PER_CAMPAIGN = 2000;
+// Safety cap for a first version of self-serve sending.
 const MANUAL_GUEST_LIMIT = 1000;
 
 function bizId(req: any): string {

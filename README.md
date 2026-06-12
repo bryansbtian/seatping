@@ -190,13 +190,19 @@ and is retained as a historical record.
   and delivered via `POST /api/jobs/notify` (signature-verified) with retries;
   otherwise they fall back to fire-and-forget inline sends.
 - Scheduled work hits `CRON_SECRET`-protected endpoints:
-  `/api/cron/credit-refill` (daily) and `/api/cron/reservation-reminders`
-  (hourly). `credit-refill` runs as a native Vercel Cron (`vercel.json` →
-  `crons`, daily — the Hobby plan only allows once-per-day crons).
-  `reservation-reminders` needs hourly cadence, so it is driven by a QStash
-  Schedule that POSTs the endpoint with a forwarded
+  `/api/cron/credit-refill` (daily), `/api/cron/reservation-reminders` (hourly),
+  and `/api/cron/campaigns` (every 5 minutes). `credit-refill` runs as a native
+  Vercel Cron (`vercel.json` → `crons`, daily — the Hobby plan only allows
+  once-per-day crons). The other two need sub-daily cadence, so they are driven
+  by QStash Schedules that POST the endpoints with a forwarded
   `Authorization: Bearer <CRON_SECRET>` header (no Hobby cron limit). The legacy
   `setInterval` sweeps still run for long-lived/local servers (skipped on Vercel).
+- `scripts/setup-qstash-schedules.ts` verifies/creates those QStash Schedules.
+  Run `npx tsx --env-file=.env scripts/setup-qstash-schedules.ts` to see what
+  exists (dry run), add `--apply` to create whatever is missing. It matches by
+  destination URL and never modifies a schedule that already exists. Re-run it
+  after rotating `CRON_SECRET` (delete the old schedules in the Upstash console
+  first so they are recreated with the new header).
 
 ## Environment variables
 

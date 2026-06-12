@@ -193,11 +193,8 @@ const Header = ({
 };
 
 /**
- * Logged-in customer profile control. For now this is a placeholder menu that
- * shows the customer's name and offers logout.
- *
- * TODO(customer-profile): Link this profile menu to the customer profile page
- * when customer accounts are expanded.
+ * Logged-in customer profile control: avatar button that opens a menu with a
+ * link to the profile page and logout.
  */
 function CustomerProfile({
   name,

@@ -28,11 +28,6 @@ import { X, Star, Pencil, Trash2 } from "lucide-react";
 // arrays (see prisma/schema.prisma -> User). Each item carries denormalized
 // business details so a card can render without a join; `businessUsername` is
 // kept so we can later fetch the business/location profile image.
-//
-// TODO(customer-profile): Connect upcoming reservations to real reservation booking flow.
-// TODO(customer-profile): Move completed reservations from upcomingReservations to pastReservations when status becomes completed or date passes.
-// TODO(customer-profile): Connect queueingActivity to real queue join/admit/remove flow.
-// TODO(customer-profile): Use businessUsername to fetch restaurant images for activity cards.
 // ---------------------------------------------------------------------------
 
 type Reservation = {
@@ -719,11 +714,8 @@ function ChangePasswordDialog({
 }
 
 /**
- * Placeholder business thumbnail. Until restaurant profile images are wired up,
- * this renders a gradient tile with the business initial.
- *
- * TODO(customer-profile): Use businessUsername to fetch the business profile
- * image once restaurant profiles are connected.
+ * Fallback business thumbnail: a gradient tile with the business initial,
+ * used when an activity item has no banner image.
  */
 function BusinessThumb({ name }: { name?: string }) {
   return (

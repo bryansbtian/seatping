@@ -16,7 +16,7 @@
 //     flows through the moment we "touch" the guest.
 //   - Every query is scoped by businessId. Callers must pass the authenticated
 //     business's id; nothing here trusts client input for scoping.
-import type { QueueEntry, Reservation, GuestProfile } from "@prisma/client";
+import type { QueueEntry, Reservation } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import {
   getLocationTimezone,

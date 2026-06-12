@@ -25,7 +25,7 @@ import { GuestStatusBadge, GuestTagBadge } from "@/components/GuestBadge";
 import { api } from "@/lib/api";
 import { formatPhone } from "@/lib/phone";
 import { useToast } from "@/hooks/use-toast";
-import { useLang, type TKey } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n";
 import {
   Search,
   ChevronDown,

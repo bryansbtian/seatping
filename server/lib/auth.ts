@@ -121,30 +121,6 @@ export function clearAllAuthCookies(res: Response) {
 }
 
 /**
- * Verify the auth cookie and attach the payload to req.auth.
- * Tokens issued before account-type separation (no `accountType` claim) are
- * treated as invalid so those sessions are forced to re-login.
- */
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  try {
-    // Accept either account type's cookie.
-    const token =
-      req.cookies?.[COOKIE_NAMES.customer] ??
-      req.cookies?.[COOKIE_NAMES.business];
-    if (!token) return res.status(401).json({ error: "Unauthorized" });
-    const payload = verifyJwt(token);
-    if (!(payload as any)?.accountType) {
-      // Legacy token without an account type — require re-login.
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    (req as any).auth = payload;
-    next();
-  } catch {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-}
-
-/**
  * Build a middleware that only allows a specific account type through.
  * Customer tokens cannot pass a business gate and vice versa.
  */
@@ -186,7 +162,9 @@ export function readSession(
       accountType?: AccountType;
       name?: string;
     };
-    if (!payload.accountType || !payload.sub) return null;
+    // The token's claim must match the cookie it was read from; a token of one
+    // account type stuffed into another type's cookie does not count as a session.
+    if (payload.accountType !== accountType || !payload.sub) return null;
     return {
       accountType: payload.accountType,
       sub: String(payload.sub),

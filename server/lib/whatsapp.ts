@@ -57,7 +57,7 @@ export async function sendQueueJoinedWhatsApp(params: SendQueueJoinedParams): Pr
   }
 
   try {
-    const result = await client.messages.sendTemplate({
+    await client.messages.sendTemplate({
       phoneNumberId,
       to,
       template: {
@@ -159,7 +159,7 @@ export async function sendQueueAdmittedWhatsApp(params: SendQueueAdmittedParams)
   }
 
   try {
-    const result = await client.messages.sendTemplate({
+    await client.messages.sendTemplate({
       phoneNumberId,
       to,
       template: {
