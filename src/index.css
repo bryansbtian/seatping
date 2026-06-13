@@ -258,6 +258,23 @@ All colors MUST be HSL.
 }
 
 /* ---------------------------------------------------------------------------
+   Animated bento feature grid (landing). Every looping preview animation in
+   AnimatedBentoFeatureGrid carries `.bento-loop`, so all of them can be turned
+   off in one place: for users who prefer reduced motion, and when the grid is
+   rendered with `animated={false}` (which sets data-bento-animated="false" on
+   the section). Kept outside @layer so the compound selectors always ship.
+--------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .bento-loop {
+    animation: none !important;
+  }
+}
+
+[data-bento-animated="false"] .bento-loop {
+  animation: none !important;
+}
+
+/* ---------------------------------------------------------------------------
    Google Places Autocomplete dropdown — styled to match SeatPing.
    Google injects `.pac-container` into <body>, so these MUST be global (not
    scoped to a component). The Google attribution (.pac-logo) is left visible

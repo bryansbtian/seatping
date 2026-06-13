@@ -107,6 +107,29 @@ export default {
           "0%": { transform: "translateX(-50%)" },
           "100%": { transform: "translateX(0)" },
         },
+        /* Animated bento feature grid (landing). */
+        "bento-reveal": {
+          from: { opacity: "0", transform: "translateY(16px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "bento-ticker": {
+          "0%": { transform: "translateY(0)" },
+          "100%": { transform: "translateY(-50%)" },
+        },
+        "bento-cycle": {
+          "0%": { opacity: "0" },
+          "4%, 29.5%": { opacity: "1" },
+          "36%, 100%": { opacity: "0" },
+        },
+        "bento-toast": {
+          "0%, 10%": { opacity: "0", transform: "translateY(10px) scale(0.97)" },
+          "18%, 72%": { opacity: "1", transform: "translateY(0) scale(1)" },
+          "82%, 100%": { opacity: "0", transform: "translateY(-8px) scale(0.98)" },
+        },
+        "bento-float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-5px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -116,6 +139,11 @@ export default {
         "scroll-right": "scroll-right 30s linear infinite",
         "scroll-left-mobile": "scroll-left 15s linear infinite",
         "scroll-right-mobile": "scroll-right 15s linear infinite",
+        "bento-reveal": "bento-reveal 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+        "bento-ticker": "bento-ticker 20s linear infinite",
+        "bento-cycle": "bento-cycle 9s linear infinite",
+        "bento-toast": "bento-toast 6s ease-in-out infinite",
+        "bento-float": "bento-float 5s ease-in-out infinite",
       },
     },
   },

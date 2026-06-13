@@ -8,9 +8,8 @@ import Footer from "@/components/Footer";
 import SEO, { BUSINESS_DESCRIPTION } from "@/components/SEO";
 import { cn } from "@/lib/utils";
 import { HeroDashboardPreview } from "@/components/landing/ProductPreviews";
-import WhyChooseSeatPing, {
-  SeatPingFeatureGrid,
-} from "@/components/landing/WhyChooseSeatPing";
+import AnimatedBentoFeatureGrid from "@/components/landing/AnimatedBentoFeatureGrid";
+import { SeatPingFeatureGrid } from "@/components/landing/WhyChooseSeatPing";
 import {
   SECTION_PADDING,
   SECTION_CONTENT_GAP,
@@ -259,9 +258,9 @@ const LandingPage = () => {
       </section>
 
       {/* ============================================================ */}
-      {/* 2. PRODUCT SECTION #1 why choose SeatPing + 4 feature cards  */}
+      {/* 2. PRODUCT SECTION #1 animated bento grid of core features   */}
       {/* ============================================================ */}
-      <WhyChooseSeatPing />
+      <AnimatedBentoFeatureGrid />
 
       {/* ============================================================ */}
       {/* 3. PRODUCT SECTION #2 larger feature grid                    */}
