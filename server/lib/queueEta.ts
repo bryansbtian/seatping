@@ -29,7 +29,7 @@ export type QueueEta = {
   };
 };
 
-const ACTIVE_RESERVATION_STATUSES = ["pending", "confirmed", "arrived"];
+const ACTIVE_RESERVATION_STATUSES = ["confirmed", "arrived"];
 const DEFAULT_MINUTES_PER_PARTY = 5;
 const MIN_MINUTES_PER_PARTY = 3;
 const MAX_MINUTES_PER_PARTY = 30;

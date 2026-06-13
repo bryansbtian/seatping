@@ -647,14 +647,10 @@ function BookingModal({
               <div className="flex flex-col items-center text-center">
                 <CheckCircle2 className="h-12 w-12 text-emerald-500" />
                 <DialogTitle className="mt-3 text-lg">
-                  {reservation?.status === "pending"
-                    ? "Reservation Requested"
-                    : "Reservation Confirmed"}
+                  Reservation Confirmed
                 </DialogTitle>
                 <DialogDescription className="mt-1">
-                  {reservation?.status === "pending"
-                    ? `${restaurantName} will confirm your request shortly.`
-                    : `You're booked at ${restaurantName}.`}
+                  {`You're booked at ${restaurantName}.`}
                 </DialogDescription>
               </div>
 

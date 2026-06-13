@@ -178,8 +178,9 @@ export function reconstructQueueArrays(
 // Reservation row <-> legacy reservation object
 // ---------------------------------------------------------------------------
 
+// Any legacy "pending" / enum "PENDING" (from pre-removal data) falls through to
+// CONFIRMED via the `??` fallbacks below — the deprecated pending flow is gone.
 const RES_ENUM_TO_LEGACY: Record<string, string> = {
-  PENDING: "pending",
   CONFIRMED: "confirmed",
   ARRIVED: "arrived",
   COMPLETED: "completed",
@@ -188,7 +189,6 @@ const RES_ENUM_TO_LEGACY: Record<string, string> = {
 };
 
 const RES_LEGACY_TO_ENUM: Record<string, string> = {
-  pending: "PENDING",
   confirmed: "CONFIRMED",
   arrived: "ARRIVED",
   completed: "COMPLETED",

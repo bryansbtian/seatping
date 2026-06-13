@@ -70,7 +70,6 @@ export type NotificationJob =
       dateLabel: string;
       timeLabel: string;
       partySize: number;
-      status: string;
       manageUrl: string;
       cancellationPolicy?: string;
       // Business heads-up (optional — only if the business has an email).
@@ -363,7 +362,6 @@ export async function processNotification(job: NotificationJob): Promise<void> {
             dateLabel: job.dateLabel,
             timeLabel: job.timeLabel,
             partySize: job.partySize,
-            status: job.status,
             manageUrl: job.manageUrl,
             cancellationPolicy: job.cancellationPolicy,
           });
@@ -383,7 +381,6 @@ export async function processNotification(job: NotificationJob): Promise<void> {
             dateLabel: job.dateLabel,
             timeLabel: job.timeLabel,
             partySize: job.partySize,
-            status: job.status,
             notes: job.notes,
             dashboardUrl: job.dashboardUrl,
           });

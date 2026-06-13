@@ -59,7 +59,7 @@ type Reservation = {
 
 type TabKey = "today" | "upcoming" | "past" | "cancelled" | "no_shows";
 
-const ACTIVE = ["pending", "confirmed", "arrived"];
+const ACTIVE = ["confirmed", "arrived"];
 
 function splitDateTime(dt: string) {
   const [date, rest] = String(dt || "").split("T");
@@ -382,14 +382,7 @@ function ReservationCard({
   // Action sets vary by current status (no actions for terminal states).
   const actions: { labelKey: TKey; status: string; variant?: "destructive" }[] =
     [];
-  if (r.status === "pending") {
-    actions.push({ labelKey: "res.action.confirm", status: "confirmed" });
-    actions.push({
-      labelKey: "res.action.cancel",
-      status: "cancelled",
-      variant: "destructive",
-    });
-  } else if (r.status === "confirmed") {
+  if (r.status === "confirmed") {
     if (canMarkOutcome) {
       actions.push({ labelKey: "res.action.markArrived", status: "arrived" });
       actions.push({

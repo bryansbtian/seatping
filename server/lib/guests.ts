@@ -232,7 +232,7 @@ export function computeStats(
         break;
       }
       default: {
-        // PENDING / CONFIRMED — upcoming if its local time hasn't passed in the
+        // CONFIRMED — upcoming if its local time hasn't passed in the
         // location's timezone yet, otherwise it has already happened (the
         // business just never marked it complete).
         if (!alreadyHappened) upcoming += 1;

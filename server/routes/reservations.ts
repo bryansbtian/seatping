@@ -110,7 +110,6 @@ async function notifyReservation(
     dateLabel: readableDate(date),
     timeLabel: formatTimeLabel(time),
     partySize: reservation.partySize,
-    status: reservation.status,
     manageUrl,
     cancellationPolicy: settings.cancellationPolicy,
     businessEmail: business.email || undefined,
@@ -126,7 +125,7 @@ async function notifyReservation(
 /** Active reservations for a location as legacy-shaped objects (for validation). */
 async function activeReservationsForValidation(locationId: string): Promise<any[]> {
   const rows = await prisma.reservation.findMany({
-    where: { locationId, status: { in: ["PENDING", "CONFIRMED", "ARRIVED"] } },
+    where: { locationId, status: { in: ["CONFIRMED", "ARRIVED"] } },
   });
   return rows.map((r) => reservationRowToLegacy(r));
 }
@@ -318,7 +317,7 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
         locationId: location.id,
         email: String(email).trim(),
         reservationDateTime,
-        status: { in: ["PENDING", "CONFIRMED", "ARRIVED"] },
+        status: { in: ["CONFIRMED", "ARRIVED"] },
       },
       select: { id: true },
     });
@@ -594,7 +593,7 @@ router.post("/manage/:manageToken/cancel", async (req, res) => {
       prisma.reservation.updateMany({
         where: {
           id: reservation.id,
-          status: { in: ["PENDING", "CONFIRMED", "ARRIVED"] },
+          status: { in: ["CONFIRMED", "ARRIVED"] },
         },
         data: { status: "CANCELLED", cancelledAt: new Date() },
       }),

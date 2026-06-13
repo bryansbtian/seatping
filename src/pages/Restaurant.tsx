@@ -1064,7 +1064,15 @@ export default function RestaurantPage() {
               exists (see useIsLgUp). */}
           {isLgUp && (
             <aside>
-              <div className="sticky top-24">{actionCard}</div>
+              {/* Sticky shell that caps its own height to the viewport and
+                  scrolls its content internally when the booking card is taller
+                  than the screen (e.g. many unavailable time slots). This keeps
+                  the "Book Table"/"Join Queue" actions reachable without
+                  scrolling the entire page. Mobile keeps natural page scroll
+                  since this branch only renders at lg+. */}
+              <div className="premium-scroll sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto overflow-x-hidden pr-1 pb-4">
+                {actionCard}
+              </div>
             </aside>
           )}
         </div>

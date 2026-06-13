@@ -8,7 +8,7 @@
 //
 // Capacity is bucketed per clock-hour (a 7:00 and 7:30 booking both consume the
 // 7 PM hour), matching the rule in server/lib/reservations.ts. Counters track
-// ACTIVE guests only (PENDING | CONFIRMED | ARRIVED); a reservation releases its
+// ACTIVE guests only (CONFIRMED | ARRIVED); a reservation releases its
 // seats when it becomes CANCELLED / COMPLETED / NO_SHOW.
 
 import { prisma } from "./prisma.js";
@@ -106,7 +106,7 @@ export async function releaseCapacity(
 }
 
 /** Enum statuses that occupy capacity. Mirrors ACTIVE_STATUSES in reservations.ts. */
-const ACTIVE_ENUM = ["PENDING", "CONFIRMED", "ARRIVED"];
+const ACTIVE_ENUM = ["CONFIRMED", "ARRIVED"];
 
 /**
  * Adjust the counter when a reservation's status changes: release seats when it
@@ -141,7 +141,7 @@ export async function recountSlots(locationId: string): Promise<void> {
   const active = await prisma.reservation.findMany({
     where: {
       locationId,
-      status: { in: ["PENDING", "CONFIRMED", "ARRIVED"] },
+      status: { in: ["CONFIRMED", "ARRIVED"] },
     },
     select: { reservationDateTime: true, guestCount: true },
   });

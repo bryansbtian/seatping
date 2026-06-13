@@ -131,16 +131,13 @@ const BusinessDashboard = () => {
     const todayKey = getTodayKeyInTimezone(tz);
 
     // Reservations for this location dated today that still occupy a table
-    // (pending / confirmed / arrived) — matches the "Today" reservations tab.
+    // (confirmed / arrived) — matches the "Today" reservations tab.
     // reservationDateTime is a naive wall-clock string already in the
     // restaurant's local timezone, so its date part is the local date.
     const reservationsToday = (currentLocation.reservations || []).filter(
       (r: any) => {
         const d = String(r?.reservationDateTime || "").split("T")[0];
-        return (
-          d === todayKey &&
-          ["pending", "confirmed", "arrived"].includes(r?.status)
-        );
+        return d === todayKey && ["confirmed", "arrived"].includes(r?.status);
       },
     ).length;
 

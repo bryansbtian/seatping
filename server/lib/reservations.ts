@@ -13,7 +13,6 @@ import {
 export type ConfirmationMode = "auto" | "manual";
 export type ContactMethod = "sms" | "whatsapp" | "email";
 export type ReservationStatus =
-  | "pending"
   | "confirmed"
   | "arrived"
   | "completed"
@@ -21,11 +20,7 @@ export type ReservationStatus =
   | "no_show";
 
 // Statuses that occupy capacity. cancelled / completed / no_show are released.
-export const ACTIVE_STATUSES: ReservationStatus[] = [
-  "pending",
-  "confirmed",
-  "arrived",
-];
+export const ACTIVE_STATUSES: ReservationStatus[] = ["confirmed", "arrived"];
 
 export type ReservationSettings = {
   reservationStartTime: string; // "HH:MM"
@@ -416,7 +411,7 @@ export function serializeReservation(r: any, opts: { includeToken?: boolean } = 
     partySize: Number(r.partySize) || 0,
     reservationDateTime: r.reservationDateTime ?? null,
     notes: r.notes ?? "",
-    status: r.status ?? "pending",
+    status: r.status ?? "confirmed",
     source: r.source ?? "seatping_public",
     createdAt: r.createdAt ?? null,
     updatedAt: r.updatedAt ?? null,

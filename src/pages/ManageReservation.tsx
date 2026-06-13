@@ -246,14 +246,7 @@ export default function ManageReservation() {
               <Card className="mt-6 border border-slate-200 shadow-sm">
                 <CardContent className="space-y-4 p-6 lg:p-8">
                   <div className="flex items-center justify-between gap-3">
-                    <StatusBadge
-                      status={reservation.status}
-                      label={
-                        reservation.status === "pending"
-                          ? "Pending Confirmation"
-                          : undefined
-                      }
-                    />
+                    <StatusBadge status={reservation.status} />
                     <span className="min-w-0 flex-1 text-right text-xs font-medium text-slate-700 sm:text-sm">
                       {reservation.name}
                     </span>

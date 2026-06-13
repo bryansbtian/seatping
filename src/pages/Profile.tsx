@@ -802,7 +802,7 @@ function ReservationCard({
           </p>
           {r.manageToken && (
             <p className="mt-1 text-xs font-medium text-indigo-600">
-              {r.status === "confirmed" || r.status === "pending" || !r.status
+              {r.status === "confirmed" || !r.status
                 ? "View or Manage"
                 : "View Reservation"}{" "}
               →

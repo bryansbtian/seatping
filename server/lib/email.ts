@@ -35,7 +35,10 @@ export interface EmailOptions {
   replyTo?: string; // Optional Reply-To (e.g. the business email for campaigns)
 }
 
+// Actual SMTP sender (must match the authenticated mailbox for deliverability).
 const FROM_ADDRESS = "bryan.susanto@seatping.biz";
+// Public-facing support address shown in every email footer + contact link.
+const SUPPORT_EMAIL = "help@seatping.biz";
 
 /**
  * Full result of an SMTP send attempt. `ok` is true ONLY when the mail server
@@ -168,22 +171,26 @@ export const sendEmail = async (
 // SeatPing email design system
 // ---------------------------------------------------------------------------
 // One shared, mobile-friendly, inline-styled wrapper so every email looks like
-// the same product: a warm off-white canvas, a single white card with soft
-// borders, a clean wordmark, and one clear call-to-action. No gradients.
+// the same product: a soft off-white canvas, a single white card with light
+// borders, a clean wordmark, and one clear navy call-to-action. No gradients.
 // All helpers below build into `renderEmail()` — route/email code should never
 // hand-write a full HTML document.
+//
+// Brand: SeatPing uses deep navy as the single accent. There is intentionally
+// NO orange/terracotta anywhere. Off-brand colors are reserved strictly for
+// semantic states (success green, warning amber) passed explicitly to callouts.
 // ===========================================================================
 
 const COLORS = {
-  canvas: "#F4F1EC", // warm paper background
-  card: "#FFFFFF",
-  border: "#E7E2D9",
-  ink: "#1C1B19", // headings + wordmark
-  body: "#57534E", // body copy (warm gray)
-  muted: "#8A8580", // footnotes / captions
-  accent: "#C2410C", // warm terracotta — buttons + links
-  accentSoft: "#FBEDE6", // accent tint for callouts
-  panel: "#FAF8F4", // detail card background
+  canvas: "#F4F6FA", // soft, cool off-white background
+  card: "#FFFFFF", // white card
+  border: "#E4E8EF", // light gray border
+  ink: "#0F1A2E", // headings + wordmark (deep navy / near-black)
+  body: "#334155", // body copy (slate)
+  muted: "#64748B", // footnotes / captions (cool gray)
+  accent: "#16294D", // SeatPing navy — primary buttons + links
+  accentSoft: "#EEF2F9", // navy tint for highlights / callouts
+  panel: "#F7F9FC", // detail-card background (soft off-white)
 };
 
 const FONT_STACK =
@@ -239,6 +246,31 @@ export function emailButton(href: string, label: string): string {
     </table>`;
 }
 
+/**
+ * Secondary / lower-emphasis button: white fill with a navy outline and navy
+ * label. Same radius, padding, and weight as {@link emailButton} so primary and
+ * secondary actions stay visually consistent across templates.
+ */
+export function emailSecondaryButton(href: string, label: string): string {
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="${SECTION_WIDTH} margin: 28px 0;">
+      <tr>
+        <td align="left">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td bgcolor="${COLORS.card}" style="border-radius: 10px; border: 1px solid ${COLORS.accent};">
+                <a href="${href}" target="_blank"
+                   style="display: inline-block; padding: 13px 29px; font-family: ${FONT_STACK}; font-size: 15px; font-weight: 600; color: ${COLORS.accent}; text-decoration: none; border-radius: 10px;">
+                  ${label}
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>`;
+}
+
 /** Small "if the button doesn't work" fallback link. */
 export function fallbackLink(href: string): string {
   return `<p style="margin: 0 0 8px; color: ${COLORS.muted}; font-size: 13px; line-height: 1.6;">If the button doesn't work, paste this link into your browser:<br><a href="${href}" style="color: ${COLORS.accent}; word-break: break-all;">${href}</a></p>`;
@@ -251,7 +283,7 @@ export function detailCard(title: string, rows: Array<[string, string]>): string
       ([label, value]) => `
       <tr>
         <td style="padding: 7px 0; color: ${COLORS.muted}; font-size: 13px; vertical-align: top; width: 130px;">${label}</td>
-        <td style="padding: 7px 0; color: ${COLORS.ink}; font-size: 14px; font-weight: 500;">${value}</td>
+        <td style="padding: 7px 0; color: ${COLORS.ink}; font-size: 14px; font-weight: 500; word-break: break-word;">${value}</td>
       </tr>`
     )
     .join("");
@@ -305,7 +337,7 @@ export function renderEmail(opts: {
   const preheader = opts.preheader
     ? `<span style="display:none !important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden;">${opts.preheader}</span>`
     : "";
-  const tagline = opts.tagline ?? "Queues & Reservations for Hospitality";
+  const tagline = opts.tagline ?? "Queues & Reservations For Hospitality";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -344,7 +376,7 @@ export function renderEmail(opts: {
               <p style="margin: 0 0 4px; font-family: ${FONT_STACK}; color: ${COLORS.muted}; font-size: 12px; line-height: 1.6;">${esc(tagline)}</p>
               <p style="margin: 0; font-family: ${FONT_STACK}; color: ${COLORS.muted}; font-size: 12px; line-height: 1.6;">
                 © ${year} SeatPing ·
-                <a href="mailto:${FROM_ADDRESS}" style="color: ${COLORS.muted}; text-decoration: underline;">${FROM_ADDRESS}</a>
+                <a href="mailto:${SUPPORT_EMAIL}" style="color: ${COLORS.muted}; text-decoration: underline; word-break: break-word;">${SUPPORT_EMAIL}</a>
               </p>
             </td>
           </tr>
@@ -379,11 +411,11 @@ export const sendPasswordResetEmail = async (
 
   const html = renderEmail({
     heading: "Reset Your Password",
-    preheader: "Reset your SeatPing password — this link expires in 1 hour.",
+    preheader: "Reset Your SeatPing Password",
     bodyHtml: `
       ${p("We got a request to reset the password on your SeatPing account. Click below to choose a new one.")}
       ${emailButton(resetUrl, "Reset Password")}
-      ${p(`This link expires in <strong>1 hour</strong>. If you didn't request a reset, you can safely ignore this email — your password won't change.`)}
+      ${p(`This link expires in <strong>1 hour</strong>. If you didn't request a reset, you can safely ignore this email. Your password won't change.`)}
       ${fallbackLink(resetUrl)}
     `,
   });
@@ -402,11 +434,11 @@ export const sendPasswordChangeConfirmationEmail = async (
 ): Promise<boolean> => {
   const html = renderEmail({
     heading: "Your Password Was Changed",
-    preheader: "Your SeatPing password was just updated.",
+    preheader: "Your SeatPing Password Was Just Updated",
     bodyHtml: `
       ${p(`${name ? `Hi ${esc(name)}, ` : ""}your SeatPing password was just updated. You can now sign in with your new password.`)}
       ${calloutBox(
-        `<strong>Didn't make this change?</strong> Reach out to us right away at <a href="mailto:${FROM_ADDRESS}" style="color: ${COLORS.accent};">${FROM_ADDRESS}</a> and we'll help secure your account.`
+        `<strong>Didn't make this change?</strong> Reach out to us right away at <a href="mailto:${SUPPORT_EMAIL}" style="color: ${COLORS.accent}; word-break: break-word;">${SUPPORT_EMAIL}</a> and we'll help secure your account.`
       )}
     `,
   });
@@ -433,9 +465,9 @@ export const sendCustomerWelcomeEmail = async (
 
   const html = renderEmail({
     heading: `Welcome to SeatPing, ${esc(name)}`,
-    preheader: "Join queues, book tables, and get updates from your favorite spots.",
+    preheader: "Join Queues, Book Tables, And Get Live Updates",
     bodyHtml: `
-      ${p("Your account is ready. SeatPing keeps you out of the waiting-room shuffle — here's what you can do with it:")}
+      ${p("Your account is ready. SeatPing keeps you out of the waiting-room shuffle. Here's what you can do with it:")}
       ${stepList([
         "Join a restaurant's waitlist from your phone and track your spot in line",
         "Book and manage reservations without creating an account each time",
@@ -465,7 +497,7 @@ export const sendQueueJoinConfirmationEmail = async (
 ): Promise<boolean> => {
   const html = renderEmail({
     heading: "You're in the Queue",
-    preheader: `You're #${position} in line at ${businessName}.`,
+    preheader: `You're #${Number(position)} In Line At ${esc(businessName)}`,
     bodyHtml: `
       ${p(`Hi ${esc(firstName)}, you're on the waitlist at <strong>${esc(businessName)}</strong>. We'll let you know when your table is ready.`)}
       ${calloutBox(
@@ -496,7 +528,7 @@ export const sendQueueYourTurnEmail = async (
 ): Promise<boolean> => {
   const html = renderEmail({
     heading: "Your Table Is Ready",
-    preheader: `Your table is ready at ${businessName}.`,
+    preheader: `Your Table Is Ready At ${esc(businessName)}`,
     bodyHtml: `
       ${calloutBox(
         `<span style="font-size: 15px; font-weight: 700;">Your table is ready at ${esc(businessName)}</span>`,
@@ -528,7 +560,6 @@ export const sendReservationConfirmationEmail = async (params: {
   dateLabel: string;
   timeLabel: string;
   partySize: number;
-  status: string; // "confirmed" | "pending"
   manageUrl: string;
   cancellationPolicy?: string;
 }): Promise<boolean> => {
@@ -541,25 +572,19 @@ export const sendReservationConfirmationEmail = async (params: {
     dateLabel,
     timeLabel,
     partySize,
-    status,
     manageUrl,
     cancellationPolicy,
   } = params;
 
-  const pending = status === "pending";
-  const statusLine = pending
-    ? "Your request is in — the restaurant will confirm shortly."
-    : "You're booked. We look forward to seeing you!";
-
   const html = renderEmail({
-    heading: pending ? "Reservation Request Received" : "Reservation Confirmed",
-    preheader: `${pending ? "Request Received" : "Confirmed"} — ${businessName}, ${dateLabel} at ${timeLabel}.`,
+    heading: "Reservation Confirmed",
+    preheader: `Reservation Confirmed For ${esc(businessName)}, ${esc(dateLabel)} At ${esc(timeLabel)}`,
     bodyHtml: `
       ${p(`Hi ${esc(firstName)},`)}
       ${calloutBox(
-        `<strong>${statusLine}</strong>`,
-        pending ? "#B45309" : "#15803D",
-        pending ? "#FBF3E2" : "#E7F4EC"
+        `<strong>You're booked. We look forward to seeing you!</strong>`,
+        "#15803D",
+        "#E7F4EC"
       )}
       ${detailCard("Reservation", [
         ["Restaurant", esc(businessName)],
@@ -570,7 +595,7 @@ export const sendReservationConfirmationEmail = async (params: {
         ["Number of Guests", `${Number(partySize)} ${partySize === 1 ? "Guest" : "Guests"}`],
       ])}
       ${emailButton(manageUrl, "Manage Reservation")}
-      ${p(`Need to change your time, number of guests, or cancel? Use the button above — no login required.`)}
+      ${p(`Need to change your time, number of guests, or cancel? Use the button above. No login required.`)}
       ${
         cancellationPolicy
           ? calloutBox(
@@ -586,9 +611,7 @@ export const sendReservationConfirmationEmail = async (params: {
 
   return sendEmail({
     to: email,
-    subject: pending
-      ? `Reservation Request Received — ${businessName}`
-      : `Reservation Confirmed — ${businessName}`,
+    subject: `Reservation Confirmed: ${businessName}`,
     html,
     from: FROM_ADDRESS,
   });
@@ -610,7 +633,7 @@ export const sendReservationReminderEmail = async (params: {
 
   const html = renderEmail({
     heading: "Your Reservation Is Coming Up",
-    preheader: `Your reservation at ${businessName} is in about 2 hours.`,
+    preheader: `Your Reservation At ${esc(businessName)} Is In About 2 Hours`,
     bodyHtml: `
       ${p(`Hi ${esc(firstName)}, a quick reminder that your table at <strong>${esc(businessName)}</strong> is coming up in about 2 hours.`)}
       ${detailCard("Reservation", [
@@ -654,7 +677,7 @@ export const sendBusinessOnboardingEmail = async (
 
   const html = renderEmail({
     heading: "Set Up Your First Location",
-    preheader: "Let's get your first location live — here are the six steps.",
+    preheader: "Get Your First Location Live In Six Steps",
     bodyHtml: `
       ${p(intro)}
       ${stepList([
@@ -678,7 +701,7 @@ export const sendBusinessOnboardingEmail = async (
   });
 };
 
-/** Notify the business that a new reservation was made/requested at a location. */
+/** Notify the business that a new reservation was booked at a location. */
 export const sendNewReservationBusinessEmail = async (params: {
   to: string;
   businessName: string;
@@ -689,7 +712,6 @@ export const sendNewReservationBusinessEmail = async (params: {
   dateLabel: string;
   timeLabel: string;
   partySize: number;
-  status: string; // "confirmed" | "pending"
   notes?: string;
   dashboardUrl: string;
 }): Promise<boolean> => {
@@ -702,12 +724,9 @@ export const sendNewReservationBusinessEmail = async (params: {
     dateLabel,
     timeLabel,
     partySize,
-    status,
     notes,
     dashboardUrl,
   } = params;
-
-  const pending = status === "pending";
 
   const rows: Array<[string, string]> = [
     ["Location", esc(locationName)],
@@ -718,13 +737,13 @@ export const sendNewReservationBusinessEmail = async (params: {
   rows.push(["Date", esc(dateLabel)]);
   rows.push(["Time", esc(timeLabel)]);
   rows.push(["Number of Guests", `${Number(partySize)} ${partySize === 1 ? "Guest" : "Guests"}`]);
-  rows.push(["Status", pending ? "Pending Confirmation" : "Confirmed"]);
+  rows.push(["Status", "Confirmed"]);
 
   const html = renderEmail({
-    heading: pending ? "New Reservation Request" : "New Reservation",
-    preheader: `${customerName} · party of ${partySize} · ${dateLabel} at ${timeLabel}`,
+    heading: "New Reservation",
+    preheader: `${esc(customerName)} · Party Of ${Number(partySize)} · ${esc(dateLabel)} At ${esc(timeLabel)}`,
     bodyHtml: `
-      ${p(`${pending ? "A new reservation request just came in" : "A new reservation was just booked"} at <strong>${esc(locationName)}</strong>.`)}
+      ${p(`A new reservation was just booked at <strong>${esc(locationName)}</strong>.`)}
       ${detailCard("Reservation", rows)}
       ${notes ? calloutBox(`<strong>Guest Notes:</strong> ${esc(notes)}`, COLORS.muted, COLORS.panel) : ""}
       ${emailButton(dashboardUrl, "View In Dashboard")}
@@ -733,9 +752,7 @@ export const sendNewReservationBusinessEmail = async (params: {
 
   return sendEmail({
     to,
-    subject: pending
-      ? `New Reservation Request At ${locationName}`
-      : `New Reservation At ${locationName}`,
+    subject: `New Reservation At ${locationName}`,
     html,
     from: FROM_ADDRESS,
   });
@@ -783,8 +800,8 @@ export const sendFeedbackEmail = async (data: FeedbackData): Promise<boolean> =>
   if (data.phone) rows.push(["Phone", esc(data.phone)]);
 
   const html = renderEmail({
-    heading: data.subject || "New feedback",
-    preheader: `New feedback from ${data.name}`,
+    heading: data.subject || "New Feedback",
+    preheader: `New Feedback From ${esc(data.name)}`,
     bodyHtml: `
       ${detailCard("Feedback", rows)}
       ${calloutBox(`<strong>Message</strong><br>${esc(data.message).replace(/\n/g, "<br>")}`, COLORS.muted, COLORS.panel)}
@@ -835,7 +852,7 @@ export const sendFeedbackConfirmationEmail = async (
         ["Subject", esc(subject)],
         ["Status", "Open"],
       ])}
-      ${p(`Hold onto your ticket ID (<strong>${esc(ticketNumber)}</strong>) if you need to follow up. You can also reach us anytime at <a href="mailto:${FROM_ADDRESS}" style="color: ${COLORS.accent};">${FROM_ADDRESS}</a>.`)}
+      ${p(`Hold onto your ticket ID (<strong>${esc(ticketNumber)}</strong>) if you need to follow up. You can also reach us anytime at <a href="mailto:${SUPPORT_EMAIL}" style="color: ${COLORS.accent}; word-break: break-word;">${SUPPORT_EMAIL}</a>.`)}
     `,
   });
 
@@ -863,7 +880,7 @@ export const sendSalesInquiryConfirmationEmail = async (
         ["Business", esc(businessName)],
         ["Status", "Open"],
       ])}
-      ${p(`Keep your ticket ID (<strong>${esc(ticketNumber)}</strong>) handy for follow-ups. Questions in the meantime? Reach us at <a href="mailto:${FROM_ADDRESS}" style="color: ${COLORS.accent};">${FROM_ADDRESS}</a>.`)}
+      ${p(`Keep your ticket ID (<strong>${esc(ticketNumber)}</strong>) handy for follow-ups. Questions in the meantime? Reach us at <a href="mailto:${SUPPORT_EMAIL}" style="color: ${COLORS.accent}; word-break: break-word;">${SUPPORT_EMAIL}</a>.`)}
     `,
   });
 

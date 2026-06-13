@@ -195,15 +195,16 @@ router.post('/:ticketNumber/respond', express.json(), async (req, res) => {
 
     // Prepare email content
     const kind = ticket.type === 'sales' ? 'sales inquiry' : 'feedback';
+    const kindTitle = ticket.type === 'sales' ? 'Sales Inquiry' : 'Feedback';
     const emailSubject = `Re: ${ticket.subject} [Ticket #${ticket.ticketNumber}]`;
     const emailHtml = renderEmail({
-      heading: `Response to your ${kind}`,
-      preheader: `We've replied to your ${kind} (ticket ${ticket.ticketNumber}).`,
+      heading: `Response To Your ${kindTitle}`,
+      preheader: `We've Replied To Your ${kindTitle}`,
       bodyHtml: `
         ${p(`Hi ${esc(ticket.senderName)}, thanks for reaching out. Here's our response to your ${kind}:`)}
         ${calloutBox(esc(message).replace(/\n/g, '<br>'))}
         ${p(`Best regards,<br>${esc(responderName)}<br>The SeatPing team`)}
-        ${p(`<span style="font-size: 13px; color: #8A8580;"><strong>Ticket:</strong> ${esc(ticket.ticketNumber)} · <strong>Subject:</strong> ${esc(ticket.subject)}<br>You can reply directly to this email with any follow-up questions.</span>`)}
+        ${p(`<span style="font-size: 13px; color: #64748B;"><strong>Ticket:</strong> ${esc(ticket.ticketNumber)} · <strong>Subject:</strong> ${esc(ticket.subject)}<br>You can reply directly to this email with any follow-up questions.</span>`)}
       `,
     });
 

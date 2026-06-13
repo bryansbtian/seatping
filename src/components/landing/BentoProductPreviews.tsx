@@ -190,7 +190,7 @@ export function MetricCardPreview({
 
 const RESERVATION_ROWS: {
   name: string;
-  status: "confirmed" | "pending" | "arrived";
+  status: "confirmed" | "arrived";
   returning?: boolean;
   party: number;
   date: string;

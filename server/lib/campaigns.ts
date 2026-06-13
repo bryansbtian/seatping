@@ -226,7 +226,7 @@ export function buildMessage(
         ${p(esc(bodyText).replace(/\n/g, "<br>"))}
         ${offer ? calloutBox(`<strong>${esc(offer)}</strong>`) : ""}
         ${ctaText && ctaUrl ? emailButton(ctaUrl, ctaText) : ""}
-        ${p(`<span style="color:#8A8580;font-size:12px;">You are receiving this because you visited ${esc(ctx.businessName)}. Sent by SeatPing on behalf of ${esc(ctx.businessName)}.</span>`)}
+        ${p(`<span style="color:#64748B;font-size:12px;">You are receiving this because you visited ${esc(ctx.businessName)}. Sent by SeatPing on behalf of ${esc(ctx.businessName)}.</span>`)}
       `,
     });
     // Plain-text fallback for the text column / logging.

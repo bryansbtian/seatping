@@ -144,7 +144,7 @@ const RESERVATIONS = [
     name: "Liam Carter",
     party: 2,
     time: "8:00 PM",
-    status: "pending",
+    status: "confirmed",
     contact: "sms",
   },
   {
@@ -474,12 +474,6 @@ export function ReservationsCardPreview({
                       </span>
                     </span>
                   </div>
-                  {r.status === "pending" && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Pill variant="dark">Confirm</Pill>
-                      <Pill variant="danger">Cancel</Pill>
-                    </div>
-                  )}
                   {r.status === "confirmed" && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Pill variant="dark">Mark Arrived</Pill>

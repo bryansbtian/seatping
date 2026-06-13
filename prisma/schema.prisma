@@ -310,11 +310,12 @@ model QueueEntry {
   @@map("queue_entries")
 }
 
-/// A booking. PENDING/ARRIVED are retained beyond the four core statuses to
-/// preserve existing capacity logic (ACTIVE = PENDING|CONFIRMED|ARRIVED) and the
-/// dashboard's arrival/no-show/complete transitions.
+/// A booking. Reservations are auto-confirmed on creation (the deprecated
+/// PENDING manual-approval flow was removed). ARRIVED is retained for capacity
+/// logic (ACTIVE = CONFIRMED|ARRIVED) and the dashboard's
+/// arrival/no-show/complete transitions. Any legacy PENDING rows must be
+/// migrated to CONFIRMED first (see scripts/migrate-pending-reservations.ts).
 enum ReservationStatus {
-  PENDING
   CONFIRMED
   ARRIVED
   COMPLETED

@@ -1637,7 +1637,6 @@ router.patch(
       const status = String(req.body?.status || "").trim();
 
       const ALLOWED = [
-        "pending",
         "confirmed",
         "arrived",
         "completed",
