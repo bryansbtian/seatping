@@ -72,7 +72,10 @@ import {
   Trash2,
   Settings,
 } from "lucide-react";
-import { CustomAudienceBuilder, SavedAudience } from "@/components/CustomAudienceBuilder";
+import {
+  CustomAudienceBuilder,
+  SavedAudience,
+} from "@/components/CustomAudienceBuilder";
 
 // ---------------------------------------------------------------------------
 // Types (mirror the /api/campaigns payloads)
@@ -122,7 +125,11 @@ type Campaign = {
   templateType: string | null;
   audienceType: string;
   audienceLabel: string;
-  audienceConfig: { tag?: string; guestIds?: string[]; savedAudienceId?: string };
+  audienceConfig: {
+    tag?: string;
+    guestIds?: string[];
+    savedAudienceId?: string;
+  };
   templateValues: Record<string, string>;
   status: string;
   recipientCount: number;
@@ -252,7 +259,9 @@ function nowWallClockInTz(tz?: string): string {
     const hour = m.hour === "24" ? "00" : m.hour;
     return `${m.year}-${m.month}-${m.day}T${hour}:${m.minute}`;
   } catch {
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
   }
 }
 
@@ -286,7 +295,9 @@ const BusinessCampaigns = () => {
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
 
   const [customAudienceOpen, setCustomAudienceOpen] = useState(false);
-  const [editingAudience, setEditingAudience] = useState<SavedAudience | null>(null);
+  const [editingAudience, setEditingAudience] = useState<SavedAudience | null>(
+    null,
+  );
 
   // Load meta once.
   useEffect(() => {
@@ -374,7 +385,10 @@ const BusinessCampaigns = () => {
       fetchCampaigns();
     } catch (e) {
       toast({
-        title: action === "delete" ? "Could not delete campaign" : "Could not update campaign",
+        title:
+          action === "delete"
+            ? "Could not delete campaign"
+            : "Could not update campaign",
         description: errMsg(e),
         variant: "destructive",
       });
@@ -490,8 +504,8 @@ const BusinessCampaigns = () => {
             />
           )}
           {tab === "audiences" && (
-            <AudiencesTab 
-              audiences={meta?.audiences ?? []} 
+            <AudiencesTab
+              audiences={meta?.audiences ?? []}
               savedAudiences={savedAudiences}
               onCreateCustom={() => {
                 setEditingAudience(null);
@@ -502,13 +516,18 @@ const BusinessCampaigns = () => {
                 setCustomAudienceOpen(true);
               }}
               onDeleteCustom={async (a) => {
-                if (!confirm(`Are you sure you want to delete "${a.name}"?`)) return;
+                if (!confirm(`Are you sure you want to delete "${a.name}"?`))
+                  return;
                 try {
                   await api(`/api/audiences/${a.id}`, { method: "DELETE" });
                   toast({ title: "Custom Group deleted" });
                   fetchSavedAudiences();
                 } catch (err: any) {
-                  toast({ title: "Failed to delete group", description: err.message, variant: "destructive" });
+                  toast({
+                    title: "Failed to delete group",
+                    description: err.message,
+                    variant: "destructive",
+                  });
                 }
               }}
             />
@@ -658,7 +677,10 @@ function CampaignsTab({
   onNew: () => void;
   onRefresh: () => void;
   onOpen: (c: Campaign) => void;
-  onAction: (c: Campaign, action: "cancel" | "pause" | "resume" | "delete") => void;
+  onAction: (
+    c: Campaign,
+    action: "cancel" | "pause" | "resume" | "delete",
+  ) => void;
 }) {
   const { t } = useLang();
   return (
@@ -833,7 +855,10 @@ function CampaignActions({
 }: {
   c: Campaign;
   onOpen: (c: Campaign) => void;
-  onAction: (c: Campaign, action: "cancel" | "pause" | "resume" | "delete") => void;
+  onAction: (
+    c: Campaign,
+    action: "cancel" | "pause" | "resume" | "delete",
+  ) => void;
 }) {
   const btn = "h-7 text-xs px-2.5";
   return (
@@ -1054,13 +1079,13 @@ function TemplateCard({
 // ---------------------------------------------------------------------------
 // Audiences tab
 // ---------------------------------------------------------------------------
-function AudiencesTab({ 
+function AudiencesTab({
   audiences,
   savedAudiences,
   onCreateCustom,
   onEditCustom,
   onDeleteCustom,
-}: { 
+}: {
   audiences: AudienceGroup[];
   savedAudiences: SavedAudience[];
   onCreateCustom: () => void;
@@ -1124,7 +1149,9 @@ function AudiencesTab({
             <div className="text-center py-8 text-slate-500">
               <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
               <p>No custom groups yet.</p>
-              <p className="text-sm">Create one to target specific segments of your guests.</p>
+              <p className="text-sm">
+                Create one to target specific segments of your guests.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -1161,7 +1188,9 @@ function AudiencesTab({
                       </div>
                     </div>
                     {a.description && (
-                      <p className="text-xs text-slate-500 mt-1.5">{a.description}</p>
+                      <p className="text-xs text-slate-500 mt-1.5">
+                        {a.description}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -1323,8 +1352,8 @@ function CampaignBuilderDialog({
   const [name, setName] = useState(existing?.name ?? "");
   const [channel, setChannel] = useState<Channel>(existing?.channel ?? "EMAIL");
   const [audienceType, setAudienceType] = useState(
-    existing?.audienceType === "custom_group" 
-      ? `custom_group:${existing.audienceConfig?.savedAudienceId}` 
+    existing?.audienceType === "custom_group"
+      ? `custom_group:${existing.audienceConfig?.savedAudienceId}`
       : (existing?.audienceType ?? "all_guests"),
   );
   const [tag, setTag] = useState(existing?.audienceConfig?.tag ?? "");
@@ -1447,14 +1476,17 @@ function CampaignBuilderDialog({
       if (audienceType.startsWith("custom_group:")) {
         at = "custom_group";
       }
-      const params = new URLSearchParams({ locationId, channel, audienceType: at });
+      const params = new URLSearchParams({
+        locationId,
+        channel,
+        audienceType: at,
+      });
       if (at === "with_tag") params.set("tag", tagParam);
       if (at === "custom_group") {
         const sid = audienceType.split(":")[1];
         if (sid) params.set("savedAudienceId", sid);
       }
-      if (at === "manual")
-        params.set("guestIds", manualGuestIds.join(","));
+      if (at === "manual") params.set("guestIds", manualGuestIds.join(","));
       api(`/api/campaigns/audiences/preview?${params.toString()}`)
         .then((d) => setAudiencePreview(d))
         .catch(() => setAudiencePreview(null));
@@ -1486,9 +1518,10 @@ function CampaignBuilderDialog({
 
   function validate(): string | null {
     if (!templateId) return "Choose a template.";
-    let at = audienceType.startsWith("custom_group:") ? "custom_group" : audienceType;
-    if (at === "with_tag" && !tag)
-      return "Please enter a tag.";
+    let at = audienceType.startsWith("custom_group:")
+      ? "custom_group"
+      : audienceType;
+    if (at === "with_tag" && !tag) return "Please enter a tag.";
     if (at === "manual" && manualGuestIds.length === 0)
       return "Select at least one guest.";
     return null;
@@ -1607,7 +1640,7 @@ function CampaignBuilderDialog({
       setConfirmSend(false);
     }
   }
-  
+
   async function handleDelete() {
     if (!campaignId) return;
     try {
@@ -1658,485 +1691,491 @@ function CampaignBuilderDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
-        <DialogHeader>
-          <DialogTitle>
-            {existing ? "Edit Campaign" : "New Campaign"}
-          </DialogTitle>
-          <DialogDescription>
-            Sending as SeatPing on behalf of your restaurant to your guests.
-          </DialogDescription>
-        </DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
+          <DialogHeader>
+            <DialogTitle>
+              {existing ? "Edit Campaign" : "New Campaign"}
+            </DialogTitle>
+            <DialogDescription>
+              Sending as SeatPing on behalf of your restaurant to your guests.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-5">
-          {/* 1. Channel */}
-          <Section step={1} title="Channel">
-            <div className="flex gap-1.5 sm:gap-2">
-              {(["SMS", "WHATSAPP", "EMAIL"] as Channel[]).map((ch) => {
-                const Icon = CHANNEL_META[ch].icon;
-                return (
-                  <button
-                    key={ch}
-                    onClick={() => setChannel(ch)}
-                    className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-medium transition-colors ${
-                      channel === ch
-                        ? "border-indigo-300 bg-indigo-100 text-indigo-700"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span className="truncate">{CHANNEL_META[ch].label}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-xs text-slate-500 mt-1.5">
-              {channel === "EMAIL"
-                ? "Requires guests with an email address."
-                : channel === "SMS"
-                  ? "SMS is only available for US and Canada (+1) phone numbers right now."
-                  : "Requires guests with a phone number."}
-            </p>
-          </Section>
-
-          {/* 2. Audience */}
-          <Section step={2} title="Audience">
-            <div className="relative">
-              <select
-                className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={audienceType}
-                onChange={(e) => setAudienceType(e.target.value)}
-              >
-                <optgroup label="Smart Audiences">
-                  {(meta?.audiences ?? []).map((a) => (
-                    <option key={a.key} value={a.key}>
-                      {a.label}
-                    </option>
-                  ))}
-                </optgroup>
-                {savedAudiences.length > 0 && (
-                  <optgroup label="Custom Groups">
-                    {savedAudiences.map((sa) => (
-                      <option key={sa.id} value={`custom_group:${sa.id}`}>
-                        {sa.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-                <optgroup label="Manual">
-                  <option value="manual">Manually Selected Guests</option>
-                </optgroup>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-            </div>
-
-            {audienceType === "with_tag" && (
-              <div className="mt-2">
-                <Input
-                  list="camp-tag-suggestions"
-                  value={tag}
-                  onChange={(e) => setTag(e.target.value)}
-                  placeholder="Enter a tag (e.g. VIP)"
-                  className="bg-slate-50 border-slate-200"
-                />
-                <datalist id="camp-tag-suggestions">
-                  {(meta?.suggestedTags ?? []).map((tg) => (
-                    <option key={tg} value={tg} />
-                  ))}
-                </datalist>
-              </div>
-            )}
-
-            {audienceType === "manual" && (
-              <ManualGuestPicker
-                locationId={locationId}
-                selected={manualGuests}
-                onChange={setManualGuests}
-              />
-            )}
-
-            {/* Audience preview */}
-            {audiencePreview && (
-              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-slate-700">
-                    {audiencePreview.audienceName}
-                  </span>
-                  <span className="text-indigo-700 font-semibold">
-                    {audiencePreview.recipientCount}{" "}
-                    {audiencePreview.recipientCount === 1
-                      ? "Recipient"
-                      : "Recipients"}
-                  </span>
-                </div>
-                <div className="text-xs text-slate-500 mt-1">
-                  {audiencePreview.total} Matched ·{" "}
-                  {audiencePreview.excludedCount} Excluded
-                  {audiencePreview.excludedCount > 0 && (
-                    <span>
-                      {" "}
-                      ({audiencePreview.exclusions.noEmail} No Email,{" "}
-                      {audiencePreview.exclusions.noPhone} No Phone,{" "}
-                      {audiencePreview.exclusions.optedOut} Opted Out,{" "}
-                      {audiencePreview.exclusions.invalid} Invalid)
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-          </Section>
-
-          {/* 3. Template */}
-          <Section step={3} title="Template">
-            {usableTemplates.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No usable templates yet. SeatPing templates load automatically.
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
-                {usableTemplates.map((tpl) => {
-                  const selected = tpl.id === templateId;
+          <div className="space-y-5">
+            {/* 1. Channel */}
+            <Section step={1} title="Channel">
+              <div className="flex gap-1.5 sm:gap-2">
+                {(["SMS", "WHATSAPP", "EMAIL"] as Channel[]).map((ch) => {
+                  const Icon = CHANNEL_META[ch].icon;
                   return (
                     <button
-                      key={tpl.id}
-                      onClick={() => {
-                        setTemplateId(tpl.id);
-                        // Seed example values for editable vars when switching.
-                        setTemplateValues((prev) => ({
-                          ...tpl.exampleValues,
-                          ...prev,
-                        }));
-                      }}
-                      className={`text-left rounded-xl border p-3 flex flex-col h-full transition-colors ${
-                        selected
-                          ? "border-indigo-400 bg-indigo-50 ring-1 ring-indigo-300"
-                          : "border-slate-200 bg-white hover:bg-slate-50"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="font-medium text-slate-800 text-sm line-clamp-2">
-                          {tpl.name}
-                        </span>
-                        {tpl.templateType === "CUSTOM" ? (
-                          <TemplateStatusBadge status={tpl.approvalStatus} />
-                        ) : (
-                          <SeatPingPill />
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-[2rem]">
-                        {tpl.purpose || ""}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </Section>
-
-          {/* 4. Variables */}
-          {selectedTemplate && editableVars.length > 0 && (
-            <Section step={4} title="Fill Template Variables">
-              <div className="space-y-2">
-                {editableVars.map((v) => (
-                  <div key={v}>
-                    <label className="text-xs font-medium text-slate-600 capitalize">
-                      {v.replace(/_/g, " ")}
-                    </label>
-                    <Input
-                      value={templateValues[v] ?? ""}
-                      onChange={(e) =>
-                        setTemplateValues((prev) => ({
-                          ...prev,
-                          [v]: e.target.value,
-                        }))
-                      }
-                      placeholder={
-                        selectedTemplate.exampleValues[v] || `Enter ${v}`
-                      }
-                      className="bg-slate-50 border-slate-200 mt-1"
-                    />
-                  </div>
-                ))}
-              </div>
-            </Section>
-          )}
-
-          {/* 5. Preview */}
-          <Section
-            step={selectedTemplate && editableVars.length > 0 ? 5 : 4}
-            title="Message Preview"
-          >
-            {previewLoading ? (
-              <Skeleton className="h-24 w-full rounded-xl" />
-            ) : preview ? (
-              <div className="rounded-xl border border-slate-200 overflow-hidden">
-                {channel === "EMAIL" && preview.subject && (
-                  <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 text-xs">
-                    <span className="text-slate-500">Subject:</span>{" "}
-                    <span className="font-medium text-slate-800">
-                      {preview.subject}
-                    </span>
-                  </div>
-                )}
-                <div className="p-4 text-sm text-slate-700 whitespace-pre-wrap bg-white">
-                  {preview.text}
-                </div>
-                <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex items-center gap-3 flex-wrap">
-                  <span className="flex items-center gap-1">
-                    <ChannelIcon className="w-3.5 h-3.5" /> SeatPing on behalf
-                    of your restaurant
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-400">
-                Choose a template to see a preview.
-              </p>
-            )}
-          </Section>
-
-          {/* Name */}
-          <div>
-            <label className="text-xs font-medium text-slate-600">
-              Campaign Name
-            </label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. June win-back"
-              className="bg-slate-50 border-slate-200 mt-1"
-            />
-          </div>
-
-          {/* Timing */}
-          <Section step={6} title="Timing">
-            <div className="flex gap-2">
-              {(
-                [
-                  ["NOW", "Send Now"],
-                  ["SCHEDULED", "Schedule"],
-                  ["RECURRING", "Recurring"],
-                ] as [typeof sendMode, string][]
-              ).map(([mode, label]) => (
-                <button
-                  key={mode}
-                  onClick={() => setSendMode(mode)}
-                  className={`flex-1 min-w-0 truncate px-2 sm:px-3 py-2 rounded-xl border text-xs sm:text-sm font-medium transition-colors ${
-                    sendMode === mode
-                      ? "border-indigo-300 bg-indigo-100 text-indigo-700"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {sendMode !== "NOW" && (
-              <p className="text-xs text-slate-500 mt-2">
-                Time Zone: <span className="font-medium">{timezone}</span>
-              </p>
-            )}
-
-            {sendMode === "SCHEDULED" && (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <div>
-                  <label className="text-xs text-slate-500">Date</label>
-                  <div className="mt-1">
-                    <DateField
-                      value={schedDate}
-                      onChange={setSchedDate}
-                      minDate={parseLocalDate(nowLocal.slice(0, 10))}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500">Time</label>
-                  <div className="mt-1">
-                    <TimeSelect
-                      value={schedTime || "09:00"}
-                      onChange={setSchedTime}
-                      options={ALL_DAY_TIME_OPTIONS}
-                      portal={false}
-                      className="bg-slate-50"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {sendMode === "RECURRING" && (
-              <div className="space-y-2 mt-2">
-                <div className="flex gap-2">
-                  {(["DAILY", "WEEKLY", "MONTHLY"] as const).map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => setRecurFreq(f)}
-                      className={`flex-1 px-3 py-1.5 rounded-lg border text-xs font-medium capitalize transition-colors ${
-                        recurFreq === f
+                      key={ch}
+                      onClick={() => setChannel(ch)}
+                      className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-medium transition-colors ${
+                        channel === ch
                           ? "border-indigo-300 bg-indigo-100 text-indigo-700"
                           : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                       }`}
                     >
-                      {f.toLowerCase()}
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{CHANNEL_META[ch].label}</span>
                     </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-slate-500 mt-1.5">
+                {channel === "EMAIL"
+                  ? "Requires guests with an email address."
+                  : channel === "SMS"
+                    ? "SMS is only available for US and Canada (+1) phone numbers right now."
+                    : "Requires guests with a phone number."}
+              </p>
+            </Section>
+
+            {/* 2. Audience */}
+            <Section step={2} title="Audience">
+              <div className="relative">
+                <select
+                  className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={audienceType}
+                  onChange={(e) => setAudienceType(e.target.value)}
+                >
+                  <optgroup label="Smart Audiences">
+                    {(meta?.audiences ?? []).map((a) => (
+                      <option key={a.key} value={a.key}>
+                        {a.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                  {savedAudiences.length > 0 && (
+                    <optgroup label="Custom Groups">
+                      {savedAudiences.map((sa) => (
+                        <option key={sa.id} value={`custom_group:${sa.id}`}>
+                          {sa.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  <optgroup label="Manual">
+                    <option value="manual">Manually Selected Guests</option>
+                  </optgroup>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+              </div>
+
+              {audienceType === "with_tag" && (
+                <div className="mt-2">
+                  <Input
+                    list="camp-tag-suggestions"
+                    value={tag}
+                    onChange={(e) => setTag(e.target.value)}
+                    placeholder="Enter a tag (e.g. VIP)"
+                    className="bg-slate-50 border-slate-200"
+                  />
+                  <datalist id="camp-tag-suggestions">
+                    {(meta?.suggestedTags ?? []).map((tg) => (
+                      <option key={tg} value={tg} />
+                    ))}
+                  </datalist>
+                </div>
+              )}
+
+              {audienceType === "manual" && (
+                <ManualGuestPicker
+                  locationId={locationId}
+                  selected={manualGuests}
+                  onChange={setManualGuests}
+                />
+              )}
+
+              {/* Audience preview */}
+              {audiencePreview && (
+                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-slate-700">
+                      {audiencePreview.audienceName}
+                    </span>
+                    <span className="text-indigo-700 font-semibold">
+                      {audiencePreview.recipientCount}{" "}
+                      {audiencePreview.recipientCount === 1
+                        ? "Recipient"
+                        : "Recipients"}
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    {audiencePreview.total} Matched ·{" "}
+                    {audiencePreview.excludedCount} Excluded
+                    {audiencePreview.excludedCount > 0 && (
+                      <span>
+                        {" "}
+                        ({audiencePreview.exclusions.noEmail} No Email,{" "}
+                        {audiencePreview.exclusions.noPhone} No Phone,{" "}
+                        {audiencePreview.exclusions.optedOut} Opted Out,{" "}
+                        {audiencePreview.exclusions.invalid} Invalid)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </Section>
+
+            {/* 3. Template */}
+            <Section step={3} title="Template">
+              {usableTemplates.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  No usable templates yet. SeatPing templates load
+                  automatically.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+                  {usableTemplates.map((tpl) => {
+                    const selected = tpl.id === templateId;
+                    return (
+                      <button
+                        key={tpl.id}
+                        onClick={() => {
+                          setTemplateId(tpl.id);
+                          // Seed example values for editable vars when switching.
+                          setTemplateValues((prev) => ({
+                            ...tpl.exampleValues,
+                            ...prev,
+                          }));
+                        }}
+                        className={`text-left rounded-xl border p-3 flex flex-col h-full transition-colors ${
+                          selected
+                            ? "border-indigo-400 bg-indigo-50 ring-1 ring-indigo-300"
+                            : "border-slate-200 bg-white hover:bg-slate-50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-medium text-slate-800 text-sm line-clamp-2">
+                            {tpl.name}
+                          </span>
+                          {tpl.templateType === "CUSTOM" ? (
+                            <TemplateStatusBadge status={tpl.approvalStatus} />
+                          ) : (
+                            <SeatPingPill />
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-[2rem]">
+                          {tpl.purpose || ""}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </Section>
+
+            {/* 4. Variables */}
+            {selectedTemplate && editableVars.length > 0 && (
+              <Section step={4} title="Fill Template Variables">
+                <div className="space-y-2">
+                  {editableVars.map((v) => (
+                    <div key={v}>
+                      <label className="text-xs font-medium text-slate-600 capitalize">
+                        {v.replace(/_/g, " ")}
+                      </label>
+                      <Input
+                        value={templateValues[v] ?? ""}
+                        onChange={(e) =>
+                          setTemplateValues((prev) => ({
+                            ...prev,
+                            [v]: e.target.value,
+                          }))
+                        }
+                        placeholder={
+                          selectedTemplate.exampleValues[v] || `Enter ${v}`
+                        }
+                        className="bg-slate-50 border-slate-200 mt-1"
+                      />
+                    </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+              </Section>
+            )}
+
+            {/* 5. Preview */}
+            <Section
+              step={selectedTemplate && editableVars.length > 0 ? 5 : 4}
+              title="Message Preview"
+            >
+              {previewLoading ? (
+                <Skeleton className="h-24 w-full rounded-xl" />
+              ) : preview ? (
+                <div className="rounded-xl border border-slate-200 overflow-hidden">
+                  {channel === "EMAIL" && preview.subject && (
+                    <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 text-xs">
+                      <span className="text-slate-500">Subject:</span>{" "}
+                      <span className="font-medium text-slate-800">
+                        {preview.subject}
+                      </span>
+                    </div>
+                  )}
+                  <div className="p-4 text-sm text-slate-700 whitespace-pre-wrap bg-white">
+                    {preview.text}
+                  </div>
+                  <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex items-center gap-3 flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <ChannelIcon className="w-3.5 h-3.5" /> SeatPing on behalf
+                      of your restaurant
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">
+                  Choose a template to see a preview.
+                </p>
+              )}
+            </Section>
+
+            {/* Name */}
+            <div>
+              <label className="text-xs font-medium text-slate-600">
+                Campaign Name
+              </label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. June win-back"
+                className="bg-slate-50 border-slate-200 mt-1"
+              />
+            </div>
+
+            {/* Timing */}
+            <Section step={6} title="Timing">
+              <div className="flex gap-2">
+                {(
+                  [
+                    ["NOW", "Send Now"],
+                    ["SCHEDULED", "Schedule"],
+                    ["RECURRING", "Recurring"],
+                  ] as [typeof sendMode, string][]
+                ).map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    onClick={() => setSendMode(mode)}
+                    className={`flex-1 min-w-0 truncate px-2 sm:px-3 py-2 rounded-xl border text-xs sm:text-sm font-medium transition-colors ${
+                      sendMode === mode
+                        ? "border-indigo-300 bg-indigo-100 text-indigo-700"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {sendMode !== "NOW" && (
+                <p className="text-xs text-slate-500 mt-2">
+                  Time Zone: <span className="font-medium">{timezone}</span>
+                </p>
+              )}
+
+              {sendMode === "SCHEDULED" && (
+                <div className="grid grid-cols-2 gap-2 mt-2">
                   <div>
-                    <label className="text-xs text-slate-500">Start Date</label>
+                    <label className="text-xs text-slate-500">Date</label>
                     <div className="mt-1">
                       <DateField
-                        value={recurStartDate}
-                        onChange={setRecurStartDate}
+                        value={schedDate}
+                        onChange={setSchedDate}
                         minDate={parseLocalDate(nowLocal.slice(0, 10))}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500">Send Time</label>
+                    <label className="text-xs text-slate-500">Time</label>
                     <div className="mt-1">
                       <TimeSelect
-                        value={recurStartTime || "09:00"}
-                        onChange={setRecurStartTime}
+                        value={schedTime || "09:00"}
+                        onChange={setSchedTime}
                         options={ALL_DAY_TIME_OPTIONS}
                         portal={false}
                         className="bg-slate-50"
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="text-xs text-slate-500">
-                      End Date (Optional)
-                    </label>
-                    <div className="mt-1">
-                      <DateField
-                        value={recurEndDate}
-                        onChange={setRecurEndDate}
-                        minDate={parseLocalDate(
-                          recurStartDate || nowLocal.slice(0, 10),
-                        )}
+                </div>
+              )}
+
+              {sendMode === "RECURRING" && (
+                <div className="space-y-2 mt-2">
+                  <div className="flex gap-2">
+                    {(["DAILY", "WEEKLY", "MONTHLY"] as const).map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => setRecurFreq(f)}
+                        className={`flex-1 px-3 py-1.5 rounded-lg border text-xs font-medium capitalize transition-colors ${
+                          recurFreq === f
+                            ? "border-indigo-300 bg-indigo-100 text-indigo-700"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {f.toLowerCase()}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-slate-500">
+                        Start Date
+                      </label>
+                      <div className="mt-1">
+                        <DateField
+                          value={recurStartDate}
+                          onChange={setRecurStartDate}
+                          minDate={parseLocalDate(nowLocal.slice(0, 10))}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500">
+                        Send Time
+                      </label>
+                      <div className="mt-1">
+                        <TimeSelect
+                          value={recurStartTime || "09:00"}
+                          onChange={setRecurStartTime}
+                          options={ALL_DAY_TIME_OPTIONS}
+                          portal={false}
+                          className="bg-slate-50"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500">
+                        End Date (Optional)
+                      </label>
+                      <div className="mt-1">
+                        <DateField
+                          value={recurEndDate}
+                          onChange={setRecurEndDate}
+                          minDate={parseLocalDate(
+                            recurStartDate || nowLocal.slice(0, 10),
+                          )}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500">
+                        Guest Send Cooldown (Days)
+                      </label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={recurWindow}
+                        onChange={(e) => setRecurWindow(e.target.value)}
+                        className="h-12 rounded-xl bg-slate-50 border-slate-200 px-4 text-sm font-medium mt-1"
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="text-xs text-slate-500">
-                      Guest Send Cooldown (Days)
-                    </label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={recurWindow}
-                      onChange={(e) => setRecurWindow(e.target.value)}
-                      className="h-12 rounded-xl bg-slate-50 border-slate-200 px-4 text-sm font-medium mt-1"
-                    />
-                  </div>
+                  <p className="text-xs text-slate-400">
+                    The audience is recalculated on every run, opt-outs are
+                    always respected, and a guest won't be re-sent within the
+                    window above.
+                  </p>
                 </div>
-                <p className="text-xs text-slate-400">
-                  The audience is recalculated on every run, opt-outs are always
-                  respected, and a guest won't be re-sent within the window
-                  above.
-                </p>
-              </div>
-            )}
+              )}
 
-            {timingError && (
-              <p className="text-xs text-red-600 mt-2">{timingError}</p>
-            )}
-          </Section>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-2 pt-1 items-center">
-          <div className="flex flex-1 gap-2 w-full">
-            <Button
-              variant="outline"
-              onClick={saveDraft}
-              disabled={saving}
-              className="flex-1"
-            >
-              <Save className="w-4 h-4 mr-1.5" />
-              {saving ? "Saving..." : "Save Draft"}
-            </Button>
-            <Button
-              onClick={() =>
-                sendMode === "NOW" ? setConfirmSend(true) : launch()
-              }
-              disabled={!canLaunch || sending}
-              className="flex-1"
-            >
-              <Send className="w-4 h-4 mr-1.5" />
-              {sending && sendMode !== "NOW" ? "Working..." : sendLabel}
-            </Button>
+              {timingError && (
+                <p className="text-xs text-red-600 mt-2">{timingError}</p>
+              )}
+            </Section>
           </div>
-          {existing && (
-            <Button
-              variant="outline"
-              onClick={() => setConfirmDelete(true)}
-              disabled={saving || sending}
-              className="px-3 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
-              title="Delete Campaign"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
-      </DialogContent>
 
-      <AlertDialog open={confirmSend} onOpenChange={setConfirmSend}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Send This Campaign Now?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {(() => {
-                const rc = audiencePreview?.recipientCount ?? 0;
-                const exc = audiencePreview?.excludedCount ?? 0;
-                const isPlural = rc !== 1;
-                let msgType = `${CHANNEL_META[channel].label} Messages`;
-                if (channel === "SMS")
-                  msgType = isPlural ? "SMS Messages" : "an SMS Message";
-                else if (channel === "WHATSAPP")
-                  msgType = isPlural
-                    ? "WhatsApp Messages"
-                    : "a WhatsApp Message";
-                else if (channel === "EMAIL")
-                  msgType = isPlural ? "Email Messages" : "an Email Message";
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-2 pt-1 items-center">
+            <div className="flex flex-1 gap-2 w-full">
+              <Button
+                variant="outline"
+                onClick={saveDraft}
+                disabled={saving}
+                className="flex-1"
+              >
+                <Save className="w-4 h-4 mr-1.5" />
+                {saving ? "Saving..." : "Save Draft"}
+              </Button>
+              <Button
+                onClick={() =>
+                  sendMode === "NOW" ? setConfirmSend(true) : launch()
+                }
+                disabled={!canLaunch || sending}
+                className="flex-1"
+              >
+                <Send className="w-4 h-4 mr-1.5" />
+                {sending && sendMode !== "NOW" ? "Working..." : sendLabel}
+              </Button>
+            </div>
+            {existing && (
+              <Button
+                variant="outline"
+                onClick={() => setConfirmDelete(true)}
+                disabled={saving || sending}
+                className="px-3 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+                title="Delete Campaign"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+        </DialogContent>
 
-                const guestWord = rc === 1 ? "guest" : "guests";
-                const skipText =
-                  exc === 0
-                    ? "No guests will be skipped."
-                    : `${exc} ${exc === 1 ? "guest" : "guests"} will be skipped.`;
-                const restName =
-                  meta?.locations.find((l) => l.id === locationId)
-                    ?.restaurantName || locationLabel;
+        <AlertDialog open={confirmSend} onOpenChange={setConfirmSend}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Send This Campaign Now?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {(() => {
+                  const rc = audiencePreview?.recipientCount ?? 0;
+                  const exc = audiencePreview?.excludedCount ?? 0;
+                  const isPlural = rc !== 1;
+                  let msgType = `${CHANNEL_META[channel].label} Messages`;
+                  if (channel === "SMS")
+                    msgType = isPlural ? "SMS Messages" : "an SMS Message";
+                  else if (channel === "WHATSAPP")
+                    msgType = isPlural
+                      ? "WhatsApp Messages"
+                      : "a WhatsApp Message";
+                  else if (channel === "EMAIL")
+                    msgType = isPlural ? "Email Messages" : "an Email Message";
 
-                return (
-                  <>
-                    This will send {msgType} to{" "}
-                    <span className="font-semibold">{rc}</span> {guestWord} for{" "}
-                    {restName}, {skipText} This cannot be undone.
-                  </>
-                );
-              })()}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={sending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={launch} disabled={sending}>
-              {sending ? "Sending..." : "Send Now"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Dialog>
+                  const guestWord = rc === 1 ? "guest" : "guests";
+                  const skipText =
+                    exc === 0
+                      ? "no guests will be skipped."
+                      : `${exc} ${exc === 1 ? "guest" : "guests"} will be skipped.`;
+                  const restName =
+                    meta?.locations.find((l) => l.id === locationId)
+                      ?.restaurantName || locationLabel;
+
+                  return (
+                    <>
+                      This will send {msgType} to{" "}
+                      <span className="font-semibold">{rc}</span> {guestWord}{" "}
+                      for {restName}, {skipText} This cannot be undone.
+                    </>
+                  );
+                })()}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={sending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={launch} disabled={sending}>
+                {sending ? "Sending..." : "Send Now"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </Dialog>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Campaign?</AlertDialogTitle>
             <AlertDialogDescription>
-              This campaign will be permanently removed. This action cannot be undone.
+              This campaign will be permanently removed. This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -2594,4 +2633,3 @@ function Field({
     </div>
   );
 }
-

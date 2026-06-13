@@ -20,6 +20,7 @@ import {
   renderEmail,
 } from "./email.js";
 import { normalizeEmail, normalizePhone } from "./guests.js";
+import type { WhatsAppBodyParam } from "./whatsapp.js";
 
 export type Channel = "EMAIL" | "WHATSAPP" | "SMS";
 
@@ -157,9 +158,28 @@ function buildValueMap(
     first_name: ctx.firstName || "there",
     guest_name: ctx.guestName || ctx.firstName || "there",
     restaurant_name: ctx.businessName,
+    // `restaurant` and `business_name` are aliases of the business name so
+    // approved Meta templates authored with any of these placeholders render.
+    restaurant: ctx.businessName,
     business_name: ctx.businessName, // legacy alias for pre-rename templates
     location_name: ctx.locationName,
   };
+}
+
+/**
+ * Extract the distinct {{placeholder}} names from a template body, in first-seen
+ * order. Used to map a campaign template's body to ordered WhatsApp body params.
+ * "Hi {{first_name}}, ... — {{restaurant}}" -> ["first_name", "restaurant"].
+ */
+export function extractBodyPlaceholders(body: string): string[] {
+  if (!body) return [];
+  const out: string[] = [];
+  const re = /\{\{\s*([\w.]+)\s*\}\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body)) !== null) {
+    if (!out.includes(m[1])) out.push(m[1]);
+  }
+  return out;
 }
 
 export interface BuiltMessage {
@@ -168,7 +188,10 @@ export interface BuiltMessage {
   html?: string;
   whatsappTemplateName?: string | null;
   whatsappLanguage?: string;
-  whatsappParams?: string[];
+  whatsappParams?: WhatsAppBodyParam[];
+  // Resolved variable map (name -> rendered value) for this recipient. Lets the
+  // send path rebuild params from the live Meta template contract.
+  whatsappValues?: Record<string, string>;
 }
 
 /**
@@ -221,13 +244,44 @@ export function buildMessage(
   const text = lines.filter(Boolean).join("\n\n");
 
   if (channel === "WHATSAPP") {
+    // Build one Meta body parameter per distinct {{placeholder}} in the approved
+    // template body, in body order. Approved marketing templates use NAMED
+    // placeholders ({{first_name}}, {{offer}}, ...) and must be sent as named
+    // params; legacy positional templates ({{1}}, {{2}}) keep bare text params.
+    // Mismatching the format is what produces Meta error #132018.
+    const placeholders = extractBodyPlaceholders(template.body);
+    const isPositional =
+      placeholders.length > 0 && placeholders.every((ph) => /^\d+$/.test(ph));
+
+    // `offer` falls back to the template's rendered offer details when the
+    // campaign did not fill an explicit {{offer}} value, so named templates that
+    // reference {{offer}} never send an empty parameter.
+    const waValues: Record<string, string> = { ...values };
+    if (!waValues.offer && offer) waValues.offer = offer;
+
+    let whatsappParams: WhatsAppBodyParam[];
+    if (isPositional) {
+      // Positional: fill {{1}}..{{N}} by index; missing indexes render empty.
+      const maxIndex = Math.max(...placeholders.map((ph) => parseInt(ph, 10)));
+      whatsappParams = [];
+      for (let i = 1; i <= maxIndex; i++) {
+        const v = waValues[String(i)];
+        whatsappParams.push({ text: v == null ? "" : String(v) });
+      }
+    } else {
+      // Named: one param per placeholder, carrying its name for Meta.
+      whatsappParams = placeholders.map((name) => {
+        const v = waValues[name];
+        return { name, text: v == null ? "" : String(v) };
+      });
+    }
+
     return {
       text,
       whatsappTemplateName: template.whatsappProviderTemplateName ?? null,
       whatsappLanguage: template.whatsappLanguage || "en",
-      // Simple single-body-variable Meta template convention: the whole rendered
-      // message is passed as the one {{1}} body parameter.
-      whatsappParams: [text],
+      whatsappParams,
+      whatsappValues: waValues,
     };
   }
 

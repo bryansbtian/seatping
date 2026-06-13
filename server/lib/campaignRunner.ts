@@ -201,6 +201,7 @@ export async function executeCampaignRun(
       whatsappTemplateName: message.whatsappTemplateName,
       whatsappLanguage: message.whatsappLanguage,
       whatsappParams: message.whatsappParams,
+      whatsappValues: message.whatsappValues,
     });
   }
 

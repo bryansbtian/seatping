@@ -30,6 +30,7 @@ import {
   sendQueueAdmittedWhatsApp,
   sendCampaignWhatsApp,
 } from "./whatsapp.js";
+import type { WhatsAppBodyParam } from "./whatsapp.js";
 import { sendEmailDetailed } from "./email.js";
 import { prisma } from "./prisma.js";
 import { consumeQuota, peekQuota, DAYS } from "./rateLimit.js";
@@ -110,7 +111,8 @@ export type NotificationJob =
       bodyHtml?: string;
       whatsappTemplateName?: string | null;
       whatsappLanguage?: string;
-      whatsappParams?: string[];
+      whatsappParams?: WhatsAppBodyParam[];
+      whatsappValues?: Record<string, string>;
     };
 
 const qstashToken = process.env.QSTASH_TOKEN;
@@ -432,7 +434,8 @@ export interface CampaignSendContent {
   bodyHtml?: string;
   whatsappTemplateName?: string | null;
   whatsappLanguage?: string;
-  whatsappParams?: string[];
+  whatsappParams?: WhatsAppBodyParam[];
+  whatsappValues?: Record<string, string>;
 }
 
 /**
@@ -478,7 +481,12 @@ export async function rawCampaignSend(
     toDigits: content.phone,
     templateName: content.whatsappTemplateName,
     language: content.whatsappLanguage,
-    bodyParams: content.whatsappParams || [content.bodyText],
+    // Fall back to a single positional param carrying the full rendered text,
+    // matching the legacy {{1}} convention, when no structured params were built.
+    bodyParams: content.whatsappParams || [{ text: content.bodyText }],
+    // Resolved value map lets the send path rebuild params from the live Meta
+    // template contract (authoritative over the possibly-drifted stored body).
+    bodyValues: content.whatsappValues,
   });
   if (!id) throw new Error("WhatsApp provider returned failure");
   return id;

@@ -928,6 +928,7 @@ router.post("/:id/send-test", async (req, res) => {
         whatsappTemplateName: message.whatsappTemplateName,
         whatsappLanguage: message.whatsappLanguage,
         whatsappParams: message.whatsappParams,
+        whatsappValues: message.whatsappValues,
       });
       return res.json({ ok: true });
     } catch (e: any) {
