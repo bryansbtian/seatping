@@ -13,7 +13,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import SEO, { BUSINESS_DESCRIPTION } from "@/components/SEO";
+import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { api } from "@/lib/api";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 
@@ -121,6 +121,7 @@ const BusinessSignup = () => {
       <SEO
         title="Create a Business Account | SeatPing"
         description={BUSINESS_DESCRIPTION}
+        image={BUSINESS_IMAGE}
         canonical="/business/signup"
       />
       <Header variant="business" />

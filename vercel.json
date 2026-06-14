@@ -93,6 +93,14 @@
       "destination": "/api/server"
     },
     {
+      "source": "/business",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/business/:path*",
+      "destination": "/api/server"
+    },
+    {
       "source": "/:path*",
       "destination": "/index.html"
     }

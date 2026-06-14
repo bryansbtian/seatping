@@ -1,11 +1,17 @@
 /**
- * Route-aware SEO helper.
+ * Route-aware SEO helper (client side).
  *
  * SeatPing serves two audiences from one app: customers (public `/` homepage,
  * search, restaurant pages, customer auth) and businesses (`/business` marketing
- * + auth + dashboard). `index.html` ships the customer-facing defaults so the
- * public homepage has correct SEO before React boots; this component then keeps
- * the document head in sync as the SPA navigates between routes.
+ * + auth + dashboard).
+ *
+ * The authoritative metadata for crawlers (WhatsApp, iMessage, Facebook,
+ * LinkedIn, X) is injected into the raw HTML by the server, keyed off the
+ * request path, because those crawlers do not run JavaScript. See
+ * `server/lib/pageMeta.ts`. This component keeps the document head in sync as
+ * the SPA navigates between routes so the browser tab, and any crawler that
+ * does execute JS, always reflect the current page, and so customer metadata
+ * never lingers on a business route after a client-side navigation.
  *
  * It updates existing tags in place (and only creates one if missing), so it
  * never produces duplicate `<meta>`/`<link>` tags alongside the ones in
@@ -13,14 +19,18 @@
  */
 import { useEffect } from "react";
 
-const SITE_URL = "https://www.seatping.biz";
+export const SITE_URL = "https://www.seatping.biz";
 
 /** Shared, audience-specific descriptions reused across pages. */
 export const CUSTOMER_DESCRIPTION =
-  "Discover restaurants, check availability, book tables, and join queues with SeatPing. A simple way to plan dining and reduce waiting time.";
+  "Discover restaurants, check availability, book tables, and join queues with SeatPing.";
 
 export const BUSINESS_DESCRIPTION =
-  "SeatPing helps restaurants manage reservations, waitlists, queues, customer notifications, and daily front-of-house operations from one simple platform.";
+  "Manage queues, reservations, Guest CRM, and campaigns from one simple dashboard built for restaurants and service businesses.";
+
+/** Audience-specific social preview images (absolute URLs). */
+export const CUSTOMER_IMAGE = `${SITE_URL}/display2.jpeg`;
+export const BUSINESS_IMAGE = `${SITE_URL}/display.jpeg`;
 
 type SEOProps = {
   title: string;
@@ -29,9 +39,20 @@ type SEOProps = {
   ogTitle?: string;
   /** Defaults to `description` when omitted. */
   ogDescription?: string;
+  /** Absolute social preview image URL. Defaults to the customer image. */
+  image?: string;
   /** Absolute or root-relative URL. Root-relative is resolved against SITE_URL. */
   canonical?: string;
+  /** og:type, defaults to "website". */
+  type?: string;
 };
+
+/** Resolve an absolute URL from an absolute or root-relative value. */
+function absoluteUrl(value: string): string {
+  return value.startsWith("http")
+    ? value
+    : `${SITE_URL}${value.startsWith("/") ? "" : "/"}${value}`;
+}
 
 /** Upsert a `<meta>` tag identified by its name/property attribute. */
 function setMeta(attr: "name" | "property", key: string, content: string) {
@@ -64,23 +85,30 @@ export default function SEO({
   description,
   ogTitle,
   ogDescription,
+  image = CUSTOMER_IMAGE,
   canonical,
+  type = "website",
 }: SEOProps) {
   useEffect(() => {
     document.title = title;
     setMeta("name", "description", description);
+
     setMeta("property", "og:title", ogTitle ?? title);
     setMeta("property", "og:description", ogDescription ?? description);
+    setMeta("property", "og:type", type);
+    setMeta("property", "og:image", image);
+
+    setMeta("name", "twitter:card", "summary_large_image");
     setMeta("name", "twitter:title", ogTitle ?? title);
     setMeta("name", "twitter:description", ogDescription ?? description);
+    setMeta("name", "twitter:image", image);
 
     if (canonical) {
-      const href = canonical.startsWith("http")
-        ? canonical
-        : `${SITE_URL}${canonical.startsWith("/") ? "" : "/"}${canonical}`;
+      const href = absoluteUrl(canonical);
       setCanonical(href);
+      setMeta("property", "og:url", href);
     }
-  }, [title, description, ogTitle, ogDescription, canonical]);
+  }, [title, description, ogTitle, ogDescription, image, canonical, type]);
 
   return null;
 }

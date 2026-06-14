@@ -20,7 +20,7 @@ import BusinessTrialBanner from "@/components/BusinessTrialBanner";
 import LocationManagement from "@/components/LocationManagement";
 import LanguageSelector from "@/components/LanguageSelector";
 import Footer from "@/components/Footer";
-import SEO, { BUSINESS_DESCRIPTION } from "@/components/SEO";
+import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { useLang } from "@/lib/i18n";
 
 interface BusinessMe {
@@ -57,6 +57,7 @@ const BusinessSettings = () => {
       <SEO
         title="Business Settings | SeatPing"
         description={BUSINESS_DESCRIPTION}
+        image={BUSINESS_IMAGE}
       />
       {/* SEO title stays in English (brand metadata, not operator UI). */}
       <BusinessHeader />

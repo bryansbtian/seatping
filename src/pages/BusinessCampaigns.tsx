@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import BusinessHeader from "@/components/BusinessHeader";
 import Footer from "@/components/Footer";
-import SEO, { BUSINESS_DESCRIPTION } from "@/components/SEO";
+import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -411,7 +411,11 @@ const BusinessCampaigns = () => {
 
   return (
     <>
-      <SEO title="Campaigns | SeatPing" description={BUSINESS_DESCRIPTION} />
+      <SEO
+        title="Campaigns | SeatPing"
+        description={BUSINESS_DESCRIPTION}
+        image={BUSINESS_IMAGE}
+      />
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100 flex flex-col">
         <div className="container mx-auto px-4 py-8 flex-1 w-full">

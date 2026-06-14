@@ -5,7 +5,7 @@ import { Star, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import SEO, { BUSINESS_DESCRIPTION } from "@/components/SEO";
+import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { cn } from "@/lib/utils";
 import { HeroDashboardPreview } from "@/components/landing/ProductPreviews";
 import AnimatedBentoFeatureGrid from "@/components/landing/AnimatedBentoFeatureGrid";
@@ -179,8 +179,9 @@ const LandingPage = () => {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <SEO
-        title="SeatPing | Restaurant Reservation and Queue Management Software"
+        title="SeatPing for Business | Queues, Reservations, and Guest CRM"
         description={BUSINESS_DESCRIPTION}
+        image={BUSINESS_IMAGE}
         canonical="/business"
       />
       <Header variant="business" />

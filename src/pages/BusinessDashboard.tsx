@@ -29,7 +29,7 @@ import {
   LogOut,
 } from "lucide-react";
 import Footer from "@/components/Footer";
-import SEO, { BUSINESS_DESCRIPTION } from "@/components/SEO";
+import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import {
   LineChart,
   Line,
@@ -894,6 +894,7 @@ const BusinessDashboard = () => {
       <SEO
         title="Business Dashboard | SeatPing"
         description={BUSINESS_DESCRIPTION}
+        image={BUSINESS_IMAGE}
       />
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100">

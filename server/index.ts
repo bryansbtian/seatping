@@ -5,6 +5,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 
 import authRouter from "./routes/auth.js";
@@ -27,6 +28,7 @@ import { runReservationReminderSweep } from "./lib/reservationReminders.js";
 import { runDueCampaignsSweep } from "./lib/campaignRunner.js";
 import { logRateLimitStatus, rateLimit } from "./lib/rateLimit.js";
 import { logEnvStatus } from "./lib/envCheck.js";
+import { injectSeo } from "./lib/pageMeta.js";
 import { prisma } from "./lib/prisma.js";
 
 // Surface missing production env vars at cold start (serverless included).
@@ -156,9 +158,28 @@ if (process.env.NODE_ENV === "production") {
   const distPath = path.join(__dirname, "../dist");
   app.use(express.static(distPath));
 
-  // Handle React routing - return all requests to React app
-  app.get("*", (_req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
+  // SPA fallback. Instead of shipping the same static index.html for every
+  // route, inject route-aware SEO so crawlers (WhatsApp, iMessage, Facebook,
+  // LinkedIn, X) get the correct preview for customer vs. business URLs. The
+  // template is read once and cached; the SPA boots identically either way.
+  // (On Vercel the customer side is served statically; vercel.json routes
+  // /business and /business/* here so they get business metadata.)
+  let indexTemplate: string | null = null;
+  app.get("*", (req, res) => {
+    try {
+      if (indexTemplate === null) {
+        indexTemplate = fs.readFileSync(
+          path.join(distPath, "index.html"),
+          "utf-8",
+        );
+      }
+      res
+        .status(200)
+        .type("html")
+        .send(injectSeo(indexTemplate, req.path));
+    } catch {
+      res.sendFile(path.join(distPath, "index.html"));
+    }
   });
 }
 
