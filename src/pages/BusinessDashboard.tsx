@@ -17,6 +17,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import BusinessHeader from "@/components/BusinessHeader";
 import ReservationsManager from "@/components/ReservationsManager";
 import { useLang } from "@/lib/i18n";
+import { analytics } from "@/lib/analytics";
 import {
   Users,
   Clock,
@@ -73,6 +74,11 @@ const TOOLTIP_CONTENT_STYLE = {
 const BusinessDashboard = () => {
   const isMobile = useIsMobile();
   const { t, lang } = useLang();
+
+  // Fire once when the dashboard mounts.
+  useEffect(() => {
+    analytics.businessDashboardOpened();
+  }, []);
   const [me, setMe] = useState<any | null>(null);
   const [selectedLocationIndex, setSelectedLocationIndex] = useState(0);
   // Per-customer queue ETAs (keyed by queueToken), from the shared backend helper.

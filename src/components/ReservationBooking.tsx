@@ -13,6 +13,7 @@ import { format, isToday, isTomorrow } from "date-fns";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { analytics } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -152,6 +153,12 @@ export default function ReservationBooking({
     if (autoOpen && reservationsEnabled) setModalOpen(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The booking flow has started once the modal is open, regardless of which
+  // entry point opened it (button, prefilled time slot, or autoOpen).
+  useEffect(() => {
+    if (modalOpen) analytics.reservationStarted(locationId);
+  }, [modalOpen, locationId]);
 
   // Logged-in customer (if any) — used to prefill the booking form. Errors/401
   // (guest or business session) are ignored and leave the form blank.
@@ -617,6 +624,7 @@ function BookingModal({
           }),
         },
       );
+      analytics.reservationCompleted(locationId);
       setConfirmation(res);
     } catch (e: any) {
       toast({

@@ -26,6 +26,7 @@ import { api } from "@/lib/api";
 import { formatPhone } from "@/lib/phone";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/lib/i18n";
+import { analytics } from "@/lib/analytics";
 import {
   Search,
   ChevronDown,
@@ -160,6 +161,12 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 // ---------------------------------------------------------------------------
 const BusinessGuests = () => {
   const { t } = useLang();
+
+  // Fire once when the Guest CRM page mounts.
+  useEffect(() => {
+    analytics.guestCrmOpened();
+  }, []);
+
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [locationId, setLocationId] = useState<string>("");

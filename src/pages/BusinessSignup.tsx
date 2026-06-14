@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import Footer from "@/components/Footer";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { api } from "@/lib/api";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
+import { analytics } from "@/lib/analytics";
 
 // Business signup. Creates a record in the `businesses` collection (and its
 // initial location in `locations`) via /auth/business/signup.
@@ -40,6 +41,11 @@ const BusinessSignup = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Fire once when the signup page opens — the start of the funnel.
+  useEffect(() => {
+    analytics.businessSignupStarted();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -100,6 +106,7 @@ const BusinessSignup = () => {
         body: JSON.stringify(payload),
       });
 
+      analytics.businessSignupCompleted();
       toast({
         title: "Account created!",
         description: `Welcome, ${res.user.name}`,

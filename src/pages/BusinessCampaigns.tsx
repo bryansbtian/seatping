@@ -51,6 +51,7 @@ import { format } from "date-fns";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/lib/i18n";
+import { analytics } from "@/lib/analytics";
 import { formatPhone } from "@/lib/phone";
 import {
   Megaphone,
@@ -1550,6 +1551,7 @@ function CampaignBuilderDialog({
         method: "POST",
         body: JSON.stringify(buildBody()),
       });
+      analytics.campaignCreated();
       setCampaignId(d.campaign.id);
       return d.campaign.id;
     } catch (e) {
@@ -1632,6 +1634,7 @@ function CampaignBuilderDialog({
             ? `${d.recipientCount} ${d.recipientCount === 1 ? "recipient" : "recipients"}.`
             : undefined,
       });
+      analytics.campaignSent(channel);
       onSent(sendMode);
       onClose();
     } catch (e) {

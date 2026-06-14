@@ -211,6 +211,19 @@ Core: `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CLIENT_ORIGIN`,
 `KAPSO_API_KEY`, `KAPSO_PHONE_NUMBER_ID`, `CLOUDINARY_*`,
 `VITE_GOOGLE_MAPS_API_KEY`.
 
+Analytics (optional; graceful no-op when unset):
+
+- `VITE_GA_MEASUREMENT_ID` — Google Analytics 4 measurement ID (format
+  `G-XXXXXXXXXX`). Injected into `index.html` at build time and read by
+  `src/lib/analytics.ts`. When unset, the gtag script loads no real property and
+  all `trackPageView` / `trackEvent` calls are silent no-ops, so local dev and
+  previews never send data. Page views are sent manually per React Router
+  navigation (path only, never query strings); set it in the Vercel project to
+  enable production analytics. Privacy: only non-sensitive metadata (page path,
+  source, channel, opaque `location_id`) is ever sent. Never customer names,
+  phone numbers, emails, tokens, message content, or full URLs with query
+  params.
+
 Scalability features (optional; graceful fallback when unset):
 
 - `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY` —

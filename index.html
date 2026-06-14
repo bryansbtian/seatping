@@ -52,6 +52,29 @@
     <link rel="canonical" href="https://www.seatping.biz/" />
     <!-- SEO:END -->
 
+    <!--
+      Google Analytics (GA4). The measurement ID is injected from the
+      VITE_GA_MEASUREMENT_ID env var at build time. When the var is unset the
+      placeholder stays literal and gtag receives a no-op config, so analytics
+      is a graceful no-op in local dev / preview without the var. We set
+      send_page_view: false because page views are sent manually from
+      AnalyticsRouteTracker on each React Router navigation, which avoids
+      double-counting the initial load in a single-page app.
+    -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=%VITE_GA_MEASUREMENT_ID%"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      window.gtag = gtag;
+      gtag('js', new Date());
+      gtag('config', '%VITE_GA_MEASUREMENT_ID%', { send_page_view: false });
+    </script>
+
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",

@@ -36,6 +36,7 @@ import ManageReservation from "./pages/ManageReservation";
 import SearchResults from "./pages/SearchResults";
 import Admin from "./pages/Admin";
 import { LanguageProvider } from "@/lib/i18n";
+import AnalyticsRouteTracker from "@/components/AnalyticsRouteTracker";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +89,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <AnalyticsRouteTracker />
         <Routes>
           {/* Customer-facing homepage — never redirects business sessions away. */}
           <Route path="/" element={<Index />} />

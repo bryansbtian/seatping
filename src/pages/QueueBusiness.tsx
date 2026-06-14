@@ -31,6 +31,7 @@ import { Check, ChevronsUpDown, Clock3, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { analytics } from "@/lib/analytics";
 
 type CountryOption = { name: string; dial: string; flag: string };
 
@@ -118,6 +119,13 @@ export default function QueueBusiness() {
   const { toast } = useToast();
 
   const [step, setStep] = useState<Step>(2);
+
+  // This page is reached by scanning a per-location QR code, whose URL carries
+  // the locationId. Fire once per load when that's present. location_id is an
+  // opaque, non-sensitive ID — safe to send.
+  useEffect(() => {
+    if (locationId) analytics.qrCodeScanned(locationId);
+  }, [locationId]);
 
   const [loadingAddresses, setLoadingAddresses] = useState(false);
   // The location the customer is joining. Comes from the QR code URL
@@ -549,6 +557,7 @@ export default function QueueBusiness() {
   // Submit the join form → Step 4.
   const joinQueue = async (e: React.FormEvent) => {
     e.preventDefault();
+    analytics.joinQueueClicked(selectedLocation?.id);
     const newErrors: Record<string, string> = {};
 
     if (!selectedLocation) newErrors.location = "Please select a location";
@@ -605,6 +614,7 @@ export default function QueueBusiness() {
       });
 
       if (response.success) {
+        analytics.queueJoined(selectedLocation?.id);
         setForm((prev) => ({ ...prev, joinedAt: response.customer.joinedAt }));
 
         if (response.queueToken) {
