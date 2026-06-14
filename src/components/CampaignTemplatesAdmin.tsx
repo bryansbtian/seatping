@@ -14,13 +14,14 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { TemplateStatusBadge } from "@/components/CampaignBadges";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
-import { Search, RefreshCw, Inbox, Copy, Check } from "lucide-react";
+import { Search, RefreshCw, Inbox } from "lucide-react";
 
 // Admin review console for business-submitted CUSTOM campaign templates. This is
 // the ONLY surface that can approve/reject a template; it also tracks the
@@ -212,48 +213,28 @@ function ReviewDialog({
   onChanged: () => void;
 }) {
   const { toast } = useToast();
-  const [internalReviewNotes, setInternalReviewNotes] = useState("");
   const [whatsappMetaStatus, setWhatsappMetaStatus] = useState("");
   const [whatsappProviderTemplateName, setWhatsappProviderTemplateName] = useState("");
-  const [whatsappProviderTemplateId, setWhatsappProviderTemplateId] = useState("");
-  const [whatsappMetaCategory, setWhatsappMetaCategory] = useState("");
-  const [whatsappLanguage, setWhatsappLanguage] = useState("en");
   const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectOpen, setRejectOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!template) return;
-    setInternalReviewNotes(template.internalReviewNotes ?? "");
     setWhatsappMetaStatus(template.whatsappMetaStatus ?? "");
     setWhatsappProviderTemplateName(template.whatsappProviderTemplateName ?? "");
-    setWhatsappProviderTemplateId(template.whatsappProviderTemplateId ?? "");
-    setWhatsappMetaCategory(template.whatsappMetaCategory ?? "");
-    setWhatsappLanguage(template.whatsappLanguage ?? "en");
     setRejectionReason("");
+    setRejectOpen(false);
   }, [template]);
 
   if (!template) return null;
 
-  async function saveReview() {
-    setBusy(true);
+  async function copyText(text: string, label: string) {
     try {
-      await api(`/admin/campaign-templates/${template!.id}/review`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          internalReviewNotes,
-          whatsappMetaStatus,
-          whatsappProviderTemplateName,
-          whatsappProviderTemplateId,
-          whatsappMetaCategory,
-          whatsappLanguage,
-        }),
-      });
-      toast({ title: "Review saved" });
-      onChanged();
-    } catch (e: any) {
-      toast({ title: "Could not save", description: e?.message, variant: "destructive" });
-    } finally {
-      setBusy(false);
+      await navigator.clipboard.writeText(text);
+      toast({ title: `${label} copied` });
+    } catch {
+      toast({ title: `Could not copy ${label.toLowerCase()}`, variant: "destructive" });
     }
   }
 
@@ -316,110 +297,124 @@ function ReviewDialog({
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-indigo-500 w-32 shrink-0">Template Username</span>
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <code className="text-sm font-mono text-indigo-800 bg-white border border-indigo-200 rounded px-2 py-0.5 truncate">
-                {template.slug || "--"}
-              </code>
-              {template.slug && <CopyButton value={template.slug} label="username" />}
-            </div>
+            {template.slug ? (
+              <button
+                type="button"
+                onClick={() => copyText(template.slug!, "Username")}
+                title="Click to copy username"
+                className="text-sm font-medium text-slate-800 flex-1 min-w-0 break-words text-left hover:text-indigo-700 cursor-pointer"
+              >
+                {template.slug}
+              </button>
+            ) : (
+              <span className="text-sm font-medium text-slate-800 flex-1 min-w-0 break-words">--</span>
+            )}
           </div>
-          <p className="text-[11px] text-indigo-600/80">
-            Use this as the WhatsApp template name when creating it in Meta.
-          </p>
         </div>
 
         {/* Submitted content */}
         <div className="space-y-3">
           <h4 className="text-sm font-semibold text-slate-800">Submitted Content</h4>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2 text-sm">
-            <Row label="Business" value={`${template.business?.name ?? template.businessUsername ?? "--"}${template.business?.email ? ` (${template.business.email})` : ""}`} />
+            <Row label="Business" value={`${template.business?.name ?? template.businessUsername ?? "--"}${template.businessUsername ? ` (${template.businessUsername})` : ""}`} />
             {template.locationId && <Row label="Location ID" value={template.locationId} />}
-            {template.purpose && <Row label="Campaign goal" value={template.purpose} />}
+            {template.purpose && <Row label="Campaign Goal" value={template.purpose} />}
             <div>
-              <div className="text-xs text-slate-500">Main message</div>
-              <div className="text-slate-800 whitespace-pre-wrap mt-0.5">{template.body}</div>
+              <div className="text-xs text-slate-500">Main Message</div>
+              <button
+                type="button"
+                onClick={() => copyText(template.body, "Message")}
+                title="Click to copy message"
+                className="mt-1 w-full text-left rounded-lg border border-slate-200 bg-white p-3 text-slate-800 whitespace-pre-wrap hover:border-indigo-200 hover:bg-indigo-50/40 cursor-pointer transition-colors"
+              >
+                {template.body}
+              </button>
             </div>
             {template.offerDetails && <Row label="Offer" value={template.offerDetails} />}
             {(template.ctaText || template.ctaUrl) && (
               <Row label="CTA" value={`${template.ctaText ?? ""}${template.ctaUrl ? ` → ${template.ctaUrl}` : ""}`} />
             )}
-            {template.variables.length > 0 && <Row label="Variables" value={template.variables.join(", ")} />}
+            {template.variables.length > 0 && (
+              <div className="flex gap-2">
+                <span className="text-xs text-slate-500 w-24 shrink-0 pt-1">Variables</span>
+                <div className="flex flex-wrap gap-1.5 min-w-0">
+                  {template.variables.map((v) => (
+                    <code
+                      key={v}
+                      className="text-xs font-mono text-indigo-700 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5"
+                    >
+                      {`{{${v}}}`}
+                    </code>
+                  ))}
+                </div>
+              </div>
+            )}
             {Object.keys(template.exampleValues || {}).length > 0 && (
-              <Row label="Example values" value={Object.entries(template.exampleValues).map(([k, v]) => `${k}=${v}`).join(", ")} />
+              <div className="flex gap-2">
+                <span className="text-xs text-slate-500 w-24 shrink-0 pt-1">Example Values</span>
+                <div className="flex flex-col gap-1 min-w-0">
+                  {Object.entries(template.exampleValues).map(([k, v]) => (
+                    <div key={k} className="flex items-center gap-1.5 text-xs min-w-0">
+                      <code className="font-mono text-indigo-700 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5 shrink-0">
+                        {`{{${k}}}`}
+                      </code>
+                      <span className="text-slate-400 shrink-0">→</span>
+                      <span className="text-slate-700 break-words min-w-0">{String(v)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 
-          {/* Internal review fields (admin-only) */}
-          <h4 className="text-sm font-semibold text-slate-800 pt-2">Internal Review (Admin Only)</h4>
-          <div>
-            <Label className="text-xs">Internal Notes</Label>
-            <Textarea
-              value={internalReviewNotes}
-              onChange={(e) => setInternalReviewNotes(e.target.value)}
-              className="mt-1 min-h-[70px]"
-              placeholder="Private review notes"
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs">WhatsApp Meta Status</Label>
-              <Input value={whatsappMetaStatus} onChange={(e) => setWhatsappMetaStatus(e.target.value)} className="mt-1" placeholder="e.g. submitted / approved" />
-            </div>
-            <div>
-              <Label className="text-xs">Meta Category</Label>
-              <Input value={whatsappMetaCategory} onChange={(e) => setWhatsappMetaCategory(e.target.value)} className="mt-1" placeholder="MARKETING / UTILITY" />
-            </div>
-            <div>
-              <Label className="text-xs">Provider Template Name</Label>
-              <Input value={whatsappProviderTemplateName} onChange={(e) => setWhatsappProviderTemplateName(e.target.value)} className="mt-1" placeholder="meta_template_name" />
-              {template.slug && whatsappProviderTemplateName && whatsappProviderTemplateName !== template.slug && (
-                <p className="text-[11px] text-amber-600 mt-1">Differs from username ({template.slug}).</p>
-              )}
-            </div>
-            <div>
-              <Label className="text-xs">Provider Template ID</Label>
-              <Input value={whatsappProviderTemplateId} onChange={(e) => setWhatsappProviderTemplateId(e.target.value)} className="mt-1" />
-            </div>
-            <div>
-              <Label className="text-xs">WhatsApp Language</Label>
-              <Input value={whatsappLanguage} onChange={(e) => setWhatsappLanguage(e.target.value)} className="mt-1" placeholder="en" />
-            </div>
-          </div>
-
-          <Button variant="outline" size="sm" onClick={saveReview} disabled={busy}>
-            Save Internal Notes
-          </Button>
-
           {/* Approve / reject */}
-          <div className="border-t border-slate-200 pt-3 space-y-3">
-            <div>
-              <Label className="text-xs">Business-Facing Rejection Reason</Label>
-              <Textarea
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                className="mt-1 min-h-[60px]"
-                placeholder="Shown to the business if you reject this template"
-              />
-            </div>
+          <div className="pt-1">
             <div className="flex flex-col sm:flex-row gap-2">
-              <Button
-                onClick={approve}
-                disabled={busy}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-              >
-                Approve (all channels)
+              <Button onClick={approve} disabled={busy} variant="success" className="flex-1">
+                Approve
               </Button>
-              <Button onClick={reject} disabled={busy} variant="destructive" className="flex-1">
+              <Button
+                onClick={() => setRejectOpen(true)}
+                disabled={busy}
+                variant="destructiveOutline"
+                className="flex-1"
+              >
                 Reject
               </Button>
             </div>
-            <p className="text-xs text-slate-400">
-              Approve only once SMS + Email are ready and the WhatsApp Meta template is approved. Approval enables all
-              three channels at once.
-            </p>
           </div>
         </div>
       </DialogContent>
+
+      {/* Reject reason modal */}
+      <Dialog open={rejectOpen} onOpenChange={(o) => !busy && setRejectOpen(o)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Template</DialogTitle>
+            <DialogDescription>
+              This reason is shown to the business. Let them know what to fix.
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label className="text-xs">Business-Facing Rejection Reason</Label>
+            <Textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="mt-1 min-h-[100px]"
+              placeholder="Shown to the business if you reject this template"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button onClick={reject} disabled={busy} variant="destructive">
+              Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
@@ -430,29 +425,5 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="text-xs text-slate-500 w-24 shrink-0">{label}</span>
       <span className="text-slate-800 break-words min-w-0">{value}</span>
     </div>
-  );
-}
-
-function CopyButton({ value, label = "value" }: { value: string; label?: string }) {
-  const { toast } = useToast();
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      toast({ title: `Could not copy ${label}`, variant: "destructive" });
-    }
-  };
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      title={`Copy ${label}`}
-      className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 transition-colors"
-    >
-      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-    </button>
   );
 }

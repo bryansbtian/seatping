@@ -410,15 +410,26 @@ router.patch("/templates/:id", async (req, res) => {
       where: { id, templateType: "CUSTOM", businessId },
     });
     if (!t) return res.status(404).json({ error: "Template not found" });
-    // Only an APPROVED template is locked; draft/rejected/pending are editable.
-    if (t.approvalStatus === "APPROVED") {
-      return res.status(400).json({
-        error: "Approved templates cannot be edited",
-      });
-    }
     // A business can never set approval state directly — strip any such input.
     const { data, error } = parseTemplateBody(req.body || {});
     if (error) return res.status(400).json({ error });
+
+    // Editing an APPROVED template invalidates the prior approval: any change
+    // must be re-reviewed, so the edit sends it back to the review queue.
+    let statusUpdate: {
+      approvalStatus?: "PENDING_SEATPING_REVIEW";
+      submittedAt?: Date;
+      rejectionReason?: null;
+      rejectedAt?: null;
+    } = {};
+    if (t.approvalStatus === "APPROVED") {
+      statusUpdate = {
+        approvalStatus: "PENDING_SEATPING_REVIEW",
+        submittedAt: new Date(),
+        rejectionReason: null,
+        rejectedAt: null,
+      };
+    }
 
     let locationId = t.locationId;
     if (req.body?.locationId !== undefined) {
@@ -444,7 +455,7 @@ router.patch("/templates/:id", async (req, res) => {
 
     const updated = await prisma.campaignTemplate.update({
       where: { id: t.id },
-      data: { ...data, locationId, ...slugUpdate },
+      data: { ...data, locationId, ...slugUpdate, ...statusUpdate },
     });
     return res.json({ template: serializeTemplate(updated) });
   } catch (err: any) {

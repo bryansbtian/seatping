@@ -1058,7 +1058,8 @@ function TemplateCard({
           {isCustom &&
             (template.approvalStatus === "DRAFT" ||
               template.approvalStatus === "REJECTED" ||
-              template.approvalStatus === "PENDING_SEATPING_REVIEW") &&
+              template.approvalStatus === "PENDING_SEATPING_REVIEW" ||
+              template.approvalStatus === "APPROVED") &&
             onEdit && (
               <Button
                 variant="outline"
@@ -2367,9 +2368,9 @@ function TemplateBuilderDialog({
     .split(",")
     .map((s) => normalizeVar(s.trim()))
     .filter(Boolean);
-  // Only an APPROVED template is locked. Draft / Rejected / Pending Review can
-  // all be edited and (re)submitted.
-  const isReadOnly = existing?.approvalStatus === "APPROVED";
+  // Every status is editable. Editing an APPROVED template sends it back to
+  // review, so its footer shows a single "save & resubmit" action.
+  const isApprovedEdit = existing?.approvalStatus === "APPROVED";
 
   const bodyError = bodyParamPositionError(body);
   // Every declared variable needs an example value before submitting for review
@@ -2438,6 +2439,26 @@ function TemplateBuilderDialog({
     }
   }
 
+  // Saving an edit to an approved template re-runs review: the PATCH itself
+  // moves it back to PENDING_SEATPING_REVIEW on the server.
+  async function saveApprovedEdit() {
+    if (exampleError) {
+      toast({ title: exampleError, variant: "destructive" });
+      return;
+    }
+    setBusy(true);
+    const id = await persist();
+    setBusy(false);
+    if (id) {
+      toast({
+        title: "Changes saved",
+        description: "Your edits were sent back to SeatPing for review.",
+      });
+      onSaved();
+      onClose();
+    }
+  }
+
   async function submitForReview() {
     if (exampleError) {
       toast({ title: exampleError, variant: "destructive" });
@@ -2493,7 +2514,8 @@ function TemplateBuilderDialog({
           )}
         {existing?.approvalStatus === "APPROVED" && (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-            This template is approved and can be used in campaigns.
+            This template is approved. Editing it sends it back to SeatPing for
+            review before it can be used again.
           </div>
         )}
         {existing?.approvalStatus === "PENDING_SEATPING_REVIEW" && (
@@ -2508,7 +2530,6 @@ function TemplateBuilderDialog({
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              disabled={isReadOnly}
               placeholder="e.g. Birthday Treat"
               className="bg-slate-50 border-slate-200"
             />
@@ -2525,7 +2546,6 @@ function TemplateBuilderDialog({
             <Input
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
-              disabled={isReadOnly}
               placeholder="What is this campaign for?"
               className="bg-slate-50 border-slate-200"
             />
@@ -2534,7 +2554,6 @@ function TemplateBuilderDialog({
             <Textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              disabled={isReadOnly}
               placeholder="Hi {{First Name}}, ... Use {{Variable Name}} for personalization."
               className={`bg-slate-50 min-h-[100px] ${bodyError ? "border-red-300 focus-visible:ring-red-400" : "border-slate-200"}`}
             />
@@ -2546,7 +2565,6 @@ function TemplateBuilderDialog({
             <Input
               value={variablesText}
               onChange={(e) => setVariablesText(e.target.value)}
-              disabled={isReadOnly}
               placeholder="offer, highlight"
               className="bg-slate-50 border-slate-200"
             />
@@ -2573,7 +2591,6 @@ function TemplateBuilderDialog({
                             [v]: e.target.value,
                           }))
                         }
-                        disabled={isReadOnly}
                         className={`h-9 bg-slate-50 ${empty ? "border-red-300" : "border-slate-200"}`}
                       />
                     </div>
@@ -2592,27 +2609,38 @@ function TemplateBuilderDialog({
           and Email.
         </div>
 
-        {!isReadOnly && (
-          <div className="flex flex-col sm:flex-row gap-2 pt-1">
+        <div className="flex flex-col sm:flex-row gap-2 pt-1">
+          {isApprovedEdit ? (
             <Button
-              variant="outline"
-              onClick={saveDraft}
-              disabled={busy || !!bodyError}
-              className="flex-1"
-            >
-              <Save className="w-4 h-4 mr-1.5" />
-              {busy ? "Saving..." : "Save Draft"}
-            </Button>
-            <Button
-              onClick={submitForReview}
+              onClick={saveApprovedEdit}
               disabled={busy || !!bodyError || !!exampleError}
               className="flex-1"
             >
               <Send className="w-4 h-4 mr-1.5" />
-              Submit For Review
+              {busy ? "Saving..." : "Save & Resubmit For Review"}
             </Button>
-          </div>
-        )}
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                onClick={saveDraft}
+                disabled={busy || !!bodyError}
+                className="flex-1"
+              >
+                <Save className="w-4 h-4 mr-1.5" />
+                {busy ? "Saving..." : "Save Draft"}
+              </Button>
+              <Button
+                onClick={submitForReview}
+                disabled={busy || !!bodyError || !!exampleError}
+                className="flex-1"
+              >
+                <Send className="w-4 h-4 mr-1.5" />
+                Submit For Review
+              </Button>
+            </>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

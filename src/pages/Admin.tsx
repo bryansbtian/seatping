@@ -41,6 +41,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import FeaturedRestaurantsManager from "@/components/FeaturedRestaurantsManager";
 import CampaignTemplatesAdmin from "@/components/CampaignTemplatesAdmin";
+import { formatPhone } from "@/lib/phone";
 
 interface Ticket {
   id: string;
@@ -951,7 +952,7 @@ const Admin = () => {
                           />
                         ) : (
                           <p className="text-sm md:text-base font-medium break-words">
-                            {selectedCustomer.phone || "—"}
+                            {formatPhone(selectedCustomer.phone) || "—"}
                           </p>
                         )}
                       </div>
