@@ -32,3 +32,4 @@ remotion
 *.sw?
 
 /generated/prisma
+CLAUDE.md
