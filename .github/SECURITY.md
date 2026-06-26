@@ -4,7 +4,7 @@
 
 If you believe you have found a security vulnerability in SeatPing, please report it privately. Do not open a public issue, pull request, or discussion, since that could expose other users before a fix is available.
 
-Email: security@seatping.biz
+Email: help@seatping.biz
 
 Please include:
 
