@@ -1,23 +1,7 @@
-// src/lib/imageUpload.ts
-//
-// Direct-to-Cloudinary image uploads for location media (banner + gallery).
-//
-// Why not just POST the file to our own API? Vercel Serverless Functions cap the
-// request body at ~4.5MB, so a single phone photo can trip a 413
-// (FUNCTION_PAYLOAD_TOO_LARGE). Instead we:
-//   1. Downscale + re-encode the image in the browser (compressImage), then
-//   2. Ask our backend for a short-lived Cloudinary signature (/sign), then
-//   3. Upload the bytes DIRECTLY to Cloudinary (never touching our function), then
-//   4. Hand the returned url/publicId back to our backend to persist (/commit).
-// The API secret stays server-side; the signature only authorizes an upload into
-// this location's folder, which /commit re-verifies.
 import { api } from "./api";
 
-// Longest edge (px) after downscale, and JPEG quality for re-encoding. 1920px at
-// q0.82 keeps gallery/banner images crisp on retina while landing well under 1MB.
 const MAX_DIMENSION = 1920;
 const TARGET_QUALITY = 0.82;
-// Files already this small aren't worth re-encoding (it can even grow them).
 const SKIP_COMPRESS_BELOW = 600 * 1024;
 
 type SignData = {
@@ -46,7 +30,6 @@ async function loadImage(
       close: () => bitmap.close(),
     };
   }
-  // Fallback for browsers without createImageBitmap.
   const url = URL.createObjectURL(file);
   try {
     const img = new Image();
@@ -67,11 +50,6 @@ async function loadImage(
   }
 }
 
-/**
- * Downscale + re-encode an image so the upload payload is small and dimensions
- * are web-sane. Falls back to the original file if the browser can't decode it
- * or re-encoding wouldn't shrink it, so the upload still proceeds.
- */
 export async function compressImage(file: File): Promise<Blob> {
   if (file.size <= SKIP_COMPRESS_BELOW) return file;
   try {
@@ -87,7 +65,6 @@ export async function compressImage(file: File): Promise<Blob> {
       const blob = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob(resolve, "image/jpeg", TARGET_QUALITY)
       );
-      // Keep whichever is smaller — re-encoding can occasionally inflate.
       return blob && blob.size < file.size ? blob : file;
     } finally {
       img.close();
@@ -97,7 +74,6 @@ export async function compressImage(file: File): Promise<Blob> {
   }
 }
 
-/** Upload an image blob straight to Cloudinary using a server-signed request. */
 async function uploadToCloudinary(
   blob: Blob,
   sign: SignData
@@ -117,7 +93,6 @@ async function uploadToCloudinary(
   try {
     json = await resp.json();
   } catch {
-    /* non-JSON error body */
   }
   if (!resp.ok) {
     throw new Error(
@@ -127,7 +102,6 @@ async function uploadToCloudinary(
   return { url: json.secure_url, publicId: json.public_id };
 }
 
-/** Upload + persist a location banner. Returns the refreshed business `user`. */
 export async function uploadBanner(
   locationId: string,
   file: File
@@ -143,7 +117,6 @@ export async function uploadBanner(
   });
 }
 
-/** Upload + persist ONE gallery photo. Returns the created photo + refreshed user. */
 export async function uploadPhoto(
   locationId: string,
   file: File

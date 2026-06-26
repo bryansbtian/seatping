@@ -1,7 +1,3 @@
-// LocationManagement.tsx
-// Add/remove business locations. Lives on the business Profile page because the
-// location (display name, address, coordinates) is part of the customer-facing
-// profile and powers queue/reservation location selection.
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -77,11 +73,6 @@ interface MeLike {
   maxLocations?: number;
 }
 
-/**
- * Derive a short address from a long Google formatted address by keeping the
- * first 1–2 meaningful comma-separated parts (e.g. unit + building) and dropping
- * the long street/city/province tail. Used when no `shortAddress` is stored.
- */
 function deriveShortAddress(full?: string | null): string {
   if (!full) return "";
   const parts = full
@@ -106,22 +97,18 @@ export default function LocationManagement({
   const [newLocationPlace, setNewLocationPlace] = useState<PlaceDetails | null>(
     null,
   );
-  // The location whose public restaurant profile is being edited (modal).
   const [editing, setEditing] = useState<Location | null>(null);
-  // The location whose customer reviews are being viewed (modal).
   const [selectedLocationForReviews, setSelectedLocationForReviews] =
     useState<Location | null>(null);
   const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
-  // The location whose queue QR code is being shown (modal), plus the generated
-  // QR image (data URL) for that location's queue link.
   const [qrLocation, setQrLocation] = useState<Location | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
-  // Which location cards have their full address expanded.
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const toggleExpanded = (id: string) =>
     setExpandedIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
 
@@ -130,11 +117,9 @@ export default function LocationManagement({
   const atMax = locations.length >= maxLocations;
   const businessUsername = me?.username || "";
 
-  /** Location-specific queue URL a customer reaches by scanning the QR code. */
   const queueUrlFor = (location: Location) =>
     `${window.location.origin}/queue/${businessUsername}/${location.id}`;
 
-  /** Open the QR modal for a location and generate its QR image. */
   const openQrModal = async (location: Location) => {
     setQrLocation(location);
     setQrDataUrl("");
@@ -213,7 +198,6 @@ export default function LocationManagement({
     setLoading(true);
     try {
       const place = newLocationPlace;
-      // Manual / non-geocoded entry is allowed, but warn that map data is missing.
       if (!place?.googlePlaceId || place?.latitude == null) {
         toast({
           title: t("loc.toast.savedNoMap.title"),
@@ -295,9 +279,9 @@ export default function LocationManagement({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 md:space-y-6 p-4 md:p-6 pt-0">
-          {/* Add New Location */}
+          {}
           <div className="border border-dashed border-gray-300 rounded-lg p-4 md:p-6">
-            {/* Header row: title + Add Location button (top-right on sm+) */}
+            {}
             <div className="flex items-center justify-between gap-3 mb-3 md:mb-4">
               <h3 className="text-base md:text-lg font-semibold text-gray-800">
                 {t("loc.addNew")}
@@ -312,7 +296,7 @@ export default function LocationManagement({
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                {/* Location Display Name (customer-facing label) */}
+                {}
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="newLocationDisplayName"
@@ -335,7 +319,7 @@ export default function LocationManagement({
                   </p>
                 </div>
 
-                {/* Address search (Google Places autocomplete) */}
+                {}
                 <div className="space-y-1.5">
                   <Label htmlFor="newLocation" className="text-sm md:text-base">
                     {t("loc.searchAddress")}
@@ -345,7 +329,6 @@ export default function LocationManagement({
                     value={newLocationAddress}
                     onChange={(t) => {
                       setNewLocationAddress(t);
-                      // Manual edits invalidate a previously picked place.
                       setNewLocationPlace((p) =>
                         p && p.address === t ? p : null,
                       );
@@ -362,8 +345,7 @@ export default function LocationManagement({
                   />
                 </div>
               </div>
-              {/* Mobile + tablet: button stays attached below the fields,
-                  full width. The top-right button only shows on desktop (lg+). */}
+              {}
               <Button
                 onClick={addLocation}
                 disabled={loading || atMax}
@@ -379,7 +361,7 @@ export default function LocationManagement({
             )}
           </div>
 
-          {/* Existing Locations */}
+          {}
           <div>
             <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-3 md:mb-4">
               {t("loc.current")}
@@ -413,11 +395,9 @@ export default function LocationManagement({
                       <div className="flex items-start space-x-3 min-w-0 flex-1">
                         <MapPin className="w-4 h-4 md:w-5 md:h-5 text-gray-400 flex-shrink-0 mt-0.5" />
                         <div className="min-w-0 flex-1">
-                          {/* Name + credits pill on one row. The pill wraps below
-                              the name when there isn't room, but stays grouped
-                              with it (above the address). */}
+                          {}
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                            {/* Customer-facing display name with safe fallbacks. */}
+                            {}
                             <p className="font-medium text-gray-800 text-sm md:text-base break-words">
                               {location.displayName ||
                                 location.name ||
@@ -434,7 +414,7 @@ export default function LocationManagement({
                             </p>
                           )}
 
-                          {/* Short address by default; full address behind a toggle. */}
+                          {}
                           {location.address && (
                             <>
                               <p
@@ -476,10 +456,7 @@ export default function LocationManagement({
                         </div>
                       </div>
 
-                      {/* Action row: 1 button per row on mobile, 2 per row on
-                          tablet (grid), and a single horizontal row on desktop
-                          (lg+). Keeps buttons full-height and aligned — including
-                          Delete — instead of cramming a compressed desktop row. */}
+                      {}
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end lg:gap-3 lg:shrink-0">
                         <Button
                           size="sm"
@@ -560,16 +537,14 @@ export default function LocationManagement({
         </CardContent>
       </Card>
 
-      {/* Edit Restaurant Profile — opens the public profile editor for the
-          chosen location in a modal. */}
+      {}
       <Dialog
         open={!!editing}
         onOpenChange={(open) => {
           if (!open) setEditing(null);
         }}
       >
-        {/* Mobile sizing + typography come from the shared modal styles in
-            ui/dialog.tsx; only the desktop width/height differ here. */}
+        {}
         <DialogContent className="max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-2xl sm:max-w-2xl">
           <DialogHeader className="text-left">
             <DialogTitle>{t("loc.editProfile")}</DialogTitle>
@@ -586,8 +561,6 @@ export default function LocationManagement({
                 setEditing(null);
               }}
               onMediaChange={(u: any) => {
-                // Banner/photo uploads persist immediately — refresh the
-                // dashboard + the open editor snapshot without closing the modal.
                 onChanged(u);
                 setEditing((prev) =>
                   prev
@@ -602,7 +575,7 @@ export default function LocationManagement({
         </DialogContent>
       </Dialog>
 
-      {/* View Reviews — owner-only customer reviews for the chosen location. */}
+      {}
       <LocationReviewsModal
         location={selectedLocationForReviews}
         open={isReviewsModalOpen}
@@ -612,7 +585,7 @@ export default function LocationManagement({
         }}
       />
 
-      {/* Location QR Code — customers scan this to join THIS location's queue. */}
+      {}
       <Dialog
         open={!!qrLocation}
         onOpenChange={(open) => {
@@ -633,7 +606,7 @@ export default function LocationManagement({
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* QR image */}
+            {}
             <div className="flex justify-center">
               <div className="inline-block rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm">
                 {qrDataUrl ? (
@@ -650,7 +623,7 @@ export default function LocationManagement({
               </div>
             </div>
 
-            {/* Queue URL */}
+            {}
             <div className="space-y-1.5">
               <Label className="text-sm">{t("loc.qrModal.queueLink")}</Label>
               <code className="block break-all rounded-md bg-gray-100 px-3 py-2 font-mono text-xs text-indigo-600">
@@ -662,7 +635,7 @@ export default function LocationManagement({
               {t("loc.qrModal.help")}
             </p>
 
-            {/* Actions */}
+            {}
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button
                 variant="outline"

@@ -99,7 +99,6 @@ const Admin = () => {
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
 
-  // Customer management state
   const [searchUsername, setSearchUsername] = useState("");
   const [selectedCustomer, setSelectedCustomer] =
     useState<CustomerRecord | null>(null);
@@ -110,7 +109,6 @@ const Admin = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-  // Ticket management state
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [stats, setStats] = useState<TicketStats | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -134,8 +132,6 @@ const Admin = () => {
     }
   }, [isAuthenticated, filter]);
 
-  // Restore an existing admin session on load so a refresh doesn't force a
-  // re-login (the httpOnly admin cookie is the source of truth).
   useEffect(() => {
     let active = true;
     fetch("/auth/admin/session", { credentials: "include" })
@@ -149,8 +145,6 @@ const Admin = () => {
     };
   }, []);
 
-  // Credentials are validated ONLY on the server (POST /auth/admin/login), which
-  // sets an httpOnly admin cookie. No admin password lives in this bundle.
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -191,7 +185,6 @@ const Admin = () => {
         credentials: "include",
       });
     } catch {
-      // Ignore network errors — we clear local state regardless.
     }
     setIsAuthenticated(false);
   };
@@ -376,7 +369,6 @@ const Admin = () => {
     });
   };
 
-  // Ticket Management Functions
   const fetchStats = async () => {
     try {
       const response = await fetch("/tickets/stats");
@@ -707,8 +699,7 @@ const Admin = () => {
 
             <Card>
               <CardHeader>
-                {/* Subsection header: text-lg; tab section headers keep the
-                    CardTitle default (text-2xl). */}
+                {}
                 <CardTitle className="text-lg">Filters</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-4">

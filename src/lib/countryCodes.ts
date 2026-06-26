@@ -1,7 +1,3 @@
-// Comprehensive list of country dialing codes used by the signup forms'
-// country-code selector. `iso` is the ISO 3166-1 alpha-2 code and is the stable
-// unique key (several countries share a `dial`, e.g. +1 for US/Canada, +7 for
-// Russia/Kazakhstan), so always key/select by `iso`, not `dial`.
 export type CountryCode = { iso: string; name: string; dial: string; flag: string };
 
 export const COUNTRY_CODES: CountryCode[] = [
@@ -206,14 +202,8 @@ export const COUNTRY_CODES: CountryCode[] = [
   { iso: "ZW", name: "Zimbabwe", dial: "+263", flag: "🇿🇼" },
 ];
 
-/** Default selection for the signup forms (United States). */
 export const DEFAULT_COUNTRY_ISO = "US";
 
-/**
- * Split a stored phone string (e.g. "+6512345678") back into a dial code and the
- * national number, by longest-matching known dial prefix. Falls back to the
- * default country (+1) when nothing matches.
- */
 export function splitPhone(phone?: string): { dial: string; number: string } {
   const defaultDial =
     COUNTRY_CODES.find((c) => c.iso === DEFAULT_COUNTRY_ISO)?.dial ?? "+1";

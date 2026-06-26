@@ -45,11 +45,6 @@ type SessionState = {
   business: { name?: string | null } | null;
 };
 
-/**
- * Returns the current session once known, or `undefined` while loading.
- * Customer and business sessions live in separate cookies and can both be
- * active at once, so they're reported independently by /auth/session.
- */
 function useSession() {
   const [session, setSession] = useState<SessionState | undefined>(undefined);
   useEffect(() => {
@@ -66,12 +61,6 @@ function useSession() {
   return session;
 }
 
-/**
- * Backward-compat redirect for the old `/restaurants/:businessUsername/:locationId`
- * URL to the new top-level `/:businessUsername/:locationId`. Preserves the query
- * string (search context: date/time/party/query, and `book=1`) so old links keep
- * prefilling the restaurant page.
- */
 function LegacyRestaurantRedirect() {
   const { businessUsername = "", locationId = "" } = useParams();
   const { search } = useLocation();
@@ -91,15 +80,14 @@ const App = () => (
       <BrowserRouter>
         <AnalyticsRouteTracker />
         <Routes>
-          {/* Customer-facing homepage — never redirects business sessions away. */}
+          {}
           <Route path="/" element={<Index />} />
 
-          {/* Customer auth */}
+          {}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
-          {/* Customer profile — customer accounts only. Anonymous visitors and
-              business sessions are redirected to the customer login. */}
+          {}
           <Route
             path="/profile"
             element={
@@ -109,9 +97,7 @@ const App = () => (
             }
           />
 
-          {/* Business marketing + auth. A logged-in business is bounced to the
-              dashboard so it never lands back on these guest-only pages.
-              Customer sessions and anonymous visitors see them normally. */}
+          {}
           <Route
             path="/business"
             element={
@@ -143,8 +129,7 @@ const App = () => (
             path="/queue/:businessUsername/:locationId"
             element={<QueueBusiness />}
           />
-          {/* Legacy restaurant URL — redirect to the new top-level path,
-              preserving any query string (date/time/party/book/etc.). */}
+          {}
           <Route
             path="/restaurants/:businessUsername/:locationId"
             element={<LegacyRestaurantRedirect />}
@@ -161,8 +146,7 @@ const App = () => (
           <Route path="/help" element={<Help />} />
           <Route path="/sales" element={<Sales />} />
 
-          {/* Business dashboard area — business accounts only. A customer token
-              is rejected here and sent to the business login. */}
+          {}
           <Route
             path="/business/dashboard"
             element={
@@ -173,7 +157,7 @@ const App = () => (
               </RequireBusiness>
             }
           />
-          {/* Guest CRM — business accounts only. */}
+          {}
           <Route
             path="/business/guests"
             element={
@@ -184,7 +168,7 @@ const App = () => (
               </RequireBusiness>
             }
           />
-          {/* Guest Campaigns — business accounts only. */}
+          {}
           <Route
             path="/business/campaigns"
             element={
@@ -195,7 +179,7 @@ const App = () => (
               </RequireBusiness>
             }
           />
-          {/* Profile + Settings were merged into a single Settings page. */}
+          {}
           <Route
             path="/business/settings"
             element={
@@ -208,11 +192,7 @@ const App = () => (
           />
           <Route path="/admin" element={<Admin />} />
 
-          {/* Public restaurant details page. This is a very broad two-segment
-              dynamic route, so it MUST stay last (before the catch-all). React
-              Router v6 ranks static segments above dynamic ones, so fixed routes
-              like /business/dashboard or /search/:query still win, but keeping
-              it last makes the precedence explicit and conflict-free. */}
+          {}
           <Route
             path="/:businessUsername/:locationId"
             element={<Restaurant />}
@@ -224,41 +204,23 @@ const App = () => (
   </QueryClientProvider>
 );
 
-/**
- * Gate for business-only routes. Only an authenticated business account may
- * pass; customer sessions and anonymous visitors are redirected to the business
- * login (customer JWTs are never accepted as business dashboard auth).
- */
 function RequireBusiness({ children }: { children: React.ReactNode }) {
   const session = useSession();
-  if (session === undefined) return null; // still loading
+  if (session === undefined) return null;
   if (!session.business) return <Navigate to="/business/login" replace />;
   return <>{children}</>;
 }
 
-/**
- * Inverse of RequireBusiness for the public business pages (/business,
- * /business/login, /business/signup). A logged-in BUSINESS account is redirected
- * to its dashboard so it can't sit on the marketing/auth pages. A customer
- * session does NOT count (business auth stays separate), and anonymous visitors
- * see the page as normal. Renders nothing while the session is still loading so
- * the guest page never flashes before a redirect.
- */
 function BusinessGuestRoute({ children }: { children: React.ReactNode }) {
   const session = useSession();
-  if (session === undefined) return null; // still loading
+  if (session === undefined) return null;
   if (session.business) return <Navigate to="/business/dashboard" replace />;
   return <>{children}</>;
 }
 
-/**
- * Gate for customer-only routes (e.g. /profile). Only an authenticated customer
- * account may pass; anonymous visitors and business sessions are redirected to
- * the customer login (business JWTs are never accepted as customer auth).
- */
 function RequireCustomer({ children }: { children: React.ReactNode }) {
   const session = useSession();
-  if (session === undefined) return null; // still loading
+  if (session === undefined) return null;
   if (!session.customer) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }

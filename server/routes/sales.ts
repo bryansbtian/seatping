@@ -16,9 +16,6 @@ router.post('/inquiry', express.json(), async (req, res) => {
       phoneNumber: String(body.phoneNumber || "").trim(),
     };
 
-    // Anti-abuse throttle (same shape as /api/feedback): this route sends two
-    // emails (team + confirmation to the supplied address) and creates a ticket
-    // row, so limit per IP and per sender email.
     if (
       await limitGuard(req, res, [
         { name: 'sales-ip', key: clientIp(req), windowMs: HOURS(1), max: 10 },
@@ -67,7 +64,6 @@ router.post('/inquiry', express.json(), async (req, res) => {
       },
     });
 
-    // Confirmation email failure is non-fatal: the inquiry is already recorded.
     const confirmationSent = await sendSalesInquiryConfirmationEmail(
       data.businessEmail,
       data.contactName,

@@ -1,12 +1,3 @@
-// server/routes/restaurants.ts
-//
-// Public restaurant details page feed.
-//   GET /api/restaurants/:businessUsername/:locationId
-//
-// Returns only public-safe data — no business credentials, billing, credits,
-// or other private/admin fields. The second param is the raw locationId; the
-// old custom slug feature was removed (multi-location businesses just use the
-// per-location id).
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { serializePhoto } from "../lib/business.js";
@@ -26,17 +17,12 @@ function serializeReview(r: any) {
     partySize: typeof r.partySize === "number" ? r.partySize : null,
     serviceType: r.serviceType ?? null,
     createdAt: r.createdAt,
-    // Optional business response. Public-page-safe; no owner controls implied.
     businessReply: r.businessReply ?? null,
     businessReplyCreatedAt: r.businessReplyCreatedAt ?? null,
     businessReplyUpdatedAt: r.businessReplyUpdatedAt ?? null,
   };
 }
 
-/**
- * Pull only the public-safe slice of restaurantProfile, dropping anything that
- * isn't meant for the customer page (no internal flags, owner notes, etc.).
- */
 function publicProfile(rp: any) {
   const safe = rp && typeof rp === "object" ? rp : {};
   const details = safe.details && typeof safe.details === "object" ? safe.details : {};
@@ -87,7 +73,6 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
     });
     if (!location) return res.status(404).json({ error: "Restaurant not found" });
 
-    // Reviews + summary.
     const reviews = await prisma.review.findMany({
       where: { locationId: location.id },
       orderBy: { createdAt: "desc" },
@@ -104,11 +89,9 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
 
     return res.json({
       restaurant: {
-        // Business
         businessUsername: business.username,
         businessName: business.name ?? null,
 
-        // Location
         locationId: location.id,
         name:
           profile.displayName ||
@@ -116,18 +99,15 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
           location.displayName ||
           location.name ||
           "Restaurant",
-        // Short address (line 2 on cards): mall/branch label.
         shortAddress:
           profile.shortAddress || location.displayName || location.area || location.city || null,
         tagline: profile.tagline,
         description: profile.description,
 
-        // Cuisine / price
         cuisineTypes: profile.cuisineTypes,
         priceRange: profile.priceRange,
         currency: profile.currency,
 
-        // Location details
         address: profile.details.address || location.address || "",
         area: profile.details.area || location.area || null,
         city: profile.details.city || location.city || null,
@@ -139,25 +119,20 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
         website: profile.details.website,
         instagram: profile.details.instagram,
 
-        // Hours
         openingHours: profile.openingHours,
 
-        // Media
         bannerImageUrl: location.bannerImageUrl ?? null,
         photos: Array.isArray(location.photos)
           ? location.photos.map(serializePhoto)
           : [],
 
-        // Menu
         menu: profile.menu,
         menuUrl: profile.menuUrl,
 
-        // Reviews
         rating,
         reviewCount,
         reviews: reviews.map(serializeReview),
 
-        // Toggles (so the page can hide Join Queue if the location disabled it)
         queueEnabled: location.queueEnabled ?? true,
         reservationsEnabled: location.reservationsEnabled ?? true,
       },
@@ -168,13 +143,6 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
   }
 });
 
-/**
- * POST /api/restaurants/:businessUsername/:locationId/reviews
- * Logged-in customers (only) can submit a review for a location. A customer
- * can have at most one review per location — repeat posts update the existing
- * row in place. Business owners cannot post reviews here (gated by
- * requireCustomer, which rejects business sessions).
- */
 router.post(
   "/:businessUsername/:locationId/reviews",
   requireCustomer,
@@ -215,15 +183,12 @@ router.post(
           ? description.trim()
           : null;
 
-      // Denormalize the customer's display fields so the review renders
-      // without a join (matches existing Review serialization).
       const user = await prisma.user.findUnique({
         where: { id: customerId },
         select: { id: true, name: true, username: true },
       });
       if (!user) return res.status(401).json({ error: "Unauthorized" });
 
-      // One review per (customer, location): update if it already exists.
       const existing = await prisma.review.findFirst({
         where: { customerId, locationId: location.id },
         select: { id: true },

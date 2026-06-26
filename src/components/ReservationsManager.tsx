@@ -1,10 +1,3 @@
-// src/components/ReservationsManager.tsx
-//
-// Business dashboard reservations panel for a single location. Reservations are
-// stored on the location (see server/lib/reservations.ts) and arrive via
-// /auth/business/me, so this component is presentational + action dispatch:
-// status changes call PATCH /auth/business/locations/:loc/reservations/:id and
-// hand the refreshed `user` back to the dashboard via onUpdated.
 import { useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -52,7 +45,6 @@ type Reservation = {
   status: string;
   source: string;
   createdAt: string;
-  // Guest CRM: stamped server-side from the guest profile (repeat detection).
   isReturning?: boolean;
   guestVisits?: number;
 };
@@ -100,7 +92,6 @@ export default function ReservationsManager({
   locationId: string;
   locationLabel: string;
   reservationsEnabled: boolean;
-  /** Restaurant's IANA timezone; "today" is computed in this zone. */
   timeZone?: string;
   onUpdated: (user: any) => void;
 }) {
@@ -108,17 +99,9 @@ export default function ReservationsManager({
   const { t, tStatus } = useLang();
   const [tab, setTab] = useState<TabKey>("today");
   const [busyId, setBusyId] = useState<string | null>(null);
-  // Collapsed by default so long lists don't clutter the card. The visible
-  // count is breakpoint-driven (2 on mobile, 4 on tablet/desktop) via CSS.
   const [expanded, setExpanded] = useState(false);
 
-  // "Today" is the restaurant's local calendar date (reservationDateTime is a
-  // naive wall-clock value in that same zone), so the tab is correct no matter
-  // where the owner views the dashboard from.
   const todayStr = getTodayKeyInTimezone(timeZone || DEFAULT_TIMEZONE);
-  // Current local wall-clock in the restaurant's timezone, used to decide
-  // whether a reservation time has already passed (and so can be marked
-  // arrived / no-show). Never the browser's timezone.
   const nowLocal = getNowWallClockInTimezone(timeZone || DEFAULT_TIMEZONE);
 
   const buckets = useMemo(() => {
@@ -225,8 +208,7 @@ export default function ReservationsManager({
           </div>
         </div>
 
-        {/* Tabs — `!mt-4` overrides the CardHeader's `space-y-1.5`, whose
-            `> * + *` selector otherwise wins on specificity and pins the gap. */}
+        {}
         <div className="!mt-4 flex flex-wrap gap-2">
           {tabs.map((t) => (
             <button
@@ -276,7 +258,6 @@ export default function ReservationsManager({
 
         <div className="space-y-3">
           {visible.map((r, i) => {
-            // Hide overflow rows until expanded: keep 2 on mobile, 4 on md+.
             const hideCls = expanded
               ? ""
               : i < 2
@@ -303,9 +284,6 @@ export default function ReservationsManager({
           <div
             className={cn(
               "mt-3 flex justify-center",
-              // When collapsed: mobile needs the toggle once >2, but tablet/
-              // desktop only once >4. When expanded, mirror that visibility so
-              // "View less" appears wherever rows were actually hidden.
               visible.length > 4 ? "" : "md:hidden",
             )}
           >
@@ -365,21 +343,15 @@ function ReservationCard({
   r: Reservation;
   busy: boolean;
   onChange: (r: Reservation, status: string) => void;
-  /** Restaurant-local "YYYY-MM-DDTHH:MM" now, for arrived/no-show eligibility. */
   nowLocal: string;
   t: (key: TKey, params?: Record<string, string | number>) => string;
   tStatus: (status: string) => string;
 }) {
   const { date, time } = splitDateTime(r.reservationDateTime);
 
-  // Arrived / No-Show are valid from the booked DATE onward in the restaurant's
-  // timezone (same-day included, so staff can record an early arrival). Before
-  // that day, a future reservation can only be cancelled. Mirrors the server
-  // gate on the status PATCH.
   const canMarkOutcome =
     r.reservationDateTime.slice(0, 10) <= nowLocal.slice(0, 10);
 
-  // Action sets vary by current status (no actions for terminal states).
   const actions: { labelKey: TKey; status: string; variant?: "destructive" }[] =
     [];
   if (r.status === "confirmed") {

@@ -20,14 +20,6 @@ import {
   type CountryCode,
 } from "@/lib/countryCodes";
 
-/**
- * Searchable country dialing-code selector — same Popover + Command combobox the
- * queue "Wait Anywhere" flow uses, but backed by the full country list.
- *
- * Stores/returns only the dial code (e.g. "+1") via `onChange`. Because multiple
- * countries share a dial code, the chosen country is tracked internally by ISO
- * so the checkmark lands on exactly one row.
- */
 export function CountryCodeSelect({
   value,
   onChange,
@@ -41,9 +33,6 @@ export function CountryCodeSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [selectedIso, setSelectedIso] = useState<string>(() => {
-    // Several countries share a dial code (e.g. +1). Prefer the default country
-    // (US) when its code matches, so "+1" shows 🇺🇸 rather than the first
-    // alphabetical match.
     const def = COUNTRY_CODES.find((c) => c.iso === DEFAULT_COUNTRY_ISO);
     if (def && def.dial === value) return def.iso;
     const match = COUNTRY_CODES.find((c) => c.dial === value);

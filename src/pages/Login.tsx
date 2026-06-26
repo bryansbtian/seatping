@@ -25,8 +25,6 @@ const Login = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
 
-  // Optional post-login redirect (e.g. back to a restaurant page to auto-save).
-  // Only honor relative in-app paths.
   const nextParam = searchParams.get("next");
   const redirectTo = nextParam && nextParam.startsWith("/") ? nextParam : "/";
 
@@ -49,8 +47,6 @@ const Login = () => {
         title: "Log In successful!",
         description: `Welcome back, ${res.user.name}`,
       });
-      // Return to the page that sent us here (e.g. a restaurant page that
-      // wants to auto-save), or the homepage by default.
       navigate(redirectTo);
     } catch (err: any) {
       toast({
@@ -71,11 +67,7 @@ const Login = () => {
         canonical="/login"
       />
       <Header />
-      {/* Full-height flex column: the fixed header is overlaid on top (hence the
-          pt-* on <main> so the card clears it), the form is vertically centered
-          in the remaining space, and the footer sits at the bottom. Because the
-          whole column is exactly min-h-screen, short content never creates a
-          giant empty area below the card. */}
+      {}
       <div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/5 via-background to-success/5">
         <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10 sm:pt-28 sm:pb-14">
           <Card className="w-full max-w-[540px] shadow-2xl border-0 bg-card/80 backdrop-blur-sm">

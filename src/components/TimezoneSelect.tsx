@@ -16,11 +16,6 @@ import {
 import { cn } from "@/lib/utils";
 import { TIMEZONE_OPTIONS } from "@/lib/timezones";
 
-/**
- * Searchable timezone selector — same Popover + Command combobox as
- * CountryCodeSelect, backed by the full IANA timezone list. Stores/returns the
- * IANA value (e.g. "Asia/Jakarta") via `onChange`.
- */
 export function TimezoneSelect({
   value,
   onChange,
@@ -36,15 +31,6 @@ export function TimezoneSelect({
   const selected = TIMEZONE_OPTIONS.find((t) => t.value === value);
   const cleanupRef = useRef<(() => void) | null>(null);
 
-  // The modal is a Radix Dialog, whose scroll-lock (react-remove-scroll) adds a
-  // non-passive `wheel`/`touchmove` listener on `document` that calls
-  // preventDefault() for any element outside the dialog — and this popover is
-  // portaled to <body>, so its native wheel/trackpad scroll gets cancelled
-  // (arrow-key scrolling still works, which is the tell-tale symptom). Rather
-  // than fight the lock, we drive the scroll ourselves: a callback ref attaches
-  // non-passive wheel/touch handlers the moment the list mounts and translates
-  // the deltas into scrollTop directly. preventDefault avoids any double-scroll
-  // and stopPropagation keeps the modal behind from scrolling.
   const attachScrollHandlers = useCallback((el: HTMLDivElement | null) => {
     cleanupRef.current?.();
     cleanupRef.current = null;
@@ -99,27 +85,20 @@ export function TimezoneSelect({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        // Portaled to <body> (see ui/popover.tsx) so it is never clipped by the
-        // modal/card. z-[60] keeps it above the dialog overlay.
         className="z-[60] w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] overflow-hidden p-0"
         align="start"
         sideOffset={4}
         collisionPadding={16}
       >
         <Command
-          // No height cap / scroll here — the search input must stay fixed while
-          // ONLY the list scrolls, so the scroll container is CommandList below.
           className="overflow-hidden"
           filter={(value, search) =>
             value.toLowerCase().includes(search.toLowerCase().trim()) ? 1 : 0
           }
         >
-          {/* Search stays pinned at the top; only the list below scrolls. */}
+          {}
           <CommandInput placeholder="Search timezone or city..." />
-          {/* The actual scroll container: a hard max-height + overflow-y-auto so
-              the options scroll internally instead of running off-screen. The
-              callback ref attaches the wheel/touch handlers that drive the
-              scroll manually (see attachScrollHandlers above). */}
+          {}
           <CommandList
             ref={attachScrollHandlers}
             className="pointer-events-auto max-h-[300px] overflow-y-auto overscroll-contain [touch-action:pan-y]"
@@ -130,8 +109,6 @@ export function TimezoneSelect({
               {TIMEZONE_OPTIONS.map((t) => (
                 <CommandItem
                   key={t.value}
-                  // Searchable by offset, region, and city (e.g. "jakarta",
-                  // "asia", "+07", "07:00").
                   value={`${t.label} ${t.value}`}
                   onSelect={() => {
                     onChange(t.value);

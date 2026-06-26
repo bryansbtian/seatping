@@ -16,11 +16,6 @@ function getClient(): WhatsAppClient | null {
   return cachedClient;
 }
 
-/**
- * Normalizes a country code + phone number into the WhatsApp API format
- * (international digits only, no '+' or formatting).
- * Example: "+62" + "8111998669" -> "628111998669"
- */
 export function formatWhatsAppNumber(countryCode: string, phoneNumber: string): string {
   const cc = (countryCode || "").replace(/\D/g, "");
   const digits = (phoneNumber || "").replace(/\D/g, "");
@@ -83,49 +78,24 @@ export async function sendQueueJoinedWhatsApp(params: SendQueueJoinedParams): Pr
   }
 }
 
-/**
- * A single body parameter for an approved Meta campaign template.
- * - `name` present  => Meta NAMED-parameter mode (template uses {{first_name}}).
- * - `name` absent   => positional mode (template uses {{1}}, {{2}}, ...).
- * A campaign template is all-named or all-positional, never mixed.
- */
 export interface WhatsAppBodyParam {
   name?: string;
   text: string;
 }
 
 export interface SendCampaignWhatsAppParams {
-  // Digits-only international number (E.164 without '+'), e.g. "628111998669".
   toDigits: string;
   templateName: string;
   language?: string;
-  // Body parameters derived from SeatPing's stored template body. Used as the
-  // fallback when the live Meta contract cannot be fetched (e.g. no WABA id).
   bodyParams: WhatsAppBodyParam[];
-  // Resolved variable map (name -> rendered value) for this recipient. When the
-  // live Meta template contract is available, params are rebuilt FROM the
-  // contract using this map, so SeatPing always matches the approved template's
-  // exact parameter set even if its stored body has drifted.
   bodyValues?: Record<string, string>;
 }
 
-/**
- * The authoritative parameter contract of an APPROVED Meta template, read from
- * the live template definition (its BODY component text), not SeatPing's stored
- * body. `names` is the ordered list of {{placeholders}}; `mode` is "positional"
- * when every placeholder is numeric ({{1}}, {{2}}), "named" otherwise.
- */
 export interface TemplateContract {
   mode: "named" | "positional";
   names: string[];
 }
 
-/**
- * Build the ordered Meta body parameters for a template contract by resolving
- * each expected placeholder against a recipient's value map. Named contracts
- * emit `{ name, text }` (sent with parameter_name); positional emit `{ text }`.
- * Missing values become empty strings. Pure + exported for testing.
- */
 export function resolveContractParams(
   contract: TemplateContract,
   values: Record<string, string>,
@@ -136,12 +106,8 @@ export function resolveContractParams(
   });
 }
 
-// In-process cache of template contracts, keyed by `${name}::${language}`. The
-// approved definition rarely changes, so caching avoids a Meta lookup on every
-// send within a warm function instance.
 const templateContractCache = new Map<string, TemplateContract | null>();
 
-/** Ordered, de-duplicated {{placeholder}} names in a template body string. */
 function placeholdersOf(text: string): string[] {
   if (!text) return [];
   const out: string[] = [];
@@ -153,12 +119,6 @@ function placeholdersOf(text: string): string[] {
   return out;
 }
 
-/**
- * Fetch the live parameter contract for an approved campaign template from Meta
- * (via the Kapso templates API). Returns null when the WABA id is not configured
- * or the template/body cannot be found, so callers fall back to body-derived
- * params. Result (including null) is cached per name+language.
- */
 async function getTemplateContract(
   templateName: string,
   language: string,
@@ -177,7 +137,6 @@ async function getTemplateContract(
       limit: 200,
     } as any);
     const templates: any[] = resp?.data || [];
-    // Prefer an exact name + language match; fall back to name-only.
     const match =
       templates.find(
         (t) => t?.name === templateName && (t?.language === language || !t?.language),
@@ -203,25 +162,10 @@ async function getTemplateContract(
       "[WHATSAPP] template contract lookup failed:",
       error?.message || error,
     );
-    // Cache the miss briefly is risky (transient errors); do NOT cache failures
-    // so a later send can retry. Fall back to body-derived params for now.
     return null;
   }
 }
 
-/**
- * Send a campaign WhatsApp message through an APPROVED Meta template. Campaign
- * custom templates carry their provider template name (set by admin once Meta
- * approves it); SeatPing templates may map to a curated marketing template. The
- * template MUST already exist + be approved in Meta — we never free-form send.
- *
- * Supports both Meta parameter formats. Approved marketing templates that use
- * named placeholders ({{first_name}}, {{offer}}, ...) require named parameters
- * (each component carries `parameter_name`); legacy positional templates ({{1}})
- * use bare text components. Sending the wrong format yields Meta error #132018.
- *
- * Returns the provider message id on success, or null on failure/misconfig.
- */
 export async function sendCampaignWhatsApp(
   params: SendCampaignWhatsAppParams,
 ): Promise<string | null> {
@@ -240,9 +184,6 @@ export async function sendCampaignWhatsApp(
   const language = params.language || "en";
   const values = params.bodyValues || {};
 
-  // Prefer the LIVE Meta contract (authoritative param set) over SeatPing's
-  // stored body, which can drift from the approved template. Resolve each
-  // expected placeholder against this recipient's value map.
   const contract = await getTemplateContract(params.templateName, language);
   let bodyParams: WhatsAppBodyParam[];
   let source: "meta-contract" | "stored-body";
@@ -250,17 +191,12 @@ export async function sendCampaignWhatsApp(
     source = "meta-contract";
     bodyParams = resolveContractParams(contract, values);
   } else {
-    // Fallback: params derived from SeatPing's stored body (no WABA id / lookup
-    // failed). Backward compatible with the pre-contract behavior.
     source = "stored-body";
     bodyParams = params.bodyParams || [];
   }
 
-  // Named mode if ANY param declares a name. Meta forbids mixing, so a single
-  // named param means the whole template is named.
   const isNamed = bodyParams.some((p) => p && p.name);
 
-  // Diagnostic log: never includes the phone number or recipient PII.
   console.log(
     `[WHATSAPP] campaign send template=${params.templateName} source=${source} mode=${
       isNamed ? "named" : "positional"

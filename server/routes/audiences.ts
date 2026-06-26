@@ -4,10 +4,6 @@ import { requireBusiness } from "../lib/auth.js";
 import { resolveAudienceGuests } from "../lib/campaigns.js";
 import { isReturning } from "../lib/guests.js";
 
-// How many matched guests the preview ships to the client. The total count is
-// always exact; the list is for visibility only (the real recipient set is
-// recomputed at send-time after opt-out + channel checks), so a generous cap
-// keeps the payload small without limiting what "View More" can reveal.
 const PREVIEW_GUEST_LIMIT = 100;
 
 function bizId(req: any): string {
@@ -19,7 +15,6 @@ function bizId(req: any): string {
 const router = Router();
 router.use(requireBusiness);
 
-// GET /api/audiences - list all saved audiences for a business+location
 router.get("/", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -40,7 +35,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST /api/audiences - create a new saved audience
 router.post("/", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -71,7 +65,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// POST /api/audiences/preview - preview matching guests
 router.post("/preview", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -89,9 +82,6 @@ router.post("/preview", async (req, res) => {
       timezone: timezone || "UTC",
     });
 
-    // resolveAudienceGuests already scopes by business + location and dedupes
-    // filter-matched against manually-selected guests, so the list is safe to
-    // surface directly. Ship a trimmed row shape for the preview list.
     const preview = guests.slice(0, PREVIEW_GUEST_LIMIT).map((g) => ({
       id: g.id,
       fullName:
@@ -114,7 +104,6 @@ router.post("/preview", async (req, res) => {
   }
 });
 
-// PATCH /api/audiences/:id - update a saved audience
 router.patch("/:id", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -140,7 +129,6 @@ router.patch("/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/audiences/:id - delete a saved audience
 router.delete("/:id", async (req, res) => {
   try {
     const businessId = bizId(req);

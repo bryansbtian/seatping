@@ -9,7 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { Users, CalendarDays, Bell } from "lucide-react";
 
-/** Small frosted "dashboard" card floated over the hospitality visual. */
 const FloatingStat = ({
   icon,
   title,
@@ -121,10 +120,9 @@ const Sales = () => {
 
       <main className="bg-gradient-to-br from-slate-50 via-white to-indigo-50/70 px-4 pb-12 pt-24 sm:pb-16 sm:pt-28">
         <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-2 lg:items-stretch lg:gap-14">
-          {/* Left — headline + form */}
+          {}
           <div className="mx-auto w-full max-w-xl lg:mx-0">
-            {/* aria-label gives the intended reading ("...In Seconds"); the
-                crossed-out word stays in the DOM and the scribble is decorative. */}
+            {}
             <h1
               className="text-4xl sm:text-5xl font-semibold leading-tight text-slate-900"
               aria-label="Manage Guest Flow In Seconds"
@@ -254,14 +252,10 @@ const Sales = () => {
             </form>
           </div>
 
-          {/* Right — hospitality visual with floating dashboard cards
-              (desktop only). Communicates that SeatPing handles both waitlists
-              AND reservations, not just queues. */}
+          {}
           <div className="hidden lg:block">
             <div className="relative flex h-full min-h-[480px] flex-col justify-between overflow-hidden rounded-3xl bg-slate-900 p-8 text-white shadow-2xl">
-              {/* Dining-room / host-stand backdrop. The slate-900 base shows
-                  through if the photo can't load, so the panel still looks
-                  polished. */}
+              {}
               <img
                 src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1100&q=80"
                 alt=""
@@ -269,11 +263,10 @@ const Sales = () => {
                 loading="lazy"
                 className="pointer-events-none absolute inset-0 h-full w-full object-cover"
               />
-              {/* Dark navy overlay for contrast + brand tint. */}
+              {}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-950/90 via-slate-900/80 to-primary/60" />
 
-              {/* Floating dashboard-style cards — staggered for a layered,
-                  "live product" feel without clutter. */}
+              {}
               <div className="relative z-10 mb-8 space-y-3">
                 <FloatingStat
                   icon={<Users className="h-5 w-5" />}
@@ -295,7 +288,7 @@ const Sales = () => {
                 />
               </div>
 
-              {/* Value statement */}
+              {}
               <div className="relative z-10">
                 <p className="text-xl font-medium leading-snug sm:text-2xl">
                   SeatPing helps restaurants manage queues, reservations, and

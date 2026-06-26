@@ -22,8 +22,6 @@ const ForgotPassword = () => {
   const [emailSent, setEmailSent] = useState(false);
   const { toast } = useToast();
 
-  // Context-aware: a business arriving from /business/login (?type=business)
-  // gets the business header and is sent back to the business login.
   const [searchParams] = useSearchParams();
   const isBusiness = searchParams.get("type") === "business";
   const headerVariant = isBusiness ? "business" : "customer";
@@ -45,8 +43,6 @@ const ForgotPassword = () => {
       setLoading(true);
       await api("/auth/forgot-password", {
         method: "POST",
-        // Send the account type so the reset targets the right collection
-        // (customer vs business) when the same email exists in both.
         body: JSON.stringify({
           email: email.trim(),
           type: isBusiness ? "business" : "customer",
@@ -129,10 +125,7 @@ const ForgotPassword = () => {
   return (
     <>
       <Header variant={headerVariant} />
-      {/* Full-height flex column: fixed header overlaid on top (pt-* on <main>
-          clears it), card centered in the remaining space, footer at the bottom.
-          The whole column is exactly min-h-screen so short content never leaves a
-          giant empty area below the card. Matches the login/signup layout. */}
+      {}
       <div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/5 via-background to-success/5">
         <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10 sm:pt-28 sm:pb-14">
           <Card className="w-full max-w-[540px] shadow-2xl border-0 bg-card/80 backdrop-blur-sm">

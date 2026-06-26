@@ -1,25 +1,3 @@
-// server/lib/rateLimit.ts
-//
-// Production-grade rate limiting for sensitive endpoints.
-//
-// Backing store:
-//   - When UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN are set (Vercel /
-//     prod), limits are enforced in Upstash Redis with a sliding window. This is
-//     globally consistent across all serverless instances and survives cold
-//     starts — the only reliable option on Vercel, where each function instance
-//     has its own memory.
-//   - When those env vars are missing (local dev), we fall back to a per-process
-//     in-memory fixed-window limiter. Good enough for development; NOT reliable
-//     in a multi-instance production deployment (hence the Redis path above).
-//
-// Two entry points:
-//   - rateLimit({ windowMs, max, message? })  -> Express middleware, IP-keyed.
-//       Backwards-compatible with the original admin-login limiter.
-//   - limitGuard(req, res, rules, message?)    -> programmatic multi-key guard
-//       for routes that need to limit on more than IP (e.g. IP + locationId +
-//       phone). Call it inside the handler after the relevant body fields are
-//       known; returns true when the request was blocked (and a 429 already
-//       sent), so the caller can `if (await limitGuard(...)) return;`.
 
 import type { Request, Response, NextFunction } from "express";
 import { Ratelimit } from "@upstash/ratelimit";
@@ -27,9 +5,6 @@ import { Redis } from "@upstash/redis";
 
 const GENERIC_MESSAGE = "Too many requests. Please try again later.";
 
-// ---------------------------------------------------------------------------
-// Redis client (lazy, optional). Absent in local dev -> in-memory fallback.
-// ---------------------------------------------------------------------------
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 const redis =
@@ -41,13 +16,6 @@ export const rateLimitBackend: "redis" | "memory" = redis ? "redis" : "memory";
 
 const isProd = process.env.NODE_ENV === "production";
 
-/**
- * Print, once, which rate-limit backend is active. Safe to call from server
- * startup and from the serverless entrypoint. In production without Redis it
- * prints a very obvious multi-line warning banner — the limiter still runs
- * (in-memory) rather than crashing, but the banner makes the misconfiguration
- * impossible to miss in the Vercel logs.
- */
 let statusLogged = false;
 export function logRateLimitStatus(): void {
   if (statusLogged) return;
@@ -77,14 +45,8 @@ export function logRateLimitStatus(): void {
   }
 }
 
-// Log immediately on module load too, so even the serverless cold-start path
-// (which doesn't run the app.listen callback) surfaces the backend in logs.
 logRateLimitStatus();
 
-// ---------------------------------------------------------------------------
-// Client IP extraction (behind Vercel's proxy).
-// ---------------------------------------------------------------------------
-/** Best-effort client IP behind Vercel's proxy (first x-forwarded-for hop). */
 export function clientIp(req: Request): string {
   const fwd = req.headers["x-forwarded-for"];
   if (typeof fwd === "string" && fwd) return fwd.split(",")[0].trim();
@@ -92,9 +54,6 @@ export function clientIp(req: Request): string {
   return req.ip || req.socket?.remoteAddress || "unknown";
 }
 
-// ---------------------------------------------------------------------------
-// In-memory fallback (fixed window) — dev only.
-// ---------------------------------------------------------------------------
 type Bucket = { count: number; resetAt: number };
 const memoryBuckets = new Map<string, Bucket>();
 
@@ -119,17 +78,13 @@ function memoryLimit(
   return { success: true, retryAfterSec: 0 };
 }
 
-/** Non-consuming read: would the NEXT memoryLimit() call succeed? */
 function memoryPeek(fullKey: string, windowMs: number, max: number): boolean {
   const now = Date.now();
   const existing = memoryBuckets.get(fullKey);
-  if (!existing || now >= existing.resetAt) return true; // fresh window
-  return existing.count < max; // a +1 consume would still be <= max
+  if (!existing || now >= existing.resetAt) return true;
+  return existing.count < max;
 }
 
-// ---------------------------------------------------------------------------
-// Redis limiter cache — one Ratelimit instance per (window, max) config.
-// ---------------------------------------------------------------------------
 const redisLimiters = new Map<string, Ratelimit>();
 
 function getRedisLimiter(windowMs: number, max: number): Ratelimit {
@@ -138,8 +93,6 @@ function getRedisLimiter(windowMs: number, max: number): Ratelimit {
   if (!limiter) {
     limiter = new Ratelimit({
       redis: redis!,
-      // Sliding window keeps limits smooth across window boundaries. Upstash
-      // accepts a millisecond Duration string ("600000 ms").
       limiter: Ratelimit.slidingWindow(max, `${windowMs} ms`),
       prefix: "seatping:rl",
       analytics: false,
@@ -149,11 +102,6 @@ function getRedisLimiter(windowMs: number, max: number): Ratelimit {
   return limiter;
 }
 
-/**
- * Core check for a single namespaced key. Returns whether the request is
- * allowed and, when blocked, how many seconds until the window resets.
- * Fails open on Redis errors so a store outage never takes down the app.
- */
 async function checkOne(
   fullKey: string,
   windowMs: number,
@@ -180,19 +128,11 @@ function send429(res: Response, retryAfterSec: number, message?: string): false 
   return false;
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
 
-/**
- * Build a fixed/sliding-window limiter middleware keyed by client IP.
- * Backwards-compatible with the original signature.
- */
 export function rateLimit(opts: {
   windowMs: number;
   max: number;
   message?: string;
-  /** Namespace so different IP-keyed limiters don't share a counter. */
   name?: string;
 }) {
   const { windowMs, max } = opts;
@@ -209,31 +149,17 @@ export function rateLimit(opts: {
         if (success) return next();
         send429(res, retryAfterSec, message);
       })
-      .catch(() => next()); // fail open
+      .catch(() => next());
   };
 }
 
-/** A single rule in a multi-key guard. Rules with an empty key are skipped. */
 export type RateLimitRule = {
-  /** Namespace, e.g. "queue-join-ip" or "queue-join-target". */
   name: string;
-  /** Identifying value (IP, locationId, normalized phone/email, ...). */
   key: string | null | undefined;
   windowMs: number;
   max: number;
 };
 
-/**
- * Enforce several rate-limit rules at once (e.g. a per-IP rule AND a
- * per-target rule). If ANY rule is exceeded, sends a single generic 429 and
- * returns true. Returns false when the request may proceed.
- *
- * Usage:
- *   if (await limitGuard(req, res, [
- *     { name: "queue-join-ip", key: clientIp(req), windowMs: 3_600_000, max: 10 },
- *     { name: "queue-join-target", key: `${locationId}:${phone}`, windowMs: 600_000, max: 3 },
- *   ])) return;
- */
 export async function limitGuard(
   req: Request,
   res: Response,
@@ -261,13 +187,6 @@ export async function limitGuard(
   return true;
 }
 
-/**
- * Consume one unit from a named quota and report whether it was within the cap.
- * Non-HTTP counterpart to limitGuard — for background policy like per-recipient
- * daily notification caps. Returns true when the action is allowed (and counts
- * it), false when the cap is already reached. Empty keys are always allowed.
- * Fails open (allows) on a store error, same as the HTTP guard.
- */
 export async function consumeQuota(
   name: string,
   key: string | null | undefined,
@@ -283,13 +202,6 @@ export async function consumeQuota(
   return success;
 }
 
-/**
- * Non-consuming check: would a subsequent consumeQuota() for this key currently
- * succeed (i.e. is there at least one unit left in the window)? Does NOT count
- * against the quota — use it for a pre-flight gate before committing side
- * effects, then call consumeQuota() at the real action point. Empty keys and
- * store errors return true (fail open), matching consumeQuota.
- */
 export async function peekQuota(
   name: string,
   key: string | null | undefined,
@@ -306,13 +218,12 @@ export async function peekQuota(
       return remaining > 0;
     } catch (err) {
       console.error("[rate-limit] redis peek error, allowing:", err);
-      return true; // fail open
+      return true;
     }
   }
   return memoryPeek(fullKey, windowMs, max);
 }
 
-// Common window constants for callers.
 export const MINUTES = (n: number) => n * 60 * 1000;
 export const HOURS = (n: number) => n * 60 * 60 * 1000;
 export const DAYS = (n: number) => n * 24 * 60 * 60 * 1000;

@@ -1,21 +1,6 @@
-// server/lib/liveData.ts
-//
-// The compatibility layer between the new QueueEntry / Reservation models and
-// the legacy embedded-array shapes the frontend still consumes. The dashboard
-// reads `location.queue`, `.admittedCustomers`, `.removedCustomers`, and
-// `.reservations` from the /auth/business/me payload (see serializeLocation in
-// business.ts) and the customer-facing pages read the same shapes from the
-// status endpoints. To migrate the storage without touching the UI, every read
-// path reconstructs those exact arrays from the new rows using the helpers here.
-//
-// Keep these serializers byte-compatible with the objects the old write paths
-// produced (server/routes/auth.ts queue handlers, server/routes/reservations.ts).
 
 import type { QueueEntry, Reservation } from "@prisma/client";
 
-// ---------------------------------------------------------------------------
-// Status mapping (legacy lowercase strings <-> Prisma enums)
-// ---------------------------------------------------------------------------
 
 export type LegacyQueueStatus =
   | "waiting"
@@ -25,7 +10,6 @@ export type LegacyQueueStatus =
   | "removed"
   | "left";
 
-/** Stable composite id the (unchanged) frontend sends for admit/remove/etc. */
 export function legacyKeyOf(
   firstName: any,
   lastName: any,
@@ -34,7 +18,6 @@ export function legacyKeyOf(
   return `${firstName ?? ""}${lastName ?? ""}${joinedAt ?? ""}`;
 }
 
-/** ISO string (or null) from a Date|string|null without throwing. */
 function iso(v: any): string | null {
   if (!v) return null;
   if (v instanceof Date) return v.toISOString();
@@ -42,11 +25,7 @@ function iso(v: any): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-// ---------------------------------------------------------------------------
-// QueueEntry -> legacy customer object
-// ---------------------------------------------------------------------------
 
-/** Fields common to every reconstructed queue/admitted/removed customer object. */
 function queueBase(e: QueueEntry) {
   const joinedAt = iso(e.joinedAt);
   return {
@@ -60,7 +39,7 @@ function queueBase(e: QueueEntry) {
     email: e.email ?? "",
     notificationMethod: e.notificationMethod ?? "",
     locationId: e.locationId,
-    businessUsername: undefined as string | undefined, // filled by caller if needed
+    businessUsername: undefined as string | undefined,
     customerId: e.customerId ?? null,
     smsConsent: e.smsConsent ?? false,
     smsMarketingConsent: e.smsMarketingConsent ?? false,
@@ -69,11 +48,6 @@ function queueBase(e: QueueEntry) {
   };
 }
 
-/**
- * Serialize ONE QueueEntry into the legacy customer object appropriate to its
- * status (waiting / admitted / removed shapes). Used by the single-ticket status
- * endpoints; reconstructQueueArrays builds the bulk arrays from the same base.
- */
 export function queueEntryToLegacy(
   e: QueueEntry,
   opts: { position?: number; businessUsername?: string | null } = {},
@@ -99,11 +73,6 @@ export function queueEntryToLegacy(
   return o;
 }
 
-/**
- * Rebuild the three legacy arrays (queue / admittedCustomers / removedCustomers)
- * for one location from its QueueEntry rows. `businessUsername` is stamped onto
- * each object to match the legacy join payload.
- */
 export function reconstructQueueArrays(
   rows: QueueEntry[],
   businessUsername?: string | null,
@@ -174,12 +143,7 @@ export function reconstructQueueArrays(
   return { queue, admittedCustomers, removedCustomers };
 }
 
-// ---------------------------------------------------------------------------
-// Reservation row <-> legacy reservation object
-// ---------------------------------------------------------------------------
 
-// Any legacy "pending" / enum "PENDING" (from pre-removal data) falls through to
-// CONFIRMED via the `??` fallbacks below — the deprecated pending flow is gone.
 const RES_ENUM_TO_LEGACY: Record<string, string> = {
   CONFIRMED: "confirmed",
   ARRIVED: "arrived",
@@ -204,12 +168,6 @@ export function reservationStatusToEnum(status: string): any {
   return RES_LEGACY_TO_ENUM[String(status || "").toLowerCase()] ?? "CONFIRMED";
 }
 
-/**
- * Rebuild the legacy reservation object (the shape the dashboard + customer
- * profile expect): lowercase `status`, `partySize`, and all timestamp fields.
- * `includeToken` controls whether `manageToken` is exposed (owner lists yes,
- * public lists no).
- */
 export function reservationRowToLegacy(
   r: Reservation,
   opts: { includeToken?: boolean } = {},

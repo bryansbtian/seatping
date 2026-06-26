@@ -1,10 +1,3 @@
-// src/pages/ManageReservation.tsx
-//
-// Account-free reservation management via a secure token in the URL:
-//   /reservations/manage/:token
-//
-// The customer can view their booking, change date/time/number of guests (re-running
-// server-side availability), or cancel — no login required.
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -89,9 +82,6 @@ export default function ManageReservation() {
   const [editing, setEditing] = useState(false);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
-  // Mirrors ReservationBooking: PartyField can emit "larger" for big parties,
-  // which is not a bookable size (the customer must contact the restaurant), so
-  // it never gets sent to the availability or update APIs.
   const [partySize, setPartySize] = useState<number | "larger">(2);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -122,10 +112,7 @@ export default function ManageReservation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // Fetch availability while editing.
   useEffect(() => {
-    // "larger" is not a bookable size, so skip the availability lookup entirely
-    // (never put "larger" in the query string) and clear any stale slots.
     if (!editing || !restaurant || !date || partySize === "larger") {
       setSlots([]);
       return;
@@ -163,8 +150,6 @@ export default function ManageReservation() {
     ["cancelled", "completed", "no_show"].includes(reservation.status);
 
   const saveChanges = async () => {
-    // Never submit a "larger" party: the backend doesn't accept it, so the UI
-    // routes those customers to contact the restaurant instead.
     if (!date || !time || partySize === "larger") return;
     setSaving(true);
     try {
@@ -210,8 +195,6 @@ export default function ManageReservation() {
     ? splitDateTime(reservation.reservationDateTime)
     : null;
 
-  // An invalid/expired reservation link should land on the standard 404 page
-  // rather than a bespoke "Reservation Not Found" card.
   if (!loading && error) {
     return <NotFound />;
   }
@@ -219,10 +202,7 @@ export default function ManageReservation() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <Header />
-      {/* Top padding clears the fixed header (~4rem) so the title is never tucked
-          under it; `m-auto` on the inner block centers vertically when there's
-          spare height and falls back to natural top-aligned scrolling when the
-          content is taller than the viewport. */}
+      {}
       <main className="flex flex-1 flex-col px-4 pb-10 pt-24 sm:pb-14 sm:pt-28">
         <div className="m-auto w-full max-w-lg lg:max-w-2xl">
           {loading ? (
@@ -442,8 +422,6 @@ function DetailRow({
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
-  // Stacked layout (label above a left-aligned value) — used for long values
-  // like the address that read poorly cramped into a right-aligned column.
   stacked?: boolean;
 }) {
   if (stacked) {

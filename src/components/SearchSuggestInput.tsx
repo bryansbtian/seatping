@@ -9,7 +9,6 @@ import {
   type Suggestion,
 } from "@/hooks/useSearchSuggestions";
 
-/** Local YYYY-MM-DD (avoids UTC off-by-one from toISOString). */
 function localDateStr(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -24,36 +23,16 @@ function suggestionSubtitle(s: Suggestion): string {
 }
 
 export interface SearchSuggestInputProps {
-  /** Controlled search text. */
   value: string;
   onChange: (value: string) => void;
-  /** Carried as query params onto the restaurant page when a suggestion is
-   *  picked, so its "Plan your visit" card prefills. */
   date: Date;
   time: string;
   people: string;
   placeholder?: string;
-  /** Classes for the positioned wrapper (e.g. row dividers / grid sizing). */
   className?: string;
-  /** Classes for the <input> itself (flat-on-mobile styling, bg, etc.). */
   inputClassName?: string;
 }
 
-/**
- * Shared restaurant-suggestion search input used by both the homepage hero
- * search (ReservationSearchBar) and the /search results bar (SearchResults) so
- * the two behave identically:
- *  - debounced live suggestions (image · name · cuisine · area) via
- *    {@link useSearchSuggestions};
- *  - ↑/↓ to move, Enter to pick the highlighted one, Esc to close;
- *  - clicking / Enter-picking a suggestion navigates straight to that
- *    restaurant's public page (`/:businessUsername/:locationId`, carrying the
- *    chosen date/time/party) — it does not merely fill the input.
- *
- * The Search button and a plain Enter (no suggestion highlighted) fall through
- * to the surrounding <form onSubmit>, which each page owns as its general
- * "/search" action.
- */
 export function SearchSuggestInput({
   value,
   onChange,
@@ -66,8 +45,6 @@ export function SearchSuggestInput({
 }: SearchSuggestInputProps) {
   const navigate = useNavigate();
 
-  // `justSelected` keeps the dropdown closed after a pick until the user types
-  // again; it also disables the fetch hook.
   const [open, setOpen] = React.useState(false);
   const [justSelected, setJustSelected] = React.useState(false);
   const [highlighted, setHighlighted] = React.useState(-1);
@@ -79,12 +56,10 @@ export function SearchSuggestInput({
   );
   const showDropdown = open && !justSelected && value.trim().length > 0;
 
-  // Reset the highlight whenever the result set changes.
   React.useEffect(() => {
     setHighlighted(-1);
   }, [suggestions]);
 
-  // Close on outside click.
   React.useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -123,7 +98,6 @@ export function SearchSuggestInput({
       e.preventDefault();
       setHighlighted((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
-      // Highlighted suggestion wins; otherwise let the form run a normal search.
       if (showDropdown && highlighted >= 0 && suggestions[highlighted]) {
         e.preventDefault();
         selectSuggestion(suggestions[highlighted]);

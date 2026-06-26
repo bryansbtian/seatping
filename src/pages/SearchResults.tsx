@@ -1,12 +1,3 @@
-// src/pages/SearchResults.tsx
-//
-// Public restaurant search results page. Layout inspired by OpenTable but
-// styled in SeatPing (navy/slate, rounded cards, no red theme, no map yet).
-//
-// Routes:
-//   /search                — generic browse, no query
-//   /search/:query         — path-style query (preferred)
-//   /search?query=...      — legacy query-string form (still supported)
 import { useEffect, useMemo, useState } from "react";
 import {
   Link,
@@ -57,7 +48,6 @@ import { SearchSuggestInput } from "@/components/SearchSuggestInput";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-// Full-day 30-minute slots so users can pick any time, not just dinner.
 const TIME_OPTIONS: string[] = [];
 for (let h = 0; h <= 23; h++) {
   for (const m of [0, 30]) {
@@ -80,11 +70,9 @@ function getNextTimeSlot(): string {
   const target = `${String(now.getHours()).padStart(2, "0")}:${String(
     now.getMinutes(),
   ).padStart(2, "0")}`;
-  // Past the last slot of the day (23:30): wrap to the first slot for next day.
   return TIME_OPTIONS.find((t) => t >= target) ?? TIME_OPTIONS[0];
 }
 
-/** Local YYYY-MM-DD (avoids UTC off-by-one from toISOString). */
 function localDateStr(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -152,7 +140,6 @@ const RATING_OPTIONS: { value: number; label: string }[] = [
   { value: 3.5, label: "3.5+" },
 ];
 
-// A location's filterable "area" label, with safe fallbacks.
 function areaLabel(r: SearchResult): string {
   return r.area || r.locationDisplayName || r.city || "";
 }
@@ -189,7 +176,6 @@ function countActiveFilters(f: Filters): number {
   );
 }
 
-// Read the active query from either /search/:query or /search?query=...
 function useActiveQuery(): string {
   const { query } = useParams();
   const [searchParams] = useSearchParams();
@@ -208,10 +194,6 @@ export default function SearchResults() {
   const activeQuery = useActiveQuery();
   const [searchParams] = useSearchParams();
 
-  // Search bar form state. Initialized from the URL params (date/time/partySize)
-  // so the values selected on the homepage are preserved here — falling back to
-  // defaults (today / next slot / 2) only when a param is missing or invalid.
-  // The "next available time" default only runs when no valid `time` param.
   const [date, setDate] = useState<Date>(() => {
     const dp = searchParams.get("date");
     if (dp && /^\d{4}-\d{2}-\d{2}$/.test(dp)) {
@@ -232,12 +214,10 @@ export default function SearchResults() {
   const [dateOpen, setDateOpen] = useState(false);
   const [peopleOpen, setPeopleOpen] = useState(false);
 
-  // Keep the input in sync when navigating between /search/:query values.
   useEffect(() => {
     setInputQuery(activeQuery);
   }, [activeQuery]);
 
-  // Disable past dates in the calendar.
   const startOfToday = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -262,7 +242,6 @@ export default function SearchResults() {
     navigate(`/search/${encodeURIComponent(q)}?${params.toString()}`);
   };
 
-  // Result list + filter/sort state.
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -270,7 +249,6 @@ export default function SearchResults() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-  // Fetch whenever the URL query changes.
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -282,7 +260,6 @@ export default function SearchResults() {
     api(url)
       .then((res: any) => {
         if (cancelled) return;
-        // Accept { results: [...] }, a bare array, or anything else (treated as empty).
         const list = Array.isArray(res)
           ? res
           : Array.isArray(res?.results)
@@ -304,7 +281,6 @@ export default function SearchResults() {
     };
   }, [activeQuery]);
 
-  // Cuisine / location options derived from the loaded results.
   const cuisineOptions = useMemo(
     () =>
       Array.from(
@@ -322,7 +298,6 @@ export default function SearchResults() {
     [results],
   );
 
-  // Apply client-side filters then sorting on top of the server results.
   const visible = useMemo(() => {
     if (!results) return [];
     let list = results.filter((r) => {
@@ -366,7 +341,6 @@ export default function SearchResults() {
         break;
       case "recommended":
       default:
-        // Featured first, otherwise keep the server order.
         list = [...list].sort(
           (a, b) => Number(b.featured) - Number(a.featured),
         );
@@ -382,7 +356,6 @@ export default function SearchResults() {
   const summaryText = (() => {
     if (loading) return "Searching restaurants…";
     if (error) {
-      // Don't echo the error in the summary — the error card below has it.
       return activeQuery
         ? `Showing restaurants for "${activeQuery}"`
         : "Restaurants";
@@ -403,24 +376,16 @@ export default function SearchResults() {
       />
       <Header />
 
-      {/* Dark SeatPing search bar. Sits flush below the fixed header. */}
+      {}
       <section className="bg-slate-900 pt-24 pb-5">
         <form
           onSubmit={submit}
           className="container mx-auto px-4"
           aria-label="Search restaurants"
         >
-          {/* Mirrors the Home page search bar (ReservationSearchBar):
-              - Mobile: one unified white flat panel. Fields are flat rows split
-                by thin dividers (carried on wrapper divs, not the fields); Date
-                + Time share row 1 via a vertical divider. The dark Search button
-                is the last row of the panel.
-              - md+: the panel chrome drops away (transparent) and the fields
-                become individual white cards on the dark bar — Date/Time/Party
-                content-sized (auto), the input filling the minmax(0,1fr) track,
-                and Search dropping to its own full-width row (inline at xl). */}
+          {}
           <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm max-[360px]:p-2 md:grid md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none md:grid-cols-[auto_auto_auto_minmax(0,1fr)] md:items-center md:gap-3 xl:grid-cols-[auto_auto_auto_minmax(0,1fr)_auto]">
-            {/* Row 1: Date + Time, vertical divider on mobile. */}
+            {}
             <div className="flex items-stretch md:contents">
               <div className="flex-1 min-w-0 md:contents">
                 <Popover open={dateOpen} onOpenChange={setDateOpen}>
@@ -459,7 +424,7 @@ export default function SearchResults() {
               </div>
             </div>
 
-            {/* Row 2: Guests. */}
+            {}
             <div className="border-t border-slate-200 md:border-t-0 md:contents">
               <Popover open={peopleOpen} onOpenChange={setPeopleOpen}>
                 <PopoverTrigger asChild>
@@ -491,8 +456,7 @@ export default function SearchResults() {
               </Popover>
             </div>
 
-            {/* Row 3: Search input + live restaurant suggestions — same
-                component (and behavior) as the homepage hero search. */}
+            {}
             <SearchSuggestInput
               value={inputQuery}
               onChange={setInputQuery}
@@ -503,8 +467,7 @@ export default function SearchResults() {
               inputClassName="rounded-none border-0 bg-white text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-slate-50 max-[360px]:text-xs md:rounded-xl md:border md:border-slate-200 md:text-base md:focus-visible:ring-2 md:focus-visible:ring-offset-2 md:focus-visible:bg-white"
             />
 
-            {/* Row 4: Search button — dark inside the mobile panel; white card on
-                the dark bar at md+. */}
+            {}
             <div className="border-t border-slate-200 pt-3 md:border-t-0 md:pt-0 md:contents">
               <Button
                 type="submit"
@@ -521,11 +484,10 @@ export default function SearchResults() {
         </form>
       </section>
 
-      {/* Filter / sort bar. Inline dropdowns on desktop; a single "Filters"
-          sheet on mobile. Sort is always visible. */}
+      {}
       <section className="border-b border-slate-200 bg-white">
         <div className="container mx-auto flex items-center gap-2 px-4 py-3">
-          {/* Sort — always shown */}
+          {}
           <SelectFilter
             label="Sort"
             current={sort}
@@ -537,7 +499,7 @@ export default function SearchResults() {
             clearable={false}
           />
 
-          {/* Desktop inline filters */}
+          {}
           <div className="hidden flex-wrap items-center gap-2 md:flex">
             {cuisineOptions.length > 0 && (
               <SelectFilter
@@ -599,7 +561,7 @@ export default function SearchResults() {
             </ToggleChip>
           </div>
 
-          {/* Mobile filters trigger */}
+          {}
           <button
             type="button"
             onClick={() => setMobileFiltersOpen(true)}
@@ -614,7 +576,7 @@ export default function SearchResults() {
             )}
           </button>
 
-          {/* Clear — when any filter is active */}
+          {}
           {filtersApplied && (
             <button
               type="button"
@@ -627,7 +589,7 @@ export default function SearchResults() {
         </div>
       </section>
 
-      {/* Mobile filters sheet */}
+      {}
       <MobileFiltersDialog
         open={mobileFiltersOpen}
         onOpenChange={setMobileFiltersOpen}
@@ -639,7 +601,7 @@ export default function SearchResults() {
         activeCount={activeFilterCount}
       />
 
-      {/* Results */}
+      {}
       <main className="container mx-auto w-full px-4 py-6 flex-1">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h1 className="text-sm font-medium text-slate-700">{summaryText}</h1>
@@ -677,9 +639,6 @@ export default function SearchResults() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Card + helpers
-// ---------------------------------------------------------------------------
 
 function RestaurantCard({
   r,
@@ -702,8 +661,6 @@ function RestaurantCard({
       ? `/queue/${encodeURIComponent(r.businessUsername)}/${encodeURIComponent(r.locationId)}`
       : null;
 
-  // Book Table carries the search context (date/time/party) into the restaurant
-  // page so Plan Your Visit prefills, and `book=1` auto-opens the modal.
   const bookPath = (() => {
     if (!detailsPath) return null;
     const params = new URLSearchParams();
@@ -719,10 +676,8 @@ function RestaurantCard({
     if (detailsPath) navigate(detailsPath);
   };
 
-  // Address summary: "City" or fall back to the area or full address.
   const subAddress = r.shortAddress || r.city || r.area || r.address || "";
 
-  // Cuisine · Price line.
   const cuisinePrice = [r.cuisine, r.priceRange].filter(Boolean).join(" · ");
 
   return (
@@ -744,7 +699,7 @@ function RestaurantCard({
       )}
     >
       <div className="flex flex-col sm:flex-row">
-        {/* Image: 280px wide on desktop, full-width on mobile. */}
+        {}
         <div className="sm:w-[280px] sm:shrink-0 aspect-[16/10] sm:aspect-auto sm:h-auto sm:min-h-[200px] bg-slate-100 relative">
           {r.bannerImageUrl ? (
             <img
@@ -766,13 +721,13 @@ function RestaurantCard({
           )}
         </div>
 
-        {/* Content */}
+        {}
         <div className="flex-1 p-4 sm:p-5 flex flex-col gap-2 min-w-0">
           <h2 className="text-lg sm:text-xl font-semibold text-slate-900 truncate">
             {r.name}
           </h2>
 
-          {/* Rating */}
+          {}
           <div className="flex items-center gap-2 text-sm">
             {r.reviewCount > 0 && r.rating != null ? (
               <>
@@ -789,12 +744,12 @@ function RestaurantCard({
             )}
           </div>
 
-          {/* Cuisine · Price */}
+          {}
           {cuisinePrice && (
             <p className="text-sm text-slate-600">{cuisinePrice}</p>
           )}
 
-          {/* Location */}
+          {}
           {subAddress && (
             <p className="inline-flex items-center gap-1.5 text-sm text-slate-600">
               <MapPin className="h-3.5 w-3.5 text-slate-400" />
@@ -802,16 +757,14 @@ function RestaurantCard({
             </p>
           )}
 
-          {/* Description (clamped to 2 lines) */}
+          {}
           {r.description && (
             <p className="text-sm text-slate-600 line-clamp-2">
               {r.description}
             </p>
           )}
 
-          {/* Actions — Book Table first, then Join Queue. Same button style as
-              the Featured Restaurants cards: filled-dark Book Table + outlined
-              Join Queue, default size, matching radius/height/padding/icons. */}
+          {}
           <div className="mt-2 flex items-center gap-2 sm:gap-3">
             {bookPath && r.reservationsEnabled ? (
               <Button
@@ -905,8 +858,6 @@ function ResultsSkeleton() {
   );
 }
 
-// Generic single-select dropdown styled like a filter chip. `neutralValue` is a
-// selected-but-not-"filtering" value (used by Sort's "recommended" default).
 function SelectFilter({
   label,
   current,
@@ -1005,7 +956,6 @@ function ToggleChip({
   );
 }
 
-// Mobile bottom-sheet-style filters. All controls stacked; applies live.
 function MobileFiltersDialog({
   open,
   onOpenChange,
@@ -1034,8 +984,7 @@ function MobileFiltersDialog({
     );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* Full-bleed layout: re-assert max-sm:p-0/overflow-hidden over the
-          shared mobile modal styles so the body keeps its internal scroll. */}
+      {}
       <DialogContent className="flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-2xl p-0 max-sm:overflow-hidden max-sm:p-0 sm:max-w-md">
         <DialogHeader className="border-b border-slate-100 p-4 text-left">
           <DialogTitle>Filters</DialogTitle>

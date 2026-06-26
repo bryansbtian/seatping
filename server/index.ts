@@ -1,4 +1,3 @@
-// Must stay the first import so .env is loaded before anything reads process.env.
 import "dotenv/config";
 
 import express from "express";
@@ -31,17 +30,13 @@ import { logEnvStatus } from "./lib/envCheck.js";
 import { injectSeo } from "./lib/pageMeta.js";
 import { prisma } from "./lib/prisma.js";
 
-// Surface missing production env vars at cold start (serverless included).
 logEnvStatus();
 
-// ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Behind Vercel's proxy: trust the first proxy hop so req.ip and
-// x-forwarded-for parsing (used by the rate limiter) reflect the real client.
 app.set("trust proxy", 1);
 
 app.use(
@@ -51,24 +46,12 @@ app.use(
   })
 );
 
-// QStash worker is mounted BEFORE the JSON body parser: signature verification
-// must run against the raw request bytes (the router parses its own raw body).
 app.use("/api/jobs", jobsRouter);
 
-// Body parsers. (Billing is handled manually outside the app — no payment
-// webhook needs the raw request body, so parsers can be mounted first.)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-/**
- * Redact secrets from a URL before logging. Bearer-style tokens appear both as
- * path segments (queue tokens are 32 hex chars, reservation manage tokens 48,
- * password reset tokens 64) and as query params (e.g. /reset?token=...). A short
- * prefix is kept so log lines can still be correlated with a specific token
- * without exposing enough of it to replay. Mongo ObjectIds are 24 hex chars and
- * stay readable for debugging.
- */
 function redactUrlSecrets(url: string): string {
   return url
     .replace(/([?&][^?&=]*token[^?&=]*=)[^&#]+/gi, "$1[redacted]")
@@ -80,28 +63,12 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Global per-IP backstop so no endpoint is ever fully unthrottled. Generous
-// enough that normal browsing (the SPA fires several API calls per page) is
-// never blocked; it only trips scripted floods. Per-route limiters above this
-// stay much stricter. Machine-to-machine routes are exempt: the QStash worker
-// (/api/jobs) is mounted before the body parsers and never reaches here, and
-// Vercel Cron (/api/cron) is authorized by CRON_SECRET, so we skip it.
 const globalLimiter = rateLimit({
   name: "global-ip",
   windowMs: 60 * 1000,
   max: 200,
 });
 
-// Read-only customer polling on the live waiting screen: QueueBusiness.tsx polls
-// queue status every ~2s and ETA every ~30s. On shared venue WiFi / mobile
-// carrier CGNAT many waiting customers share one public IP, so these GETs must
-// NOT count against the global per-IP backstop or a busy venue would get 429'd
-// mid-wait. They are read-only and gated by a secret queueToken (or the derived
-// customerId), so exempting them is safe. Matches:
-//   GET /auth/business/:username/queue/token/:queueToken/status
-//   GET /auth/business/:username/queue/:customerId/status
-//   GET /auth/business/:username/queue/token/:queueToken/eta
-// It does NOT match the POST join (no /status|/eta suffix) or any write route.
 const CUSTOMER_POLL_EXEMPT_RE =
   /^\/auth\/business\/[^/]+\/queue\/.+\/(status|eta)$/;
 
@@ -116,12 +83,6 @@ app.use((req, res, next) => {
   return globalLimiter(req, res, next);
 });
 
-/**
- * GET /api/health — liveness + DB reachability, for uptime monitoring (e.g.
- * UptimeRobot / Better Stack hitting it every minute). Returns 200 with
- * db:"ok" when MongoDB answers a trivial query within 2.5s, 503 otherwise.
- * No auth: it exposes nothing but up/down state.
- */
 app.get("/api/health", async (_req, res) => {
   const timeout = new Promise<"timeout">((resolve) =>
     setTimeout(() => resolve("timeout"), 2500),
@@ -153,17 +114,10 @@ app.use("/api/audiences", audiencesRouter);
 app.use("/api/cron", cronRouter);
 app.use("/tickets", ticketsRouter);
 
-// Serve static files from the React app in production
 if (process.env.NODE_ENV === "production") {
   const distPath = path.join(__dirname, "../dist");
   app.use(express.static(distPath));
 
-  // SPA fallback. Instead of shipping the same static index.html for every
-  // route, inject route-aware SEO so crawlers (WhatsApp, iMessage, Facebook,
-  // LinkedIn, X) get the correct preview for customer vs. business URLs. The
-  // template is read once and cached; the SPA boots identically either way.
-  // (On Vercel the customer side is served statically; vercel.json routes
-  // /business and /business/* here so they get business metadata.)
   let indexTemplate: string | null = null;
   app.get("*", (req, res) => {
     try {
@@ -185,14 +139,12 @@ if (process.env.NODE_ENV === "production") {
 
 const PORT = Number(process.env.PORT || 4000);
 
-// Only start the server if not in serverless environment
 if (process.env.VERCEL !== '1') {
   app.listen(PORT, () => {
     console.log(`[api] listening on http://localhost:${PORT}`);
     logRateLimitStatus();
   });
 
-  // Daily credit refill sweep — runs once at startup, then every 24 hours.
   const DAILY_MS = 24 * 60 * 60 * 1000;
   runDailyCreditRefillSweep().catch((err) =>
     console.error("[CREDIT-SWEEP] initial run failed:", err)
@@ -203,9 +155,6 @@ if (process.env.VERCEL !== '1') {
     );
   }, DAILY_MS);
 
-  // Reservation reminders — poll every 15 minutes for confirmed bookings that
-  // are ~2 hours out and send a one-time reminder. Dedup state is persisted on
-  // each reservation, so this is safe across restarts. Runs once at startup too.
   const REMINDER_MS = 15 * 60 * 1000;
   runReservationReminderSweep().catch((err) =>
     console.error("[RESERVATION-REMINDER] initial run failed:", err)
@@ -216,9 +165,6 @@ if (process.env.VERCEL !== '1') {
     );
   }, REMINDER_MS);
 
-  // Scheduled + recurring campaign dispatch — poll every minute in dev so
-  // scheduled sends fire near their chosen time. On Vercel this runs via
-  // /api/cron/campaigns instead (see vercel.json crons).
   const CAMPAIGN_SWEEP_MS = 60 * 1000;
   setInterval(() => {
     runDueCampaignsSweep().catch((err) =>

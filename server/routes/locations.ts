@@ -1,16 +1,3 @@
-// server/routes/locations.ts
-//
-// Location media API — banner (hero) image + gallery photos. All routes require
-// a logged-in BUSINESS session and verify the location belongs to that business
-// before any change. Files are uploaded to Cloudinary from the backend only
-// (the API secret never reaches the browser); MongoDB stores just the URL +
-// Cloudinary publicId.
-//
-//   POST   /api/locations/:locationId/banner/upload      (one image, replaces existing)
-//   DELETE /api/locations/:locationId/banner
-//   POST   /api/locations/:locationId/photos/upload      (one or more images, max 10 total)
-//   PATCH  /api/locations/:locationId/photos/:photoId     (update alt text)
-//   DELETE /api/locations/:locationId/photos/:photoId
 import { Router, type Request, type Response, type NextFunction } from "express";
 import multer from "multer";
 import { prisma } from "../lib/prisma.js";
@@ -26,27 +13,15 @@ import {
 
 const router = Router();
 
-// Minimal shape of a multer upload. We avoid annotating with the ambient
-// `Express.Multer.File` global namespace because it doesn't reliably resolve in
-// clean CI/deploy builds (the multer→express global namespace merge can fail),
-// which broke `tsc` with "Cannot find namespace 'Express'".
 type UploadedFile = { buffer: Buffer; mimetype: string; originalname: string; size: number };
 
-// ---------------------------------------------------------------------------
-// PUBLIC: live search suggestions for the homepage hero search input.
-//   GET /api/locations/search-suggestions?query=imperial&limit=3
-// Returns up to `limit` (max 3) ranked, published locations. Defined BEFORE the
-// requireBusiness gate below so it stays public. Relevance is weighted so
-// restaurant/business name matches outrank address/cuisine, and exact /
-// starts-with matches outrank partial ones.
-// ---------------------------------------------------------------------------
 const SUGGEST_WEIGHTS = {
-  name: 3.2, // restaurant name / business name
-  label: 2.6, // short address / location label
+  name: 3.2,
+  label: 2.6,
   areaCity: 1.6,
   cuisine: 1.3,
   address: 1.0,
-  text: 0.7, // tagline / description / username
+  text: 0.7,
 };
 
 function pickCuisineSuggest(rp: any): string | null {
@@ -54,7 +29,6 @@ function pickCuisineSuggest(rp: any): string | null {
   return Array.isArray(arr) && arr.length ? String(arr[0]) : null;
 }
 
-/** Match quality for one field: exact > starts-with > word-starts-with > includes. */
 function fieldScore(value: any, needle: string): number {
   if (!value) return 0;
   const v = String(value).toLowerCase();
@@ -67,8 +41,6 @@ function fieldScore(value: any, needle: string): number {
 
 router.get("/search-suggestions", async (req, res) => {
   try {
-    // Public, unauthenticated, fires on every keystroke in the hero search.
-    // Throttle per IP at a level that allows fast typing but caps scripted load.
     if (
       await limitGuard(req, res, [
         { name: "suggestions-ip", key: clientIp(req), windowMs: MINUTES(1), max: 120 },
@@ -81,8 +53,6 @@ router.get("/search-suggestions", async (req, res) => {
     const limit = Math.min(3, Math.max(1, Number.isFinite(rawLimit) ? rawLimit : 3));
     if (!q) return res.json({ suggestions: [] });
 
-    // Only published locations are suggestible — filter at the DB via the
-    // indexed `isPublished` column instead of loading the whole collection.
     const locations = await prisma.location.findMany({
       where: { isPublished: true },
       include: { photos: { orderBy: { createdAt: "asc" }, take: 1 } },
@@ -99,7 +69,6 @@ router.get("/search-suggestions", async (req, res) => {
     const scored = locations
       .map((loc: any) => {
         const rp = (loc.restaurantProfile || {}) as any;
-        // Only public/active (published) locations are suggestible.
         if (rp.isPublished === false) return null;
         const details = (rp.details || {}) as any;
         const biz = businessById.get(loc.businessId);
@@ -175,13 +144,8 @@ router.get("/search-suggestions", async (req, res) => {
   }
 });
 
-// Every route below here mutates media, so a business session is always required.
 router.use(requireBusiness);
 
-// Per-business throttle for the dashboard mutation routes below. Keyed by the
-// authenticated business id (falls back to IP if somehow absent), so one
-// account's automation/abuse can't hammer uploads/edits. Generous for normal
-// dashboard use (which batches several calls per save).
 router.use(async (req, res, next) => {
   const businessId = (req as any).auth?.sub as string | undefined;
   if (
@@ -198,11 +162,8 @@ router.use(async (req, res, next) => {
   next();
 });
 
-// ---------------------------------------------------------------------------
-// Upload constraints (images only, 5MB each, max 10 photos per location).
-// ---------------------------------------------------------------------------
 const MAX_PHOTOS_PER_LOCATION = 10;
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_MIME = new Set([
   "image/jpeg",
   "image/jpg",
@@ -219,7 +180,6 @@ const upload = multer({
   },
 });
 
-/** Run a multer middleware as a promise so we can return clean JSON errors. */
 function runMulter(
   req: Request,
   res: Response,
@@ -230,7 +190,6 @@ function runMulter(
   });
 }
 
-/** Turn a multer/file-filter error into a friendly, user-facing message. */
 function uploadErrorMessage(err: any): string {
   if (err?.code === "LIMIT_FILE_SIZE") return "Each image must be 5MB or smaller.";
   if (err?.code === "LIMIT_FILE_COUNT")
@@ -242,11 +201,6 @@ const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 
 type OwnedLocation = { id: string; bannerImagePublicId: string | null };
 
-/**
- * Middleware: confirm the :locationId belongs to the authenticated business.
- * Attaches the location to `res.locals.location`. Public users never reach here
- * (the router-level requireBusiness gate runs first).
- */
 async function loadOwnedLocation(
   req: Request,
   res: Response,
@@ -273,20 +227,11 @@ async function loadOwnedLocation(
   }
 }
 
-/** Refreshed business "me" payload, so the dashboard stays in sync after a change. */
 async function refreshedUser(req: Request) {
   return assembleBusinessMe((req as any).auth.sub as string);
 }
 
-// ===========================================================================
-// Banner (one hero image per location)
-// ===========================================================================
 
-/**
- * POST /api/locations/:locationId/banner/upload
- * Accepts one image (form field "file"), uploads it to Cloudinary, replaces any
- * existing banner (deleting the old Cloudinary asset), and returns the banner.
- */
 router.post(
   "/:locationId/banner/upload",
   loadOwnedLocation,
@@ -314,7 +259,6 @@ router.post(
         },
       });
 
-      // Replace = delete the previous asset (best-effort, after the DB points at the new one).
       if (location.bannerImagePublicId) {
         await deleteImageByPublicId(location.bannerImagePublicId);
       }
@@ -333,11 +277,6 @@ router.post(
   }
 );
 
-/**
- * POST /api/locations/:locationId/banner/sign
- * Returns a short-lived Cloudinary signature so the browser can upload the
- * banner DIRECTLY to Cloudinary (bypassing Vercel's ~4.5MB function body cap).
- */
 router.post(
   "/:locationId/banner/sign",
   loadOwnedLocation,
@@ -354,12 +293,6 @@ router.post(
   }
 );
 
-/**
- * POST /api/locations/:locationId/banner/commit
- * Body: { url, publicId } — persist a banner the browser already uploaded to
- * Cloudinary (via /banner/sign). The publicId is verified to live in this
- * location's banner folder before we trust it, then the old asset is replaced.
- */
 router.post(
   "/:locationId/banner/commit",
   loadOwnedLocation,
@@ -387,7 +320,6 @@ router.post(
         data: { bannerImageUrl: url, bannerImagePublicId: publicId },
       });
 
-      // Replace = delete the previous asset (best-effort), unless it's the same.
       if (
         location.bannerImagePublicId &&
         location.bannerImagePublicId !== publicId
@@ -406,10 +338,6 @@ router.post(
   }
 );
 
-/**
- * DELETE /api/locations/:locationId/banner
- * Removes the banner from the DB and deletes the Cloudinary asset (best-effort).
- */
 router.delete(
   "/:locationId/banner",
   loadOwnedLocation,
@@ -431,15 +359,7 @@ router.delete(
   }
 );
 
-// ===========================================================================
-// Gallery photos (max 10 per location)
-// ===========================================================================
 
-/**
- * POST /api/locations/:locationId/photos/upload
- * Accepts one or more images (form field "files"). Enforces the 10-photo cap
- * against what already exists, uploads to Cloudinary, and saves Photo rows.
- */
 router.post(
   "/:locationId/photos/upload",
   loadOwnedLocation,
@@ -473,7 +393,6 @@ router.post(
         });
       }
 
-      // Upload all to Cloudinary, then persist Photo rows (order preserved).
       const uploaded = await Promise.all(
         files.map((f) => uploadImageBuffer(f.buffer, location.id, "photo"))
       );
@@ -496,12 +415,6 @@ router.post(
   }
 );
 
-/**
- * POST /api/locations/:locationId/photos/sign
- * Returns a Cloudinary signature for a direct browser upload of ONE gallery
- * photo, plus how many slots remain (so the client can stop early). Each photo
- * is uploaded + committed individually to keep payloads tiny.
- */
 router.post(
   "/:locationId/photos/sign",
   loadOwnedLocation,
@@ -530,12 +443,6 @@ router.post(
   }
 );
 
-/**
- * POST /api/locations/:locationId/photos/commit
- * Body: { url, publicId } — persist one gallery photo already uploaded to
- * Cloudinary (via /photos/sign). Re-checks the 10-photo cap; if it's now full
- * the just-uploaded (orphan) asset is deleted so it doesn't linger.
- */
 router.post(
   "/:locationId/photos/commit",
   loadOwnedLocation,
@@ -562,7 +469,7 @@ router.post(
         where: { locationId: location.id },
       });
       if (existingCount >= MAX_PHOTOS_PER_LOCATION) {
-        await deleteImageByPublicId(publicId); // don't keep the orphan
+        await deleteImageByPublicId(publicId);
         return res.status(400).json({
           error: `This location already has the maximum of ${MAX_PHOTOS_PER_LOCATION} photos.`,
         });
@@ -583,10 +490,6 @@ router.post(
   }
 );
 
-/**
- * PATCH /api/locations/:locationId/photos/:photoId
- * Body: { altText } — update a photo's alt text (empty string clears it).
- */
 router.patch(
   "/:locationId/photos/:photoId",
   loadOwnedLocation,
@@ -603,7 +506,6 @@ router.patch(
         return res.status(400).json({ error: "altText must be a string" });
       }
 
-      // Photo must belong to this (owned) location.
       const photo = await prisma.photo.findFirst({
         where: { id: photoId, locationId: location.id },
         select: { id: true },
@@ -626,10 +528,6 @@ router.patch(
   }
 );
 
-/**
- * DELETE /api/locations/:locationId/photos/:photoId
- * Removes the photo row and deletes its Cloudinary asset (best-effort).
- */
 router.delete(
   "/:locationId/photos/:photoId",
   loadOwnedLocation,
@@ -659,11 +557,7 @@ router.delete(
   }
 );
 
-// ===========================================================================
-// Reviews (owner-only)
-// ===========================================================================
 
-/** Normalize a Review row for the dashboard. No customer PII (phone/email). */
 function serializeReview(r: any) {
   return {
     id: r.id,
@@ -676,7 +570,6 @@ function serializeReview(r: any) {
     partySize: typeof r.partySize === "number" ? r.partySize : null,
     serviceType: r.serviceType ?? null,
     createdAt: r.createdAt,
-    // Optional single business reply (owner-managed).
     businessReply: r.businessReply ?? null,
     businessReplyCreatedAt: r.businessReplyCreatedAt ?? null,
     businessReplyUpdatedAt: r.businessReplyUpdatedAt ?? null,
@@ -685,12 +578,6 @@ function serializeReview(r: any) {
 
 const MAX_REPLY_LENGTH = 500;
 
-/**
- * GET /api/locations/:locationId/reviews
- * Returns all reviews for a location the authenticated business owns, newest
- * first. Ownership is enforced by loadOwnedLocation — there is no public route
- * that dumps every review for a location.
- */
 router.get(
   "/:locationId/reviews",
   loadOwnedLocation,
@@ -709,12 +596,6 @@ router.get(
   }
 );
 
-/**
- * PATCH /api/locations/:locationId/reviews/:reviewId/reply
- * Body: { reply }. Creates or updates the single owner reply on a review the
- * authenticated business owns. Customers' review text/rating are NEVER modified
- * here — owners can only reply.
- */
 router.patch(
   "/:locationId/reviews/:reviewId/reply",
   loadOwnedLocation,
@@ -751,7 +632,6 @@ router.patch(
         where: { id: reviewId },
         data: {
           businessReply: trimmed,
-          // Stamp createdAt only on the very first reply; always bump updatedAt.
           businessReplyCreatedAt: review.businessReplyCreatedAt ?? now,
           businessReplyUpdatedAt: now,
         },
@@ -764,10 +644,6 @@ router.patch(
   }
 );
 
-/**
- * DELETE /api/locations/:locationId/reviews/:reviewId/reply
- * Clears the business reply. The customer's review itself is untouched.
- */
 router.delete(
   "/:locationId/reviews/:reviewId/reply",
   loadOwnedLocation,

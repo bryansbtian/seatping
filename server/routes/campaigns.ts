@@ -1,17 +1,3 @@
-// server/routes/campaigns.ts
-//
-// Guest Campaigns API (Phase 3B). Business-only. Every handler scopes its
-// queries by the authenticated business id (req.auth.sub) and validates that
-// the requested location belongs to that business, so campaigns, templates, and
-// recipients can never leak or be sent across businesses/locations.
-//
-// Mounted at /api/campaigns. Admin-only template review lives in routes/admin.ts.
-// Hard safety rules enforced here:
-//   - Every campaign must reference a usable template (SeatPing, or an APPROVED
-//     custom template owned by this business). Pending/Draft/Rejected = unusable.
-//   - Business users can never set a template's approvalStatus to APPROVED.
-//   - Sends skip opted-out guests and guests without valid contact for the
-//     channel, and a campaign can only be sent once (atomic status claim).
 
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
@@ -54,8 +40,6 @@ import type {
 
 const router = Router();
 
-// Generous per-IP cap for owner reads/writes; the /send path has its own stricter
-// per-business guard below.
 const campaignsLimiter = rateLimit({
   name: "campaigns-api",
   windowMs: 60 * 1000,
@@ -64,7 +48,6 @@ const campaignsLimiter = rateLimit({
 router.use(requireBusiness, campaignsLimiter);
 
 const CHANNELS: Channel[] = ["EMAIL", "WHATSAPP", "SMS"];
-// Safety cap for a first version of self-serve sending.
 const MANUAL_GUEST_LIMIT = 1000;
 
 function bizId(req: any): string {
@@ -79,7 +62,6 @@ function locationLabel(loc: {
   return loc.displayName || loc.name || loc.address || "Location";
 }
 
-/** Verify a location belongs to the authenticated business. */
 async function ownedLocation(businessId: string, locationId: string) {
   if (!locationId) return null;
   return prisma.location.findFirst({
@@ -94,7 +76,6 @@ async function ownedLocation(businessId: string, locationId: string) {
   });
 }
 
-/** The authenticated business's identity for sender lines + reply-to. */
 async function loadBusiness(businessId: string) {
   return prisma.business.findUnique({
     where: { id: businessId },
@@ -102,9 +83,6 @@ async function loadBusiness(businessId: string) {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Serializers (business-facing — NEVER expose admin-only Meta fields)
-// ---------------------------------------------------------------------------
 function isTemplateUsable(t: CampaignTemplate): boolean {
   if (t.templateType === "SEATPING") return t.isActive && t.approvalStatus === "APPROVED";
   return t.approvalStatus === "APPROVED";
@@ -134,12 +112,6 @@ function serializeTemplate(t: CampaignTemplate) {
   };
 }
 
-/**
- * User-facing audience label. Never exposes internal keys: custom groups
- * resolve to the saved group's name, manual to a friendly phrase, smart groups
- * to their catalog label. An optional `nameCache` (sid -> name) lets the list
- * endpoint resolve many campaigns without re-querying the same group.
- */
 async function audienceLabelFor(
   c: Campaign,
   nameCache?: Map<string, string>,
@@ -191,7 +163,6 @@ async function serializeCampaign(
     locationId: c.locationId,
     locationLabel: extra?.locationLabel ?? null,
     sentAt: c.sentAt,
-    // Timing
     sendMode: c.sendMode,
     timezone: c.timezone,
     scheduledAt: c.scheduledAt,
@@ -213,12 +184,7 @@ async function serializeCampaign(
   };
 }
 
-// reconcileCampaign + run execution live in ../lib/campaignRunner.js so the
-// route and the cron sweep share one implementation.
 
-// ===========================================================================
-// Meta
-// ===========================================================================
 router.get("/meta", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -257,15 +223,10 @@ router.get("/meta", async (req, res) => {
   }
 });
 
-// ===========================================================================
-// Templates
-// ===========================================================================
 
-/** GET /api/campaigns/templates — SeatPing templates + this business's customs. */
 router.get("/templates", async (req, res) => {
   try {
     const businessId = bizId(req);
-    // Make sure the curated SeatPing set exists before listing (idempotent).
     await seedSeatPingTemplates().catch((e) =>
       console.error("[campaigns] seed error:", e?.message || e),
     );
@@ -285,7 +246,6 @@ router.get("/templates", async (req, res) => {
   }
 });
 
-/** GET /api/campaigns/templates/:id */
 router.get("/templates/:id", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -310,8 +270,6 @@ function parseTemplateBody(body: any): { data?: any; error?: string } {
   const message = String(body?.body ?? body?.mainMessage ?? "").trim();
   if (!message) return { error: "Main message is required" };
 
-  // Variable names are normalized to Meta-safe snake_case (firstName ->
-  // first_name) so they pass WhatsApp template validation.
   let variables: string[] = [];
   if (body?.variables !== undefined) {
     if (!Array.isArray(body.variables)) return { error: "variables must be an array" };
@@ -326,17 +284,15 @@ function parseTemplateBody(body: any): { data?: any; error?: string } {
     variables = variables.slice(0, 20);
   }
 
-  // Rewrite the body's {{placeholders}} to the same snake_case convention.
   const normalizedBody = normalizeBodyPlaceholders(message.slice(0, 4000));
   const normalizedOffer = body?.offerDetails
     ? normalizeBodyPlaceholders(String(body.offerDetails).slice(0, 1000))
     : null;
 
-  // Meta forbids a variable at the very start or end of the message body.
   const posError = validateBodyParamPositions(normalizedBody);
   if (posError) return { error: posError };
 
-  let exampleValues: Record<string, string> = {};
+  const exampleValues: Record<string, string> = {};
   if (body?.exampleValues !== undefined) {
     if (typeof body.exampleValues !== "object" || Array.isArray(body.exampleValues)) {
       return { error: "exampleValues must be an object" };
@@ -361,7 +317,6 @@ function parseTemplateBody(body: any): { data?: any; error?: string } {
   };
 }
 
-/** POST /api/campaigns/templates — create a custom template (DRAFT). */
 router.post("/templates", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -378,8 +333,6 @@ router.post("/templates", async (req, res) => {
       locationId = loc.id;
     }
 
-    // Auto-generate a Meta-safe slug, unique within this business. Default the
-    // WhatsApp provider template name to the slug (admins can adjust on review).
     const slug = await generateUniqueTemplateSlug(data.name, { businessId });
 
     const created = await prisma.campaignTemplate.create({
@@ -401,7 +354,6 @@ router.post("/templates", async (req, res) => {
   }
 });
 
-/** PATCH /api/campaigns/templates/:id — edit a DRAFT, REJECTED, or PENDING custom template. */
 router.patch("/templates/:id", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -410,12 +362,9 @@ router.patch("/templates/:id", async (req, res) => {
       where: { id, templateType: "CUSTOM", businessId },
     });
     if (!t) return res.status(404).json({ error: "Template not found" });
-    // A business can never set approval state directly — strip any such input.
     const { data, error } = parseTemplateBody(req.body || {});
     if (error) return res.status(400).json({ error });
 
-    // Editing an APPROVED template invalidates the prior approval: any change
-    // must be re-reviewed, so the edit sends it back to the review queue.
     let statusUpdate: {
       approvalStatus?: "PENDING_SEATPING_REVIEW";
       submittedAt?: Date;
@@ -441,9 +390,6 @@ router.patch("/templates/:id", async (req, res) => {
       }
     }
 
-    // The slug stays stable after creation, EXCEPT while the template is still a
-    // draft (admins haven't created a Meta template under it yet), where we keep
-    // it in sync with the name. Rejected/edited templates keep their slug.
     let slugUpdate: { slug?: string; whatsappProviderTemplateName?: string } = {};
     if (t.approvalStatus === "DRAFT") {
       const slug = await generateUniqueTemplateSlug(data.name, {
@@ -464,7 +410,6 @@ router.patch("/templates/:id", async (req, res) => {
   }
 });
 
-/** POST /api/campaigns/templates/:id/submit — send a custom template for review. */
 router.post("/templates/:id/submit", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -473,8 +418,6 @@ router.post("/templates/:id/submit", async (req, res) => {
       where: { id, templateType: "CUSTOM", businessId },
     });
     if (!t) return res.status(404).json({ error: "Template not found" });
-    // Draft, rejected, or an already-pending template (resubmit) can be sent;
-    // an approved one is final.
     if (t.approvalStatus === "APPROVED") {
       return res.status(400).json({ error: "This template is already approved" });
     }
@@ -494,9 +437,6 @@ router.post("/templates/:id/submit", async (req, res) => {
   }
 });
 
-// ===========================================================================
-// Audience preview
-// ===========================================================================
 router.get("/audiences/preview", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -528,10 +468,6 @@ router.get("/audiences/preview", async (req, res) => {
         .slice(0, MANUAL_GUEST_LIMIT);
     }
 
-    // For custom groups, load the saved group by id (scoped to this business +
-    // location) and resolve against ITS saved filters + manual guest ids, so the
-    // matched count matches the Custom Group builder exactly. Never fall through
-    // to an empty-filter custom_group, which would match all guests.
     let groupLabel: string;
     if (audienceType === CUSTOM_GROUP_AUDIENCE) {
       const sid = String(req.query.savedAudienceId || "");
@@ -577,11 +513,7 @@ router.get("/audiences/preview", async (req, res) => {
   }
 });
 
-// ===========================================================================
-// Campaigns
-// ===========================================================================
 
-/** GET /api/campaigns — list campaigns (optionally by location). */
 router.get("/", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -596,8 +528,6 @@ router.get("/", async (req, res) => {
       orderBy: { createdAt: "desc" },
       take: 200,
     });
-    // Reconcile any in-flight / recurring campaigns so the list shows fresh
-    // counts + flips finished one-shot sends to a terminal status.
     const RECONCILE = new Set(["SENDING", "RECURRING", "PAUSED"]);
     const reconciled = await Promise.all(
       campaigns.map((c) =>
@@ -637,7 +567,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-/** Validate + resolve the body for create/patch of a campaign draft. */
 async function validateCampaignInput(
   businessId: string,
   body: any,
@@ -673,8 +602,6 @@ async function validateCampaignInput(
   if (audienceType === CUSTOM_GROUP_AUDIENCE) {
     const sid = String(body?.audienceConfig?.savedAudienceId || "").trim();
     if (!sid) return { error: "Select a custom group", status: 400 };
-    // Must reference a saved group owned by this business at this location, so
-    // sends resolve against its saved filters + manual guests (never all guests).
     const saved = await prisma.savedAudience.findFirst({
       where: { id: sid, businessId, locationId: loc.id },
       select: { id: true },
@@ -683,7 +610,6 @@ async function validateCampaignInput(
     audienceConfig.savedAudienceId = saved.id;
   }
 
-  // Template must be accessible (SeatPing or this business's custom).
   const template = await prisma.campaignTemplate.findFirst({
     where: {
       id: String(body?.templateId || ""),
@@ -724,7 +650,6 @@ async function validateCampaignInput(
   };
 }
 
-/** POST /api/campaigns — create a draft campaign. */
 router.post("/", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -749,7 +674,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-/** GET /api/campaigns/:id — detail + delivery logs. */
 router.get("/:id", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -810,7 +734,6 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-/** PATCH /api/campaigns/:id — edit a draft campaign. */
 router.patch("/:id", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -841,10 +764,6 @@ router.patch("/:id", async (req, res) => {
   }
 });
 
-/**
- * Build the render context + resolve the usable template for a campaign, or an
- * error. Shared by send-test and send so usability rules can't diverge.
- */
 async function prepareSend(businessId: string, campaign: Campaign) {
   const [business, location, template] = await Promise.all([
     loadBusiness(businessId),
@@ -863,7 +782,6 @@ async function prepareSend(businessId: string, campaign: Campaign) {
   if (!business) return { error: "Business not found", status: 404 as const };
   if (!location) return { error: "Location not found", status: 404 as const };
   if (!template) return { error: "Template not found", status: 404 as const };
-  // Re-check usability at send time (a custom template may have changed state).
   if (!isTemplateUsable(template)) {
     return {
       error:
@@ -878,7 +796,6 @@ async function prepareSend(businessId: string, campaign: Campaign) {
   return { business, location, template };
 }
 
-/** POST /api/campaigns/:id/send-test — send a single test to the business itself. */
 router.post("/:id/send-test", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -898,7 +815,6 @@ router.post("/:id/send-test", async (req, res) => {
     const { business, location, template } = prepared;
 
     const channel = campaign.channel as Channel;
-    // Optional override target so the operator can test to a chosen address.
     const overrideEmail = req.body?.testEmail ? String(req.body.testEmail).trim() : "";
     const overridePhone = req.body?.testPhone ? String(req.body.testPhone).replace(/\D/g, "") : "";
 
@@ -951,15 +867,6 @@ router.post("/:id/send-test", async (req, res) => {
   }
 });
 
-/**
- * POST /api/campaigns/debug/email-test — DEV ONLY. Send the same simple email to
- * one or more addresses and return the exact per-address SMTP result (messageId,
- * accepted, rejected, raw response). Lets you reproduce "one Gmail gets it, the
- * other doesn't" and see whether the mail server actually accepted each address
- * (vs. the inbox provider silently dropping it downstream). Returns 404 in prod.
- *
- * Body: { emails: string[], subject?: string, body?: string }
- */
 router.post("/debug/email-test", async (req, res) => {
   if (process.env.NODE_ENV === "production") {
     return res.status(404).json({ error: "Not found" });
@@ -981,7 +888,6 @@ router.post("/debug/email-test", async (req, res) => {
       bodyHtml: p(bodyText),
     });
 
-    // Send sequentially so the per-address log lines are easy to read in order.
     const results = [];
     for (const to of emails) {
       const r = await sendEmailDetailed({ to, subject, html });
@@ -1002,14 +908,6 @@ router.post("/debug/email-test", async (req, res) => {
   }
 });
 
-/**
- * POST /api/campaigns/:id/send — launch a campaign. Body:
- *   { sendMode: "NOW" | "SCHEDULED" | "RECURRING",
- *     scheduledLocal?, recurrence?: { frequency, startLocal, endLocal },
- *     maxSendsPerGuestWindowDays? }
- * NOW dispatches immediately; SCHEDULED/RECURRING set the campaign up for the
- * cron sweep. Audience is (re)resolved at actual send time, never at create.
- */
 router.post("/:id/send", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -1032,7 +930,6 @@ router.post("/:id/send", async (req, res) => {
 
     const sendMode = String(req.body?.sendMode || "NOW").toUpperCase();
 
-    // ---- Scheduled ----
     if (sendMode === "SCHEDULED") {
       const when = wallClockToUtc(String(req.body?.scheduledLocal || ""), timezone);
       if (!when) {
@@ -1059,14 +956,13 @@ router.post("/:id/send", async (req, res) => {
       return res.json({ campaign: fresh ? await serializeCampaign(fresh) : null });
     }
 
-    // ---- Recurring ----
     if (sendMode === "RECURRING") {
       const freq = String(req.body?.recurrence?.frequency || "").toUpperCase();
       if (!["DAILY", "WEEKLY", "MONTHLY"].includes(freq)) {
         return res.status(400).json({ error: "Choose a recurrence frequency." });
       }
       const startLocal = String(req.body?.recurrence?.startLocal || "");
-      let start = wallClockToUtc(startLocal, timezone);
+      const start = wallClockToUtc(startLocal, timezone);
       if (!start) {
         return res.status(400).json({ error: "Pick a valid start date and time." });
       }
@@ -1077,7 +973,6 @@ router.post("/:id/send", async (req, res) => {
           return res.status(400).json({ error: "The end date must be after the start date." });
         }
       }
-      // First run = the start instant, advanced forward until it's in the future.
       let next = start;
       while (next.getTime() <= Date.now()) {
         next = advanceRecurrence(next, freq as any, timezone);
@@ -1108,8 +1003,6 @@ router.post("/:id/send", async (req, res) => {
       return res.json({ campaign: fresh ? await serializeCampaign(fresh) : null });
     }
 
-    // ---- Send Now ----
-    // Atomically claim so a double-click can't send twice.
     const claim = await prisma.campaign.updateMany({
       where: { id: campaign.id, businessId, status: { in: ["DRAFT", "READY", "CANCELLED"] } },
       data: { status: "SENDING", sendMode: "NOW", timezone, sentAt: new Date() },
@@ -1120,7 +1013,6 @@ router.post("/:id/send", async (req, res) => {
 
     const result = await executeCampaignRun(campaign.id, "MANUAL");
     if ("error" in result) {
-      // Revert to draft so the operator can fix + retry.
       await prisma.campaign.update({
         where: { id: campaign.id },
         data: { status: "DRAFT", sentAt: null },
@@ -1151,7 +1043,6 @@ router.post("/:id/send", async (req, res) => {
   }
 });
 
-/** POST /api/campaigns/:id/cancel — cancel a scheduled or recurring campaign. */
 router.post("/:id/cancel", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -1171,7 +1062,6 @@ router.post("/:id/cancel", async (req, res) => {
   }
 });
 
-/** DELETE /api/campaigns/:id — permanently delete a campaign. */
 router.delete("/:id", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -1192,7 +1082,6 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-/** POST /api/campaigns/:id/pause — pause a recurring campaign. */
 router.post("/:id/pause", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -1212,7 +1101,6 @@ router.post("/:id/pause", async (req, res) => {
   }
 });
 
-/** POST /api/campaigns/:id/resume — resume a paused recurring campaign. */
 router.post("/:id/resume", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -1225,7 +1113,6 @@ router.post("/:id/resume", async (req, res) => {
     }
     const tz = campaign.timezone || "Asia/Jakarta";
     const freq = (campaign.recurrenceFrequency || "WEEKLY") as any;
-    // Roll nextRunAt forward to the next future occurrence.
     let next = campaign.nextRunAt ?? new Date();
     while (next.getTime() <= Date.now()) next = advanceRecurrence(next, freq, tz);
     const ended = campaign.recurrenceEndAt
@@ -1244,7 +1131,6 @@ router.post("/:id/resume", async (req, res) => {
   }
 });
 
-/** POST /api/campaigns/preview-message — render a message for the builder preview. */
 router.post("/preview-message", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -1272,8 +1158,6 @@ router.post("/preview-message", async (req, res) => {
       }
     }
 
-    // Merge provided values over the template's example values for a realistic
-    // preview without requiring every field to be filled.
     const filled: Record<string, string> = {
       ...((template.exampleValues as Record<string, string>) || {}),
     };

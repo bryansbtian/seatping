@@ -7,12 +7,6 @@
       name="format-detection"
       content="telephone=no, email=no, address=no, date=no, url=no"
     />
-    <!--
-      SEO block. These are the CUSTOMER-side defaults, used for "/" and the
-      static SPA fallback. On business routes the server swaps everything
-      between the markers below for business metadata before the HTML is sent,
-      so crawlers (WhatsApp, etc.) see the correct preview w
-    -->
     <!-- SEO:START -->
     <title>SeatPing | Find Restaurants, Book Tables, and Join Queues</title>
     <meta
@@ -51,25 +45,10 @@
     <link rel="canonical" href="https://www.seatping.biz/" />
     <!-- SEO:END -->
 
-    <!--
-      Explicit favicon declaration. Without these, crawlers fall back to
-      guessing /favicon.ico and are slow to notice icon changes. The ?v=
-      query string is a cache buster: bump it whenever the icon is replaced
-      so browsers and Google re-fetch instead of serving a stale icon.
-    -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2" />
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=2" />
     <link rel="apple-touch-icon" href="/logo_nobg.png" />
 
-    <!--
-      Google Analytics (GA4). The measurement ID is injected from the
-      VITE_GA_MEASUREMENT_ID env var at build time. When the var is unset the
-      placeholder stays literal and gtag receives a no-op config, so analytics
-      is a graceful no-op in local dev / preview without the var. We set
-      send_page_view: false because page views are sent manually from
-      AnalyticsRouteTracker on each React Router navigation, which avoids
-      double-counting the initial load in a single-page app.
-    -->
     <script
       async
       src="https://www.googletagmanager.com/gtag/js?id=%VITE_GA_MEASUREMENT_ID%"

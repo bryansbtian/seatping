@@ -1,13 +1,3 @@
-// src/pages/Restaurant.tsx
-//
-// Public restaurant details page. Inspired by OpenTable's layout but styled in
-// SeatPing's visual system (white cards, slate text, rounded corners).
-//
-//   /:businessUsername/:locationId
-//
-// Data comes from GET /api/restaurants/:businessUsername/:locationId
-// (public-safe fields only). Reservation and queue actions are rendered by
-// ReservationBooking.
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Link,
@@ -52,9 +42,6 @@ import {
   CircleDollarSign,
 } from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Types (mirror the public API in server/routes/restaurants.ts)
-// ---------------------------------------------------------------------------
 
 type Photo = { id: string; url: string; altText?: string | null };
 type MenuItem = {
@@ -134,7 +121,7 @@ function formatHoursForDay(day: DayHours | undefined) {
 }
 
 function todayDayKey() {
-  const idx = new Date().getDay(); // 0=Sun
+  const idx = new Date().getDay();
   const map = [
     "sunday",
     "monday",
@@ -159,8 +146,6 @@ function formatDate(iso: string) {
   }
 }
 
-/** Ensure a user-entered URL has a scheme so it opens as an absolute link
- *  (e.g. "menu.com/x" → "https://menu.com/x") instead of a relative path. */
 function normalizeUrl(url: string): string {
   const trimmed = url.trim();
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
@@ -212,11 +197,10 @@ function getRestaurantStatus(openingHours: OpeningHours | null): { isOpen: boole
     }
   }
 
-  // It's closed right now. Find when it opens next.
   if (today?.enabled && today.open && currentHourMinute < today.open) {
     if (today.open === "00:00" && today.close === "00:00") {
       return {
-        isOpen: false, // Wait, if it's 24 hours, it's never "closed right now". This case won't be hit for 24h because "00:00" < "00:00" is false.
+        isOpen: false,
         text: "Closed",
         color: "text-red-600 font-medium"
       };
@@ -253,7 +237,6 @@ function getRestaurantStatus(openingHours: OpeningHours | null): { isOpen: boole
   return { isOpen: false, text: "Closed", color: "text-red-600 font-medium" };
 }
 
-/** Five filled/empty stars for a numeric rating. */
 function Stars({ rating }: { rating: number }) {
   const filled = Math.round(rating);
   return (
@@ -274,17 +257,7 @@ function Stars({ rating }: { rating: number }) {
 
 const REVIEWS_PAGE_SIZE = 10;
 
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
 
-/**
- * True at the `lg` breakpoint (>= 1024px) and up. Used so the reservation/action
- * card is mounted only ONCE — either inline (mobile/tablet) or in the sticky
- * desktop aside. Rendering it in both spots (CSS-hidden) would mount two
- * ReservationBooking instances, double-fetching availability and opening the
- * booking modal twice. Initialized synchronously to avoid a first-paint flash.
- */
 function useIsLgUp() {
   const [isLgUp, setIsLgUp] = useState(
     () =>
@@ -306,8 +279,6 @@ export default function RestaurantPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  // Prefill values carried from the homepage search bar (or a shared/manual URL).
-  // Validated to the formats the booking card expects; invalid values are ignored.
   const qpDate = searchParams.get("date") || "";
   const qpTime = searchParams.get("time") || "";
   const qpParty = Number(searchParams.get("partySize"));
@@ -321,40 +292,25 @@ export default function RestaurantPage() {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Customer/business session — drives whether the "Write a review" form shows.
-  // Only customer sessions can post reviews (business sessions are blocked
-  // server-side by requireCustomer).
   const [accountType, setAccountType] = useState<
     "customer" | "business" | null | undefined
   >(undefined);
-  // Bump to re-fetch the restaurant (after submitting a review, etc.).
   const [refreshKey, setRefreshKey] = useState(0);
-  // The logged-in customer's existing review id for THIS location (if any). When
-  // set, we hide the write-a-review form and show an Edit control on their card.
   const [myReviewId, setMyReviewId] = useState<string | null>(null);
-  // Review currently open in the edit modal (null = closed).
   const [editingReview, setEditingReview] = useState<EditableReview | null>(
     null,
   );
   const { toast } = useToast();
-  // Saved (bookmark) state for this exact location.
   const [saved, setSaved] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
   const SAVE_INTENT_KEY = "seatping:pendingSaveLocationId";
-  // Currently-in-view section, used to highlight the matching anchor pill.
   const [activeSection, setActiveSection] = useState<string | null>(null);
-  // Photos modal open state (triggered by "View photos" button or "+N More" overlay).
   const [photosOpen, setPhotosOpen] = useState(false);
-  // Client-side review pagination: render the first N, reveal more on demand.
   const [visibleReviewCount, setVisibleReviewCount] =
     useState(REVIEWS_PAGE_SIZE);
-  // True once the user scrolls past the hero/title: the section nav slides up
-  // to top:0 and the SeatPing header is hidden, OpenTable-style.
   const [navTakeover, setNavTakeover] = useState(false);
   const navSentinelRef = useRef<HTMLDivElement>(null);
 
-  // Toggle takeover when the sentinel (placed right before the section nav)
-  // crosses the top of the viewport.
   useEffect(() => {
     const el = navSentinelRef.current;
     if (!el) return;
@@ -375,8 +331,6 @@ export default function RestaurantPage() {
     fetch("/auth/session", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : { customer: null }))
       .then((d) => {
-        // This page only distinguishes "is a customer" (for saving locations);
-        // a business session does not count here.
         if (!cancelled) setAccountType(d?.customer ? "customer" : null);
       })
       .catch(() => {
@@ -387,9 +341,6 @@ export default function RestaurantPage() {
     };
   }, []);
 
-  // Look up whether the logged-in customer already has a review for this
-  // location (one active review per user+location). Re-runs after a post/edit
-  // so the write form ↔ edit-card states stay in sync. Non-customers have none.
   useEffect(() => {
     if (accountType !== "customer" || !locationId) {
       setMyReviewId(null);
@@ -412,8 +363,6 @@ export default function RestaurantPage() {
     };
   }, [accountType, locationId, refreshKey]);
 
-  // Saved status for this location. Customers only; resolve a pending save left
-  // by the logged-out → login → back flow so the click "carries through".
   useEffect(() => {
     if (accountType === undefined || !locationId) return;
     if (accountType !== "customer") {
@@ -448,7 +397,6 @@ export default function RestaurantPage() {
   }, [accountType, locationId, toast]);
 
   const toggleSave = async () => {
-    // Logged out (or business): stash intent and send to login, then come back.
     if (accountType !== "customer") {
       localStorage.setItem(SAVE_INTENT_KEY, locationId);
       const next = encodeURIComponent(
@@ -511,14 +459,10 @@ export default function RestaurantPage() {
     };
   }, [businessUsername, locationId, refreshKey]);
 
-  // Reset scroll on route change.
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [businessUsername, locationId]);
 
-  // Which sections to render (only when their underlying data exists). The
-  // page is scroll-based now — each entry becomes both an anchor-nav item and
-  // a real <section id="..."> below.
   const visibleSections = useMemo(() => {
     if (!restaurant) return [] as Array<{ id: string; label: string }>;
     const list: Array<{ id: string; label: string }> = [
@@ -528,8 +472,6 @@ export default function RestaurantPage() {
       list.push({ id: "photos", label: "Photos" });
     if (restaurant.menu.length > 0 || Boolean(restaurant.menuUrl))
       list.push({ id: "menu", label: "Menu" });
-    // Reviews is always present — logged-in customers can write one even when
-    // there are none yet.
     list.push({ id: "reviews", label: "Reviews" });
     const hasDetails =
       Boolean(restaurant.address) ||
@@ -543,16 +485,11 @@ export default function RestaurantPage() {
   }, [restaurant]);
 
   const scrollToSection = (id: string) => {
-    // Set active immediately so the pill reflects the click before the smooth
-    // scroll settles (otherwise the user briefly sees the previous active).
     setActiveSection(id);
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  // Scroll-spy: highlight the pill whose section is currently in view. The
-  // rootMargin pushes the "active band" below the sticky header + anchor nav
-  // (~128px) and ignores anything past the top ~45% of the viewport.
   useEffect(() => {
     if (visibleSections.length === 0) return;
     setActiveSection(visibleSections[0].id);
@@ -564,7 +501,6 @@ export default function RestaurantPage() {
           if (e.isIntersecting) seen.add(e.target.id);
           else seen.delete(e.target.id);
         }
-        // Pick the first section (in document order) that's currently in band.
         const next = ids.find((id) => seen.has(id));
         if (next) setActiveSection(next);
       },
@@ -577,7 +513,6 @@ export default function RestaurantPage() {
     return () => observer.disconnect();
   }, [visibleSections]);
 
-  // ---- Loading / error states ----
   if (loading) {
     return (
       <PageShell>
@@ -587,20 +522,16 @@ export default function RestaurantPage() {
       </PageShell>
     );
   }
-  // An unknown/unavailable restaurant should look like any other dead link:
-  // show the standard 404 page instead of a bespoke "Restaurant Not Found".
   if (error || !restaurant) {
     return <NotFound />;
   }
 
-  // ---- Derived bits ----
   const r = restaurant;
   const locationText = r.shortAddress || r.city || r.area || r.address || "";
   const heroImage = r.bannerImageUrl || r.photos[0]?.url || null;
   const todayHours = r.openingHours?.[todayDayKey()] as DayHours | undefined;
   const queueHref = `/queue/${r.businessUsername}/${r.locationId}`;
 
-  // ---- Action card (waitlist always on; reservations optional) ----
   const actionCard = (
     <ReservationBooking
       businessUsername={r.businessUsername}
@@ -627,7 +558,7 @@ export default function RestaurantPage() {
         } with SeatPing.`}
         canonical={`/${r.businessUsername}/${r.locationId}`}
       />
-      {/* Hero banner — full-bleed, edge to edge */}
+      {}
       <div className="relative h-56 w-full overflow-hidden bg-slate-100 sm:h-72 md:h-96">
         {heroImage ? (
           <img
@@ -653,19 +584,17 @@ export default function RestaurantPage() {
         )}
       </div>
 
-      {/* Title + main content */}
+      {}
       <div className="container mx-auto max-w-7xl px-4 py-8 md:py-10">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {/* Left / main column */}
+          {}
           <div className="lg:col-span-2">
-            {/* Name on the left, Save aligned right of the content column
-                (NOT inside the reservation card). Hidden on mobile — a pill
-                appears below the meta row there instead. */}
+            {}
             <div className="flex items-start justify-between gap-3">
               <h1 className="text-xl sm:text-4xl font-semibold text-slate-900">
                 {r.name}
               </h1>
-              {/* Heart on the right — icon-only on mobile, full pill on sm+. */}
+              {}
               <SaveButton
                 saved={saved}
                 busy={saveBusy}
@@ -699,8 +628,6 @@ export default function RestaurantPage() {
                 </>
               )}
               {locationText && (
-                // Mobile: drop the location onto its own row (basis-full forces
-                // a wrap) and hide the leading dot. Tablet/desktop: keep inline.
                 <span className="inline-flex basis-full items-center gap-1 sm:basis-auto">
                   <span className="hidden text-slate-300 sm:inline">·</span>
                   <MapPin className="h-3.5 w-3.5 text-slate-400" />
@@ -723,18 +650,13 @@ export default function RestaurantPage() {
               </p>
             )}
 
-            {/* On mobile + tablet, the action card sits right under the header,
-                BEFORE the long content sections. Rendered only when NOT lg+ so a
-                single ReservationBooking instance exists (see useIsLgUp). */}
+            {}
             {!isLgUp && <div className="mt-6">{actionCard}</div>}
 
-            {/* Sentinel sits one pixel above the nav. When it scrolls past the
-                top of the viewport, the section nav takes over as the page
-                header (and the SeatPing header is hidden — see PageShell). */}
+            {}
             <div ref={navSentinelRef} aria-hidden className="h-px" />
 
-            {/* Anchor nav — sticky just under the SeatPing header until the
-                takeover, then sticks to the very top of the viewport. */}
+            {}
             {visibleSections.length > 1 && (
               <nav
                 className={cn(
@@ -766,10 +688,9 @@ export default function RestaurantPage() {
               </nav>
             )}
 
-            {/* Sections render sequentially; only those with data appear. The
-                scroll-mt-32 leaves room for the sticky header + anchor nav. */}
+            {}
             <div className="mt-8 space-y-12">
-              {/* Overview */}
+              {}
               <section id="overview" className="scroll-mt-32 space-y-6">
                 {(r.description || r.tagline) && (
                   <div>
@@ -817,7 +738,7 @@ export default function RestaurantPage() {
                 </div>
               </section>
 
-              {/* Photos */}
+              {}
               {r.photos.length > 0 && (
                 <section id="photos" className="scroll-mt-32">
                   <h2 className="mb-4 text-lg sm:text-xl font-semibold text-slate-900">
@@ -831,8 +752,7 @@ export default function RestaurantPage() {
                 </section>
               )}
 
-              {/* Menu — only shown when there's something to show: a menu link
-                  and/or highlight items. Hidden entirely otherwise. */}
+              {}
               {(r.menu.length > 0 || r.menuUrl) && (
                 <section id="menu" className="scroll-mt-32 space-y-4">
                   <div className="space-y-1">
@@ -843,8 +763,7 @@ export default function RestaurantPage() {
                       Menu from {r.name}.
                     </p>
                   </div>
-                  {/* External full-menu link — top of the section, clean outlined
-                      button. Only when the business added a menu URL. */}
+                  {}
                   {r.menuUrl && (
                     <a
                       href={normalizeUrl(r.menuUrl)}
@@ -861,8 +780,7 @@ export default function RestaurantPage() {
                 </section>
               )}
 
-              {/* Reviews — always rendered, even with zero reviews, so logged-in
-                  customers can write one. */}
+              {}
               <section id="reviews" className="scroll-mt-32 space-y-4">
                 <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
                   {r.reviewCount > 0
@@ -883,9 +801,7 @@ export default function RestaurantPage() {
                   </p>
                 )}
 
-                {/* Write-a-review form (customer sessions only). Hidden once the
-                    customer already has a review here — they edit it on their
-                    card instead (one active review per user+location). */}
+                {}
                 {!myReviewId && (
                   <WriteReviewBlock
                     accountType={accountType}
@@ -946,7 +862,7 @@ export default function RestaurantPage() {
                 )}
               </section>
 
-              {/* Details */}
+              {}
               <section id="details" className="scroll-mt-32 space-y-6">
                 <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
                   Details
@@ -1059,17 +975,10 @@ export default function RestaurantPage() {
             </div>
           </div>
 
-          {/* Right column — sticky reservation/action card on desktop only.
-              Rendered only at lg+ so a single ReservationBooking instance
-              exists (see useIsLgUp). */}
+          {}
           {isLgUp && (
             <aside>
-              {/* Sticky shell that caps its own height to the viewport and
-                  scrolls its content internally when the booking card is taller
-                  than the screen (e.g. many unavailable time slots). This keeps
-                  the "Book Table"/"Join Queue" actions reachable without
-                  scrolling the entire page. Mobile keeps natural page scroll
-                  since this branch only renders at lg+. */}
+              {}
               <div className="premium-scroll sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto overflow-x-hidden pr-1 pb-4">
                 {actionCard}
               </div>
@@ -1078,8 +987,7 @@ export default function RestaurantPage() {
         </div>
       </div>
 
-      {/* All-photos modal (opened from the hero "View photos" button or the
-          "+N More" overlay on the photo grid). */}
+      {}
       <PhotosModal
         open={photosOpen}
         onOpenChange={setPhotosOpen}
@@ -1087,9 +995,7 @@ export default function RestaurantPage() {
         photos={r.photos}
       />
 
-      {/* Edit-review modal (own review only). Reuses the shared dialog from the
-          profile's review management. On save, re-fetch so the public list and
-          rating summary reflect the change immediately. */}
+      {}
       <EditReviewDialog
         review={editingReview}
         onOpenChange={(open) => !open && setEditingReview(null)}
@@ -1102,9 +1008,6 @@ export default function RestaurantPage() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Small helpers / components
-// ---------------------------------------------------------------------------
 
 function PageShell({
   children,
@@ -1113,9 +1016,6 @@ function PageShell({
   children: React.ReactNode;
   hideHeader?: boolean;
 }) {
-  // pt-14/pt-16 clears the fixed Header (~56px mobile, ~64px desktop). When
-  // the section nav takes over (hideHeader), the SeatPing header is removed
-  // from the DOM so only the sticky nav sits at the top of the viewport.
   return (
     <div className="min-h-screen bg-background pt-14 sm:pt-16">
       {!hideHeader && <Header showSearch />}
@@ -1125,7 +1025,6 @@ function PageShell({
   );
 }
 
-/** Subtle rounded pill toggle for bookmarking a location. */
 function SaveButton({
   saved,
   busy,
@@ -1146,7 +1045,6 @@ function SaveButton({
       aria-pressed={saved}
       aria-label={label}
       className={cn(
-        // Icon-only round button on mobile; full pill with label on sm+.
         "inline-flex items-center gap-2 rounded-full border p-2 text-sm font-medium transition-colors disabled:opacity-60 sm:px-4 sm:py-2",
         saved
           ? "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
@@ -1206,17 +1104,6 @@ function DetailRow({
   );
 }
 
-/**
- * OpenTable-style photo grid:
- *   - 1 photo  → one big image
- *   - 2-4      → equal 2-col grid
- *   - 5+       → 1 big left + 4 small right (2×2). When more than 5 photos
- *                exist, the LAST small tile gets a dark "+N More" overlay
- *                that opens the all-photos modal.
- *
- * On md+, the right 2×2 column matches the big image's height automatically
- * (grid-row stretch). The whole big image is also clickable → opens the modal.
- */
 function PhotosGrid({
   photos,
   onShowAll,
@@ -1226,7 +1113,6 @@ function PhotosGrid({
 }) {
   if (photos.length === 0) return null;
 
-  // Common classes for any clickable photo tile.
   const tileBase =
     "group relative overflow-hidden rounded-xl border border-slate-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/30";
 
@@ -1267,14 +1153,13 @@ function PhotosGrid({
     );
   }
 
-  // 5+
   const [first, ...rest] = photos;
   const small = rest.slice(0, 4);
   const hidden = photos.length - 5;
 
   return (
     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-      {/* Left hero — full height of the row on md+, fixed aspect on mobile. */}
+      {}
       <button
         type="button"
         onClick={onShowAll}
@@ -1287,7 +1172,7 @@ function PhotosGrid({
         />
       </button>
 
-      {/* Right 2×2 — stretches to match the left tile's height on md+. */}
+      {}
       <div className="grid grid-cols-2 grid-rows-2 gap-2">
         {small.map((p, i) => {
           const isLast = i === small.length - 1;
@@ -1322,7 +1207,6 @@ function PhotosGrid({
   );
 }
 
-/** All-photos popup. Opens from the hero "View photos" or the "+N More" overlay. */
 function PhotosModal({
   open,
   onOpenChange,
@@ -1336,11 +1220,7 @@ function PhotosModal({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* Centered modal: capped width/height per breakpoint with breathing room
-          on every side. Only the photo grid scrolls — the header + close button
-          stay pinned. Full-bleed layout: re-assert max-sm:p-0/overflow-hidden
-          over the shared mobile modal styles so the grid keeps its internal
-          scroll. */}
+      {}
       <DialogContent className="flex max-h-[85vh] w-full max-w-[94vw] flex-col gap-0 overflow-hidden rounded-xl p-0 max-sm:overflow-hidden max-sm:p-0 sm:max-w-[88vw] lg:max-w-[960px]">
         <DialogHeader className="shrink-0 px-4 pb-3 pt-4 sm:px-6 sm:pr-12 sm:pt-6">
           <DialogTitle>Photos</DialogTitle>
@@ -1374,7 +1254,6 @@ function PhotosModal({
   );
 }
 
-// How many items to show before the "View full menu" expander appears.
 const MENU_PREVIEW_ITEMS = 4;
 
 function MenuList({
@@ -1386,7 +1265,6 @@ function MenuList({
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  // Group by category (empty category falls into "Menu"), preserving order.
   const groups = new Map<string, MenuItem[]>();
   for (const it of items) {
     const key = it.category?.trim() || "Menu";
@@ -1397,8 +1275,6 @@ function MenuList({
   const collapsible = items.length > MENU_PREVIEW_ITEMS;
   const limit = !collapsible || expanded ? Infinity : MENU_PREVIEW_ITEMS;
 
-  // Walk categories in order, taking items until we hit the preview limit so the
-  // collapsed view shows the first few items/categories (OpenTable-style).
   const visibleGroups: [string, MenuItem[]][] = [];
   let shown = 0;
   for (const [cat, list] of groups) {
@@ -1408,8 +1284,6 @@ function MenuList({
     shown += take.length;
   }
 
-  // Format prices consistently as e.g. "IDR 100,000" — fixed locale so the
-  // thousands separator is always a comma regardless of the viewer's locale.
   const priceLabel = (it: MenuItem) =>
     typeof it.price === "number" && Number.isFinite(it.price)
       ? `${it.currency || fallbackCurrency || ""} ${it.price.toLocaleString("en-US")}`.trim()
@@ -1417,13 +1291,12 @@ function MenuList({
 
   return (
     <div className="space-y-6">
-      {/* Each category is bracketed by divider lines (border-t above the heading;
-          the container's border-b closes the last one). No per-item cards. */}
+      {}
       <div className="border-b border-slate-200">
         {visibleGroups.map(([cat, list]) => (
           <section key={cat} className="border-t border-slate-200 py-6">
             <h3 className="text-lg font-semibold text-slate-900">{cat}</h3>
-            {/* Two columns on desktop, single column on mobile. */}
+            {}
             <div className="mt-4 grid grid-cols-1 gap-x-12 gap-y-5 sm:grid-cols-2">
               {list.map((it, i) => (
                 <div
@@ -1482,12 +1355,6 @@ function ReviewsSummary({ rating, count }: { rating: number; count: number }) {
   );
 }
 
-/**
- * Write-a-review form. Shows a different state based on session:
- *   - undefined        → still loading; render nothing
- *   - null / business  → CTA to log in as a customer
- *   - "customer"       → 5-star rating + comment + submit
- */
 function WriteReviewBlock({
   accountType,
   businessUsername,
@@ -1630,10 +1497,7 @@ function ReviewCard({
         isOwn ? "border-slate-300 bg-slate-50/60" : "border-slate-200",
       )}
     >
-      {/* Header — name/username on the left. For the user's own review, a
-          "Your Review" badge sits top-right (its own element, so a long name
-          truncates instead of colliding with it); the rating + Edit then drop
-          to a dedicated row below. Other reviews keep the rating inline. */}
+      {}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="font-medium text-slate-900 line-clamp-1">
@@ -1659,7 +1523,7 @@ function ReviewCard({
         )}
       </div>
 
-      {/* Own review: rating row + Edit on a line of its own. */}
+      {}
       {isOwn && (
         <div className="mt-2 flex items-center gap-1.5">
           <Stars rating={review.rating} />
@@ -1702,7 +1566,7 @@ function ReviewCard({
         )}
       </div>
 
-      {/* Public business response — read-only on the customer-facing page. */}
+      {}
       {review.businessReply && (
         <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">

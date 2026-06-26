@@ -1,18 +1,3 @@
-// server/lib/campaignRunner.ts
-//
-// Campaign execution engine (Phase 3B+). One place that actually turns a
-// campaign into messages — used by the immediate "Send Now" action, the
-// scheduled-send cron, and the recurring cron. Every run:
-//   - re-resolves the audience FRESH (so a scheduled/recurring send reflects the
-//     guest list at run time, not at create time),
-//   - re-applies opt-out + contact-validity filtering,
-//   - for recurring runs, skips guests already sent this campaign within the
-//     per-guest window (anti-spam),
-//   - records a CampaignRun with its own recipients (run-scoped dedup), then
-//     enqueues one background notification job per recipient.
-//
-// Nothing here is faked: a run only "completes" once its recipients reach a
-// terminal delivery state, reconciled from the CampaignRecipient rows.
 
 import type { Campaign, CampaignRun } from "@prisma/client";
 import { prisma } from "./prisma.js";
@@ -39,11 +24,6 @@ export interface RunResult {
   error?: string;
 }
 
-/**
- * Execute a single campaign run. Resolves the audience now, creates a
- * CampaignRun + its recipients, and enqueues sends. Returns the run summary or
- * an `error` string (caller decides how to surface it).
- */
 export async function executeCampaignRun(
   campaignId: string,
   runType: RunType,
@@ -73,7 +53,6 @@ export async function executeCampaignRun(
   if (!location) return { error: "Location not found" };
   if (!template) return { error: "Template not found" };
 
-  // Re-check template usability at run time (a custom template may have changed).
   const usable =
     template.templateType === "SEATPING"
       ? template.isActive && template.approvalStatus === "APPROVED"
@@ -92,8 +71,6 @@ export async function executeCampaignRun(
   });
   const filtered = filterRecipients(guests, channel);
 
-  // Recurring anti-spam: drop guests already sent this campaign within the
-  // per-guest window so a recurring rule never re-hits someone too often.
   let eligible = filtered.eligible;
   if (runType === "RECURRING") {
     const windowDays =
@@ -117,7 +94,6 @@ export async function executeCampaignRun(
 
   const now = new Date();
 
-  // No one to send to — still record a completed (empty) run for history.
   if (eligible.length === 0) {
     const run = await prisma.campaignRun.create({
       data: {
@@ -212,10 +188,6 @@ export async function executeCampaignRun(
   };
 }
 
-/**
- * Recompute a run's delivery counts from its recipients; mark COMPLETED once
- * none are still PENDING (FAILED if every send failed).
- */
 export async function reconcileRun(run: CampaignRun): Promise<CampaignRun> {
   if (run.status !== "RUNNING") return run;
   const grouped = await prisma.campaignRecipient.groupBy({
@@ -238,12 +210,6 @@ export async function reconcileRun(run: CampaignRun): Promise<CampaignRun> {
   return prisma.campaignRun.update({ where: { id: run.id }, data });
 }
 
-/**
- * Reconcile a campaign for display: reconcile its latest run, copy that run's
- * counts onto the campaign, and flip a one-shot (Send Now / Scheduled) campaign
- * from SENDING to SENT/FAILED once its run finishes. Recurring campaigns keep
- * their RECURRING/PAUSED status; only their displayed counts refresh.
- */
 export async function reconcileCampaign(c: Campaign): Promise<Campaign> {
   const latest = await prisma.campaignRun.findFirst({
     where: { campaignId: c.id },
@@ -264,12 +230,6 @@ export async function reconcileCampaign(c: Campaign): Promise<Campaign> {
   return prisma.campaign.update({ where: { id: c.id }, data });
 }
 
-/**
- * Cron sweep: fire any scheduled campaigns whose time has arrived and any
- * recurring campaigns whose nextRunAt is due, then reconcile in-flight runs.
- * Safe to call repeatedly — each campaign is claimed atomically before sending
- * so two overlapping sweeps can never double-fire it.
- */
 export async function runDueCampaignsSweep(): Promise<{
   scheduled: number;
   recurring: number;
@@ -278,13 +238,11 @@ export async function runDueCampaignsSweep(): Promise<{
   let scheduledFired = 0;
   let recurringFired = 0;
 
-  // ---- Scheduled (one-shot) ----
   const dueScheduled = await prisma.campaign.findMany({
     where: { status: "SCHEDULED", isPaused: false, nextRunAt: { lte: now } },
     take: 50,
   });
   for (const c of dueScheduled) {
-    // Atomically claim: SCHEDULED -> SENDING so a concurrent sweep skips it.
     const claim = await prisma.campaign.updateMany({
       where: { id: c.id, status: "SCHEDULED" },
       data: { status: "SENDING", sentAt: now, nextRunAt: null, lastRunAt: now },
@@ -312,7 +270,6 @@ export async function runDueCampaignsSweep(): Promise<{
     }
   }
 
-  // ---- Recurring ----
   const dueRecurring = await prisma.campaign.findMany({
     where: { status: "RECURRING", isPaused: false, nextRunAt: { lte: now } },
     take: 50,
@@ -324,11 +281,9 @@ export async function runDueCampaignsSweep(): Promise<{
       | "WEEKLY"
       | "MONTHLY";
     let next = advanceRecurrence(c.nextRunAt ?? now, freq, tz);
-    // Skip any missed windows so we don't fire a backlog at once.
     while (next.getTime() <= now.getTime()) next = advanceRecurrence(next, freq, tz);
     const ended = c.recurrenceEndAt ? next.getTime() > c.recurrenceEndAt.getTime() : false;
 
-    // Claim the slot by advancing nextRunAt first (idempotent against overlap).
     const claim = await prisma.campaign.updateMany({
       where: { id: c.id, status: "RECURRING", nextRunAt: c.nextRunAt },
       data: {
@@ -346,7 +301,6 @@ export async function runDueCampaignsSweep(): Promise<{
     }
   }
 
-  // ---- Reconcile any in-flight runs from earlier sweeps ----
   const running = await prisma.campaignRun.findMany({
     where: { status: "RUNNING" },
     take: 100,
@@ -354,7 +308,6 @@ export async function runDueCampaignsSweep(): Promise<{
   for (const run of running) {
     await reconcileRun(run).catch(() => {});
   }
-  // Flip finished one-shot campaigns to terminal state.
   const sending = await prisma.campaign.findMany({
     where: { status: "SENDING" },
     take: 100,

@@ -29,9 +29,6 @@ const ResetPassword = () => {
 
   const token = searchParams.get("token");
 
-  // Context-aware: the reset link carries the account type (?type=business),
-  // so a business user gets the business header and is returned to the business
-  // login after resetting.
   const isBusiness = searchParams.get("type") === "business";
   const headerVariant = isBusiness ? "business" : "customer";
   const loginPath = isBusiness ? "/business/login" : "/login";
@@ -50,10 +47,8 @@ const ResetPassword = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Clear previous errors
     setErrors({ newPassword: "", confirmPassword: "" });
     
-    // Validation
     if (!newPassword.trim()) {
       setErrors(prev => ({ ...prev, newPassword: "New password is required" }));
       return;
@@ -135,16 +130,13 @@ const ResetPassword = () => {
   }
 
   if (!token) {
-    return null; // Will redirect in useEffect
+    return null;
   }
 
   return (
     <>
       <Header variant={headerVariant} />
-      {/* Full-height flex column matching the Forgot Password layout: fixed
-          header overlaid on top (pt-* on <main> clears it), card centered in the
-          remaining space, footer at the bottom. The column is exactly
-          min-h-screen so short content never leaves a giant empty area. */}
+      {}
       <div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/5 via-background to-success/5">
         <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10 sm:pt-28 sm:pb-14">
           <Card className="w-full max-w-[540px] shadow-2xl border-0 bg-card/80 backdrop-blur-sm">

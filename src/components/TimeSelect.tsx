@@ -5,13 +5,7 @@ import { Clock, ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
 
-// ---------------------------------------------------------------------------
-// Shared time picker used by the homepage reservation search and the business
-// Opening Hours editor. Values are stored as 24-hour "HH:mm" and displayed as a
-// readable 12-hour label (e.g. "11:00 AM"). Options are in 30-minute steps.
-// ---------------------------------------------------------------------------
 
-// "19:00" -> "7:00 PM"
 export function formatTimeLabel(value: string) {
   const [h, m] = value.split(":").map(Number);
   const period = h >= 12 ? "PM" : "AM";
@@ -19,7 +13,6 @@ export function formatTimeLabel(value: string) {
   return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
-// "HH:mm" options between startHour and endHour (inclusive) in `stepMin` steps.
 export function buildTimeOptions(startHour = 0, endHour = 23, stepMin = 30) {
   const out: string[] = [];
   for (let h = startHour; h <= endHour; h++) {
@@ -30,24 +23,14 @@ export function buildTimeOptions(startHour = 0, endHour = 23, stepMin = 30) {
   return out;
 }
 
-// Full-day options, 00:00 → 23:30. Used by Opening Hours.
 export const ALL_DAY_TIME_OPTIONS = buildTimeOptions(0, 23, 30);
 
-// Shared mobile "flat field" override passed to FieldTrigger / Input in the
-// Home and Search search bars. Strips the per-field card chrome (border /
-// radius / shadow) so each control reads as a flat row inside one unified
-// panel on mobile, then restores the bordered "field" look at md+.
-// `max-[360px]:` shrinks text + padding on very narrow phones (~320px) so the
-// Date / Time labels and placeholders stop truncating.
 export const FLAT_FIELD =
   "border-0 rounded-none shadow-none px-3 text-sm max-[360px]:px-2 max-[360px]:text-xs md:border md:border-slate-200 md:rounded-xl md:px-4 md:text-sm";
 
-// Field-style trigger (icon · value · chevron). Shared across pickers so the
-// Date / Time / People controls and the Opening Hours selectors look identical.
 export const FieldTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & {
-    // Either a leading icon (default) OR a leading text label ("From"/"To").
     icon?: React.ComponentType<{ className?: string }>;
     leadingLabel?: string;
   }
@@ -62,7 +45,6 @@ export const FieldTrigger = React.forwardRef<
     {...props}
   >
     {leadingLabel ? (
-      // Label mode: "From" / "To" on the left, value pushed to the right.
       <>
         <span className="shrink-0 text-slate-400">{leadingLabel}</span>
         <span className="flex min-w-0 items-center gap-2">
@@ -83,7 +65,6 @@ export const FieldTrigger = React.forwardRef<
 ));
 FieldTrigger.displayName = "FieldTrigger";
 
-// A single option row inside a picker popover.
 export function OptionRow({
   selected,
   onSelect,
@@ -110,16 +91,6 @@ export function OptionRow({
   );
 }
 
-/**
- * Reusable time dropdown. Renders a FieldTrigger (clock icon) opening a popover
- * of 30-minute options. `value`/`onChange` use 24-hour "HH:mm".
- *
- * `portal` defaults to true (the homepage search). Pass `portal={false}` when
- * used inside a Radix Dialog so the list renders within the dialog's DOM —
- * otherwise the dialog's scroll-lock (react-remove-scroll) blocks wheel
- * scrolling on the portaled list. The height is capped to the available space
- * so the list always scrolls internally instead of running off-screen.
- */
 export function TimeSelect({
   value,
   onChange,
@@ -138,8 +109,6 @@ export function TimeSelect({
   className?: string;
   align?: "start" | "center" | "end";
   portal?: boolean;
-  // When set (e.g. "From" / "To"), shows this leading label instead of the
-  // clock icon.
   label?: string;
   "aria-label"?: string;
 }) {

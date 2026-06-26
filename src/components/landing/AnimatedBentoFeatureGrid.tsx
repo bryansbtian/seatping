@@ -1,32 +1,3 @@
-/**
- * Animated bento feature grid for the business landing page.
- *
- * A reusable, responsive "bento" section: large cards span 4 of 6 columns on
- * desktop and medium cards span 2, tablet collapses to 2 columns, and mobile
- * stacks the same cards in one column. Cards fade and slide in on scroll.
- *
- * Each of the four cards is its own self-contained, exported component that
- * bundles the card header (icon + title + description) with its real-product
- * preview:
- *   - {@link ReservationFeatureCard}
- *   - {@link GuestCrmFeatureCard}
- *   - {@link LiveQueueFeatureCard}
- *   - {@link CampaignsFeatureCard}
- *
- * They all build on the shared {@link BentoFeatureCard} shell and resize
- * responsively on their own (mobile stacks, tablet 2-col, desktop bento). To
- * resize or restyle a single card, pass it a `className`; the inner previews
- * (BentoProductPreviews.tsx) carry their own responsive sizing. Render the
- * cards through this section, or drop any one of them anywhere on its own.
- *
- * Motion rules:
- *  - Every looping preview animation carries `.bento-loop`; index.css disables
- *    them all under `prefers-reduced-motion` and when `animated={false}` sets
- *    `data-bento-animated="false"` on the section.
- *  - The scroll entrance uses one IntersectionObserver on the grid and is
- *    skipped entirely (content shown immediately) for reduced-motion users or
- *    when no observer is available.
- */
 import { useEffect, useRef, useState } from "react";
 import {
   CalendarDays,
@@ -51,34 +22,18 @@ import {
   CampaignPreview,
 } from "@/components/landing/BentoProductPreviews";
 
-/* ================================================================== */
-/*  Types                                                             */
-/* ================================================================== */
 
-/** `large` spans 4/6 desktop columns, `medium` spans 2/6. */
 export type BentoSize = "large" | "medium";
 
-/** Drives the per-card scroll entrance. `instant` shows with no animation. */
 export type BentoRevealState = "hidden" | "instant" | "animate";
 
-/** Props every bento feature card accepts. The grid injects `index` (for the
- *  stagger) and `reveal`; `className` lets a caller resize/restyle one card. */
 export interface BentoCardProps {
   index?: number;
   reveal?: BentoRevealState;
   className?: string;
 }
 
-/* ================================================================== */
-/*  Shared card shell                                                 */
-/* ================================================================== */
 
-/**
- * Generic bento card surface: brand border + soft shadow, an icon/title/
- * description header, then a decorative preview area. `size` sets the desktop
- * column span; `previewClassName` tweaks the preview area; `className` resizes
- * or restyles the whole card.
- */
 export function BentoFeatureCard({
   icon: Icon,
   title,
@@ -95,8 +50,6 @@ export function BentoFeatureCard({
   title: string;
   description: string;
   size?: BentoSize;
-  /** Extra classes for the description, e.g. a min-height so paired cards'
-   *  headers match and their previews start at the same vertical position. */
   descriptionClassName?: string;
   previewClassName?: string;
   children: React.ReactNode;
@@ -114,7 +67,6 @@ export function BentoFeatureCard({
         className,
       )}
       style={
-        // Snappier stagger: ~70ms per card so the four cards finish quickly.
         reveal === "animate" ? { animationDelay: `${index * 0.07}s` } : undefined
       }
     >
@@ -127,10 +79,7 @@ export function BentoFeatureCard({
       <p className={cn("mt-2.5 max-w-xl", CARD_DESCRIPTION, descriptionClassName)}>
         {description}
       </p>
-      {/* The previews mirror the live product but are decorative here; hide
-          them from assistive tech and keep them non-interactive. On very narrow
-          phones (<=375px) zoom the preview down a touch so its (mostly fixed-px)
-          content fits the mini card without crowding. */}
+      {}
       <div
         aria-hidden
         className={cn(
@@ -145,11 +94,7 @@ export function BentoFeatureCard({
   );
 }
 
-/* ================================================================== */
-/*  The four SeatPing business feature cards                          */
-/* ================================================================== */
 
-/** Reservation Management card — wide, with the ReservationsManager preview. */
 export function ReservationFeatureCard(props: BentoCardProps) {
   return (
     <BentoFeatureCard
@@ -164,15 +109,12 @@ export function ReservationFeatureCard(props: BentoCardProps) {
   );
 }
 
-/** Guest CRM card — medium, with the Guests page preview. */
 export function GuestCrmFeatureCard(props: BentoCardProps) {
   return (
     <BentoFeatureCard
       icon={Contact}
       title="Guest CRM"
       description="Profiles build themselves from every visit, with history, tags, and notes, so you always know your regulars."
-      // On tablet this pairs with Live Queue; reserve a 3-line description height
-      // so both headers match and the previews start at the same height.
       descriptionClassName="md:min-h-[4.3rem] lg:min-h-0"
       {...props}
     >
@@ -181,15 +123,12 @@ export function GuestCrmFeatureCard(props: BentoCardProps) {
   );
 }
 
-/** Live Queue card — medium, with the dashboard Queue Management preview. */
 export function LiveQueueFeatureCard(props: BentoCardProps) {
   return (
     <BentoFeatureCard
       icon={ListOrdered}
       title="Live Queue"
       description="Track walk-ins in real time and notify guests automatically the moment their table is ready."
-      // Match GuestCrmFeatureCard's reserved description height so the two
-      // tablet-paired headers line up.
       descriptionClassName="md:min-h-[4.3rem] lg:min-h-0"
       {...props}
     >
@@ -198,7 +137,6 @@ export function LiveQueueFeatureCard(props: BentoCardProps) {
   );
 }
 
-/** Guest Campaigns card — wide, with the Campaigns preview. */
 export function CampaignsFeatureCard(props: BentoCardProps) {
   return (
     <BentoFeatureCard
@@ -213,7 +151,6 @@ export function CampaignsFeatureCard(props: BentoCardProps) {
   );
 }
 
-/** Default ordered cards for the business landing page. */
 export const BUSINESS_BENTO_CARDS: React.ComponentType<BentoCardProps>[] = [
   ReservationFeatureCard,
   GuestCrmFeatureCard,
@@ -221,28 +158,16 @@ export const BUSINESS_BENTO_CARDS: React.ComponentType<BentoCardProps>[] = [
   CampaignsFeatureCard,
 ];
 
-/* ================================================================== */
-/*  Section + grid                                                    */
-/* ================================================================== */
 
 interface AnimatedBentoFeatureGridProps {
-  /** Small uppercase label above the heading. Pass null to hide. */
   eyebrow?: React.ReactNode;
   heading?: React.ReactNode;
   subtitle?: React.ReactNode;
-  /** Cards to render. Each receives `index` + `reveal`. Defaults to the four
-   *  SeatPing business cards. */
   cards?: React.ComponentType<BentoCardProps>[];
-  /** Master switch for the scroll entrance + looping preview animations. */
   animated?: boolean;
   className?: string;
 }
 
-/**
- * Reveals the grid once it scrolls into view. Falls back to showing content
- * immediately (no entrance animation) when animations are off, the user
- * prefers reduced motion, or IntersectionObserver is unavailable.
- */
 function useBentoReveal(animated: boolean) {
   const gridRef = useRef<HTMLDivElement>(null);
   const [reveal, setReveal] = useState<BentoRevealState>(
@@ -280,10 +205,6 @@ function useBentoReveal(animated: boolean) {
   return { gridRef, reveal };
 }
 
-/**
- * The bento section. Render bare for the SeatPing business defaults, or pass
- * your own `cards` / copy / `animated` to reuse it elsewhere.
- */
 export default function AnimatedBentoFeatureGrid({
   eyebrow = "Features",
   heading = "A Smarter Way to Manage Queues, Reservations, and Guest Flow",
@@ -302,7 +223,7 @@ export default function AnimatedBentoFeatureGrid({
         className,
       )}
     >
-      {/* soft brand wash */}
+      {}
       <div
         aria-hidden
         className="pointer-events-none absolute -top-24 right-0 h-72 w-[36rem] max-w-[90vw] rounded-full bg-indigo-100/40 blur-3xl"

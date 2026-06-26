@@ -1,8 +1,3 @@
-// server/lib/business.ts
-//
-// Shared serializers for the business "me" payload. Lives in lib (not a routes
-// file) so both the auth routes and the location-media routes return the exact
-// same location shape — including the banner fields + uploaded gallery photos.
 import { prisma } from "./prisma.js";
 import {
   reconstructQueueArrays,
@@ -10,7 +5,6 @@ import {
 } from "./liveData.js";
 import { loadGuestBadgeMap, badgeForContact, type GuestBadge } from "./guests.js";
 
-/** Live queue/reservation arrays reconstructed from the new models. */
 export type LocationLiveLists = {
   queue: any[];
   admittedCustomers: any[];
@@ -18,7 +12,6 @@ export type LocationLiveLists = {
   reservations: any[];
 };
 
-/** Empty live lists (used as a safe fallback). */
 const EMPTY_LIVE: LocationLiveLists = {
   queue: [],
   admittedCustomers: [],
@@ -26,12 +19,6 @@ const EMPTY_LIVE: LocationLiveLists = {
   reservations: [],
 };
 
-/**
- * Load and reconstruct the legacy queue/reservation arrays for one location from
- * the QueueEntry + Reservation models. This is the read-side bridge that keeps
- * the dashboard, ETA, and status endpoints working after storage moved off the
- * Location JSON fields.
- */
 export async function loadLocationLiveLists(
   locationId: string,
   businessUsername?: string | null,
@@ -54,11 +41,6 @@ export async function loadLocationLiveLists(
   };
 }
 
-/**
- * Return a Location row augmented with reconstructed live lists, so helpers that
- * read `location.queue` / `.admittedCustomers` / `.reservations` (e.g. the ETA
- * functions in queueEta.ts) keep working unchanged.
- */
 export async function augmentLocationWithLiveLists<T extends { id: string; businessUsername?: string | null }>(
   location: T,
 ): Promise<T & LocationLiveLists> {
@@ -66,7 +48,6 @@ export async function augmentLocationWithLiveLists<T extends { id: string; busin
   return { ...location, ...live };
 }
 
-/** Normalize a Photo row for the client. */
 export function serializePhoto(p: any) {
   return {
     id: p.id,
@@ -77,11 +58,6 @@ export function serializePhoto(p: any) {
   };
 }
 
-/**
- * Normalize a Location row into the shape the dashboard/queue UI expects.
- * Expects `loc.photos` to be loaded (via `include: { photos: ... }`); falls back
- * to an empty gallery when it isn't.
- */
 export function serializeLocation(loc: any, live?: LocationLiveLists) {
   const lists = live ?? EMPTY_LIVE;
   return {
@@ -96,7 +72,6 @@ export function serializeLocation(loc: any, live?: LocationLiveLists) {
     longitude: typeof loc.longitude === "number" ? loc.longitude : null,
     googlePlaceId: loc.googlePlaceId ?? null,
     googleMapsUrl: loc.googleMapsUrl ?? null,
-    // Reconstructed from the QueueEntry / Reservation models (see liveData.ts).
     queue: lists.queue,
     admittedCustomers: lists.admittedCustomers,
     removedCustomers: lists.removedCustomers,
@@ -106,18 +81,12 @@ export function serializeLocation(loc: any, live?: LocationLiveLists) {
     reservationSettings: loc.reservationSettings ?? {},
     reservations: lists.reservations,
     restaurantProfile: loc.restaurantProfile ?? {},
-    // Hero/banner image (one per location) + gallery photos (separate Photo model).
     bannerImageUrl: loc.bannerImageUrl ?? null,
     bannerImagePublicId: loc.bannerImagePublicId ?? null,
     photos: Array.isArray(loc.photos) ? loc.photos.map(serializePhoto) : [],
   };
 }
 
-/**
- * Assemble the business "me" payload: business profile + its locations (with
- * gallery photos loaded). Shape mirrors the legacy `/auth/me` response so the
- * dashboard, settings, and profile pages keep working unchanged.
- */
 export async function assembleBusinessMe(businessId: string) {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
@@ -139,7 +108,6 @@ export async function assembleBusinessMe(businessId: string) {
   });
   if (!business) return null;
 
-  // Legacy businesses created before the language field default to English.
   const language = (business as any).language ?? "en";
 
   const locations = await prisma.location.findMany({
@@ -148,8 +116,6 @@ export async function assembleBusinessMe(businessId: string) {
     include: { photos: { orderBy: { createdAt: "asc" } } },
   });
 
-  // Batch-load all queue + reservation rows for this business's locations in two
-  // indexed queries, then group in memory (avoids a per-location round trip).
   const [queueRows, reservationRows] = await Promise.all([
     prisma.queueEntry.findMany({ where: { businessId } }),
     prisma.reservation.findMany({ where: { businessId } }),
@@ -167,9 +133,6 @@ export async function assembleBusinessMe(businessId: string) {
     resByLoc.set(r.locationId, arr);
   }
 
-  // Guest CRM: load the repeat-guest lookup once for the whole business, then
-  // stamp a "Returning"/"New" badge onto every live queue + reservation row so
-  // the dashboard can show it without any client-side guessing.
   const guestBadgeMap = await loadGuestBadgeMap(businessId);
 
   const serializedLocations = locations.map((loc) => {
@@ -195,11 +158,6 @@ export async function assembleBusinessMe(businessId: string) {
   return { ...business, language, locations: serializedLocations };
 }
 
-/**
- * Annotate a legacy queue/reservation object with its guest badge. Queue rows
- * carry the contact as `phoneNumber`; reservation rows as `phone`. Adds
- * `guestVisits` + `isReturning` (false/0 when the guest isn't recognized yet).
- */
 function stampGuestBadge(
   item: any,
   map: Map<string, GuestBadge>,

@@ -1,7 +1,3 @@
-// Reservation helpers shared by the public booking endpoints, the manage-link
-// endpoints, and the business dashboard. Reservations + per-location settings
-// are stored as JSON on the Location model (same pattern as `queue`), so there
-// is no separate Prisma model — these helpers normalize and validate that JSON.
 
 import { prisma } from "./prisma.js";
 import {
@@ -19,12 +15,11 @@ export type ReservationStatus =
   | "cancelled"
   | "no_show";
 
-// Statuses that occupy capacity. cancelled / completed / no_show are released.
 export const ACTIVE_STATUSES: ReservationStatus[] = ["confirmed", "arrived"];
 
 export type ReservationSettings = {
-  reservationStartTime: string; // "HH:MM"
-  reservationEndTime: string; // "HH:MM"
+  reservationStartTime: string;
+  reservationEndTime: string;
   maxPartySize: number;
   maxReservedGuestsPerHour: number;
   bookingWindowDays: number;
@@ -57,7 +52,6 @@ function validTime(v: any, fallback: string): string {
   return typeof v === "string" && TIME_RE.test(v) ? v : fallback;
 }
 
-/** Normalize raw JSON settings into a complete, valid settings object. */
 export function normalizeSettings(raw: any): ReservationSettings {
   const s = raw && typeof raw === "object" ? raw : {};
   const mode: ConfirmationMode = s.confirmationMode === "manual" ? "manual" : "auto";
@@ -85,7 +79,6 @@ export function normalizeSettings(raw: any): ReservationSettings {
   };
 }
 
-/** Minutes since midnight for an "HH:MM" string. */
 function timeToMinutes(t: string): number {
   const [h, m] = t.split(":").map(Number);
   return h * 60 + m;
@@ -97,10 +90,6 @@ function minutesToTime(mins: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-/**
- * Minutes that `timeZone` is ahead of UTC at the instant `at` (DST-aware).
- * Negative when the zone is behind UTC.
- */
 function tzOffsetMinutes(timeZone: string, at: Date): number {
   const dtf = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -128,12 +117,6 @@ function tzOffsetMinutes(timeZone: string, at: Date): number {
   return Math.round((asUTC - at.getTime()) / 60000);
 }
 
-/**
- * Absolute epoch ms for a wall-clock (`date`, `time`) interpreted in `timeZone`.
- * The restaurant's opening hours and slot times are wall-clock values in its own
- * timezone, so this is how we anchor them to a real instant for "now" comparisons.
- * Falls back to server-local parsing if `timeZone` is missing/invalid.
- */
 export function zonedWallTimeToMs(
   date: string,
   time: string,
@@ -144,7 +127,6 @@ export function zonedWallTimeToMs(
     const [y, mo, d] = date.split("-").map(Number);
     const [h, mi] = time.split(":").map(Number);
     const utcGuess = Date.UTC(y, mo - 1, d, h, mi);
-    // Refine once to settle DST/offset transitions.
     const off1 = tzOffsetMinutes(timeZone, new Date(utcGuess));
     let ms = utcGuess - off1 * 60000;
     const off2 = tzOffsetMinutes(timeZone, new Date(ms));
@@ -155,7 +137,6 @@ export function zonedWallTimeToMs(
   }
 }
 
-/** Wall-clock "YYYY-MM-DD" for instant `at` in `timeZone` (server-local fallback). */
 export function zonedDateStr(at: Date, timeZone?: string): string {
   if (!timeZone) {
     const y = at.getFullYear();
@@ -164,7 +145,6 @@ export function zonedDateStr(at: Date, timeZone?: string): string {
     return `${y}-${m}-${d}`;
   }
   try {
-    // en-CA renders as YYYY-MM-DD.
     return new Intl.DateTimeFormat("en-CA", {
       timeZone,
       year: "numeric",
@@ -176,7 +156,6 @@ export function zonedDateStr(at: Date, timeZone?: string): string {
   }
 }
 
-/** Whole-day difference between two "YYYY-MM-DD" strings (b - a). */
 function daysBetweenDateStr(a: string, b: string): number {
   const [ay, am, ad] = a.split("-").map(Number);
   const [by, bm, bd] = b.split("-").map(Number);
@@ -185,7 +164,6 @@ function daysBetweenDateStr(a: string, b: string): number {
   return Math.round((bMs - aMs) / 86400000);
 }
 
-/** 12-hour label, e.g. "7:00 PM". */
 export function formatTimeLabel(t: string): string {
   const [hStr, mStr] = t.split(":");
   let h = Number(hStr);
@@ -196,16 +174,10 @@ export function formatTimeLabel(t: string): string {
   return `${h}:${m} ${ampm}`;
 }
 
-/**
- * Reservations are stored as naive local datetimes: `${YYYY-MM-DD}T${HH:MM}`.
- * We never convert timezones — the restaurant's local clock is the source of
- * truth and both the customer and dashboard render the same wall-clock value.
- */
 export function buildReservationDateTime(date: string, time: string): string {
   return `${date}T${time}`;
 }
 
-/** Extract the "YYYY-MM-DD" and "HH:MM" parts of a stored reservation datetime. */
 export function splitDateTime(dt: string): { date: string; time: string } {
   const [date, rest] = String(dt || "").split("T");
   const time = (rest || "").slice(0, 5);
@@ -213,18 +185,13 @@ export function splitDateTime(dt: string): { date: string; time: string } {
 }
 
 export type Slot = {
-  time: string; // "HH:MM"
-  label: string; // "7:00 PM"
+  time: string;
+  label: string;
   available: boolean;
-  remaining: number; // seats left in this slot's hour bucket
+  remaining: number;
   reason?: "full" | "too_soon" | "party_too_large" | "closed";
 };
 
-/**
- * Sum of guests from active reservations that fall in the same clock-hour bucket
- * as `time` on `date`. We bucket per hour to honor "max reserved guests per
- * hour" — a 7:00 and 7:30 booking both consume the 7 PM hour's capacity.
- */
 function activeGuestsInHour(
   reservations: any[],
   date: string,
@@ -244,10 +211,6 @@ function activeGuestsInHour(
   return total;
 }
 
-/**
- * Compute bookable 30-minute slots for a given date + party size.
- * `now` is injectable for testing; defaults to current time.
- */
 export function computeAvailability(params: {
   settings: ReservationSettings;
   reservations: any[];
@@ -255,19 +218,7 @@ export function computeAvailability(params: {
   partySize: number;
   now?: Date;
   excludeId?: string;
-  /**
-   * IANA timezone of the restaurant (e.g. "Asia/Jakarta"). Slot wall-clock
-   * times and "today" are evaluated in this zone so a slot that has already
-   * passed in the restaurant's local time is correctly unbookable, regardless
-   * of where the server runs (UTC in production). Falls back to server-local.
-   */
   timeZone?: string;
-  /**
-   * The restaurant's public weekly opening hours JSON. When configured, slots
-   * are clipped to the day's open window so reservation hours that are wider
-   * than opening hours never surface bookable times while the restaurant is
-   * closed. Omit/undefined to leave slots unrestricted by opening hours.
-   */
   openingHours?: any;
 }): {
   slots: Slot[];
@@ -280,7 +231,6 @@ export function computeAvailability(params: {
 
   const partyTooLarge = partySize > settings.maxPartySize;
 
-  // Booking window check at the date level, in the restaurant's timezone.
   const todayStr = zonedDateStr(now, timeZone);
   const daysAhead = DATE_RE.test(date) ? daysBetweenDateStr(todayStr, date) : 0;
   const outsideWindow = daysAhead < 0 || daysAhead > settings.bookingWindowDays;
@@ -330,11 +280,6 @@ export function computeAvailability(params: {
   return { slots, partyTooLarge, outsideWindow, operatingStatus };
 }
 
-/**
- * Validate a requested (date, time, partySize) against settings + existing
- * reservations. Returns null if OK, otherwise an error message. `excludeId`
- * lets an update ignore the reservation being modified when summing capacity.
- */
 export function validateReservationRequest(params: {
   settings: ReservationSettings;
   reservations: any[];
@@ -395,7 +340,6 @@ export function validateReservationRequest(params: {
   }
 }
 
-/** Public-facing serialization (no manageToken leak in business lists). */
 export function serializeReservation(r: any, opts: { includeToken?: boolean } = {}) {
   const base = {
     id: r.id,
@@ -424,13 +368,6 @@ export function serializeReservation(r: any, opts: { includeToken?: boolean } = 
   return base;
 }
 
-/**
- * Keep a logged-in customer's denormalized profile lists in sync with one of
- * their reservations. No-op for guest bookings (no `customerId`). Active
- * reservations land in `upcomingReservations`; terminal ones (cancelled /
- * completed / no_show) move to `pastReservations`. Idempotent — the entry is
- * removed from both lists first, then re-inserted into the right one.
- */
 export async function syncCustomerReservation(
   reservation: any,
   opts: { businessName?: string | null; locationName?: string | null } = {},

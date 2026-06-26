@@ -1,16 +1,8 @@
-// All IANA timezones with a current UTC-offset label, e.g.
-// "(UTC+07:00) Asia/Jakarta". Built once at module load, sorted by offset then
-// name. Offsets reflect today's date, so they are DST-aware.
-//
-// The full list comes from Intl.supportedValuesOf("timeZone") (~400 zones) when
-// available; otherwise we fall back to a representative set so the selector
-// still works on older runtimes.
 
 export type TimezoneOption = { value: string; label: string };
 
 export const DEFAULT_TIMEZONE = "Asia/Jakarta";
 
-// Minutes that `timeZone` is ahead of UTC at `date` (negative = behind UTC).
 function offsetMinutes(timeZone: string, date: Date): number {
   const dtf = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -26,7 +18,6 @@ function offsetMinutes(timeZone: string, date: Date): number {
   for (const p of dtf.formatToParts(date)) {
     if (p.type !== "literal") map[p.type] = p.value;
   }
-  // Intl can emit hour "24" at midnight; normalize to 0.
   const hour = map.hour === "24" ? 0 : Number(map.hour);
   const asUTC = Date.UTC(
     Number(map.year),
@@ -47,7 +38,6 @@ function offsetLabel(min: number): string {
   return `UTC${sign}${h}:${m}`;
 }
 
-// Used only when Intl.supportedValuesOf is unavailable.
 const FALLBACK_ZONES = [
   "Pacific/Midway", "Pacific/Honolulu", "America/Anchorage",
   "America/Los_Angeles", "America/Denver", "America/Chicago",
@@ -67,22 +57,11 @@ function listZones(): string[] {
       if (Array.isArray(zones) && zones.length) return zones;
     }
   } catch {
-    /* fall through to fallback */
   }
   return FALLBACK_ZONES;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Timezone-aware date keys for dashboard analytics                   */
-/*                                                                     */
-/*  Dashboards must group activity by the *restaurant's* local calendar */
-/*  day — not UTC, and not whatever timezone the viewer's browser is in. */
-/*  These turn an instant into a "YYYY-MM-DD" key (and a short label) in */
-/*  a given IANA timezone, plus pure calendar-math helpers that operate  */
-/*  on those keys so day/week bucketing stays DST- and offset-safe.     */
-/* ------------------------------------------------------------------ */
 
-/** "YYYY-MM-DD" for an instant, in the given IANA timezone. */
 export function getDateKeyInTimezone(
   date: Date | string | number,
   timezone: string = DEFAULT_TIMEZONE,
@@ -90,7 +69,6 @@ export function getDateKeyInTimezone(
   const d = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(d.getTime())) return "";
   try {
-    // en-CA renders as YYYY-MM-DD.
     return new Intl.DateTimeFormat("en-CA", {
       timeZone: timezone,
       year: "numeric",
@@ -106,19 +84,12 @@ export function getDateKeyInTimezone(
   }
 }
 
-/** Today's "YYYY-MM-DD" in the given timezone. */
 export function getTodayKeyInTimezone(
   timezone: string = DEFAULT_TIMEZONE,
 ): string {
   return getDateKeyInTimezone(new Date(), timezone);
 }
 
-/**
- * The current local wall-clock in the given timezone as "YYYY-MM-DDTHH:MM".
- * Reservation datetimes are stored in this same naive-local-wall-clock frame,
- * so comparing the two strings answers "has this reservation time already
- * passed for the restaurant right now?" without any timezone-offset math.
- */
 export function getNowWallClockInTimezone(
   timezone: string = DEFAULT_TIMEZONE,
 ): string {
@@ -144,7 +115,6 @@ export function getNowWallClockInTimezone(
   return `${date}T${hh}:${mm}`;
 }
 
-/** Hour of day (0–23) for an instant, in the given timezone. */
 export function getHourInTimezone(
   date: Date | string | number,
   timezone: string = DEFAULT_TIMEZONE,
@@ -163,15 +133,6 @@ export function getHourInTimezone(
   }
 }
 
-/**
- * Short "Mon D" label (e.g. "Jun 5") for a date.
- *
- * - If given a "YYYY-MM-DD" key, the calendar date itself is formatted (anchored
- *   at UTC noon so it can never roll to an adjacent day), independent of any
- *   timezone — so a label always matches the key it was built from.
- * - If given an instant (Date / ISO string / epoch), it is formatted in
- *   `timezone`.
- */
 export function formatDateLabelInTimezone(
   date: Date | string | number,
   timezone: string = DEFAULT_TIMEZONE,
@@ -197,7 +158,6 @@ export function formatDateLabelInTimezone(
   }
 }
 
-/** Add `delta` whole days to a "YYYY-MM-DD" key (pure calendar math). */
 export function addDaysToDateKey(key: string, delta: number): string {
   const [y, m, d] = key.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
@@ -205,7 +165,6 @@ export function addDaysToDateKey(key: string, delta: number): string {
   return dt.toISOString().slice(0, 10);
 }
 
-/** "YYYY-MM-DD" of the Sunday that starts the week containing `key`. */
 export function startOfWeekDateKey(key: string): string {
   const [y, m, d] = key.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
@@ -224,8 +183,6 @@ export const TIMEZONE_OPTIONS: TimezoneOption[] = (() => {
     }
     return {
       value: tz,
-      // Show the full IANA name (underscores → spaces) so similarly-named
-      // cities across regions stay unambiguous in one flat list.
       label: `(${offsetLabel(min)}) ${tz.replace(/_/g, " ")}`,
       min,
     };

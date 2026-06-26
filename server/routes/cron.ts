@@ -1,14 +1,3 @@
-// server/routes/cron.ts
-//
-// Serverless-friendly scheduled jobs, triggered by Vercel Cron (see the `crons`
-// block in vercel.json). The previous setInterval-based sweeps in
-// server/index.ts never run on Vercel (no long-lived process), so credit refills
-// and reservation reminders silently never fired in production. These HTTP
-// endpoints run the same sweep functions on a schedule instead.
-//
-// Protection: Vercel Cron automatically sends `Authorization: Bearer <CRON_SECRET>`
-// when the CRON_SECRET env var is set, so we require that header. Without the
-// secret configured the endpoints refuse to run.
 
 import { Router, type Request, type Response } from "express";
 import { runReservationReminderSweep } from "../lib/reservationReminders.js";
@@ -46,8 +35,6 @@ router.all("/credit-refill", async (req: Request, res: Response) => {
   }
 });
 
-// Scheduled + recurring campaign dispatch. Should run frequently (e.g. every
-// few minutes) so scheduled sends fire close to their chosen time.
 router.all("/campaigns", async (req: Request, res: Response) => {
   if (!authorized(req)) return res.status(401).json({ error: "Unauthorized" });
   try {

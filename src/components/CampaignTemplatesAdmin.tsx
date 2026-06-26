@@ -23,10 +23,6 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { Search, RefreshCw, Inbox } from "lucide-react";
 
-// Admin review console for business-submitted CUSTOM campaign templates. This is
-// the ONLY surface that can approve/reject a template; it also tracks the
-// internal WhatsApp Meta workflow fields (never shown to businesses). Rendered
-// inside the existing /admin Tabs, gated by the admin session cookie.
 
 type AdminTemplate = {
   id: string;
@@ -112,8 +108,7 @@ const CampaignTemplatesAdmin = () => {
     <Card>
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          {/* space-y-1.5 matches CardHeader's title/description spacing, which
-              is lost here because the flex wrapper makes this a nested div. */}
+          {}
           <div className="space-y-1.5">
             <CardTitle>Campaign Templates</CardTitle>
             <CardDescription>Review and approve business-submitted custom templates.</CardDescription>
@@ -125,7 +120,7 @@ const CampaignTemplatesAdmin = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Filters */}
+        {}
         <div className="flex flex-wrap items-center gap-2">
           {STATUS_FILTERS.map((f) => (
             <button
@@ -152,7 +147,7 @@ const CampaignTemplatesAdmin = () => {
           />
         </div>
 
-        {/* List */}
+        {}
         {loading ? (
           <div className="py-10 text-center text-sm text-slate-400">Loading...</div>
         ) : templates.length === 0 ? (
@@ -200,9 +195,6 @@ const CampaignTemplatesAdmin = () => {
 
 export default CampaignTemplatesAdmin;
 
-// ---------------------------------------------------------------------------
-// Review detail dialog
-// ---------------------------------------------------------------------------
 function ReviewDialog({
   template,
   onClose,
@@ -289,7 +281,7 @@ function ReviewDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Template name + internal username (slug) for Meta. */}
+        {}
         <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-indigo-500 w-32 shrink-0">Template Name</span>
@@ -312,7 +304,7 @@ function ReviewDialog({
           </div>
         </div>
 
-        {/* Submitted content */}
+        {}
         <div className="space-y-3">
           <h4 className="text-sm font-semibold text-slate-800">Submitted Content</h4>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2 text-sm">
@@ -367,7 +359,7 @@ function ReviewDialog({
             )}
           </div>
 
-          {/* Approve / reject */}
+          {}
           <div className="pt-1">
             <div className="flex flex-col sm:flex-row gap-2">
               <Button onClick={approve} disabled={busy} variant="success" className="flex-1">
@@ -386,7 +378,7 @@ function ReviewDialog({
         </div>
       </DialogContent>
 
-      {/* Reject reason modal */}
+      {}
       <Dialog open={rejectOpen} onOpenChange={(o) => !busy && setRejectOpen(o)}>
         <DialogContent>
           <DialogHeader>

@@ -17,7 +17,6 @@ import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { api } from "@/lib/api";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 
-// Customer signup. Creates a record in the `users` collection via /auth/signup.
 const Signup = () => {
   const [formData, setFormData] = useState({
     name: "",
@@ -63,7 +62,6 @@ const Signup = () => {
     else if (formData.username.length < 3)
       newErrors.username = "Username must be at least 3 characters";
     if (!formData.email) newErrors.email = "Email is required";
-    // Phone is optional for customers — validate only when something was entered.
     if (formData.phone && formData.phone.replace(/\D/g, "").length < 6)
       newErrors.phone = "Phone must be at least 6 digits";
     if (!formData.password) newErrors.password = "Password is required";
@@ -88,7 +86,6 @@ const Signup = () => {
         name: formData.name,
         username: formData.username,
         email: formData.email,
-        // Combine country code + digits, or send empty when no phone was given.
         phone: formData.phone.trim()
           ? `${formData.countryCode}${formData.phone.replace(/\D/g, "")}`
           : "",
@@ -103,7 +100,6 @@ const Signup = () => {
         title: "Account created!",
         description: `Welcome, ${res.user.name}`,
       });
-      // Customer signup returns to the customer-facing homepage.
       navigate("/");
     } catch (err: any) {
       toast({
@@ -136,7 +132,7 @@ const Signup = () => {
           </CardHeader>
           <CardContent className="px-6 pb-8 sm:px-10 sm:pb-10">
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Name */}
+              {}
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
                 <Input
@@ -152,7 +148,7 @@ const Signup = () => {
                 )}
               </div>
 
-              {/* Username */}
+              {}
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
                 <Input
@@ -168,7 +164,7 @@ const Signup = () => {
                 )}
               </div>
 
-              {/* Email */}
+              {}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -185,7 +181,7 @@ const Signup = () => {
                 )}
               </div>
 
-              {/* Phone (optional for customers) */}
+              {}
               <div className="space-y-2">
                 <Label htmlFor="phone">
                   Phone Number{" "}
@@ -216,7 +212,7 @@ const Signup = () => {
                 )}
               </div>
 
-              {/* Password */}
+              {}
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -233,7 +229,7 @@ const Signup = () => {
                 )}
               </div>
 
-              {/* Confirm Password */}
+              {}
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input

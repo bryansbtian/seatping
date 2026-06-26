@@ -5,13 +5,8 @@ import { requireAdmin } from '../lib/auth.js';
 
 const router = express.Router();
 
-// This router is the admin support console (list/read/respond/assign/delete).
-// It was previously unauthenticated, exposing customer PII; every route now
-// requires an admin session. Public ticket CREATION lives in feedback.ts and
-// sales.ts (unaffected), so locking this router down does not break submissions.
 router.use(requireAdmin);
 
-// Get all tickets with optional filtering
 router.get('/', async (req, res) => {
   try {
     const { status, type, priority, limit = '50' } = req.query;
@@ -42,7 +37,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get ticket statistics
 router.get('/stats', async (req, res) => {
   try {
     const [totalTickets, openTickets, inProgressTickets, closedTickets, salesTickets, feedbackTickets] =
@@ -72,7 +66,6 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// Get a specific ticket by ticket number
 router.get('/:ticketNumber', async (req, res) => {
   try {
     const { ticketNumber } = req.params;
@@ -92,7 +85,6 @@ router.get('/:ticketNumber', async (req, res) => {
   }
 });
 
-// Update ticket status
 router.patch('/:ticketNumber/status', express.json(), async (req, res) => {
   try {
     const { ticketNumber } = req.params;
@@ -118,7 +110,6 @@ router.patch('/:ticketNumber/status', express.json(), async (req, res) => {
   }
 });
 
-// Assign ticket to team member
 router.patch('/:ticketNumber/assign', express.json(), async (req, res) => {
   try {
     const { ticketNumber } = req.params;
@@ -144,7 +135,6 @@ router.patch('/:ticketNumber/assign', express.json(), async (req, res) => {
   }
 });
 
-// Update ticket priority
 router.patch('/:ticketNumber/priority', express.json(), async (req, res) => {
   try {
     const { ticketNumber } = req.params;
@@ -170,7 +160,6 @@ router.patch('/:ticketNumber/priority', express.json(), async (req, res) => {
   }
 });
 
-// Respond to a ticket (sends email to customer and updates ticket)
 router.post('/:ticketNumber/respond', express.json(), async (req, res) => {
   try {
     const { ticketNumber } = req.params;
@@ -184,7 +173,6 @@ router.post('/:ticketNumber/respond', express.json(), async (req, res) => {
       return res.status(400).json({ error: 'responderName field is required' });
     }
 
-    // Get the ticket
     const ticket = await prisma.ticket.findUnique({
       where: { ticketNumber },
     });
@@ -193,7 +181,6 @@ router.post('/:ticketNumber/respond', express.json(), async (req, res) => {
       return res.status(404).json({ error: 'Ticket not found' });
     }
 
-    // Prepare email content
     const kind = ticket.type === 'sales' ? 'sales inquiry' : 'feedback';
     const kindTitle = ticket.type === 'sales' ? 'Sales Inquiry' : 'Feedback';
     const emailSubject = `Re: ${ticket.subject} [Ticket #${ticket.ticketNumber}]`;
@@ -208,7 +195,6 @@ router.post('/:ticketNumber/respond', express.json(), async (req, res) => {
       `,
     });
 
-    // Send email to customer
     console.log(`[tickets] Sending response email for ticket ${ticketNumber}`);
     const emailSent = await sendEmail({
       to: ticket.senderEmail,
@@ -224,7 +210,6 @@ router.post('/:ticketNumber/respond', express.json(), async (req, res) => {
 
     console.log('[tickets] Response email sent successfully');
 
-    // Add message to ticket
     const messages = ticket.messages as any[];
     const updatedMessages = [
       ...messages,
@@ -236,12 +221,11 @@ router.post('/:ticketNumber/respond', express.json(), async (req, res) => {
       },
     ];
 
-    // Update ticket with new message
     const updatedTicket = await prisma.ticket.update({
       where: { ticketNumber },
       data: {
         messages: updatedMessages,
-        status: 'in_progress', // Automatically set to in_progress when responded
+        status: 'in_progress',
       },
     });
 
@@ -260,7 +244,6 @@ router.post('/:ticketNumber/respond', express.json(), async (req, res) => {
   }
 });
 
-// Delete a ticket
 router.delete('/:ticketNumber', async (req, res) => {
   try {
     const { ticketNumber } = req.params;

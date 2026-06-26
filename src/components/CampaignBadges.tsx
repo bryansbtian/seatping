@@ -2,9 +2,6 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PILL_BASE_CLASS } from "@/lib/statusStyles";
 
-// Campaign + campaign-template status pills. Colors echo the shared status
-// palette (amber=in-progress/pending, emerald=done/approved, red=failed/rejected,
-// slate=draft) so they sit naturally next to the existing StatusBadge.
 
 const CAMPAIGN_STATUS: Record<string, { label: string; cls: string }> = {
   DRAFT: { label: "Draft", cls: "border-slate-200 bg-slate-100 text-slate-600" },

@@ -1,10 +1,3 @@
-// server/lib/envCheck.ts
-//
-// Startup environment validation. In production a missing secret currently
-// fails silently at request time (e.g. cron routes 401 forever when CRON_SECRET
-// is unset, notifications no-op without provider keys). This check makes any
-// misconfiguration impossible to miss in the Vercel logs at cold start, without
-// crashing the app (a hard crash would take down unrelated routes too).
 
 const REQUIRED_IN_PROD = [
   "DATABASE_URL",
@@ -32,7 +25,6 @@ const OPTIONAL_PROVIDERS = [
 
 let checked = false;
 
-/** Log (once) any env vars that are missing. Never throws. */
 export function logEnvStatus(): void {
   if (checked) return;
   checked = true;

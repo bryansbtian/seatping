@@ -8,8 +8,6 @@ const BusinessHeader = () => {
 
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
-    // Business-only logout: clears the business cookie and leaves any customer
-    // (or admin) session in the same browser untouched.
     fetch("/auth/business/logout", {
       method: "POST",
       credentials: "include",
@@ -39,7 +37,7 @@ const BusinessHeader = () => {
           SeatPing
         </Link>
 
-        {/* Desktop / Tablet actions (sm and up) */}
+        {}
         <div className="hidden sm:flex items-center gap-8">
           <Link to="/business/dashboard" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
             {t("nav.dashboard")}
@@ -61,7 +59,7 @@ const BusinessHeader = () => {
           </button>
         </div>
 
-        {/* Mobile hamburger */}
+        {}
         <button
           type="button"
           aria-label={t("nav.openMenu")}

@@ -1,7 +1,3 @@
-// FeaturedRestaurantsManager.tsx
-// Admin-only management of homepage Featured Restaurants. Lives inside the
-// Admin Dashboard "Featured Restaurants" tab. Talks to /admin/* routes (gated by
-// the admin dashboard login, like the other admin tabs).
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -81,7 +77,6 @@ function formatDate(iso: string) {
 export default function FeaturedRestaurantsManager() {
   const { toast } = useToast();
 
-  // --- Add form state ---
   const [usernameQuery, setUsernameQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Business[] | null>(null);
@@ -93,11 +88,9 @@ export default function FeaturedRestaurantsManager() {
   const [isActive, setIsActive] = useState(true);
   const [adding, setAdding] = useState(false);
 
-  // --- List state ---
   const [featured, setFeatured] = useState<Featured[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
-  // Per-row sortOrder edits (id -> string value).
   const [orderEdits, setOrderEdits] = useState<Record<string, string>>({});
 
   const loadFeatured = async () => {
@@ -203,7 +196,6 @@ export default function FeaturedRestaurantsManager() {
   };
 
   const toggleActive = async (f: Featured, next: boolean) => {
-    // Optimistic toggle.
     setFeatured((list) =>
       list.map((x) => (x.id === f.id ? { ...x, isActive: next } : x)),
     );
@@ -236,7 +228,7 @@ export default function FeaturedRestaurantsManager() {
       });
       return;
     }
-    if (Math.floor(value) === f.sortOrder) return; // unchanged
+    if (Math.floor(value) === f.sortOrder) return;
     try {
       await api(`/admin/featured-restaurants/${f.id}`, {
         method: "PATCH",
@@ -273,7 +265,7 @@ export default function FeaturedRestaurantsManager() {
 
   return (
     <div className="space-y-6">
-      {/* ===================== ADD FORM ===================== */}
+      {}
       <Card>
         <CardHeader>
           <CardTitle>Add Featured Restaurant</CardTitle>
@@ -283,7 +275,7 @@ export default function FeaturedRestaurantsManager() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Business search */}
+          {}
           <div className="space-y-2">
             <Label htmlFor="fr-username">Business Username</Label>
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -317,7 +309,7 @@ export default function FeaturedRestaurantsManager() {
             </div>
           </div>
 
-          {/* Search results */}
+          {}
           {searchResults !== null && (
             <div className="space-y-2">
               {searchResults.length === 0 ? (
@@ -351,7 +343,7 @@ export default function FeaturedRestaurantsManager() {
             </div>
           )}
 
-          {/* Selected business + location picker */}
+          {}
           {selectedBusiness && (
             <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -447,7 +439,7 @@ export default function FeaturedRestaurantsManager() {
         </CardContent>
       </Card>
 
-      {/* ===================== LIST ===================== */}
+      {}
       <Card>
         <CardHeader>
           <CardTitle>Current Featured Restaurants</CardTitle>
@@ -513,7 +505,7 @@ export default function FeaturedRestaurantsManager() {
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center md:shrink-0">
-                  {/* Sort order */}
+                  {}
                   <div className="flex items-center gap-2">
                     <Label htmlFor={`order-${f.id}`} className="text-xs">
                       Order
@@ -533,7 +525,7 @@ export default function FeaturedRestaurantsManager() {
                     />
                   </div>
 
-                  {/* Active toggle */}
+                  {}
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground sm:hidden">
                       Active
@@ -545,7 +537,7 @@ export default function FeaturedRestaurantsManager() {
                     />
                   </div>
 
-                  {/* Remove */}
+                  {}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button

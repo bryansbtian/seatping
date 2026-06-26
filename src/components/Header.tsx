@@ -6,31 +6,11 @@ import { Button } from "@/components/ui/button";
 
 type HeaderVariant = "customer" | "business";
 
-// Customer and business sessions live in separate cookies and can both be
-// active at once. The header only cares about the customer session.
 type Session = {
   customer: { name?: string | null } | null;
   business: { name?: string | null } | null;
 };
 
-/**
- * Shared top navigation.
- *
- * - variant="customer" (default): used on the customer-facing homepage `/`, the
- *   join-queue flow, and customer login/signup. The header is context-aware:
- *     • a logged-in CUSTOMER sees just "SeatPing" + their profile (no auth CTAs)
- *     • everyone else (logged out OR logged in as a business) sees Login / Sign Up
- *   A business session is deliberately ignored here, so being logged in as a
- *   business never makes the customer homepage look logged in.
- *
- * - variant="business": used on `/business` and business login/signup. Shows the
- *   business marketing nav with Login (-> /business/login) and Get Started
- *   (-> /business/signup).
- *
- * `showSearch` adds a compact restaurant search input between the logo and
- * the right-side nav (used on the Restaurant Details page). Hidden on mobile
- * to keep the bar tidy; mobile users can search from the homepage.
- */
 const Header = ({
   variant = "customer",
   showSearch = false,
@@ -56,7 +36,6 @@ const Header = ({
     };
   }, []);
 
-  // Only the customer variant cares about session state (to show the profile).
   useEffect(() => {
     if (variant !== "customer") return;
     let active = true;
@@ -71,16 +50,11 @@ const Header = ({
     };
   }, [variant]);
 
-  // The SeatPing wordmark returns to the relevant home: the business marketing
-  // page on the business header, the customer homepage everywhere else.
   const logoTo = variant === "business" ? "/business" : "/";
-  // A business session does NOT count as a logged-in customer on `/`.
   const isCustomerLoggedIn = variant === "customer" && !!session?.customer;
 
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
-    // Customer-only logout: clears the customer cookie and leaves any business
-    // (or admin) session in the same browser untouched.
     fetch("/auth/customer/logout", {
       method: "POST",
       credentials: "include",
@@ -100,8 +74,7 @@ const Header = ({
           SeatPing
         </Link>
 
-        {/* Inline search (Restaurant Details pages). Hidden on mobile to keep
-            the bar compact; the customer homepage owns the rich mobile search. */}
+        {}
         {showSearch && (
           <form
             onSubmit={submitSearch}
@@ -128,14 +101,13 @@ const Header = ({
           </form>
         )}
 
-        {/* ===================== CUSTOMER, LOGGED IN ===================== */}
+        {}
         {isCustomerLoggedIn ? (
           <CustomerProfile
             name={session?.customer?.name}
             onLogout={handleLogout}
           />
         ) : variant === "business" ? (
-          /* ===================== BUSINESS MARKETING ===================== */
           <>
             <div className="hidden sm:flex items-center gap-8">
               <Link
@@ -161,7 +133,6 @@ const Header = ({
             </MobileMenu>
           </>
         ) : (
-          /* ===================== CUSTOMER, LOGGED OUT ===================== */
           <>
             <div className="hidden sm:flex items-center gap-8">
               <Link
@@ -192,10 +163,6 @@ const Header = ({
   );
 };
 
-/**
- * Logged-in customer profile control: avatar button that opens a menu with a
- * link to the profile page and logout.
- */
 function CustomerProfile({
   name,
   onLogout,
@@ -227,8 +194,7 @@ function CustomerProfile({
         }}
         className="flex items-center gap-2 rounded-full bg-background transition-colors hover:bg-slate-50 sm:border sm:border-border sm:px-2 sm:py-1.5 sm:pr-3"
       >
-        {/* Mobile (< sm): compact avatar-only button (~36px tap target), no name.
-            sm+: full pill with avatar + truncated name. */}
+        {}
         <span className="grid h-9 w-9 place-items-center rounded-full bg-slate-900 text-sm font-semibold text-white sm:h-8 sm:w-8">
           {initial}
         </span>

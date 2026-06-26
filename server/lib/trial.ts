@@ -1,29 +1,8 @@
-// server/lib/trial.ts
-//
-// Credit + trial logic for BUSINESS accounts.
-//
-// Business accounts live in the `businesses` collection (prisma.business) and
-// each business owns rows in the `locations` collection (prisma.location).
-// Credits are tracked per location.
-//
-// There are no plans — billing is manual. Every business starts on a 7-day
-// trial with 300 base credits and 1 location. A business is "activated" by an
-// admin turning `trial` off, which stamps `creditsStartedAt` and anchors the
-// monthly credit refill from that moment.
 import { prisma } from "./prisma.js";
 
-/** Default base credits granted to a new business and its locations. */
 export const DEFAULT_BASE_CREDITS = 300;
 
-/**
- * Check if a business's trial has expired
- * @param business - The business object from database
- * @returns true if trial has expired, false otherwise
- */
 export function isTrialExpired(business: any): boolean {
-  // Trial expires when the account is more than `trialDurationDays` old,
-  // regardless of the trial field. trial = false means the business was
-  // manually activated, NOT that the trial expired.
   const createdAt = new Date(business.createdAt);
   const trialDurationDays =
     typeof business.trialDurationDays === "number"
@@ -37,10 +16,6 @@ export function isTrialExpired(business: any): boolean {
   return now > trialEndDate;
 }
 
-/**
- * Compute the first monthly anchor that is strictly after `now`, starting from `anchor`.
- * Uses calendar-month arithmetic, so cycles are 28-31 days long.
- */
 export function nextMonthlyAnchorAfter(anchor: Date, now: Date): Date {
   const next = new Date(anchor);
   while (next <= now) {
@@ -49,19 +24,10 @@ export function nextMonthlyAnchorAfter(anchor: Date, now: Date): Date {
   return next;
 }
 
-/**
- * Compute the next refill date for a business given their credits-cycle anchor
- * (`creditsStartedAt`). Always returns the first monthly anchor strictly after `now`.
- */
 export function computeNextRefillDate(creditsStartedAt: Date, now: Date = new Date()): Date {
   return nextMonthlyAnchorAfter(creditsStartedAt, now);
 }
 
-/**
- * Check if monthly credits need to be refilled.
- * Returns true only for activated businesses (trial === false) whose next
- * refill date has arrived.
- */
 export function shouldRefillMonthlyCredits(business: any): boolean {
   if (business.trial !== false) return false;
   if (!business.creditsStartedAt) return false;
@@ -70,31 +36,19 @@ export function shouldRefillMonthlyCredits(business: any): boolean {
   return new Date(business.nextCreditRefillAt) <= now;
 }
 
-/**
- * Base (monthly) credits for a business. Plans are gone, so this is simply the
- * business's configured `baseCredits` (defaults to 300).
- * @param business - The business object from database
- */
 export function getBaseCreditsForUser(business: any): number {
   return typeof business?.baseCredits === "number"
     ? business.baseCredits
     : DEFAULT_BASE_CREDITS;
 }
 
-/**
- * Credits a new/refilled location should start with, based on trial status.
- * @param business - The business object from database
- */
 export function getCreditsForLocation(business: any): number {
-  // Trial expired while still in trial mode -> no credits.
   if (isTrialExpired(business) && business.trial === true) {
     return 0;
   }
-  // Active trial, or manually activated -> base credits.
   return getBaseCreditsForUser(business);
 }
 
-/** Public restaurant/location detail fields captured from Google Places. */
 export interface LocationDetailsInput {
   address: string;
   displayName?: string;
@@ -107,16 +61,6 @@ export interface LocationDetailsInput {
   googleMapsUrl?: string;
 }
 
-/**
- * Build a Prisma `Location` create payload for a business, with credits derived
- * from the business's trial status. The returned object is ready to pass to
- * `prisma.location.create({ data })`.
- *
- * Accepts either a plain address string (legacy) or a details object carrying
- * the Google Places fields + the customer-facing displayName.
- * @param business - The business object (must include id + username)
- * @param location - Address string, or location details object
- */
 export function buildLocationData(
   business: any,
   location: string | LocationDetailsInput
@@ -143,12 +87,6 @@ export function buildLocationData(
   };
 }
 
-/**
- * Enforce trial expiration on all of a business's locations.
- * If the trial has expired while still in trial mode, every location's credits
- * are zeroed out.
- * @param businessId - The business ID
- */
 export async function enforceTrialExpiration(businessId: string): Promise<void> {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
@@ -185,14 +123,6 @@ export async function enforceTrialExpiration(businessId: string): Promise<void> 
   }
 }
 
-/**
- * Refill credits for all of a business's locations to the base credits.
- * Leaves `creditsStartedAt` unchanged and advances `nextCreditRefillAt` to the
- * next monthly anchor strictly after `now`.
- *
- * Caller is responsible for ensuring the business is eligible (trial === false,
- * creditsStartedAt set, refill is actually due).
- */
 export async function refillCreditsForUser(businessId: string): Promise<void> {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
@@ -226,11 +156,6 @@ export async function refillCreditsForUser(businessId: string): Promise<void> {
   );
 }
 
-/**
- * For activated businesses with `creditsStartedAt` set but no
- * `nextCreditRefillAt`, seed `nextCreditRefillAt` to the next monthly anchor
- * strictly after now. Does NOT perform a refill.
- */
 async function backfillNextCreditRefillAt(business: {
   id: string;
   trial: boolean;
@@ -252,10 +177,6 @@ async function backfillNextCreditRefillAt(business: {
   return next;
 }
 
-/**
- * Check and refill monthly credits for a single business if due.
- * Safe to call frequently — short-circuits when not eligible or not yet due.
- */
 export async function checkAndRefillMonthlyCredits(
   businessId: string
 ): Promise<void> {
@@ -281,11 +202,6 @@ export async function checkAndRefillMonthlyCredits(
   }
 }
 
-/**
- * Daily scheduled sweep: refill credits for every activated business whose
- * `nextCreditRefillAt` is due. Also seeds `nextCreditRefillAt` for accounts that
- * were activated but don't have it yet.
- */
 export async function runDailyCreditRefillSweep(): Promise<void> {
   const now = new Date();
   console.log(`[CREDIT-SWEEP] starting at ${now.toISOString()}`);

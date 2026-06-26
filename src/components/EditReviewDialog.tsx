@@ -1,7 +1,3 @@
-// Shared "Edit Review" modal used by both the customer profile (Your Reviews)
-// and the public restaurant details page. Editing always goes through the
-// customer-owned PATCH /auth/me/reviews/:id route, so ownership is enforced
-// server-side and the business reply on the row is never touched.
 import { useEffect, useState } from "react";
 import {
   Dialog,
@@ -18,8 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { Star } from "lucide-react";
 
-// Minimal shape the dialog needs. The profile's richer CustomerReview type is a
-// structural superset, so it can be passed directly.
 export type EditableReview = {
   id: string;
   rating: number;
@@ -27,7 +21,6 @@ export type EditableReview = {
   restaurantName?: string;
 };
 
-/** Interactive 1–5 star picker. */
 function StarRatingInput({
   value,
   onChange,
@@ -78,7 +71,6 @@ export function EditReviewDialog({
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Reset the form whenever a different review is opened.
   useEffect(() => {
     if (review) {
       setRating(review.rating || 0);

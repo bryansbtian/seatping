@@ -1,5 +1,4 @@
 function extractError(data: any, status: number): string {
-  // Prefer server-provided error message; fall back to first validation issue if available
   let message = data?.error || `Request Failed: ${status}`;
   if (data?.issues?.fieldErrors) {
     const fieldErrors = data.issues.fieldErrors as Record<string, string[]>;
@@ -24,11 +23,6 @@ export async function api(path: string, init: RequestInit = {}) {
   return data;
 }
 
-/**
- * Upload helper for multipart/form-data (file uploads). Unlike `api()` it does
- * NOT set a Content-Type header — the browser sets the multipart boundary
- * automatically. Same credential + error-handling behavior as `api()`.
- */
 export async function apiUpload(
   path: string,
   formData: FormData,

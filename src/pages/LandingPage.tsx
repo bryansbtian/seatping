@@ -18,8 +18,6 @@ import {
   SECTION_SUBTITLE,
 } from "@/components/landing/section";
 
-// Card width inside the carousel: ~1 card on mobile, ~2 on tablet, exactly 3
-// on desktop (gap-5 = 1.25rem, so two gaps = 2.5rem across the 3 visible cards).
 const TESTIMONIAL_W =
   "min-w-[82%] snap-start sm:min-w-[46%] lg:min-w-[calc((100%-2.5rem)/3)]";
 
@@ -74,7 +72,6 @@ const TESTIMONIALS = [
   },
 ];
 
-/** A plain quote testimonial card. */
 function TestimonialCard({
   initials,
   name,
@@ -96,9 +93,7 @@ function TestimonialCard({
         TESTIMONIAL_W,
       )}
     >
-      {/* Soft cloudy SeatPing-brand mist: a pale blue-gray haze in the top-left
-          and a subtle navy/indigo wash in the bottom-right. Large blurs keep it
-          atmospheric (not a pattern); the centre stays clean behind the text. */}
+      {}
       <div
         aria-hidden
         className="pointer-events-none absolute -left-12 -top-12 h-44 w-44 rounded-full bg-slate-300/45 blur-3xl"
@@ -141,18 +136,14 @@ function TestimonialCard({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Page                                                              */
-/* ------------------------------------------------------------------ */
 
 const LandingPage = () => {
-  // Testimonials carousel: advance one card per click, loop back at the end.
   const testimonialsRef = useRef<HTMLDivElement>(null);
   const scrollTestimonials = () => {
     const el = testimonialsRef.current;
     if (!el) return;
     const card = el.querySelector<HTMLElement>("[data-card]");
-    const step = card ? card.offsetWidth + 20 : el.clientWidth; // 20px = gap-5
+    const step = card ? card.offsetWidth + 20 : el.clientWidth;
     const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
     el.scrollTo({
       left: atEnd ? 0 : el.scrollLeft + step,
@@ -186,14 +177,12 @@ const LandingPage = () => {
       />
       <Header variant="business" />
 
-      {/* ============================================================ */}
-      {/* 1. HERO compact, above-the-fold: headline + subheadline +     */}
-      {/*    CTAs, then a cropped dashboard teaser emerging below.       */}
-      {/* ============================================================ */}
+      {}
+      {}
+      {}
+      {}
       <section className="relative overflow-hidden px-4 pt-24 pb-10 md:pt-32 md:pb-14">
-        {/* Barely-visible brand accents: faint concentric rings on the left
-            and a soft indigo glow behind the device. Kept subtle so the hero
-            stays calm and white. */}
+        {}
         <div
           aria-hidden
           className="pointer-events-none absolute -left-32 top-1/3 hidden h-[42rem] w-[42rem] -translate-y-1/2 rounded-full border border-slate-200/60 md:block"
@@ -208,7 +197,7 @@ const LandingPage = () => {
         />
 
         <div className="container relative mx-auto max-w-6xl">
-          {/* Headline + subheadline + CTA, top-center */}
+          {}
           <div className="mx-auto max-w-3xl text-center animate-fade-in-up">
             <h1 className={DISPLAY_HEADING}>
               One Dashboard for{" "}
@@ -242,14 +231,12 @@ const LandingPage = () => {
             </div>
           </div>
 
-          {/* Product sneak peek: one scalable desktop dashboard window that
-              shrinks cleanly down to phones, cropped so it emerges from the
-              lower part of the hero and fades into the page. */}
+          {}
           <div className="relative mx-auto mt-8 max-w-5xl animate-fade-in-up animation-delay-200 sm:mt-10 md:mt-12">
             <div className="max-h-[300px] overflow-hidden sm:max-h-[420px] md:max-h-[500px]">
               <HeroDashboardPreview />
             </div>
-            {/* fade so the dashboard dissolves into the page */}
+            {}
             <div
               aria-hidden
               className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/85 to-transparent sm:h-28"
@@ -258,22 +245,22 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ============================================================ */}
-      {/* 2. PRODUCT SECTION #1 animated bento grid of core features   */}
-      {/* ============================================================ */}
+      {}
+      {}
+      {}
       <AnimatedBentoFeatureGrid />
 
-      {/* ============================================================ */}
-      {/* 3. PRODUCT SECTION #2 larger feature grid                    */}
-      {/* ============================================================ */}
+      {}
+      {}
+      {}
       <SeatPingFeatureGrid />
 
-      {/* ============================================================ */}
-      {/* TESTIMONIALS trust before the final CTA                      */}
-      {/* ============================================================ */}
+      {}
+      {}
+      {}
       <section className={cn("border-t border-slate-200 bg-slate-50", SECTION_PADDING)}>
         <div className="container mx-auto max-w-6xl scroll-animate">
-          {/* Heading row: headline on the left, scroll control on the right */}
+          {}
           <div className="flex items-end justify-between gap-6">
             <div className="max-w-2xl">
               <h2 className={SECTION_HEADING}>
@@ -295,7 +282,7 @@ const LandingPage = () => {
             </button>
           </div>
 
-          {/* Carousel: scrollable row, 1 card on mobile, ~2 on tablet, 3 on desktop */}
+          {}
           <div
             ref={testimonialsRef}
             className={cn(
@@ -310,11 +297,11 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ============================================================ */}
-      {/* 5. FINAL CTA light gradient, scribble headline, value cards */}
-      {/* ============================================================ */}
+      {}
+      {}
+      {}
       <section className={cn("relative overflow-hidden border-y border-slate-200 bg-slate-50", SECTION_PADDING)}>
-        {/* soft accent-tinted gradient background */}
+        {}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-indigo-50/60 via-slate-50 to-slate-50"
@@ -325,9 +312,7 @@ const LandingPage = () => {
         />
 
         <div className="container mx-auto max-w-4xl text-center scroll-animate">
-          {/* Headline as a tasteful editorial correction: "front-door chaos"
-              is struck through (same scribble as the sales page), "smooth
-              service" is the penned-in fix on the line below. */}
+          {}
           <h2
             className={DISPLAY_HEADING}
             aria-label="Turn Every Arrival Into Smooth Service"
@@ -336,7 +321,7 @@ const LandingPage = () => {
               Turn Every Arrival Into
             </span>
             <span aria-hidden className="mt-1.5 block">
-              {/* rejected phrase: scribble copied from the sales page */}
+              {}
               <span className="relative inline-block whitespace-nowrap text-slate-400">
                 Front-Door Chaos
                 <svg
@@ -355,7 +340,7 @@ const LandingPage = () => {
                 </svg>
               </span>
             </span>
-            {/* penned-in correction, on the line below */}
+            {}
             <span className="mt-1.5 block font-hand text-[1.12em] font-bold leading-none text-indigo-600">
               Smooth Service
             </span>
@@ -366,7 +351,7 @@ const LandingPage = () => {
             with no extra hardware and no complicated onboarding.
           </p>
 
-          {/* CTA button */}
+          {}
           <div className="mt-6 flex justify-center sm:mt-7">
             <Button
               size="lg"

@@ -1,26 +1,17 @@
-// server/lib/auth.ts
 import jwt, { SignOptions, JwtPayload, Secret } from "jsonwebtoken";
 import type { Response, Request, NextFunction } from "express";
 
 export type AccountType = "customer" | "business" | "admin";
 
-// Customer, business, and admin sessions use SEPARATE cookies so they can
-// coexist in the same browser. Logging in as a business must never clobber a
-// logged-in customer (and vice versa) — e.g. joining a queue as a customer and
-// admitting as the business from the same device both stay logged in. The admin
-// cookie gates the internal /admin and /tickets consoles.
 const COOKIE_NAMES: Record<AccountType, string> = {
   customer: "sp_auth_customer",
   business: "sp_auth_business",
   admin: "sp_auth_admin",
 };
-// Legacy single-cookie name (pre account-type separation). We never read it, but
-// we clear it on logout so old sessions don't linger.
 const LEGACY_COOKIE_NAME = "sp_auth";
 
 function parseExpiresInToMs(expiresIn: string | number): number | undefined {
   if (typeof expiresIn === "number") {
-    // jsonwebtoken interprets numbers as seconds
     return expiresIn * 1000;
   }
   const match = /^\s*(\d+)\s*([a-zA-Z]+)\s*$/.exec(expiresIn);
@@ -92,7 +83,6 @@ export function setAuthCookie(
     secure: isProd,
     sameSite: "lax",
     path: "/",
-    // Persistent cookie aligned with JWT expiry
     ...(maxAge ? { maxAge } : {}),
   });
 }
@@ -105,10 +95,6 @@ export function clearAuthCookie(res: Response, accountType: AccountType) {
   });
 }
 
-/**
- * Clear every session cookie (both account types + the legacy cookie). Used by
- * the shared logout endpoint, which can't know which account type is calling.
- */
 export function clearAllAuthCookies(res: Response) {
   clearAuthCookie(res, "customer");
   clearAuthCookie(res, "business");
@@ -120,10 +106,6 @@ export function clearAllAuthCookies(res: Response) {
   });
 }
 
-/**
- * Build a middleware that only allows a specific account type through.
- * Customer tokens cannot pass a business gate and vice versa.
- */
 export function requireAccountType(accountType: AccountType) {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -147,10 +129,6 @@ export const requireCustomer = requireAccountType("customer");
 export const requireBusiness = requireAccountType("business");
 export const requireAdmin = requireAccountType("admin");
 
-/**
- * Read the current session without failing the request.
- * Returns the account type + display name, or null for no/legacy session.
- */
 export function readSession(
   req: Request,
   accountType: AccountType = "customer",
@@ -162,8 +140,6 @@ export function readSession(
       accountType?: AccountType;
       name?: string;
     };
-    // The token's claim must match the cookie it was read from; a token of one
-    // account type stuffed into another type's cookie does not count as a session.
     if (payload.accountType !== accountType || !payload.sub) return null;
     return {
       accountType: payload.accountType,

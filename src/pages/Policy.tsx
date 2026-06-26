@@ -9,7 +9,7 @@ const Policy = () => {
     <div className="min-h-screen bg-background">
       <Header />
 
-      {/* Hero (matches LandingPage rhythm & tokens) */}
+      {}
       <section className="pt-28 md:pt-32 lg:pt-40 pb-10 px-4">
         <div className="container mx-auto">
           <div className="text-center max-w-3xl mx-auto space-y-4">
@@ -30,13 +30,13 @@ const Policy = () => {
         </div>
       </section>
 
-      {/* Content wrapper styled like your screenshots (rounded card, subtle border) */}
+      {}
       <section className="px-4 pb-16">
         <div className="container mx-auto max-w-4xl">
           <Card className="border rounded-2xl shadow-sm bg-card/80 backdrop-blur-sm">
-            {/* Base text smaller on mobile, normal from sm and up */}
+            {}
             <CardContent className="prose prose-neutral max-w-none text-foreground text-sm sm:text-base">
-              {/* 1. Information We Collect */}
+              {}
               <h2
                 id="collect"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-6"
@@ -95,7 +95,7 @@ const Policy = () => {
                 <li>Usage and Interaction Analytics</li>
               </ul>
 
-              {/* 2. How We Use Your Information */}
+              {}
               <h2
                 id="use"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -125,7 +125,7 @@ const Policy = () => {
                 replying STOP.
               </p>
 
-              {/* 3. Sharing Your Data */}
+              {}
               <h2
                 id="share"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -160,7 +160,7 @@ const Policy = () => {
                 </li>
               </ul>
 
-              {/* 4. Data Retention */}
+              {}
               <h2
                 id="retention"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -173,7 +173,7 @@ const Policy = () => {
                 request deletion of your data by contacting us.
               </p>
 
-              {/* 5. Your Rights */}
+              {}
               <h2
                 id="rights"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -187,7 +187,7 @@ const Policy = () => {
                 contacting us.
               </p>
 
-              {/* 6. Security */}
+              {}
               <h2
                 id="security"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -200,7 +200,7 @@ const Policy = () => {
                 or storage is completely secure.
               </p>
 
-              {/* 7. International Transfers */}
+              {}
               <h2
                 id="transfers"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -213,7 +213,7 @@ const Policy = () => {
                 Contractual Clauses) to protect your information.
               </p>
 
-              {/* 8. Children's Privacy */}
+              {}
               <h2
                 id="children"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -227,7 +227,7 @@ const Policy = () => {
                 can delete it.
               </p>
 
-              {/* 9. Changes */}
+              {}
               <h2
                 id="changes"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -240,7 +240,7 @@ const Policy = () => {
                 required, notify you via Email or in-app notice.
               </p>
 
-              {/* 10. Contact */}
+              {}
               <h2
                 id="contact"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"

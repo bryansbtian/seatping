@@ -41,9 +41,6 @@ import {
 } from "lucide-react";
 import Papa from "papaparse";
 
-// ---------------------------------------------------------------------------
-// Types (mirror the /api/guests payloads)
-// ---------------------------------------------------------------------------
 type GuestRow = {
   id: string;
   firstName: string | null;
@@ -72,7 +69,6 @@ type TimelineEvent = {
   status: string;
   partySize: number;
   at: string | null;
-  // Preformatted date/time in the location's timezone (from the server).
   atLabel: string | null;
   location: string;
   notes: string | null;
@@ -97,9 +93,6 @@ type LocationOption = { id: string; label: string };
 
 type TypeFilter = "all" | "new" | "returning";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 function fmtDate(value: string | null, timeZone?: string): string {
   if (!value) return "--";
   const d = new Date(value);
@@ -147,22 +140,15 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// One consistent heading style for every section in the guest detail drawer
-// (Summary, Contact, Tags, Internal Notes, Visit History). Strong slate, same
-// size/weight/spacing everywhere so no section title looks different.
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <h4 className="text-sm font-semibold text-slate-800 mb-2.5">{children}</h4>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
 const BusinessGuests = () => {
   const { t } = useLang();
 
-  // Fire once when the Guest CRM page mounts.
   useEffect(() => {
     analytics.guestCrmOpened();
   }, []);
@@ -182,8 +168,6 @@ const BusinessGuests = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [guests, setGuests] = useState<GuestRow[]>([]);
-  // The selected location's IANA timezone, so dates render in the restaurant's
-  // own timezone (not the viewer's browser).
   const [locationTimezone, setLocationTimezone] = useState<string | undefined>(
     undefined,
   );
@@ -192,13 +176,11 @@ const BusinessGuests = () => {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Debounce the search box so each keystroke doesn't hit the API.
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  // Load locations + suggested tags once.
   useEffect(() => {
     let cancelled = false;
     api("/api/guests/meta")
@@ -274,14 +256,12 @@ const BusinessGuests = () => {
     setHasNoShow(false);
   };
 
-  // Tags surfaced in the filter row: suggested tags + any tag actually in use.
   const filterableTags = useMemo(() => {
     const set = new Set<string>(suggestedTags);
     for (const g of guests) for (const t of g.tags) set.add(t);
     return Array.from(set);
   }, [suggestedTags, guests]);
 
-  // Update one row in the list (after a detail edit) without a full refetch.
   const patchRow = useCallback((updated: GuestRow) => {
     setGuests((prev) =>
       prev.map((g) => (g.id === updated.id ? { ...g, ...updated } : g)),
@@ -291,7 +271,6 @@ const BusinessGuests = () => {
   const currentLocationLabel =
     locations.find((l) => l.id === locationId)?.label || "";
 
-  // Export the currently-shown (filtered) guests to a CSV download.
   const exportCsv = useCallback(() => {
     if (!guests.length) return;
     const rows = guests.map((g) => ({
@@ -343,7 +322,7 @@ const BusinessGuests = () => {
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100 flex flex-col">
         <div className="container mx-auto px-4 py-8 flex-1 w-full">
-          {/* Page header — mirrors the Settings page header exactly. */}
+          {}
           <div className="mb-6">
             <h1 className="text-xl md:text-2xl font-semibold text-gray-800">
               {t("guests.title")}
@@ -353,10 +332,10 @@ const BusinessGuests = () => {
             </p>
           </div>
 
-          {/* Controls card */}
+          {}
           <Card className="bg-white border border-slate-200 rounded-xl shadow-sm mb-6">
             <CardContent className="p-4 md:p-5 space-y-4">
-              {/* Top row: location selector + search */}
+              {}
               <div className="flex flex-col md:flex-row gap-3">
                 <div className="relative md:w-64 shrink-0">
                   <select
@@ -408,11 +387,11 @@ const BusinessGuests = () => {
                 </Button>
               </div>
 
-              {/* Filters: always visible on md+, collapsible on mobile */}
+              {}
               <div
                 className={`${filtersOpen ? "block" : "hidden"} md:block space-y-3`}
               >
-                {/* New / Returning */}
+                {}
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-medium text-slate-500 mr-1">
                     {t("guests.status")}
@@ -437,7 +416,7 @@ const BusinessGuests = () => {
                   ))}
                 </div>
 
-                {/* Boolean toggles */}
+                {}
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-medium text-slate-500 mr-1">
                     {t("guests.showOnly")}
@@ -459,7 +438,7 @@ const BusinessGuests = () => {
                   />
                 </div>
 
-                {/* Tag filters */}
+                {}
                 {filterableTags.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-medium text-slate-500 mr-1 mt-0.5">
@@ -498,7 +477,7 @@ const BusinessGuests = () => {
             </CardContent>
           </Card>
 
-          {/* Results */}
+          {}
           <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
               <div>
@@ -593,9 +572,6 @@ const BusinessGuests = () => {
   );
 };
 
-// ---------------------------------------------------------------------------
-// Filter toggle pill
-// ---------------------------------------------------------------------------
 function FilterToggle({
   active,
   onClick,
@@ -623,9 +599,6 @@ function FilterToggle({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Guests table (desktop) / cards (mobile)
-// ---------------------------------------------------------------------------
 function GuestsTable({
   guests,
   timeZone,
@@ -638,7 +611,7 @@ function GuestsTable({
   const { t } = useLang();
   return (
     <>
-      {/* Desktop table */}
+      {}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -776,7 +749,7 @@ function GuestsTable({
         </table>
       </div>
 
-      {/* Mobile cards */}
+      {}
       <div className="md:hidden divide-y divide-slate-100">
         {guests.map((g) => {
           const name = guestName(g, t("guests.defaultName"));
@@ -847,9 +820,6 @@ function GuestsTable({
   );
 }
 
-// ---------------------------------------------------------------------------
-// States
-// ---------------------------------------------------------------------------
 function LoadingState() {
   return (
     <div className="p-4 md:p-6 space-y-3">
@@ -900,9 +870,6 @@ function ErrorState({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Detail drawer
-// ---------------------------------------------------------------------------
 function GuestDetailDrawer({
   guestId,
   onClose,
@@ -1039,18 +1006,16 @@ function GuestDetailDrawer({
           </div>
         ) : g ? (
           <>
-            {/* Accessible title/description for the dialog; the visible
-                identity lives in the profile card below. */}
+            {}
             <SheetHeader className="sr-only">
               <SheetTitle>{name}</SheetTitle>
               <SheetDescription>{g.location.label}</SheetDescription>
             </SheetHeader>
 
             <div className="p-4 sm:p-6 space-y-6">
-              {/* Cohesive guest profile card: identity + contact + integrated
-                  stats in one soft, rounded panel. */}
+              {}
               <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm p-4 sm:p-5">
-                {/* Identity */}
+                {}
                 <div className="flex items-start gap-4">
                   <div className="w-16 h-16 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-xl font-semibold shrink-0">
                     {initials(name)}
@@ -1068,10 +1033,9 @@ function GuestDetailDrawer({
                   </div>
                 </div>
 
-                {/* Contact — two columns on tablet/desktop (Phone over Email |
-                    First Visit over Last Visit), stacked on mobile. */}
+                {}
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
-                  {/* Left column: Phone, then Email */}
+                  {}
                   <div className="space-y-2.5">
                     <div className="flex items-center gap-2 text-slate-800 min-w-0">
                       <Phone className="w-4 h-4 text-slate-400 shrink-0" />
@@ -1094,7 +1058,7 @@ function GuestDetailDrawer({
                       </span>
                     </div>
                   </div>
-                  {/* Right column: First Visit, then Last Visit */}
+                  {}
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-500">
@@ -1115,8 +1079,7 @@ function GuestDetailDrawer({
                   </div>
                 </div>
 
-                {/* Stats — integrated row (no boxes). 3 cols on mobile, 6 on
-                    tablet/desktop. */}
+                {}
                 <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-3 sm:grid-cols-6 gap-y-3">
                   <ProfileStat
                     label={t("guests.stat.totalVisits")}
@@ -1147,7 +1110,7 @@ function GuestDetailDrawer({
                 </div>
               </div>
 
-              {/* Summary */}
+              {}
               <section>
                 <SectionHeading>{t("guests.summary")}</SectionHeading>
                 <p className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-3">
@@ -1155,7 +1118,7 @@ function GuestDetailDrawer({
                 </p>
               </section>
 
-              {/* Tags editor */}
+              {}
               <section>
                 <SectionHeading>{t("guests.tags")}</SectionHeading>
                 <div className="flex flex-wrap gap-1.5 mb-2">
@@ -1212,7 +1175,7 @@ function GuestDetailDrawer({
                 )}
               </section>
 
-              {/* Notes editor */}
+              {}
               <section>
                 <SectionHeading>{t("guests.internalNotes")}</SectionHeading>
                 <Textarea
@@ -1236,7 +1199,7 @@ function GuestDetailDrawer({
                 </div>
               </section>
 
-              {/* Upcoming reservations */}
+              {}
               {detail.upcomingReservations.length > 0 && (
                 <HistorySection
                   title={t("guests.upcomingReservations")}
@@ -1244,7 +1207,7 @@ function GuestDetailDrawer({
                 />
               )}
 
-              {/* Visit history timeline */}
+              {}
               <HistorySection
                 title={t("guests.visitHistory")}
                 events={detail.timeline}
@@ -1258,7 +1221,6 @@ function GuestDetailDrawer({
   );
 }
 
-// One integrated stat in the profile card (no box) — value over a muted label.
 function ProfileStat({
   label,
   value,
