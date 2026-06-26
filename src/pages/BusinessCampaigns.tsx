@@ -78,9 +78,6 @@ import {
   SavedAudience,
 } from "@/components/CustomAudienceBuilder";
 
-// ---------------------------------------------------------------------------
-// Types (mirror the /api/campaigns payloads)
-// ---------------------------------------------------------------------------
 type LocationOption = {
   id: string;
   label: string;
@@ -141,7 +138,6 @@ type Campaign = {
   locationId: string;
   locationLabel: string | null;
   sentAt: string | null;
-  // Timing
   sendMode: "NOW" | "SCHEDULED" | "RECURRING";
   timezone: string | null;
   scheduledAt: string | null;
@@ -186,21 +182,15 @@ function fmtDate(value: string | null): string {
   });
 }
 
-/** Parse "YYYY-MM-DD" to a local Date (midnight), or undefined. */
 function parseLocalDate(s: string): Date | undefined {
   if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined;
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
-/** Format a Date to "YYYY-MM-DD" in local time. */
 function toLocalDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/**
- * Date picker matching the customer landing page (FieldTrigger + shadcn
- * Calendar in a Popover). Value is "YYYY-MM-DD".
- */
 function DateField({
   value,
   onChange,
@@ -241,7 +231,6 @@ function DateField({
   );
 }
 
-/** The current wall-clock "YYYY-MM-DDTHH:MM" in a given IANA timezone. */
 function nowWallClockInTz(tz?: string): string {
   if (!tz) tz = "Asia/Jakarta";
   const d = new Date();
@@ -268,9 +257,6 @@ function nowWallClockInTz(tz?: string): string {
 
 type TabKey = "campaigns" | "templates" | "audiences" | "history";
 
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
 const BusinessCampaigns = () => {
   const { t } = useLang();
   const { toast } = useToast();
@@ -300,7 +286,6 @@ const BusinessCampaigns = () => {
     null,
   );
 
-  // Load meta once.
   useEffect(() => {
     let cancelled = false;
     api("/api/campaigns/meta")
@@ -420,7 +405,7 @@ const BusinessCampaigns = () => {
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100 flex flex-col">
         <div className="container mx-auto px-4 py-8 flex-1 w-full">
-          {/* Page header — mirrors the Guests and Settings pages exactly. */}
+          {}
           <div className="mb-6">
             <h1 className="text-xl md:text-2xl font-semibold text-gray-800">
               {t("camp.title")}
@@ -430,7 +415,7 @@ const BusinessCampaigns = () => {
             </p>
           </div>
 
-          {/* Tabs + location selector */}
+          {}
           <div className="flex flex-col md:flex-row md:items-stretch gap-3 mb-6">
             <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 flex-1 overflow-x-auto">
               {(
@@ -454,7 +439,7 @@ const BusinessCampaigns = () => {
                 </button>
               ))}
             </div>
-            {/* Location selector */}
+            {}
             <div className="relative md:w-56 shrink-0">
               <select
                 className="w-full h-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -502,7 +487,6 @@ const BusinessCampaigns = () => {
               onUse={(tpl) => {
                 setEditingCampaign(null);
                 setBuilderOpen(true);
-                // The builder reads templates fresh; pre-selection handled there.
                 setPreselectTemplateId(tpl.id);
               }}
               onRefresh={fetchTemplates}
@@ -595,9 +579,6 @@ const BusinessCampaigns = () => {
 
 export default BusinessCampaigns;
 
-// ---------------------------------------------------------------------------
-// Shared small pieces
-// ---------------------------------------------------------------------------
 function EmptyState({
   icon: Icon,
   title,
@@ -635,7 +616,6 @@ function ListSkeleton() {
   );
 }
 
-/** Normalize a variable name to Meta-safe snake_case (firstName -> first_name). */
 function normalizeVar(raw: string): string {
   return raw
     .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
@@ -645,10 +625,6 @@ function normalizeVar(raw: string): string {
     .replace(/^_+|_+$/g, "");
 }
 
-/**
- * Meta forbids a variable at the very start or end of the message body. Returns
- * an error string (or null). Mirrors the server's validateBodyParamPositions.
- */
 function bodyParamPositionError(body: string): string | null {
   if (!body) return null;
   const firstOpen = body.indexOf("{{");
@@ -664,9 +640,6 @@ function bodyParamPositionError(body: string): string | null {
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// Campaigns tab
-// ---------------------------------------------------------------------------
 function CampaignsTab({
   loading,
   campaigns,
@@ -734,7 +707,7 @@ function CampaignsTab({
           />
         ) : (
           <>
-            {/* Desktop table */}
+            {}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -841,7 +814,6 @@ function CampaignsTab({
   );
 }
 
-/** One-line timing summary for a campaign row. */
 function timingSummary(c: Campaign): string {
   if (c.status === "SCHEDULED")
     return `Scheduled · ${c.scheduledAtLabel || "--"}`;
@@ -910,9 +882,6 @@ function CampaignActions({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Templates tab
-// ---------------------------------------------------------------------------
 function TemplatesTab({
   loading,
   templates,
@@ -1082,9 +1051,6 @@ function TemplateCard({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Audiences tab
-// ---------------------------------------------------------------------------
 function AudiencesTab({
   audiences,
   savedAudiences,
@@ -1209,9 +1175,6 @@ function AudiencesTab({
   );
 }
 
-// ---------------------------------------------------------------------------
-// History tab
-// ---------------------------------------------------------------------------
 function HistoryTab({
   loading,
   campaigns,
@@ -1281,9 +1244,6 @@ function HistoryTab({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Campaign builder dialog
-// ---------------------------------------------------------------------------
 function splitWallClock(utcStr: string | null | undefined, tz: string) {
   if (!utcStr) return null;
   const d = new Date(utcStr);
@@ -1313,7 +1273,6 @@ function splitWallClock(utcStr: string | null | undefined, tz: string) {
 
 type ManualGuest = { id: string; name: string; contact: string };
 
-/** Return the next available "Untitled Campaign" name (appending " 2", " 3", …). */
 function nextUntitledName(existingNames: string[]): string {
   const base = "Untitled Campaign";
   const taken = new Set(existingNames.map((n) => n.toLowerCase()));
@@ -1383,7 +1342,6 @@ function CampaignBuilderDialog({
     meta?.locations.find((l) => l.id === locationId)?.timezone ||
     "Asia/Jakarta";
 
-  // Timing
   const tz = existing?.timezone || timezone;
   const schedParts = splitWallClock(existing?.scheduledAt, tz);
   const recurStartParts = splitWallClock(existing?.recurrenceStartAt, tz);
@@ -1411,10 +1369,8 @@ function CampaignBuilderDialog({
   const selectedTemplate = templates.find((x) => x.id === templateId) || null;
   const usableTemplates = templates.filter((x) => x.usable);
 
-  // Audience options + manual.
   const manualGuestIds = manualGuests.map((g) => g.id);
 
-  // Manual guests hydration from draft
   useEffect(() => {
     if (
       existing?.audienceType === "manual" &&
@@ -1441,7 +1397,6 @@ function CampaignBuilderDialog({
     }
   }, [existing, locationId]);
 
-  // Live message preview (debounced).
   useEffect(() => {
     if (!templateId || !locationId) {
       setPreview(null);
@@ -1465,7 +1420,6 @@ function CampaignBuilderDialog({
     return () => clearTimeout(handle);
   }, [channel, templateId, locationId, JSON.stringify(templateValues)]);
 
-  // Live audience preview (debounced).
   useEffect(() => {
     if (!locationId) return;
     if (audienceType === "with_tag" && !tag) {
@@ -1478,7 +1432,7 @@ function CampaignBuilderDialog({
     }
     const handle = setTimeout(() => {
       let at = audienceType;
-      let tagParam = tag;
+      const tagParam = tag;
       if (audienceType.startsWith("custom_group:")) {
         at = "custom_group";
       }
@@ -1524,7 +1478,7 @@ function CampaignBuilderDialog({
 
   function validate(): string | null {
     if (!templateId) return "Choose a template.";
-    let at = audienceType.startsWith("custom_group:")
+    const at = audienceType.startsWith("custom_group:")
       ? "custom_group"
       : audienceType;
     if (at === "with_tag" && !tag) return "Please enter a tag.";
@@ -1575,7 +1529,6 @@ function CampaignBuilderDialog({
     }
   }
 
-  // Build the timing portion of the /send body, or return a validation error.
   function timingBody(): { body?: any; error?: string } {
     if (sendMode === "SCHEDULED") {
       if (timingError) return { error: timingError };
@@ -1668,8 +1621,6 @@ function CampaignBuilderDialog({
   const editableVars = selectedTemplate?.editableVariables ?? [];
   const ChannelIcon = CHANNEL_META[channel].icon;
 
-  // Timing validation (timezone-aware "not in the past" check using the
-  // location's current wall-clock).
   const nowLocal = nowWallClockInTz(timezone);
   let timingError: string | null = null;
   if (sendMode === "SCHEDULED") {
@@ -1710,7 +1661,7 @@ function CampaignBuilderDialog({
           </DialogHeader>
 
           <div className="space-y-5">
-            {/* 1. Channel */}
+            {}
             <Section step={1} title="Channel">
               <div className="flex gap-1.5 sm:gap-2">
                 {(["SMS", "WHATSAPP", "EMAIL"] as Channel[]).map((ch) => {
@@ -1740,7 +1691,7 @@ function CampaignBuilderDialog({
               </p>
             </Section>
 
-            {/* 2. Audience */}
+            {}
             <Section step={2} title="Audience">
               <div className="relative">
                 <select
@@ -1796,7 +1747,7 @@ function CampaignBuilderDialog({
                 />
               )}
 
-              {/* Audience preview */}
+              {}
               {audiencePreview && (
                 <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
                   <div className="flex items-center justify-between">
@@ -1827,7 +1778,7 @@ function CampaignBuilderDialog({
               )}
             </Section>
 
-            {/* 3. Template */}
+            {}
             <Section step={3} title="Template">
               {usableTemplates.length === 0 ? (
                 <p className="text-sm text-slate-500">
@@ -1843,7 +1794,6 @@ function CampaignBuilderDialog({
                         key={tpl.id}
                         onClick={() => {
                           setTemplateId(tpl.id);
-                          // Seed example values for editable vars when switching.
                           setTemplateValues((prev) => ({
                             ...tpl.exampleValues,
                             ...prev,
@@ -1875,7 +1825,7 @@ function CampaignBuilderDialog({
               )}
             </Section>
 
-            {/* 4. Variables */}
+            {}
             {selectedTemplate && editableVars.length > 0 && (
               <Section step={4} title="Fill Template Variables">
                 <div className="space-y-2">
@@ -1903,7 +1853,7 @@ function CampaignBuilderDialog({
               </Section>
             )}
 
-            {/* 5. Preview */}
+            {}
             <Section
               step={selectedTemplate && editableVars.length > 0 ? 5 : 4}
               title="Message Preview"
@@ -1937,7 +1887,7 @@ function CampaignBuilderDialog({
               )}
             </Section>
 
-            {/* Name */}
+            {}
             <div>
               <label className="text-xs font-medium text-slate-600">
                 Campaign Name
@@ -1950,7 +1900,7 @@ function CampaignBuilderDialog({
               />
             </div>
 
-            {/* Timing */}
+            {}
             <Section step={6} title="Timing">
               <div className="flex gap-2">
                 {(
@@ -2092,7 +2042,7 @@ function CampaignBuilderDialog({
             </Section>
           </div>
 
-          {/* Actions */}
+          {}
           <div className="flex flex-col sm:flex-row gap-2 pt-1 items-center">
             <div className="flex flex-1 gap-2 w-full">
               <Button
@@ -2223,9 +2173,6 @@ function Section({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Manual guest picker (reuses the Guest CRM list API)
-// ---------------------------------------------------------------------------
 function ManualGuestPicker({
   locationId,
   selected,
@@ -2338,9 +2285,6 @@ function ManualGuestPicker({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Custom template builder dialog
-// ---------------------------------------------------------------------------
 function TemplateBuilderDialog({
   open,
   onClose,
@@ -2371,13 +2315,9 @@ function TemplateBuilderDialog({
     .split(",")
     .map((s) => normalizeVar(s.trim()))
     .filter(Boolean);
-  // Every status is editable. Editing an APPROVED template sends it back to
-  // review, so its footer shows a single "save & resubmit" action.
   const isApprovedEdit = existing?.approvalStatus === "APPROVED";
 
   const bodyError = bodyParamPositionError(body);
-  // Every declared variable needs an example value before submitting for review
-  // (WhatsApp/Meta requires a sample for each placeholder).
   const exampleError =
     variables.length > 0 &&
     variables.some((v) => !(exampleValues[v] ?? "").trim())
@@ -2442,8 +2382,6 @@ function TemplateBuilderDialog({
     }
   }
 
-  // Saving an edit to an approved template re-runs review: the PATCH itself
-  // moves it back to PENDING_SEATPING_REVIEW on the server.
   async function saveApprovedEdit() {
     if (exampleError) {
       toast({ title: exampleError, variant: "destructive" });

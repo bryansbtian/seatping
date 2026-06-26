@@ -24,12 +24,9 @@ import Footer from "@/components/Footer";
 import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import ReservationSearchBar from "@/components/ReservationSearchBar";
 
-// Hero + card imagery (remote placeholders). The slate fallback background keeps
-// each frame looking intentional even if an image fails to load.
 const HERO_IMAGE =
   "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=2400&q=80";
 
-// Featured restaurants are admin-curated; fetched from /api/featured-restaurants.
 type FeaturedRestaurant = {
   id: string;
   locationId: string;
@@ -52,7 +49,6 @@ type FeaturedRestaurant = {
 const CustomerLanding = () => {
   const navigate = useNavigate();
 
-  // Featured Restaurants — real data, curated in the admin dashboard.
   const [featured, setFeatured] = useState<FeaturedRestaurant[]>([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [featuredError, setFeaturedError] = useState(false);
@@ -78,7 +74,6 @@ const CustomerLanding = () => {
     };
   }, []);
 
-  // Reveal-on-scroll, matching the business landing page behaviour.
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -111,9 +106,9 @@ const CustomerLanding = () => {
       />
       <Header />
 
-      {/* ===================== HERO ===================== */}
+      {}
       <section className="relative">
-        {/* Background image + slate overlay (keeps SeatPing's neutral palette) */}
+        {}
         <div className="absolute inset-0 bg-slate-900">
           <img
             src={HERO_IMAGE}
@@ -162,23 +157,21 @@ const CustomerLanding = () => {
         </div>
       </section>
 
-      {/* ===================== FLOATING SEARCH ===================== */}
+      {}
       <div className="relative z-20 -mt-24 sm:-mt-28 md:-mt-32 px-4">
         <div className="container mx-auto max-w-5xl">
           <ReservationSearchBar />
         </div>
       </div>
 
-      {/* ===================== FEATURED RESTAURANTS ===================== */}
-      {/* Section always visible; body switches between loading / error / empty /
-          real cards. Never shows mock or random restaurants. */}
+      {}
+      {}
       <section id="featured" className="py-16 md:py-24 px-4">
         <div className="container mx-auto max-w-7xl">
-          {/* Carousel wraps the whole block so the top-right arrows share the
-              header row (arrows shown only when there are cards to scroll). */}
+          {}
           <Carousel opts={{ align: "start" }} className="w-full">
             <div className="mb-8 flex items-end justify-between gap-4">
-              {/* Header — left-aligned, always visible (loading / empty / data). */}
+              {}
               <div className="text-left">
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-slate-900">
                   Featured Restaurants
@@ -187,8 +180,7 @@ const CustomerLanding = () => {
                   Discover great places to book, queue, and enjoy with SeatPing.
                 </p>
               </div>
-              {/* Arrows are desktop-only; on mobile the carousel is swiped /
-                  dragged horizontally instead. */}
+              {}
               {!loadingFeatured && featured.length > 0 && (
                 <div className="hidden shrink-0 items-center gap-2 self-end sm:flex">
                   <CarouselPrevious className="static h-9 w-9 translate-x-0 translate-y-0 sm:h-10 sm:w-10" />
@@ -203,7 +195,6 @@ const CustomerLanding = () => {
                 restaurants...
               </div>
             ) : featured.length === 0 ? (
-              // Empty (or failed) state — kept visible and left-aligned, no mock cards.
               <div className="max-w-2xl rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 md:p-12 text-left">
                 {featuredError ? (
                   <>
@@ -229,9 +220,6 @@ const CustomerLanding = () => {
             ) : (
               <CarouselContent className="-ml-4">
                 {featured.map((r) => {
-                  // Card + Book Table → Restaurant Details page. Join Queue
-                  // links straight to this location's queue page, which
-                  // auto-selects the location from the URL.
                   const detailsHref = r.businessUsername
                     ? `/${r.businessUsername}/${r.locationId}`
                     : null;
@@ -239,7 +227,6 @@ const CustomerLanding = () => {
                     r.businessUsername && r.locationId
                       ? `/queue/${r.businessUsername}/${r.locationId}`
                       : (detailsHref ?? "/");
-                  // Prefer a concise city; fall back to area, then full address.
                   const locationText =
                     r.shortAddress || r.city || r.area || r.address || "";
                   return (
@@ -273,12 +260,12 @@ const CustomerLanding = () => {
                         </div>
 
                         <CardContent className="flex flex-1 flex-col p-4">
-                          {/* Restaurant name */}
+                          {}
                           <h3 className="font-semibold text-slate-900 truncate">
                             {r.name}
                           </h3>
 
-                          {/* Meta: reviews · cuisine · price */}
+                          {}
                           <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-slate-500">
                             {r.rating != null ? (
                               <span className="inline-flex items-center gap-1 font-medium text-slate-700">
@@ -311,7 +298,7 @@ const CustomerLanding = () => {
                             )}
                           </div>
 
-                          {/* Location */}
+                          {}
                           {locationText && (
                             <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
                               <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
@@ -319,8 +306,7 @@ const CustomerLanding = () => {
                             </p>
                           )}
 
-                          {/* Buttons — stacked on mobile, side-by-side from sm up.
-                          mt-auto pins them to the bottom so cards align. */}
+                          {}
                           <div className="mt-auto grid grid-cols-1 gap-3 pt-4 sm:grid-cols-2">
                             {r.reservationsEnabled === false ? (
                               <div
@@ -334,7 +320,6 @@ const CustomerLanding = () => {
                               <Button
                                 className="w-full min-w-0 justify-center whitespace-nowrap px-3"
                                 onClick={(e) => {
-                                  // Stop the card's onClick from double-firing.
                                   e.stopPropagation();
                                   if (detailsHref) navigate(detailsHref);
                                 }}

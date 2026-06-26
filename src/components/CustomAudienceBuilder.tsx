@@ -46,8 +46,6 @@ export interface SavedAudience {
   filters: CustomFilters;
 }
 
-// Trimmed guest row the preview endpoint returns (visibility only; the real
-// recipient set is recomputed at send-time).
 interface PreviewGuest {
   id: string;
   fullName: string | null;
@@ -60,7 +58,6 @@ interface PreviewGuest {
   returning: boolean;
 }
 
-// Show this many guest rows before the "View More" toggle.
 const PREVIEW_VISIBLE = 5;
 
 function previewInitials(name: string): string {
@@ -107,7 +104,6 @@ export function CustomAudienceBuilder({
   const [isSearchingGuests, setIsSearchingGuests] = useState(false);
   const [showGuestDropdown, setShowGuestDropdown] = useState(false);
 
-  // Fetch initial selected guests if any
   useEffect(() => {
     if (existing?.filters?.guestIds?.length && locationId) {
       const ids = existing.filters.guestIds.join(",");
@@ -119,7 +115,6 @@ export function CustomAudienceBuilder({
     }
   }, [existing, locationId]);
 
-  // Handle guest search
   useEffect(() => {
     if (!guestSearch.trim()) {
       setGuestSearchResults([]);
@@ -344,18 +339,15 @@ export function CustomAudienceBuilder({
                         <CommandEmpty>No Tags Yet</CommandEmpty>
                         <CommandGroup>
                           {suggestedTags?.map((tagOption) => {
-                            // Check if this exact tag (case-insensitive) is already selected
                             const isSelected = tags.some((t) => t.toLowerCase() === tagOption.toLowerCase());
                             return (
                               <CommandItem
                                 key={tagOption}
                                 value={tagOption}
                                 onSelect={(currentValue) => {
-                                  // toggle selection
                                   if (isSelected) {
                                     setTags(tags.filter((t) => t.toLowerCase() !== tagOption.toLowerCase()));
                                   } else {
-                                    // if there's a lowercase version, preserve existing casing by using tagOption
                                     setTags([...tags, tagOption]);
                                   }
                                 }}
@@ -472,7 +464,6 @@ export function CustomAudienceBuilder({
                     if (guestSearchResults.length > 0) setShowGuestDropdown(true);
                   }}
                   onBlur={() => {
-                    // Small delay to allow clicking a result
                     setTimeout(() => setShowGuestDropdown(false), 200);
                   }}
                 />

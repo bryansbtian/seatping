@@ -1,12 +1,3 @@
-// Keeps a logged-in customer's denormalized `queueingActivity` profile list in
-// sync with their queue entries. Mirrors the pattern of `syncCustomerReservation`
-// in reservations.ts. No-op for guest joins (no `customerId` on the entry).
-//
-// The source of truth for a *live* waiting ticket is still the Location.queue
-// JSON (position + ETA are computed there). We deliberately do NOT denormalize
-// position/ETA here — those change as the queue moves. Instead the profile card
-// links to the live status page for active tickets, and renders stored history
-// for terminal ones.
 
 import { prisma } from "./prisma.js";
 
@@ -18,14 +9,8 @@ export type CustomerQueueStatus =
   | "removed"
   | "left";
 
-// Only "waiting" is live; everything else is terminal history.
 const ACTIVE_QUEUE_STATUSES: CustomerQueueStatus[] = ["waiting"];
 
-/**
- * Upsert one queue entry into the customer's `queueingActivity` list. Keyed by
- * the entry's `queueToken` so repeated lifecycle events (waiting -> admitted ->
- * arrived, etc.) update the same card instead of duplicating it.
- */
 export async function syncCustomerQueue(
   entry: any,
   opts: {
@@ -51,7 +36,6 @@ export async function syncCustomerQueue(
   const item = {
     id: key,
     queueToken: entry.queueToken ?? null,
-    // Composite key the live status route accepts as its `:customerId` param.
     entryKey: `${entry.firstName ?? ""}${entry.lastName ?? ""}${entry.joinedAt ?? ""}`,
     businessUsername: opts.businessUsername ?? entry.businessUsername ?? null,
     businessName: opts.businessName ?? null,

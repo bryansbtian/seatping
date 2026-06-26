@@ -90,8 +90,6 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
       if (toastId) {
         addToRemoveQueue(toastId)
       } else {
@@ -139,22 +137,10 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
-/**
- * Title-case a toast string: uppercase the first letter of each whitespace-
- * separated word and leave the rest of the word untouched. Preserving the
- * remaining characters keeps acronyms (SMS, QR), product names (WhatsApp,
- * SeatPing), emails and contractions ("You're") intact — a blanket
- * lowercase-the-rest title case would mangle them.
- */
 function toTitleCase(value: string): string {
   return value.replace(/\S+/g, (word) => word.charAt(0).toUpperCase() + word.slice(1))
 }
 
-/**
- * Centrally title-case every toast's title + description so copy is consistent
- * across all call sites (and any future ones) without editing each one. Only
- * string values are transformed; ReactNode titles/descriptions pass through.
- */
 function titleCaseToastProps<
   T extends { title?: React.ReactNode; description?: React.ReactNode }
 >(props: T): T {

@@ -1,12 +1,3 @@
-// src/components/ReservationBooking.tsx
-//
-// Customer-facing "Plan your visit" action card for the public restaurant page.
-// Waitlist (Join Queue) is always available; reservations are an optional,
-// account-free booking flow:
-//   pick number of guests → date → time slot → Book Table → short modal → confirmation.
-//
-// Availability comes from GET /api/reservations/:user/:loc/availability and is
-// computed server-side from max number of guests + max reserved guests per hour.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { format, isToday, isTomorrow } from "date-fns";
@@ -80,16 +71,12 @@ type Props = {
   queueHref: string;
   heroImage: string | null;
   locationText: string;
-  // Prefill from the homepage search bar (via URL query params). All optional.
-  initialDate?: string; // "YYYY-MM-DD"
-  initialTime?: string; // "HH:MM"
+  initialDate?: string;
+  initialTime?: string;
   initialPartySize?: number;
-  // Auto-open the booking modal on mount (set when the user arrived via the
-  // search results "Book Table" button, so they don't have to click again).
   autoOpen?: boolean;
 };
 
-/** Local YYYY-MM-DD (avoids UTC off-by-one from toISOString). */
 function localDateStr(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -126,16 +113,9 @@ export default function ReservationBooking({
   const [partySize, setPartySize] = useState<number | "larger">(
     initialPartySize && initialPartySize > 0 ? (initialPartySize > 10 ? "larger" : initialPartySize) : 2,
   );
-  // Default the date to today (instead of an empty "Pick a date" placeholder)
-  // so the time slots load right away. A prefilled date from search wins.
   const [date, setDate] = useState(initialDate || localDateStr(new Date()));
   const [time, setTime] = useState(initialTime || "");
-  // A requested time (prefilled or previously selected) that turned out to be
-  // fully booked. We don't keep it *selected* — we just remember it so we can
-  // show the "… is fully booked" hint while the user picks another slot.
   const [fullNotice, setFullNotice] = useState("");
-  // Mirrors `time` so the availability effect (which doesn't depend on `time`)
-  // can read the current selection when slots reload.
   const timeRef = useRef(time);
   useEffect(() => {
     timeRef.current = time;
@@ -148,20 +128,15 @@ export default function ReservationBooking({
 
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Open the booking modal once on mount when arriving from "Book Table".
   useEffect(() => {
     if (autoOpen && reservationsEnabled) setModalOpen(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The booking flow has started once the modal is open, regardless of which
-  // entry point opened it (button, prefilled time slot, or autoOpen).
   useEffect(() => {
     if (modalOpen) analytics.reservationStarted(locationId);
   }, [modalOpen, locationId]);
 
-  // Logged-in customer (if any) — used to prefill the booking form. Errors/401
-  // (guest or business session) are ignored and leave the form blank.
   const [account, setAccount] = useState<{
     firstName: string;
     lastName: string;
@@ -186,7 +161,6 @@ export default function ReservationBooking({
     };
   }, []);
 
-  // Load reservation settings once (only if enabled).
   useEffect(() => {
     if (!reservationsEnabled) return;
     let cancelled = false;
@@ -210,7 +184,6 @@ export default function ReservationBooking({
 
   const maxParty = settings?.maxPartySize ?? 8;
 
-  // Fetch availability whenever date or number of guests changes.
   useEffect(() => {
     if (!reservationsEnabled || !date || partySize === "larger") {
       setSlots([]);
@@ -231,11 +204,6 @@ export default function ReservationBooking({
         setSlots(next);
         setAvailabilityNotice(d?.availability || null);
         setSlotsLoaded(true);
-        // Reconcile the current/prefilled time against the freshly loaded slots:
-        //  • available  → keep it selected
-        //  • fully booked → DON'T auto-select a full slot; deselect it and
-        //    remember it so the "… is fully booked" hint still shows
-        //  • not a slot for this date (outside hours) → drop it silently
         const prev = timeRef.current;
         const slot = prev ? next.find((s) => s.time === prev) : undefined;
         if (slot && slot.available) {
@@ -274,7 +242,7 @@ export default function ReservationBooking({
   return (
     <Card className="border border-slate-200 shadow-sm">
       <CardContent className="space-y-4 p-5">
-        {/* Thumbnail + name */}
+        {}
         <div className="flex items-center gap-3">
           <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100">
             {heroImage ? (
@@ -308,7 +276,7 @@ export default function ReservationBooking({
 
         {reservationsEnabled ? (
           <>
-            {/* Number of guests + date — same field design as the homepage search bar. */}
+            {}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-2">
               <div className="space-y-1">
                 <Label className="text-xs text-slate-500">
@@ -331,7 +299,7 @@ export default function ReservationBooking({
               </div>
             </div>
 
-            {/* Time slots */}
+            {}
             <div className="space-y-2">
               <Label className="text-xs text-slate-500">Time</Label>
               {partySize === "larger" ? (
@@ -427,7 +395,7 @@ export default function ReservationBooking({
           </div>
         )}
 
-        {/* Actions — Book Table sits above Join Queue. */}
+        {}
         <div className="space-y-2">
           {reservationsEnabled ? (
             isClosed ? (
@@ -496,9 +464,6 @@ export default function ReservationBooking({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Booking modal — short form, editable date/time/party, then confirmation.
-// ---------------------------------------------------------------------------
 
 function BookingModal({
   open,
@@ -541,17 +506,14 @@ function BookingModal({
     useState<AvailabilityNotice | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
-  // Prefilled from the logged-in customer's account when available.
   const [firstName, setFirstName] = useState(defaultFirstName || "");
   const [lastName, setLastName] = useState(defaultLastName || "");
-  // Reservations are email-only — confirmations always go to this address.
   const [email, setEmail] = useState(defaultEmail || "");
   const [notes, setNotes] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [confirmation, setConfirmation] = useState<any | null>(null);
 
-  // Re-fetch availability when the editable controls change (within the modal).
   useEffect(() => {
     if (!date || confirmation || partySize === "larger") {
       if (partySize === "larger") {
@@ -572,7 +534,6 @@ function BookingModal({
         const next: Slot[] = Array.isArray(d?.slots) ? d.slots : [];
         setSlots(next);
         setAvailabilityNotice(d?.availability || null);
-        // Drop the chosen time if it's no longer bookable.
         const stillOk = next.find((s) => s.time === time && s.available);
         if (!stillOk) setTime("");
       })
@@ -643,12 +604,9 @@ function BookingModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      {/* Full-bleed layout: re-assert max-sm:p-0/overflow-hidden over the
-          shared mobile modal styles so the body keeps its internal scroll. */}
+      {}
       <DialogContent className="flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-2xl p-0 max-sm:overflow-hidden max-sm:p-0 sm:max-w-md">
-        {/* Body scrolls; DialogContent stays clipped so the X close button (top
-            right) and the rounded card edges stay fixed on screen, including on
-            mobile where the card is centered with margin around it. */}
+        {}
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
           {confirmation ? (
             <div className="space-y-4">
@@ -725,7 +683,7 @@ function BookingModal({
               </DialogHeader>
 
               <div className="space-y-4">
-                {/* Editable party / date / time — homepage-style fields. */}
+                {}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="max-[320px]:text-[10px] text-xs text-slate-500">
@@ -798,7 +756,7 @@ function BookingModal({
                   <>
                     <div className="border-t border-slate-100" />
 
-                    {/* Contact details */}
+                    {}
                     <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label
@@ -916,11 +874,6 @@ function AvailabilityEmptyState({
   );
 }
 
-/**
- * Date picker matching the homepage search bar: a FieldTrigger that opens a
- * Popover calendar, with a "Today / Tomorrow / MMM d" label. `value`/`onChange`
- * use "YYYY-MM-DD" strings; the calendar is bounded by today + booking window.
- */
 export function DateField({
   value,
   onChange,
@@ -973,7 +926,6 @@ export function DateField({
   );
 }
 
-/** Party-size picker matching the homepage "guests" field (FieldTrigger + list). */
 export function PartyField({
   value,
   onChange,

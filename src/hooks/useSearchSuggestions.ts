@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 
-// One location suggestion from GET /api/locations/search-suggestions.
 export type Suggestion = {
   locationId: string;
   businessId: string | null;
@@ -15,13 +14,6 @@ export type Suggestion = {
   url: string | null;
 };
 
-/**
- * Debounced live location suggestions for the hero search input.
- * - Debounces ~275ms and aborts in-flight requests on the next keystroke.
- * - Returns nothing (and never loads) while `enabled` is false or the query is
- *   empty — the caller disables it right after a selection so the dropdown
- *   doesn't reopen until the user types again.
- */
 export function useSearchSuggestions(query: string, enabled: boolean) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);

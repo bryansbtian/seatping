@@ -1,11 +1,3 @@
-// LocationReviewsModal.tsx
-//
-// Owner-only modal for managing customer reviews on a single location. Owners
-// can:
-//   - browse with rating + reply-status filters and a sort selector
-//   - reply, edit reply, or delete reply (their own reply only)
-// They cannot edit or delete the customer's review text or rating — those
-// controls are deliberately absent and unsupported by the API.
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import {
@@ -80,7 +72,6 @@ type SortOption =
 const MAX_REPLY_LENGTH = 500;
 const REVIEWS_PAGE_SIZE = 10;
 
-/** Five filled/empty stars for a numeric rating. */
 function Stars({ rating, className }: { rating: number; className?: string }) {
   const filled = Math.round(rating);
   return (
@@ -131,23 +122,16 @@ export default function LocationReviewsModal({
   const [error, setError] = useState<string | null>(null);
   const [reviews, setReviews] = useState<Review[] | null>(null);
 
-  // Filters + sort. Reset to defaults on every open so a new modal session
-  // starts predictable.
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>("all");
   const [replyFilter, setReplyFilter] = useState<ReplyFilter>("all");
   const [sort, setSort] = useState<SortOption>("newest");
 
-  // Per-review reply editor state — `replyDrafts[id]` is the draft text, and
-  // `editingReplies` tracks which review's reply form is currently open.
   const [editingReplies, setEditingReplies] = useState<Set<string>>(new Set());
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState<Set<string>>(new Set());
 
-  // Client-side pagination: show first N reviews, reveal more on demand. Reset
-  // to the initial page whenever the modal reopens or filters/sort change.
   const [visibleCount, setVisibleCount] = useState(REVIEWS_PAGE_SIZE);
 
-  // Fetch fresh each time the modal opens for a location.
   useEffect(() => {
     if (!open || !location) return;
     let cancelled = false;
@@ -182,15 +166,12 @@ export default function LocationReviewsModal({
     location?.address ||
     t("rev.thisLocation");
 
-  // Summary always uses ALL reviews — filters are for the list, not the totals.
   const total = reviews?.length ?? 0;
   const average =
     total > 0
       ? reviews!.reduce((sum, r) => sum + (r.rating || 0), 0) / total
       : 0;
 
-  // Filter + sort the visible list. Client-side for now; the URL shape is
-  // ready for /reviews?rating=&replyStatus=&sort= once we move it server-side.
   const visibleReviews = useMemo(() => {
     if (!reviews) return [];
     const filtered = reviews.filter((r) => {
@@ -237,8 +218,6 @@ export default function LocationReviewsModal({
     return sorted;
   }, [reviews, ratingFilter, replyFilter, sort]);
 
-  // Reset pagination whenever the filtered list changes so the first page is
-  // always shown after a filter/sort change.
   useEffect(() => {
     setVisibleCount(REVIEWS_PAGE_SIZE);
   }, [ratingFilter, replyFilter, sort]);
@@ -246,7 +225,6 @@ export default function LocationReviewsModal({
   const pagedReviews = visibleReviews.slice(0, visibleCount);
   const hasMore = visibleCount < visibleReviews.length;
 
-  // Mutation helpers — keep `reviews` in sync after PATCH/DELETE.
   const replaceReview = (updated: Review) =>
     setReviews((prev) =>
       prev ? prev.map((r) => (r.id === updated.id ? updated : r)) : prev,
@@ -334,8 +312,7 @@ export default function LocationReviewsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* Mobile sizing + typography come from the shared modal styles in
-          ui/dialog.tsx; only the desktop width/height differ here. */}
+      {}
       <DialogContent className="max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-2xl sm:max-w-3xl">
         <DialogHeader className="text-left">
           <DialogTitle>{t("rev.title")}</DialogTitle>
@@ -344,7 +321,7 @@ export default function LocationReviewsModal({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Summary (totals across ALL reviews, not the filtered list). */}
+        {}
         {!loading && !error && total > 0 && (
           <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
             <div className="flex items-center gap-1.5">
@@ -359,7 +336,7 @@ export default function LocationReviewsModal({
           </div>
         )}
 
-        {/* Filters + sort. Stack on mobile, inline on sm+. */}
+        {}
         {!loading && !error && total > 0 && (
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <Select
@@ -451,7 +428,7 @@ export default function LocationReviewsModal({
                   key={r.id}
                   className="rounded-lg border border-slate-200 p-3"
                 >
-                  {/* Customer review header */}
+                  {}
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="font-medium text-gray-900 break-words">
@@ -496,7 +473,7 @@ export default function LocationReviewsModal({
                     )}
                   </div>
 
-                  {/* Existing reply (when not editing) */}
+                  {}
                   {r.businessReply && !isEditing && (
                     <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -569,7 +546,7 @@ export default function LocationReviewsModal({
                     </div>
                   )}
 
-                  {/* Reply editor (creating OR editing) */}
+                  {}
                   {isEditing && (
                     <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4 sm:p-5">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -589,8 +566,7 @@ export default function LocationReviewsModal({
                         rows={3}
                         className="mt-3"
                       />
-                      {/* Bottom row: stacked on mobile (counter then equal-width
-                          buttons), inline with right-aligned buttons on sm+. */}
+                      {}
                       <div className="mt-5 space-y-3 sm:flex sm:items-center sm:justify-between sm:space-y-0">
                         <p
                           className={cn(
@@ -638,7 +614,7 @@ export default function LocationReviewsModal({
                     </div>
                   )}
 
-                  {/* Reply CTA when no reply yet AND not currently editing. */}
+                  {}
                   {!r.businessReply && !isEditing && (
                     <div className="mt-3">
                       <Button
@@ -657,8 +633,7 @@ export default function LocationReviewsModal({
           </div>
         )}
 
-        {/* Load more + count hint. Shows when there are more reviews to reveal,
-            or whenever filters are active so the owner can see X of Y at a glance. */}
+        {}
         {!loading && !error && total > 0 && visibleReviews.length > 0 && (
           <div className="flex flex-col items-center gap-2">
             {hasMore && (

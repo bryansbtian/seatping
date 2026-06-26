@@ -16,7 +16,6 @@ import Footer from "@/components/Footer";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { api } from "@/lib/api";
 
-// Business login. Reads from the `businesses` collection via /auth/business/login.
 const BusinessLogin = () => {
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -65,9 +64,7 @@ const BusinessLogin = () => {
         canonical="/business/login"
       />
       <Header variant="business" />
-      {/* Full-height flex column matching the customer login layout: fixed
-          header overlaid on top (pt-* on <main> clears it), card centered in the
-          remaining space, footer at the bottom. */}
+      {}
       <div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/5 via-background to-success/5">
         <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10 sm:pt-28 sm:pb-14">
           <Card className="w-full max-w-[540px] shadow-2xl border-0 bg-card/80 backdrop-blur-sm">

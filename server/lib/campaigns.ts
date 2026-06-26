@@ -1,14 +1,3 @@
-// server/lib/campaigns.ts
-//
-// Guest Campaigns (Phase 3B). Shared, business-agnostic logic for the campaigns
-// feature: template variable rendering, per-channel message building, SMS
-// segment estimation, smart-audience resolution, recipient eligibility
-// (opt-out + contact validity), and the idempotent SeatPing template seed.
-//
-// Everything here is pure/DB logic and is reused by BOTH the business API
-// (preview, send-test, send) and the notification dispatcher (per-recipient
-// rendering). All audience queries are scoped by businessId + locationId so a
-// campaign can never reach another business's or location's guests.
 
 import type { CampaignTemplate, GuestProfile } from "@prisma/client";
 import { prisma } from "./prisma.js";
@@ -24,12 +13,6 @@ import type { WhatsAppBodyParam } from "./whatsapp.js";
 
 export type Channel = "EMAIL" | "WHATSAPP" | "SMS";
 
-// Variables that are filled automatically from the guest/restaurant context and
-// therefore NOT shown to the business as fillable fields. Names are lowercase
-// snake_case because WhatsApp/Meta only accepts {{lowercase_underscore_digits}}
-// placeholders, and we keep one consistent convention across all channels.
-// `business_name` is kept as a legacy alias of `restaurant_name` so templates
-// authored before the rename still render.
 export const AUTO_VARIABLES = [
   "first_name",
   "guest_name",
@@ -38,11 +21,6 @@ export const AUTO_VARIABLES = [
   "location_name",
 ];
 
-/**
- * Normalize a variable name to the Meta-safe form: camelCase is split to
- * snake_case, everything is lowercased, and only [a-z0-9_] survive. So
- * "firstName" -> "first_name", "Order ID" -> "order_id".
- */
 export function normalizeVariableName(raw: string): string {
   return String(raw || "")
     .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
@@ -52,11 +30,6 @@ export function normalizeVariableName(raw: string): string {
     .replace(/^_+|_+$/g, "");
 }
 
-/**
- * Rewrite every {{placeholder}} in a template body to its normalized snake_case
- * form, so a business typing {{firstName}} or {{First Name}} is corrected to
- * {{first_name}} and stays consistent with the declared variable list + Meta.
- */
 export function normalizeBodyPlaceholders(body: string): string {
   if (!body) return "";
   return body.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_m, inner: string) => {
@@ -65,16 +38,10 @@ export function normalizeBodyPlaceholders(body: string): string {
   });
 }
 
-/**
- * WhatsApp/Meta does not allow a body that BEGINS or ENDS with a variable
- * parameter — there must be real text (a word) before the first {{...}} and
- * after the last {{...}}. Trailing punctuation alone is not enough. Returns a
- * human-readable error string, or null when the body is fine.
- */
 export function validateBodyParamPositions(body: string): string | null {
   if (!body) return null;
   const firstOpen = body.indexOf("{{");
-  if (firstOpen === -1) return null; // no variables at all
+  if (firstOpen === -1) return null;
   const lastClose = body.lastIndexOf("}}");
   const hasWord = (s: string) => /[a-z0-9]/i.test(s);
   if (!hasWord(body.slice(0, firstOpen))) {
@@ -86,10 +53,6 @@ export function validateBodyParamPositions(body: string): string | null {
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// Smart audience groups (MVP set). `key` is persisted on the campaign; `needsTag`
-// flags the one group that requires a tag value in audienceConfig.
-// ---------------------------------------------------------------------------
 export const AUDIENCE_GROUPS: Array<{
   key: string;
   label: string;
@@ -115,11 +78,7 @@ export function isValidAudienceType(type: string): boolean {
   return type === MANUAL_AUDIENCE || type === CUSTOM_GROUP_AUDIENCE || AUDIENCE_GROUPS.some((g) => g.key === type);
 }
 
-// ---------------------------------------------------------------------------
-// Variable rendering
-// ---------------------------------------------------------------------------
 
-/** Replace {{var}} placeholders. Unknown placeholders render as empty string. */
 export function renderString(
   template: string,
   values: Record<string, string>,
@@ -131,7 +90,6 @@ export function renderString(
   });
 }
 
-/** Editable variables = declared variables minus the auto-filled ones. */
 export function editableVariables(template: { variables: string[] }): string[] {
   return (template.variables || []).filter((v) => !AUTO_VARIABLES.includes(v));
 }
@@ -140,15 +98,10 @@ export interface RenderContext {
   businessName: string;
   businessEmail?: string | null;
   locationName: string;
-  // Per-recipient identity. Null for preview/test renders (example values used).
   firstName?: string | null;
   guestName?: string | null;
 }
 
-/**
- * Merge the campaign-level filled values with the per-recipient/auto context.
- * Auto values always win so a business can't override the guest's real name.
- */
 function buildValueMap(
   filled: Record<string, string>,
   ctx: RenderContext,
@@ -158,19 +111,12 @@ function buildValueMap(
     first_name: ctx.firstName || "there",
     guest_name: ctx.guestName || ctx.firstName || "there",
     restaurant_name: ctx.businessName,
-    // `restaurant` and `business_name` are aliases of the business name so
-    // approved Meta templates authored with any of these placeholders render.
     restaurant: ctx.businessName,
-    business_name: ctx.businessName, // legacy alias for pre-rename templates
+    business_name: ctx.businessName,
     location_name: ctx.locationName,
   };
 }
 
-/**
- * Extract the distinct {{placeholder}} names from a template body, in first-seen
- * order. Used to map a campaign template's body to ordered WhatsApp body params.
- * "Hi {{first_name}}, ... — {{restaurant}}" -> ["first_name", "restaurant"].
- */
 export function extractBodyPlaceholders(body: string): string[] {
   if (!body) return [];
   const out: string[] = [];
@@ -189,16 +135,9 @@ export interface BuiltMessage {
   whatsappTemplateName?: string | null;
   whatsappLanguage?: string;
   whatsappParams?: WhatsAppBodyParam[];
-  // Resolved variable map (name -> rendered value) for this recipient. Lets the
-  // send path rebuild params from the live Meta template contract.
   whatsappValues?: Record<string, string>;
 }
 
-/**
- * Build the final channel-specific message for a template + filled values +
- * context. Email gets the shared SeatPing HTML shell; SMS/WhatsApp get plain
- * text. Every channel clearly names the business and the "via SeatPing" sender.
- */
 export function buildMessage(
   template: CampaignTemplate,
   filled: Record<string, string>,
@@ -229,14 +168,12 @@ export function buildMessage(
         ${p(`<span style="color:#64748B;font-size:12px;">You are receiving this because you visited ${esc(ctx.businessName)}. Sent by SeatPing on behalf of ${esc(ctx.businessName)}.</span>`)}
       `,
     });
-    // Plain-text fallback for the text column / logging.
     const text = [bodyText, offer, ctaText && ctaUrl ? `${ctaText}: ${ctaUrl}` : ""]
       .filter(Boolean)
       .join("\n\n");
     return { subject, text, html };
   }
 
-  // SMS / WhatsApp plain text.
   const lines = [bodyText];
   if (offer) lines.push(offer);
   if (ctaText && ctaUrl) lines.push(`${ctaText}: ${ctaUrl}`);
@@ -244,24 +181,15 @@ export function buildMessage(
   const text = lines.filter(Boolean).join("\n\n");
 
   if (channel === "WHATSAPP") {
-    // Build one Meta body parameter per distinct {{placeholder}} in the approved
-    // template body, in body order. Approved marketing templates use NAMED
-    // placeholders ({{first_name}}, {{offer}}, ...) and must be sent as named
-    // params; legacy positional templates ({{1}}, {{2}}) keep bare text params.
-    // Mismatching the format is what produces Meta error #132018.
     const placeholders = extractBodyPlaceholders(template.body);
     const isPositional =
       placeholders.length > 0 && placeholders.every((ph) => /^\d+$/.test(ph));
 
-    // `offer` falls back to the template's rendered offer details when the
-    // campaign did not fill an explicit {{offer}} value, so named templates that
-    // reference {{offer}} never send an empty parameter.
     const waValues: Record<string, string> = { ...values };
     if (!waValues.offer && offer) waValues.offer = offer;
 
     let whatsappParams: WhatsAppBodyParam[];
     if (isPositional) {
-      // Positional: fill {{1}}..{{N}} by index; missing indexes render empty.
       const maxIndex = Math.max(...placeholders.map((ph) => parseInt(ph, 10)));
       whatsappParams = [];
       for (let i = 1; i <= maxIndex; i++) {
@@ -269,7 +197,6 @@ export function buildMessage(
         whatsappParams.push({ text: v == null ? "" : String(v) });
       }
     } else {
-      // Named: one param per placeholder, carrying its name for Meta.
       whatsappParams = placeholders.map((name) => {
         const v = waValues[name];
         return { name, text: v == null ? "" : String(v) };
@@ -288,9 +215,6 @@ export function buildMessage(
   return { text };
 }
 
-// ---------------------------------------------------------------------------
-// SMS segment estimation (GSM-7 vs UCS-2, very close to carrier behavior)
-// ---------------------------------------------------------------------------
 const GSM7_BASIC =
   "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ ÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
 const GSM7_EXT = "^{}\\[~]|€";
@@ -305,7 +229,6 @@ function isGsm7(text: string): boolean {
 
 export function smsSegments(text: string): { segments: number; characters: number; encoding: "GSM-7" | "UCS-2" } {
   const gsm = isGsm7(text);
-  // Extended GSM chars count as 2; UCS-2 counts code units.
   let length = 0;
   if (gsm) {
     for (const ch of text) length += GSM7_EXT.includes(ch) ? 2 : 1;
@@ -318,14 +241,9 @@ export function smsSegments(text: string): { segments: number; characters: numbe
   return { segments: Math.max(1, segments), characters: length, encoding: gsm ? "GSM-7" : "UCS-2" };
 }
 
-// ---------------------------------------------------------------------------
-// Audience resolution
-// ---------------------------------------------------------------------------
 
-/** Start/end UTC instants for a calendar day (offset 0 = today) in a timezone. */
 function zonedDayRange(timeZone: string, dayOffset: number): { start: Date; end: Date } {
   const now = new Date();
-  // Local Y-M-D for `now` in the target timezone.
   const fmt = new Intl.DateTimeFormat("en-CA", {
     timeZone,
     year: "numeric",
@@ -333,8 +251,6 @@ function zonedDayRange(timeZone: string, dayOffset: number): { start: Date; end:
     day: "2-digit",
   });
   const [y, m, d] = fmt.format(now).split("-").map(Number);
-  // Midnight (local) of the target day, expressed as a UTC instant: take the
-  // naive midnight, then correct by the zone's offset at that moment.
   const naiveStart = Date.UTC(y, m - 1, d + dayOffset, 0, 0, 0);
   const offset = tzOffsetMs(new Date(naiveStart), timeZone);
   const start = new Date(naiveStart - offset);
@@ -366,17 +282,7 @@ function tzOffsetMs(instant: Date, timeZone: string): number {
   return asUtc - instant.getTime();
 }
 
-// ---------------------------------------------------------------------------
-// Restaurant identity + scheduling time math (shared by the route + runner)
-// ---------------------------------------------------------------------------
 
-/**
- * The public restaurant name for a location — the {{restaurant_name}} value used
- * in campaign messages + the "on behalf of" sender line. The public name lives
- * in the location's restaurant profile under `displayName`; the top-level
- * Location.displayName is only the short location label ("PIK Avenue"). Prefer
- * the profile name, then the location label, then the business account name.
- */
 export function restaurantNameForLocation(loc: any, fallback: string): string {
   const profile =
     loc?.restaurantProfile && typeof loc.restaurantProfile === "object"
@@ -389,10 +295,6 @@ export function restaurantNameForLocation(loc: any, fallback: string): string {
   return profileName || loc?.displayName || loc?.name || fallback;
 }
 
-/**
- * Convert a naive local wall-clock "YYYY-MM-DDTHH:MM" (in `timeZone`) to a real
- * UTC instant. Returns null for an unparseable input.
- */
 export function wallClockToUtc(
   local: string | null | undefined,
   timeZone: string,
@@ -404,7 +306,6 @@ export function wallClockToUtc(
   return new Date(naive - offset);
 }
 
-/** Format a UTC instant as a readable date+time string in the given timezone. */
 export function formatInstantInTimezone(
   instant: Date | string | null | undefined,
   timeZone: string,
@@ -426,11 +327,6 @@ export function formatInstantInTimezone(
   }
 }
 
-/**
- * Advance a recurring run to its next occurrence, preserving the local
- * wall-clock time of day in `timeZone`. DAILY/WEEKLY add fixed day intervals;
- * MONTHLY advances the local calendar month (clamping day-of-month).
- */
 export function advanceRecurrence(
   from: Date,
   frequency: "DAILY" | "WEEKLY" | "MONTHLY",
@@ -449,7 +345,7 @@ export function advanceRecurrence(
   for (const p of parts) if (p.type !== "literal") m[p.type] = p.value;
   
   let year = Number(m.year);
-  let month = Number(m.month); // 1-12
+  let month = Number(m.month);
   let day = Number(m.day);
   const hour = m.hour === "24" ? 0 : Number(m.hour);
   const minute = Number(m.minute);
@@ -488,11 +384,6 @@ export interface AudienceQuery {
   timezone: string;
 }
 
-/**
- * Resolve the matching guests for an audience. Always scoped by business +
- * location. Returns the raw GuestProfile rows (eligibility filtering happens
- * separately so the preview can report exclusion reasons).
- */
 export async function resolveAudienceGuests(
   q: AudienceQuery,
 ): Promise<GuestProfile[]> {
@@ -562,12 +453,9 @@ export async function resolveAudienceGuests(
         if (saved) filters = saved.filters || {};
       }
 
-      // We handle the manual guestIds separately to create a UNION (OR logic)
       const manualGuestIds = (filters.guestIds && Array.isArray(filters.guestIds)) ? filters.guestIds : [];
       
-      // Guest tags (case-insensitive regex)
       if (filters.tags && Array.isArray(filters.tags) && filters.tags.length > 0) {
-        // Find IDs that match any of the tags (OR)
         const idSets = await Promise.all(
           filters.tags.map(async (tag: string) => {
             const escaped = tag.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -581,23 +469,20 @@ export async function resolveAudienceGuests(
             return tagsRaw.map((t: any) => t._id.$oid as string);
           })
         );
-        // Flatten and deduplicate
         const matchedIds = Array.from(new Set(idSets.flat()));
         if (!matchedIds.length) {
-          where.id = { in: [] }; // force empty if tags required but none found
+          where.id = { in: [] };
         } else {
           where.id = { in: matchedIds };
         }
       }
 
-      // Total visits
       if (filters.totalVisitsMin !== undefined || filters.totalVisitsMax !== undefined) {
         where.totalVisits = { ...where.totalVisits };
         if (filters.totalVisitsMin !== undefined) where.totalVisits.gte = Number(filters.totalVisitsMin);
         if (filters.totalVisitsMax !== undefined) where.totalVisits.lte = Number(filters.totalVisitsMax);
       }
 
-      // Last visit
       if (filters.lastVisitMinDaysAgo !== undefined || filters.lastVisitMaxDaysAgo !== undefined) {
         where.lastVisitAt = { ...where.lastVisitAt, not: null };
         if (filters.lastVisitMinDaysAgo !== undefined) {
@@ -612,12 +497,10 @@ export async function resolveAudienceGuests(
       if (filters.hasNoShowHistory) where.noShowCount = { gt: 0 };
       if (filters.hasNotes) where.notes = { not: null, notIn: ["", " "] };
       
-      // If we forced empty tags match and there are NO manual guests, we can short-circuit
       if (where.id?.in?.length === 0 && manualGuestIds.length === 0) {
         return [];
       }
 
-      // Query 1: Filter-matched guests
       let filterGuests: GuestProfile[] = [];
       if (where.id?.in?.length !== 0) {
         filterGuests = await prisma.guestProfile.findMany({
@@ -627,7 +510,6 @@ export async function resolveAudienceGuests(
         });
       }
 
-      // Query 2: Manually selected guests
       let manualGuests: GuestProfile[] = [];
       if (manualGuestIds.length > 0) {
         manualGuests = await prisma.guestProfile.findMany({
@@ -635,13 +517,11 @@ export async function resolveAudienceGuests(
         });
       }
 
-      // Combine and deduplicate
       const combined = [...filterGuests, ...manualGuests];
       const deduplicated = Array.from(
         new Map(combined.map(g => [g.id, g])).values()
       );
 
-      // Sort by lastVisitAt desc
       deduplicated.sort((a, b) => {
         const timeA = a.lastVisitAt ? a.lastVisitAt.getTime() : 0;
         const timeB = b.lastVisitAt ? b.lastVisitAt.getTime() : 0;
@@ -661,14 +541,11 @@ export async function resolveAudienceGuests(
   });
 }
 
-// ---------------------------------------------------------------------------
-// Recipient eligibility (opt-out + contact validity for the chosen channel)
-// ---------------------------------------------------------------------------
 
 export interface EligibleRecipient {
   guest: GuestProfile;
   email?: string;
-  phone?: string; // digits-only incl. country code (E.164 without '+')
+  phone?: string;
 }
 
 export interface AudienceResult {
@@ -685,17 +562,10 @@ function optedOut(guest: GuestProfile, channel: Channel): boolean {
   return !!guest.smsMarketingOptOutAt || guest.smsMarketingOptIn === false;
 }
 
-/**
- * SMS is sent via a US Telnyx number, so it can only deliver to North American
- * Numbering Plan (+1) destinations — the US and Canada. A NANP E.164 number is
- * "1" + a 10-digit number whose area code starts 2-9. Numbers from any other
- * country are not SMS-deliverable here and are treated as invalid for SMS.
- */
 export function isSmsDeliverable(digits: string): boolean {
   return /^1[2-9]\d{9}$/.test(digits);
 }
 
-/** Apply channel contact requirements + opt-out rules to a guest set. */
 export function filterRecipients(
   guests: GuestProfile[],
   channel: Channel,
@@ -723,7 +593,6 @@ export function filterRecipients(
         else exclusions.noPhone += 1;
         continue;
       }
-      // SMS only reaches US/Canada (+1) numbers; anything else is undeliverable.
       if (channel === "SMS" && !isSmsDeliverable(phone)) {
         exclusions.invalid += 1;
         continue;
@@ -737,44 +606,27 @@ export function filterRecipients(
   return { total: guests.length, eligible, exclusions, excludedCount };
 }
 
-// ---------------------------------------------------------------------------
-// Template slug (Meta-safe internal identifier)
-// ---------------------------------------------------------------------------
-//
-// WhatsApp Cloud API requires a template `name` of lowercase letters, digits and
-// underscores only (^[a-z0-9_]+$), max 512 chars. The slug derived here is the
-// identifier admins use when creating the WhatsApp template in Meta. We keep it
-// well under the limit for readability.
 
 const SLUG_MAX_LEN = 64;
 
-/** Normalize a template name into a Meta-safe slug (lowercase, a-z0-9_). */
 export function slugifyTemplateName(name: string): string {
   let s = (name || "")
-    .normalize("NFKD") // decompose accents so é -> e, ü -> u, etc.
-    .replace(/[̀-ͯ]/g, "") // strip the combining diacritical marks
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .trim()
-    .replace(/['"`’]/g, "") // drop quotes/apostrophes outright (don't split words)
-    .replace(/[^a-z0-9]+/g, "_") // any other non-alnum run -> single underscore
-    .replace(/_+/g, "_") // collapse repeats
-    .replace(/^_+|_+$/g, ""); // trim leading/trailing underscores
+    .replace(/['"`’]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
   if (!s) s = "template";
   return s.slice(0, SLUG_MAX_LEN).replace(/_+$/g, "");
 }
 
-/** True if a string is a valid WhatsApp/Meta template name. */
 export function isValidMetaTemplateName(value: string): boolean {
   return /^[a-z0-9_]+$/.test(value) && value.length >= 1 && value.length <= 512;
 }
 
-/**
- * Generate a slug unique within the relevant scope:
- *   - SeatPing templates (businessId null): globally unique among SEATPING rows.
- *   - Custom templates: unique per business.
- * Appends _2, _3, ... on collision. `ignoreId` lets a row keep its own slug on
- * re-check (used when regenerating a draft's slug in place).
- */
 export async function generateUniqueTemplateSlug(
   name: string,
   opts: { businessId?: string | null; ignoreId?: string } = {},
@@ -786,7 +638,6 @@ export async function generateUniqueTemplateSlug(
 
   let candidate = base;
   let n = 1;
-  // Bounded loop; in practice a handful of collisions at most.
   for (let i = 0; i < 1000; i++) {
     const clash = await prisma.campaignTemplate.findFirst({
       where: {
@@ -800,13 +651,9 @@ export async function generateUniqueTemplateSlug(
     n += 1;
     candidate = `${base}_${n}`;
   }
-  // Extremely unlikely fallback.
   return `${base}_${Date.now()}`;
 }
 
-// ---------------------------------------------------------------------------
-// SeatPing template seed (idempotent)
-// ---------------------------------------------------------------------------
 
 type SeedDef = {
   name: string;
@@ -871,14 +718,6 @@ export const SEATPING_TEMPLATE_SEEDS: SeedDef[] = [
 
 let seedPromise: Promise<void> | null = null;
 
-/**
- * Insert/refresh the curated SeatPing templates. Idempotent: matched by
- * (templateType=SEATPING, name). Also makes the SeatPing set authoritative by
- * deactivating any SEATPING template not in the seed list (e.g. the retired
- * Reservation Reminder), assigns each a Meta-safe slug + default WhatsApp
- * provider name, and backfills slugs on any template still missing one. Cached
- * per process so concurrent callers share one pass.
- */
 export async function seedSeatPingTemplates(): Promise<void> {
   if (seedPromise) return seedPromise;
   seedPromise = (async () => {
@@ -895,7 +734,6 @@ export async function seedSeatPingTemplates(): Promise<void> {
         exampleValues: def.exampleValues ?? {},
         sortOrder: def.sortOrder,
         slug,
-        // Default the Meta template name to the slug; admins can adjust later.
         whatsappProviderTemplateName: slug,
         approvalStatus: "APPROVED" as const,
         isActive: true,
@@ -913,14 +751,10 @@ export async function seedSeatPingTemplates(): Promise<void> {
       }
     }
 
-    // Retire any curated SeatPing template no longer in the seed list
-    // (e.g. Reservation Reminder). Soft-deactivate AND delete so it disappears
-    // from the business UI and the picker.
     await prisma.campaignTemplate.deleteMany({
       where: { templateType: "SEATPING", name: { notIn: Array.from(keepNames) } },
     });
 
-    // Backfill slugs for any templates (custom or legacy) still missing one.
     const missing = await prisma.campaignTemplate.findMany({
       where: { OR: [{ slug: null }, { slug: "" }] },
       select: { id: true, name: true, businessId: true, whatsappProviderTemplateName: true },
@@ -931,13 +765,11 @@ export async function seedSeatPingTemplates(): Promise<void> {
         where: { id: t.id },
         data: {
           slug,
-          // Default the provider name to the slug only if an admin hasn't set one.
           ...(t.whatsappProviderTemplateName ? {} : { whatsappProviderTemplateName: slug }),
         },
       });
     }
   })().catch((err) => {
-    // Reset so a later call can retry after a transient failure.
     seedPromise = null;
     throw err;
   });

@@ -1,8 +1,3 @@
-// BusinessSettings.tsx
-// The single business "Settings" page. Combines account-level Business
-// Information with Location Management (each location's public restaurant
-// profile + its queue QR code live in the location cards). This replaced the
-// separate /business/profile page; that route now redirects here.
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -47,7 +42,6 @@ const BusinessSettings = () => {
         const res = await api("/auth/business/me");
         setMe(res.user);
       } catch {
-        // ignore — RequireBusiness gate handles auth redirects
       }
     })();
   }, []);
@@ -59,14 +53,14 @@ const BusinessSettings = () => {
         description={BUSINESS_DESCRIPTION}
         image={BUSINESS_IMAGE}
       />
-      {/* SEO title stays in English (brand metadata, not operator UI). */}
+      {}
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100">
         <div className="container mx-auto px-4 py-8">
-          {/* Trial banners (active / expired) */}
+          {}
           <BusinessTrialBanner me={me} />
 
-          {/* No credits banner */}
+          {}
           {me &&
             !me.trial &&
             locations.length > 0 &&
@@ -95,7 +89,7 @@ const BusinessSettings = () => {
               </div>
             )}
 
-          {/* Settings header */}
+          {}
           <div className="mb-6">
             <h1 className="text-xl md:text-2xl font-semibold text-gray-800">
               {t("settings.title")}
@@ -106,7 +100,7 @@ const BusinessSettings = () => {
           </div>
 
           <div className="space-y-4 md:space-y-6">
-            {/* Business Information */}
+            {}
             <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
               <CardHeader className="p-4 md:p-6">
                 <CardTitle className="text-lg md:text-xl text-gray-800">
@@ -169,7 +163,7 @@ const BusinessSettings = () => {
               </CardContent>
             </Card>
 
-            {/* Preferences — operator UI language lives here. */}
+            {}
             <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
               <CardHeader className="p-4 md:p-6">
                 <CardTitle className="text-lg md:text-xl text-gray-800">
@@ -184,7 +178,7 @@ const BusinessSettings = () => {
               </CardContent>
             </Card>
 
-            {/* Location Management (each card has Edit Profile / Reviews / QR / Delete) */}
+            {}
             <LocationManagement me={me} onChanged={(u) => setMe(u)} />
           </div>
         </div>

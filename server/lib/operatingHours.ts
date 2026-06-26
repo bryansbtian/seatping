@@ -157,12 +157,6 @@ export function getLocationTimezone(location: unknown): string {
   return getOpeningHoursTimezone(getLocationOpeningHours(location));
 }
 
-/**
- * The current local wall-clock in a timezone as "YYYY-MM-DDTHH:MM". Reservation
- * datetimes are stored in this same naive-local-wall-clock frame, so comparing
- * the two strings answers "has this reservation time already passed for the
- * location right now?" without any timezone-offset math.
- */
 export function getNowWallClockInTimezone(timezone: string): string {
   let parts: { date: string; minute: number };
   try {
@@ -175,10 +169,6 @@ export function getNowWallClockInTimezone(timezone: string): string {
   return `${parts.date}T${hh}:${mm}`;
 }
 
-/**
- * Return the operating windows that fall on a restaurant-local calendar date.
- * A previous day's overnight shift contributes its after-midnight portion.
- */
 export function getDateOperatingStatus(
   openingHours: unknown,
   date: string,
@@ -206,8 +196,6 @@ export function getDateOperatingStatus(
   const previous = normalizedDay(openingHours, previousKey);
   const windows: OperatingWindow[] = [];
 
-  // Previous-day overnight spill, e.g. Monday 18:00-02:00 contributes
-  // Tuesday 00:00-02:00.
   if (
     previous?.enabled &&
     previous.closeMin <= previous.openMin &&
@@ -222,7 +210,6 @@ export function getDateOperatingStatus(
 
   if (current?.enabled) {
     if (current.openMin === current.closeMin) {
-      // Matching times follow the existing SeatPing behavior: open 24 hours.
       windows.push({ openMin: 0, closeMin: 1440, sourceDay: dayKey });
     } else if (current.closeMin < current.openMin) {
       windows.push({

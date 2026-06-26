@@ -1,6 +1,3 @@
-// BusinessTrialBanner.tsx
-// Reusable trial banner (with live countdown) for business pages. Mirrors the
-// banner shown on /business/settings so /business/profile and others can reuse it.
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLang } from "@/lib/i18n";
@@ -57,8 +54,6 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
 
   if (!me) return null;
 
-  // Trial with a positive duration: active (countdown) or expired.
-  // Billing is manual — both states route to /sales to contact SeatPing.
   if (me.trial === true && (me.trialDurationDays ?? 0) > 0) {
     const createdAt = new Date(me.createdAt!);
     const trialEndDate = new Date(
@@ -132,7 +127,6 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
     );
   }
 
-  // Trial flagged but zero duration → treated as expired.
   if (me.trial === true && (me.trialDurationDays ?? 0) === 0) {
     return (
       <div className="mb-6">

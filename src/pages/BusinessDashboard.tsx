@@ -52,18 +52,11 @@ import {
   startOfWeekDateKey,
 } from "@/lib/timezones";
 
-/**
- * The selected location's IANA timezone (e.g. "Asia/Jakarta"), read from its
- * opening-hours config. All dashboard analytics bucket activity by this zone's
- * calendar day so the numbers reflect the restaurant's business day regardless
- * of where the owner opens the dashboard. Falls back to the platform default.
- */
 function getLocationTimezone(location: any): string {
   const tz = location?.restaurantProfile?.openingHours?.timezone;
   return typeof tz === "string" && tz ? tz : DEFAULT_TIMEZONE;
 }
 
-// Rounded-rectangle styling shared by every chart tooltip popup.
 const TOOLTIP_CONTENT_STYLE = {
   borderRadius: 12,
   border: "1px solid #e2e8f0",
@@ -75,21 +68,16 @@ const BusinessDashboard = () => {
   const isMobile = useIsMobile();
   const { t, lang } = useLang();
 
-  // Fire once when the dashboard mounts.
   useEffect(() => {
     analytics.businessDashboardOpened();
   }, []);
   const [me, setMe] = useState<any | null>(null);
   const [selectedLocationIndex, setSelectedLocationIndex] = useState(0);
-  // Per-customer queue ETAs (keyed by queueToken), from the shared backend helper.
   const [queueEtas, setQueueEtas] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
   const [analyticsTimeframe, setAnalyticsTimeframe] = useState<
     "daily" | "weekly"
   >("daily");
-  // Switching Daily/Weekly just swaps the dataset and lets Recharts morph the
-  // lines (same smooth transition as the marketing landing chart). No opacity
-  // fade — that competed with the line animation and looked choppy.
   const changeAnalyticsTimeframe = (tf: "daily" | "weekly") => {
     setAnalyticsTimeframe(tf);
   };
@@ -99,21 +87,15 @@ const BusinessDashboard = () => {
     minutes: number;
   } | null>(null);
   const trialCountdownRef = useRef<NodeJS.Timeout | null>(null);
-  // State value is intentionally unused: the setter fires every second to
-  // re-render the live admitted-customer countdowns (getTimeRemaining).
   const [, forceCountdownTick] = useState(0);
   const locations = (me?.locations as any[]) || [];
   const { toast } = useToast();
 
-  // Get current location and queue
   const currentLocation = locations[selectedLocationIndex];
   const queueData = currentLocation?.queue || [];
-  // Customer-facing location label (display name) with safe fallbacks. Display
-  // only — queue operations still key off the underlying address.
   const locLabel = (loc: any, idx: number) =>
     loc?.displayName || loc?.name || loc?.address || `Location ${idx + 1}`;
 
-  // Calculate real-time statistics
   const calculateStats = () => {
     if (!currentLocation) {
       return {
@@ -130,16 +112,9 @@ const BusinessDashboard = () => {
     const removedCustomers = currentLocation.removedCustomers || [];
     const currentQueue = queueData.length;
 
-    // All "today" comparisons use the location's local calendar day so the
-    // dashboard reflects the restaurant's business day, not the viewer's browser
-    // timezone or UTC.
     const tz = getLocationTimezone(currentLocation);
     const todayKey = getTodayKeyInTimezone(tz);
 
-    // Reservations for this location dated today that still occupy a table
-    // (confirmed / arrived) — matches the "Today" reservations tab.
-    // reservationDateTime is a naive wall-clock string already in the
-    // restaurant's local timezone, so its date part is the local date.
     const reservationsToday = (currentLocation.reservations || []).filter(
       (r: any) => {
         const d = String(r?.reservationDateTime || "").split("T")[0];
@@ -147,18 +122,15 @@ const BusinessDashboard = () => {
       },
     ).length;
 
-    // Filter for today's customers (admittedAt/leftAt are real instants).
     const todayAdmitted = admittedCustomers.filter(
       (customer: any) =>
         getDateKeyInTimezone(customer.admittedAt, tz) === todayKey,
     );
 
-    // Filter out no-shows from served count
     const todayServed = todayAdmitted.filter((customer: any) => {
       return customer.finalStatus !== "no_show";
     });
 
-    // Count no-shows from admitted customers
     const todayNoShows = todayAdmitted.filter((customer: any) => {
       return customer.finalStatus === "no_show";
     }).length;
@@ -169,12 +141,10 @@ const BusinessDashboard = () => {
         todayKey,
     );
 
-    // Count customers who left today (not removed by business)
     const leftToday = removedCustomers.filter(
       (customer: any) => getDateKeyInTimezone(customer.leftAt, tz) === todayKey,
     ).length;
 
-    // Calculate average wait time (served customers only, excluding no-shows)
     let totalWaitTime = 0;
     let waitTimeCount = 0;
 
@@ -182,7 +152,7 @@ const BusinessDashboard = () => {
       if (customer.joinedAt && customer.admittedAt) {
         const joinTime = new Date(customer.joinedAt).getTime();
         const admitTime = new Date(customer.admittedAt).getTime();
-        const waitTime = (admitTime - joinTime) / (1000 * 60); // Convert to minutes
+        const waitTime = (admitTime - joinTime) / (1000 * 60);
         totalWaitTime += waitTime;
         waitTimeCount++;
       }
@@ -191,7 +161,6 @@ const BusinessDashboard = () => {
     const avgWaitTime =
       waitTimeCount > 0 ? Math.round(totalWaitTime / waitTimeCount) : 0;
 
-    // Calculate success rate (served / (served + no-shows + removed))
     const totalProcessed =
       todayServed.length + todayNoShows + todayRemoved.length;
     const successRate =
@@ -199,8 +168,6 @@ const BusinessDashboard = () => {
         ? Math.round((todayServed.length / totalProcessed) * 100)
         : 100;
 
-    // Fold reservation outcomes into today's totals: a reservation marked
-    // arrived/completed counts as served; a no-show counts toward "left".
     const reservations = currentLocation.reservations || [];
     const isToday = (iso: any) =>
       !!iso && getDateKeyInTimezone(iso, tz) === todayKey;
@@ -219,7 +186,6 @@ const BusinessDashboard = () => {
       currentQueue,
       avgWaitTime,
       successRate,
-      // Include queue no-shows + reservation no-shows in the left count.
       leftToday: leftToday + todayNoShows + reservationNoShowsToday,
       reservationsToday,
     };
@@ -227,7 +193,6 @@ const BusinessDashboard = () => {
 
   const todayStats = calculateStats();
 
-  // Calculate trial time remaining
   const calculateTrialTimeLeft = () => {
     if (!me || !me.trial || !me.createdAt) {
       return null;
@@ -243,7 +208,7 @@ const BusinessDashboard = () => {
     const timeLeft = trialEndDate.getTime() - now.getTime();
 
     if (timeLeft <= 0) {
-      return null; // Trial has expired
+      return null;
     }
 
     const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
@@ -255,28 +220,24 @@ const BusinessDashboard = () => {
     return { days, hours, minutes };
   };
 
-  // Update trial countdown
   useEffect(() => {
     if (trialCountdownRef.current) {
       clearInterval(trialCountdownRef.current);
     }
 
     if (me && me.trial) {
-      // Calculate initial time left
       setTrialTimeLeft(calculateTrialTimeLeft());
 
-      // Update countdown every minute
       trialCountdownRef.current = setInterval(() => {
         const timeLeft = calculateTrialTimeLeft();
         setTrialTimeLeft(timeLeft);
 
-        // If trial has expired, clear the interval
         if (!timeLeft) {
           if (trialCountdownRef.current) {
             clearInterval(trialCountdownRef.current);
           }
         }
-      }, 60000); // Update every minute
+      }, 60000);
     } else {
       setTrialTimeLeft(null);
     }
@@ -321,20 +282,17 @@ const BusinessDashboard = () => {
     })();
   }, []);
 
-  // Auto-refresh queue data every 10 seconds
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const res = await api("/auth/business/me");
         setMe(res.user);
       } catch {}
-    }, 10000); // Refresh every 10 seconds
+    }, 10000);
 
     return () => clearInterval(interval);
   }, []);
 
-  // Per-customer ETAs for the current location's live waitlist. Refreshes when
-  // the queue changes and every 30s (same backend helper as the customer page).
   useEffect(() => {
     if (!me?.username || !currentLocation?.id) {
       setQueueEtas({});
@@ -353,7 +311,6 @@ const BusinessDashboard = () => {
         }
         setQueueEtas(map);
       } catch {
-        /* non-fatal: labels just won't show */
       }
     };
     fetchEtas();
@@ -362,10 +319,9 @@ const BusinessDashboard = () => {
       cancelled = true;
       clearInterval(id);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [me?.username, currentLocation?.id, queueData.length]);
 
-  // Update timer every second for admitted customers countdown
   useEffect(() => {
     const interval = setInterval(() => {
       forceCountdownTick((prev) => prev + 1);
@@ -374,7 +330,6 @@ const BusinessDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Function to admit a customer (they go to Step 5)
   const admitCustomer = async (customerIndex: number) => {
     if (!currentLocation) return;
 
@@ -383,12 +338,10 @@ const BusinessDashboard = () => {
       const customer = queueData[customerIndex];
       const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
 
-      // Call the new admit endpoint
       await api(`/auth/business/${me?.username}/queue/${customerId}/admit`, {
         method: "POST",
       });
 
-      // Refresh the business data
       const updated = await api("/auth/business/me");
       setMe(updated.user);
 
@@ -409,7 +362,6 @@ const BusinessDashboard = () => {
     }
   };
 
-  // Function to remove a customer from queue (they get kicked out)
   const removeCustomer = async (customerIndex: number) => {
     if (!currentLocation) return;
 
@@ -418,12 +370,10 @@ const BusinessDashboard = () => {
       const customer = queueData[customerIndex];
       const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
 
-      // Call the new remove endpoint
       await api(`/auth/business/${me?.username}/queue/${customerId}`, {
         method: "DELETE",
       });
 
-      // Refresh the business data
       const updated = await api("/auth/business/me");
       setMe(updated.user);
 
@@ -444,7 +394,6 @@ const BusinessDashboard = () => {
     }
   };
 
-  // Function to confirm customer arrival
   const confirmArrival = async (customer: any) => {
     if (!me) return;
 
@@ -459,7 +408,6 @@ const BusinessDashboard = () => {
         },
       );
 
-      // Refresh the business data
       const updated = await api("/auth/business/me");
       setMe(updated.user);
 
@@ -480,7 +428,6 @@ const BusinessDashboard = () => {
     }
   };
 
-  // Function to mark customer as no-show
   const markNoShow = async (customer: any) => {
     if (!me) return;
 
@@ -495,7 +442,6 @@ const BusinessDashboard = () => {
         },
       );
 
-      // Refresh the business data
       const updated = await api("/auth/business/me");
       setMe(updated.user);
 
@@ -516,7 +462,6 @@ const BusinessDashboard = () => {
     }
   };
 
-  // Format time since customer joined
   const formatTimeSince = (joinedAt: string) => {
     const joined = new Date(joinedAt);
     const now = new Date();
@@ -529,7 +474,6 @@ const BusinessDashboard = () => {
     return t("dash.hourMinAgo", { h: diffHours, m: diffMins % 60 });
   };
 
-  // Display label for a notification channel (SMS / WhatsApp / Email).
   const formatNotificationMethod = (method?: string) => {
     switch (method) {
       case "sms":
@@ -543,12 +487,6 @@ const BusinessDashboard = () => {
     }
   };
 
-  // Format a phone number with its country code, using the same shared
-  // formatter as the Guests page (src/lib/phone.ts) so phone display is
-  // identical across the dashboard and the Guest CRM, e.g.
-  // ("+62", "8118308669") -> "+62 811-8308-669". Builds the normalized
-  // (country-code-included) digits and delegates; falls back to the raw
-  // national number when no country code is present.
   const formatPhone = (countryCode?: string, phoneNumber?: string) => {
     const national = String(phoneNumber || "").replace(/\D/g, "");
     if (!national) return "";
@@ -559,10 +497,6 @@ const BusinessDashboard = () => {
     return result ?? "";
   };
 
-  // One clean "Channel: contact" line based on the contact the customer actually
-  // chose for this queue entry. Crucially, when the method is SMS/WhatsApp we show
-  // the phone only — never the account email of a logged-in customer (and vice
-  // versa). Returns null only when there's no method/contact to show at all.
   const notificationContact = (c: any): string | null => {
     const method = c?.notificationMethod;
     const phone = formatPhone(c?.countryCode, c?.phoneNumber);
@@ -573,18 +507,16 @@ const BusinessDashboard = () => {
       const label = formatNotificationMethod(method);
       return phone ? `${label}: ${phone}` : label;
     }
-    // Legacy/unknown method: show a single best-effort contact, phone first.
     if (phone) return `Phone: ${phone}`;
     if (c?.email) return `Email: ${c.email}`;
     return null;
   };
 
-  // Calculate time remaining for admitted customer
   const getTimeRemaining = (admittedAt: string) => {
     const admitted = new Date(admittedAt);
     const now = new Date();
     const elapsed = now.getTime() - admitted.getTime();
-    const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+    const fiveMinutes = 5 * 60 * 1000;
     const remaining = Math.max(0, fiveMinutes - elapsed);
 
     const minutes = Math.floor(remaining / 60000);
@@ -593,9 +525,7 @@ const BusinessDashboard = () => {
     return { minutes, seconds, expired: remaining === 0 };
   };
 
-  // Get current date
   const getCurrentDate = () => {
-    // Show the restaurant's local "today", not the viewer's browser date.
     const tz = getLocationTimezone(currentLocation);
     try {
       return new Date().toLocaleDateString("en-US", {
@@ -613,10 +543,6 @@ const BusinessDashboard = () => {
     }
   };
 
-  // Analytics utility functions
-  // --- replace the whole getDailyWeeklySummaryData with this ---
-  // Returns chart rows for either "daily" (last 7 days) or "weekly" (last 5 weeks),
-  // with weekly labels like "Week of Oct 6".
   const getDailyWeeklySummaryData = (): {
     date: string;
     served: number;
@@ -628,11 +554,8 @@ const BusinessDashboard = () => {
     const admittedCustomers = currentLocation.admittedCustomers || [];
     const removedCustomers = currentLocation.removedCustomers || [];
 
-    // Every bucket key is the location's local calendar date, so the chart is
-    // identical no matter where the owner opens the dashboard.
     const tz = getLocationTimezone(currentLocation);
 
-    // ---- DAILY: last 7 calendar days
     if (analyticsTimeframe === "daily") {
       const days = 7;
       const todayKey = getTodayKeyInTimezone(tz);
@@ -643,7 +566,6 @@ const BusinessDashboard = () => {
       >();
       const waitTimes = new Map<string, number[]>();
 
-      // seed 7 days (oldest → today), keyed/labelled in the location timezone
       for (let i = days - 1; i >= 0; i--) {
         const key = addDaysToDateKey(todayKey, -i);
         dataMap.set(key, {
@@ -655,13 +577,11 @@ const BusinessDashboard = () => {
         waitTimes.set(key, []);
       }
 
-      // served + wait (exclude no-shows from served count)
       for (const c of admittedCustomers) {
         if (!c.admittedAt) continue;
         const key = getDateKeyInTimezone(c.admittedAt, tz);
         if (!dataMap.has(key)) continue;
 
-        // Only count as served if not a no-show
         if (c.finalStatus !== "no_show") {
           dataMap.get(key)!.served += 1;
 
@@ -675,7 +595,6 @@ const BusinessDashboard = () => {
         }
       }
 
-      // avg wait per day
       for (const [key, times] of waitTimes.entries()) {
         if (times.length) {
           dataMap.get(key)!.avgWait = Math.round(
@@ -684,21 +603,18 @@ const BusinessDashboard = () => {
         }
       }
 
-      // no-shows per day - include both removed customers and admitted no-shows
       for (const c of removedCustomers) {
         if (c.status === "left" && c.leftAt) {
           const key = getDateKeyInTimezone(c.leftAt, tz);
           if (dataMap.has(key)) dataMap.get(key)!.noShows += 1;
         }
       }
-      // Add admitted customers marked as no-show
       for (const c of admittedCustomers) {
         if (c.finalStatus === "no_show" && c.admittedAt) {
           const key = getDateKeyInTimezone(c.admittedAt, tz);
           if (dataMap.has(key)) dataMap.get(key)!.noShows += 1;
         }
       }
-      // Reservation outcomes: arrived/completed → served, no_show → no-shows.
       for (const r of currentLocation.reservations || []) {
         if (r?.status === "arrived" || r?.status === "completed") {
           const ts = r.arrivedAt || r.completedAt;
@@ -715,15 +631,12 @@ const BusinessDashboard = () => {
       return Array.from(dataMap.values());
     }
 
-    // ---- WEEKLY: last 5 calendar weeks (oldest → newest)
     const weeks = 5;
-    // Week math runs on location-local date keys (Sunday-start), so weeks line
-    // up with the restaurant's calendar rather than the browser's.
     const thisWeekStartKey = startOfWeekDateKey(getTodayKeyInTimezone(tz));
 
     type Row = {
-      _key: string; // ISO date of week start for stable sorting
-      date: string; // label: "Week of Oct 6"
+      _key: string;
+      date: string;
       served: number;
       avgWait: number;
       noShows: number;
@@ -732,7 +645,6 @@ const BusinessDashboard = () => {
     const weekRows = new Map<string, Row>();
     const weekWaitTimes = new Map<string, number[]>();
 
-    // seed 5 weeks using each week's start date (key) as the map key
     for (let i = weeks - 1; i >= 0; i--) {
       const key = addDaysToDateKey(thisWeekStartKey, -i * 7);
       weekRows.set(key, {
@@ -748,13 +660,11 @@ const BusinessDashboard = () => {
     const weekKeyFrom = (iso: any) =>
       startOfWeekDateKey(getDateKeyInTimezone(iso, tz));
 
-    // served + wait per week (exclude no-shows from served count)
     for (const c of admittedCustomers) {
       if (!c.admittedAt) continue;
       const key = weekKeyFrom(new Date(c.admittedAt));
       if (!weekRows.has(key)) continue;
 
-      // Only count as served if not a no-show
       if (c.finalStatus !== "no_show") {
         weekRows.get(key)!.served += 1;
 
@@ -768,7 +678,6 @@ const BusinessDashboard = () => {
       }
     }
 
-    // avg wait per week
     for (const [key, times] of weekWaitTimes.entries()) {
       if (times.length) {
         weekRows.get(key)!.avgWait = Math.round(
@@ -777,21 +686,18 @@ const BusinessDashboard = () => {
       }
     }
 
-    // no-shows per week - include both removed customers and admitted no-shows
     for (const c of removedCustomers) {
       if (c.status === "left" && c.leftAt) {
         const key = weekKeyFrom(new Date(c.leftAt));
         if (weekRows.has(key)) weekRows.get(key)!.noShows += 1;
       }
     }
-    // Add admitted customers marked as no-show
     for (const c of admittedCustomers) {
       if (c.finalStatus === "no_show" && c.admittedAt) {
         const key = weekKeyFrom(new Date(c.admittedAt));
         if (weekRows.has(key)) weekRows.get(key)!.noShows += 1;
       }
     }
-    // Reservation outcomes: arrived/completed → served, no_show → no-shows.
     for (const r of currentLocation.reservations || []) {
       if (r?.status === "arrived" || r?.status === "completed") {
         const ts = r.arrivedAt || r.completedAt;
@@ -805,7 +711,6 @@ const BusinessDashboard = () => {
       }
     }
 
-    // chronological (oldest → newest) and strip _key
     return Array.from(weekRows.values())
       .sort((a, b) => a._key.localeCompare(b._key))
       .map(({ _key, ...rest }) => rest);
@@ -818,12 +723,10 @@ const BusinessDashboard = () => {
     const tz = getLocationTimezone(currentLocation);
     const hourMap = new Map<number, number>();
 
-    // Initialize all hours
     for (let i = 0; i < 24; i++) {
       hourMap.set(i, 0);
     }
 
-    // Count customers per hour of the restaurant's local day (exclude no-shows)
     admittedCustomers.forEach((customer: any) => {
       if (customer.finalStatus !== "no_show") {
         const hour = getHourInTimezone(customer.joinedAt, tz);
@@ -833,10 +736,10 @@ const BusinessDashboard = () => {
     });
 
     return Array.from(hourMap.entries())
-      .filter(([, count]) => count > 0) // Only show hours with traffic
-      .sort((a, b) => b[1] - a[1]) // Busiest first
-      .slice(0, 8) // Cap at the 8 busiest hours so the chart stays readable
-      .sort((a, b) => a[0] - b[0]) // Back to chronological order for the axis
+      .filter(([, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .sort((a, b) => a[0] - b[0])
       .map(([hour, count]) => ({
         hour:
           hour === 0
@@ -863,7 +766,6 @@ const BusinessDashboard = () => {
     ];
 
     admittedCustomers.forEach((customer: any) => {
-      // Exclude no-shows from wait time distribution
       if (
         customer.finalStatus !== "no_show" &&
         customer.joinedAt &&
@@ -871,7 +773,7 @@ const BusinessDashboard = () => {
       ) {
         const joinTime = new Date(customer.joinedAt).getTime();
         const admitTime = new Date(customer.admittedAt).getTime();
-        const waitTime = (admitTime - joinTime) / (1000 * 60); // minutes
+        const waitTime = (admitTime - joinTime) / (1000 * 60);
 
         const bucket = buckets.find(
           (b) => waitTime >= b.min && waitTime < b.max,
@@ -883,10 +785,6 @@ const BusinessDashboard = () => {
     return buckets;
   };
 
-  // Memoized so the chart's data array keeps a stable reference across the
-  // dashboard's per-second timer re-renders. Without this, every tick produced
-  // a new array and Recharts restarted the line animation — the choppy/laggy
-  // toggle. Only recomputes when the location or the daily/weekly range changes.
   const dailyWeeklySummary = useMemo(
     () => getDailyWeeklySummaryData(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -905,10 +803,10 @@ const BusinessDashboard = () => {
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100">
         <div className="container mx-auto px-4 py-8 [&_.text-3xl]:max-[374px]:text-2xl [&_.text-2xl]:max-[374px]:text-xl [&_.text-xl]:max-[374px]:text-lg [&_.text-lg]:max-[374px]:text-base [&_.text-base]:max-[374px]:text-sm [&_.text-sm]:max-[374px]:text-xs [&_.text-xs]:max-[374px]:text-[11px]">
-          {/* Trial Banner Logic */}
+          {}
           {me && me.trial === true && (
             <>
-              {/* Trial Expired Banner - Shows when trial has expired (account > 7 days old) */}
+              {}
               {(() => {
                 const createdAt = new Date(me.createdAt);
                 const trialDurationDays =
@@ -945,7 +843,6 @@ const BusinessDashboard = () => {
                   </div>
                 </div>
               ) : (
-                /* Trial Active Banner - Shows when trial is still active */
                 <div className="mb-6">
                   <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
@@ -984,7 +881,7 @@ const BusinessDashboard = () => {
             </>
           )}
 
-          {/* No-credits notice for activated (non-trial) businesses with 0 credits */}
+          {}
           {me &&
             me.trial === false &&
             currentLocation &&
@@ -1013,9 +910,9 @@ const BusinessDashboard = () => {
               </div>
             )}
 
-          {/* Dashboard Header - Mobile Version */}
+          {}
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 md:p-6 mb-4 lg:hidden">
-            {/* Header (no date here) */}
+            {}
             <div className="mb-4">
               <h2 className="text-xl md:text-2xl font-semibold text-slate-800 leading-tight">
                 {t("dash.hello", { name: me?.name || t("dash.ownerFallback") })}
@@ -1025,7 +922,7 @@ const BusinessDashboard = () => {
               </p>
             </div>
 
-            {/* Credits Card */}
+            {}
             {currentLocation && (
               <div className="mb-3">
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
@@ -1046,7 +943,7 @@ const BusinessDashboard = () => {
               </div>
             )}
 
-            {/* Location Selector */}
+            {}
             <div className="relative">
               <select
                 className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -1069,7 +966,7 @@ const BusinessDashboard = () => {
             </div>
           </div>
 
-          {/* Dashboard Header - Desktop Version */}
+          {}
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 md:p-6 mb-6 hidden lg:block">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
@@ -1121,9 +1018,7 @@ const BusinessDashboard = () => {
             </div>
           </div>
 
-          {/* Stats Cards - Mobile Version: a single compact "Today's Summary"
-              card so the page stays short and scannable instead of a long
-              stack of individual stat cards. */}
+          {}
           <Card className="mb-6 bg-white rounded-xl shadow-sm border border-slate-200 lg:hidden">
             <div className="p-4">
               <p className="text-sm font-semibold text-slate-800 mb-3">
@@ -1185,7 +1080,7 @@ const BusinessDashboard = () => {
             </div>
           </Card>
 
-          {/* Stats Cards - Desktop Version */}
+          {}
           <div className="hidden lg:grid grid-cols-5 gap-4 mb-6">
             <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex flex-col gap-2">
@@ -1268,10 +1163,10 @@ const BusinessDashboard = () => {
             </Card>
           </div>
 
-          {/* Queue Management */}
+          {}
           <Card className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
             <CardHeader className="border-b border-gray-100 p-4 md:p-6">
-              {/* Mobile Layout */}
+              {}
               <div className="md:hidden">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-lg text-gray-800">
@@ -1324,7 +1219,7 @@ const BusinessDashboard = () => {
                 </Button>
               </div>
 
-              {/* Desktop Layout */}
+              {}
               <div className="hidden md:flex md:items-center md:justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
@@ -1424,8 +1319,7 @@ const BusinessDashboard = () => {
                             </span>
                           </div>
 
-                          {/* Single row for the chosen notification channel +
-                              its contact (no account-email leak for SMS/WhatsApp). */}
+                          {}
                           {notificationContact(customer) && (
                             <p className="text-xs md:text-sm text-gray-500 mt-1 break-all">
                               {notificationContact(customer)}
@@ -1469,14 +1363,8 @@ const BusinessDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Awaiting Arrival Confirmation */}
+          {}
           {(() => {
-            // Show every admitted customer still awaiting a decision. The 5-minute
-            // timer is informational only — once it hits 0 the card stays put
-            // (shown as "Time expired") so the business can remove it manually via
-            // Arrived / No Show. We do NOT auto-drop the card when the timer runs
-            // out; the only way a customer leaves this list is a manual action
-            // that sets finalStatus to "arrived" or "no_show".
             const pendingAdmittedCustomers = (
               currentLocation?.admittedCustomers || []
             ).filter((customer: any) => customer.finalStatus === "pending");
@@ -1588,10 +1476,7 @@ const BusinessDashboard = () => {
             );
           })()}
 
-          {/* Today's Reservations — sits between the live waitlist and the
-              recently-left list so staff manage walk-ins + bookings together.
-              Always rendered (even with no location) so it mirrors the Queue
-              Management card; the empty state shows "No location selected". */}
+          {}
           <ReservationsManager
             reservations={currentLocation?.reservations || []}
             businessUsername={me?.username || ""}
@@ -1610,9 +1495,8 @@ const BusinessDashboard = () => {
             onUpdated={(user) => setMe(user)}
           />
 
-          {/* Recently Left Customers */}
+          {}
           {(() => {
-            // Filter customers who left in the past 24 hours
             const now = new Date();
             const twentyFourHoursAgo = new Date(
               now.getTime() - 24 * 60 * 60 * 1000,
@@ -1627,7 +1511,7 @@ const BusinessDashboard = () => {
                 );
                 return leftTime >= twentyFourHoursAgo;
               })
-              .slice(-5); // Show only the last 5 most recent
+              .slice(-5);
 
             return (
               <Card className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
@@ -1693,20 +1577,19 @@ const BusinessDashboard = () => {
                                     </span>
                                   </div>
 
-                                  {/* Chosen notification channel + its contact only. */}
+                                  {}
                                   {notificationContact(customer) && (
                                     <p className="text-xs md:text-sm text-gray-500 mt-1 break-all">
                                       {notificationContact(customer)}
                                     </p>
                                   )}
-                                  {/* Mobile: pill sits directly below the metadata,
-                                    aligned with the customer text (not the icon). */}
+                                  {}
                                   <div className="mt-1.5 md:hidden">
                                     {statusBadge}
                                   </div>
                                 </div>
                               </div>
-                              {/* Desktop: pill stays on the right of the row. */}
+                              {}
                               <div className="hidden md:block">
                                 {statusBadge}
                               </div>
@@ -1721,9 +1604,9 @@ const BusinessDashboard = () => {
             );
           })()}
 
-          {/* Analytics Section */}
+          {}
           <div className="mb-6 space-y-6">
-            {/* Daily/Weekly Summary Graph */}
+            {}
             <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
               <CardHeader className="border-b border-slate-100 p-4 md:p-6">
                 <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
@@ -1759,8 +1642,7 @@ const BusinessDashboard = () => {
                 </div>
               </CardHeader>
               <CardContent className="p-4 md:p-6">
-                {/* Fixed-height wrapper so switching ranges (or hitting the
-                    empty state) never resizes the card. */}
+                {}
                 <div className="h-[300px] w-full">
                   {dailyWeeklySummary.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
@@ -1770,14 +1652,14 @@ const BusinessDashboard = () => {
                       >
                         <XAxis dataKey="date" tickMargin={14} height={32} />
 
-                        {/* Left axis (visible) */}
+                        {}
                         <YAxis
                           yAxisId="left"
                           width={40}
                           allowDecimals={false}
                         />
 
-                        {/* Right axis (invisible) to balance spacing and center the chart */}
+                        {}
                         <YAxis
                           yAxisId="right"
                           orientation="right"
@@ -1794,10 +1676,7 @@ const BusinessDashboard = () => {
                           wrapperStyle={{ bottom: 4 }}
                         />
 
-                        {/* Stable dataKeys + colors across Daily/Weekly so
-                            Recharts morphs each line instead of remounting.
-                            `dot={false}` + recharts' default animation mirror
-                            the marketing landing chart's smooth toggle. */}
+                        {}
                         <Line
                           yAxisId="left"
                           type="monotone"
@@ -1837,9 +1716,9 @@ const BusinessDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Peak Hours and Wait Time Distribution */}
+            {}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Peak Hours Heatmap */}
+              {}
               <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
                   <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
@@ -1865,10 +1744,10 @@ const BusinessDashboard = () => {
                           tick={{ fontSize: 12 }}
                         />
 
-                        {/* Left axis (visible) */}
+                        {}
                         <YAxis yAxisId="left" width={40} />
 
-                        {/* Right axis (invisible) to balance spacing and center the chart */}
+                        {}
                         <YAxis
                           yAxisId="right"
                           orientation="right"
@@ -1900,7 +1779,7 @@ const BusinessDashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* Wait Time Distribution */}
+              {}
               <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
                   <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
@@ -1924,10 +1803,10 @@ const BusinessDashboard = () => {
                           tick={{ fontSize: 12 }}
                         />
 
-                        {/* Left axis (visible) */}
+                        {}
                         <YAxis yAxisId="left" width={40} />
 
-                        {/* Right axis (invisible) to balance spacing and center the chart */}
+                        {}
                         <YAxis
                           yAxisId="right"
                           orientation="right"

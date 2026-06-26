@@ -4,7 +4,6 @@ import { buildMessage, extractBodyPlaceholders } from "./campaigns.js";
 import { resolveContractParams } from "./whatsapp.js";
 import type { CampaignTemplate } from "@prisma/client";
 
-// Minimal CampaignTemplate factory — buildMessage only reads these fields.
 function tmpl(overrides: Partial<CampaignTemplate>): CampaignTemplate {
   return {
     name: "Test",
@@ -32,7 +31,6 @@ test("extractBodyPlaceholders returns distinct names in body order", () => {
     ),
     ["first_name", "business_name", "offer", "restaurant"],
   );
-  // Dedupes repeats, keeps first-seen order.
   assert.deepEqual(
     extractBodyPlaceholders("{{first_name}} {{first_name}} {{restaurant}}"),
     ["first_name", "restaurant"],
@@ -65,7 +63,6 @@ test("we_miss_you builds 3 NAMED params (restaurant alias resolves)", () => {
     { name: "business_name", text: "Bryan's Bistro" },
     { name: "restaurant", text: "Bryan's Bistro" },
   ]);
-  // No empty params — every named slot resolved.
   assert.ok(msg.whatsappParams!.every((p) => p.text.length > 0));
 });
 
@@ -90,7 +87,6 @@ test("legacy POSITIONAL template builds bare text params (no names)", () => {
     { text: "Sam" },
     { text: "Bryan's Bistro" },
   ]);
-  // Positional params carry NO name => sendCampaignWhatsApp emits bare text.
   assert.ok(msg.whatsappParams!.every((p) => p.name === undefined));
 });
 
@@ -109,8 +105,6 @@ test("buildMessage exposes a resolved value map for live-contract resolution", (
     body: "Hi {{first_name}}, enjoy {{offer}}.",
   });
   const msg = buildMessage(t, { offer: "20% off" }, ctx, "WHATSAPP");
-  // The map must resolve every name an approved Meta template might declare,
-  // including the footer {{restaurant}} that the stored body omits.
   assert.equal(msg.whatsappValues?.first_name, "Sam");
   assert.equal(msg.whatsappValues?.business_name, "Bryan's Bistro");
   assert.equal(msg.whatsappValues?.restaurant, "Bryan's Bistro");
@@ -119,15 +113,13 @@ test("buildMessage exposes a resolved value map for live-contract resolution", (
 });
 
 test("resolveContractParams: lunch_comeback_offer NAMED contract (4 params, incl restaurant footer)", () => {
-  // Contract names come from the LIVE Meta template body, NOT SeatPing's stored
-  // body — this is what fixes the #132000 count mismatch.
   const contract = {
     mode: "named" as const,
     names: ["first_name", "business_name", "offer", "restaurant"],
   };
   const t = tmpl({
     whatsappProviderTemplateName: "lunch_comeback_offer",
-    body: "Hi {{first_name}}, {{business_name}} ... enjoy {{offer}}.", // stored body lacks {{restaurant}}
+    body: "Hi {{first_name}}, {{business_name}} ... enjoy {{offer}}.",
   });
   const msg = buildMessage(t, { offer: "free dessert" }, ctx, "WHATSAPP");
   assert.deepEqual(resolveContractParams(contract, msg.whatsappValues!), [
@@ -139,8 +131,6 @@ test("resolveContractParams: lunch_comeback_offer NAMED contract (4 params, incl
 });
 
 test("resolveContractParams: we_miss_you NAMED contract (business_name, not restaurant_name)", () => {
-  // Meta template uses {{business_name}} where SeatPing's seed body uses
-  // {{restaurant_name}}; the contract drives the names, both resolve correctly.
   const contract = {
     mode: "named" as const,
     names: ["first_name", "business_name", "restaurant"],

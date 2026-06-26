@@ -1,11 +1,3 @@
-/**
- * "Why SeatPing" feature section for the business landing page:
- * {@link SeatPingFeatureGrid} — a two-column block with an expandable feature
- * accordion on the left and a product "snapshot" visual on the right.
- *
- * (The stacked feature-card deck that used to live here was replaced by
- * `AnimatedBentoFeatureGrid`.)
- */
 import { useState } from "react";
 import {
   ListOrdered,
@@ -30,8 +22,6 @@ import {
   SectionPill,
 } from "@/components/landing/section";
 
-/** Expandable feature list shown on the left of the section. Each row mirrors a
- *  real SeatPing capability; one stays open to reveal its description. */
 const ACCORDION_ITEMS: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: ListOrdered,
@@ -63,9 +53,6 @@ const ACCORDION_ITEMS: { icon: LucideIcon; title: string; body: string }[] = [
 function FeatureAccordion() {
   const [open, setOpen] = useState(1);
   return (
-    // Mobile: natural stack. Desktop: fill the column height and spread rows so
-    // the list's top/bottom align with the graph card; gaps compress (and the
-    // area scrolls) if an expanded row needs more room than the fixed height.
     <div className="flex flex-col gap-3 lg:h-full lg:justify-between lg:gap-2">
       {ACCORDION_ITEMS.map((item, i) => {
         const active = i === open;
@@ -102,7 +89,7 @@ function FeatureAccordion() {
                 )}
               </span>
             </div>
-            {/* grid-rows trick animates the height open/closed smoothly */}
+            {}
             <div
               className={cn(
                 "grid transition-all duration-300 ease-out",
@@ -122,8 +109,6 @@ function FeatureAccordion() {
   );
 }
 
-/** Lightweight static bar chart (rounded tops) mirroring the dashboard's
- *  Peak Hours / Wait Time Distribution bars. */
 function MiniBarChart({
   data,
   color,
@@ -142,7 +127,6 @@ function MiniBarChart({
   const slot = (right - left) / data.length;
   const barW = Math.min(slot * 0.5, 20);
   const y = (v: number) => base - (v / max) * (base - top);
-  // bar path with rounded TOP corners only (flat against the baseline).
   const barPath = (cx: number, ty: number) => {
     const x = cx - barW / 2;
     const r = Math.min(4, barW / 2, base - ty);
@@ -193,9 +177,6 @@ function MiniBarChart({
   );
 }
 
-/** Product visual: a soft brand panel showing the dashboard's Peak Hours and
- *  Wait Time Distribution bar charts. Faithful to the real charts' titles +
- *  colours. */
 function ServiceSnapshot({ className }: { className?: string }) {
   const peakHours = [
     { label: "10 AM", value: 9 },
@@ -220,7 +201,7 @@ function ServiceSnapshot({ className }: { className?: string }) {
       )}
     >
       <div className="mx-auto max-w-sm space-y-3">
-        {/* Peak Hours */}
+        {}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5">
           <div className="flex items-center gap-1.5">
             <Clock className="h-4 w-4 text-slate-700" />
@@ -237,7 +218,7 @@ function ServiceSnapshot({ className }: { className?: string }) {
           />
         </div>
 
-        {/* Wait Time Distribution */}
+        {}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5">
           <div className="flex items-center gap-1.5">
             <BarChart3 className="h-4 w-4 text-slate-700" />
@@ -260,9 +241,6 @@ function ServiceSnapshot({ className }: { className?: string }) {
   );
 }
 
-/* ================================================================== */
-/*  Section — Why SeatPing (heading + accordion + product visual)     */
-/* ================================================================== */
 
 export function SeatPingFeatureGrid() {
   return (
@@ -272,7 +250,7 @@ export function SeatPingFeatureGrid() {
         SECTION_PADDING,
       )}
     >
-      {/* soft brand wash */}
+      {}
       <div
         aria-hidden
         className="pointer-events-none absolute -bottom-24 left-0 h-72 w-[36rem] max-w-[90vw] rounded-full bg-indigo-100/40 blur-3xl"
@@ -280,7 +258,7 @@ export function SeatPingFeatureGrid() {
 
       <div className="container relative mx-auto max-w-6xl scroll-animate">
         <div className="grid grid-cols-1 gap-x-12 gap-y-8 lg:grid-cols-2">
-          {/* top-left: pill + heading */}
+          {}
           <div>
             <SectionPill icon={Check}>Why SeatPing</SectionPill>
             <h2 className={cn("mt-4", SECTION_HEADING)}>
@@ -288,7 +266,7 @@ export function SeatPingFeatureGrid() {
             </h2>
           </div>
 
-          {/* top-right: subtitle */}
+          {}
           <div className="lg:flex lg:items-end lg:pb-3">
             <p className={cn("max-w-md", SECTION_SUBTITLE)}>
               All the tools you need to manage queues, reservations, and guest
@@ -296,16 +274,14 @@ export function SeatPingFeatureGrid() {
             </p>
           </div>
 
-          {/* bottom-left: accordion. On lg it's absolutely filled so its height
-              is driven by the graph card (expanding a row can't grow the row or
-              move the graph); overflow-y-auto contains any overflow. */}
+          {}
           <div className="relative lg:pr-4">
             <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:pr-1">
               <FeatureAccordion />
             </div>
           </div>
 
-          {/* bottom-right: product visual (defines the row height on lg) */}
+          {}
           <div className="flex items-center">
             <ServiceSnapshot className="w-full" />
           </div>

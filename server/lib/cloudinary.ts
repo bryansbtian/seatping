@@ -1,12 +1,3 @@
-// server/lib/cloudinary.ts
-//
-// Cloudinary image storage — used ONLY from the backend so the API secret is
-// never exposed to the browser. Configured from environment variables:
-//   CLOUDINARY_CLOUD_NAME  — your Cloudinary "Cloud name" (dashboard top)
-//   CLOUDINARY_API_KEY     — API key from Settings → API Keys
-//   CLOUDINARY_API_SECRET  — API secret (keep this private)
-//
-// If any of these are missing, uploads throw a clear error (see assertConfigured).
 import { v2 as cloudinary } from "cloudinary";
 
 const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
@@ -20,14 +11,8 @@ cloudinary.config({
   secure: true,
 });
 
-/** Folder all SeatPing location media is stored under in Cloudinary. */
 const BASE_FOLDER = "seatping/locations";
 
-/**
- * Throw a descriptive error if Cloudinary env vars are not configured. Called
- * at the start of every upload/delete so misconfiguration surfaces as a clean
- * 500 with an actionable message rather than a cryptic SDK failure.
- */
 export function assertCloudinaryConfigured() {
   const missing: string[] = [];
   if (!CLOUD_NAME) missing.push("CLOUDINARY_CLOUD_NAME");
@@ -44,7 +29,6 @@ export function assertCloudinaryConfigured() {
 
 export type UploadedImage = { url: string; publicId: string };
 
-/** Cloudinary folder a given location/kind uploads land in. */
 export function locationFolder(
   locationId: string,
   kind: "banner" | "photo"
@@ -60,14 +44,6 @@ export type UploadSignature = {
   signature: string;
 };
 
-/**
- * Produce a short-lived signature so the BROWSER can upload an image directly to
- * Cloudinary (bypassing our serverless function and its ~4.5MB body limit). The
- * API secret stays server-side: we only sign `folder` + `timestamp`, which the
- * client must echo back verbatim alongside the file. The returned publicId is
- * later verified against `locationFolder` in the commit route so a client can't
- * point us at an asset outside its own folder.
- */
 export function signLocationUpload(
   locationId: string,
   kind: "banner" | "photo"
@@ -88,7 +64,6 @@ export function signLocationUpload(
   };
 }
 
-/** True if `publicId` lives inside the expected location/kind folder. */
 export function publicIdInLocationFolder(
   publicId: string | null | undefined,
   locationId: string,
@@ -98,10 +73,6 @@ export function publicIdInLocationFolder(
   return publicId.startsWith(`${locationFolder(locationId, kind)}/`);
 }
 
-/**
- * Upload an in-memory image buffer to Cloudinary and return its secure URL +
- * publicId. `kind` picks the subfolder (banner vs gallery photo).
- */
 export function uploadImageBuffer(
   buffer: Buffer,
   locationId: string,
@@ -113,7 +84,6 @@ export function uploadImageBuffer(
       {
         folder: `${BASE_FOLDER}/${locationId}/${kind}`,
         resource_type: "image",
-        // Reject anything that isn't an image at the Cloudinary level too.
         allowed_formats: ["jpg", "jpeg", "png", "webp"],
       },
       (error, result) => {
@@ -129,10 +99,6 @@ export function uploadImageBuffer(
   });
 }
 
-/**
- * Best-effort delete of a Cloudinary asset by publicId. Never throws — a failed
- * remote delete must not block removing the DB record (we log and move on).
- */
 export async function deleteImageByPublicId(
   publicId: string | null | undefined
 ): Promise<void> {

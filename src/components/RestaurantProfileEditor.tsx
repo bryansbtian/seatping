@@ -38,15 +38,6 @@ import { TimezoneSelect } from "@/components/TimezoneSelect";
 import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 import { useLang, type TKey } from "@/lib/i18n";
 
-// ---------------------------------------------------------------------------
-// Public restaurant profile editor. Reads/writes location.restaurantProfile
-// (stored as JSON on the locations collection) plus the address + queue/
-// reservation toggles, via PUT /auth/business/locations/:locationId.
-//
-// Public restaurant page lives at /:businessUsername/:locationId
-// (see src/pages/Restaurant.tsx). No per-location slug is configured — each
-// location's URL is derived from its id so multi-location businesses just work.
-// ---------------------------------------------------------------------------
 
 const CUISINE_OPTIONS = [
   "Indonesian",
@@ -75,7 +66,6 @@ const DAYS = [
   "sunday",
 ] as const;
 
-// Gallery photo backed by the Photo model (uploaded to Cloudinary).
 type Photo = {
   id: string;
   url: string;
@@ -105,7 +95,6 @@ type LocationLike = {
   photos?: Photo[];
 };
 
-// Per-location reservation settings (mirrors server/lib/reservations.ts).
 type ReservationSettings = {
   reservationStartTime: string;
   reservationEndTime: string;
@@ -128,12 +117,8 @@ const DEFAULT_RESERVATION_SETTINGS: ReservationSettings = {
   cancellationPolicy: "",
 };
 
-// Upload limits — kept in sync with the backend (server/routes/locations.ts).
 const MAX_PHOTOS = 10;
-// Images are downscaled + re-encoded in the browser before upload (see
-// lib/imageUpload.ts), so this is just a sanity cap on the ORIGINAL to avoid
-// decoding absurdly large files — not the bytes we actually send.
-const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25MB
+const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = [
   "image/jpeg",
   "image/jpg",
@@ -141,8 +126,6 @@ const ACCEPTED_IMAGE_TYPES = [
   "image/webp",
 ];
 
-/** Client-side guard mirroring the server validation; returns a translation key
- * for the error (so the caller can localize it) or null when valid. */
 function validateImageFile(file: File): TKey | null {
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
     return "rpe.err.imageType";
@@ -160,8 +143,6 @@ export default function RestaurantProfileEditor({
 }: {
   location: LocationLike;
   onSaved: (updatedUser: any) => void;
-  // Called after a banner/photo upload or delete so the parent can refresh the
-  // dashboard state WITHOUT closing the editor (uploads persist immediately).
   onMediaChange?: (updatedUser: any) => void;
 }) {
   const { toast } = useToast();
@@ -198,8 +179,6 @@ export default function RestaurantProfileEditor({
     details.googleMapsUrl || "",
   );
 
-  // Banner + gallery photos are stored on the Location/Photo models and uploaded
-  // to Cloudinary immediately (independent of the "Save Changes" button below).
   const [banner, setBanner] = useState<Banner>(
     location.bannerImageUrl
       ? {
@@ -221,8 +200,6 @@ export default function RestaurantProfileEditor({
   const [menu, setMenu] = useState<MenuItem[]>(
     Array.isArray(rp.menu) ? rp.menu : [],
   );
-  // Optional link to an external/full menu (PDF or website). When set, the
-  // public page shows it instead of (or alongside) the highlight items.
   const [menuUrl, setMenuUrl] = useState<string>(rp.menuUrl || "");
 
   const initialHours: any = rp.openingHours || {};
@@ -237,7 +214,6 @@ export default function RestaurantProfileEditor({
       for (const d of DAYS) {
         const v = initialHours[d] || {};
         base[d] = {
-          // Missing `enabled` (legacy data) is treated as open.
           enabled: typeof v.enabled === "boolean" ? v.enabled : true,
           open: v.open || "11:00",
           close: v.close || "22:00",
@@ -247,7 +223,6 @@ export default function RestaurantProfileEditor({
     },
   );
 
-  // Waitlist is always on (mandatory). Reservations are optional per location.
   const [reservationsEnabled, setReservationsEnabled] = useState<boolean>(
     location.reservationsEnabled ?? true,
   );
@@ -267,14 +242,12 @@ export default function RestaurantProfileEditor({
 
   const [saving, setSaving] = useState(false);
 
-  // Reviews are read-only for now.
   const rating = typeof rp.rating === "number" ? rp.rating : null;
   const reviewCount = typeof rp.reviewCount === "number" ? rp.reviewCount : 0;
 
-  // --- Banner upload / replace / remove ------------------------------------
   const onBannerSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (bannerInputRef.current) bannerInputRef.current.value = ""; // allow re-pick
+    if (bannerInputRef.current) bannerInputRef.current.value = "";
     if (!file) return;
     const err = validateImageFile(file);
     if (err) {
@@ -287,8 +260,6 @@ export default function RestaurantProfileEditor({
     }
     setBannerUploading(true);
     try {
-      // Direct-to-Cloudinary upload (compressed in the browser) so large photos
-      // don't hit Vercel's ~4.5MB function body limit. See lib/imageUpload.ts.
       const res = await uploadBanner(location.id, file);
       setBanner(res.banner ?? null);
       onMediaChange?.(res.user);
@@ -327,7 +298,6 @@ export default function RestaurantProfileEditor({
     }
   };
 
-  // --- Photo gallery upload / alt-text / remove ----------------------------
   const onPhotosSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (photosInputRef.current) photosInputRef.current.value = "";
@@ -360,9 +330,6 @@ export default function RestaurantProfileEditor({
     }
 
     setPhotosUploading(true);
-    // Upload one photo per request (each compressed in the browser, then sent
-    // straight to Cloudinary) so neither a single big file nor a batch trips
-    // Vercel's ~4.5MB function body limit. Partial successes are kept.
     const added: Photo[] = [];
     let lastUser: any = null;
     try {
@@ -389,7 +356,6 @@ export default function RestaurantProfileEditor({
   };
 
   const removePhoto = async (photoId: string) => {
-    // Optimistic removal so the grid updates instantly.
     const prev = photos;
     setPhotos((p) => p.filter((ph) => ph.id !== photoId));
     try {
@@ -398,7 +364,7 @@ export default function RestaurantProfileEditor({
       });
       onMediaChange?.(res.user);
     } catch (e: any) {
-      setPhotos(prev); // roll back on failure
+      setPhotos(prev);
       toast({
         title: t("rpe.toast.photoRemoveFailed.title"),
         description: e?.message || t("common.pleaseTryAgain"),
@@ -412,7 +378,6 @@ export default function RestaurantProfileEditor({
       p.map((ph) => (ph.id === photoId ? { ...ph, altText } : ph)),
     );
 
-  // Persist alt text on blur (only when it actually changed).
   const savePhotoAlt = async (photoId: string, altText: string) => {
     try {
       const res = await api(`/api/locations/${location.id}/photos/${photoId}`, {
@@ -438,10 +403,6 @@ export default function RestaurantProfileEditor({
       });
       return;
     }
-    // Preserve any unknown keys already on the profile; overwrite what we manage.
-    // `photos` is intentionally dropped — gallery images now live in the Photo
-    // model and are managed via their own upload endpoints, not this JSON blob.
-    // `slug` is dropped — public restaurant URLs use the locationId now.
     const { photos: _legacyPhotos, slug: _legacySlug, ...rpRest } = rp;
     const restaurantProfile = {
       ...rpRest,
@@ -489,7 +450,6 @@ export default function RestaurantProfileEditor({
           restaurantProfile,
           address: address.trim() || location.address || "Main Location",
           reservationsEnabled,
-          // Confirmation mode is no longer exposed — always auto-confirm.
           reservationSettings: {
             ...reservationSettings,
             confirmationMode: "auto",
@@ -517,7 +477,7 @@ export default function RestaurantProfileEditor({
 
   return (
     <div className="space-y-5 md:space-y-6">
-      {/* ===================== OVERVIEW ===================== */}
+      {}
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
@@ -528,10 +488,8 @@ export default function RestaurantProfileEditor({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
-          {/* Restaurant page links are derived per-location (so a business with
-              multiple locations gets distinct URLs); no manual slug needed. */}
-          {/* Customers see these as two lines on cards: Restaurant Name over
-              Short Address (e.g. "Imperial Group" / "Plaza Indonesia"). */}
+          {}
+          {}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="displayName">{t("rpe.field.restaurantName")}</Label>
@@ -627,12 +585,12 @@ export default function RestaurantProfileEditor({
               </Select>
             </div>
           </div>
-          {/* TODO(pricing): Map currency and price range into localized display ranges later. */}
+          {}
         </CardContent>
       </Card>
 
-      {/* ===================== OPENING HOURS ===================== */}
-      {/* Standalone card so operating hours read as distinct from reservations. */}
+      {}
+      {}
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
@@ -643,7 +601,7 @@ export default function RestaurantProfileEditor({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 p-4 md:p-6 pt-0">
-          {/* Timezone — sits before Monday, separated by a divider line. */}
+          {}
           <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-medium text-slate-800">
@@ -660,7 +618,7 @@ export default function RestaurantProfileEditor({
             />
           </div>
 
-          {/* One row per day: name · open → close · open/closed toggle. */}
+          {}
           <div className="space-y-2">
             {DAYS.map((d) => {
               const day = openingHours[d];
@@ -684,8 +642,7 @@ export default function RestaurantProfileEditor({
                       aria-label={`${d} open`}
                     />
                   </div>
-                  {/* Times: stack vertically on mobile (full width, no clipping),
-                      inline on sm+ so the desktop row stays unchanged. */}
+                  {}
                   <div
                     className={cn(
                       "col-span-2 flex flex-col gap-2 sm:col-span-1 sm:flex-row sm:items-center sm:order-2",
@@ -725,10 +682,8 @@ export default function RestaurantProfileEditor({
         </CardContent>
       </Card>
 
-      {/* ===================== RESERVATIONS ===================== */}
-      {/* Waitlist is always on; reservations are the optional add-on. The
-          enable toggle and all reservation settings live in one card; the
-          settings only render once reservations are enabled. */}
+      {}
+      {}
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
@@ -755,7 +710,7 @@ export default function RestaurantProfileEditor({
           {reservationsEnabled && (
             <div className="space-y-4 border-t border-slate-200 pt-4">
               <p className={sectionDesc}>{t("rpe.res.controlHelp")}</p>
-              {/* Reservation hours */}
+              {}
               <div className="space-y-2">
                 <Label>{t("rpe.res.hours")}</Label>
                 <div className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3 sm:flex-row sm:items-center">
@@ -873,7 +828,7 @@ export default function RestaurantProfileEditor({
         </CardContent>
       </Card>
 
-      {/* ===================== BANNER IMAGE ===================== */}
+      {}
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
@@ -884,7 +839,7 @@ export default function RestaurantProfileEditor({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
-          {/* Hidden file input shared by the upload area + replace button. */}
+          {}
           <input
             ref={bannerInputRef}
             type="file"
@@ -961,7 +916,7 @@ export default function RestaurantProfileEditor({
         </CardContent>
       </Card>
 
-      {/* ===================== PHOTOS ===================== */}
+      {}
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
@@ -972,7 +927,7 @@ export default function RestaurantProfileEditor({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
-          {/* Hidden multi-file input + upload trigger. */}
+          {}
           <input
             ref={photosInputRef}
             type="file"
@@ -1047,7 +1002,7 @@ export default function RestaurantProfileEditor({
         </CardContent>
       </Card>
 
-      {/* ===================== MENU ===================== */}
+      {}
       <MenuSection
         menu={menu}
         setMenu={setMenu}
@@ -1058,7 +1013,7 @@ export default function RestaurantProfileEditor({
         sectionDesc={sectionDesc}
       />
 
-      {/* ===================== DETAILS ===================== */}
+      {}
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
@@ -1077,7 +1032,7 @@ export default function RestaurantProfileEditor({
               onChange={(e) => setAddress(e.target.value)}
               placeholder={t("rpe.details.address.ph")}
             />
-            {/* TODO(location): Add Google Places or maps autocomplete for address search later. */}
+            {}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
@@ -1147,7 +1102,7 @@ export default function RestaurantProfileEditor({
         </CardContent>
       </Card>
 
-      {/* ===================== PREVIEW ===================== */}
+      {}
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
@@ -1159,7 +1114,7 @@ export default function RestaurantProfileEditor({
         </CardHeader>
         <CardContent className="p-4 md:p-6 pt-0">
           <div className="overflow-hidden rounded-xl border">
-            {/* Hero uses the banner first, then falls back to the first gallery photo. */}
+            {}
             {banner?.url || photos[0]?.url ? (
               <img
                 src={banner?.url || photos[0]?.url}
@@ -1203,7 +1158,7 @@ export default function RestaurantProfileEditor({
         </CardContent>
       </Card>
 
-      {/* ===================== PUBLISH + SAVE ===================== */}
+      {}
       <Card className={cardCls}>
         <CardContent className="flex flex-col gap-4 p-4 md:p-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
@@ -1226,44 +1181,23 @@ export default function RestaurantProfileEditor({
   );
 }
 
-// ===========================================================================
-// Menu builder
-// ===========================================================================
 
 const UNCATEGORIZED = "Other";
 
-/** Display a price with its currency code, e.g. "IDR 50,000". Uses a fixed
- * locale so the thousands separator is always a comma regardless of the
- * viewer's browser locale. */
 function formatMenuPrice(price: number | undefined, currency: string): string {
   if (price === undefined || price === null || Number.isNaN(price)) return "";
   return `${currency} ${price.toLocaleString("en-US")}`;
 }
 
-/**
- * Normalize a raw CSV price cell into a number. Accepts plain numbers and a
- * range of formatted inputs, stripping currency symbols and thousands commas:
- *   "100000" | "100,000" | "Rp 100,000" | "IDR 100,000"  →  100000
- * Returns undefined when no numeric value can be read (e.g. blank or "N/A").
- */
 function parseCsvPrice(raw: string): number | undefined {
   if (!raw) return undefined;
-  // Keep only digits, comma and dot; drops "Rp", "IDR", spaces, symbols, etc.
   let s = raw.replace(/[^0-9.,]/g, "");
   if (!s) return undefined;
-  // Comma is only ever a thousands separator in the supported formats.
   s = s.replace(/,/g, "");
   const n = Number(s);
   return Number.isFinite(n) ? n : undefined;
 }
 
-/**
- * Owner-facing menu editor. Replaces the old table-like input rows with a
- * card-based builder: an "Add Menu Item" button opens an inline form (name /
- * category / price / description), and saved items render as clean cards grouped
- * by category, each with Edit + Delete. The committed list still lives in the
- * parent's `menu` state, so the existing Save Changes flow is unchanged.
- */
 function MenuSection({
   menu,
   setMenu,
@@ -1282,14 +1216,11 @@ function MenuSection({
   sectionDesc: string;
 }) {
   const { t } = useLang();
-  // The form is open when `form` is non-null. index === null → adding a new
-  // item; index === number → editing the item at that position.
   const [form, setForm] = useState<{
     index: number | null;
     draft: MenuItem;
   } | null>(null);
 
-  // CSV import state: a structured error (title + detail) or a success summary.
   const [csvError, setCsvError] = useState<{
     title: string;
     detail: string;
@@ -1297,7 +1228,6 @@ function MenuSection({
   const [csvSuccess, setCsvSuccess] = useState<string | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
-  // Columns the CSV must contain (case-insensitive; checked after trimming).
   const REQUIRED_COLUMNS = ["name", "category", "description", "price"];
 
   const handleCsvFile = (file: File) => {
@@ -1312,7 +1242,7 @@ function MenuSection({
     }
     Papa.parse<Record<string, string>>(file, {
       header: true,
-      skipEmptyLines: "greedy", // ignore blank and whitespace-only rows
+      skipEmptyLines: "greedy",
       transformHeader: (h) => h.trim().toLowerCase(),
       complete: (results) => {
         const fields = results.meta.fields ?? [];
@@ -1325,16 +1255,14 @@ function MenuSection({
           return;
         }
         const imported: MenuItem[] = [];
-        let skipped = 0; // rows with no name
-        let pricelessRows = 0; // rows whose price could not be read
+        let skipped = 0;
+        let pricelessRows = 0;
         for (const row of results.data) {
           const name = (row.name ?? "").trim();
           const category = (row.category ?? "").trim();
           const description = (row.description ?? "").trim();
           const priceRaw = (row.price ?? "").trim();
-          // Ignore fully empty rows (trailing blanks, duplicate empty rows).
           if (!name && !category && !description && !priceRaw) continue;
-          // A row without a name is not a usable menu item — skip with a count.
           if (!name) {
             skipped++;
             continue;
@@ -1373,7 +1301,6 @@ function MenuSection({
   const onCsvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) handleCsvFile(file);
-    // Reset so selecting the same file again re-triggers onChange.
     e.target.value = "";
   };
 
@@ -1395,7 +1322,7 @@ function MenuSection({
   const saveItem = () => {
     if (!form) return;
     const draft = form.draft;
-    if (!draft.name.trim()) return; // name is required; button is disabled anyway
+    if (!draft.name.trim()) return;
     const cleaned: MenuItem = {
       ...draft,
       name: draft.name.trim(),
@@ -1412,12 +1339,9 @@ function MenuSection({
 
   const remove = (i: number) => {
     setMenu((m) => m.filter((_, idx) => idx !== i));
-    // If we were editing the item being removed, close the form.
     setForm((f) => (f && f.index === i ? null : f));
   };
 
-  // Group items by category (preserving first-seen order), pairing each with its
-  // original index so Edit/Delete map back to the source array.
   const groups: {
     category: string;
     items: { item: MenuItem; index: number }[];
@@ -1446,7 +1370,7 @@ function MenuSection({
         </p>
       </CardHeader>
       <CardContent className="space-y-4 p-4 md:p-6 pt-0">
-        {/* Option 1: link to an external/full menu. */}
+        {}
         <div className="space-y-1.5">
           <Label htmlFor="menu-url">{t("rpe.menu.link")}</Label>
           <Input
@@ -1462,7 +1386,7 @@ function MenuSection({
           </p>
         </div>
 
-        {/* Divider between the two options. */}
+        {}
         <div className="flex items-center gap-3 py-1">
           <span className="h-px flex-1 bg-slate-200" />
           <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
@@ -1471,7 +1395,7 @@ function MenuSection({
           <span className="h-px flex-1 bg-slate-200" />
         </div>
 
-        {/* Option 2a: bulk import items from a CSV file. */}
+        {}
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
@@ -1514,7 +1438,7 @@ function MenuSection({
           )}
         </div>
 
-        {/* Divider before the manual single-item flow. */}
+        {}
         <div className="flex items-center gap-3 py-1">
           <span className="h-px flex-1 bg-slate-200" />
           <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
@@ -1523,7 +1447,7 @@ function MenuSection({
           <span className="h-px flex-1 bg-slate-200" />
         </div>
 
-        {/* Add / Edit form (inline expanded card). */}
+        {}
         {form && (
           <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 shadow-sm">
             <p className="text-sm font-semibold text-gray-800">
@@ -1605,7 +1529,7 @@ function MenuSection({
           </div>
         )}
 
-        {/* Empty state. */}
+        {}
         {menu.length === 0 && !form && (
           <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
             <p className="text-sm text-muted-foreground">
@@ -1614,7 +1538,7 @@ function MenuSection({
           </div>
         )}
 
-        {/* Saved items, grouped by category. */}
+        {}
         {groups.map((group) => (
           <div key={group.category} className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -1650,8 +1574,7 @@ function MenuSection({
                         </p>
                       )}
                     </div>
-                    {/* Desktop: compact icon-ish buttons on the right. Mobile:
-                        full-width tappable row below the content. */}
+                    {}
                     <div className="flex gap-2 sm:shrink-0">
                       <Button
                         type="button"
@@ -1700,7 +1623,6 @@ function MenuSection({
                 successMessage={t("rpe.menu.clearSuccess")}
                 errorMessage={t("rpe.menu.clearError")}
                 onConfirm={async () => {
-                  // Simulate a short delay to show the "Clearing..." state
                   await new Promise((resolve) => setTimeout(resolve, 600));
                   setMenu([]);
                 }}

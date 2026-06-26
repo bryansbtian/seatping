@@ -1,14 +1,3 @@
-// server/lib/queueEta.ts
-//
-// Rules-based "smart" estimated wait time for the live waitlist. Pure functions
-// only — callers pass in an already-loaded Location (so this stays trivially
-// testable and never touches the DB or leaks private data).
-//
-// ETA = weightedQueueAhead * blendedMinutesPerParty * reservationPressureMultiplier
-//
-// All inputs are defensive: missing party sizes default to 2 (neutral weight),
-// invalid/missing timestamps are skipped, and every branch has a fallback so a
-// sparse-data location still returns a sane (low-confidence) estimate.
 
 export type EtaConfidence = "low" | "medium" | "high";
 
@@ -33,9 +22,8 @@ const ACTIVE_RESERVATION_STATUSES = ["confirmed", "arrived"];
 const DEFAULT_MINUTES_PER_PARTY = 5;
 const MIN_MINUTES_PER_PARTY = 3;
 const MAX_MINUTES_PER_PARTY = 30;
-const DISPLAY_CAP_MIN = 60; // show "60+ Minutes" at/above this
+const DISPLAY_CAP_MIN = 60;
 
-/** Party-size weight: larger parties take proportionally longer to seat. */
 export function partyWeight(partySize: any): number {
   const n = Number(partySize);
   const size = Number.isFinite(n) && n > 0 ? n : 2;
@@ -53,7 +41,6 @@ function validDate(v: any): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Recent throughput: minutes-per-party from admits in the last 30/60 minutes. */
 function recentMinutesPerParty(admitted: any[], now: Date): number | null {
   const count = (windowMin: number) =>
     admitted.filter((c) => {
@@ -71,11 +58,6 @@ function recentMinutesPerParty(admitted: any[], now: Date): number | null {
   return null;
 }
 
-/**
- * Historical average actual wait (admittedAt - joinedAt), using the most
- * specific non-empty bucket: dow+hour → hour → overall. Returns the value plus
- * whether any real data backed it (vs the 5-minute default).
- */
 function historicalMinutesPerParty(
   admitted: any[],
   now: Date,
@@ -104,7 +86,6 @@ function historicalMinutesPerParty(
   return { value: avg(samples), hadData: true };
 }
 
-/** Reservation pressure from active reservations starting within the next hour. */
 function reservationPressureMultiplier(
   reservations: any[],
   reservationSettings: any,
@@ -119,7 +100,6 @@ function reservationPressureMultiplier(
   let reservedGuestsNextHour = 0;
   for (const r of reservations) {
     if (!ACTIVE_RESERVATION_STATUSES.includes(r?.status)) continue;
-    // reservationDateTime is naive local "YYYY-MM-DDTHH:MM".
     const t = validDate(r?.reservationDateTime);
     if (!t) continue;
     if (t.getTime() >= now.getTime() && t.getTime() <= horizon) {
@@ -135,7 +115,6 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v));
 }
 
-/** Build the customer-facing min/max range + display text from a raw ETA. */
 function toDisplay(etaMinutes: number): {
   min: number;
   max: number;
@@ -158,11 +137,10 @@ export type ComputeQueueEtaInput = {
   reservations: any[];
   reservationSettings: any;
   reservationsEnabled: boolean;
-  ticketIndex: number; // 0-based index of this ticket within `queue`
+  ticketIndex: number;
   now?: Date;
 };
 
-/** Core ETA computation. Pure — no DB, no side effects. */
 export function computeQueueEta(input: ComputeQueueEtaInput): QueueEta {
   const now = input.now ?? new Date();
   const queue = Array.isArray(input.queue) ? input.queue : [];
@@ -175,12 +153,10 @@ export function computeQueueEta(input: ComputeQueueEtaInput): QueueEta {
   const peopleAhead = ticketIndex;
   const position = ticketIndex + 1;
 
-  // 1) weighted parties ahead
   const weightedQueueAhead = queue
     .slice(0, ticketIndex)
     .reduce((sum, c) => sum + partyWeight(partySizeOf(c)), 0);
 
-  // 2/3/4) blended minutes per party
   const recent = recentMinutesPerParty(admitted, now);
   const historical = historicalMinutesPerParty(admitted, now);
   let blended =
@@ -189,7 +165,6 @@ export function computeQueueEta(input: ComputeQueueEtaInput): QueueEta {
       : historical.value;
   blended = clamp(blended, MIN_MINUTES_PER_PARTY, MAX_MINUTES_PER_PARTY);
 
-  // 5) reservation pressure
   const pressure = reservationPressureMultiplier(
     reservations,
     input.reservationSettings,
@@ -200,7 +175,6 @@ export function computeQueueEta(input: ComputeQueueEtaInput): QueueEta {
   const etaMinutes = weightedQueueAhead * blended * pressure.multiplier;
   const { min, max, text } = toDisplay(etaMinutes);
 
-  // Confidence: best when we have both recent throughput and real history.
   let confidence: EtaConfidence = "low";
   if (recent != null && historical.hadData) confidence = "high";
   else if (recent != null || historical.hadData) confidence = "medium";
@@ -223,7 +197,6 @@ export function computeQueueEta(input: ComputeQueueEtaInput): QueueEta {
   };
 }
 
-/** Pull the fields the computation needs off a Location row. */
 function locationData(location: any) {
   return {
     queue: Array.isArray(location?.queue) ? location.queue : [],
@@ -236,7 +209,6 @@ function locationData(location: any) {
   };
 }
 
-/** ETA for the queue ticket identified by `queueToken`, or null if not waiting. */
 export function etaForToken(
   location: any,
   queueToken: string,
@@ -250,7 +222,6 @@ export function etaForToken(
   return computeQueueEta({ ...data, ticketIndex, now });
 }
 
-/** ETA for every active queue ticket of a location (business dashboard labels). */
 export function etaForAllQueueCustomers(
   location: any,
   now?: Date,

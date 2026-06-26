@@ -1,28 +1,20 @@
 import nodemailer from "nodemailer";
 
-// Create a transporter using SMTP
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || "smtp.porkbun.com", // Porkbun SMTP server for custom domain email
+  host: process.env.EMAIL_HOST || "smtp.porkbun.com",
   port: 587,
-  secure: false, // true for 465, false for other ports (587 uses STARTTLS)
+  secure: false,
   auth: {
-    user: process.env.EMAIL_USER || "bryan.susanto@seatping.biz", // Custom domain email address
-    pass: process.env.EMAIL_PASSWORD || "your-app-password-here", // Email password
+    user: process.env.EMAIL_USER || "bryan.susanto@seatping.biz",
+    pass: process.env.EMAIL_PASSWORD || "your-app-password-here",
   },
   tls: {
-    // Verify the SMTP server's certificate (an unverified connection allows a
-    // network MITM to read every email, including password-reset links).
-    // EMAIL_TLS_INSECURE=1 is a temporary escape hatch if the provider's cert
-    // chain ever breaks — do not leave it set.
     rejectUnauthorized: process.env.EMAIL_TLS_INSECURE !== "1",
   },
-  // Increase timeouts for serverless environments
-  connectionTimeout: 30000, // 30 seconds
-  greetingTimeout: 30000, // 30 seconds
-  socketTimeout: 60000, // 60 seconds
-  // Disable pooling for serverless (create new connection each time)
+  connectionTimeout: 30000,
+  greetingTimeout: 30000,
+  socketTimeout: 60000,
   pool: false,
-  // Add debug logging
   logger: false,
   debug: false,
 } as any);
@@ -31,38 +23,24 @@ export interface EmailOptions {
   to: string;
   subject: string;
   html: string;
-  from?: string; // Optional custom sender email
-  replyTo?: string; // Optional Reply-To (e.g. the business email for campaigns)
+  from?: string;
+  replyTo?: string;
 }
 
-// Actual SMTP sender (must match the authenticated mailbox for deliverability).
 const FROM_ADDRESS = "bryan.susanto@seatping.biz";
-// Public-facing support address shown in every email footer + contact link.
 const SUPPORT_EMAIL = "help@seatping.biz";
 
-/**
- * Full result of an SMTP send attempt. `ok` is true ONLY when the mail server
- * actually accepted the intended recipient (i.e. the address is in `accepted`
- * and not in `rejected`). The provider strings let callers log/trace exactly
- * what happened per recipient — accepting the message for relay is NOT the same
- * as the inbox provider (e.g. Gmail) ultimately delivering it.
- */
 export interface EmailSendResult {
   ok: boolean;
   recipient: string;
   messageId: string | null;
-  response: string | null; // last raw SMTP response line, e.g. "250 OK ..."
+  response: string | null;
   accepted: string[];
   rejected: string[];
   envelope: any;
   error?: string;
 }
 
-/**
- * Send one email and return the full per-recipient provider result. Use this
- * (over the boolean `sendEmail`) anywhere accurate delivery status matters, e.g.
- * campaign sends that flip a CampaignRecipient to SENT/FAILED.
- */
 export const sendEmailDetailed = async (
   options: EmailOptions,
   retries = 2,
@@ -74,7 +52,6 @@ export const sendEmailDetailed = async (
     try {
       if (attempt > 0) {
         console.log(`[EMAIL] Retry attempt ${attempt}/${retries} for:`, options.to);
-        // Wait before retrying (exponential backoff)
         await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
       } else {
         console.log("[EMAIL] Attempting to send email to:", options.to);
@@ -94,11 +71,9 @@ export const sendEmailDetailed = async (
       const messageId: string | null = info.messageId || null;
       const response: string | null = info.response || null;
 
-      // The SMTP server accepted the message AND this specific recipient.
       const acceptedTarget = accepted.some((a) => a.toLowerCase() === target);
       const rejectedTarget = rejected.some((a) => a.toLowerCase() === target);
 
-      // One structured line per recipient so delivery can be traced end to end.
       console.log(
         `[EMAIL] Sent email to ${options.to} | messageId=${messageId} | ` +
           `accepted=[${accepted.join(", ")}] | rejected=[${rejected.join(", ")}] | ` +
@@ -158,7 +133,6 @@ export const sendEmailDetailed = async (
   };
 };
 
-/** Boolean convenience wrapper around {@link sendEmailDetailed}. */
 export const sendEmail = async (
   options: EmailOptions,
   retries = 2,
@@ -167,45 +141,25 @@ export const sendEmail = async (
   return result.ok;
 };
 
-// ===========================================================================
-// SeatPing email design system
-// ---------------------------------------------------------------------------
-// One shared, mobile-friendly, inline-styled wrapper so every email looks like
-// the same product: a soft off-white canvas, a single white card with light
-// borders, a clean wordmark, and one clear navy call-to-action. No gradients.
-// All helpers below build into `renderEmail()` — route/email code should never
-// hand-write a full HTML document.
-//
-// Brand: SeatPing uses deep navy as the single accent. There is intentionally
-// NO orange/terracotta anywhere. Off-brand colors are reserved strictly for
-// semantic states (success green, warning amber) passed explicitly to callouts.
-// ===========================================================================
 
 const COLORS = {
-  canvas: "#F4F6FA", // soft, cool off-white background
-  card: "#FFFFFF", // white card
-  border: "#E4E8EF", // light gray border
-  ink: "#0F1A2E", // headings + wordmark (deep navy / near-black)
-  body: "#334155", // body copy (slate)
-  muted: "#64748B", // footnotes / captions (cool gray)
-  accent: "#16294D", // SeatPing navy — primary buttons + links
-  accentSoft: "#EEF2F9", // navy tint for highlights / callouts
-  panel: "#F7F9FC", // detail-card background (soft off-white)
+  canvas: "#F4F6FA",
+  card: "#FFFFFF",
+  border: "#E4E8EF",
+  ink: "#0F1A2E",
+  body: "#334155",
+  muted: "#64748B",
+  accent: "#16294D",
+  accentSoft: "#EEF2F9",
+  panel: "#F7F9FC",
 };
 
 const FONT_STACK =
   "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-// Shared section layout. Every block-level section — detail cards, callouts,
-// step lists, and the CTA button row — is rendered as a full-width, left-aligned
-// table so their left edges line up exactly across every email. Width is forced
-// via inline style (not just the width="100%" attribute) because Gmail's mobile
-// app ignores the attribute on short-content tables and collapses them to fit —
-// which is what misaligned the mini cards/buttons against the wider detail cards.
-const SECTION_WIDTH = "width: 100%;"; // every section spans the same content width
-const SECTION_GAP = "margin: 0 0 24px;"; // consistent vertical rhythm between sections
+const SECTION_WIDTH = "width: 100%;";
+const SECTION_GAP = "margin: 0 0 24px;";
 
-/** Escape a dynamic value for safe interpolation into email HTML. */
 export function esc(value: unknown): string {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -215,17 +169,10 @@ export function esc(value: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
-/** A clean paragraph of body copy. */
 export function p(html: string): string {
   return `<p style="margin: 0 0 16px; color: ${COLORS.body}; font-size: 15px; line-height: 1.65;">${html}</p>`;
 }
 
-/**
- * Bulletproof, single call-to-action button. Rendered as a full-width,
- * left-aligned section (shared layout) wrapping a fixed-width button, so the
- * button's left edge lines up exactly with the cards above/below it instead of
- * floating at a content-dependent x-position.
- */
 export function emailButton(href: string, label: string): string {
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="${SECTION_WIDTH} margin: 28px 0;">
@@ -246,11 +193,6 @@ export function emailButton(href: string, label: string): string {
     </table>`;
 }
 
-/**
- * Secondary / lower-emphasis button: white fill with a navy outline and navy
- * label. Same radius, padding, and weight as {@link emailButton} so primary and
- * secondary actions stay visually consistent across templates.
- */
 export function emailSecondaryButton(href: string, label: string): string {
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="${SECTION_WIDTH} margin: 28px 0;">
@@ -271,12 +213,10 @@ export function emailSecondaryButton(href: string, label: string): string {
     </table>`;
 }
 
-/** Small "if the button doesn't work" fallback link. */
 export function fallbackLink(href: string): string {
   return `<p style="margin: 0 0 8px; color: ${COLORS.muted}; font-size: 13px; line-height: 1.6;">If the button doesn't work, paste this link into your browser:<br><a href="${href}" style="color: ${COLORS.accent}; word-break: break-all;">${href}</a></p>`;
 }
 
-/** A soft card for grouped detail rows. Rows are [label, value] pairs. */
 export function detailCard(title: string, rows: Array<[string, string]>): string {
   const body = rows
     .map(
@@ -297,7 +237,6 @@ export function detailCard(title: string, rows: Array<[string, string]>): string
     </table>`;
 }
 
-/** A subtle highlight callout (e.g. status, reminders). */
 export function calloutBox(html: string, accent = COLORS.accent, bg = COLORS.accentSoft): string {
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
@@ -306,7 +245,6 @@ export function calloutBox(html: string, accent = COLORS.accent, bg = COLORS.acc
     </table>`;
 }
 
-/** A compact numbered/bulleted step list. */
 export function stepList(items: string[]): string {
   const lis = items
     .map(
@@ -322,11 +260,6 @@ export function stepList(items: string[]): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="${SECTION_WIDTH} margin: 0 0 8px;">${lis}</table>`;
 }
 
-/**
- * Wrap body content in the shared SeatPing shell. `preheader` is the hidden
- * inbox-preview line; `heading` is the H1 inside the card; `bodyHtml` is the
- * already-built inner content (use the helpers above to compose it).
- */
 export function renderEmail(opts: {
   heading: string;
   bodyHtml: string;
@@ -390,18 +323,11 @@ export function renderEmail(opts: {
 
 const FRONTEND = () => process.env.FRONTEND_URL || "https://www.seatping.biz";
 
-// ===========================================================================
-// Account & security emails
-// ===========================================================================
 
 export const sendPasswordResetEmail = async (
   email: string,
   resetToken: string,
-  // Carries the account type into the reset link so the reset page shows the
-  // matching (customer vs business) header and "back to login" target.
   accountType: "customer" | "business" = "customer",
-  // Origin to build the link from (e.g. http://localhost:8080 in dev). Falls
-  // back to FRONTEND_URL / the production domain when not provided.
   baseUrl?: string
 ): Promise<boolean> => {
   const origin = (baseUrl || FRONTEND()).replace(/\/+$/, "");
@@ -451,11 +377,7 @@ export const sendPasswordChangeConfirmationEmail = async (
   });
 };
 
-// ===========================================================================
-// Customer (diner) emails
-// ===========================================================================
 
-/** Welcome email for a newly registered customer/user account. */
 export const sendCustomerWelcomeEmail = async (
   email: string,
   name: string
@@ -521,7 +443,6 @@ export const sendQueueJoinConfirmationEmail = async (
   });
 };
 
-/** Sent to a waiting customer when the business admits them ("your turn"). */
 export const sendQueueYourTurnEmail = async (
   email: string,
   businessName: string
@@ -547,10 +468,6 @@ export const sendQueueYourTurnEmail = async (
   });
 };
 
-/**
- * Confirmation email sent after a reservation is created or updated. Includes a
- * secure manage link the customer can use to change or cancel without logging in.
- */
 export const sendReservationConfirmationEmail = async (params: {
   email: string;
   firstName: string;
@@ -617,7 +534,6 @@ export const sendReservationConfirmationEmail = async (params: {
   });
 };
 
-/** Reminder sent to the customer ~2 hours before a confirmed reservation. */
 export const sendReservationReminderEmail = async (params: {
   email: string;
   firstName: string;
@@ -656,11 +572,7 @@ export const sendReservationReminderEmail = async (params: {
   });
 };
 
-// ===========================================================================
-// Business (operator) emails
-// ===========================================================================
 
-/** Onboarding email for a newly registered business account. */
 export const sendBusinessOnboardingEmail = async (
   email: string,
   name: string,
@@ -669,8 +581,6 @@ export const sendBusinessOnboardingEmail = async (
 ): Promise<boolean> => {
   const dashboardUrl = `${FRONTEND()}/business/dashboard`;
 
-  // The body goes through p() (no auto-escaping), so escape the name exactly
-  // once here. The heading is static and rendered (and escaped) by renderEmail.
   const trialSentence =
     trialDays && trialDays > 0 ? ` Your ${trialDays}-day trial is active.` : "";
   const intro = `Welcome to SeatPing, ${esc(name)}.${trialSentence} Follow these steps to start accepting queues and reservations.`;
@@ -701,7 +611,6 @@ export const sendBusinessOnboardingEmail = async (
   });
 };
 
-/** Notify the business that a new reservation was booked at a location. */
 export const sendNewReservationBusinessEmail = async (params: {
   to: string;
   businessName: string;
@@ -758,9 +667,6 @@ export const sendNewReservationBusinessEmail = async (params: {
   });
 };
 
-// ===========================================================================
-// Support: feedback & sales (to the team + confirmations to the submitter)
-// ===========================================================================
 
 export interface SalesInquiryData {
   businessName: string;

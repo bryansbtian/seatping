@@ -1,17 +1,3 @@
-// src/lib/i18n.tsx
-//
-// Lightweight i18n for the BUSINESS OPERATOR area only (/business/dashboard,
-// /business/guests, /business/settings). Customer-facing pages are intentionally
-// untouched. There is no heavy dependency: a typed dictionary + a React context
-// that holds the current language and persists it to the backend.
-//
-// Usage:
-//   const { t, lang, setLang } = useLang();
-//   <h1>{t("settings.title")}</h1>
-//   <p>{t("guests.atLocation", { label })}</p>
-//
-// Missing Indonesian strings fall back to English automatically; an unknown key
-// falls back to the key itself so nothing ever renders blank.
 import {
   createContext,
   useCallback,
@@ -26,12 +12,7 @@ export type Lang = "en" | "id";
 
 const STORAGE_KEY = "seatping.business.lang";
 
-// ---------------------------------------------------------------------------
-// English dictionary — the single source of truth. Every key the UI can ask for
-// lives here; `id` below only needs to override the ones that differ.
-// ---------------------------------------------------------------------------
 const en = {
-  // Header / nav
   "nav.dashboard": "Dashboard",
   "nav.guests": "Guests",
   "nav.campaigns": "Campaigns",
@@ -39,7 +20,6 @@ const en = {
   "nav.logout": "Log Out",
   "nav.openMenu": "Open menu",
 
-  // Campaigns page
   "camp.title": "Campaigns",
   "camp.subtitle":
     "Send SeatPing-branded SMS, WhatsApp, and Email campaigns to your guests.",
@@ -74,7 +54,6 @@ const en = {
   "camp.sender": "Sender",
   "camp.senderLine": "SeatPing on behalf of {name}",
 
-  // Shared
   "common.refresh": "Refresh",
   "common.tryAgain": "Try Again",
   "common.somethingWrong": "Something Went Wrong",
@@ -84,7 +63,6 @@ const en = {
   "common.cancel": "Cancel",
   "common.contactSeatPing": "Contact SeatPing",
 
-  // Banners (trial + credits)
   "banner.trialExpired.title": "Trial Expired",
   "banner.trialExpired.body":
     "Your free trial has ended. Please contact SeatPing to continue using your business dashboard.",
@@ -100,7 +78,6 @@ const en = {
   "banner.noCredits.body":
     "You have no credits available. Please contact SeatPing to top up credits or adjust your account.",
 
-  // Settings page
   "settings.title": "Settings",
   "settings.subtitle": "Manage your business information and locations.",
   "settings.businessInfo.title": "Business Information",
@@ -119,7 +96,6 @@ const en = {
   "settings.language.saved": "Language updated",
   "settings.language.saveError": "Could not update language",
 
-  // Location management
   "loc.title": "Location Management",
   "loc.desc":
     "Add and manage your business locations ({count}/{max} {locWord} used)",
@@ -158,7 +134,6 @@ const en = {
     "Customers who scan this code join the queue for this location automatically.",
   "loc.qrModal.copyLink": "Copy Link",
   "loc.qrModal.downloadQr": "Download QR Code",
-  // Location toasts
   "loc.toast.displayNameRequired.title": "Location Display Name required",
   "loc.toast.displayNameRequired.desc":
     "Enter the short name customers will see.",
@@ -185,7 +160,6 @@ const en = {
   "loc.toast.copyFailed.title": "Couldn't copy link",
   "loc.toast.copyFailed.desc": "Copy the link manually from the box above.",
 
-  // Guests page
   "guests.title": "Guests",
   "guests.subtitle":
     "Manage guest profiles, visit history, tags, and notes from reservations and waitlists.",
@@ -229,7 +203,6 @@ const en = {
   "guests.lastLabel": "Last",
   "guests.upcomingCount": "{n} Upcoming",
   "guests.defaultName": "Guest",
-  // Detail drawer
   "guests.noPhone": "No Phone",
   "guests.noEmail": "No Email",
   "guests.firstVisit": "First Visit",
@@ -259,13 +232,11 @@ const en = {
   "guests.guestOne": "{n} Guest",
   "guests.guestMany": "{n} Guests",
   "guests.loading": "Loading...",
-  // Guests toasts
   "guests.toast.notesSaved": "Notes saved",
   "guests.toast.notesError": "Could not save notes",
   "guests.toast.tagAddError": "Could not add tag",
   "guests.toast.tagRemoveError": "Could not remove tag",
 
-  // Dashboard
   "dash.hello": "Hello {name}!",
   "dash.ownerFallback": "Business Owner",
   "dash.dailyStat": "Here is your daily statistic",
@@ -331,7 +302,6 @@ const en = {
   "dash.bucket.10to15": "10-15 mins",
   "dash.bucket.15to30": "15-30 mins",
   "dash.bucket.30plus": "30+ mins",
-  // Dashboard toasts
   "dash.toast.queueRefreshed.title": "Queue refreshed",
   "dash.toast.queueRefreshed.desc": "Queue data has been updated.",
   "dash.toast.refreshFailed.title": "Failed to refresh",
@@ -349,7 +319,6 @@ const en = {
   "dash.toast.noShow.desc": "{name} has been marked as a no-show.",
   "dash.toast.noShowFailed.title": "Failed to mark no-show",
 
-  // Reservations manager
   "res.title": "Reservations Management",
   "res.noLocationSelected": "No Location Selected",
   "res.bookingsFor": "Bookings for: {label}",
@@ -372,7 +341,6 @@ const en = {
   "res.toast.updated.desc": "{name} marked {status}.",
   "res.toast.updateFailed.title": "Update failed",
 
-  // Status labels (shared)
   "status.pending": "Pending",
   "status.confirmed": "Confirmed",
   "status.arrived": "Arrived",
@@ -388,11 +356,9 @@ const en = {
   "status.reservation": "Reservation",
   "status.queue": "Queue",
 
-  // Guest New/Returning badge
   "badge.returning": "Returning",
   "badge.new": "New",
 
-  // Restaurant profile editor (Edit Restaurant Profile modal)
   "rpe.toast.invalidImage.title": "Invalid image",
   "rpe.err.imageType": "Only JPG, PNG, and WEBP images are allowed.",
   "rpe.err.imageSize": "Each image must be 25MB or smaller.",
@@ -569,7 +535,6 @@ const en = {
   "rpe.save": "Save Changes",
   "rpe.saving": "Saving...",
 
-  // Customer reviews (View Reviews modal)
   "rev.title": "Customer Reviews",
   "rev.subtitle": "Reviews for {name}",
   "rev.thisLocation": "this location",
@@ -627,12 +592,7 @@ const en = {
 
 export type TKey = keyof typeof en;
 
-// ---------------------------------------------------------------------------
-// Indonesian overrides. Only keys that differ are listed; anything omitted
-// falls back to English at lookup time. Brand name "SeatPing" is kept verbatim.
-// ---------------------------------------------------------------------------
 const id: Partial<Record<TKey, string>> = {
-  // Header / nav
   "nav.dashboard": "Dasbor",
   "nav.guests": "Tamu",
   "nav.campaigns": "Kampanye",
@@ -640,7 +600,6 @@ const id: Partial<Record<TKey, string>> = {
   "nav.logout": "Keluar",
   "nav.openMenu": "Buka menu",
 
-  // Campaigns page (visible chrome; deeper builder copy falls back to English)
   "camp.title": "Kampanye",
   "camp.subtitle":
     "Kirim kampanye SMS, WhatsApp, dan Email berlabel SeatPing ke tamu Anda.",
@@ -653,7 +612,6 @@ const id: Partial<Record<TKey, string>> = {
   "camp.location": "Lokasi",
   "camp.noLocations": "Tidak Ada Lokasi",
 
-  // Shared
   "common.refresh": "Segarkan",
   "common.tryAgain": "Coba Lagi",
   "common.somethingWrong": "Terjadi Kesalahan",
@@ -663,7 +621,6 @@ const id: Partial<Record<TKey, string>> = {
   "common.cancel": "Batal",
   "common.contactSeatPing": "Hubungi SeatPing",
 
-  // Banners
   "banner.trialExpired.title": "Masa Uji Coba Berakhir",
   "banner.trialExpired.body":
     "Masa uji coba gratis Anda telah berakhir. Silakan hubungi SeatPing untuk terus menggunakan dasbor bisnis Anda.",
@@ -679,7 +636,6 @@ const id: Partial<Record<TKey, string>> = {
   "banner.noCredits.body":
     "Anda tidak memiliki kredit tersedia. Silakan hubungi SeatPing untuk menambah kredit atau menyesuaikan akun Anda.",
 
-  // Settings
   "settings.title": "Pengaturan",
   "settings.subtitle": "Kelola informasi dan lokasi bisnis Anda.",
   "settings.businessInfo.title": "Informasi Bisnis",
@@ -696,7 +652,6 @@ const id: Partial<Record<TKey, string>> = {
   "settings.language.saved": "Bahasa diperbarui",
   "settings.language.saveError": "Gagal memperbarui bahasa",
 
-  // Location management
   "loc.title": "Manajemen Lokasi",
   "loc.desc":
     "Tambah dan kelola lokasi bisnis Anda ({count}/{max} {locWord} digunakan)",
@@ -758,7 +713,6 @@ const id: Partial<Record<TKey, string>> = {
   "loc.toast.copyFailed.title": "Tidak dapat menyalin tautan",
   "loc.toast.copyFailed.desc": "Salin tautan secara manual dari kotak di atas.",
 
-  // Guests
   "guests.title": "Tamu",
   "guests.subtitle":
     "Kelola profil tamu, riwayat kunjungan, tag, dan catatan dari reservasi dan daftar tunggu.",
@@ -836,7 +790,6 @@ const id: Partial<Record<TKey, string>> = {
   "guests.toast.tagAddError": "Gagal menambah tag",
   "guests.toast.tagRemoveError": "Gagal menghapus tag",
 
-  // Dashboard
   "dash.hello": "Halo {name}!",
   "dash.ownerFallback": "Pemilik Bisnis",
   "dash.dailyStat": "Berikut statistik harian Anda",
@@ -919,7 +872,6 @@ const id: Partial<Record<TKey, string>> = {
   "dash.toast.noShow.desc": "{name} telah ditandai tidak hadir.",
   "dash.toast.noShowFailed.title": "Gagal menandai tidak hadir",
 
-  // Reservations
   "res.title": "Manajemen Reservasi",
   "res.noLocationSelected": "Tidak Ada Lokasi Dipilih",
   "res.bookingsFor": "Pemesanan untuk: {label}",
@@ -942,7 +894,6 @@ const id: Partial<Record<TKey, string>> = {
   "res.toast.updated.desc": "{name} ditandai {status}.",
   "res.toast.updateFailed.title": "Pembaruan gagal",
 
-  // Status labels
   "status.pending": "Menunggu",
   "status.confirmed": "Dikonfirmasi",
   "status.arrived": "Tiba",
@@ -958,11 +909,9 @@ const id: Partial<Record<TKey, string>> = {
   "status.reservation": "Reservasi",
   "status.queue": "Antrean",
 
-  // Badge
   "badge.returning": "Kembali",
   "badge.new": "Baru",
 
-  // Restaurant profile editor
   "rpe.toast.invalidImage.title": "Gambar tidak valid",
   "rpe.err.imageType": "Hanya gambar JPG, PNG, dan WEBP yang diizinkan.",
   "rpe.err.imageSize": "Setiap gambar harus berukuran 25MB atau lebih kecil.",
@@ -1140,7 +1089,6 @@ const id: Partial<Record<TKey, string>> = {
   "rpe.save": "Simpan Perubahan",
   "rpe.saving": "Menyimpan...",
 
-  // Customer reviews
   "rev.title": "Ulasan Pelanggan",
   "rev.subtitle": "Ulasan untuk {name}",
   "rev.thisLocation": "lokasi ini",
@@ -1207,14 +1155,11 @@ function format(str: string, params?: Params): string {
   );
 }
 
-/** Translate a key for a language, with English then key fallback. */
 export function translate(lang: Lang, key: TKey, params?: Params): string {
   const raw = DICTS[lang][key] ?? en[key] ?? key;
   return format(raw, params);
 }
 
-// Status aliases mirror src/lib/statusStyles.ts so a raw status string maps to
-// the same canonical key the status-color helper uses.
 const STATUS_ALIASES: Record<string, string> = {
   canceled: "cancelled",
   complete: "completed",
@@ -1227,7 +1172,6 @@ const STATUS_ALIASES: Record<string, string> = {
   waitlist: "queue",
 };
 
-/** Translated label for a status string (falls back to the canonical English). */
 export function translateStatus(lang: Lang, status: string): string {
   const normalized = String(status || "")
     .trim()
@@ -1236,7 +1180,6 @@ export function translateStatus(lang: Lang, status: string): string {
   const canonical = STATUS_ALIASES[normalized] || normalized;
   const key = `status.${canonical}` as TKey;
   if (key in en) return translate(lang, key);
-  // Unknown status: Title Case the raw value so it still reads cleanly.
   return canonical
     .split("_")
     .filter(Boolean)
@@ -1244,9 +1187,6 @@ export function translateStatus(lang: Lang, status: string): string {
     .join(" ");
 }
 
-// ---------------------------------------------------------------------------
-// React context
-// ---------------------------------------------------------------------------
 interface LangContextValue {
   lang: Lang;
   ready: boolean;
@@ -1260,7 +1200,6 @@ function readStoredLang(): Lang {
     const v = localStorage.getItem(STORAGE_KEY);
     if (v === "en" || v === "id") return v;
   } catch {
-    /* localStorage unavailable (SSR / privacy mode) */
   }
   return "en";
 }
@@ -1269,12 +1208,9 @@ function persistLang(lang: Lang) {
   try {
     localStorage.setItem(STORAGE_KEY, lang);
   } catch {
-    /* ignore */
   }
 }
 
-// Default value so any consumer rendered outside a provider (e.g. shared badges
-// reused on customer pages) safely gets English instead of throwing.
 const DEFAULT_VALUE: LangContextValue = {
   lang: "en",
   ready: true,
@@ -1285,19 +1221,12 @@ const DEFAULT_VALUE: LangContextValue = {
 
 const LangContext = createContext<LangContextValue>(DEFAULT_VALUE);
 
-/**
- * Wraps a business operator page. Initializes from localStorage immediately (no
- * flash between operator pages), then syncs the authoritative value from the
- * backend. `setLang` persists to the database and reverts the UI on failure.
- */
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>(() => readStoredLang());
   const [ready, setReady] = useState(false);
   const langRef = useRef(lang);
   langRef.current = lang;
 
-  // Pull the saved language from the server on mount so a fresh browser (empty
-  // localStorage) still renders in the operator's chosen language.
   useEffect(() => {
     let cancelled = false;
     api("/auth/business/language")
@@ -1309,7 +1238,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {
-        /* non-fatal: keep the localStorage value */
       })
       .finally(() => {
         if (!cancelled) setReady(true);
@@ -1322,7 +1250,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const setLang = useCallback(async (next: Lang) => {
     const prev = langRef.current;
     if (next === prev) return;
-    // Optimistic update so the UI flips immediately.
     setLangState(next);
     persistLang(next);
     try {
@@ -1331,7 +1258,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ language: next }),
       });
     } catch (e) {
-      // Revert on failure and let the caller surface an error toast.
       setLangState(prev);
       persistLang(prev);
       throw e;

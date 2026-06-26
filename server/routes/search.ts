@@ -1,12 +1,3 @@
-// server/routes/search.ts
-//
-// Public search feed.
-//   GET /api/search/restaurants?query=...
-//
-// Matches the query (case-insensitive) against the location's display fields,
-// the owning business name/username, address parts, restaurantProfile
-// description, and cuisine types. Returns a list shaped for the SearchResults
-// card. Returns featured-style summaries (rating + reviewCount) too.
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { limitGuard, clientIp, MINUTES } from "../lib/rateLimit.js";
@@ -19,12 +10,6 @@ function pickCuisine(rp: any): string | null {
   return Array.isArray(arr) && arr.length ? String(arr[0]) : null;
 }
 
-/**
- * Whether the location is currently open, evaluated in the restaurant's own
- * timezone (openingHours.timezone). Returns null when hours aren't configured
- * so the UI can treat "unknown" differently from "closed". Handles overnight
- * spans (close <= open) like 18:00–02:00.
- */
 function isOpenNow(openingHours: any): boolean | null {
   if (!openingHours || typeof openingHours !== "object") return null;
   const tz =
@@ -49,11 +34,9 @@ function isOpenNow(openingHours: any): boolean | null {
     const close = String(day.close || "");
     if (!/^\d{2}:\d{2}$/.test(open) || !/^\d{2}:\d{2}$/.test(close)) return null;
     const cur = `${hour}:${minute}`;
-    // Overnight span: open until the next day (e.g. 18:00–02:00).
     if (close <= open) return cur >= open || cur < close;
     return cur >= open && cur < close;
   } catch {
-    // Invalid timezone string, etc.
     return null;
   }
 }
@@ -86,15 +69,8 @@ function matchesQuery(loc: any, business: any, q: string): boolean {
   return haystack.some((s) => s.includes(needle));
 }
 
-/**
- * GET /api/search/restaurants?query=...
- * Returns matching locations with summary fields. Empty query returns all
- * locations so the page can show a generic browse view.
- */
 router.get("/restaurants", async (req, res) => {
   try {
-    // Unauthenticated DB-heavy search: throttle per IP to cap query/function
-    // load. Generous enough for normal typing/browsing.
     if (
       await limitGuard(req, res, [
         { name: "search-restaurants-ip", key: clientIp(req), windowMs: MINUTES(1), max: 60 },
@@ -104,12 +80,6 @@ router.get("/restaurants", async (req, res) => {
 
     const q = String(req.query.query || "").trim();
 
-    // Pagination is opt-in: when a `limit` is supplied we page; otherwise we
-    // return all matches (the results page filters/sorts client-side and has no
-    // pager). Either way we only ever load PUBLISHED locations — the indexed
-    // `isPublished` filter keeps this off the full collection. (Cuisine /
-    // description live in a JSON column, so final matching stays in JS over this
-    // bounded published set; an Atlas Search index is the next step at scale.)
     const rawLimit = parseInt(String(req.query.limit ?? ""), 10);
     const paginate = Number.isFinite(rawLimit) && rawLimit > 0;
     const limit = paginate ? Math.min(100, rawLimit) : Infinity;
@@ -164,8 +134,6 @@ router.get("/restaurants", async (req, res) => {
       ]),
     );
 
-    // Featured set so we can tag results with a `featured` flag for the chip
-    // filter to use.
     const featuredRows = await prisma.featuredRestaurant.findMany({
       where: { isActive: true, locationId: { in: locationIds } },
       select: { locationId: true },

@@ -1,15 +1,3 @@
-/**
- * Static, non-interactive "preview" versions of real SeatPing business
- * surfaces, used on the marketing landing page so visitors see the actual
- * product UI (not generic mockups).
- *
- * These deliberately mirror the markup + Tailwind classes of the live
- * components — business sign-up (BusinessSignup), settings (RestaurantProfileEditor:
- * Opening Hours / Reservations), the dashboard queue + reservations
- * (BusinessDashboard, ReservationsManager) and the per-location QR — but with
- * hard-coded sample data and no handlers/API. Each preview is wrapped
- * `aria-hidden` + `pointer-events-none` since it is illustrative chrome.
- */
 import { useLayoutEffect, useRef, useState } from "react";
 import {
   Card,
@@ -52,11 +40,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/* ---------------------------------------------------------------- */
-/*  Shared bits                                                      */
-/* ---------------------------------------------------------------- */
 
-/** Marks a block as decorative chrome (no focus / no pointer). */
 function Preview({
   children,
   className,
@@ -74,7 +58,6 @@ function Preview({
   );
 }
 
-/** Button-shaped span (so previews stay non-interactive). */
 function Pill({
   children,
   variant = "default",
@@ -104,9 +87,6 @@ function Pill({
   );
 }
 
-/* ---------------------------------------------------------------- */
-/*  Sample data                                                      */
-/* ---------------------------------------------------------------- */
 
 const QUEUE = [
   {
@@ -194,9 +174,6 @@ const STATS = [
   },
 ];
 
-/* ---------------------------------------------------------------- */
-/*  Stat cards (dashboard summary)                                   */
-/* ---------------------------------------------------------------- */
 
 export function StatCardsPreview({ className }: { className?: string }) {
   return (
@@ -225,9 +202,6 @@ export function StatCardsPreview({ className }: { className?: string }) {
   );
 }
 
-/* ---------------------------------------------------------------- */
-/*  Queue Management card                                            */
-/* ---------------------------------------------------------------- */
 
 export function QueueCardPreview({
   className,
@@ -240,7 +214,7 @@ export function QueueCardPreview({
     <Preview className={className}>
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardHeader className="border-b border-gray-100 p-4 md:p-6">
-          {/* Mobile layout: title + badge, description, full-width Refresh */}
+          {}
           <div className="md:hidden">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-lg text-gray-800">
@@ -263,7 +237,7 @@ export function QueueCardPreview({
             </span>
           </div>
 
-          {/* Desktop layout: title block left, Refresh + badge right */}
+          {}
           <div className="hidden md:flex md:items-center md:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
@@ -333,9 +307,6 @@ export function QueueCardPreview({
   );
 }
 
-/* ---------------------------------------------------------------- */
-/*  Awaiting arrival (amber) — Arrived / No Show                     */
-/* ---------------------------------------------------------------- */
 
 export function AwaitingArrivalPreview({ className }: { className?: string }) {
   return (
@@ -379,9 +350,6 @@ export function AwaitingArrivalPreview({ className }: { className?: string }) {
   );
 }
 
-/* ---------------------------------------------------------------- */
-/*  Reservations Management card (tabs + rows)                       */
-/* ---------------------------------------------------------------- */
 
 export function ReservationsCardPreview({
   className,
@@ -490,9 +458,6 @@ export function ReservationsCardPreview({
   );
 }
 
-/* ---------------------------------------------------------------- */
-/*  Dashboard chrome wrapper (greeting + location select)           */
-/* ---------------------------------------------------------------- */
 
 function DashboardChrome() {
   return (
@@ -528,10 +493,6 @@ function DashboardChrome() {
   );
 }
 
-/**
- * Faithful, static reproduction of the dashboard screenshot used inside the
- * hero iPad. Wording is fixed to match the provided screenshot exactly.
- */
 export function HeroDashboardScreen({ className }: { className?: string }) {
   const queue = [
     {
@@ -558,7 +519,7 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
   ];
   return (
     <Preview className={cn("space-y-3", className)}>
-      {/* Queue Management */}
+      {}
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardHeader className="border-b border-gray-100 p-4">
           <div className="flex items-start justify-between gap-3">
@@ -623,7 +584,7 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
         </CardContent>
       </Card>
 
-      {/* Reservations Management */}
+      {}
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardHeader className="border-b border-gray-100 p-4">
           <CardTitle className="flex items-center gap-2 text-base text-gray-800">
@@ -698,11 +659,7 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
   );
 }
 
-/* ---------------------------------------------------------------- */
-/*  Hero dashboard preview — one scalable desktop "browser window"   */
-/* ---------------------------------------------------------------- */
 
-/** Sample rows for the hero window (fixed wording). */
 const HERO_QUEUE = [
   {
     pos: 1,
@@ -724,17 +681,10 @@ const HERO_RES_TABS = [
   { label: "Past", count: 0, active: false },
 ];
 
-/**
- * The hero "browser window": a faithful, FIXED-WIDTH desktop reproduction of
- * the SeatPing dashboard (greeting, Queue Management, Reservations Management).
- * It deliberately uses desktop styling only (no viewport breakpoints) so it can
- * be uniformly scaled down to any size by {@link HeroDashboardPreview} and still
- * read as the real desktop product, exactly like a scaled screenshot.
- */
 function HeroDashboardWindow() {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-400/20">
-      {/* browser chrome */}
+      {}
       <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/80 px-5 py-3">
         <div className="flex flex-1 items-center gap-3">
           <div className="flex items-center gap-2">
@@ -757,9 +707,9 @@ function HeroDashboardWindow() {
         </div>
       </div>
 
-      {/* dashboard main area */}
+      {}
       <div className="space-y-5 bg-slate-50 p-6">
-        {/* greeting + location */}
+        {}
         <div className="rounded-xl bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
@@ -790,7 +740,7 @@ function HeroDashboardWindow() {
           </div>
         </div>
 
-        {/* Queue Management */}
+        {}
         <Card className="rounded-xl border-0 bg-white shadow-sm">
           <CardHeader className="border-b border-gray-100 p-6">
             <div className="flex items-center justify-between">
@@ -848,7 +798,7 @@ function HeroDashboardWindow() {
           </CardContent>
         </Card>
 
-        {/* Reservations Management */}
+        {}
         <Card className="rounded-xl border-0 bg-white shadow-sm">
           <CardHeader className="border-b border-gray-100 p-6">
             <CardTitle className="flex items-center gap-2 text-xl text-gray-800">
@@ -921,16 +871,7 @@ function HeroDashboardWindow() {
   );
 }
 
-/**
- * Single, resizable hero dashboard sneak peek. Renders {@link HeroDashboardWindow}
- * at a fixed desktop design width and uniformly scales it to fit whatever space
- * it is given, so the same desktop preview shrinks cleanly on phones (à la a
- * scaled product screenshot) without re-flowing into a mobile layout.
- */
 export function HeroDashboardPreview({ className }: { className?: string }) {
-  // The window's intrinsic width. On phones we use a narrower design width so
-  // the same desktop window scales up a bit larger (more legible); on tablet up
-  // it caps at the full desktop width.
   const wrapRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0);
@@ -947,7 +888,6 @@ export function HeroDashboardPreview({ className }: { className?: string }) {
       const s = Math.min(1, w / dw);
       setDesignWidth(dw);
       setScale(s);
-      // offsetHeight ignores the CSS transform, so it stays the intrinsic height.
       setHeight(inner.offsetHeight * s);
     };
     measure();
@@ -978,11 +918,7 @@ export function HeroDashboardPreview({ className }: { className?: string }) {
   );
 }
 
-/* ---------------------------------------------------------------- */
-/*  Phone in hand — hero centerpiece                                 */
-/* ---------------------------------------------------------------- */
 
-/** A tiny tappable-looking pill, sized for the phone screen. */
 function MiniPill({
   children,
   variant = "outline",
@@ -1007,16 +943,10 @@ function MiniPill({
   );
 }
 
-/**
- * Compact, mobile-shaped SeatPing dashboard rendered inside the phone screen.
- * Mirrors the real product surfaces (Queue Management + Reservations
- * Management) with the same wording, colours and status badges, trimmed to
- * fit a phone. Lives in an SVG <foreignObject> so it stays glued to the frame.
- */
 function PhoneScreenContent() {
   return (
     <div className="flex h-full w-full flex-col bg-slate-50 font-sans">
-      {/* status bar */}
+      {}
       <div className="flex items-center justify-between px-4 pt-2.5 pb-1 text-[10px] font-medium text-slate-500">
         <span className="tabular-nums">9:41</span>
         <span className="flex items-center gap-1">
@@ -1026,7 +956,7 @@ function PhoneScreenContent() {
         </span>
       </div>
 
-      {/* app header */}
+      {}
       <div className="flex items-center justify-between px-4 pb-2">
         <div className="min-w-0">
           <p className="text-sm font-semibold leading-tight text-slate-900">
@@ -1041,9 +971,9 @@ function PhoneScreenContent() {
         </span>
       </div>
 
-      {/* content */}
+      {}
       <div className="flex-1 space-y-2.5 overflow-hidden px-3 pb-3">
-        {/* Queue Management */}
+        {}
         <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-800">
@@ -1054,7 +984,7 @@ function PhoneScreenContent() {
             </span>
           </div>
 
-          {/* guest 1 — waiting, with actions */}
+          {}
           <div className="mt-2 rounded-lg bg-gray-50 p-2">
             <div className="flex items-start gap-2">
               <span className="inline-flex shrink-0 items-center justify-center rounded border border-gray-200 bg-white px-1 py-0.5 text-[9px] font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
@@ -1080,7 +1010,7 @@ function PhoneScreenContent() {
             </div>
           </div>
 
-          {/* guest 2 — admitted, compact */}
+          {}
           <div className="mt-1.5 flex items-center gap-2 rounded-lg bg-gray-50 p-2">
             <span className="inline-flex shrink-0 items-center justify-center rounded border border-gray-200 bg-white px-1 py-0.5 text-[9px] font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
               #2
@@ -1099,7 +1029,7 @@ function PhoneScreenContent() {
           </div>
         </div>
 
-        {/* Reservations Management */}
+        {}
         <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
           <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-800">
             <CalendarDays className="h-3.5 w-3.5" /> Reservations Management
@@ -1140,14 +1070,7 @@ function PhoneScreenContent() {
   );
 }
 
-/**
- * The hero centerpiece: an illustrated hand holding a smartphone whose screen
- * shows the SeatPing mobile dashboard. Drawn as one SVG (hand + phone in the
- * same coordinate space) so it scales cleanly and stays aligned. Decorative,
- * so it is marked aria-hidden.
- */
 export function PhoneInHand({ className }: { className?: string }) {
-  // Skin shades for the illustrated hand (warm, desaturated, premium).
   const skin = "#e7b489";
   const skinShade = "#d49f72";
   const skinLine = "#c08a5e";
@@ -1179,7 +1102,7 @@ export function PhoneInHand({ className }: { className?: string }) {
           </filter>
         </defs>
 
-        {/* soft contact shadow under the phone */}
+        {}
         <ellipse
           cx="320"
           cy="700"
@@ -1190,21 +1113,21 @@ export function PhoneInHand({ className }: { className?: string }) {
           filter="url(#sp-soft)"
         />
 
-        {/* everything tilts slightly for a natural, held feel */}
+        {}
         <g transform="rotate(-6 300 360)">
-          {/* ---- hand: parts behind the phone ---- */}
-          {/* wrist / forearm coming from the bottom */}
+          {}
+          {}
           <path
             d="M250 545 C 232 600, 232 670, 252 740 L 470 740 C 488 665, 480 595, 458 545 C 420 470, 286 470, 250 545 Z"
             fill="url(#sp-skin-shade)"
           />
-          {/* palm root wrapping behind the left edge */}
+          {}
           <path
             d="M236 250 C 198 250, 184 282, 188 332 L 198 470 C 202 522, 256 522, 262 470 L 262 282 C 262 260, 254 250, 236 250 Z"
             fill={skinShade}
           />
 
-          {/* phone shadow on the palm */}
+          {}
           <ellipse
             cx="322"
             cy="560"
@@ -1214,7 +1137,7 @@ export function PhoneInHand({ className }: { className?: string }) {
             opacity="0.10"
           />
 
-          {/* ---- phone ---- */}
+          {}
           <rect
             x="205"
             y="70"
@@ -1241,10 +1164,10 @@ export function PhoneInHand({ className }: { className?: string }) {
             rx="30"
             fill="#f8fafc"
           />
-          {/* speaker pill */}
+          {}
           <rect x="298" y="92" width="49" height="7" rx="3.5" fill="#1e293b" />
 
-          {/* live SeatPing mobile dashboard */}
+          {}
           <foreignObject
             x="216"
             y="81"
@@ -1255,7 +1178,7 @@ export function PhoneInHand({ className }: { className?: string }) {
             <PhoneScreenContent />
           </foreignObject>
 
-          {/* ---- hand: fingers wrapping over the front-left edge ---- */}
+          {}
           {[
             { x: 180, y: 236, w: 60, h: 38 },
             { x: 177, y: 300, w: 63, h: 38 },
@@ -1271,7 +1194,7 @@ export function PhoneInHand({ className }: { className?: string }) {
                 rx={f.h / 2}
                 fill="url(#sp-skin)"
               />
-              {/* knuckle crease */}
+              {}
               <path
                 d={`M${f.x + 16} ${f.y + 7} L ${f.x + 16} ${f.y + f.h - 7}`}
                 stroke={skinLine}
@@ -1282,7 +1205,7 @@ export function PhoneInHand({ className }: { className?: string }) {
             </g>
           ))}
 
-          {/* ---- thumb pressing the front bottom-right ---- */}
+          {}
           <path
             d="M384 484 C 420 466, 458 484, 464 520 C 469 554, 448 582, 412 582 C 384 582, 366 556, 370 524 C 372 502, 370 494, 384 484 Z"
             fill="url(#sp-skin)"
@@ -1291,7 +1214,7 @@ export function PhoneInHand({ className }: { className?: string }) {
             d="M452 524 C 478 540, 482 600, 462 642 L 430 660 C 408 618, 410 566, 432 540 Z"
             fill={skin}
           />
-          {/* thumbnail highlight */}
+          {}
           <ellipse
             cx="416"
             cy="520"
@@ -1306,7 +1229,6 @@ export function PhoneInHand({ className }: { className?: string }) {
   );
 }
 
-/** Full dashboard window — the hero centerpiece. */
 export function DashboardPreview({ className }: { className?: string }) {
   return (
     <Preview className={className}>
@@ -1320,7 +1242,6 @@ export function DashboardPreview({ className }: { className?: string }) {
   );
 }
 
-/** Compact live view for the "Step Three" onboarding card. */
 export function LiveQueuePreview({ className }: { className?: string }) {
   return (
     <Preview className={className}>
@@ -1335,9 +1256,6 @@ export function LiveQueuePreview({ className }: { className?: string }) {
   );
 }
 
-/* ---------------------------------------------------------------- */
-/*  Business sign-up form                                            */
-/* ---------------------------------------------------------------- */
 
 function Field({
   label,
@@ -1403,9 +1321,6 @@ export function SignupPreview({ className }: { className?: string }) {
   );
 }
 
-/* ---------------------------------------------------------------- */
-/*  Settings: Opening Hours + Reservations + QR                     */
-/* ---------------------------------------------------------------- */
 
 function HoursRow({
   day,
@@ -1436,7 +1351,6 @@ function HoursRow({
   );
 }
 
-/** Static switch matching the product's look. */
 function Switch({ on }: { on: boolean }) {
   return (
     <span
@@ -1453,7 +1367,7 @@ function Switch({ on }: { on: boolean }) {
 export function SettingsPreview({ className }: { className?: string }) {
   return (
     <Preview className={cn("space-y-4", className)}>
-      {/* Opening Hours */}
+      {}
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardHeader className="p-4 md:p-5">
           <CardTitle className="text-base md:text-lg text-gray-800">
@@ -1470,7 +1384,7 @@ export function SettingsPreview({ className }: { className?: string }) {
         </CardContent>
       </Card>
 
-      {/* Reservations */}
+      {}
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardHeader className="p-4 md:p-5">
           <CardTitle className="text-base md:text-lg text-gray-800">
@@ -1505,7 +1419,7 @@ export function SettingsPreview({ className }: { className?: string }) {
         </CardContent>
       </Card>
 
-      {/* QR code per location */}
+      {}
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardContent className="flex items-center gap-4 p-4 md:p-5">
           <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white">
@@ -1533,15 +1447,10 @@ export function SettingsPreview({ className }: { className?: string }) {
   );
 }
 
-/* ================================================================ */
-/*  Compact MINI cards — used in the hero collage only.             */
-/*  (Width-agnostic: w-full; the collage wrapper fixes their size.) */
-/* ================================================================ */
 
 const miniCard =
   "w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-xl shadow-slate-300/30";
 
-/** 1 · Queue Management (single waiting guest + Admit / Notify). */
 export function QueueMiniCard({ className }: { className?: string }) {
   return (
     <div className={cn(miniCard, className)}>
@@ -1583,7 +1492,6 @@ export function QueueMiniCard({ className }: { className?: string }) {
   );
 }
 
-/** 2 · Reservations Management (party of 2, date/time, status badge). */
 export function ReservationMiniCard({ className }: { className?: string }) {
   return (
     <div className={cn(miniCard, className)}>
@@ -1619,7 +1527,6 @@ export function ReservationMiniCard({ className }: { className?: string }) {
   );
 }
 
-/** 3 · Performance Summary (tiny sparkline + 3 stats). */
 export function PerformanceMiniCard({ className }: { className?: string }) {
   return (
     <div className={cn(miniCard, className)}>
@@ -1635,7 +1542,7 @@ export function PerformanceMiniCard({ className }: { className?: string }) {
       <p className="text-xs text-slate-500">Served, wait time &amp; no-shows</p>
 
       <svg viewBox="0 0 240 68" className="mt-2 h-16 w-full" aria-hidden>
-        {/* baseline */}
+        {}
         <line
           x1="0"
           y1="64"
@@ -1644,7 +1551,7 @@ export function PerformanceMiniCard({ className }: { className?: string }) {
           stroke="#f1f5f9"
           strokeWidth="1"
         />
-        {/* customers served (indigo) */}
+        {}
         <polyline
           points="0,52 40,48 80,50 120,42 160,36 200,26 240,12"
           fill="none"
@@ -1653,7 +1560,7 @@ export function PerformanceMiniCard({ className }: { className?: string }) {
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        {/* no-shows (amber) */}
+        {}
         <polyline
           points="0,60 40,60 80,58 120,60 160,55 200,57 240,54"
           fill="none"
@@ -1680,7 +1587,6 @@ export function PerformanceMiniCard({ className }: { className?: string }) {
   );
 }
 
-/** 4 · Location Management (name, credits, address, Edit / Reviews / QR). */
 export function LocationMiniCard({ className }: { className?: string }) {
   return (
     <div className={cn(miniCard, className)}>
@@ -1713,7 +1619,6 @@ export function LocationMiniCard({ className }: { className?: string }) {
   );
 }
 
-/** Small notification toast (SMS / WhatsApp sent). */
 export function NotifyToastMiniCard({
   className,
   label = "SMS sent",
@@ -1748,7 +1653,6 @@ export function NotifyToastMiniCard({
   );
 }
 
-/** Tiny single-stat chip. */
 export function StatChipMiniCard({
   label,
   value,
@@ -1787,7 +1691,6 @@ export function StatChipMiniCard({
   );
 }
 
-/** Compact QR "scan to join" card. */
 export function QrMiniCard({ className }: { className?: string }) {
   return (
     <div
@@ -1807,7 +1710,6 @@ export function QrMiniCard({ className }: { className?: string }) {
   );
 }
 
-/** Awaiting-arrival mini (timer + Arrived / No Show). */
 export function AwaitingMiniCard({ className }: { className?: string }) {
   return (
     <div
@@ -1839,16 +1741,13 @@ export function AwaitingMiniCard({ className }: { className?: string }) {
   );
 }
 
-/* ---------------------------------------------------------------- */
-/*  Hero collage — layered on desktop, tidy grid on tablet/mobile   */
-/* ---------------------------------------------------------------- */
 
 export function HeroCollage() {
   return (
     <Preview>
-      {/* Desktop: packed, heavily-overlapping composition of mini previews */}
+      {}
       <div className="relative mx-auto hidden h-[520px] max-w-5xl lg:block">
-        {/* --- top band --- */}
+        {}
         <div className="absolute left-0 top-0 z-50 w-44">
           <StatChipMiniCard
             label="In queue"
@@ -1874,7 +1773,7 @@ export function HeroCollage() {
           <PerformanceMiniCard />
         </div>
 
-        {/* --- middle (anchors, front) --- */}
+        {}
         <div className="absolute left-1 top-24 z-20 w-72">
           <QueueMiniCard />
         </div>
@@ -1907,7 +1806,7 @@ export function HeroCollage() {
           />
         </div>
 
-        {/* --- bottom band --- */}
+        {}
         <div className="absolute bottom-2 left-0 z-30 w-60">
           <QrMiniCard />
         </div>
@@ -1919,7 +1818,7 @@ export function HeroCollage() {
         </div>
       </div>
 
-      {/* Tablet / mobile: stacked grid; lighter elements hidden on phones */}
+      {}
       <div className="mx-auto grid max-w-md grid-cols-1 gap-4 sm:max-w-2xl sm:grid-cols-2 lg:hidden">
         <NotifyToastMiniCard className="sm:col-span-2" />
         <ReservationMiniCard />

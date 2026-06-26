@@ -4,11 +4,7 @@ import { PILL_BASE_CLASS } from "@/lib/statusStyles";
 import { useLang } from "@/lib/i18n";
 import { X } from "lucide-react";
 
-// Shared Guest CRM badge styling so the dashboard "Returning"/"New" chips and
-// the Guests page tag chips look identical. Mirrors the outline-badge palette
-// used by StatusBadge (border-X-200 bg-X-100 text-X-700/800).
 
-// Deterministic color per known tag; anything custom falls back to slate.
 const TAG_STYLES: Record<string, string> = {
   vip: "border-amber-200 bg-amber-100 text-amber-800",
   regular: "border-blue-200 bg-blue-100 text-blue-700",
@@ -27,7 +23,6 @@ function tagClass(tag: string): string {
   );
 }
 
-/** Derived New/Returning badge (from visit count, not client guessing). */
 export function GuestStatusBadge({
   returning,
   className,
@@ -35,7 +30,6 @@ export function GuestStatusBadge({
   returning: boolean;
   className?: string;
 }) {
-  // Business-only badge; useLang falls back to English outside a provider.
   const { t } = useLang();
   return (
     <Badge
@@ -53,7 +47,6 @@ export function GuestStatusBadge({
   );
 }
 
-/** A single custom guest tag chip, with an optional remove button. */
 export function GuestTagBadge({
   tag,
   onRemove,

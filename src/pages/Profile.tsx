@@ -23,12 +23,6 @@ import { api } from "@/lib/api";
 import { EditReviewDialog } from "@/components/EditReviewDialog";
 import { X, Star, Pencil, Trash2 } from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Customer profile activity is stored inline on the `users` document as JSON
-// arrays (see prisma/schema.prisma -> User). Each item carries denormalized
-// business details so a card can render without a join; `businessUsername` is
-// kept so we can later fetch the business/location profile image.
-// ---------------------------------------------------------------------------
 
 type Reservation = {
   id: string;
@@ -55,7 +49,6 @@ type QueueActivity = {
   queueToken?: string | null;
   joinedAt?: string;
   partySize?: number;
-  // "waiting" | "admitted" | "arrived" | "no_show" | "removed" | "left"
   status?: string;
   active?: boolean;
   admittedAt?: string | null;
@@ -80,8 +73,6 @@ type SavedRestaurant = {
   savedAt?: string;
 };
 
-// A review the logged-in customer has posted. Fetched separately from /auth/me
-// (reviews live in their own collection, not inline on the user document).
 type CustomerReview = {
   id: string;
   locationId: string;
@@ -116,8 +107,6 @@ const Profile = () => {
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Reviews are stored in their own collection, so they're fetched and managed
-  // separately from the rest of the profile.
   const [reviews, setReviews] = useState<CustomerReview[]>([]);
   const [editingReview, setEditingReview] = useState<CustomerReview | null>(
     null,
@@ -126,21 +115,16 @@ const Profile = () => {
     null,
   );
 
-  // Apply an updated review in place (after Save Changes in the edit modal).
   const applyReviewUpdate = (updated: CustomerReview) => {
     setReviews((list) =>
       list.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)),
     );
   };
 
-  // Remove a review from the profile after a confirmed delete.
   const removeReview = (id: string) => {
     setReviews((list) => list.filter((r) => r.id !== id));
   };
 
-  // Remove a saved location, then sync state from the server response. Saves are
-  // location-level; legacy business-level items (no locationId) fall back to the
-  // old endpoint keyed by businessUsername.
   const removeSavedRestaurant = async (s: SavedRestaurant) => {
     try {
       const res = s.locationId
@@ -169,7 +153,6 @@ const Profile = () => {
         if (active) setProfile(data.user);
       })
       .catch(() => {
-        // Not a logged-in customer (anonymous or business) -> back to login.
         if (active) navigate("/login", { replace: true });
       })
       .finally(() => active && setLoading(false));
@@ -178,8 +161,6 @@ const Profile = () => {
     };
   }, [navigate]);
 
-  // Fetch the customer's own reviews. Non-fatal on failure (the section just
-  // shows its empty state) — it must not block the rest of the profile.
   useEffect(() => {
     let active = true;
     api("/auth/me/reviews")
@@ -192,18 +173,14 @@ const Profile = () => {
     };
   }, []);
 
-  // Split queue activity into live ("Happening Now") vs. terminal (past).
   const queue = profile?.queueingActivity || [];
   const activeQueue = queue.filter((q) => q.active || q.status === "waiting");
   const pastQueue = queue.filter((q) => !(q.active || q.status === "waiting"));
 
-  // Nearest reservation first. Copy before sorting because profile data is
-  // React state, and keep incomplete legacy entries visible at the end.
   const upcomingReservations = [
     ...(profile?.upcomingReservations || []),
   ].sort((a, b) => upcomingReservationTs(a) - upcomingReservationTs(b));
 
-  // Dining History = past reservations + past queue visits, newest first.
   const diningHistory: HistoryItem[] = [
     ...(profile?.pastReservations || []).map((r) => ({
       kind: "reservation" as const,
@@ -237,7 +214,7 @@ const Profile = () => {
             <>
               <ProfileHeaderCard profile={profile} onUpdated={setProfile} />
 
-              {/* Saved restaurants */}
+              {}
               <ActivitySection
                 title="Saved Spots"
                 emptyState="Restaurants you save will appear here."
@@ -261,7 +238,7 @@ const Profile = () => {
                 )}
               />
 
-              {/* Live / active queue entries */}
+              {}
               <ActivitySection
                 title="Happening Now"
                 emptyState="No active queue activity right now."
@@ -271,7 +248,7 @@ const Profile = () => {
                 renderItem={(q) => <QueueCard q={q} />}
               />
 
-              {/* Upcoming reservations */}
+              {}
               <ActivitySection
                 title="Tables Coming Up"
                 emptyState="Your upcoming reservations will appear here."
@@ -281,7 +258,7 @@ const Profile = () => {
                 renderItem={(r) => <ReservationCard r={r} />}
               />
 
-              {/* Reviews the customer has posted */}
+              {}
               <ActivitySection
                 title="Your Reviews"
                 emptyState={
@@ -305,7 +282,7 @@ const Profile = () => {
                 )}
               />
 
-              {/* Past reservations + past queue visits, combined */}
+              {}
               <ActivitySection
                 title="Your Dining Rewind"
                 emptyState="Your past reservations and queue visits will appear here."
@@ -346,19 +323,16 @@ const Profile = () => {
   );
 };
 
-// A combined Dining-History entry: either a past reservation or a past queue.
 type HistoryItem =
   | { kind: "reservation"; key: string; ts: number; r: Reservation }
   | { kind: "queue"; key: string; ts: number; q: QueueActivity };
 
-/** Upcoming reservations sort chronologically; incomplete legacy rows go last. */
 function upcomingReservationTs(r: Reservation): number {
   if (!r.date || !r.time) return Number.POSITIVE_INFINITY;
   const ts = Date.parse(`${r.date}T${r.time}`);
   return Number.isNaN(ts) ? Number.POSITIVE_INFINITY : ts;
 }
 
-/** Best-effort sort timestamp for a reservation (date + time, else createdAt). */
 function reservationTs(r: Reservation): number {
   const dt = Date.parse(`${r.date ?? ""} ${r.time ?? ""}`.trim());
   if (!Number.isNaN(dt)) return dt;
@@ -366,7 +340,6 @@ function reservationTs(r: Reservation): number {
   return Number.isNaN(c) ? 0 : c;
 }
 
-/** Best-effort sort timestamp for a queue visit (final event, else joinedAt). */
 function queueTs(q: QueueActivity): number {
   const s =
     q.confirmedAt ||
@@ -379,9 +352,6 @@ function queueTs(q: QueueActivity): number {
   return Number.isNaN(t) ? 0 : t;
 }
 
-// ---------------------------------------------------------------------------
-// Cards
-// ---------------------------------------------------------------------------
 
 function initialsOf(name?: string) {
   if (!name?.trim()) return "?";
@@ -393,11 +363,6 @@ function initialsOf(name?: string) {
     .join("");
 }
 
-/**
- * Top account card: avatar + name/email, with Edit Profile / Change Password
- * actions. Buttons sit on the right at sm+ and stack full-width below the user
- * info on mobile. Opens the edit + password modals.
- */
 function ProfileHeaderCard({
   profile,
   onUpdated,
@@ -479,7 +444,6 @@ function EditDetailsDialog({
   const [phone, setPhone] = useState(initialPhone.number);
   const [saving, setSaving] = useState(false);
 
-  // Reset the form to the latest profile whenever the dialog opens.
   useEffect(() => {
     if (!open) return;
     const p = splitPhone(profile.phone);
@@ -613,7 +577,6 @@ function ChangePasswordDialog({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Clear the fields each time the dialog opens.
   useEffect(() => {
     if (open) {
       setCurrentPassword("");
@@ -713,10 +676,6 @@ function ChangePasswordDialog({
   );
 }
 
-/**
- * Fallback business thumbnail: a gradient tile with the business initial,
- * used when an activity item has no banner image.
- */
 function BusinessThumb({ name }: { name?: string }) {
   return (
     <span
@@ -728,8 +687,6 @@ function BusinessThumb({ name }: { name?: string }) {
   );
 }
 
-/** Square restaurant thumbnail: banner image when available, else initials.
- *  Shared by the reservation + queue activity cards (matches Saved Spots). */
 function ActivityThumb({
   imageUrl,
   name,
@@ -823,9 +780,6 @@ function ReservationCard({
 }
 
 function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
-  // Active "waiting" tickets link to the live status page (position + ETA render
-  // there); the token lets that page restore the session from any device. Past
-  // tickets show their stored final status + the relevant timestamp.
   const isActive = q.active || q.status === "waiting";
   const liveHref =
     isActive && q.businessUsername && q.locationId
@@ -920,7 +874,6 @@ function SavedRestaurantCard({
   const name = s.name || s.businessName || s.businessUsername;
   const locationLabel =
     s.locationName || [s.area, s.city].filter(Boolean).join(", ");
-  // Location · rating · cuisine, all on one line.
   const meta = [
     locationLabel || null,
     typeof s.rating === "number" ? `★ ${s.rating.toFixed(1)}` : null,
@@ -979,9 +932,6 @@ function SavedRestaurantCard({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Section wrapper — title, empty state, responsive card limit + View All/Less
-// ---------------------------------------------------------------------------
 
 type Tier = "mobile" | "tablet" | "desktop";
 
@@ -991,8 +941,6 @@ function currentTier(): Tier {
   return w < 640 ? "mobile" : w < 1024 ? "tablet" : "desktop";
 }
 
-/** Tracks the responsive tier (mobile / tablet / desktop) so each section can
- *  cap how many cards it shows before "View All". */
 function useTier(): Tier {
   const [tier, setTier] = useState<Tier>(() => currentTier());
   useEffect(() => {
@@ -1058,11 +1006,7 @@ function ActivitySection<T>({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Reviews — card + edit/delete dialogs
-// ---------------------------------------------------------------------------
 
-/** Five filled/empty stars for a numeric rating (read-only). */
 function StarsDisplay({ rating }: { rating: number }) {
   const filled = Math.round(rating);
   return (
@@ -1084,7 +1028,6 @@ function StarsDisplay({ rating }: { rating: number }) {
   );
 }
 
-/** Short date label, e.g. "Jun 3, 2026". Returns "" for missing/invalid. */
 function reviewDate(value?: string | null): string {
   if (!value) return "";
   const t = Date.parse(value);
@@ -1106,7 +1049,6 @@ function ProfileReviewCard({
   onDelete: () => void;
 }) {
   const posted = reviewDate(review.createdAt);
-  // Only surface "Updated" when it's meaningfully after the post date.
   const updated =
     review.updatedAt &&
     review.createdAt &&

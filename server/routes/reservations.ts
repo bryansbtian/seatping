@@ -1,18 +1,3 @@
-// server/routes/reservations.ts
-//
-// Public, account-free reservation endpoints for the customer booking flow.
-//   GET  /api/reservations/:businessUsername/:locationId/settings
-//   GET  /api/reservations/:businessUsername/:locationId/availability
-//   POST /api/reservations/:businessUsername/:locationId          (create)
-//   GET  /api/reservations/manage/:manageToken
-//   PUT  /api/reservations/manage/:manageToken                    (change)
-//   POST /api/reservations/manage/:manageToken/cancel
-//
-// Reservations + settings live as JSON on the Location model (see
-// server/lib/reservations.ts). No customer login is required at any step; a
-// secure `manageToken` lets the customer manage the booking later. Confirmations
-// are EMAIL ONLY — there is no SMS/WhatsApp path (so reservations never consume
-// notification credits).
 import { Router } from "express";
 import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
@@ -51,7 +36,6 @@ const router = Router();
 
 const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 
-/** Resolve a (businessUsername, locationId) pair to the business + location. */
 async function resolveLocation(businessUsername: string, locationId: string) {
   if (!businessUsername || !OBJECT_ID_RE.test(locationId)) return null;
   const business = await prisma.business.findUnique({
@@ -77,7 +61,6 @@ function readableDate(date: string): string {
   });
 }
 
-/** Absolute base URL for manage links, derived from the request. */
 function baseUrl(req: any): string {
   const origin = req.headers.origin;
   if (typeof origin === "string" && origin) return origin.replace(/\/$/, "");
@@ -85,13 +68,6 @@ function baseUrl(req: any): string {
   return `${proto}://${req.get("host")}`;
 }
 
-/**
- * Hand off reservation emails for background delivery (email is the only
- * customer channel and no path consumes notification credits):
- *   1. Confirmation to the customer (if they gave an email).
- *   2. A heads-up to the business owner.
- * Returns immediately — the request never waits on SMTP.
- */
 async function notifyReservation(
   reservation: any,
   business: { name: string | null; email?: string | null },
@@ -122,7 +98,6 @@ async function notifyReservation(
   });
 }
 
-/** Active reservations for a location as legacy-shaped objects (for validation). */
 async function activeReservationsForValidation(locationId: string): Promise<any[]> {
   const rows = await prisma.reservation.findMany({
     where: { locationId, status: { in: ["CONFIRMED", "ARRIVED"] } },
@@ -130,10 +105,6 @@ async function activeReservationsForValidation(locationId: string): Promise<any[
   return rows.map((r) => reservationRowToLegacy(r));
 }
 
-/**
- * GET settings — public reservation configuration for a location. Always
- * returns whether reservations are enabled; settings are normalized.
- */
 router.get("/:businessUsername/:locationId/settings", async (req, res) => {
   try {
     const resolved = await resolveLocation(
@@ -153,9 +124,6 @@ router.get("/:businessUsername/:locationId/settings", async (req, res) => {
   }
 });
 
-/**
- * GET availability — bookable 30-minute slots for a date + party size.
- */
 router.get("/:businessUsername/:locationId/availability", async (req, res) => {
   try {
     const resolved = await resolveLocation(
@@ -223,7 +191,6 @@ router.get("/:businessUsername/:locationId/availability", async (req, res) => {
   }
 });
 
-/** POST create — account-free, email-only reservation creation. */
 router.post("/:businessUsername/:locationId", async (req, res) => {
   try {
     const resolved = await resolveLocation(
@@ -243,27 +210,10 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
     if (!firstName || !lastName) {
       return res.status(400).json({ error: "First and last name are required." });
     }
-    // Reservations are email-only.
     if (!email || typeof email !== "string" || !email.includes("@")) {
       return res.status(400).json({ error: "A valid email is required." });
     }
 
-    // Anti-abuse throttle: this route creates DB rows, holds capacity, and
-    // emails the supplied address. We use three layers:
-    //
-    //  - reservation-create-ip (60/hr): a broad, deliberately loose backstop.
-    //    Many legitimate customers share a single source IP (venue/mall/office
-    //    WiFi, mobile carrier CGNAT), so this must NOT be tight or it would
-    //    block real guests booking from the same network. It only catches an
-    //    obviously runaway single source.
-    //  - reservation-create-target (3/hr per location+email): the real
-    //    anti-abuse control. Keyed on the contact identity, so it stops one
-    //    inbox from being bombed and one person from spamming fake bookings,
-    //    regardless of how many IPs they rotate through.
-    //  - reservation-create-location (150/hr per location): a per-venue
-    //    backstop so a single location can't be flooded with bookings faster
-    //    than any real restaurant could ever take them. Sits well above
-    //    realistic demand; capacity checks below remain the real seat guard.
     if (
       await limitGuard(req, res, [
         {
@@ -292,8 +242,6 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
     const reservations = await activeReservationsForValidation(location.id);
     const size = Number(partySize);
 
-    // Non-capacity validation (party size, booking window, notice, hours) against
-    // the live model data.
     const error = validateReservationRequest({
       settings,
       reservations,
@@ -308,10 +256,6 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
     const reservationDateTime = buildReservationDateTime(String(date), String(time));
     const { dateKey, hour } = bucketOf(reservationDateTime);
 
-    // Duplicate-submit guard: the same email already holds an active booking for
-    // this exact slot at this location (double-click / refresh / re-submit).
-    // Reject rather than return the existing booking so the manage token is
-    // never disclosed to anyone but the original email recipient.
     const duplicate = await prisma.reservation.findFirst({
       where: {
         locationId: location.id,
@@ -328,9 +272,6 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
       });
     }
 
-    // Atomic overbooking guard: a single guarded counter increment. If it fails,
-    // the hour bucket is full — no row is created, so we can never overbook even
-    // under simultaneous requests for the last seats.
     const reserved = await tryReserveCapacity(
       location.id,
       dateKey,
@@ -344,14 +285,10 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
         .json({ error: `${formatTimeLabel(String(time))} is fully booked. Please choose another time.` });
     }
 
-    // Link the reservation to the logged-in customer (if any) so it shows up in
-    // their profile. Guests book without an account (customerId stays null).
     const session = readSession(req);
     const customerId =
       session?.accountType === "customer" ? session.sub : null;
 
-    // Reservations are auto-confirmed for now (the manual-approval option is no
-    // longer exposed in the business UI).
     const manageToken = crypto.randomBytes(24).toString("hex");
     let row: Reservation;
     try {
@@ -377,7 +314,6 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
         },
       });
     } catch (createErr) {
-      // Release the seats we optimistically reserved if the row couldn't be saved.
       await releaseCapacity(location.id, dateKey, hour, size).catch(() => {});
       throw createErr;
     }
@@ -390,7 +326,6 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
       locationName: location.displayName || location.name || business.name,
     });
 
-    // Guest CRM: create/update the guest profile for this booking.
     await syncGuestFromReservation(row, { businessUsername: business.username });
 
     return res.json({
@@ -405,10 +340,6 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
   }
 });
 
-/**
- * Find a reservation + its location by manage token. Now an indexed O(1) lookup
- * (manageToken is @unique) instead of scanning every location's JSON array.
- */
 async function findByManageToken(manageToken: string) {
   if (!manageToken) return null;
   const reservation = await prisma.reservation.findUnique({ where: { manageToken } });
@@ -420,10 +351,8 @@ async function findByManageToken(manageToken: string) {
   return { location, reservation };
 }
 
-/** Terminal enum statuses that can no longer be changed/cancelled. */
 const TERMINAL_ENUM = ["CANCELLED", "COMPLETED", "NO_SHOW"];
 
-/** GET reservation by manage token (customer self-service view). */
 router.get("/manage/:manageToken", async (req, res) => {
   try {
     const found = await findByManageToken(String(req.params.manageToken || "").trim());
@@ -436,8 +365,6 @@ router.get("/manage/:manageToken", async (req, res) => {
     });
     const settings = normalizeSettings(location.reservationSettings);
 
-    // Restaurant display name comes from the location's public profile (same
-    // source as the public restaurant page) — NOT the business account name.
     const rp = (location.restaurantProfile || {}) as any;
     const restaurantName =
       rp.displayName ||
@@ -471,11 +398,9 @@ router.get("/manage/:manageToken", async (req, res) => {
   }
 });
 
-/** PUT change date/time/party size by manage token. Re-runs availability. */
 router.put("/manage/:manageToken", async (req, res) => {
   try {
     const manageToken = String(req.params.manageToken || "").trim();
-    // Throttle changes (re-runs availability + emails) per IP and per token.
     if (
       await limitGuard(req, res, [
         { name: "reservation-manage-ip", key: clientIp(req), windowMs: MINUTES(10), max: 20 },
@@ -511,8 +436,6 @@ router.put("/manage/:manageToken", async (req, res) => {
     });
     if (error) return res.status(400).json({ error });
 
-    // Move capacity atomically: free this reservation's current seats, then try
-    // to claim the new bucket. If the new bucket is full, restore the old hold.
     const oldBucket = bucketOf(reservation.reservationDateTime);
     const newDateTime = buildReservationDateTime(date, time);
     const newBucket = bucketOf(newDateTime);
@@ -525,7 +448,6 @@ router.put("/manage/:manageToken", async (req, res) => {
       settings.maxReservedGuestsPerHour,
     );
     if (!reserved) {
-      // Restore the original hold so we don't lose the seat on a failed change.
       await addCapacity(location.id, oldBucket.dateKey, oldBucket.hour, reservation.guestCount);
       return res
         .status(400)
@@ -537,8 +459,6 @@ router.put("/manage/:manageToken", async (req, res) => {
       data: { guestCount: partySize, reservationDateTime: newDateTime },
     });
     await syncManageChange(location, updated);
-    // Guest CRM: a reschedule/party-size change can move a booking between
-    // upcoming and past, so refresh the guest profile.
     await touchGuestByReservationId(updated.id);
 
     return res.json({ reservation: reservationRowToLegacy(updated, { includeToken: true }) });
@@ -548,7 +468,6 @@ router.put("/manage/:manageToken", async (req, res) => {
   }
 });
 
-/** Re-sync a logged-in customer's profile copy after a manage-link change. */
 async function syncManageChange(location: any, reservationRow: Reservation) {
   if (!reservationRow?.customerId) return;
   const biz = await prisma.business.findUnique({
@@ -561,11 +480,9 @@ async function syncManageChange(location: any, reservationRow: Reservation) {
   });
 }
 
-/** POST cancel by manage token. */
 router.post("/manage/:manageToken/cancel", async (req, res) => {
   try {
     const manageToken = String(req.params.manageToken || "").trim();
-    // Throttle cancellations (releases capacity + emails) per IP and per token.
     if (
       await limitGuard(req, res, [
         { name: "reservation-manage-ip", key: clientIp(req), windowMs: MINUTES(10), max: 20 },
@@ -585,10 +502,6 @@ router.post("/manage/:manageToken/cancel", async (req, res) => {
       return res.status(400).json({ error: "This reservation can no longer be cancelled." });
     }
 
-    // Guarded cancel: flip the status first, and only release the held seats if
-    // THIS request won the transition. Two concurrent cancels (or a cancel
-    // racing a staff status change) can otherwise double-release capacity,
-    // silently letting the hour overbook.
     const claim = await withWriteRetry(() =>
       prisma.reservation.updateMany({
         where: {
@@ -606,7 +519,6 @@ router.post("/manage/:manageToken/cancel", async (req, res) => {
       where: { id: reservation.id },
     });
     await syncManageChange(location, updated);
-    // Guest CRM: a cancellation changes the guest's cancelled count.
     await touchGuestByReservationId(updated.id);
 
     return res.json({ reservation: reservationRowToLegacy(updated, { includeToken: true }) });

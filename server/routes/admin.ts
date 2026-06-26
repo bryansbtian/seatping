@@ -5,17 +5,9 @@ import { requireAdmin } from "../lib/auth.js";
 
 const router = express.Router();
 
-// Every admin route requires a valid admin session (httpOnly admin JWT cookie),
-// issued by POST /auth/admin/login. This router was previously unauthenticated;
-// the gate below closes that hole. Login itself lives on the auth router, so it
-// is unaffected.
 router.use(requireAdmin);
 
-// Admin manages BUSINESS accounts (businesses collection) and their locations
-// (locations collection). The "customer" wording in these routes refers to a
-// business account, preserved for backwards compatibility with the admin UI.
 
-// Update business credits
 router.post("/update-credits", async (req, res) => {
   try {
     const { username, baseCredits } = req.body;
@@ -53,7 +45,6 @@ router.post("/update-credits", async (req, res) => {
   }
 });
 
-// Map Location rows to the admin UI's lightweight shape.
 async function loadLocationsForBusiness(businessId: string) {
   const rows = await prisma.location.findMany({
     where: { businessId },
@@ -66,7 +57,6 @@ async function loadLocationsForBusiness(businessId: string) {
   }));
 }
 
-// Lookup a business account by username
 router.get("/customer/:username", async (req, res) => {
   try {
     const { username } = req.params;
@@ -116,7 +106,6 @@ router.get("/customer/:username", async (req, res) => {
   }
 });
 
-// Update a business account
 router.patch("/customer/:username", async (req, res) => {
   try {
     const { username } = req.params;
@@ -205,9 +194,7 @@ router.patch("/customer/:username", async (req, res) => {
       data.trial = trial;
     }
 
-    // Locations live in their own collection now. If provided, patch each row
-    // (matched by position) the same way the embedded-array version did.
-    let locationRows = await prisma.location.findMany({
+    const locationRows = await prisma.location.findMany({
       where: { businessId: existing.id },
       orderBy: { createdAt: "asc" },
     });
@@ -241,12 +228,6 @@ router.patch("/customer/:username", async (req, res) => {
       }
     }
 
-    // Refill markers follow the trial flag (no plans, no manual date entry):
-    //  - trial true -> false  = activation. Stamp creditsStartedAt = now and
-    //    schedule the next refill one month out.
-    //  - -> trial true         = back to trial; clear all refill markers.
-    //  - already active, no trial change = leave the anchor untouched (so a
-    //    plain baseCredits edit doesn't reset the cycle).
     if (Object.prototype.hasOwnProperty.call(data, "trial")) {
       const finalTrial = data.trial as boolean;
       const wasActivated = existing.trial === false;
@@ -310,18 +291,9 @@ router.patch("/customer/:username", async (req, res) => {
   }
 });
 
-// ===========================================================================
-// Featured Restaurants (admin-curated homepage placements)
-//
-// NOTE: like the other /admin routes above, these are gated by the admin
-// dashboard's client-side login. There is no server-side admin session yet —
-// see the Admin page (hardcoded credentials). Harden together when an admin
-// auth scheme is introduced.
-// ===========================================================================
 
 const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 
-/** Lightweight location shape for the featured admin UI. */
 function pickLocation(loc: any) {
   return {
     id: loc.id,
@@ -333,7 +305,6 @@ function pickLocation(loc: any) {
   };
 }
 
-/** Featured row + joined business/location details for the admin list. */
 function serializeFeatured(f: any) {
   return {
     id: f.id,
@@ -354,10 +325,6 @@ function serializeFeatured(f: any) {
   };
 }
 
-/**
- * GET /admin/businesses/search?username=...
- * Search businesses by (partial, case-insensitive) username.
- */
 router.get("/businesses/search", async (req, res) => {
   try {
     const username = String(req.query.username || "").trim();
@@ -377,10 +344,6 @@ router.get("/businesses/search", async (req, res) => {
   }
 });
 
-/**
- * GET /admin/businesses/:businessId/locations
- * Locations owned by a business (for the featured-restaurant location picker).
- */
 router.get("/businesses/:businessId/locations", async (req, res) => {
   try {
     const businessId = String(req.params.businessId || "").trim();
@@ -404,11 +367,6 @@ router.get("/businesses/:businessId/locations", async (req, res) => {
   }
 });
 
-/**
- * GET /admin/featured-restaurants
- * All featured restaurants with business + location details, sorted by
- * sortOrder asc then createdAt desc.
- */
 router.get("/featured-restaurants", async (_req, res) => {
   try {
     const rows = await prisma.featuredRestaurant.findMany({
@@ -422,12 +380,6 @@ router.get("/featured-restaurants", async (_req, res) => {
   }
 });
 
-/**
- * POST /admin/featured-restaurants
- * Body: { businessId, locationId, sortOrder?, isActive? }. Validates the
- * business + location exist, the location belongs to the business, and there is
- * no existing feature for that location (one feature per location).
- */
 router.post("/featured-restaurants", async (req, res) => {
   try {
     const { businessId, locationId, sortOrder, isActive } = req.body || {};
@@ -492,10 +444,6 @@ router.post("/featured-restaurants", async (req, res) => {
   }
 });
 
-/**
- * PATCH /admin/featured-restaurants/:id
- * Body may include { sortOrder, isActive }.
- */
 router.patch("/featured-restaurants/:id", async (req, res) => {
   try {
     const id = String(req.params.id || "").trim();
@@ -541,9 +489,6 @@ router.patch("/featured-restaurants/:id", async (req, res) => {
   }
 });
 
-/**
- * DELETE /admin/featured-restaurants/:id
- */
 router.delete("/featured-restaurants/:id", async (req, res) => {
   try {
     const id = String(req.params.id || "").trim();
@@ -565,15 +510,6 @@ router.delete("/featured-restaurants/:id", async (req, res) => {
   }
 });
 
-// ===========================================================================
-// Campaign Templates review (Phase 3B)
-//
-// Admin reviews business-submitted CUSTOM campaign templates and prepares them
-// for Email/SMS/WhatsApp (incl. the manual Meta template creation flow). These
-// routes are the ONLY place a template can move to APPROVED/REJECTED — the
-// business API never accepts an approval-state change. Admin-only Meta fields
-// are returned here but never by the business serializers.
-// ===========================================================================
 
 const CT_STATUSES = ["DRAFT", "PENDING_SEATPING_REVIEW", "APPROVED", "REJECTED"] as const;
 
@@ -582,7 +518,6 @@ function adminIdentity(req: express.Request): string {
   return String(auth.name || auth.username || auth.sub || "admin");
 }
 
-/** Full template row for the admin console (includes internal Meta fields). */
 function serializeAdminTemplate(t: any) {
   return {
     id: t.id,
@@ -623,7 +558,6 @@ function serializeAdminTemplate(t: any) {
   };
 }
 
-/** GET /admin/campaign-templates?status=&search= — custom template submissions. */
 router.get("/campaign-templates", async (req, res) => {
   try {
     const where: any = { templateType: "CUSTOM" };
@@ -647,8 +581,6 @@ router.get("/campaign-templates", async (req, res) => {
       take: 200,
     });
 
-    // Join business display info (name searched separately since it lives on a
-    // different collection in MongoDB).
     const businessIds = Array.from(
       new Set(templates.map((t) => t.businessId).filter(Boolean) as string[]),
     );
@@ -660,7 +592,6 @@ router.get("/campaign-templates", async (req, res) => {
       : [];
     const bMap = new Map(businesses.map((b) => [b.id, b]));
 
-    // Status counts for the filter chips.
     const grouped = await prisma.campaignTemplate.groupBy({
       by: ["approvalStatus"],
       where: { templateType: "CUSTOM" },
@@ -681,7 +612,6 @@ router.get("/campaign-templates", async (req, res) => {
   }
 });
 
-/** GET /admin/campaign-templates/:id — full review detail. */
 router.get("/campaign-templates/:id", async (req, res) => {
   try {
     const id = String(req.params.id || "");
@@ -706,7 +636,6 @@ router.get("/campaign-templates/:id", async (req, res) => {
   }
 });
 
-/** PATCH /admin/campaign-templates/:id/review — update internal notes + Meta fields. */
 router.patch("/campaign-templates/:id/review", async (req, res) => {
   try {
     const id = String(req.params.id || "");
@@ -745,7 +674,6 @@ router.patch("/campaign-templates/:id/review", async (req, res) => {
   }
 });
 
-/** POST /admin/campaign-templates/:id/approve — approve for all three channels. */
 router.post("/campaign-templates/:id/approve", async (req, res) => {
   try {
     const id = String(req.params.id || "");
@@ -781,7 +709,6 @@ router.post("/campaign-templates/:id/approve", async (req, res) => {
   }
 });
 
-/** POST /admin/campaign-templates/:id/reject — reject with a business-facing reason. */
 router.post("/campaign-templates/:id/reject", async (req, res) => {
   try {
     const id = String(req.params.id || "");

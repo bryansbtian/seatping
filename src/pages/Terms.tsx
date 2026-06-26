@@ -9,7 +9,7 @@ const Terms = () => {
     <div className="min-h-screen bg-background">
       <Header />
 
-      {/* Hero (matches LandingPage rhythm & tokens) */}
+      {}
       <section className="pt-28 md:pt-32 lg:pt-40 pb-10 px-4">
         <div className="container mx-auto">
           <div className="text-center max-w-3xl mx-auto space-y-4">
@@ -29,13 +29,13 @@ const Terms = () => {
         </div>
       </section>
 
-      {/* Content wrapper styled like your screenshots (rounded card, subtle border) */}
+      {}
       <section className="px-4 pb-16">
         <div className="container mx-auto max-w-4xl">
           <Card className="border rounded-2xl shadow-sm bg-card/80 backdrop-blur-sm">
-            {/* Base text smaller on mobile, normal from sm and up */}
+            {}
             <CardContent className="prose prose-neutral max-w-none text-foreground text-sm sm:text-base">
-              {/* 1. Acceptance */}
+              {}
               <h2
                 id="acceptance"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-6"
@@ -52,7 +52,7 @@ const Terms = () => {
                 that you have authority to bind that business.
               </p>
 
-              {/* 2. Eligibility & Accounts */}
+              {}
               <h2
                 id="eligibility"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -72,7 +72,7 @@ const Terms = () => {
                 </li>
               </ul>
 
-              {/* 3. Services & License */}
+              {}
               <h2
                 id="services"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -88,7 +88,7 @@ const Terms = () => {
                 WhatsApp, or email.
               </p>
 
-              {/* 4. Customer Obligations */}
+              {}
               <h2
                 id="obligations"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -116,7 +116,7 @@ const Terms = () => {
                 </li>
               </ul>
 
-              {/* 5. Prohibited Uses */}
+              {}
               <h2
                 id="prohibited"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -133,7 +133,7 @@ const Terms = () => {
                 </li>
               </ul>
 
-              {/* 6. Billing & Taxes */}
+              {}
               <h2
                 id="billing"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -159,7 +159,7 @@ const Terms = () => {
                 <li>You are responsible for any applicable taxes and fees.</li>
               </ul>
 
-              {/* 7. Trials & Betas */}
+              {}
               <h2
                 id="trials"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -172,7 +172,7 @@ const Terms = () => {
                 not include support or SLAs.
               </p>
 
-              {/* 8. Cancellations & Refunds */}
+              {}
               <h2
                 id="cancellations"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -185,7 +185,7 @@ const Terms = () => {
                 and partial periods are not credited.
               </p>
 
-              {/* 9. Availability & Support */}
+              {}
               <h2
                 id="availability"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -198,7 +198,7 @@ const Terms = () => {
                 impact access.
               </p>
 
-              {/* 10. Data & Privacy */}
+              {}
               <h2
                 id="privacy"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -214,7 +214,7 @@ const Terms = () => {
                 obtaining guest consents where applicable.
               </p>
 
-              {/* 11. Intellectual Property */}
+              {}
               <h2
                 id="ip"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -227,7 +227,7 @@ const Terms = () => {
                 except as expressly stated in these Terms.
               </p>
 
-              {/* 12. Feedback */}
+              {}
               <h2
                 id="feedback"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -240,7 +240,7 @@ const Terms = () => {
                 incorporate them without obligation.
               </p>
 
-              {/* 13. Third-Party Services */}
+              {}
               <h2
                 id="thirdparty"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -257,7 +257,7 @@ const Terms = () => {
                 risk.
               </p>
 
-              {/* 14. Disclaimers */}
+              {}
               <h2
                 id="disclaimers"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -271,7 +271,7 @@ const Terms = () => {
                 PARTICULAR PURPOSE, AND NON‑INFRINGEMENT.
               </p>
 
-              {/* 15. Liability */}
+              {}
               <h2
                 id="liability"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -287,7 +287,7 @@ const Terms = () => {
                 THE 12 MONTHS PRECEDING THE CLAIM.
               </p>
 
-              {/* 16. Indemnification */}
+              {}
               <h2
                 id="indemnity"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -301,7 +301,7 @@ const Terms = () => {
                 your violation of these Terms.
               </p>
 
-              {/* 17. Termination */}
+              {}
               <h2
                 id="termination"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -315,7 +315,7 @@ const Terms = () => {
                 ceases.
               </p>
 
-              {/* 18. Governing Law */}
+              {}
               <h2
                 id="law"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -329,7 +329,7 @@ const Terms = () => {
                 courts located in Jakarta, Indonesia.
               </p>
 
-              {/* 19. Changes to Terms */}
+              {}
               <h2
                 id="changes"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"
@@ -343,7 +343,7 @@ const Terms = () => {
                 acceptance of the updated Terms.
               </p>
 
-              {/* 20. Contact */}
+              {}
               <h2
                 id="contact"
                 className="text-lg sm:text-2xl font-semibold text-primary mt-10"

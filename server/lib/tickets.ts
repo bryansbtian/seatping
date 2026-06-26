@@ -1,13 +1,5 @@
 import { prisma } from "./prisma.js";
 
-/**
- * Build a human-readable ticket number like SALES-20260611-0007.
- *
- * The sequence is derived from a count of today's tickets, so two concurrent
- * submissions can race to the same number; ticketNumber is @unique, so the
- * loser's create fails rather than producing a duplicate. Acceptable at the
- * current inquiry volume.
- */
 export async function generateTicketNumber(
   type: "SALES" | "FEEDBACK",
 ): Promise<string> {

@@ -10,9 +10,6 @@ router.post('/submit', express.json(), async (req, res) => {
   try {
     const data: FeedbackData = req.body;
 
-    // Anti-abuse throttle: this route sends two emails (team + confirmation to
-    // the supplied address) and creates a ticket row. Limit per IP and per
-    // sender email so it can't be used to email-bomb or flood the ticket table.
     const senderEmail = String(data?.email || '').toLowerCase().trim();
     if (
       await limitGuard(req, res, [
@@ -39,7 +36,6 @@ router.post('/submit', express.json(), async (req, res) => {
 
     const ticketNumber = await generateTicketNumber('FEEDBACK');
 
-    // Determine priority based on severity (if provided)
     const priority = data.severity || (data.feedbackType === 'bug' ? 'medium' : 'low');
 
     const ticket = await prisma.ticket.create({
@@ -65,7 +61,6 @@ router.post('/submit', express.json(), async (req, res) => {
       },
     });
 
-    // Confirmation email failure is non-fatal: the feedback is already recorded.
     const confirmationSent = await sendFeedbackConfirmationEmail(
       data.email,
       data.name,

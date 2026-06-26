@@ -1,11 +1,3 @@
-// server/routes/guests.ts
-//
-// Guest CRM API (Phase 3 / P3A). Business-only. Every handler scopes its
-// queries by the authenticated business id (req.auth.sub) and validates that
-// the requested location belongs to that business, so guest data can never leak
-// across businesses or locations.
-//
-// Mounted at /api/guests (the SPA owns the /business/guests *page* route).
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireBusiness } from "../lib/auth.js";
@@ -21,8 +13,6 @@ import type { GuestProfile, QueueEntry, Reservation } from "@prisma/client";
 
 const router = Router();
 
-// All guest routes are owner reads/writes behind business auth; a generous
-// per-IP cap is plenty and protects the search endpoint from scripted scans.
 const guestsLimiter = rateLimit({
   name: "guests-api",
   windowMs: 60 * 1000,
@@ -30,12 +20,10 @@ const guestsLimiter = rateLimit({
 });
 router.use(requireBusiness, guestsLimiter);
 
-/** The authenticated business id (set by requireBusiness). */
 function bizId(req: any): string {
   return String(req.auth?.sub || "");
 }
 
-/** Verify a location belongs to the authenticated business. */
 async function ownedLocation(businessId: string, locationId: string) {
   if (!locationId) return null;
   return prisma.location.findFirst({
@@ -58,7 +46,6 @@ function locationLabel(loc: {
   return loc.displayName || loc.name || loc.address || "Location";
 }
 
-/** Public list-row shape for the guests table. */
 function serializeGuestRow(g: GuestProfile) {
   return {
     id: g.id,
@@ -83,9 +70,6 @@ function serializeGuestRow(g: GuestProfile) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// GET /api/guests/meta — locations + suggested tags for the page chrome
-// ---------------------------------------------------------------------------
 router.get("/meta", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -104,9 +88,6 @@ router.get("/meta", async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// GET /api/guests — list guests for a location (search + filters)
-// ---------------------------------------------------------------------------
 router.get("/", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -117,7 +98,7 @@ router.get("/", async (req, res) => {
     }
 
     const search = String(req.query.search || "").trim();
-    const type = String(req.query.type || "").trim().toLowerCase(); // new | returning
+    const type = String(req.query.type || "").trim().toLowerCase();
     const tagsParam = String(req.query.tags || "").trim();
     const tags = tagsParam
       ? tagsParam.split(",").map((t) => t.trim()).filter(Boolean)
@@ -193,9 +174,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// GET /api/guests/:guestId — full profile + visit history timeline
-// ---------------------------------------------------------------------------
 router.get("/:guestId", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -216,7 +194,6 @@ router.get("/:guestId", async (req, res) => {
       },
     });
     const locLabel = location ? locationLabel(location) : "Location";
-    // Every visit-history time is rendered in the restaurant's own timezone.
     const locTz = getLocationTimezone(location);
 
     const [queueRows, reservationRows] = await Promise.all([
@@ -241,7 +218,6 @@ router.get("/:guestId", async (req, res) => {
         status: legacyQueueStatus(q),
         partySize: q.guestCount,
         at: q.joinedAt ? new Date(q.joinedAt).toISOString() : null,
-        // joinedAt is a real instant → render it in the location's timezone.
         atLabel: q.joinedAt ? formatInstantInTz(q.joinedAt, locTz) : null,
         location: locLabel,
         notes: null as string | null,
@@ -261,8 +237,6 @@ router.get("/:guestId", async (req, res) => {
         status: legacyStatus,
         partySize: r.guestCount,
         at: when && !Number.isNaN(when.getTime()) ? when.toISOString() : null,
-        // reservationDateTime is already a naive local wall-clock in the
-        // location's timezone → render its literal components, no conversion.
         atLabel: formatWallClockLabel(r.reservationDateTime),
         location: locLabel,
         notes: r.notes || null,
@@ -277,7 +251,6 @@ router.get("/:guestId", async (req, res) => {
       .filter((r) => !r.upcoming)
       .sort((a, b) => timeDesc(a.at, b.at));
 
-    // Unified timeline: everything, newest first.
     const timeline = [
       ...waitlistHistory,
       ...reservationEvents.map(({ upcoming, ...rest }) => rest),
@@ -306,9 +279,6 @@ router.get("/:guestId", async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// PATCH /api/guests/:guestId — edit notes and/or replace custom tags
-// ---------------------------------------------------------------------------
 router.patch("/:guestId", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -351,9 +321,6 @@ router.patch("/:guestId", async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// POST /api/guests/:guestId/tags — add a single custom tag
-// ---------------------------------------------------------------------------
 router.post("/:guestId/tags", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -367,7 +334,6 @@ router.post("/:guestId/tags", async (req, res) => {
     });
     if (!guest) return res.status(404).json({ error: "Guest not found" });
 
-    // Case-insensitive dedup so "VIP" and "vip" don't both stick.
     const exists = guest.tags.some((t) => t.toLowerCase() === tag.toLowerCase());
     const tags = exists ? guest.tags : [...guest.tags, tag];
     if (tags.length > 30) {
@@ -385,9 +351,6 @@ router.post("/:guestId/tags", async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// DELETE /api/guests/:guestId/tags/:tag — remove a custom tag
-// ---------------------------------------------------------------------------
 router.delete("/:guestId/tags/:tag", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -415,9 +378,6 @@ router.delete("/:guestId/tags/:tag", async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// POST /api/guests/:guestId/recompute — re-derive stats from source rows
-// ---------------------------------------------------------------------------
 router.post("/:guestId/recompute", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -436,9 +396,6 @@ router.post("/:guestId/recompute", async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function sanitizeTags(input: unknown): string[] | null {
   if (!Array.isArray(input)) return null;
@@ -487,7 +444,6 @@ const VISIT_LABEL_OPTS: Intl.DateTimeFormatOptions = {
   minute: "2-digit",
 };
 
-/** Format a real instant (e.g. a queue joinedAt) in the location's timezone. */
 function formatInstantInTz(date: Date | string, timeZone: string): string | null {
   const d = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(d.getTime())) return null;
@@ -498,11 +454,6 @@ function formatInstantInTz(date: Date | string, timeZone: string): string | null
   }
 }
 
-/**
- * Format a naive local wall-clock "YYYY-MM-DDTHH:MM" (already in the location's
- * timezone) by its literal components — render it as UTC so the displayed
- * date/time exactly match the stored value, no timezone shift.
- */
 function formatWallClockLabel(wallClock: string | null | undefined): string | null {
   if (!wallClock) return null;
   const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(wallClock)

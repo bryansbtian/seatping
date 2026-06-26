@@ -1,9 +1,3 @@
-// LanguageSelector.tsx
-// Operator UI language picker for /business/settings. Persists to the backend
-// via the i18n context (optimistic update + revert on failure) and confirms with
-// a toast. The label itself is localized ("Language" / "Bahasa") per the chosen
-// language. Language option names are intentionally NOT translated (a language is
-// always shown in its own name).
 import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { ChevronDown } from "lucide-react";
@@ -27,7 +21,6 @@ export default function LanguageSelector() {
       await setLang(next);
       toast({ title: t("settings.language.saved") });
     } catch (e: any) {
-      // setLang already reverted the UI; just surface the failure.
       toast({
         title: t("settings.language.saveError"),
         description: e?.message || t("common.pleaseTryAgain"),

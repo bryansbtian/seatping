@@ -18,8 +18,6 @@ import { api } from "@/lib/api";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { analytics } from "@/lib/analytics";
 
-// Business signup. Creates a record in the `businesses` collection (and its
-// initial location in `locations`) via /auth/business/signup.
 const BusinessSignup = () => {
   const [formData, setFormData] = useState({
     businessName: "",
@@ -42,7 +40,6 @@ const BusinessSignup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Fire once when the signup page opens — the start of the funnel.
   useEffect(() => {
     analytics.businessSignupStarted();
   }, []);
@@ -93,7 +90,6 @@ const BusinessSignup = () => {
 
     try {
       setLoading(true);
-      // No plans — every new business starts on a 7-day free trial.
       const payload = {
         name: formData.businessName,
         username: formData.businessUsername,
@@ -144,7 +140,7 @@ const BusinessSignup = () => {
           </CardHeader>
           <CardContent className="px-6 pb-8 sm:px-10 sm:pb-10">
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Business Name */}
+              {}
               <div className="space-y-2">
                 <Label htmlFor="businessName">Business Name</Label>
                 <Input
@@ -162,7 +158,7 @@ const BusinessSignup = () => {
                 )}
               </div>
 
-              {/* Business Username */}
+              {}
               <div className="space-y-2">
                 <Label htmlFor="businessUsername">Business Username</Label>
                 <Input
@@ -180,7 +176,7 @@ const BusinessSignup = () => {
                 )}
               </div>
 
-              {/* Email */}
+              {}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -197,7 +193,7 @@ const BusinessSignup = () => {
                 )}
               </div>
 
-              {/* Phone */}
+              {}
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
                 <div className="flex gap-2">
@@ -224,7 +220,7 @@ const BusinessSignup = () => {
                 )}
               </div>
 
-              {/* Password */}
+              {}
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -241,7 +237,7 @@ const BusinessSignup = () => {
                 )}
               </div>
 
-              {/* Confirm Password */}
+              {}
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input
