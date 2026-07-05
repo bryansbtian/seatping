@@ -17,6 +17,7 @@ export const AUTO_VARIABLES = [
   "first_name",
   "guest_name",
   "restaurant_name",
+  "restaurant",
   "business_name",
   "location_name",
 ];
@@ -138,6 +139,8 @@ export interface BuiltMessage {
   whatsappValues?: Record<string, string>;
 }
 
+const SIGNATURE_FOOTER_RE = /\n*—[^\n]*\(via SeatPing\)\s*$/;
+
 export function buildMessage(
   template: CampaignTemplate,
   filled: Record<string, string>,
@@ -145,7 +148,9 @@ export function buildMessage(
   channel: Channel,
 ): BuiltMessage {
   const values = buildValueMap(filled, ctx);
-  const bodyText = renderString(template.body, values).trim();
+  const bodyText = renderString(template.body, values)
+    .replace(SIGNATURE_FOOTER_RE, "")
+    .trim();
   const offer = template.offerDetails
     ? renderString(template.offerDetails, values).trim()
     : "";
@@ -670,49 +675,65 @@ export const SEATPING_TEMPLATE_SEEDS: SeedDef[] = [
   {
     name: "We Miss You",
     purpose: "Win back guests who have not visited in a while.",
-    body: "Hi {{first_name}}, we miss you at {{restaurant_name}}! It has been a little while since your last visit and we would love to welcome you back.",
-    variables: ["first_name"],
+    body: "Hi {{first_name}}, we miss you at {{business_name}}! It has been a little while since your last visit and we would love to welcome you back.\n\n— {{restaurant}} (via SeatPing)",
+    variables: ["first_name", "business_name", "restaurant"],
     sortOrder: 1,
   },
   {
     name: "Thanks For Visiting",
     purpose: "Thank a guest after a recent visit.",
-    body: "Hi {{first_name}}, thank you for visiting {{restaurant_name}}. We hope you had a wonderful time and we would love to see you again soon.",
-    variables: ["first_name"],
+    body: "Hi {{first_name}}, thank you for visiting {{business_name}}. We hope you had a wonderful time and we would love to see you again soon.\n\n— {{restaurant}} (via SeatPing)",
+    variables: ["first_name", "business_name", "restaurant"],
     sortOrder: 2,
   },
   {
     name: "Special Offer",
     purpose: "Share a limited-time offer with guests.",
-    body: "Hi {{first_name}}, here is a special offer just for you from {{restaurant_name}}: {{offer}}. We hope to see you soon!",
+    body: "Hi {{first_name}}, here is a special offer just for you from {{business_name}}: {{offer}}. We hope to see you soon!\n\n— {{restaurant}} (via SeatPing)",
     ctaText: "Book a table",
-    variables: ["first_name", "offer"],
+    variables: ["first_name", "business_name", "offer", "restaurant"],
     exampleValues: { offer: "20% off your next visit this week" },
     sortOrder: 3,
   },
   {
     name: "New Menu Announcement",
     purpose: "Announce new menu items to guests.",
-    body: "Hi {{first_name}}, {{restaurant_name}} just launched a new menu. Come in and try {{highlight}} on your next visit!",
+    body: "Hi {{first_name}}, {{business_name}} just launched a new menu. Come in and try {{highlight}} on your next visit!\n\n— {{restaurant}} (via SeatPing)",
     ctaText: "See the menu",
-    variables: ["first_name", "highlight"],
+    variables: ["first_name", "business_name", "highlight", "restaurant"],
     exampleValues: { highlight: "our new seasonal specials" },
     sortOrder: 4,
   },
   {
     name: "Come Back Soon",
     purpose: "A warm nudge to return.",
-    body: "Hi {{first_name}}, we would love to welcome you back to {{restaurant_name}}. Come back and see us soon!",
-    variables: ["first_name"],
+    body: "Hi {{first_name}}, we would love to welcome you back to {{business_name}}. Come back and see us soon!\n\n— {{restaurant}} (via SeatPing)",
+    variables: ["first_name", "business_name", "restaurant"],
     sortOrder: 5,
   },
   {
     name: "No-Show Follow-Up",
     purpose: "Gently follow up after a missed reservation.",
-    body: "Hi {{first_name}}, we missed you at {{restaurant_name}}. No worries at all, we would be happy to help you rebook a table whenever you are ready.",
+    body: "Hi {{first_name}}, we missed you at {{business_name}}. No worries at all, we would be happy to help you rebook a table whenever you are ready.\n\n— {{restaurant}} (via SeatPing)",
     ctaText: "Rebook now",
-    variables: ["first_name"],
+    variables: ["first_name", "business_name", "restaurant"],
     sortOrder: 6,
+  },
+  {
+    name: "Lunch Comeback Offer",
+    purpose: "Bring guests back for a weekday lunch visit.",
+    body: "Hi {{first_name}}, {{business_name}} would love to welcome you back for lunch. Enjoy {{offer}} on your next weekday visit.\n\n— {{restaurant}} (via SeatPing)",
+    variables: ["first_name", "business_name", "offer", "restaurant"],
+    exampleValues: { offer: "10% off your lunch order" },
+    sortOrder: 7,
+  },
+  {
+    name: "VIP Guest Offer",
+    purpose: "Reward loyal guests with a small thank-you offer.",
+    body: "Hi {{first_name}}, thank you for being one of our valued guests at {{restaurant}}. Enjoy {{offer}} as a small thank-you on your next visit.",
+    variables: ["first_name", "restaurant", "offer"],
+    exampleValues: { offer: "a complimentary dessert" },
+    sortOrder: 8,
   },
 ];
 
