@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildMessage, extractBodyPlaceholders } from "./campaigns.js";
-import { resolveContractParams } from "./whatsapp.js";
+import {
+  buildMessage,
+  extractBodyPlaceholders,
+  slugifyTemplateName,
+  SEATPING_TEMPLATE_SEEDS,
+} from "./campaigns.js";
+import { resolveContractParams, SEATPING_TEMPLATE_CONTRACTS } from "./whatsapp.js";
 import type { CampaignTemplate } from "@prisma/client";
 
 function tmpl(overrides: Partial<CampaignTemplate>): CampaignTemplate {
@@ -152,6 +157,54 @@ test("resolveContractParams: POSITIONAL contract emits bare text in index order"
   const params = resolveContractParams(contract, { "1": "Sam", "2": "Bryan's Bistro" });
   assert.deepEqual(params, [{ text: "Sam" }, { text: "Bryan's Bistro" }]);
   assert.ok(params.every((p) => p.name === undefined));
+});
+
+test("every seeded SeatPing template body matches its Meta contract exactly", () => {
+  for (const seed of SEATPING_TEMPLATE_SEEDS) {
+    const slug = slugifyTemplateName(seed.name);
+    const contract = SEATPING_TEMPLATE_CONTRACTS[slug];
+    assert.ok(contract, `missing SEATPING_TEMPLATE_CONTRACTS entry for ${slug}`);
+    assert.deepEqual(
+      extractBodyPlaceholders(seed.body),
+      contract.names,
+      `placeholder drift for ${slug}`,
+    );
+  }
+});
+
+test("seeded templates resolve non-empty values for every contract param", () => {
+  for (const seed of SEATPING_TEMPLATE_SEEDS) {
+    const slug = slugifyTemplateName(seed.name);
+    const contract = SEATPING_TEMPLATE_CONTRACTS[slug];
+    const t = tmpl({ whatsappProviderTemplateName: slug, body: seed.body });
+    const msg = buildMessage(t, (seed.exampleValues ?? {}) as Record<string, string>, ctx, "WHATSAPP");
+    const params = resolveContractParams(contract, msg.whatsappValues!);
+    assert.equal(params.length, contract.names.length, slug);
+    assert.ok(
+      params.every((p) => p.text.length > 0),
+      `empty param value for ${slug}`,
+    );
+    assert.deepEqual(msg.whatsappParams, params, `stored-body fallback drift for ${slug}`);
+  }
+});
+
+test("baked-in signature footer is not duplicated in WhatsApp/SMS text", () => {
+  const seed = SEATPING_TEMPLATE_SEEDS[0];
+  const t = tmpl({
+    whatsappProviderTemplateName: slugifyTemplateName(seed.name),
+    body: seed.body,
+  });
+  const msg = buildMessage(t, {}, ctx, "WHATSAPP");
+  assert.equal(msg.text.split("(via SeatPing)").length - 1, 1);
+  const sms = buildMessage(t, {}, ctx, "SMS");
+  assert.equal(sms.text.split("(via SeatPing)").length - 1, 1);
+});
+
+test("email body drops the WhatsApp signature footer", () => {
+  const seed = SEATPING_TEMPLATE_SEEDS[0];
+  const t = tmpl({ body: seed.body });
+  const email = buildMessage(t, {}, ctx, "EMAIL");
+  assert.ok(!email.text.includes("(via SeatPing)"));
 });
 
 test("EMAIL/SMS channels are unaffected (no whatsappParams)", () => {

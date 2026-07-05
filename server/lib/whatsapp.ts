@@ -106,6 +106,41 @@ export function resolveContractParams(
   });
 }
 
+export const SEATPING_TEMPLATE_CONTRACTS: Record<string, TemplateContract> = {
+  we_miss_you: {
+    mode: "named",
+    names: ["first_name", "business_name", "restaurant"],
+  },
+  thanks_for_visiting: {
+    mode: "named",
+    names: ["first_name", "business_name", "restaurant"],
+  },
+  special_offer: {
+    mode: "named",
+    names: ["first_name", "business_name", "offer", "restaurant"],
+  },
+  new_menu_announcement: {
+    mode: "named",
+    names: ["first_name", "business_name", "highlight", "restaurant"],
+  },
+  come_back_soon: {
+    mode: "named",
+    names: ["first_name", "business_name", "restaurant"],
+  },
+  no_show_follow_up: {
+    mode: "named",
+    names: ["first_name", "business_name", "restaurant"],
+  },
+  lunch_comeback_offer: {
+    mode: "named",
+    names: ["first_name", "business_name", "offer", "restaurant"],
+  },
+  vip_guest_offer: {
+    mode: "named",
+    names: ["first_name", "restaurant", "offer"],
+  },
+};
+
 const templateContractCache = new Map<string, TemplateContract | null>();
 
 function placeholdersOf(text: string): string[] {
@@ -134,6 +169,7 @@ async function getTemplateContract(
   try {
     const resp: any = await client.templates.list({
       businessAccountId: wabaId,
+      name: templateName,
       limit: 200,
     } as any);
     const templates: any[] = resp?.data || [];
@@ -162,6 +198,7 @@ async function getTemplateContract(
       "[WHATSAPP] template contract lookup failed:",
       error?.message || error,
     );
+    templateContractCache.set(key, null);
     return null;
   }
 }
@@ -185,11 +222,15 @@ export async function sendCampaignWhatsApp(
   const values = params.bodyValues || {};
 
   const contract = await getTemplateContract(params.templateName, language);
+  const knownContract = SEATPING_TEMPLATE_CONTRACTS[params.templateName];
   let bodyParams: WhatsAppBodyParam[];
-  let source: "meta-contract" | "stored-body";
+  let source: "meta-contract" | "seatping-contract" | "stored-body";
   if (contract && params.bodyValues) {
     source = "meta-contract";
     bodyParams = resolveContractParams(contract, values);
+  } else if (knownContract && params.bodyValues) {
+    source = "seatping-contract";
+    bodyParams = resolveContractParams(knownContract, values);
   } else {
     source = "stored-body";
     bodyParams = params.bodyParams || [];
