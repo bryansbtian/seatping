@@ -719,22 +719,6 @@ export const SEATPING_TEMPLATE_SEEDS: SeedDef[] = [
     variables: ["first_name", "business_name", "restaurant"],
     sortOrder: 6,
   },
-  {
-    name: "Lunch Comeback Offer",
-    purpose: "Bring guests back for a weekday lunch visit.",
-    body: "Hi {{first_name}}, {{business_name}} would love to welcome you back for lunch. Enjoy {{offer}} on your next weekday visit.\n\n— {{restaurant}} (via SeatPing)",
-    variables: ["first_name", "business_name", "offer", "restaurant"],
-    exampleValues: { offer: "10% off your lunch order" },
-    sortOrder: 7,
-  },
-  {
-    name: "VIP Guest Offer",
-    purpose: "Reward loyal guests with a small thank-you offer.",
-    body: "Hi {{first_name}}, thank you for being one of our valued guests at {{restaurant}}. Enjoy {{offer}} as a small thank-you on your next visit.",
-    variables: ["first_name", "restaurant", "offer"],
-    exampleValues: { offer: "a complimentary dessert" },
-    sortOrder: 8,
-  },
 ];
 
 let seedPromise: Promise<void> | null = null;
