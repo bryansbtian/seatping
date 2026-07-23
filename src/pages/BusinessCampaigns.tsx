@@ -272,6 +272,7 @@ const BusinessCampaigns = () => {
   const [templatesLoading, setTemplatesLoading] = useState(false);
 
   const [savedAudiences, setSavedAudiences] = useState<SavedAudience[]>([]);
+  const [savedAudiencesLoading, setSavedAudiencesLoading] = useState(false);
 
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
@@ -320,9 +321,11 @@ const BusinessCampaigns = () => {
 
   const fetchSavedAudiences = useCallback(() => {
     if (!locationId) return;
+    setSavedAudiencesLoading(true);
     api(`/api/audiences?locationId=${locationId}`)
       .then((d) => setSavedAudiences(d?.audiences ?? []))
-      .catch(() => setSavedAudiences([]));
+      .catch(() => setSavedAudiences([]))
+      .finally(() => setSavedAudiencesLoading(false));
   }, [locationId]);
 
   useEffect(() => {
@@ -496,6 +499,8 @@ const BusinessCampaigns = () => {
             <AudiencesTab
               audiences={meta?.audiences ?? []}
               savedAudiences={savedAudiences}
+              loading={savedAudiencesLoading}
+              onRefresh={fetchSavedAudiences}
               onCreateCustom={() => {
                 setEditingAudience(null);
                 setCustomAudienceOpen(true);
@@ -522,7 +527,11 @@ const BusinessCampaigns = () => {
             />
           )}
           {tab === "history" && (
-            <HistoryTab loading={campaignsLoading} campaigns={sentCampaigns} />
+            <HistoryTab
+              loading={campaignsLoading}
+              campaigns={sentCampaigns}
+              onRefresh={fetchCampaigns}
+            />
           )}
         </div>
         <Footer />
@@ -664,7 +673,7 @@ function CampaignsTab({
   return (
     <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
       <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
-        <div>
+        <div className="space-y-1.5">
           <CardTitle className="text-lg md:text-xl text-slate-800">
             {t("camp.tab.campaigns")}
           </CardTitle>
@@ -904,23 +913,13 @@ function TemplatesTab({
   return (
     <div className="space-y-6">
       <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
-        <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
-          <div>
-            <CardTitle className="text-lg md:text-xl text-slate-800">
-              SeatPing Templates
-            </CardTitle>
-            <CardDescription className="text-sm">
-              Ready to use immediately for SMS, WhatsApp, and Email.
-            </CardDescription>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRefresh}
-            disabled={loading}
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
+        <CardHeader className="border-b border-slate-200 p-4 md:p-6">
+          <CardTitle className="text-lg md:text-xl text-slate-800">
+            SeatPing Templates
+          </CardTitle>
+          <CardDescription className="text-sm">
+            Ready to use immediately for SMS, WhatsApp, and Email.
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-4 md:p-6">
           {loading ? (
@@ -941,7 +940,7 @@ function TemplatesTab({
 
       <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
         <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between gap-3 space-y-0">
-          <div>
+          <div className="space-y-1.5">
             <CardTitle className="text-lg md:text-xl text-slate-800">
               Custom Templates
             </CardTitle>
@@ -950,16 +949,28 @@ function TemplatesTab({
               WhatsApp, and Email.
             </CardDescription>
           </div>
-          <Button
-            size="sm"
-            onClick={onNew}
-            className="shrink-0 w-9 p-0 justify-center sm:w-auto sm:px-3"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline sm:ml-1.5">
-              {t("camp.newTemplate")}
-            </span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRefresh}
+              disabled={loading}
+            >
+              <RefreshCw
+                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+              />
+            </Button>
+            <Button
+              size="sm"
+              onClick={onNew}
+              className="shrink-0 w-9 p-0 justify-center sm:w-auto sm:px-3"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline sm:ml-1.5">
+                {t("camp.newTemplate")}
+              </span>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-4 md:p-6">
           {custom.length === 0 ? (
@@ -1054,12 +1065,16 @@ function TemplateCard({
 function AudiencesTab({
   audiences,
   savedAudiences,
+  loading,
+  onRefresh,
   onCreateCustom,
   onEditCustom,
   onDeleteCustom,
 }: {
   audiences: AudienceGroup[];
   savedAudiences: SavedAudience[];
+  loading: boolean;
+  onRefresh: () => void;
   onCreateCustom: () => void;
   onEditCustom: (a: SavedAudience) => void;
   onDeleteCustom: (a: SavedAudience) => void;
@@ -1098,7 +1113,7 @@ function AudiencesTab({
       <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
         <CardHeader className="border-b border-slate-200 p-4 md:p-6">
           <div className="flex items-center justify-between gap-3">
-            <div>
+            <div className="space-y-1.5">
               <CardTitle className="text-lg md:text-xl text-slate-800">
                 Custom Groups
               </CardTitle>
@@ -1106,14 +1121,26 @@ function AudiencesTab({
                 Build and save your own guest group using filters and tags.
               </CardDescription>
             </div>
-            <Button
-              onClick={onCreateCustom}
-              size="sm"
-              className="shrink-0 w-9 p-0 justify-center sm:w-auto sm:gap-2 sm:px-3"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Create Group</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRefresh}
+                disabled={loading}
+              >
+                <RefreshCw
+                  className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                />
+              </Button>
+              <Button
+                onClick={onCreateCustom}
+                size="sm"
+                className="shrink-0 w-9 p-0 justify-center sm:w-auto sm:gap-2 sm:px-3"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Create Group</span>
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-4 md:p-6">
@@ -1178,20 +1205,32 @@ function AudiencesTab({
 function HistoryTab({
   loading,
   campaigns,
+  onRefresh,
 }: {
   loading: boolean;
   campaigns: Campaign[];
+  onRefresh: () => void;
 }) {
   const { t } = useLang();
   return (
     <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
-      <CardHeader className="border-b border-slate-200 p-4 md:p-6">
-        <CardTitle className="text-lg md:text-xl text-slate-800">
-          {t("camp.tab.history")}
-        </CardTitle>
-        <CardDescription className="text-sm">
-          Delivery results for campaigns you have sent.
-        </CardDescription>
+      <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
+        <div className="space-y-1.5">
+          <CardTitle className="text-lg md:text-xl text-slate-800">
+            {t("camp.tab.history")}
+          </CardTitle>
+          <CardDescription className="text-sm">
+            Delivery results for campaigns you have sent.
+          </CardDescription>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onRefresh}
+          disabled={loading}
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+        </Button>
       </CardHeader>
       <CardContent className="p-0">
         {loading ? (
@@ -1901,7 +1940,10 @@ function CampaignBuilderDialog({
             </div>
 
             {}
-            <Section step={6} title="Timing">
+            <Section
+              step={selectedTemplate && editableVars.length > 0 ? 6 : 5}
+              title="Timing"
+            >
               <div className="flex gap-2">
                 {(
                   [

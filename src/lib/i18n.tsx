@@ -91,8 +91,6 @@ const en = {
   "settings.prefs.desc":
     "Customize how the operator dashboard works for you",
   "settings.language.label": "Language",
-  "settings.language.desc":
-    "Choose the language for your dashboard, guests, and settings pages.",
   "settings.language.saved": "Language updated",
   "settings.language.saveError": "Could not update language",
 
@@ -647,8 +645,6 @@ const id: Partial<Record<TKey, string>> = {
   "settings.prefs.title": "Preferensi",
   "settings.prefs.desc": "Sesuaikan cara kerja dasbor operator untuk Anda",
   "settings.language.label": "Bahasa",
-  "settings.language.desc":
-    "Pilih bahasa untuk halaman dasbor, tamu, dan pengaturan Anda.",
   "settings.language.saved": "Bahasa diperbarui",
   "settings.language.saveError": "Gagal memperbarui bahasa",
 

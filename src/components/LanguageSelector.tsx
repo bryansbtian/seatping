@@ -52,7 +52,6 @@ export default function LanguageSelector() {
         </select>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
       </div>
-      <p className="text-xs text-gray-500">{t("settings.language.desc")}</p>
     </div>
   );
 }
