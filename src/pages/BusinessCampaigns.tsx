@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import BusinessHeader from "@/components/BusinessHeader";
 import Footer from "@/components/Footer";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
@@ -302,13 +302,24 @@ const BusinessCampaigns = () => {
     };
   }, []);
 
+  const campaignsReqRef = useRef(0);
   const fetchCampaigns = useCallback(() => {
     if (!locationId) return;
+    const reqId = ++campaignsReqRef.current;
     setCampaignsLoading(true);
     api(`/api/campaigns?locationId=${locationId}`)
-      .then((d) => setCampaigns(d?.campaigns ?? []))
-      .catch(() => setCampaigns([]))
-      .finally(() => setCampaignsLoading(false));
+      .then((d) => {
+        if (reqId !== campaignsReqRef.current) return;
+        setCampaigns(d?.campaigns ?? []);
+      })
+      .catch(() => {
+        if (reqId !== campaignsReqRef.current) return;
+        setCampaigns([]);
+      })
+      .finally(() => {
+        if (reqId !== campaignsReqRef.current) return;
+        setCampaignsLoading(false);
+      });
   }, [locationId]);
 
   const fetchTemplates = useCallback(() => {
@@ -319,13 +330,24 @@ const BusinessCampaigns = () => {
       .finally(() => setTemplatesLoading(false));
   }, []);
 
+  const savedAudiencesReqRef = useRef(0);
   const fetchSavedAudiences = useCallback(() => {
     if (!locationId) return;
+    const reqId = ++savedAudiencesReqRef.current;
     setSavedAudiencesLoading(true);
     api(`/api/audiences?locationId=${locationId}`)
-      .then((d) => setSavedAudiences(d?.audiences ?? []))
-      .catch(() => setSavedAudiences([]))
-      .finally(() => setSavedAudiencesLoading(false));
+      .then((d) => {
+        if (reqId !== savedAudiencesReqRef.current) return;
+        setSavedAudiences(d?.audiences ?? []);
+      })
+      .catch(() => {
+        if (reqId !== savedAudiencesReqRef.current) return;
+        setSavedAudiences([]);
+      })
+      .finally(() => {
+        if (reqId !== savedAudiencesReqRef.current) return;
+        setSavedAudiencesLoading(false);
+      });
   }, [locationId]);
 
   useEffect(() => {
