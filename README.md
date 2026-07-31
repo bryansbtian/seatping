@@ -48,11 +48,18 @@ npm run start
 
 ## CI/CD
 
-- CI is handled by GitHub Actions (`.github/workflows/ci.yml`), running on pull requests targeting `main` and pushes to `main`.
+- Lint and build CI is handled by GitHub Actions (`.github/workflows/ci.yml`), running on pull requests targeting `main` and pushes to `main`.
 - CI runs install (`npm ci`), Prisma client generation (`npx prisma generate`), lint (`npm run lint`), and build (`npm run build`). It does not touch a database.
 - CD is handled by Vercel automatically after merging to `main`. GitHub Actions does not deploy.
 - Add `DATABASE_URL` as a GitHub Actions repository secret (Settings > Secrets and variables > Actions). Other CI env vars are safe placeholders defined in the workflow.
 - Pull requests should pass CI before merging.
+
+## Code Scanning and Dependencies
+
+- Code scanning uses CodeQL advanced setup (`.github/workflows/codeql.yml`), running on pull requests targeting `main`, pushes to `main`, and a weekly schedule. It analyzes JavaScript and TypeScript only, and uses no secrets, database, or build step.
+- CodeQL default setup must stay disabled in repository settings, since this repository uses the committed advanced workflow instead.
+- Dependency updates are handled by Dependabot (`.github/dependabot.yml`), which opens weekly npm and GitHub Actions pull requests. npm updates are grouped into development and production dependencies.
+- Report vulnerabilities privately using `.github/SECURITY.md`. Do not open a public issue.
 
 ## Database
 
