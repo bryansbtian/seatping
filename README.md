@@ -2,9 +2,13 @@
 
 ## Introduction
 
-This page describes the minimum steps necessary to get started with development.
+SeatPing is a restaurant discovery and reservation platform that helps diners find restaurants, check availability, join queues, and book tables in one convenient place.
 
-## Setup
+Whether users are planning ahead or looking for a table nearby, SeatPing makes the dining experience simpler from discovery to seating.
+
+## Development Setup
+
+Follow the steps below to run SeatPing locally for development.
 
 Prerequisites: Node.js 18+ and a reachable MongoDB (Atlas, or a local replica set).
 
