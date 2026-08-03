@@ -87,7 +87,7 @@ const FaqSection = ({
         {title}
       </CardTitle>
     </CardHeader>
-    <CardContent>
+    <CardContent className="pb-0">
       <Accordion type="single" collapsible className="w-full">
         {faqs.map((faq, i) => (
           <AccordionItem
