@@ -214,7 +214,9 @@ router.post("/logout", (_req, res) => {
   res.json({ ok: true });
 });
 
-async function attachActivityImages<T extends Record<string, any>>(
+type ActivityDisplay = { imageUrl: string | null; name: string | null };
+
+async function attachActivityDetails<T extends Record<string, any>>(
   user: T,
 ): Promise<T> {
   const asArray = (v: unknown) => (Array.isArray(v) ? (v as any[]) : []);
@@ -227,7 +229,6 @@ async function attachActivityImages<T extends Record<string, any>>(
   const locationIds = new Set<string>();
   const usernames = new Set<string>();
   for (const e of all) {
-    if (e?.imageUrl) continue;
     if (e?.locationId) locationIds.add(String(e.locationId));
     else if (e?.businessUsername) usernames.add(String(e.businessUsername));
   }
@@ -237,20 +238,45 @@ async function attachActivityImages<T extends Record<string, any>>(
     (Array.isArray(loc?.photos) && loc.photos[0]?.url) ||
     null;
 
-  const byLocation = new Map<string, string | null>();
+  const nameOf = (loc: any, businessName?: string | null) => {
+    const rp = (loc?.restaurantProfile || {}) as any;
+    return (
+      rp.displayName ||
+      businessName ||
+      loc?.displayName ||
+      loc?.name ||
+      null
+    );
+  };
+
+  const byLocation = new Map<string, ActivityDisplay>();
   if (locationIds.size > 0) {
     const locs = await prisma.location.findMany({
       where: { id: { in: [...locationIds] } },
       include: { photos: { orderBy: { createdAt: "asc" }, take: 1 } },
     });
-    for (const l of locs) byLocation.set(l.id, imgOf(l));
+    const bizIds = [...new Set(locs.map((l) => l.businessId))];
+    const bizNames = new Map<string, string>();
+    if (bizIds.length > 0) {
+      const bizs = await prisma.business.findMany({
+        where: { id: { in: bizIds } },
+        select: { id: true, name: true },
+      });
+      for (const b of bizs) bizNames.set(b.id, b.name);
+    }
+    for (const l of locs) {
+      byLocation.set(l.id, {
+        imageUrl: imgOf(l),
+        name: nameOf(l, bizNames.get(l.businessId)),
+      });
+    }
   }
 
-  const byUsername = new Map<string, string | null>();
+  const byUsername = new Map<string, ActivityDisplay>();
   if (usernames.size > 0) {
     const bizs = await prisma.business.findMany({
       where: { username: { in: [...usernames] } },
-      select: { id: true, username: true },
+      select: { id: true, username: true, name: true },
     });
     const bizLocs = bizs.length
       ? await prisma.location.findMany({
@@ -263,23 +289,33 @@ async function attachActivityImages<T extends Record<string, any>>(
     for (const l of bizLocs) {
       if (!firstByBiz.has(l.businessId)) firstByBiz.set(l.businessId, l);
     }
-    for (const b of bizs) byUsername.set(b.username, imgOf(firstByBiz.get(b.id)));
+    for (const b of bizs) {
+      const loc = firstByBiz.get(b.id);
+      byUsername.set(b.username, {
+        imageUrl: imgOf(loc),
+        name: nameOf(loc, b.name),
+      });
+    }
   }
 
-  const withImage = (e: any) => ({
-    ...e,
-    imageUrl:
-      e?.imageUrl ??
-      (e?.locationId ? byLocation.get(String(e.locationId)) : null) ??
-      (e?.businessUsername ? byUsername.get(String(e.businessUsername)) : null) ??
-      null,
-  });
+  const withDetails = (e: any) => {
+    const display =
+      (e?.locationId ? byLocation.get(String(e.locationId)) : undefined) ??
+      (e?.businessUsername
+        ? byUsername.get(String(e.businessUsername))
+        : undefined);
+    return {
+      ...e,
+      imageUrl: e?.imageUrl ?? display?.imageUrl ?? null,
+      restaurantName: display?.name ?? e?.businessName ?? null,
+    };
+  };
 
   return {
     ...user,
-    upcomingReservations: upcoming.map(withImage),
-    pastReservations: past.map(withImage),
-    queueingActivity: queue.map(withImage),
+    upcomingReservations: upcoming.map(withDetails),
+    pastReservations: past.map(withDetails),
+    queueingActivity: queue.map(withDetails),
   };
 }
 
@@ -302,7 +338,7 @@ router.get("/me", requireCustomer, async (req, res) => {
       },
     });
     if (!user) return res.status(404).json({ error: "Not found" });
-    return res.json({ user: await attachActivityImages(user) });
+    return res.json({ user: await attachActivityDetails(user) });
   } catch (err: any) {
     console.error("[auth] customer me error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
@@ -353,7 +389,7 @@ router.put("/me", requireCustomer, async (req, res) => {
     });
     setAuthCookie(res, token, "customer");
 
-    return res.json({ user });
+    return res.json({ user: await attachActivityDetails(user) });
   } catch (err: any) {
     console.error("[auth] customer update error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
@@ -456,7 +492,7 @@ router.post("/me/saved-restaurants", requireCustomer, async (req, res) => {
       data: { savedRestaurants: list },
       select: CUSTOMER_ME_SELECT,
     });
-    return res.json({ user });
+    return res.json({ user: await attachActivityDetails(user) });
   } catch (err: any) {
     console.error("[auth] save restaurant error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
@@ -490,7 +526,7 @@ router.delete(
         data: { savedRestaurants: next },
         select: CUSTOMER_ME_SELECT,
       });
-      return res.json({ user });
+      return res.json({ user: await attachActivityDetails(user) });
     } catch (err: any) {
       console.error("[auth] remove saved restaurant error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
@@ -596,7 +632,7 @@ router.post("/me/saved-locations", requireCustomer, async (req, res) => {
       data: { savedRestaurants: list },
       select: CUSTOMER_ME_SELECT,
     });
-    return res.json({ user });
+    return res.json({ user: await attachActivityDetails(user) });
   } catch (err: any) {
     console.error("[auth] save location error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
@@ -626,7 +662,7 @@ router.delete(
         data: { savedRestaurants: next },
         select: CUSTOMER_ME_SELECT,
       });
-      return res.json({ user });
+      return res.json({ user: await attachActivityDetails(user) });
     } catch (err: any) {
       console.error("[auth] remove saved location error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
