@@ -30,6 +30,7 @@ type Reservation = {
   locationId?: string | null;
   businessUsername: string;
   businessName?: string;
+  restaurantName?: string;
   locationName?: string;
   imageUrl?: string | null;
   date?: string;
@@ -43,6 +44,7 @@ type QueueActivity = {
   id: string;
   businessUsername: string;
   businessName?: string;
+  restaurantName?: string;
   locationName?: string;
   locationId?: string | null;
   imageUrl?: string | null;
@@ -713,6 +715,8 @@ function ReservationCard({
   r: Reservation;
   typeLabel?: string;
 }) {
+  const displayName =
+    r.restaurantName || r.businessName || r.businessUsername;
   const inner = (
     <Card
       className={
@@ -721,14 +725,11 @@ function ReservationCard({
       }
     >
       <CardContent className="flex gap-2.5 p-3 sm:gap-3 sm:p-4">
-        <ActivityThumb
-          imageUrl={r.imageUrl}
-          name={r.businessName || r.businessUsername}
-        />
+        <ActivityThumb imageUrl={r.imageUrl} name={displayName} />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <p className="truncate text-sm font-semibold text-slate-900 sm:text-base">
-              {r.businessName || r.businessUsername}
+              {displayName}
             </p>
             <div className="flex shrink-0 items-center gap-1.5">
               {typeLabel && (
@@ -780,6 +781,8 @@ function ReservationCard({
 }
 
 function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
+  const displayName =
+    q.restaurantName || q.businessName || q.businessUsername;
   const isActive = q.active || q.status === "waiting";
   const liveHref =
     isActive && q.businessUsername && q.locationId
@@ -798,7 +801,7 @@ function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
       ? q.status === "arrived" || q.status === "admitted"
         ? `Served ${new Date(finalTime).toLocaleString()}`
         : q.status === "no_show"
-          ? `Marked no-show ${new Date(finalTime).toLocaleString()}`
+          ? `Marked No-Show ${new Date(finalTime).toLocaleString()}`
           : q.status === "left"
             ? `Left ${new Date(finalTime).toLocaleString()}`
             : `Removed ${new Date(finalTime).toLocaleString()}`
@@ -807,14 +810,11 @@ function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
   return (
     <Card className="border border-border bg-background">
       <CardContent className="flex gap-2.5 p-3 sm:gap-3 sm:p-4">
-        <ActivityThumb
-          imageUrl={q.imageUrl}
-          name={q.businessName || q.businessUsername}
-        />
+        <ActivityThumb imageUrl={q.imageUrl} name={displayName} />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <p className="truncate text-sm font-semibold text-slate-900 sm:text-base">
-              {q.businessName || q.businessUsername}
+              {displayName}
             </p>
             <div className="flex shrink-0 items-center gap-1.5">
               {typeLabel && (
