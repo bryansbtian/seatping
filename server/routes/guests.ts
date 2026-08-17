@@ -25,7 +25,9 @@ function bizId(req: any): string {
 }
 
 async function ownedLocation(businessId: string, locationId: string) {
-  if (!locationId) return null;
+  if (!locationId) {
+    return null;
+  }
   return prisma.location.findFirst({
     where: { id: locationId, businessId },
     select: {
@@ -100,9 +102,12 @@ router.get("/", async (req, res) => {
     const search = String(req.query.search || "").trim();
     const type = String(req.query.type || "").trim().toLowerCase();
     const tagsParam = String(req.query.tags || "").trim();
-    const tags = tagsParam
-      ? tagsParam.split(",").map((t) => t.trim()).filter(Boolean)
-      : [];
+    let tags: string[];
+    if (tagsParam) {
+      tags = tagsParam.split(",").map((t) => t.trim()).filter(Boolean);
+    } else {
+      tags = [];
+    }
     const hasUpcoming = String(req.query.hasUpcoming || "") === "true";
     const hasNotes = String(req.query.hasNotes || "") === "true";
     const hasNoShow = String(req.query.hasNoShow || "") === "true";
@@ -141,11 +146,21 @@ router.get("/", async (req, res) => {
       where.AND = [...(where.AND || []), { OR: or }];
     }
 
-    if (tags.length) where.tags = { hasSome: tags };
-    if (type === "returning") where.totalVisits = { gte: 2 };
-    else if (type === "new") where.totalVisits = { lt: 2 };
-    if (hasUpcoming) where.upcomingReservationCount = { gt: 0 };
-    if (hasNoShow) where.noShowCount = { gt: 0 };
+    if (tags.length) {
+      where.tags = { hasSome: tags };
+    }
+    if (type === "returning") {
+      where.totalVisits = { gte: 2 };
+    }
+    else if (type === "new") {
+      where.totalVisits = { lt: 2 };
+    }
+    if (hasUpcoming) {
+      where.upcomingReservationCount = { gt: 0 };
+    }
+    if (hasNoShow) {
+      where.noShowCount = { gt: 0 };
+    }
     if (hasNotes) {
       where.AND = [
         ...(where.AND || []),
@@ -181,7 +196,9 @@ router.get("/:guestId", async (req, res) => {
     const guest = await prisma.guestProfile.findFirst({
       where: { id: guestId, businessId },
     });
-    if (!guest) return res.status(404).json({ error: "Guest not found" });
+    if (!guest) {
+      return res.status(404).json({ error: "Guest not found" });
+    }
 
     const location = await prisma.location.findFirst({
       where: { id: guest.locationId, businessId },
@@ -193,50 +210,77 @@ router.get("/:guestId", async (req, res) => {
         restaurantProfile: true,
       },
     });
-    const locLabel = location ? locationLabel(location) : "Location";
+    let locLabel = "Location";
+    if (location) {
+      locLabel = locationLabel(location);
+    }
     const locTz = getLocationTimezone(location);
 
+    let queueRowsPromise: Promise<QueueEntry[]> = Promise.resolve(
+      [] as QueueEntry[],
+    );
+    if (guest.sourceQueueEntryIds.length) {
+      queueRowsPromise = prisma.queueEntry.findMany({
+        where: { id: { in: guest.sourceQueueEntryIds }, businessId },
+      });
+    }
+    let reservationRowsPromise: Promise<Reservation[]> = Promise.resolve(
+      [] as Reservation[],
+    );
+    if (guest.sourceReservationIds.length) {
+      reservationRowsPromise = prisma.reservation.findMany({
+        where: { id: { in: guest.sourceReservationIds }, businessId },
+      });
+    }
+
     const [queueRows, reservationRows] = await Promise.all([
-      guest.sourceQueueEntryIds.length
-        ? prisma.queueEntry.findMany({
-            where: { id: { in: guest.sourceQueueEntryIds }, businessId },
-          })
-        : Promise.resolve([] as QueueEntry[]),
-      guest.sourceReservationIds.length
-        ? prisma.reservation.findMany({
-            where: { id: { in: guest.sourceReservationIds }, businessId },
-          })
-        : Promise.resolve([] as Reservation[]),
+      queueRowsPromise,
+      reservationRowsPromise,
     ]);
 
     const now = Date.now();
 
     const waitlistHistory = queueRows
-      .map((q) => ({
-        id: q.id,
-        source: "waitlist" as const,
-        status: legacyQueueStatus(q),
-        partySize: q.guestCount,
-        at: q.joinedAt ? new Date(q.joinedAt).toISOString() : null,
-        atLabel: q.joinedAt ? formatInstantInTz(q.joinedAt, locTz) : null,
-        location: locLabel,
-        notes: null as string | null,
-      }))
+      .map((q) => {
+        let at: string | null = null;
+        let atLabel: string | null = null;
+        if (q.joinedAt) {
+          at = new Date(q.joinedAt).toISOString();
+          atLabel = formatInstantInTz(q.joinedAt, locTz);
+        }
+        return {
+          id: q.id,
+          source: "waitlist" as const,
+          status: legacyQueueStatus(q),
+          partySize: q.guestCount,
+          at,
+          atLabel,
+          location: locLabel,
+          notes: null as string | null,
+        };
+      })
       .sort((a, b) => timeDesc(a.at, b.at));
 
     const reservationEvents = reservationRows.map((r) => {
-      const when = r.reservationDateTime ? new Date(r.reservationDateTime) : null;
+      let when: Date | null = null;
+      if (r.reservationDateTime) {
+        when = new Date(r.reservationDateTime);
+      }
       const legacyStatus = reservationStatusToLegacy(r.status);
       const upcoming =
         !["CANCELLED", "NO_SHOW", "COMPLETED"].includes(r.status) &&
         !!when &&
         when.getTime() >= now;
+      let at: string | null = null;
+      if (when && !Number.isNaN(when.getTime())) {
+        at = when.toISOString();
+      }
       return {
         id: r.id,
         source: "reservation" as const,
         status: legacyStatus,
         partySize: r.guestCount,
-        at: when && !Number.isNaN(when.getTime()) ? when.toISOString() : null,
+        at,
         atLabel: formatWallClockLabel(r.reservationDateTime),
         location: locLabel,
         notes: r.notes || null,
@@ -287,7 +331,9 @@ router.patch("/:guestId", async (req, res) => {
       where: { id: guestId, businessId },
       select: { id: true },
     });
-    if (!guest) return res.status(404).json({ error: "Guest not found" });
+    if (!guest) {
+      return res.status(404).json({ error: "Guest not found" });
+    }
 
     const data: { notes?: string; tags?: string[] } = {};
 
@@ -326,16 +372,23 @@ router.post("/:guestId/tags", async (req, res) => {
     const businessId = bizId(req);
     const guestId = String(req.params.guestId || "").trim();
     const tag = String(req.body?.tag || "").trim().slice(0, 40);
-    if (!tag) return res.status(400).json({ error: "tag is required" });
+    if (!tag) {
+      return res.status(400).json({ error: "tag is required" });
+    }
 
     const guest = await prisma.guestProfile.findFirst({
       where: { id: guestId, businessId },
       select: { id: true, tags: true },
     });
-    if (!guest) return res.status(404).json({ error: "Guest not found" });
+    if (!guest) {
+      return res.status(404).json({ error: "Guest not found" });
+    }
 
     const exists = guest.tags.some((t) => t.toLowerCase() === tag.toLowerCase());
-    const tags = exists ? guest.tags : [...guest.tags, tag];
+    let tags = guest.tags;
+    if (!exists) {
+      tags = [...guest.tags, tag];
+    }
     if (tags.length > 30) {
       return res.status(400).json({ error: "Too many tags" });
     }
@@ -356,13 +409,17 @@ router.delete("/:guestId/tags/:tag", async (req, res) => {
     const businessId = bizId(req);
     const guestId = String(req.params.guestId || "").trim();
     const tag = decodeURIComponent(String(req.params.tag || "")).trim();
-    if (!tag) return res.status(400).json({ error: "tag is required" });
+    if (!tag) {
+      return res.status(400).json({ error: "tag is required" });
+    }
 
     const guest = await prisma.guestProfile.findFirst({
       where: { id: guestId, businessId },
       select: { id: true, tags: true },
     });
-    if (!guest) return res.status(404).json({ error: "Guest not found" });
+    if (!guest) {
+      return res.status(404).json({ error: "Guest not found" });
+    }
 
     const tags = guest.tags.filter(
       (t) => t.toLowerCase() !== tag.toLowerCase(),
@@ -386,10 +443,16 @@ router.post("/:guestId/recompute", async (req, res) => {
       where: { id: guestId, businessId },
       select: { id: true },
     });
-    if (!guest) return res.status(404).json({ error: "Guest not found" });
+    if (!guest) {
+      return res.status(404).json({ error: "Guest not found" });
+    }
     await recomputeGuestStats(guest.id);
     const updated = await prisma.guestProfile.findUnique({ where: { id: guest.id } });
-    return res.json({ guest: updated ? serializeGuestRow(updated) : null });
+    let serializedGuest = null;
+    if (updated) {
+      serializedGuest = serializeGuestRow(updated);
+    }
+    return res.json({ guest: serializedGuest });
   } catch (err: any) {
     console.error("[guests] recompute error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
@@ -398,15 +461,23 @@ router.post("/:guestId/recompute", async (req, res) => {
 
 
 function sanitizeTags(input: unknown): string[] | null {
-  if (!Array.isArray(input)) return null;
+  if (!Array.isArray(input)) {
+    return null;
+  }
   const seen = new Set<string>();
   const out: string[] = [];
   for (const raw of input) {
-    if (typeof raw !== "string") return null;
+    if (typeof raw !== "string") {
+      return null;
+    }
     const tag = raw.trim().slice(0, 40);
-    if (!tag) continue;
+    if (!tag) {
+      continue;
+    }
     const key = tag.toLowerCase();
-    if (seen.has(key)) continue;
+    if (seen.has(key)) {
+      continue;
+    }
     seen.add(key);
     out.push(tag);
   }
@@ -417,7 +488,10 @@ function legacyQueueStatus(q: QueueEntry): string {
   switch (q.status) {
     case "ADMITTED":
     case "ARRIVED":
-      return q.status === "ARRIVED" ? "arrived" : "admitted";
+      if (q.status === "ARRIVED") {
+        return "arrived";
+      }
+      return "admitted";
     case "NO_SHOW":
       return "no_show";
     case "REMOVED":
@@ -430,10 +504,26 @@ function legacyQueueStatus(q: QueueEntry): string {
 }
 
 function timeDesc(a: string | null, b: string | null): number {
-  return (b ? Date.parse(b) : 0) - (a ? Date.parse(a) : 0);
+  let aTime = 0;
+  if (a) {
+    aTime = Date.parse(a);
+  }
+  let bTime = 0;
+  if (b) {
+    bTime = Date.parse(b);
+  }
+  return bTime - aTime;
 }
 function timeAsc(a: string | null, b: string | null): number {
-  return (a ? Date.parse(a) : 0) - (b ? Date.parse(b) : 0);
+  let aTime = 0;
+  if (a) {
+    aTime = Date.parse(a);
+  }
+  let bTime = 0;
+  if (b) {
+    bTime = Date.parse(b);
+  }
+  return aTime - bTime;
 }
 
 const VISIT_LABEL_OPTS: Intl.DateTimeFormatOptions = {
@@ -445,8 +535,15 @@ const VISIT_LABEL_OPTS: Intl.DateTimeFormatOptions = {
 };
 
 function formatInstantInTz(date: Date | string, timeZone: string): string | null {
-  const d = date instanceof Date ? date : new Date(date);
-  if (Number.isNaN(d.getTime())) return null;
+  let d: Date;
+  if (date instanceof Date) {
+    d = date;
+  } else {
+    d = new Date(date);
+  }
+  if (Number.isNaN(d.getTime())) {
+    return null;
+  }
   try {
     return d.toLocaleString("en-US", { ...VISIT_LABEL_OPTS, timeZone });
   } catch {
@@ -455,12 +552,17 @@ function formatInstantInTz(date: Date | string, timeZone: string): string | null
 }
 
 function formatWallClockLabel(wallClock: string | null | undefined): string | null {
-  if (!wallClock) return null;
-  const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(wallClock)
-    ? `${wallClock}:00Z`
-    : wallClock;
+  if (!wallClock) {
+    return null;
+  }
+  let iso = wallClock;
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(wallClock)) {
+    iso = `${wallClock}:00Z`;
+  }
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
+  if (Number.isNaN(d.getTime())) {
+    return null;
+  }
   return d.toLocaleString("en-US", { ...VISIT_LABEL_OPTS, timeZone: "UTC" });
 }
 

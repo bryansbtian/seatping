@@ -17,7 +17,9 @@ const BusinessHeader = () => {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     const onResize = () => {
-      if (window.innerWidth >= 640) setOpen(false);
+      if (window.innerWidth >= 640) {
+        setOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("resize", onResize);

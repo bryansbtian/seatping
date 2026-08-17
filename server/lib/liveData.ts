@@ -19,10 +19,17 @@ export function legacyKeyOf(
 }
 
 function iso(v: any): string | null {
-  if (!v) return null;
-  if (v instanceof Date) return v.toISOString();
+  if (!v) {
+    return null;
+  }
+  if (v instanceof Date) {
+    return v.toISOString();
+  }
   const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  if (Number.isNaN(d.getTime())) {
+    return null;
+  }
+  return d.toISOString();
 }
 
 
@@ -53,18 +60,30 @@ export function queueEntryToLegacy(
   opts: { position?: number; businessUsername?: string | null } = {},
 ): any {
   const o: any = queueBase(e);
-  if (opts.businessUsername != null) o.businessUsername = opts.businessUsername;
+  if (opts.businessUsername != null) {
+    o.businessUsername = opts.businessUsername;
+  }
 
   if (e.status === "ADMITTED" || e.status === "ARRIVED" || e.status === "NO_SHOW") {
     o.status = "admitted";
     o.admittedAt = iso(e.admittedAt);
-    o.finalStatus =
-      e.finalStatus ??
-      (e.status === "ARRIVED" ? "arrived" : e.status === "NO_SHOW" ? "no_show" : "pending");
+    if (e.finalStatus !== null && e.finalStatus !== undefined) {
+      o.finalStatus = e.finalStatus;
+    } else if (e.status === "ARRIVED") {
+      o.finalStatus = "arrived";
+    } else if (e.status === "NO_SHOW") {
+      o.finalStatus = "no_show";
+    } else {
+      o.finalStatus = "pending";
+    }
     o.confirmedAt = iso(e.arrivedAt);
     o.noShowMarkedAt = iso(e.noShowAt);
   } else if (e.status === "REMOVED" || e.status === "LEFT") {
-    o.status = e.status === "LEFT" ? "left" : "removed";
+    if (e.status === "LEFT") {
+      o.status = "left";
+    } else {
+      o.status = "removed";
+    }
     o.removedAt = iso(e.removedAt);
     o.leftAt = iso(e.leftAt);
   } else if (opts.position != null) {
@@ -105,7 +124,9 @@ export function reconstructQueueArrays(
     );
 
   const stamp = (o: any) => {
-    if (businessUsername != null) o.businessUsername = businessUsername;
+    if (businessUsername != null) {
+      o.businessUsername = businessUsername;
+    }
     return o;
   };
 
@@ -114,13 +135,16 @@ export function reconstructQueueArrays(
   );
 
   const admittedCustomers = admittedRows.map((e) => {
-    const finalStatus =
-      e.finalStatus ??
-      (e.status === "ARRIVED"
-        ? "arrived"
-        : e.status === "NO_SHOW"
-          ? "no_show"
-          : "pending");
+    let finalStatus: string;
+    if (e.finalStatus !== null && e.finalStatus !== undefined) {
+      finalStatus = e.finalStatus;
+    } else if (e.status === "ARRIVED") {
+      finalStatus = "arrived";
+    } else if (e.status === "NO_SHOW") {
+      finalStatus = "no_show";
+    } else {
+      finalStatus = "pending";
+    }
     return stamp({
       ...queueBase(e),
       status: "admitted",
@@ -131,14 +155,20 @@ export function reconstructQueueArrays(
     });
   });
 
-  const removedCustomers = removedRows.map((e) =>
-    stamp({
+  const removedCustomers = removedRows.map((e) => {
+    let status: string;
+    if (e.status === "LEFT") {
+      status = "left";
+    } else {
+      status = "removed";
+    }
+    return stamp({
       ...queueBase(e),
-      status: e.status === "LEFT" ? "left" : "removed",
+      status,
       removedAt: iso(e.removedAt),
       leftAt: iso(e.leftAt),
-    }),
-  );
+    });
+  });
 
   return { queue, admittedCustomers, removedCustomers };
 }
@@ -197,6 +227,8 @@ export function reservationRowToLegacy(
     noShowAt: iso(r.noShowAt),
     reminderEmailSentAt: iso(r.reminderEmailSentAt),
   };
-  if (opts.includeToken) return { ...base, manageToken: r.manageToken ?? null };
+  if (opts.includeToken) {
+    return { ...base, manageToken: r.manageToken ?? null };
+  }
   return base;
 }

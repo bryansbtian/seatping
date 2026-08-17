@@ -30,9 +30,20 @@ export function isBusinessPath(pathname: string): boolean {
 }
 
 export function metaForPath(pathname: string): PageMeta {
-  const base = isBusinessPath(pathname) ? BUSINESS : CUSTOMER;
+  let base: Omit<PageMeta, "url">;
+  if (isBusinessPath(pathname)) {
+    base = BUSINESS;
+  } else {
+    base = CUSTOMER;
+  }
   const clean = pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
-  return { ...base, url: `${SITE_URL}${clean === "/" ? "/" : clean}` };
+  let path: string;
+  if (clean === "/") {
+    path = "/";
+  } else {
+    path = clean;
+  }
+  return { ...base, url: `${SITE_URL}${path}` };
 }
 
 function attr(value: string): string {
@@ -69,7 +80,9 @@ export function renderSeoTags(meta: PageMeta): string {
 const SEO_BLOCK_RE = /<!-- SEO:START -->[\s\S]*?<!-- SEO:END -->/;
 
 export function injectSeo(template: string, pathname: string): string {
-  if (!SEO_BLOCK_RE.test(template)) return template;
+  if (!SEO_BLOCK_RE.test(template)) {
+    return template;
+  }
   const block = `<!-- SEO:START -->\n    ${renderSeoTags(
     metaForPath(pathname),
   )}\n    <!-- SEO:END -->`;

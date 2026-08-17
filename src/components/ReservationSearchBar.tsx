@@ -49,8 +49,16 @@ const PEOPLE_OPTIONS: string[] = [
 ];
 
 function peopleLabel(value: string) {
-  if (value === "large") return "Larger Party";
-  return `${value} ${value === "1" ? "Guest" : "Guests"}`;
+  if (value === "large") {
+    return "Larger Party";
+  }
+  let guestWord: string;
+  if (value === "1") {
+    guestWord = "Guest";
+  } else {
+    guestWord = "Guests";
+  }
+  return `${value} ${guestWord}`;
 }
 
 function localDateStr(d: Date): string {
@@ -77,12 +85,16 @@ const ReservationSearchBar = () => {
     const params = new URLSearchParams();
     params.set("date", localDateStr(date));
     params.set("time", time);
-    if (people !== "large") params.set("partySize", people);
-    navigate(
-      q
-        ? `/search/${encodeURIComponent(q)}?${params.toString()}`
-        : `/search?${params.toString()}`,
-    );
+    if (people !== "large") {
+      params.set("partySize", people);
+    }
+    let searchPath: string;
+    if (q) {
+      searchPath = `/search/${encodeURIComponent(q)}?${params.toString()}`;
+    } else {
+      searchPath = `/search?${params.toString()}`;
+    }
+    navigate(searchPath);
   };
 
   const startOfToday = React.useMemo(() => {
@@ -91,11 +103,14 @@ const ReservationSearchBar = () => {
     return d;
   }, []);
 
-  const dateLabel = isToday(date)
-    ? "Today"
-    : isTomorrow(date)
-      ? "Tomorrow"
-      : format(date, "MMM d");
+  let dateLabel: string;
+  if (isToday(date)) {
+    dateLabel = "Today";
+  } else if (isTomorrow(date)) {
+    dateLabel = "Tomorrow";
+  } else {
+    dateLabel = format(date, "MMM d");
+  }
 
   return (
     <form
@@ -123,7 +138,9 @@ const ReservationSearchBar = () => {
                   mode="single"
                   selected={date}
                   onSelect={(d) => {
-                    if (d) setDate(d);
+                    if (d) {
+                      setDate(d);
+                    }
                     setDateOpen(false);
                   }}
                   disabled={{ before: startOfToday }}

@@ -35,7 +35,9 @@ function chunk(digits: string, groups: number[]): string {
   const parts: string[] = [];
   let i = 0;
   for (const g of groups) {
-    if (i >= digits.length) break;
+    if (i >= digits.length) {
+      break;
+    }
     parts.push(digits.slice(i, i + g));
     i += g;
   }
@@ -60,13 +62,17 @@ export function formatPhone(
     const match = COUNTRY_FORMATS.find((c) => normDigits.startsWith(c.code));
     if (match) {
       const national = stripLeadingZeros(normDigits.slice(match.code.length));
-      if (!national) return `+${match.code}`;
+      if (!national) {
+        return `+${match.code}`;
+      }
       return `+${match.code} ${chunk(national, match.groups)}`;
     }
     return `+${chunkGeneric(normDigits)}`;
   }
 
   const rawDigits = stripLeadingZeros(onlyDigits(rawFallback));
-  if (!rawDigits) return null;
+  if (!rawDigits) {
+    return null;
+  }
   return chunkGeneric(rawDigits);
 }

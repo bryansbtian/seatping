@@ -22,9 +22,16 @@ type SEOProps = {
 };
 
 function absoluteUrl(value: string): string {
-  return value.startsWith("http")
-    ? value
-    : `${SITE_URL}${value.startsWith("/") ? "" : "/"}${value}`;
+  if (value.startsWith("http")) {
+    return value;
+  }
+  let separator: string;
+  if (value.startsWith("/")) {
+    separator = "";
+  } else {
+    separator = "/";
+  }
+  return `${SITE_URL}${separator}${value}`;
 }
 
 function setMeta(attr: "name" | "property", key: string, content: string) {

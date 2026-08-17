@@ -89,9 +89,17 @@ async function getOwnedBusiness(businessId: string, username: string) {
 router.get("/session", (req, res) => {
   const customer = readSession(req, "customer");
   const business = readSession(req, "business");
+  let customerPayload: { name: string | null } | null = null;
+  if (customer) {
+    customerPayload = { name: customer.name };
+  }
+  let businessPayload: { name: string | null } | null = null;
+  if (business) {
+    businessPayload = { name: business.name };
+  }
   return res.json({
-    customer: customer ? { name: customer.name } : null,
-    business: business ? { name: business.name } : null,
+    customer: customerPayload,
+    business: businessPayload,
   });
 });
 
@@ -103,7 +111,9 @@ router.post("/signup", async (req, res) => {
         { name: "signup-ip", key: clientIp(req), windowMs: HOURS(1), max: 5 },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     const parsed = CustomerSignUpSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -171,7 +181,9 @@ router.post("/login", async (req, res) => {
         { name: "login-id", key: loginId, windowMs: MINUTES(15), max: 5 },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     const parsed = LoginSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -185,10 +197,14 @@ router.post("/login", async (req, res) => {
     const user = await prisma.user.findFirst({
       where: { OR: [{ email: emailOrUsername }, { username: emailOrUsername }] },
     });
-    if (!user) return res.status(401).json({ error: "Invalid credentials" });
+    if (!user) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
 
     const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(401).json({ error: "Invalid credentials" });
+    if (!ok) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
 
     const token = signJwt({
       sub: user.id,
@@ -219,18 +235,29 @@ type ActivityDisplay = { imageUrl: string | null; name: string | null };
 async function attachActivityDetails<T extends Record<string, any>>(
   user: T,
 ): Promise<T> {
-  const asArray = (v: unknown) => (Array.isArray(v) ? (v as any[]) : []);
+  const asArray = (v: unknown): any[] => {
+    if (Array.isArray(v)) {
+      return v as any[];
+    }
+    return [];
+  };
   const upcoming = asArray(user.upcomingReservations);
   const past = asArray(user.pastReservations);
   const queue = asArray(user.queueingActivity);
   const all = [...upcoming, ...past, ...queue];
-  if (all.length === 0) return user;
+  if (all.length === 0) {
+    return user;
+  }
 
   const locationIds = new Set<string>();
   const usernames = new Set<string>();
   for (const e of all) {
-    if (e?.locationId) locationIds.add(String(e.locationId));
-    else if (e?.businessUsername) usernames.add(String(e.businessUsername));
+    if (e?.locationId) {
+      locationIds.add(String(e.locationId));
+    }
+    else if (e?.businessUsername) {
+      usernames.add(String(e.businessUsername));
+    }
   }
 
   const imgOf = (loc: any) =>
@@ -262,7 +289,9 @@ async function attachActivityDetails<T extends Record<string, any>>(
         where: { id: { in: bizIds } },
         select: { id: true, name: true },
       });
-      for (const b of bizs) bizNames.set(b.id, b.name);
+      for (const b of bizs) {
+        bizNames.set(b.id, b.name);
+      }
     }
     for (const l of locs) {
       byLocation.set(l.id, {
@@ -278,16 +307,19 @@ async function attachActivityDetails<T extends Record<string, any>>(
       where: { username: { in: [...usernames] } },
       select: { id: true, username: true, name: true },
     });
-    const bizLocs = bizs.length
-      ? await prisma.location.findMany({
-          where: { businessId: { in: bizs.map((b) => b.id) } },
-          orderBy: { createdAt: "asc" },
-          include: { photos: { orderBy: { createdAt: "asc" }, take: 1 } },
-        })
-      : [];
+    let bizLocs: Awaited<ReturnType<typeof prisma.location.findMany>> = [];
+    if (bizs.length) {
+      bizLocs = await prisma.location.findMany({
+        where: { businessId: { in: bizs.map((b) => b.id) } },
+        orderBy: { createdAt: "asc" },
+        include: { photos: { orderBy: { createdAt: "asc" }, take: 1 } },
+      });
+    }
     const firstByBiz = new Map<string, any>();
     for (const l of bizLocs) {
-      if (!firstByBiz.has(l.businessId)) firstByBiz.set(l.businessId, l);
+      if (!firstByBiz.has(l.businessId)) {
+        firstByBiz.set(l.businessId, l);
+      }
     }
     for (const b of bizs) {
       const loc = firstByBiz.get(b.id);
@@ -299,11 +331,15 @@ async function attachActivityDetails<T extends Record<string, any>>(
   }
 
   const withDetails = (e: any) => {
-    const display =
-      (e?.locationId ? byLocation.get(String(e.locationId)) : undefined) ??
-      (e?.businessUsername
-        ? byUsername.get(String(e.businessUsername))
-        : undefined);
+    let display: ActivityDisplay | undefined;
+    if (e?.locationId) {
+      display = byLocation.get(String(e.locationId));
+    }
+    if (display === undefined) {
+      if (e?.businessUsername) {
+        display = byUsername.get(String(e.businessUsername));
+      }
+    }
     return {
       ...e,
       imageUrl: e?.imageUrl ?? display?.imageUrl ?? null,
@@ -337,7 +373,9 @@ router.get("/me", requireCustomer, async (req, res) => {
         createdAt: true,
       },
     });
-    if (!user) return res.status(404).json({ error: "Not found" });
+    if (!user) {
+      return res.status(404).json({ error: "Not found" });
+    }
     return res.json({ user: await attachActivityDetails(user) });
   } catch (err: any) {
     console.error("[auth] customer me error:", err?.message || err);
@@ -361,7 +399,12 @@ router.put("/me", requireCustomer, async (req, res) => {
       select: { email: true, username: true },
     });
     if (dupe) {
-      const field = dupe.email === email ? "Email" : "Username";
+      let field: string;
+      if (dupe.email === email) {
+        field = "Email";
+      } else {
+        field = "Username";
+      }
       return res.status(409).json({ error: `${field} already in use` });
     }
 
@@ -411,7 +454,9 @@ router.post("/me/change-password", requireCustomer, async (req, res) => {
       where: { id: userId },
       select: { id: true, email: true, name: true, password: true },
     });
-    if (!user) return res.status(404).json({ error: "Not found" });
+    if (!user) {
+      return res.status(404).json({ error: "Not found" });
+    }
 
     const ok = await bcrypt.compare(currentPassword, user.password);
     if (!ok) {
@@ -467,15 +512,22 @@ router.post("/me/saved-restaurants", requireCustomer, async (req, res) => {
       where: { id: userId },
       select: { savedRestaurants: true },
     });
-    if (!current) return res.status(404).json({ error: "Not found" });
+    if (!current) {
+      return res.status(404).json({ error: "Not found" });
+    }
 
-    const list = Array.isArray(current.savedRestaurants)
-      ? (current.savedRestaurants as any[])
-      : [];
+    let list: any[] = [];
+    if (Array.isArray(current.savedRestaurants)) {
+      list = current.savedRestaurants as any[];
+    }
 
     if (!list.some((s) => s?.businessUsername === uname)) {
-      const str = (v: unknown) =>
-        typeof v === "string" && v.trim() ? v.trim() : undefined;
+      const str = (v: unknown): string | undefined => {
+        if (typeof v === "string" && v.trim()) {
+          return v.trim();
+        }
+        return undefined;
+      };
       list.unshift({
         id: uname,
         businessUsername: uname,
@@ -514,11 +566,14 @@ router.delete(
         where: { id: userId },
         select: { savedRestaurants: true },
       });
-      if (!current) return res.status(404).json({ error: "Not found" });
+      if (!current) {
+        return res.status(404).json({ error: "Not found" });
+      }
 
-      const list = Array.isArray(current.savedRestaurants)
-        ? (current.savedRestaurants as any[])
-        : [];
+      let list: any[] = [];
+      if (Array.isArray(current.savedRestaurants)) {
+        list = current.savedRestaurants as any[];
+      }
       const next = list.filter((s) => s?.businessUsername !== uname);
 
       const user = await prisma.user.update({
@@ -537,12 +592,16 @@ router.delete(
 const SAVED_OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 
 async function buildSavedLocationEntry(locationId: string) {
-  if (!SAVED_OBJECT_ID_RE.test(locationId)) return null;
+  if (!SAVED_OBJECT_ID_RE.test(locationId)) {
+    return null;
+  }
   const loc = await prisma.location.findUnique({
     where: { id: locationId },
     include: { photos: { orderBy: { createdAt: "asc" }, take: 1 } },
   });
-  if (!loc) return null;
+  if (!loc) {
+    return null;
+  }
   const biz = await prisma.business.findUnique({
     where: { id: loc.businessId },
     select: { name: true, username: true },
@@ -553,14 +612,14 @@ async function buildSavedLocationEntry(locationId: string) {
     _avg: { rating: true },
     _count: { _all: true },
   });
-  const rating =
-    agg._count._all > 0 && typeof agg._avg.rating === "number"
-      ? Math.round(agg._avg.rating * 10) / 10
-      : null;
-  const cuisine =
-    Array.isArray(rp.cuisineTypes) && rp.cuisineTypes.length
-      ? String(rp.cuisineTypes[0])
-      : null;
+  let rating: number | null = null;
+  if (agg._count._all > 0 && typeof agg._avg.rating === "number") {
+    rating = Math.round(agg._avg.rating * 10) / 10;
+  }
+  let cuisine: string | null = null;
+  if (Array.isArray(rp.cuisineTypes) && rp.cuisineTypes.length) {
+    cuisine = String(rp.cuisineTypes[0]);
+  }
   return {
     id: locationId,
     locationId,
@@ -592,9 +651,10 @@ router.get(
         where: { id: userId },
         select: { savedRestaurants: true },
       });
-      const list = Array.isArray(current?.savedRestaurants)
-        ? (current!.savedRestaurants as any[])
-        : [];
+      let list: any[] = [];
+      if (Array.isArray(current?.savedRestaurants)) {
+        list = current!.savedRestaurants as any[];
+      }
       return res.json({ saved: list.some((s) => savedMatches(s, locationId)) });
     } catch (err: any) {
       console.error("[auth] saved-location status error:", err?.message || err);
@@ -615,15 +675,20 @@ router.post("/me/saved-locations", requireCustomer, async (req, res) => {
       where: { id: userId },
       select: { savedRestaurants: true },
     });
-    if (!current) return res.status(404).json({ error: "Not found" });
+    if (!current) {
+      return res.status(404).json({ error: "Not found" });
+    }
 
-    const list = Array.isArray(current.savedRestaurants)
-      ? (current.savedRestaurants as any[])
-      : [];
+    let list: any[] = [];
+    if (Array.isArray(current.savedRestaurants)) {
+      list = current.savedRestaurants as any[];
+    }
 
     if (!list.some((s) => savedMatches(s, locationId))) {
       const entry = await buildSavedLocationEntry(locationId);
-      if (!entry) return res.status(404).json({ error: "Location not found" });
+      if (!entry) {
+        return res.status(404).json({ error: "Location not found" });
+      }
       list.unshift(entry);
     }
 
@@ -650,11 +715,14 @@ router.delete(
         where: { id: userId },
         select: { savedRestaurants: true },
       });
-      if (!current) return res.status(404).json({ error: "Not found" });
+      if (!current) {
+        return res.status(404).json({ error: "Not found" });
+      }
 
-      const list = Array.isArray(current.savedRestaurants)
-        ? (current.savedRestaurants as any[])
-        : [];
+      let list: any[] = [];
+      if (Array.isArray(current.savedRestaurants)) {
+        list = current.savedRestaurants as any[];
+      }
       const next = list.filter((s) => !savedMatches(s, locationId));
 
       const user = await prisma.user.update({
@@ -685,18 +753,23 @@ async function buildCustomerReviewEntry(review: any) {
       restaurantProfile: true,
     },
   });
-  const biz = loc
-    ? await prisma.business.findUnique({
-        where: { id: loc.businessId },
-        select: { name: true, username: true },
-      })
-    : null;
+  let biz: { name: string; username: string } | null = null;
+  if (loc) {
+    biz = await prisma.business.findUnique({
+      where: { id: loc.businessId },
+      select: { name: true, username: true },
+    });
+  }
   const rp = (loc?.restaurantProfile || {}) as any;
+  let reviewRating = 0;
+  if (typeof review.rating === "number") {
+    reviewRating = review.rating;
+  }
   return {
     id: review.id,
     locationId: review.locationId,
     businessUsername: biz?.username ?? null,
-    rating: typeof review.rating === "number" ? review.rating : 0,
+    rating: reviewRating,
     description: review.description ?? null,
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
@@ -719,7 +792,9 @@ router.get("/me/reviews", requireCustomer, async (req, res) => {
     });
     const seen = new Set<string>();
     const deduped = rows.filter((r) => {
-      if (seen.has(r.locationId)) return false;
+      if (seen.has(r.locationId)) {
+        return false;
+      }
       seen.add(r.locationId);
       return true;
     });
@@ -743,7 +818,9 @@ router.patch("/me/reviews/:reviewId", requireCustomer, async (req, res) => {
       where: { id: reviewId, customerId: userId },
       select: { id: true },
     });
-    if (!existing) return res.status(404).json({ error: "Review not found" });
+    if (!existing) {
+      return res.status(404).json({ error: "Review not found" });
+    }
 
     const { rating, description } = req.body || {};
     const data: { rating?: number; description?: string | null } = {};
@@ -763,10 +840,11 @@ router.patch("/me/reviews/:reviewId", requireCustomer, async (req, res) => {
       if (description !== null && typeof description !== "string") {
         return res.status(400).json({ error: "description must be a string" });
       }
-      data.description =
-        typeof description === "string" && description.trim()
-          ? description.trim()
-          : null;
+      if (typeof description === "string" && description.trim()) {
+        data.description = description.trim();
+      } else {
+        data.description = null;
+      }
     }
 
     if (Object.keys(data).length === 0) {
@@ -793,7 +871,9 @@ router.delete("/me/reviews/:reviewId", requireCustomer, async (req, res) => {
       where: { id: reviewId, customerId: userId },
       select: { id: true },
     });
-    if (!existing) return res.status(404).json({ error: "Review not found" });
+    if (!existing) {
+      return res.status(404).json({ error: "Review not found" });
+    }
 
     await prisma.review.delete({ where: { id: reviewId } });
     return res.json({ success: true });
@@ -818,30 +898,39 @@ router.post("/forgot-password", async (req, res) => {
         { name: "forgot-ip", key: clientIp(req), windowMs: HOURS(1), max: 10 },
       ])
     )
-      return;
-    const accountType = type === "business" ? "business" : "customer";
+      {
+        return;
+      }
+    let accountType: string;
+    if (type === "business") {
+      accountType = "business";
+    } else {
+      accountType = "customer";
+    }
 
-    const business =
-      accountType === "business"
-        ? await prisma.business.findUnique({
-            where: { email: normalized },
-            select: { id: true, email: true },
-          })
-        : null;
-    const user =
-      accountType === "customer"
-        ? await prisma.user.findUnique({
-            where: { email: normalized },
-            select: { id: true, email: true },
-          })
-        : null;
+    let business: { id: string; email: string } | null = null;
+    if (accountType === "business") {
+      business = await prisma.business.findUnique({
+        where: { email: normalized },
+        select: { id: true, email: true },
+      });
+    }
+    let user: { id: string; email: string } | null = null;
+    if (accountType === "customer") {
+      user = await prisma.user.findUnique({
+        where: { email: normalized },
+        select: { id: true, email: true },
+      });
+    }
 
     const genericOk = {
       success: true,
       message:
         "If an account with that email exists, a password reset link has been sent.",
     };
-    if (!business && !user) return res.json(genericOk);
+    if (!business && !user) {
+      return res.json(genericOk);
+    }
 
     const resetToken = crypto.randomBytes(32).toString("hex");
     const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
@@ -865,18 +954,31 @@ router.post("/forgot-password", async (req, res) => {
       "http://localhost:8080",
       "http://localhost:5173",
     ].filter(Boolean) as string[];
-    const reqOrigin =
-      typeof req.headers.origin === "string" ? req.headers.origin : "";
-    const baseUrl = allowedOrigins.includes(reqOrigin) ? reqOrigin : undefined;
+    let reqOrigin = "";
+    if (typeof req.headers.origin === "string") {
+      reqOrigin = req.headers.origin;
+    }
+    let baseUrl: string | undefined;
+    if (allowedOrigins.includes(reqOrigin)) {
+      baseUrl = reqOrigin;
+    }
 
     const targetEmail = (business?.email || user?.email) as string;
+    let resetAccountType: "business" | "customer";
+    if (business) {
+      resetAccountType = "business";
+    } else {
+      resetAccountType = "customer";
+    }
     const emailSent = await sendPasswordResetEmail(
       targetEmail,
       resetToken,
-      business ? "business" : "customer",
+      resetAccountType,
       baseUrl,
     );
-    if (!emailSent) return res.status(500).json({ error: "Failed to send email" });
+    if (!emailSent) {
+      return res.status(500).json({ error: "Failed to send email" });
+    }
 
     return res.json(genericOk);
   } catch (err: any) {
@@ -892,7 +994,9 @@ router.post("/reset-password", async (req, res) => {
         { name: "reset-ip", key: clientIp(req), windowMs: MINUTES(15), max: 10 },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     const { token, newPassword } = req.body || {};
     if (!token || !newPassword) {
@@ -953,11 +1057,15 @@ router.get("/exists", async (req, res) => {
         { name: "exists-ip", key: clientIp(req), windowMs: MINUTES(10), max: 30 },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     const username = String(req.query.username || "").trim();
     if (!username)
-      return res.status(400).json({ error: "username is required" });
+      {
+        return res.status(400).json({ error: "username is required" });
+      }
     const business = await prisma.business.findUnique({ where: { username } });
     return res.json({ exists: Boolean(business) });
   } catch (err: any) {
@@ -973,7 +1081,9 @@ router.post("/business/signup", async (req, res) => {
         { name: "biz-signup-ip", key: clientIp(req), windowMs: HOURS(1), max: 5 },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     const parsed = BusinessSignUpSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -1017,11 +1127,15 @@ router.post("/business/signup", async (req, res) => {
       username: business.username,
     });
 
+    let onboardingTrialDays: number | undefined;
+    if (business.trial) {
+      onboardingTrialDays = business.trialDurationDays;
+    }
     sendBusinessOnboardingEmail(
       business.email,
       business.name,
       business.username,
-      business.trial ? business.trialDurationDays : undefined
+      onboardingTrialDays
     ).catch((err) =>
       console.error("[auth] business onboarding email error:", err)
     );
@@ -1050,7 +1164,9 @@ router.post("/business/login", async (req, res) => {
         { name: "biz-login-id", key: loginId, windowMs: MINUTES(15), max: 5 },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     const parsed = LoginSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -1064,10 +1180,14 @@ router.post("/business/login", async (req, res) => {
     const business = await prisma.business.findFirst({
       where: { OR: [{ email: emailOrUsername }, { username: emailOrUsername }] },
     });
-    if (!business) return res.status(401).json({ error: "Invalid credentials" });
+    if (!business) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
 
     const ok = await bcrypt.compare(password, business.password);
-    if (!ok) return res.status(401).json({ error: "Invalid credentials" });
+    if (!ok) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
 
     const token = signJwt({
       sub: business.id,
@@ -1150,7 +1270,9 @@ router.get("/business/me", requireBusiness, async (req, res) => {
     await checkAndRefillMonthlyCredits(businessId);
 
     const me = await assembleBusinessMe(businessId);
-    if (!me) return res.status(404).json({ error: "Not found" });
+    if (!me) {
+      return res.status(404).json({ error: "Not found" });
+    }
     return res.json({ user: me });
   } catch (err: any) {
     console.error("[auth] business me error:", err?.message || err);
@@ -1168,7 +1290,12 @@ router.put("/business/me", requireBusiness, async (req, res) => {
 
     const keepAddresses = new Set(
       locations
-        .map((l: any) => (typeof l?.address === "string" ? l.address : null))
+        .map((l: any) => {
+          if (typeof l?.address === "string") {
+            return l.address;
+          }
+          return null;
+        })
         .filter(Boolean)
     );
 
@@ -1216,7 +1343,9 @@ router.get("/business/language", requireBusiness, async (req, res) => {
       where: { id: businessId },
       select: { language: true },
     });
-    if (!business) return res.status(404).json({ error: "Not found" });
+    if (!business) {
+      return res.status(404).json({ error: "Not found" });
+    }
     return res.json({ language: (business.language as string) || "en" });
   } catch (err: any) {
     console.error("[auth] business get language error:", err?.message || err);
@@ -1269,7 +1398,9 @@ router.post("/business/locations", requireBusiness, async (req, res) => {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
     });
-    if (!business) return res.status(404).json({ error: "Not found" });
+    if (!business) {
+      return res.status(404).json({ error: "Not found" });
+    }
 
     const count = await prisma.location.count({ where: { businessId } });
     const maxLocations = (business as any).maxLocations ?? 1;
@@ -1279,17 +1410,50 @@ router.post("/business/locations", requireBusiness, async (req, res) => {
         .json({ error: `Max locations reached (${maxLocations})` });
     }
 
+    let displayNameValue: string | undefined;
+    if (typeof displayName === "string") {
+      displayNameValue = displayName;
+    }
+    let areaValue: string | undefined;
+    if (typeof area === "string") {
+      areaValue = area;
+    }
+    let cityValue: string | undefined;
+    if (typeof city === "string") {
+      cityValue = city;
+    }
+    let countryValue: string | undefined;
+    if (typeof country === "string") {
+      countryValue = country;
+    }
+    let latitudeValue: number | null = null;
+    if (typeof latitude === "number") {
+      latitudeValue = latitude;
+    }
+    let longitudeValue: number | null = null;
+    if (typeof longitude === "number") {
+      longitudeValue = longitude;
+    }
+    let googlePlaceIdValue: string | undefined;
+    if (typeof googlePlaceId === "string") {
+      googlePlaceIdValue = googlePlaceId;
+    }
+    let googleMapsUrlValue: string | undefined;
+    if (typeof googleMapsUrl === "string") {
+      googleMapsUrlValue = googleMapsUrl;
+    }
+
     await prisma.location.create({
       data: buildLocationData(business, {
         address: address.trim(),
-        displayName: typeof displayName === "string" ? displayName : undefined,
-        area: typeof area === "string" ? area : undefined,
-        city: typeof city === "string" ? city : undefined,
-        country: typeof country === "string" ? country : undefined,
-        latitude: typeof latitude === "number" ? latitude : null,
-        longitude: typeof longitude === "number" ? longitude : null,
-        googlePlaceId: typeof googlePlaceId === "string" ? googlePlaceId : undefined,
-        googleMapsUrl: typeof googleMapsUrl === "string" ? googleMapsUrl : undefined,
+        displayName: displayNameValue,
+        area: areaValue,
+        city: cityValue,
+        country: countryValue,
+        latitude: latitudeValue,
+        longitude: longitudeValue,
+        googlePlaceId: googlePlaceIdValue,
+        googleMapsUrl: googleMapsUrlValue,
       }),
     });
 
@@ -1450,12 +1614,23 @@ router.patch(
         no_show: "noShowAt",
       };
 
+      const timestampKey = timestampField[status];
+      let statusTimestamp: {
+        cancelledAt?: Date;
+        arrivedAt?: Date;
+        completedAt?: Date;
+        noShowAt?: Date;
+      } = {};
+      if (timestampKey) {
+        statusTimestamp = { [timestampKey]: now };
+      }
+
       const claimed = await withWriteRetry(() =>
         prisma.reservation.updateMany({
           where: { id: existing.id, status: existing.status },
           data: {
             status: newEnum,
-            ...(timestampField[status] ? { [timestampField[status]]: now } : {}),
+            ...statusTimestamp,
           },
         }),
       );
@@ -1502,13 +1677,17 @@ router.get("/business/:username/addresses", async (req, res) => {
   try {
     const username = String(req.params.username || "").trim();
     if (!username)
-      return res.status(400).json({ error: "username is required" });
+      {
+        return res.status(400).json({ error: "username is required" });
+      }
 
     const business = await prisma.business.findUnique({
       where: { username },
       select: { id: true, name: true },
     });
-    if (!business) return res.status(404).json({ error: "Business not found" });
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
 
     const locations = await prisma.location.findMany({
       where: { businessId: business.id },
@@ -1567,7 +1746,9 @@ router.post("/business/:username/queue", async (req, res) => {
   try {
     const username = String(req.params.username || "").trim();
     if (!username)
-      return res.status(400).json({ error: "username is required" });
+      {
+        return res.status(400).json({ error: "username is required" });
+      }
 
     const {
       locationId,
@@ -1615,32 +1796,43 @@ router.post("/business/:username/queue", async (req, res) => {
     const targetContact = String(phoneNumber || email || "")
       .toLowerCase()
       .trim();
+    let queueJoinTargetKey: string | null = null;
+    if (targetLoc && targetContact) {
+      queueJoinTargetKey = `${targetLoc}:${targetContact}`;
+    }
     if (
       await limitGuard(req, res, [
         { name: "queue-join-ip", key: clientIp(req), windowMs: HOURS(1), max: 60 },
         {
           name: "queue-join-target",
-          key: targetLoc && targetContact ? `${targetLoc}:${targetContact}` : null,
+          key: queueJoinTargetKey,
           windowMs: MINUTES(10),
           max: 3,
         },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     const business = await prisma.business.findUnique({
       where: { username },
       select: { id: true, name: true },
     });
-    if (!business) return res.status(404).json({ error: "Business not found" });
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
 
-    const location = locationId
-      ? await prisma.location.findFirst({
-          where: { id: String(locationId), businessId: business.id },
-        })
-      : await prisma.location.findFirst({
-          where: { businessId: business.id, address },
-        });
+    let location;
+    if (locationId) {
+      location = await prisma.location.findFirst({
+        where: { id: String(locationId), businessId: business.id },
+      });
+    } else {
+      location = await prisma.location.findFirst({
+        where: { businessId: business.id, address },
+      });
+    }
     if (!location) {
       return res.status(404).json({
         error: "This queue link is invalid or no longer available.",
@@ -1668,13 +1860,17 @@ router.post("/business/:username/queue", async (req, res) => {
       });
     }
 
+    const existingContactWhere: { email?: string; phone?: string } = {};
+    if (notificationMethod === "email") {
+      existingContactWhere.email = String(email);
+    } else {
+      existingContactWhere.phone = String(phoneNumber);
+    }
     const existingWaiting = await prisma.queueEntry.findFirst({
       where: {
         locationId: location.id,
         status: "WAITING",
-        ...(notificationMethod === "email"
-          ? { email: String(email) }
-          : { phone: String(phoneNumber) }),
+        ...existingContactWhere,
       },
       select: { id: true },
     });
@@ -1686,8 +1882,12 @@ router.post("/business/:username/queue", async (req, res) => {
       });
     }
 
-    const capRecipient =
-      notificationMethod === "email" ? email : phoneNumber;
+    let capRecipient;
+    if (notificationMethod === "email") {
+      capRecipient = email;
+    } else {
+      capRecipient = phoneNumber;
+    }
     const withinDailyCap = await canNotifyRecipient(
       notificationMethod,
       capRecipient,
@@ -1722,8 +1922,10 @@ router.post("/business/:username/queue", async (req, res) => {
     const queueToken = crypto.randomBytes(16).toString("hex");
 
     const queueSession = readSession(req);
-    const queueCustomerId =
-      queueSession?.accountType === "customer" ? queueSession.sub : null;
+    let queueCustomerId: string | null = null;
+    if (queueSession?.accountType === "customer") {
+      queueCustomerId = queueSession.sub;
+    }
 
     const joinedAt = new Date();
 
@@ -1828,7 +2030,10 @@ function admittedHoldInfo(admittedAt: string | null | undefined): {
   turnExpiresAt: string | null;
   expired: boolean;
 } {
-  const ms = admittedAt ? new Date(admittedAt).getTime() : NaN;
+  let ms = NaN;
+  if (admittedAt) {
+    ms = new Date(admittedAt).getTime();
+  }
   if (!admittedAt || Number.isNaN(ms)) {
     return { admittedAt: admittedAt || null, turnExpiresAt: null, expired: false };
   }
@@ -1852,7 +2057,9 @@ router.get("/business/:username/queue/token/:queueToken/status", async (req, res
       where: { username },
       select: { id: true, name: true },
     });
-    if (!business) return res.status(404).json({ error: "Business not found" });
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
 
     const entry = await prisma.queueEntry.findUnique({ where: { queueToken } });
     if (!entry || entry.businessId !== business.id) {
@@ -1912,7 +2119,15 @@ router.get("/business/:username/queue/token/:queueToken/status", async (req, res
       });
     }
     if (entry.status === "ADMITTED") {
-      const hold = admittedHoldInfo(entry.admittedAt ? entry.admittedAt.toISOString() : null);
+      let admittedAtIso: string | null = null;
+      if (entry.admittedAt) {
+        admittedAtIso = entry.admittedAt.toISOString();
+      }
+      const hold = admittedHoldInfo(admittedAtIso);
+      let holdMessage = "Customer has been admitted";
+      if (hold.expired) {
+        holdMessage = "Hold window has expired";
+      }
       return res.json({
         admitted: true,
         removed: false,
@@ -1922,21 +2137,24 @@ router.get("/business/:username/queue/token/:queueToken/status", async (req, res
         customer: queueEntryToLegacy(entry, { businessUsername: username }),
         address,
         businessName: business.name,
-        message: hold.expired ? "Hold window has expired" : "Customer has been admitted",
+        message: holdMessage,
       });
     }
 
+    let removedStatus = "removed";
+    let removedMessage = "Customer has been removed from queue";
+    if (entry.status === "LEFT") {
+      removedStatus = "left";
+      removedMessage = "Customer has left the queue";
+    }
     return res.json({
       admitted: false,
       removed: true,
-      status: entry.status === "LEFT" ? "left" : "removed",
+      status: removedStatus,
       customer: queueEntryToLegacy(entry, { businessUsername: username }),
       address,
       businessName: business.name,
-      message:
-        entry.status === "LEFT"
-          ? "Customer has left the queue"
-          : "Customer has been removed from queue",
+      message: removedMessage,
     });
   } catch (err: any) {
     console.error("[auth] check customer status by token error:", err?.message || err);
@@ -1960,7 +2178,9 @@ router.get(
         where: { username },
         select: { id: true },
       });
-      if (!business) return res.status(404).json({ error: "Business not found" });
+      if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+      }
 
       const entry = await prisma.queueEntry.findUnique({
         where: { queueToken },
@@ -1973,7 +2193,9 @@ router.get(
         if (locationRow) {
           const location = await augmentLocationWithLiveLists(locationRow);
           const eta = etaForToken(location, queueToken);
-          if (eta) return res.json({ eta });
+          if (eta) {
+            return res.json({ eta });
+          }
         }
       }
 
@@ -2021,7 +2243,9 @@ router.get("/business/:username/queue/:customerId/status", async (req, res) => {
       where: { username },
       select: { id: true, name: true },
     });
-    if (!business) return res.status(404).json({ error: "Business not found" });
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
 
     const matches = await prisma.queueEntry.findMany({
       where: { businessId: business.id, legacyKey: customerId },
@@ -2074,7 +2298,15 @@ router.get("/business/:username/queue/:customerId/status", async (req, res) => {
       });
     }
     if (entry.status === "ADMITTED") {
-      const hold = admittedHoldInfo(entry.admittedAt ? entry.admittedAt.toISOString() : null);
+      let admittedAtIso: string | null = null;
+      if (entry.admittedAt) {
+        admittedAtIso = entry.admittedAt.toISOString();
+      }
+      const hold = admittedHoldInfo(admittedAtIso);
+      let holdMessage = "Customer has been admitted";
+      if (hold.expired) {
+        holdMessage = "Hold window has expired";
+      }
       return res.json({
         admitted: true,
         removed: false,
@@ -2082,18 +2314,21 @@ router.get("/business/:username/queue/:customerId/status", async (req, res) => {
         admittedAt: hold.admittedAt,
         turnExpiresAt: hold.turnExpiresAt,
         customer: queueEntryToLegacy(entry),
-        message: hold.expired ? "Hold window has expired" : "Customer has been admitted",
+        message: holdMessage,
       });
     }
 
+    let removedStatus = "removed";
+    let removedMessage = "Customer has been removed from queue";
+    if (entry.status === "LEFT") {
+      removedStatus = "left";
+      removedMessage = "Customer has left the queue";
+    }
     return res.json({
       admitted: false,
       removed: true,
-      status: entry.status === "LEFT" ? "left" : "removed",
-      message:
-        entry.status === "LEFT"
-          ? "Customer has left the queue"
-          : "Customer has been removed from queue",
+      status: removedStatus,
+      message: removedMessage,
     });
   } catch (err: any) {
     console.error("[auth] check customer status error:", err?.message || err);
@@ -2382,7 +2617,9 @@ router.post("/business/:username/queue/:customerId/leave", async (req, res) => {
       where: { username },
       select: { id: true, name: true },
     });
-    if (!business) return res.status(404).json({ error: "Business not found" });
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
 
     const entry = await prisma.queueEntry.findFirst({
       where: { businessId: business.id, legacyKey: customerId, status: "WAITING" },
@@ -2440,7 +2677,9 @@ router.post("/test-email", requireAdmin, async (req, res) => {
       </div>
     `;
     const emailSent = await sendEmail({ to: email, subject: "SeatPing Email Test", html: testHtml });
-    if (emailSent) return res.json({ success: true, message: "Test email sent successfully" });
+    if (emailSent) {
+      return res.json({ success: true, message: "Test email sent successfully" });
+    }
     return res.status(500).json({ error: "Failed to send test email" });
   } catch (err: any) {
     console.error("[auth] test email error:", err?.message || err);

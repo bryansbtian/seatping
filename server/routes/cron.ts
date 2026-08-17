@@ -8,13 +8,17 @@ const router = Router();
 
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
+  if (!secret) {
+    return false;
+  }
   const header = req.header("authorization") || "";
   return header === `Bearer ${secret}`;
 }
 
 router.all("/reservation-reminders", async (req: Request, res: Response) => {
-  if (!authorized(req)) return res.status(401).json({ error: "Unauthorized" });
+  if (!authorized(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
   try {
     await runReservationReminderSweep();
     return res.json({ ok: true });
@@ -25,7 +29,9 @@ router.all("/reservation-reminders", async (req: Request, res: Response) => {
 });
 
 router.all("/credit-refill", async (req: Request, res: Response) => {
-  if (!authorized(req)) return res.status(401).json({ error: "Unauthorized" });
+  if (!authorized(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
   try {
     await runDailyCreditRefillSweep();
     return res.json({ ok: true });
@@ -36,7 +42,9 @@ router.all("/credit-refill", async (req: Request, res: Response) => {
 });
 
 router.all("/campaigns", async (req: Request, res: Response) => {
-  if (!authorized(req)) return res.status(401).json({ error: "Unauthorized" });
+  if (!authorized(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
   try {
     const result = await runDueCampaignsSweep();
     return res.json({ ok: true, ...result });

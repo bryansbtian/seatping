@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,9 +66,13 @@ const STATUS_FILTERS: { key: string; label: string }[] = [
 ];
 
 function fmtDate(value: string | null): string {
-  if (!value) return "--";
+  if (!value) {
+    return "--";
+  }
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "--";
+  if (Number.isNaN(d.getTime())) {
+    return "--";
+  }
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
@@ -89,8 +93,12 @@ const CampaignTemplatesAdmin = () => {
   const fetchTemplates = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams();
-    if (status !== "ALL") params.set("status", status);
-    if (debounced) params.set("search", debounced);
+    if (status !== "ALL") {
+      params.set("status", status);
+    }
+    if (debounced) {
+      params.set("search", debounced);
+    }
     api(`/admin/campaign-templates?${params.toString()}`)
       .then((d) => {
         setTemplates(d?.templates ?? []);
@@ -104,6 +112,67 @@ const CampaignTemplatesAdmin = () => {
     fetchTemplates();
   }, [fetchTemplates]);
 
+  let refreshIconClass: string;
+  if (loading) {
+    refreshIconClass = "animate-spin";
+  } else {
+    refreshIconClass = "";
+  }
+
+  let templatesContent: ReactNode;
+  if (loading) {
+    templatesContent = (
+      <div className="py-10 text-center text-sm text-slate-400">Loading...</div>
+    );
+  } else if (templates.length === 0) {
+    templatesContent = (
+      <div className="py-12 text-center">
+        <Inbox className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+        <p className="text-sm text-slate-500">No custom templates found.</p>
+      </div>
+    );
+  } else {
+    templatesContent = (
+      <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden">
+        {templates.map((t) => {
+          let purposeSuffix: string;
+          if (t.purpose) {
+            purposeSuffix = ` · ${t.purpose}`;
+          } else {
+            purposeSuffix = "";
+          }
+          let submittedLabel: string;
+          if (t.submittedAt) {
+            submittedLabel = `Submitted ${fmtDate(t.submittedAt)}`;
+          } else {
+            submittedLabel = fmtDate(t.createdAt);
+          }
+          return (
+            <button
+              key={t.id}
+              onClick={() => setSelected(t)}
+              className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between gap-3"
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-slate-800 truncate">{t.name}</span>
+                  <TemplateStatusBadge status={t.approvalStatus} />
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5 truncate">
+                  {t.business?.name || t.businessUsername || "Unknown business"}
+                  {purposeSuffix}
+                </div>
+              </div>
+              <span className="text-xs text-slate-400 shrink-0">
+                {submittedLabel}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -114,7 +183,7 @@ const CampaignTemplatesAdmin = () => {
             <CardDescription>Review and approve business-submitted custom templates.</CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={fetchTemplates} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 mr-1.5 ${refreshIconClass}`} />
             Refresh
           </Button>
         </div>
@@ -122,20 +191,30 @@ const CampaignTemplatesAdmin = () => {
       <CardContent className="space-y-4">
         {}
         <div className="flex flex-wrap items-center gap-2">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setStatus(f.key)}
-              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                status === f.key
-                  ? "border-indigo-300 bg-indigo-100 text-indigo-700"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              {f.label}
-              {f.key !== "ALL" && counts[f.key] ? ` (${counts[f.key]})` : ""}
-            </button>
-          ))}
+          {STATUS_FILTERS.map((f) => {
+            let filterButtonClass: string;
+            if (status === f.key) {
+              filterButtonClass = "border-indigo-300 bg-indigo-100 text-indigo-700";
+            } else {
+              filterButtonClass = "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+            }
+            let filterCountLabel: string;
+            if (f.key !== "ALL" && counts[f.key]) {
+              filterCountLabel = ` (${counts[f.key]})`;
+            } else {
+              filterCountLabel = "";
+            }
+            return (
+              <button
+                key={f.key}
+                onClick={() => setStatus(f.key)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${filterButtonClass}`}
+              >
+                {f.label}
+                {filterCountLabel}
+              </button>
+            );
+          })}
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -148,38 +227,7 @@ const CampaignTemplatesAdmin = () => {
         </div>
 
         {}
-        {loading ? (
-          <div className="py-10 text-center text-sm text-slate-400">Loading...</div>
-        ) : templates.length === 0 ? (
-          <div className="py-12 text-center">
-            <Inbox className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm text-slate-500">No custom templates found.</p>
-          </div>
-        ) : (
-          <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden">
-            {templates.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setSelected(t)}
-                className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between gap-3"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-slate-800 truncate">{t.name}</span>
-                    <TemplateStatusBadge status={t.approvalStatus} />
-                  </div>
-                  <div className="text-xs text-slate-500 mt-0.5 truncate">
-                    {t.business?.name || t.businessUsername || "Unknown business"}
-                    {t.purpose ? ` · ${t.purpose}` : ""}
-                  </div>
-                </div>
-                <span className="text-xs text-slate-400 shrink-0">
-                  {t.submittedAt ? `Submitted ${fmtDate(t.submittedAt)}` : fmtDate(t.createdAt)}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+        {templatesContent}
       </CardContent>
 
       <ReviewDialog
@@ -212,14 +260,18 @@ function ReviewDialog({
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!template) return;
+    if (!template) {
+      return;
+    }
     setWhatsappMetaStatus(template.whatsappMetaStatus ?? "");
     setWhatsappProviderTemplateName(template.whatsappProviderTemplateName ?? "");
     setRejectionReason("");
     setRejectOpen(false);
   }, [template]);
 
-  if (!template) return null;
+  if (!template) {
+    return null;
+  }
 
   async function copyText(text: string, label: string) {
     try {
@@ -268,6 +320,38 @@ function ReviewDialog({
     }
   }
 
+  let templateSlugContent: ReactNode;
+  if (template.slug) {
+    templateSlugContent = (
+      <button
+        type="button"
+        onClick={() => copyText(template.slug!, "Username")}
+        title="Click to copy username"
+        className="text-sm font-medium text-slate-800 flex-1 min-w-0 break-words text-left hover:text-indigo-700 cursor-pointer"
+      >
+        {template.slug}
+      </button>
+    );
+  } else {
+    templateSlugContent = (
+      <span className="text-sm font-medium text-slate-800 flex-1 min-w-0 break-words">--</span>
+    );
+  }
+
+  let businessUsernameSuffix: string;
+  if (template.businessUsername) {
+    businessUsernameSuffix = ` (${template.businessUsername})`;
+  } else {
+    businessUsernameSuffix = "";
+  }
+
+  let ctaUrlSuffix: string;
+  if (template.ctaUrl) {
+    ctaUrlSuffix = ` → ${template.ctaUrl}`;
+  } else {
+    ctaUrlSuffix = "";
+  }
+
   return (
     <Dialog open={!!template} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
@@ -289,18 +373,7 @@ function ReviewDialog({
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-indigo-500 w-32 shrink-0">Template Username</span>
-            {template.slug ? (
-              <button
-                type="button"
-                onClick={() => copyText(template.slug!, "Username")}
-                title="Click to copy username"
-                className="text-sm font-medium text-slate-800 flex-1 min-w-0 break-words text-left hover:text-indigo-700 cursor-pointer"
-              >
-                {template.slug}
-              </button>
-            ) : (
-              <span className="text-sm font-medium text-slate-800 flex-1 min-w-0 break-words">--</span>
-            )}
+            {templateSlugContent}
           </div>
         </div>
 
@@ -308,7 +381,7 @@ function ReviewDialog({
         <div className="space-y-3">
           <h4 className="text-sm font-semibold text-slate-800">Submitted Content</h4>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2 text-sm">
-            <Row label="Business" value={`${template.business?.name ?? template.businessUsername ?? "--"}${template.businessUsername ? ` (${template.businessUsername})` : ""}`} />
+            <Row label="Business" value={`${template.business?.name ?? template.businessUsername ?? "--"}${businessUsernameSuffix}`} />
             {template.locationId && <Row label="Location ID" value={template.locationId} />}
             {template.purpose && <Row label="Campaign Goal" value={template.purpose} />}
             <div>
@@ -324,7 +397,7 @@ function ReviewDialog({
             </div>
             {template.offerDetails && <Row label="Offer" value={template.offerDetails} />}
             {(template.ctaText || template.ctaUrl) && (
-              <Row label="CTA" value={`${template.ctaText ?? ""}${template.ctaUrl ? ` → ${template.ctaUrl}` : ""}`} />
+              <Row label="CTA" value={`${template.ctaText ?? ""}${ctaUrlSuffix}`} />
             )}
             {template.variables.length > 0 && (
               <div className="flex gap-2">

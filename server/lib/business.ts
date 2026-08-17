@@ -60,6 +60,24 @@ export function serializePhoto(p: any) {
 
 export function serializeLocation(loc: any, live?: LocationLiveLists) {
   const lists = live ?? EMPTY_LIVE;
+
+  let latitude: number | null = null;
+  if (typeof loc.latitude === "number") {
+    latitude = loc.latitude;
+  }
+  let longitude: number | null = null;
+  if (typeof loc.longitude === "number") {
+    longitude = loc.longitude;
+  }
+  let credits = 0;
+  if (typeof loc.credits === "number") {
+    credits = loc.credits;
+  }
+  let photos: any[] = [];
+  if (Array.isArray(loc.photos)) {
+    photos = loc.photos.map(serializePhoto);
+  }
+
   return {
     id: loc.id,
     name: loc.name ?? null,
@@ -68,14 +86,14 @@ export function serializeLocation(loc: any, live?: LocationLiveLists) {
     area: loc.area ?? null,
     city: loc.city ?? null,
     country: loc.country ?? null,
-    latitude: typeof loc.latitude === "number" ? loc.latitude : null,
-    longitude: typeof loc.longitude === "number" ? loc.longitude : null,
+    latitude,
+    longitude,
     googlePlaceId: loc.googlePlaceId ?? null,
     googleMapsUrl: loc.googleMapsUrl ?? null,
     queue: lists.queue,
     admittedCustomers: lists.admittedCustomers,
     removedCustomers: lists.removedCustomers,
-    credits: typeof loc.credits === "number" ? loc.credits : 0,
+    credits,
     queueEnabled: loc.queueEnabled ?? true,
     reservationsEnabled: loc.reservationsEnabled ?? true,
     reservationSettings: loc.reservationSettings ?? {},
@@ -83,7 +101,7 @@ export function serializeLocation(loc: any, live?: LocationLiveLists) {
     restaurantProfile: loc.restaurantProfile ?? {},
     bannerImageUrl: loc.bannerImageUrl ?? null,
     bannerImagePublicId: loc.bannerImagePublicId ?? null,
-    photos: Array.isArray(loc.photos) ? loc.photos.map(serializePhoto) : [],
+    photos,
   };
 }
 
@@ -106,7 +124,9 @@ export async function assembleBusinessMe(businessId: string) {
       createdAt: true,
     },
   });
-  if (!business) return null;
+  if (!business) {
+    return null;
+  }
 
   const language = (business as any).language ?? "en";
 
@@ -163,8 +183,14 @@ function stampGuestBadge(
   map: Map<string, GuestBadge>,
   kind: "queue" | "reservation",
 ): any {
+  let phone: any;
+  if (kind === "queue") {
+    phone = item.phoneNumber;
+  } else {
+    phone = item.phone;
+  }
   const badge = badgeForContact(map, {
-    phone: kind === "queue" ? item.phoneNumber : item.phone,
+    phone,
     countryCode: item.countryCode,
     email: item.email,
   });

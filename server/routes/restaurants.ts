@@ -8,13 +8,21 @@ const router = Router();
 const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 
 function serializeReview(r: any) {
+  let rating = 0;
+  if (typeof r.rating === "number") {
+    rating = r.rating;
+  }
+  let partySize: number | null = null;
+  if (typeof r.partySize === "number") {
+    partySize = r.partySize;
+  }
   return {
     id: r.id,
     customerName: r.customerName ?? null,
     customerUsername: r.customerUsername ?? null,
-    rating: typeof r.rating === "number" ? r.rating : 0,
+    rating,
     description: r.description ?? null,
-    partySize: typeof r.partySize === "number" ? r.partySize : null,
+    partySize,
     serviceType: r.serviceType ?? null,
     createdAt: r.createdAt,
     businessReply: r.businessReply ?? null,
@@ -24,21 +32,41 @@ function serializeReview(r: any) {
 }
 
 function publicProfile(rp: any) {
-  const safe = rp && typeof rp === "object" ? rp : {};
-  const details = safe.details && typeof safe.details === "object" ? safe.details : {};
+  let safe: any = {};
+  if (rp && typeof rp === "object") {
+    safe = rp;
+  }
+  let details: any = {};
+  if (safe.details && typeof safe.details === "object") {
+    details = safe.details;
+  }
+  let cuisineTypes: any[] = [];
+  if (Array.isArray(safe.cuisineTypes)) {
+    cuisineTypes = safe.cuisineTypes;
+  }
+  let menu: any[] = [];
+  if (Array.isArray(safe.menu)) {
+    menu = safe.menu;
+  }
+  let menuUrl: string | null = null;
+  if (typeof safe.menuUrl === "string" && safe.menuUrl) {
+    menuUrl = safe.menuUrl;
+  }
+  let openingHours: any = null;
+  if (safe.openingHours && typeof safe.openingHours === "object") {
+    openingHours = safe.openingHours;
+  }
   return {
     displayName: safe.displayName ?? null,
     shortAddress: safe.shortAddress ?? null,
     tagline: safe.tagline ?? null,
     description: safe.description ?? null,
-    cuisineTypes: Array.isArray(safe.cuisineTypes) ? safe.cuisineTypes : [],
+    cuisineTypes,
     priceRange: safe.priceRange ?? null,
     currency: safe.currency ?? null,
-    menu: Array.isArray(safe.menu) ? safe.menu : [],
-    menuUrl: typeof safe.menuUrl === "string" && safe.menuUrl ? safe.menuUrl : null,
-    openingHours: safe.openingHours && typeof safe.openingHours === "object"
-      ? safe.openingHours
-      : null,
+    menu,
+    menuUrl,
+    openingHours,
     details: {
       address: details.address ?? null,
       area: details.area ?? null,
@@ -65,27 +93,45 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
       where: { username: businessUsername },
       select: { id: true, name: true, username: true },
     });
-    if (!business) return res.status(404).json({ error: "Restaurant not found" });
+    if (!business) {
+      return res.status(404).json({ error: "Restaurant not found" });
+    }
 
     const location = await prisma.location.findFirst({
       where: { id: locationId, businessId: business.id },
       include: { photos: { orderBy: { createdAt: "asc" } } },
     });
-    if (!location) return res.status(404).json({ error: "Restaurant not found" });
+    if (!location) {
+      return res.status(404).json({ error: "Restaurant not found" });
+    }
 
     const reviews = await prisma.review.findMany({
       where: { locationId: location.id },
       orderBy: { createdAt: "desc" },
     });
     const reviewCount = reviews.length;
-    const rating =
-      reviewCount > 0
-        ? Math.round(
-            (reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviewCount) * 10
-          ) / 10
-        : null;
+    let rating: number | null = null;
+    if (reviewCount > 0) {
+      rating =
+        Math.round(
+          (reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviewCount) * 10
+        ) / 10;
+    }
 
     const profile = publicProfile(location.restaurantProfile);
+
+    let latitude: number | null = null;
+    if (typeof location.latitude === "number") {
+      latitude = location.latitude;
+    }
+    let longitude: number | null = null;
+    if (typeof location.longitude === "number") {
+      longitude = location.longitude;
+    }
+    let serializedPhotos: any[] = [];
+    if (Array.isArray(location.photos)) {
+      serializedPhotos = location.photos.map(serializePhoto);
+    }
 
     return res.json({
       restaurant: {
@@ -112,8 +158,8 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
         area: profile.details.area || location.area || null,
         city: profile.details.city || location.city || null,
         country: profile.details.country || location.country || null,
-        latitude: typeof location.latitude === "number" ? location.latitude : null,
-        longitude: typeof location.longitude === "number" ? location.longitude : null,
+        latitude,
+        longitude,
         googleMapsUrl: profile.details.googleMapsUrl || location.googleMapsUrl || null,
         phone: profile.details.phone,
         website: profile.details.website,
@@ -122,9 +168,7 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
         openingHours: profile.openingHours,
 
         bannerImageUrl: location.bannerImageUrl ?? null,
-        photos: Array.isArray(location.photos)
-          ? location.photos.map(serializePhoto)
-          : [],
+        photos: serializedPhotos,
 
         menu: profile.menu,
         menuUrl: profile.menuUrl,
@@ -158,13 +202,17 @@ router.post(
         where: { username: businessUsername },
         select: { id: true },
       });
-      if (!business) return res.status(404).json({ error: "Restaurant not found" });
+      if (!business) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
 
       const location = await prisma.location.findFirst({
         where: { id: locationId, businessId: business.id },
         select: { id: true },
       });
-      if (!location) return res.status(404).json({ error: "Restaurant not found" });
+      if (!location) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
 
       const customerId = (req as any).auth.sub as string;
       const { rating, description } = req.body || {};
@@ -178,16 +226,18 @@ router.post(
       if (description !== undefined && typeof description !== "string") {
         return res.status(400).json({ error: "description must be a string" });
       }
-      const trimmedDescription =
-        typeof description === "string" && description.trim()
-          ? description.trim()
-          : null;
+      let trimmedDescription: string | null = null;
+      if (typeof description === "string" && description.trim()) {
+        trimmedDescription = description.trim();
+      }
 
       const user = await prisma.user.findUnique({
         where: { id: customerId },
         select: { id: true, name: true, username: true },
       });
-      if (!user) return res.status(401).json({ error: "Unauthorized" });
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
 
       const existing = await prisma.review.findFirst({
         where: { customerId, locationId: location.id },
@@ -199,11 +249,17 @@ router.post(
         customerName: user.name,
         customerUsername: user.username,
       };
-      const saved = existing
-        ? await prisma.review.update({ where: { id: existing.id }, data })
-        : await prisma.review.create({
-            data: { ...data, locationId: location.id, customerId },
-          });
+      let saved;
+      if (existing) {
+        saved = await prisma.review.update({
+          where: { id: existing.id },
+          data,
+        });
+      } else {
+        saved = await prisma.review.create({
+          data: { ...data, locationId: location.id, customerId },
+        });
+      }
 
       return res.json({ review: serializeReview(saved) });
     } catch (err: any) {

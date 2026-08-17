@@ -9,6 +9,7 @@ import {
   resolveAudienceGuests,
   restaurantNameForLocation,
   advanceRecurrence,
+  zonedDayOfMonth,
   type Channel,
 } from "./campaigns.js";
 
@@ -30,7 +31,9 @@ export async function executeCampaignRun(
   scheduledFor?: Date | null,
 ): Promise<RunResult | { error: string }> {
   const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
-  if (!campaign) return { error: "Campaign not found" };
+  if (!campaign) {
+    return { error: "Campaign not found" };
+  }
 
   const [business, location, template] = await Promise.all([
     prisma.business.findUnique({
@@ -49,15 +52,25 @@ export async function executeCampaignRun(
     }),
     prisma.campaignTemplate.findUnique({ where: { id: campaign.templateId } }),
   ]);
-  if (!business) return { error: "Business not found" };
-  if (!location) return { error: "Location not found" };
-  if (!template) return { error: "Template not found" };
+  if (!business) {
+    return { error: "Business not found" };
+  }
+  if (!location) {
+    return { error: "Location not found" };
+  }
+  if (!template) {
+    return { error: "Template not found" };
+  }
 
-  const usable =
-    template.templateType === "SEATPING"
-      ? template.isActive && template.approvalStatus === "APPROVED"
-      : template.approvalStatus === "APPROVED";
-  if (!usable) return { error: "Template is not available for sending" };
+  let usable: boolean;
+  if (template.templateType === "SEATPING") {
+    usable = template.isActive && template.approvalStatus === "APPROVED";
+  } else {
+    usable = template.approvalStatus === "APPROVED";
+  }
+  if (!usable) {
+    return { error: "Template is not available for sending" };
+  }
 
   const channel = campaign.channel as Channel;
   const timezone = getLocationTimezone(location);
@@ -189,14 +202,18 @@ export async function executeCampaignRun(
 }
 
 export async function reconcileRun(run: CampaignRun): Promise<CampaignRun> {
-  if (run.status !== "RUNNING") return run;
+  if (run.status !== "RUNNING") {
+    return run;
+  }
   const grouped = await prisma.campaignRecipient.groupBy({
     by: ["status"],
     where: { runId: run.id },
     _count: { _all: true },
   });
   const counts: Record<string, number> = {};
-  for (const g of grouped) counts[g.status] = g._count._all;
+  for (const g of grouped) {
+    counts[g.status] = g._count._all;
+  }
   const sent = (counts.SENT || 0) + (counts.DELIVERED || 0);
   const failed = counts.FAILED || 0;
   const skipped = counts.SKIPPED || 0;
@@ -204,7 +221,11 @@ export async function reconcileRun(run: CampaignRun): Promise<CampaignRun> {
 
   const data: any = { sentCount: sent, failedCount: failed, skippedCount: skipped };
   if (pending === 0) {
-    data.status = sent > 0 ? "COMPLETED" : "FAILED";
+    if (sent > 0) {
+      data.status = "COMPLETED";
+    } else {
+      data.status = "FAILED";
+    }
     data.completedAt = new Date();
   }
   return prisma.campaignRun.update({ where: { id: run.id }, data });
@@ -215,8 +236,13 @@ export async function reconcileCampaign(c: Campaign): Promise<Campaign> {
     where: { campaignId: c.id },
     orderBy: { createdAt: "desc" },
   });
-  if (!latest) return c;
-  const fresh = latest.status === "RUNNING" ? await reconcileRun(latest) : latest;
+  if (!latest) {
+    return c;
+  }
+  let fresh: CampaignRun = latest;
+  if (latest.status === "RUNNING") {
+    fresh = await reconcileRun(latest);
+  }
 
   const data: any = {
     recipientCount: fresh.recipientCount,
@@ -225,7 +251,11 @@ export async function reconcileCampaign(c: Campaign): Promise<Campaign> {
     skippedCount: fresh.skippedCount,
   };
   if (c.status === "SENDING" && fresh.status !== "RUNNING") {
-    data.status = fresh.sentCount > 0 ? "SENT" : "FAILED";
+    if (fresh.sentCount > 0) {
+      data.status = "SENT";
+    } else {
+      data.status = "FAILED";
+    }
   }
   return prisma.campaign.update({ where: { id: c.id }, data });
 }
@@ -247,7 +277,9 @@ export async function runDueCampaignsSweep(): Promise<{
       where: { id: c.id, status: "SCHEDULED" },
       data: { status: "SENDING", sentAt: now, nextRunAt: null, lastRunAt: now },
     });
-    if (claim.count === 0) continue;
+    if (claim.count === 0) {
+      continue;
+    }
     try {
       const res = await executeCampaignRun(c.id, "SCHEDULED", c.scheduledAt);
       if ("error" in res) {
@@ -275,29 +307,49 @@ export async function runDueCampaignsSweep(): Promise<{
     take: 50,
   });
   for (const c of dueRecurring) {
-    const tz = c.timezone || "Asia/Jakarta";
-    const freq = (c.recurrenceFrequency || "WEEKLY") as
-      | "DAILY"
-      | "WEEKLY"
-      | "MONTHLY";
-    let next = advanceRecurrence(c.nextRunAt ?? now, freq, tz);
-    while (next.getTime() <= now.getTime()) next = advanceRecurrence(next, freq, tz);
-    const ended = c.recurrenceEndAt ? next.getTime() > c.recurrenceEndAt.getTime() : false;
-
-    const claim = await prisma.campaign.updateMany({
-      where: { id: c.id, status: "RECURRING", nextRunAt: c.nextRunAt },
-      data: {
-        lastRunAt: now,
-        nextRunAt: ended ? null : next,
-        ...(ended ? { status: "SENT" } : {}),
-      },
-    });
-    if (claim.count === 0) continue;
     try {
+      const tz = c.timezone || "Asia/Jakarta";
+      const freq = (c.recurrenceFrequency || "WEEKLY") as
+        | "DAILY"
+        | "WEEKLY"
+        | "MONTHLY";
+      const anchorDay = zonedDayOfMonth(c.recurrenceStartAt, tz);
+      let next = advanceRecurrence(c.nextRunAt ?? now, freq, tz, anchorDay);
+      while (next.getTime() <= now.getTime()) {
+        next = advanceRecurrence(next, freq, tz, anchorDay);
+      }
+      let ended = false;
+      if (c.recurrenceEndAt) {
+        ended = next.getTime() > c.recurrenceEndAt.getTime();
+      }
+
+      let nextRunAtValue: Date | null = next;
+      let endedStatusPatch: { status?: "SENT" } = {};
+      if (ended) {
+        nextRunAtValue = null;
+        endedStatusPatch = { status: "SENT" };
+      }
+
+      const claim = await prisma.campaign.updateMany({
+        where: { id: c.id, status: "RECURRING", nextRunAt: c.nextRunAt },
+        data: {
+          lastRunAt: now,
+          nextRunAt: nextRunAtValue,
+          ...endedStatusPatch,
+        },
+      });
+      if (claim.count === 0) {
+        continue;
+      }
       const res = await executeCampaignRun(c.id, "RECURRING");
-      if (!("error" in res)) recurringFired += 1;
+      if (!("error" in res)) {
+        recurringFired += 1;
+      }
     } catch (err: any) {
-      console.error("[campaign-sweep] recurring run failed:", err?.message || err);
+      console.error(
+        `[campaign-sweep] recurring campaign ${c.id} skipped:`,
+        err?.message || err,
+      );
     }
   }
 

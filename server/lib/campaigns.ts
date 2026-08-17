@@ -32,17 +32,26 @@ export function normalizeVariableName(raw: string): string {
 }
 
 export function normalizeBodyPlaceholders(body: string): string {
-  if (!body) return "";
+  if (!body) {
+    return "";
+  }
   return body.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_m, inner: string) => {
     const norm = normalizeVariableName(inner);
-    return norm ? `{{${norm}}}` : "";
+    if (norm) {
+      return `{{${norm}}}`;
+    }
+    return "";
   });
 }
 
 export function validateBodyParamPositions(body: string): string | null {
-  if (!body) return null;
+  if (!body) {
+    return null;
+  }
   const firstOpen = body.indexOf("{{");
-  if (firstOpen === -1) return null;
+  if (firstOpen === -1) {
+    return null;
+  }
   const lastClose = body.lastIndexOf("}}");
   const hasWord = (s: string) => /[a-z0-9]/i.test(s);
   if (!hasWord(body.slice(0, firstOpen))) {
@@ -84,10 +93,15 @@ export function renderString(
   template: string,
   values: Record<string, string>,
 ): string {
-  if (!template) return "";
+  if (!template) {
+    return "";
+  }
   return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_m, key: string) => {
     const v = values[key];
-    return v == null ? "" : String(v);
+    if (v == null) {
+      return "";
+    }
+    return String(v);
   });
 }
 
@@ -119,12 +133,16 @@ function buildValueMap(
 }
 
 export function extractBodyPlaceholders(body: string): string[] {
-  if (!body) return [];
+  if (!body) {
+    return [];
+  }
   const out: string[] = [];
   const re = /\{\{\s*([\w.]+)\s*\}\}/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(body)) !== null) {
-    if (!out.includes(m[1])) out.push(m[1]);
+    if (!out.includes(m[1])) {
+      out.push(m[1]);
+    }
   }
   return out;
 }
@@ -151,37 +169,54 @@ export function buildMessage(
   const bodyText = renderString(template.body, values)
     .replace(SIGNATURE_FOOTER_RE, "")
     .trim();
-  const offer = template.offerDetails
-    ? renderString(template.offerDetails, values).trim()
-    : "";
-  const ctaText = template.ctaText
-    ? renderString(template.ctaText, values).trim()
-    : "";
-  const ctaUrl = template.ctaUrl ? template.ctaUrl.trim() : "";
+  let offer = "";
+  if (template.offerDetails) {
+    offer = renderString(template.offerDetails, values).trim();
+  }
+  let ctaText = "";
+  if (template.ctaText) {
+    ctaText = renderString(template.ctaText, values).trim();
+  }
+  let ctaUrl = "";
+  if (template.ctaUrl) {
+    ctaUrl = template.ctaUrl.trim();
+  }
   const nameLine = renderString(template.name, values).trim() || "A message";
 
   if (channel === "EMAIL") {
     const subject = `${ctx.businessName}: ${nameLine}`;
+    let offerHtml = "";
+    if (offer) {
+      offerHtml = calloutBox(`<strong>${esc(offer)}</strong>`);
+    }
+    let ctaHtml = "";
+    let ctaLine = "";
+    if (ctaText && ctaUrl) {
+      ctaHtml = emailButton(ctaUrl, ctaText);
+      ctaLine = `${ctaText}: ${ctaUrl}`;
+    }
     const html = renderEmail({
       heading: nameLine,
       preheader: bodyText.slice(0, 110),
       tagline: `Sent by SeatPing on behalf of ${ctx.businessName}`,
       bodyHtml: `
         ${p(esc(bodyText).replace(/\n/g, "<br>"))}
-        ${offer ? calloutBox(`<strong>${esc(offer)}</strong>`) : ""}
-        ${ctaText && ctaUrl ? emailButton(ctaUrl, ctaText) : ""}
+        ${offerHtml}
+        ${ctaHtml}
         ${p(`<span style="color:#64748B;font-size:12px;">You are receiving this because you visited ${esc(ctx.businessName)}. Sent by SeatPing on behalf of ${esc(ctx.businessName)}.</span>`)}
       `,
     });
-    const text = [bodyText, offer, ctaText && ctaUrl ? `${ctaText}: ${ctaUrl}` : ""]
-      .filter(Boolean)
-      .join("\n\n");
+    const text = [bodyText, offer, ctaLine].filter(Boolean).join("\n\n");
     return { subject, text, html };
   }
 
   const lines = [bodyText];
-  if (offer) lines.push(offer);
-  if (ctaText && ctaUrl) lines.push(`${ctaText}: ${ctaUrl}`);
+  if (offer) {
+    lines.push(offer);
+  }
+  if (ctaText && ctaUrl) {
+    lines.push(`${ctaText}: ${ctaUrl}`);
+  }
   lines.push(`— ${ctx.businessName} (via SeatPing)`);
   const text = lines.filter(Boolean).join("\n\n");
 
@@ -191,7 +226,9 @@ export function buildMessage(
       placeholders.length > 0 && placeholders.every((ph) => /^\d+$/.test(ph));
 
     const waValues: Record<string, string> = { ...values };
-    if (!waValues.offer && offer) waValues.offer = offer;
+    if (!waValues.offer && offer) {
+      waValues.offer = offer;
+    }
 
     let whatsappParams: WhatsAppBodyParam[];
     if (isPositional) {
@@ -199,12 +236,20 @@ export function buildMessage(
       whatsappParams = [];
       for (let i = 1; i <= maxIndex; i++) {
         const v = waValues[String(i)];
-        whatsappParams.push({ text: v == null ? "" : String(v) });
+        let paramText = "";
+        if (v != null) {
+          paramText = String(v);
+        }
+        whatsappParams.push({ text: paramText });
       }
     } else {
       whatsappParams = placeholders.map((name) => {
         const v = waValues[name];
-        return { name, text: v == null ? "" : String(v) };
+        let paramText = "";
+        if (v != null) {
+          paramText = String(v);
+        }
+        return { name, text: paramText };
       });
     }
 
@@ -226,7 +271,9 @@ const GSM7_EXT = "^{}\\[~]|€";
 
 function isGsm7(text: string): boolean {
   for (const ch of text) {
-    if (GSM7_BASIC.includes(ch) || GSM7_EXT.includes(ch)) continue;
+    if (GSM7_BASIC.includes(ch) || GSM7_EXT.includes(ch)) {
+      continue;
+    }
     return false;
   }
   return true;
@@ -236,14 +283,36 @@ export function smsSegments(text: string): { segments: number; characters: numbe
   const gsm = isGsm7(text);
   let length = 0;
   if (gsm) {
-    for (const ch of text) length += GSM7_EXT.includes(ch) ? 2 : 1;
+    for (const ch of text) {
+      if (GSM7_EXT.includes(ch)) {
+        length += 2;
+      } else {
+        length += 1;
+      }
+    }
   } else {
-    length = [...text].reduce((n, ch) => n + (ch.codePointAt(0)! > 0xffff ? 2 : 1), 0);
+    length = [...text].reduce((n, ch) => {
+      if (ch.codePointAt(0)! > 0xffff) {
+        return n + 2;
+      }
+      return n + 1;
+    }, 0);
   }
-  const single = gsm ? 160 : 70;
-  const multi = gsm ? 153 : 67;
-  const segments = length <= single ? 1 : Math.ceil(length / multi);
-  return { segments: Math.max(1, segments), characters: length, encoding: gsm ? "GSM-7" : "UCS-2" };
+  let single = 70;
+  let multi = 67;
+  let encoding: "GSM-7" | "UCS-2" = "UCS-2";
+  if (gsm) {
+    single = 160;
+    multi = 153;
+    encoding = "GSM-7";
+  }
+  let segments: number;
+  if (length <= single) {
+    segments = 1;
+  } else {
+    segments = Math.ceil(length / multi);
+  }
+  return { segments: Math.max(1, segments), characters: length, encoding };
 }
 
 
@@ -275,12 +344,22 @@ function tzOffsetMs(instant: Date, timeZone: string): number {
     hourCycle: "h23",
   }).formatToParts(instant);
   const map: Record<string, string> = {};
-  for (const part of parts) if (part.type !== "literal") map[part.type] = part.value;
+  for (const part of parts) {
+    if (part.type !== "literal") {
+      map[part.type] = part.value;
+    }
+  }
+  let mapHour: number;
+  if (map.hour === "24") {
+    mapHour = 0;
+  } else {
+    mapHour = Number(map.hour);
+  }
   const asUtc = Date.UTC(
     Number(map.year),
     Number(map.month) - 1,
     Number(map.day),
-    map.hour === "24" ? 0 : Number(map.hour),
+    mapHour,
     Number(map.minute),
     Number(map.second),
   );
@@ -289,10 +368,10 @@ function tzOffsetMs(instant: Date, timeZone: string): number {
 
 
 export function restaurantNameForLocation(loc: any, fallback: string): string {
-  const profile =
-    loc?.restaurantProfile && typeof loc.restaurantProfile === "object"
-      ? loc.restaurantProfile
-      : {};
+  let profile: any = {};
+  if (loc?.restaurantProfile && typeof loc.restaurantProfile === "object") {
+    profile = loc.restaurantProfile;
+  }
   const profileName =
     (typeof profile.displayName === "string" && profile.displayName.trim()) ||
     (typeof profile.name === "string" && profile.name.trim()) ||
@@ -304,9 +383,13 @@ export function wallClockToUtc(
   local: string | null | undefined,
   timeZone: string,
 ): Date | null {
-  if (!local || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(local)) return null;
+  if (!local || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(local)) {
+    return null;
+  }
   const naive = Date.parse(`${local.slice(0, 16)}:00Z`);
-  if (Number.isNaN(naive)) return null;
+  if (Number.isNaN(naive)) {
+    return null;
+  }
   const offset = tzOffsetMs(new Date(naive), timeZone);
   return new Date(naive - offset);
 }
@@ -315,9 +398,18 @@ export function formatInstantInTimezone(
   instant: Date | string | null | undefined,
   timeZone: string,
 ): string | null {
-  if (!instant) return null;
-  const d = instant instanceof Date ? instant : new Date(instant);
-  if (Number.isNaN(d.getTime())) return null;
+  if (!instant) {
+    return null;
+  }
+  let d: Date;
+  if (instant instanceof Date) {
+    d = instant;
+  } else {
+    d = new Date(instant);
+  }
+  if (Number.isNaN(d.getTime())) {
+    return null;
+  }
   try {
     return d.toLocaleString("en-US", {
       timeZone,
@@ -332,10 +424,44 @@ export function formatInstantInTimezone(
   }
 }
 
+function daysInMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+export function zonedDayOfMonth(
+  instant: Date | null | undefined,
+  timeZone: string,
+): number | null {
+  if (!instant) {
+    return null;
+  }
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(instant);
+  } catch {
+    return null;
+  }
+  const dayPart = parts.find((p) => p.type === "day");
+  if (!dayPart) {
+    return null;
+  }
+  const day = Number(dayPart.value);
+  if (!Number.isInteger(day) || day < 1 || day > 31) {
+    return null;
+  }
+  return day;
+}
+
 export function advanceRecurrence(
   from: Date,
   frequency: "DAILY" | "WEEKLY" | "MONTHLY",
   timeZone: string,
+  anchorDay?: number | null,
 ): Date {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -347,38 +473,64 @@ export function advanceRecurrence(
     hourCycle: "h23",
   }).formatToParts(from);
   const m: Record<string, string> = {};
-  for (const p of parts) if (p.type !== "literal") m[p.type] = p.value;
-  
-  let year = Number(m.year);
-  let month = Number(m.month);
-  let day = Number(m.day);
-  const hour = m.hour === "24" ? 0 : Number(m.hour);
+  for (const p of parts) {if (p.type !== "literal") {
+    m[p.type] = p.value;
+  }}
+
+  const year = Number(m.year);
+  const month = Number(m.month);
+  const day = Number(m.day);
+  let hour: number;
+  if (m.hour === "24") {
+    hour = 0;
+  } else {
+    hour = Number(m.hour);
+  }
   const minute = Number(m.minute);
 
-  if (frequency === "DAILY") {
-    day += 1;
-  } else if (frequency === "WEEKLY") {
-    day += 7;
-  } else if (frequency === "MONTHLY") {
-    month += 1;
-    if (month > 12) {
-      month = 1;
-      year += 1;
-    }
-  }
-
-  const localDate = new Date(year, month - 1, day);
-  const nextYear = localDate.getFullYear();
-  const nextMonth = localDate.getMonth() + 1;
-  let nextDay = localDate.getDate();
+  let nextYear: number;
+  let nextMonth: number;
+  let nextDay: number;
 
   if (frequency === "MONTHLY") {
-    const daysInNextMonth = new Date(nextYear, nextMonth, 0).getDate();
-    nextDay = Math.min(Number(m.day), daysInNextMonth);
+    nextYear = year;
+    nextMonth = month + 1;
+    if (nextMonth > 12) {
+      nextMonth = 1;
+      nextYear = year + 1;
+    }
+    let intendedDay = day;
+    if (
+      typeof anchorDay === "number" &&
+      Number.isInteger(anchorDay) &&
+      anchorDay >= 1 &&
+      anchorDay <= 31
+    ) {
+      intendedDay = anchorDay;
+    }
+    nextDay = Math.min(intendedDay, daysInMonth(nextYear, nextMonth));
+  } else {
+    let step = 1;
+    if (frequency === "WEEKLY") {
+      step = 7;
+    }
+    const rolled = new Date(Date.UTC(year, month - 1, day + step));
+    nextYear = rolled.getUTCFullYear();
+    nextMonth = rolled.getUTCMonth() + 1;
+    nextDay = rolled.getUTCDate();
   }
 
   const local = `${nextYear}-${String(nextMonth).padStart(2, "0")}-${String(nextDay).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-  return wallClockToUtc(local, timeZone) ?? new Date(from.getTime() + (frequency === "DAILY" ? 1 : frequency === "WEEKLY" ? 7 : 30) * 24 * 60 * 60 * 1000);
+  let fallbackDays = 30;
+  if (frequency === "DAILY") {
+    fallbackDays = 1;
+  } else if (frequency === "WEEKLY") {
+    fallbackDays = 7;
+  }
+  return (
+    wallClockToUtc(local, timeZone) ??
+    new Date(from.getTime() + fallbackDays * 24 * 60 * 60 * 1000)
+  );
 }
 
 export interface AudienceQuery {
@@ -396,7 +548,9 @@ export async function resolveAudienceGuests(
 
   if (q.audienceType === MANUAL_AUDIENCE) {
     const ids = (q.audienceConfig?.guestIds || []).filter(Boolean);
-    if (!ids.length) return [];
+    if (!ids.length) {
+      return [];
+    }
     return prisma.guestProfile.findMany({
       where: { ...base, id: { in: ids } },
     });
@@ -416,7 +570,9 @@ export async function resolveAudienceGuests(
       break;
     case "with_tag": {
       const tag = (q.audienceConfig?.tag || "").trim();
-      if (!tag) return [];
+      if (!tag) {
+        return [];
+      }
       const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const tagsRaw = (await prisma.guestProfile.findRaw({
         filter: {
@@ -425,7 +581,9 @@ export async function resolveAudienceGuests(
           tags: { $regex: `^${escaped}$`, $options: "i" },
         },
       })) as unknown as any[];
-      if (!tagsRaw.length) return [];
+      if (!tagsRaw.length) {
+        return [];
+      }
       where.id = { in: tagsRaw.map((t: any) => t._id.$oid) };
       break;
     }
@@ -455,10 +613,15 @@ export async function resolveAudienceGuests(
         const saved = await prisma.savedAudience.findUnique({
           where: { id: q.audienceConfig.savedAudienceId },
         });
-        if (saved) filters = saved.filters || {};
+        if (saved) {
+          filters = saved.filters || {};
+        }
       }
 
-      const manualGuestIds = (filters.guestIds && Array.isArray(filters.guestIds)) ? filters.guestIds : [];
+      let manualGuestIds: string[] = [];
+      if (filters.guestIds && Array.isArray(filters.guestIds)) {
+        manualGuestIds = filters.guestIds;
+      }
       
       if (filters.tags && Array.isArray(filters.tags) && filters.tags.length > 0) {
         const idSets = await Promise.all(
@@ -484,8 +647,12 @@ export async function resolveAudienceGuests(
 
       if (filters.totalVisitsMin !== undefined || filters.totalVisitsMax !== undefined) {
         where.totalVisits = { ...where.totalVisits };
-        if (filters.totalVisitsMin !== undefined) where.totalVisits.gte = Number(filters.totalVisitsMin);
-        if (filters.totalVisitsMax !== undefined) where.totalVisits.lte = Number(filters.totalVisitsMax);
+        if (filters.totalVisitsMin !== undefined) {
+          where.totalVisits.gte = Number(filters.totalVisitsMin);
+        }
+        if (filters.totalVisitsMax !== undefined) {
+          where.totalVisits.lte = Number(filters.totalVisitsMax);
+        }
       }
 
       if (filters.lastVisitMinDaysAgo !== undefined || filters.lastVisitMaxDaysAgo !== undefined) {
@@ -498,9 +665,15 @@ export async function resolveAudienceGuests(
         }
       }
 
-      if (filters.hasUpcomingReservation) where.upcomingReservationCount = { gt: 0 };
-      if (filters.hasNoShowHistory) where.noShowCount = { gt: 0 };
-      if (filters.hasNotes) where.notes = { not: null, notIn: ["", " "] };
+      if (filters.hasUpcomingReservation) {
+        where.upcomingReservationCount = { gt: 0 };
+      }
+      if (filters.hasNoShowHistory) {
+        where.noShowCount = { gt: 0 };
+      }
+      if (filters.hasNotes) {
+        where.notes = { not: null, notIn: ["", " "] };
+      }
       
       if (where.id?.in?.length === 0 && manualGuestIds.length === 0) {
         return [];
@@ -528,8 +701,14 @@ export async function resolveAudienceGuests(
       );
 
       deduplicated.sort((a, b) => {
-        const timeA = a.lastVisitAt ? a.lastVisitAt.getTime() : 0;
-        const timeB = b.lastVisitAt ? b.lastVisitAt.getTime() : 0;
+        let timeA = 0;
+        if (a.lastVisitAt) {
+          timeA = a.lastVisitAt.getTime();
+        }
+        let timeB = 0;
+        if (b.lastVisitAt) {
+          timeB = b.lastVisitAt.getTime();
+        }
         return timeB - timeA;
       });
 
@@ -561,9 +740,15 @@ export interface AudienceResult {
 }
 
 function optedOut(guest: GuestProfile, channel: Channel): boolean {
-  if (guest.marketingOptOutAt) return true;
-  if (channel === "EMAIL") return !!guest.emailMarketingOptOutAt || guest.emailMarketingOptIn === false;
-  if (channel === "WHATSAPP") return !!guest.whatsappMarketingOptOutAt || guest.whatsappMarketingOptIn === false;
+  if (guest.marketingOptOutAt) {
+    return true;
+  }
+  if (channel === "EMAIL") {
+    return !!guest.emailMarketingOptOutAt || guest.emailMarketingOptIn === false;
+  }
+  if (channel === "WHATSAPP") {
+    return !!guest.whatsappMarketingOptOutAt || guest.whatsappMarketingOptIn === false;
+  }
   return !!guest.smsMarketingOptOutAt || guest.smsMarketingOptIn === false;
 }
 
@@ -586,16 +771,24 @@ export function filterRecipients(
     if (channel === "EMAIL") {
       const email = normalizeEmail(g.email);
       if (!email) {
-        if (g.email && g.email.trim()) exclusions.invalid += 1;
-        else exclusions.noEmail += 1;
+        if (g.email && g.email.trim()) {
+          exclusions.invalid += 1;
+        }
+        else {
+          exclusions.noEmail += 1;
+        }
         continue;
       }
       eligible.push({ guest: g, email });
     } else {
       const phone = g.normalizedPhone || normalizePhone(g.phone, null);
       if (!phone) {
-        if (g.phone && g.phone.trim()) exclusions.invalid += 1;
-        else exclusions.noPhone += 1;
+        if (g.phone && g.phone.trim()) {
+          exclusions.invalid += 1;
+        }
+        else {
+          exclusions.noPhone += 1;
+        }
         continue;
       }
       if (channel === "SMS" && !isSmsDeliverable(phone)) {
@@ -624,7 +817,9 @@ export function slugifyTemplateName(name: string): string {
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/_+/g, "_")
     .replace(/^_+|_+$/g, "");
-  if (!s) s = "template";
+  if (!s) {
+    s = "template";
+  }
   return s.slice(0, SLUG_MAX_LEN).replace(/_+$/g, "");
 }
 
@@ -637,9 +832,14 @@ export async function generateUniqueTemplateSlug(
   opts: { businessId?: string | null; ignoreId?: string } = {},
 ): Promise<string> {
   const base = slugifyTemplateName(name);
-  const scope: any = opts.businessId
-    ? { businessId: opts.businessId }
-    : { templateType: "SEATPING" };
+  let scope: any = { templateType: "SEATPING" };
+  if (opts.businessId) {
+    scope = { businessId: opts.businessId };
+  }
+  const ignoreClause: { NOT?: { id: string } } = {};
+  if (opts.ignoreId) {
+    ignoreClause.NOT = { id: opts.ignoreId };
+  }
 
   let candidate = base;
   let n = 1;
@@ -648,11 +848,13 @@ export async function generateUniqueTemplateSlug(
       where: {
         ...scope,
         slug: candidate,
-        ...(opts.ignoreId ? { NOT: { id: opts.ignoreId } } : {}),
+        ...ignoreClause,
       },
       select: { id: true },
     });
-    if (!clash) return candidate;
+    if (!clash) {
+      return candidate;
+    }
     n += 1;
     candidate = `${base}_${n}`;
   }
@@ -724,7 +926,9 @@ export const SEATPING_TEMPLATE_SEEDS: SeedDef[] = [
 let seedPromise: Promise<void> | null = null;
 
 export async function seedSeatPingTemplates(): Promise<void> {
-  if (seedPromise) return seedPromise;
+  if (seedPromise) {
+    return seedPromise;
+  }
   seedPromise = (async () => {
     const keepNames = new Set(SEATPING_TEMPLATE_SEEDS.map((d) => d.name));
 
@@ -766,11 +970,15 @@ export async function seedSeatPingTemplates(): Promise<void> {
     });
     for (const t of missing) {
       const slug = await generateUniqueTemplateSlug(t.name, { businessId: t.businessId, ignoreId: t.id });
+      const providerNameData: { whatsappProviderTemplateName?: string } = {};
+      if (!t.whatsappProviderTemplateName) {
+        providerNameData.whatsappProviderTemplateName = slug;
+      }
       await prisma.campaignTemplate.update({
         where: { id: t.id },
         data: {
           slug,
-          ...(t.whatsappProviderTemplateName ? {} : { whatsappProviderTemplateName: slug }),
+          ...providerNameData,
         },
       });
     }

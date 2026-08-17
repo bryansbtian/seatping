@@ -4,10 +4,10 @@ export const DEFAULT_BASE_CREDITS = 300;
 
 export function isTrialExpired(business: any): boolean {
   const createdAt = new Date(business.createdAt);
-  const trialDurationDays =
-    typeof business.trialDurationDays === "number"
-      ? business.trialDurationDays
-      : 7;
+  let trialDurationDays = 7;
+  if (typeof business.trialDurationDays === "number") {
+    trialDurationDays = business.trialDurationDays;
+  }
   const trialEndDate = new Date(
     createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000
   );
@@ -29,17 +29,24 @@ export function computeNextRefillDate(creditsStartedAt: Date, now: Date = new Da
 }
 
 export function shouldRefillMonthlyCredits(business: any): boolean {
-  if (business.trial !== false) return false;
-  if (!business.creditsStartedAt) return false;
-  if (!business.nextCreditRefillAt) return false;
+  if (business.trial !== false) {
+    return false;
+  }
+  if (!business.creditsStartedAt) {
+    return false;
+  }
+  if (!business.nextCreditRefillAt) {
+    return false;
+  }
   const now = new Date();
   return new Date(business.nextCreditRefillAt) <= now;
 }
 
 export function getBaseCreditsForUser(business: any): number {
-  return typeof business?.baseCredits === "number"
-    ? business.baseCredits
-    : DEFAULT_BASE_CREDITS;
+  if (typeof business?.baseCredits === "number") {
+    return business.baseCredits;
+  }
+  return DEFAULT_BASE_CREDITS;
 }
 
 export function getCreditsForLocation(business: any): number {
@@ -67,8 +74,21 @@ export function buildLocationData(
 ): any {
   const credits = getCreditsForLocation(business);
   const baseCredits = getBaseCreditsForUser(business);
-  const d: LocationDetailsInput =
-    typeof location === "string" ? { address: location } : location;
+  let d: LocationDetailsInput;
+  if (typeof location === "string") {
+    d = { address: location };
+  } else {
+    d = location;
+  }
+
+  let latitude: number | null = null;
+  if (typeof d.latitude === "number") {
+    latitude = d.latitude;
+  }
+  let longitude: number | null = null;
+  if (typeof d.longitude === "number") {
+    longitude = d.longitude;
+  }
 
   return {
     businessId: String(business.id),
@@ -78,8 +98,8 @@ export function buildLocationData(
     area: d.area?.trim() || null,
     city: d.city?.trim() || null,
     country: d.country?.trim() || null,
-    latitude: typeof d.latitude === "number" ? d.latitude : null,
-    longitude: typeof d.longitude === "number" ? d.longitude : null,
+    latitude,
+    longitude,
     googlePlaceId: d.googlePlaceId?.trim() || null,
     googleMapsUrl: d.googleMapsUrl?.trim() || null,
     credits,
@@ -99,7 +119,9 @@ export async function enforceTrialExpiration(businessId: string): Promise<void> 
     },
   });
 
-  if (!business) return;
+  if (!business) {
+    return;
+  }
 
   if (isTrialExpired(business) && business.trial === true) {
     console.log(
@@ -131,7 +153,9 @@ export async function refillCreditsForUser(businessId: string): Promise<void> {
       creditsStartedAt: true,
     },
   });
-  if (!business || !business.creditsStartedAt) return;
+  if (!business || !business.creditsStartedAt) {
+    return;
+  }
 
   await prisma.location.updateMany({
     where: { businessId },
@@ -162,9 +186,15 @@ async function backfillNextCreditRefillAt(business: {
   creditsStartedAt: Date | null;
   nextCreditRefillAt: Date | null;
 }): Promise<Date | null> {
-  if (business.trial !== false) return null;
-  if (!business.creditsStartedAt) return null;
-  if (business.nextCreditRefillAt) return business.nextCreditRefillAt;
+  if (business.trial !== false) {
+    return null;
+  }
+  if (!business.creditsStartedAt) {
+    return null;
+  }
+  if (business.nextCreditRefillAt) {
+    return business.nextCreditRefillAt;
+  }
 
   const next = computeNextRefillDate(new Date(business.creditsStartedAt));
   await prisma.business.update({
@@ -189,12 +219,20 @@ export async function checkAndRefillMonthlyCredits(
       nextCreditRefillAt: true,
     },
   });
-  if (!business) return;
-  if (business.trial !== false) return;
-  if (!business.creditsStartedAt) return;
+  if (!business) {
+    return;
+  }
+  if (business.trial !== false) {
+    return;
+  }
+  if (!business.creditsStartedAt) {
+    return;
+  }
 
   const nextRefill = await backfillNextCreditRefillAt(business);
-  if (!nextRefill) return;
+  if (!nextRefill) {
+    return;
+  }
 
   if (new Date(nextRefill) <= new Date()) {
     await refillCreditsForUser(businessId);

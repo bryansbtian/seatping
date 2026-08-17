@@ -49,7 +49,12 @@ function useSession() {
   const [session, setSession] = useState<SessionState | undefined>(undefined);
   useEffect(() => {
     fetch("/auth/session", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : { customer: null, business: null }))
+      .then((r) => {
+        if (r.ok) {
+          return r.json();
+        }
+        return { customer: null, business: null };
+      })
       .then((d) =>
         setSession({
           customer: d?.customer ?? null,
@@ -206,22 +211,34 @@ const App = () => (
 
 function RequireBusiness({ children }: { children: React.ReactNode }) {
   const session = useSession();
-  if (session === undefined) return null;
-  if (!session.business) return <Navigate to="/business/login" replace />;
+  if (session === undefined) {
+    return null;
+  }
+  if (!session.business) {
+    return <Navigate to="/business/login" replace />;
+  }
   return <>{children}</>;
 }
 
 function BusinessGuestRoute({ children }: { children: React.ReactNode }) {
   const session = useSession();
-  if (session === undefined) return null;
-  if (session.business) return <Navigate to="/business/dashboard" replace />;
+  if (session === undefined) {
+    return null;
+  }
+  if (session.business) {
+    return <Navigate to="/business/dashboard" replace />;
+  }
   return <>{children}</>;
 }
 
 function RequireCustomer({ children }: { children: React.ReactNode }) {
   const session = useSession();
-  if (session === undefined) return null;
-  if (!session.customer) return <Navigate to="/login" replace />;
+  if (session === undefined) {
+    return null;
+  }
+  if (!session.customer) {
+    return <Navigate to="/login" replace />;
+  }
   return <>{children}</>;
 }
 

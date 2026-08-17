@@ -8,7 +8,9 @@ const PREVIEW_GUEST_LIMIT = 100;
 
 function bizId(req: any): string {
   const sub = req.auth?.sub;
-  if (!sub) throw new Error("Unauthorized");
+  if (!sub) {
+    throw new Error("Unauthorized");
+  }
   return sub;
 }
 
@@ -45,7 +47,14 @@ router.post("/", async (req, res) => {
     }
 
     const business = await prisma.business.findUnique({ where: { id: businessId } });
-    if (!business) return res.status(404).json({ error: "Business not found" });
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+
+    let descriptionValue: string | null = null;
+    if (description) {
+      descriptionValue = String(description).trim();
+    }
 
     const audience = await prisma.savedAudience.create({
       data: {
@@ -53,7 +62,7 @@ router.post("/", async (req, res) => {
         businessUsername: business.username,
         locationId,
         name: name.trim(),
-        description: description ? String(description).trim() : null,
+        description: descriptionValue,
         filters: filters || {},
       },
     });
@@ -111,14 +120,35 @@ router.patch("/:id", async (req, res) => {
     const { name, description, filters } = req.body;
 
     const existing = await prisma.savedAudience.findFirst({ where: { id, businessId } });
-    if (!existing) return res.status(404).json({ error: "Audience not found" });
+    if (!existing) {
+      return res.status(404).json({ error: "Audience not found" });
+    }
+
+    let nameValue = existing.name;
+    if (typeof name === "string" && name.trim()) {
+      nameValue = name.trim();
+    }
+
+    let descriptionValue = existing.description;
+    if (description !== undefined) {
+      if (description) {
+        descriptionValue = String(description).trim();
+      } else {
+        descriptionValue = null;
+      }
+    }
+
+    let filtersValue = existing.filters;
+    if (filters !== undefined) {
+      filtersValue = filters;
+    }
 
     const audience = await prisma.savedAudience.update({
       where: { id },
       data: {
-        name: typeof name === "string" && name.trim() ? name.trim() : existing.name,
-        description: description !== undefined ? (description ? String(description).trim() : null) : existing.description,
-        filters: filters !== undefined ? filters : existing.filters,
+        name: nameValue,
+        description: descriptionValue,
+        filters: filtersValue,
       },
     });
 
@@ -135,7 +165,9 @@ router.delete("/:id", async (req, res) => {
     const id = String(req.params.id || "");
 
     const existing = await prisma.savedAudience.findFirst({ where: { id, businessId } });
-    if (!existing) return res.status(404).json({ error: "Audience not found" });
+    if (!existing) {
+      return res.status(404).json({ error: "Audience not found" });
+    }
 
     await prisma.savedAudience.delete({ where: { id } });
     return res.json({ success: true });

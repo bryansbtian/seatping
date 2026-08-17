@@ -17,7 +17,9 @@ router.post('/submit', express.json(), async (req, res) => {
         { name: 'feedback-email', key: senderEmail, windowMs: HOURS(1), max: 3 },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     if (!data.name || !data.email || !data.subject || !data.message || !data.feedbackType) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -36,7 +38,14 @@ router.post('/submit', express.json(), async (req, res) => {
 
     const ticketNumber = await generateTicketNumber('FEEDBACK');
 
-    const priority = data.severity || (data.feedbackType === 'bug' ? 'medium' : 'low');
+    let priority = data.severity;
+    if (!priority) {
+      if (data.feedbackType === 'bug') {
+        priority = 'medium';
+      } else {
+        priority = 'low';
+      }
+    }
 
     const ticket = await prisma.ticket.create({
       data: {

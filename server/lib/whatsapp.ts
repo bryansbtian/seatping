@@ -6,7 +6,9 @@ let cachedClient: WhatsAppClient | null = null;
 
 function getClient(): WhatsAppClient | null {
   const apiKey = process.env.KAPSO_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    return null;
+  }
   if (!cachedClient) {
     cachedClient = new WhatsAppClient({
       baseUrl: KAPSO_BASE_URL,
@@ -101,8 +103,14 @@ export function resolveContractParams(
   values: Record<string, string>,
 ): WhatsAppBodyParam[] {
   return contract.names.map((n) => {
-    const text = values[n] != null ? String(values[n]) : "";
-    return contract.mode === "positional" ? { text } : { name: n, text };
+    let text = "";
+    if (values[n] != null) {
+      text = String(values[n]);
+    }
+    if (contract.mode === "positional") {
+      return { text };
+    }
+    return { name: n, text };
   });
 }
 
@@ -144,12 +152,16 @@ export const SEATPING_TEMPLATE_CONTRACTS: Record<string, TemplateContract> = {
 const templateContractCache = new Map<string, TemplateContract | null>();
 
 function placeholdersOf(text: string): string[] {
-  if (!text) return [];
+  if (!text) {
+    return [];
+  }
   const out: string[] = [];
   const re = /\{\{\s*([\w.]+)\s*\}\}/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
-    if (!out.includes(m[1])) out.push(m[1]);
+    if (!out.includes(m[1])) {
+      out.push(m[1]);
+    }
   }
   return out;
 }
@@ -161,10 +173,14 @@ async function getTemplateContract(
   const wabaId =
     process.env.KAPSO_WABA_ID || process.env.KAPSO_BUSINESS_ACCOUNT_ID;
   const client = getClient();
-  if (!client || !wabaId) return null;
+  if (!client || !wabaId) {
+    return null;
+  }
 
   const key = `${templateName}::${language}`;
-  if (templateContractCache.has(key)) return templateContractCache.get(key) ?? null;
+  if (templateContractCache.has(key)) {
+    return templateContractCache.get(key) ?? null;
+  }
 
   try {
     const resp: any = await client.templates.list({
@@ -186,10 +202,10 @@ async function getTemplateContract(
       (c) => String(c?.type || "").toLowerCase() === "body",
     );
     const names = placeholdersOf(String(body?.text || ""));
-    const mode: TemplateContract["mode"] =
-      names.length > 0 && names.every((n) => /^\d+$/.test(n))
-        ? "positional"
-        : "named";
+    let mode: TemplateContract["mode"] = "named";
+    if (names.length > 0 && names.every((n) => /^\d+$/.test(n))) {
+      mode = "positional";
+    }
     const contract: TemplateContract = { mode, names };
     templateContractCache.set(key, contract);
     return contract;
@@ -237,40 +253,55 @@ export async function sendCampaignWhatsApp(
   }
 
   const isNamed = bodyParams.some((p) => p && p.name);
+  let modeLabel: string;
+  if (isNamed) {
+    modeLabel = "named";
+  } else {
+    modeLabel = "positional";
+  }
 
   console.log(
-    `[WHATSAPP] campaign send template=${params.templateName} source=${source} mode=${
-      isNamed ? "named" : "positional"
-    } params=[${bodyParams
-      .map((p, i) => (p.name ? p.name : `{{${i + 1}}}`))
+    `[WHATSAPP] campaign send template=${params.templateName} source=${source} mode=${modeLabel} params=[${bodyParams
+      .map((p, i) => {
+        if (p.name) {
+          return p.name;
+        }
+        return `{{${i + 1}}}`;
+      })
       .join(", ")}] count=${bodyParams.length}`,
   );
 
   try {
+    let components: any[] = [];
+    if (bodyParams.length) {
+      components = [
+        {
+          type: "body",
+          parameters: bodyParams.map((p) => {
+            if (p.name) {
+              return { type: "text", parameter_name: p.name, text: String(p.text) };
+            }
+            return { type: "text", text: String(p.text) };
+          }),
+        },
+      ];
+    }
     const result: any = await client.messages.sendTemplate({
       phoneNumberId,
       to,
       template: {
         name: params.templateName,
         language: { code: params.language || "en" },
-        components: bodyParams.length
-          ? [
-              {
-                type: "body",
-                parameters: bodyParams.map((p) =>
-                  p.name
-                    ? { type: "text", parameter_name: p.name, text: String(p.text) }
-                    : { type: "text", text: String(p.text) },
-                ),
-              },
-            ]
-          : [],
+        components,
       },
     });
     const id =
       result?.messages?.[0]?.id || result?.data?.id || result?.id || null;
     console.log("[WHATSAPP] campaign template sent to", to);
-    return id ? String(id) : "sent";
+    if (id) {
+      return String(id);
+    }
+    return "sent";
   } catch (error: any) {
     console.error("[WHATSAPP] campaign send failed:", error?.message || error);
     return null;

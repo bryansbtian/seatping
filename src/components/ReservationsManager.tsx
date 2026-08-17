@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -59,18 +59,29 @@ function splitDateTime(dt: string) {
 }
 
 function formatTimeLabel(t: string) {
-  if (!t) return "";
+  if (!t) {
+    return "";
+  }
   const [hStr, m] = t.split(":");
   let h = Number(hStr);
-  const ampm = h >= 12 ? "PM" : "AM";
+  let ampm: string;
+  if (h >= 12) {
+    ampm = "PM";
+  } else {
+    ampm = "AM";
+  }
   h = h % 12 || 12;
   return `${h}:${m} ${ampm}`;
 }
 
 function readableDate(date: string) {
-  if (!date) return "";
+  if (!date) {
+    return "";
+  }
   const d = new Date(`${date}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return date;
+  if (Number.isNaN(d.getTime())) {
+    return date;
+  }
   return d.toLocaleDateString(undefined, {
     weekday: "short",
     month: "short",
@@ -105,7 +116,12 @@ export default function ReservationsManager({
   const nowLocal = getNowWallClockInTimezone(timeZone || DEFAULT_TIMEZONE);
 
   const buckets = useMemo(() => {
-    const list = Array.isArray(reservations) ? reservations : [];
+    let list: Reservation[];
+    if (Array.isArray(reservations)) {
+      list = reservations;
+    } else {
+      list = [];
+    }
     const sortByTime = (a: Reservation, b: Reservation) =>
       a.reservationDateTime.localeCompare(b.reservationDateTime);
 
@@ -189,6 +205,29 @@ export default function ReservationsManager({
     }
   };
 
+  let reservationsDescription: string;
+  if (!locationId) {
+    reservationsDescription = t("res.noLocationSelected");
+  } else if (reservationsEnabled) {
+    reservationsDescription = t("res.bookingsFor", { label: locationLabel });
+  } else {
+    reservationsDescription = t("res.disabled");
+  }
+
+  let expandToggleWrapperClass: string;
+  if (visible.length > 4) {
+    expandToggleWrapperClass = "";
+  } else {
+    expandToggleWrapperClass = "md:hidden";
+  }
+
+  let expandToggleLabel: string;
+  if (expanded) {
+    expandToggleLabel = t("res.viewLess");
+  } else {
+    expandToggleLabel = t("res.viewAll", { n: visible.length });
+  }
+
   return (
     <Card className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
       <CardHeader className="border-b border-gray-100 p-4 md:p-6">
@@ -199,46 +238,54 @@ export default function ReservationsManager({
               {t("res.title")}
             </CardTitle>
             <CardDescription className="text-gray-600 text-sm mt-0.5">
-              {!locationId
-                ? t("res.noLocationSelected")
-                : reservationsEnabled
-                  ? t("res.bookingsFor", { label: locationLabel })
-                  : t("res.disabled")}
+              {reservationsDescription}
             </CardDescription>
           </div>
         </div>
 
         {}
         <div className="!mt-4 flex flex-wrap gap-2">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => {
-                setTab(t.key);
-                setExpanded(false);
-              }}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-xs font-medium transition",
-                tab === t.key
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200",
-              )}
-            >
-              {t.label}
-              {t.count > 0 && (
-                <span
-                  className={cn(
-                    "ml-1.5 rounded-full px-1.5 text-[10px]",
-                    tab === t.key
-                      ? "bg-white/20 text-white"
-                      : "bg-white text-slate-500",
-                  )}
-                >
-                  {t.count}
-                </span>
-              )}
-            </button>
-          ))}
+          {tabs.map((t) => {
+            let tabToneClass: string;
+            if (tab === t.key) {
+              tabToneClass = "bg-slate-900 text-white";
+            } else {
+              tabToneClass = "bg-slate-100 text-slate-600 hover:bg-slate-200";
+            }
+
+            let countToneClass: string;
+            if (tab === t.key) {
+              countToneClass = "bg-white/20 text-white";
+            } else {
+              countToneClass = "bg-white text-slate-500";
+            }
+
+            return (
+              <button
+                key={t.key}
+                onClick={() => {
+                  setTab(t.key);
+                  setExpanded(false);
+                }}
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-xs font-medium transition",
+                  tabToneClass,
+                )}
+              >
+                {t.label}
+                {t.count > 0 && (
+                  <span
+                    className={cn(
+                      "ml-1.5 rounded-full px-1.5 text-[10px]",
+                      countToneClass,
+                    )}
+                  >
+                    {t.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </CardHeader>
 
@@ -258,13 +305,16 @@ export default function ReservationsManager({
 
         <div className="space-y-3">
           {visible.map((r, i) => {
-            const hideCls = expanded
-              ? ""
-              : i < 2
-                ? ""
-                : i < 4
-                  ? "max-md:hidden"
-                  : "hidden";
+            let hideCls: string;
+            if (expanded) {
+              hideCls = "";
+            } else if (i < 2) {
+              hideCls = "";
+            } else if (i < 4) {
+              hideCls = "max-md:hidden";
+            } else {
+              hideCls = "hidden";
+            }
             return (
               <div key={r.id} className={hideCls}>
                 <ReservationCard
@@ -284,7 +334,7 @@ export default function ReservationsManager({
           <div
             className={cn(
               "mt-3 flex justify-center",
-              visible.length > 4 ? "" : "md:hidden",
+              expandToggleWrapperClass,
             )}
           >
             <Button
@@ -293,9 +343,7 @@ export default function ReservationsManager({
               onClick={() => setExpanded((v) => !v)}
               className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
             >
-              {expanded
-                ? t("res.viewLess")
-                : t("res.viewAll", { n: visible.length })}
+              {expandToggleLabel}
             </Button>
           </div>
         )}
@@ -305,26 +353,41 @@ export default function ReservationsManager({
 }
 
 function ContactLine({ r }: { r: Reservation }) {
-  const Icon =
-    r.contactMethod === "email"
-      ? Mail
-      : r.contactMethod === "whatsapp"
-        ? MessageSquare
-        : Phone;
+  let Icon: typeof Mail;
+  if (r.contactMethod === "email") {
+    Icon = Mail;
+  } else if (r.contactMethod === "whatsapp") {
+    Icon = MessageSquare;
+  } else {
+    Icon = Phone;
+  }
   const codeDigits = String(r.countryCode || "").replace(/\D/g, "");
   const nationalDigits = String(r.phone || "").replace(/\D/g, "");
-  const value =
-    r.contactMethod === "email"
-      ? r.email
-      : (codeDigits
-          ? formatPhone(`${codeDigits}${nationalDigits}`, null)
-          : formatPhone(null, nationalDigits)) ||
-        `${r.countryCode || ""} ${r.phone}`.trim();
+  let value: string;
+  if (r.contactMethod === "email") {
+    value = r.email;
+  } else {
+    let formattedPhone: string | null;
+    if (codeDigits) {
+      formattedPhone = formatPhone(`${codeDigits}${nationalDigits}`, null);
+    } else {
+      formattedPhone = formatPhone(null, nationalDigits);
+    }
+    value = formattedPhone || `${r.countryCode || ""} ${r.phone}`.trim();
+  }
+
+  let contactMethodLabel: string;
+  if (r.contactMethod === "sms") {
+    contactMethodLabel = "SMS";
+  } else {
+    contactMethodLabel = r.contactMethod;
+  }
+
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
       <Icon className="h-3.5 w-3.5" />
       <span className="capitalize">
-        {r.contactMethod === "sms" ? "SMS" : r.contactMethod}
+        {contactMethodLabel}
       </span>
       <span className="text-slate-400">·</span>
       <span className="truncate">{value}</span>
@@ -412,26 +475,34 @@ function ReservationCard({
 
       {actions.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
-          {actions.map((a) => (
-            <Button
-              key={a.status}
-              size="sm"
-              variant={
-                a.variant === "destructive"
-                  ? "destructiveOutline"
-                  : "default"
-              }
-              disabled={busy}
-              onClick={() => onChange(r, a.status)}
-              className="h-8 text-xs"
-            >
-              {busy ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                t(a.labelKey)
-              )}
-            </Button>
-          ))}
+          {actions.map((a) => {
+            let buttonVariant: "destructiveOutline" | "default";
+            if (a.variant === "destructive") {
+              buttonVariant = "destructiveOutline";
+            } else {
+              buttonVariant = "default";
+            }
+
+            let buttonContent: ReactNode;
+            if (busy) {
+              buttonContent = <Loader2 className="h-3.5 w-3.5 animate-spin" />;
+            } else {
+              buttonContent = t(a.labelKey);
+            }
+
+            return (
+              <Button
+                key={a.status}
+                size="sm"
+                variant={buttonVariant}
+                disabled={busy}
+                onClick={() => onChange(r, a.status)}
+                className="h-8 text-xs"
+              >
+                {buttonContent}
+              </Button>
+            );
+          })}
         </div>
       )}
     </div>

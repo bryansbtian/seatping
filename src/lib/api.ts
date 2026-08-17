@@ -3,8 +3,15 @@ function extractError(data: any, status: number): string {
   if (data?.issues?.fieldErrors) {
     const fieldErrors = data.issues.fieldErrors as Record<string, string[]>;
     const firstField = Object.keys(fieldErrors)[0];
-    const firstMsg = firstField ? fieldErrors[firstField]?.[0] : undefined;
-    if (firstMsg) message = firstMsg;
+    let firstMsg: string | undefined;
+    if (firstField) {
+      firstMsg = fieldErrors[firstField]?.[0];
+    } else {
+      firstMsg = undefined;
+    }
+    if (firstMsg) {
+      message = firstMsg;
+    }
   }
   return message;
 }
@@ -19,7 +26,9 @@ export async function api(path: string, init: RequestInit = {}) {
   try {
     data = await res.json();
   } catch {}
-  if (!res.ok) throw new Error(extractError(data, res.status));
+  if (!res.ok) {
+    throw new Error(extractError(data, res.status));
+  }
   return data;
 }
 
@@ -37,6 +46,8 @@ export async function apiUpload(
   try {
     data = await res.json();
   } catch {}
-  if (!res.ok) throw new Error(extractError(data, res.status));
+  if (!res.ok) {
+    throw new Error(extractError(data, res.status));
+  }
   return data;
 }

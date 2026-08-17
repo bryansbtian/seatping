@@ -61,7 +61,9 @@ export function SearchSuggestInput({
   }, [suggestions]);
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const onDown = (e: MouseEvent) => {
       if (
         searchBoxRef.current &&
@@ -83,18 +85,24 @@ export function SearchSuggestInput({
       const params = new URLSearchParams();
       params.set("date", localDateStr(date));
       params.set("time", time);
-      if (people !== "large") params.set("partySize", people);
+      if (people !== "large") {
+        params.set("partySize", people);
+      }
       navigate(`${s.url}?${params.toString()}`);
     }
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
-      if (!showDropdown || suggestions.length === 0) return;
+      if (!showDropdown || suggestions.length === 0) {
+        return;
+      }
       e.preventDefault();
       setHighlighted((i) => Math.min(i + 1, suggestions.length - 1));
     } else if (e.key === "ArrowUp") {
-      if (!showDropdown || suggestions.length === 0) return;
+      if (!showDropdown || suggestions.length === 0) {
+        return;
+      }
       e.preventDefault();
       setHighlighted((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
@@ -107,6 +115,86 @@ export function SearchSuggestInput({
       setHighlighted(-1);
     }
   };
+
+  let dropdownContent: React.ReactNode = null;
+  if (showDropdown) {
+    if (loading && suggestions.length === 0) {
+      dropdownContent = (
+        <div className="flex items-center gap-2 px-4 py-3 text-sm text-slate-500">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Searching…
+        </div>
+      );
+    } else if (error) {
+      dropdownContent = (
+        <div className="px-4 py-3 text-sm text-slate-500">
+          Couldn't load suggestions. Press Search to continue.
+        </div>
+      );
+    } else if (suggestions.length === 0) {
+      dropdownContent = (
+        <div className="px-4 py-3 text-sm text-slate-500">
+          No matching restaurants found
+        </div>
+      );
+    } else {
+      dropdownContent = (
+        <ul className="max-h-[320px] overflow-y-auto py-1">
+          {suggestions.map((s, i) => {
+            let rowStateClass: string;
+            if (i === highlighted) {
+              rowStateClass = "bg-slate-100";
+            } else {
+              rowStateClass = "hover:bg-slate-50";
+            }
+            let thumbnail: React.ReactNode;
+            if (s.imageUrl) {
+              thumbnail = (
+                <img
+                  src={s.imageUrl}
+                  alt={s.name}
+                  className="h-full w-full object-cover"
+                />
+              );
+            } else {
+              thumbnail = <Utensils className="h-4 w-4 text-slate-400" />;
+            }
+            return (
+              <li key={s.locationId}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={i === highlighted}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onMouseEnter={() => setHighlighted(i)}
+                  onClick={() => selectSuggestion(s)}
+                  className={cn(
+                    "flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors",
+                    rowStateClass,
+                  )}
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                    {thumbnail}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-slate-900">
+                      {s.name}
+                    </span>
+                    {suggestionSubtitle(s) && (
+                      <span className="flex items-center gap-1 truncate text-xs text-slate-500">
+                        <MapPin className="h-3 w-3 shrink-0 text-slate-400" />
+                        <span className="truncate">{suggestionSubtitle(s)}</span>
+                      </span>
+                    )}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      );
+    }
+  }
 
   return (
     <div
@@ -122,7 +210,9 @@ export function SearchSuggestInput({
           setOpen(true);
         }}
         onFocus={() => {
-          if (value.trim() && !justSelected) setOpen(true);
+          if (value.trim() && !justSelected) {
+            setOpen(true);
+          }
         }}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
@@ -139,64 +229,7 @@ export function SearchSuggestInput({
           className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
           role="listbox"
         >
-          {loading && suggestions.length === 0 ? (
-            <div className="flex items-center gap-2 px-4 py-3 text-sm text-slate-500">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Searching…
-            </div>
-          ) : error ? (
-            <div className="px-4 py-3 text-sm text-slate-500">
-              Couldn't load suggestions. Press Search to continue.
-            </div>
-          ) : suggestions.length === 0 ? (
-            <div className="px-4 py-3 text-sm text-slate-500">
-              No matching restaurants found
-            </div>
-          ) : (
-            <ul className="max-h-[320px] overflow-y-auto py-1">
-              {suggestions.map((s, i) => (
-                <li key={s.locationId}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={i === highlighted}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onMouseEnter={() => setHighlighted(i)}
-                    onClick={() => selectSuggestion(s)}
-                    className={cn(
-                      "flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors",
-                      i === highlighted ? "bg-slate-100" : "hover:bg-slate-50",
-                    )}
-                  >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
-                      {s.imageUrl ? (
-                        <img
-                          src={s.imageUrl}
-                          alt={s.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <Utensils className="h-4 w-4 text-slate-400" />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-slate-900">
-                        {s.name}
-                      </span>
-                      {suggestionSubtitle(s) && (
-                        <span className="flex items-center gap-1 truncate text-xs text-slate-500">
-                          <MapPin className="h-3 w-3 shrink-0 text-slate-400" />
-                          <span className="truncate">
-                            {suggestionSubtitle(s)}
-                          </span>
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          {dropdownContent}
         </div>
       )}
     </div>

@@ -59,7 +59,10 @@ type Featured = {
 
 function locationLabel(loc: Location) {
   const name = loc.displayName || loc.name || "Unnamed location";
-  return loc.address ? `${name} — ${loc.address}` : name;
+  if (loc.address) {
+    return `${name} — ${loc.address}`;
+  }
+  return name;
 }
 
 function formatDate(iso: string) {
@@ -98,7 +101,13 @@ export default function FeaturedRestaurantsManager() {
     setListError(null);
     try {
       const res = await api("/admin/featured-restaurants");
-      setFeatured(Array.isArray(res.featured) ? res.featured : []);
+      let nextFeatured: Featured[];
+      if (Array.isArray(res.featured)) {
+        nextFeatured = res.featured;
+      } else {
+        nextFeatured = [];
+      }
+      setFeatured(nextFeatured);
     } catch (e: any) {
       setListError(e?.message || "Failed to load featured restaurants.");
     } finally {
@@ -112,7 +121,9 @@ export default function FeaturedRestaurantsManager() {
 
   const runSearch = async () => {
     const q = usernameQuery.trim();
-    if (!q) return;
+    if (!q) {
+      return;
+    }
     setSearching(true);
     setSearchResults(null);
     setSelectedBusiness(null);
@@ -122,7 +133,13 @@ export default function FeaturedRestaurantsManager() {
       const res = await api(
         `/admin/businesses/search?username=${encodeURIComponent(q)}`,
       );
-      setSearchResults(Array.isArray(res.businesses) ? res.businesses : []);
+      let nextResults: Business[];
+      if (Array.isArray(res.businesses)) {
+        nextResults = res.businesses;
+      } else {
+        nextResults = [];
+      }
+      setSearchResults(nextResults);
     } catch (e: any) {
       toast({
         title: "Search failed",
@@ -142,7 +159,13 @@ export default function FeaturedRestaurantsManager() {
     setLoadingLocations(true);
     try {
       const res = await api(`/admin/businesses/${b.id}/locations`);
-      setLocations(Array.isArray(res.locations) ? res.locations : []);
+      let nextLocations: Location[];
+      if (Array.isArray(res.locations)) {
+        nextLocations = res.locations;
+      } else {
+        nextLocations = [];
+      }
+      setLocations(nextLocations);
     } catch (e: any) {
       toast({
         title: "Failed to load locations",
@@ -166,7 +189,9 @@ export default function FeaturedRestaurantsManager() {
   };
 
   const addFeatured = async () => {
-    if (!selectedBusiness || !selectedLocationId) return;
+    if (!selectedBusiness || !selectedLocationId) {
+      return;
+    }
     setAdding(true);
     try {
       await api("/admin/featured-restaurants", {
@@ -197,7 +222,12 @@ export default function FeaturedRestaurantsManager() {
 
   const toggleActive = async (f: Featured, next: boolean) => {
     setFeatured((list) =>
-      list.map((x) => (x.id === f.id ? { ...x, isActive: next } : x)),
+      list.map((x) => {
+        if (x.id === f.id) {
+          return { ...x, isActive: next };
+        }
+        return x;
+      }),
     );
     try {
       await api(`/admin/featured-restaurants/${f.id}`, {
@@ -206,7 +236,12 @@ export default function FeaturedRestaurantsManager() {
       });
     } catch (e: any) {
       setFeatured((list) =>
-        list.map((x) => (x.id === f.id ? { ...x, isActive: !next } : x)),
+        list.map((x) => {
+          if (x.id === f.id) {
+            return { ...x, isActive: !next };
+          }
+          return x;
+        }),
       );
       toast({
         title: "Failed to update",
@@ -218,7 +253,22 @@ export default function FeaturedRestaurantsManager() {
 
   const saveSortOrder = async (f: Featured) => {
     const raw = orderEdits[f.id];
-    if (raw === undefined) return;
+    if (raw === undefined) {
+      return;
+    }
+    if (raw.trim() === "") {
+      setOrderEdits((e) => {
+        const next = { ...e };
+        delete next[f.id];
+        return next;
+      });
+      toast({
+        title: "Invalid sort order",
+        description: "Enter a number.",
+        variant: "destructive",
+      });
+      return;
+    }
     const value = Number(raw);
     if (!Number.isFinite(value)) {
       toast({
@@ -228,7 +278,9 @@ export default function FeaturedRestaurantsManager() {
       });
       return;
     }
-    if (Math.floor(value) === f.sortOrder) return;
+    if (Math.floor(value) === f.sortOrder) {
+      return;
+    }
     try {
       await api(`/admin/featured-restaurants/${f.id}`, {
         method: "PATCH",
@@ -262,6 +314,252 @@ export default function FeaturedRestaurantsManager() {
       });
     }
   };
+
+  let searchButtonIcon;
+  if (searching) {
+    searchButtonIcon = <Loader2 size={16} className="mr-2 animate-spin" />;
+  } else {
+    searchButtonIcon = <Search size={16} className="mr-2" />;
+  }
+
+  let searchResultsContent;
+  if (searchResults !== null) {
+    if (searchResults.length === 0) {
+      searchResultsContent = (
+        <p className="text-sm text-red-600">
+          No businesses found for "{usernameQuery.trim()}".
+        </p>
+      );
+    } else {
+      searchResultsContent = (
+        <div className="space-y-1.5">
+          {searchResults.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => selectBusiness(b)}
+              className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left text-sm hover:bg-slate-50"
+            >
+              <span className="min-w-0">
+                <span className="font-medium text-slate-900">@{b.username}</span>
+                {b.name && <span className="ml-2 text-slate-500">{b.name}</span>}
+              </span>
+              <span className="shrink-0 text-xs text-indigo-600">Select</span>
+            </button>
+          ))}
+        </div>
+      );
+    }
+  }
+
+  let locationsSection;
+  if (loadingLocations) {
+    locationsSection = (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 size={16} className="animate-spin" /> Loading locations...
+      </div>
+    );
+  } else if (locations && locations.length === 0) {
+    locationsSection = (
+      <p className="text-sm text-amber-600">
+        This business has no locations yet.
+      </p>
+    );
+  } else {
+    locationsSection = (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-2 sm:col-span-2">
+          <Label>Location</Label>
+          <Select
+            value={selectedLocationId}
+            onValueChange={setSelectedLocationId}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select a location" />
+            </SelectTrigger>
+            <SelectContent>
+              {(locations || []).map((loc) => (
+                <SelectItem key={loc.id} value={loc.id}>
+                  {locationLabel(loc)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="fr-sort">Sort Order (Optional)</Label>
+          <Input
+            id="fr-sort"
+            type="number"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+          />
+        </div>
+        <div className="flex items-end">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3 w-full">
+            <div>
+              <p className="text-sm font-medium text-slate-800">Active</p>
+              <p className="text-xs text-muted-foreground">Show on homepage</p>
+            </div>
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  let addButtonIcon;
+  if (adding) {
+    addButtonIcon = <Loader2 size={16} className="mr-2 animate-spin" />;
+  } else {
+    addButtonIcon = <Plus size={16} className="mr-2" />;
+  }
+
+  let featuredListContent;
+  if (loadingList) {
+    featuredListContent = (
+      <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" /> Loading...
+      </div>
+    );
+  } else if (listError) {
+    featuredListContent = (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        {listError}
+      </div>
+    );
+  } else if (featured.length === 0) {
+    featuredListContent = (
+      <div className="flex flex-col items-center justify-center gap-1 py-8 text-center">
+        <Star className="mb-1 h-8 w-8 text-slate-300" />
+        <p className="font-medium text-gray-700">No featured restaurants yet.</p>
+        <p className="text-sm text-muted-foreground">
+          Add one above to feature it on the homepage.
+        </p>
+      </div>
+    );
+  } else {
+    featuredListContent = featured.map((f) => {
+      let statusBadgeClass: string;
+      let statusLabel: string;
+      if (f.isActive) {
+        statusBadgeClass = "bg-green-100 text-green-700";
+        statusLabel = "Active";
+      } else {
+        statusBadgeClass = "bg-gray-100 text-gray-500";
+        statusLabel = "Inactive";
+      }
+
+      let businessEmailSuffix: string;
+      if (f.business?.email) {
+        businessEmailSuffix = ` · ${f.business.email}`;
+      } else {
+        businessEmailSuffix = "";
+      }
+
+      return (
+        <div
+          key={f.id}
+          className="flex flex-col gap-3 rounded-lg border border-slate-200 p-3 md:flex-row md:items-center md:justify-between"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-medium text-slate-900 break-words">
+                {f.location?.displayName ||
+                  f.location?.name ||
+                  "Unnamed location"}
+              </p>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass}`}
+              >
+                {statusLabel}
+              </span>
+            </div>
+            <p className="text-sm text-slate-500 break-words">
+              @{f.business?.username ?? "unknown"}
+              {businessEmailSuffix}
+            </p>
+            {f.location?.address && (
+              <p className="text-sm text-slate-500 break-words">
+                {f.location.address}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-muted-foreground">
+              Added {formatDate(f.createdAt)}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center md:shrink-0">
+            {}
+            <div className="flex items-center gap-2">
+              <Label htmlFor={`order-${f.id}`} className="text-xs">
+                Order
+              </Label>
+              <Input
+                id={`order-${f.id}`}
+                type="number"
+                className="h-9 w-20"
+                value={orderEdits[f.id] ?? String(f.sortOrder)}
+                onChange={(e) =>
+                  setOrderEdits((o) => ({ ...o, [f.id]: e.target.value }))
+                }
+                onBlur={() => saveSortOrder(f)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+              />
+            </div>
+
+            {}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground sm:hidden">
+                Active
+              </span>
+              <Switch
+                checked={f.isActive}
+                onCheckedChange={(v) => toggleActive(f, v)}
+                aria-label="Toggle active"
+              />
+            </div>
+
+            {}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructiveOutline" size="sm">
+                  <Trash2 size={16} className="mr-2 sm:mr-0" />
+                  <span className="sm:hidden">Remove</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="max-w-sm">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove featured restaurant?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This removes "
+                    {f.location?.displayName ||
+                      f.location?.name ||
+                      "this location"}
+                    " from the homepage Featured Restaurants. The location itself
+                    is not deleted.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => removeFeatured(f)}
+                    variant="destructive"
+                  >
+                    Remove
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
+      );
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -299,11 +597,7 @@ export default function FeaturedRestaurantsManager() {
                 disabled={searching || !usernameQuery.trim()}
                 className="w-full sm:w-auto"
               >
-                {searching ? (
-                  <Loader2 size={16} className="mr-2 animate-spin" />
-                ) : (
-                  <Search size={16} className="mr-2" />
-                )}
+                {searchButtonIcon}
                 Search
               </Button>
             </div>
@@ -311,36 +605,7 @@ export default function FeaturedRestaurantsManager() {
 
           {}
           {searchResults !== null && (
-            <div className="space-y-2">
-              {searchResults.length === 0 ? (
-                <p className="text-sm text-red-600">
-                  No businesses found for "{usernameQuery.trim()}".
-                </p>
-              ) : (
-                <div className="space-y-1.5">
-                  {searchResults.map((b) => (
-                    <button
-                      key={b.id}
-                      type="button"
-                      onClick={() => selectBusiness(b)}
-                      className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left text-sm hover:bg-slate-50"
-                    >
-                      <span className="min-w-0">
-                        <span className="font-medium text-slate-900">
-                          @{b.username}
-                        </span>
-                        {b.name && (
-                          <span className="ml-2 text-slate-500">{b.name}</span>
-                        )}
-                      </span>
-                      <span className="shrink-0 text-xs text-indigo-600">
-                        Select
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <div className="space-y-2">{searchResultsContent}</div>
           )}
 
           {}
@@ -367,59 +632,7 @@ export default function FeaturedRestaurantsManager() {
                 </Button>
               </div>
 
-              {loadingLocations ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 size={16} className="animate-spin" /> Loading
-                  locations...
-                </div>
-              ) : locations && locations.length === 0 ? (
-                <p className="text-sm text-amber-600">
-                  This business has no locations yet.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label>Location</Label>
-                    <Select
-                      value={selectedLocationId}
-                      onValueChange={setSelectedLocationId}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a location" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(locations || []).map((loc) => (
-                          <SelectItem key={loc.id} value={loc.id}>
-                            {locationLabel(loc)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="fr-sort">Sort Order (Optional)</Label>
-                    <Input
-                      id="fr-sort"
-                      type="number"
-                      value={sortOrder}
-                      onChange={(e) => setSortOrder(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3 w-full">
-                      <div>
-                        <p className="text-sm font-medium text-slate-800">
-                          Active
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Show on homepage
-                        </p>
-                      </div>
-                      <Switch checked={isActive} onCheckedChange={setIsActive} />
-                    </div>
-                  </div>
-                </div>
-              )}
+              {locationsSection}
 
               <Button
                 type="button"
@@ -427,11 +640,7 @@ export default function FeaturedRestaurantsManager() {
                 disabled={adding || !selectedLocationId}
                 className="w-full sm:w-auto"
               >
-                {adding ? (
-                  <Loader2 size={16} className="mr-2 animate-spin" />
-                ) : (
-                  <Plus size={16} className="mr-2" />
-                )}
+                {addButtonIcon}
                 Add Featured Restaurant
               </Button>
             </div>
@@ -449,134 +658,7 @@ export default function FeaturedRestaurantsManager() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {loadingList ? (
-            <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin" /> Loading...
-            </div>
-          ) : listError ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              {listError}
-            </div>
-          ) : featured.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-1 py-8 text-center">
-              <Star className="mb-1 h-8 w-8 text-slate-300" />
-              <p className="font-medium text-gray-700">
-                No featured restaurants yet.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Add one above to feature it on the homepage.
-              </p>
-            </div>
-          ) : (
-            featured.map((f) => (
-              <div
-                key={f.id}
-                className="flex flex-col gap-3 rounded-lg border border-slate-200 p-3 md:flex-row md:items-center md:justify-between"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-slate-900 break-words">
-                      {f.location?.displayName ||
-                        f.location?.name ||
-                        "Unnamed location"}
-                    </p>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        f.isActive
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
-                      {f.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </div>
-                  <p className="text-sm text-slate-500 break-words">
-                    @{f.business?.username ?? "unknown"}
-                    {f.business?.email ? ` · ${f.business.email}` : ""}
-                  </p>
-                  {f.location?.address && (
-                    <p className="text-sm text-slate-500 break-words">
-                      {f.location.address}
-                    </p>
-                  )}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Added {formatDate(f.createdAt)}
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center md:shrink-0">
-                  {}
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor={`order-${f.id}`} className="text-xs">
-                      Order
-                    </Label>
-                    <Input
-                      id={`order-${f.id}`}
-                      type="number"
-                      className="h-9 w-20"
-                      value={orderEdits[f.id] ?? String(f.sortOrder)}
-                      onChange={(e) =>
-                        setOrderEdits((o) => ({ ...o, [f.id]: e.target.value }))
-                      }
-                      onBlur={() => saveSortOrder(f)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                      }}
-                    />
-                  </div>
-
-                  {}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground sm:hidden">
-                      Active
-                    </span>
-                    <Switch
-                      checked={f.isActive}
-                      onCheckedChange={(v) => toggleActive(f, v)}
-                      aria-label="Toggle active"
-                    />
-                  </div>
-
-                  {}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="destructiveOutline"
-                        size="sm"
-                      >
-                        <Trash2 size={16} className="mr-2 sm:mr-0" />
-                        <span className="sm:hidden">Remove</span>
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="max-w-sm">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>
-                          Remove featured restaurant?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This removes "
-                          {f.location?.displayName ||
-                            f.location?.name ||
-                            "this location"}
-                          " from the homepage Featured Restaurants. The location
-                          itself is not deleted.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => removeFeatured(f)}
-                          variant="destructive"
-                        >
-                          Remove
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
-            ))
-          )}
+          {featuredListContent}
         </CardContent>
       </Card>
     </div>

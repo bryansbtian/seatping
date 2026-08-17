@@ -46,17 +46,27 @@ const Feedback = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value, type, checked } = e.target as HTMLInputElement;
+    let fieldValue: string | boolean;
+    if (type === "checkbox") {
+      fieldValue = checked;
+    } else {
+      fieldValue = value;
+    }
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: fieldValue,
     }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
   };
 
   const handleTypeChange = (value: string) => {
     setFormData((prev) => ({ ...prev, feedbackType: value }));
     if (errors["feedbackType"])
-      setErrors((prev) => ({ ...prev, feedbackType: "" }));
+      {
+        setErrors((prev) => ({ ...prev, feedbackType: "" }));
+      }
   };
 
   const handleSeverityChange = (value: string) => {
@@ -66,22 +76,36 @@ const Feedback = () => {
   const validate = () => {
     const next: Record<string, string> = {};
 
-    if (!formData.subject.trim()) next.subject = "Subject is required";
+    if (!formData.subject.trim()) {
+      next.subject = "Subject is required";
+    }
     if (!formData.message.trim())
-      next.message = "Please describe your feedback";
+      {
+        next.message = "Please describe your feedback";
+      }
     if (formData.message.length > MAX_MESSAGE)
-      next.message = `Message exceeds ${MAX_MESSAGE} characters`;
-    if (!formData.email.trim()) next.email = "Email is required";
+      {
+        next.message = `Message exceeds ${MAX_MESSAGE} characters`;
+      }
+    if (!formData.email.trim()) {
+      next.email = "Email is required";
+    }
     if (
       formData.email &&
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())
     ) {
       next.email = "Enter a valid email";
     }
-    if (!formData.name.trim()) next.name = "Your name is required";
-    if (isIssue && !formData.severity) next.severity = "Pick a severity";
+    if (!formData.name.trim()) {
+      next.name = "Your name is required";
+    }
+    if (isIssue && !formData.severity) {
+      next.severity = "Pick a severity";
+    }
     if (!formData.allowContact)
-      next.allowContact = "Please allow us to contact you to follow up.";
+      {
+        next.allowContact = "Please allow us to contact you to follow up.";
+      }
 
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -89,7 +113,9 @@ const Feedback = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate()) {
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -127,6 +153,43 @@ const Feedback = () => {
       setSubmitting(false);
     }
   };
+
+  let subjectErrorClass: string;
+  if (errors.subject) {
+    subjectErrorClass = "border-destructive";
+  } else {
+    subjectErrorClass = "";
+  }
+  let messageCountClass: string;
+  if (formData.message.length > MAX_MESSAGE) {
+    messageCountClass = "text-destructive";
+  } else {
+    messageCountClass = "text-muted-foreground";
+  }
+  let messageErrorClass: string;
+  if (errors.message) {
+    messageErrorClass = "border-destructive";
+  } else {
+    messageErrorClass = "";
+  }
+  let nameErrorClass: string;
+  if (errors.name) {
+    nameErrorClass = "border-destructive";
+  } else {
+    nameErrorClass = "";
+  }
+  let emailErrorClass: string;
+  if (errors.email) {
+    emailErrorClass = "border-destructive";
+  } else {
+    emailErrorClass = "";
+  }
+  let submitLabel: string;
+  if (submitting) {
+    submitLabel = "Sending...";
+  } else {
+    submitLabel = "Submit Feedback";
+  }
 
   return (
     <>
@@ -238,7 +301,7 @@ const Feedback = () => {
                   value={formData.subject}
                   onChange={handleChange}
                   className={`h-11 placeholder:text-sm sm:placeholder:text-base ${
-                    errors.subject ? "border-destructive" : ""
+                    subjectErrorClass
                   }`}
                   required
                 />
@@ -252,11 +315,7 @@ const Feedback = () => {
                 <div className="flex items-center justify-between">
                   <Label htmlFor="message">Message</Label>
                   <span
-                    className={`text-xs ${
-                      formData.message.length > MAX_MESSAGE
-                        ? "text-destructive"
-                        : "text-muted-foreground"
-                    }`}
+                    className={`text-xs ${messageCountClass}`}
                   >
                     {formData.message.length}/{MAX_MESSAGE}
                   </span>
@@ -268,7 +327,7 @@ const Feedback = () => {
                   value={formData.message}
                   onChange={handleChange}
                   className={`min-h-[140px] placeholder:text-sm sm:placeholder:text-base ${
-                    errors.message ? "border-destructive" : ""
+                    messageErrorClass
                   }`}
                   required
                 />
@@ -288,7 +347,7 @@ const Feedback = () => {
                     value={formData.name}
                     onChange={handleChange}
                     className={`h-11 placeholder:text-sm sm:placeholder:text-base ${
-                      errors.name ? "border-destructive" : ""
+                      nameErrorClass
                     }`}
                     required
                   />
@@ -306,7 +365,7 @@ const Feedback = () => {
                     value={formData.email}
                     onChange={handleChange}
                     className={`h-11 placeholder:text-sm sm:placeholder:text-base ${
-                      errors.email ? "border-destructive" : ""
+                      emailErrorClass
                     }`}
                     required
                   />
@@ -372,7 +431,7 @@ const Feedback = () => {
                 className="h-11 w-full text-base"
                 disabled={!formData.allowContact || submitting}
               >
-                {submitting ? "Sending..." : "Submit Feedback"}
+                {submitLabel}
               </Button>
             </form>
           </div>

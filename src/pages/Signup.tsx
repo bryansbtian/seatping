@@ -43,7 +43,9 @@ const Signup = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name as keyof typeof errors])
-      setErrors((p) => ({ ...p, [name]: "" }));
+      {
+        setErrors((p) => ({ ...p, [name]: "" }));
+      }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,18 +59,34 @@ const Signup = () => {
       confirmPassword: "",
     };
 
-    if (!formData.name) newErrors.name = "Name is required";
-    if (!formData.username) newErrors.username = "Username is required";
+    if (!formData.name) {
+      newErrors.name = "Name is required";
+    }
+    if (!formData.username) {
+      newErrors.username = "Username is required";
+    }
     else if (formData.username.length < 3)
-      newErrors.username = "Username must be at least 3 characters";
-    if (!formData.email) newErrors.email = "Email is required";
+      {
+        newErrors.username = "Username must be at least 3 characters";
+      }
+    if (!formData.email) {
+      newErrors.email = "Email is required";
+    }
     if (formData.phone && formData.phone.replace(/\D/g, "").length < 6)
-      newErrors.phone = "Phone must be at least 6 digits";
-    if (!formData.password) newErrors.password = "Password is required";
+      {
+        newErrors.phone = "Phone must be at least 6 digits";
+      }
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    }
     else if (formData.password.length < 8)
-      newErrors.password = "Password must be at least 8 chars";
+      {
+        newErrors.password = "Password must be at least 8 chars";
+      }
     if (!formData.confirmPassword)
-      newErrors.confirmPassword = "Please confirm your password";
+      {
+        newErrors.confirmPassword = "Please confirm your password";
+      }
     if (
       formData.password &&
       formData.confirmPassword &&
@@ -78,17 +96,23 @@ const Signup = () => {
     }
 
     setErrors(newErrors);
-    if (Object.values(newErrors).some(Boolean)) return;
+    if (Object.values(newErrors).some(Boolean)) {
+      return;
+    }
 
     try {
       setLoading(true);
+      let phonePayload: string;
+      if (formData.phone.trim()) {
+        phonePayload = `${formData.countryCode}${formData.phone.replace(/\D/g, "")}`;
+      } else {
+        phonePayload = "";
+      }
       const payload = {
         name: formData.name,
         username: formData.username,
         email: formData.email,
-        phone: formData.phone.trim()
-          ? `${formData.countryCode}${formData.phone.replace(/\D/g, "")}`
-          : "",
+        phone: phonePayload,
         password: formData.password,
       };
       const res = await api("/auth/signup", {
@@ -111,6 +135,13 @@ const Signup = () => {
       setLoading(false);
     }
   };
+
+  let submitLabel: string;
+  if (loading) {
+    submitLabel = "Creating...";
+  } else {
+    submitLabel = "Sign Up";
+  }
 
   return (
     <>
@@ -253,7 +284,7 @@ const Signup = () => {
                 className="h-11 w-full text-base"
                 disabled={loading}
               >
-                {loading ? "Creating..." : "Sign Up"}
+                {submitLabel}
               </Button>
             </form>
 

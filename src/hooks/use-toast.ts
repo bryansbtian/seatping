@@ -82,9 +82,12 @@ export const reducer = (state: State, action: Action): State => {
     case "UPDATE_TOAST":
       return {
         ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === action.toast.id ? { ...t, ...action.toast } : t
-        ),
+        toasts: state.toasts.map((t) => {
+          if (t.id === action.toast.id) {
+            return { ...t, ...action.toast }
+          }
+          return t
+        }),
       }
 
     case "DISMISS_TOAST": {
@@ -100,14 +103,15 @@ export const reducer = (state: State, action: Action): State => {
 
       return {
         ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === toastId || toastId === undefined
-            ? {
-                ...t,
-                open: false,
-              }
-            : t
-        ),
+        toasts: state.toasts.map((t) => {
+          if (t.id === toastId || toastId === undefined) {
+            return {
+              ...t,
+              open: false,
+            }
+          }
+          return t
+        }),
       }
     }
     case "REMOVE_TOAST":
@@ -144,13 +148,18 @@ function toTitleCase(value: string): string {
 function titleCaseToastProps<
   T extends { title?: React.ReactNode; description?: React.ReactNode }
 >(props: T): T {
+  let title: React.ReactNode = props.title
+  if (typeof props.title === "string") {
+    title = toTitleCase(props.title)
+  }
+  let description: React.ReactNode = props.description
+  if (typeof props.description === "string") {
+    description = toTitleCase(props.description)
+  }
   return {
     ...props,
-    title: typeof props.title === "string" ? toTitleCase(props.title) : props.title,
-    description:
-      typeof props.description === "string"
-        ? toTitleCase(props.description)
-        : props.description,
+    title,
+    description,
   }
 }
 
@@ -171,7 +180,9 @@ function toast({ ...props }: Toast) {
       id,
       open: true,
       onOpenChange: (open) => {
-        if (!open) dismiss()
+        if (!open) {
+          dismiss()
+        }
       },
     },
   })

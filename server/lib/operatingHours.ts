@@ -50,7 +50,9 @@ function timeToMinutes(time: string): number {
 }
 
 function dayIndexForDate(date: string): number | null {
-  if (!DATE_RE.test(date)) return null;
+  if (!DATE_RE.test(date)) {
+    return null;
+  }
   const [year, month, day] = date.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
@@ -71,9 +73,13 @@ function normalizedDay(openingHours: unknown, key: DayKey): {
   open: string;
   close: string;
 } | null {
-  if (!isRecord(openingHours)) return null;
+  if (!isRecord(openingHours)) {
+    return null;
+  }
   const raw = openingHours[key] as DayHours | undefined;
-  if (!isRecord(raw)) return null;
+  if (!isRecord(raw)) {
+    return null;
+  }
   if (raw.enabled === false) {
     return {
       configured: true,
@@ -86,7 +92,9 @@ function normalizedDay(openingHours: unknown, key: DayKey): {
   }
   const open = String(raw.open || "");
   const close = String(raw.close || "");
-  if (!TIME_RE.test(open) || !TIME_RE.test(close)) return null;
+  if (!TIME_RE.test(open) || !TIME_RE.test(close)) {
+    return null;
+  }
   return {
     configured: true,
     enabled: true,
@@ -98,10 +106,17 @@ function normalizedDay(openingHours: unknown, key: DayKey): {
 }
 
 export function formatOperatingTime(time: string): string {
-  if (!TIME_RE.test(time)) return time;
+  if (!TIME_RE.test(time)) {
+    return time;
+  }
   const [hourText, minute] = time.split(":");
   const hour24 = Number(hourText);
-  const suffix = hour24 >= 12 ? "PM" : "AM";
+  let suffix: string;
+  if (hour24 >= 12) {
+    suffix = "PM";
+  } else {
+    suffix = "AM";
+  }
   const hour12 = hour24 % 12 || 12;
   return `${hour12}:${minute} ${suffix}`;
 }
@@ -121,9 +136,16 @@ function datePartsInTimezone(at: Date, timezone: string): {
   }).formatToParts(at);
   const values: Record<string, string> = {};
   for (const part of parts) {
-    if (part.type !== "literal") values[part.type] = part.value;
+    if (part.type !== "literal") {
+      values[part.type] = part.value;
+    }
   }
-  const hour = values.hour === "24" ? 0 : Number(values.hour);
+  let hour: number;
+  if (values.hour === "24") {
+    hour = 0;
+  } else {
+    hour = Number(values.hour);
+  }
   return {
     date: `${values.year}-${values.month}-${values.day}`,
     minute: hour * 60 + Number(values.minute),
@@ -131,7 +153,10 @@ function datePartsInTimezone(at: Date, timezone: string): {
 }
 
 export function getOpeningHoursTimezone(openingHours: unknown): string {
-  const timezone = isRecord(openingHours) ? openingHours.timezone : undefined;
+  let timezone: unknown = undefined;
+  if (isRecord(openingHours)) {
+    timezone = openingHours.timezone;
+  }
   if (typeof timezone !== "string" || !timezone.trim()) {
     return DEFAULT_LOCATION_TIMEZONE;
   }
@@ -150,7 +175,10 @@ export function getLocationOpeningHours(
     return undefined;
   }
   const openingHours = location.restaurantProfile.openingHours;
-  return isRecord(openingHours) ? (openingHours as OpeningHours) : undefined;
+  if (isRecord(openingHours)) {
+    return openingHours as OpeningHours;
+  }
+  return undefined;
 }
 
 export function getLocationTimezone(location: unknown): string {
@@ -246,8 +274,14 @@ export function getDateOperatingStatus(
       );
     }
   }
-  const hoursLabel =
-    hoursLabels.length > 0 ? hoursLabels.join(", ") : current ? "Closed" : null;
+  let hoursLabel: string | null;
+  if (hoursLabels.length > 0) {
+    hoursLabel = hoursLabels.join(", ");
+  } else if (current) {
+    hoursLabel = "Closed";
+  } else {
+    hoursLabel = null;
+  }
 
   return {
     configured,
@@ -264,7 +298,9 @@ export function isMinuteWithinOperatingHours(
   status: DateOperatingStatus,
   minute: number,
 ): boolean {
-  if (!status.configured) return true;
+  if (!status.configured) {
+    return true;
+  }
   return status.windows.some(
     (window) => minute >= window.openMin && minute < window.closeMin,
   );
@@ -282,13 +318,16 @@ export function getCurrentOperatingStatus(
     local = datePartsInTimezone(at, DEFAULT_LOCATION_TIMEZONE);
   }
   const dateStatus = getDateOperatingStatus(openingHours, local.date);
+  let isOpen: boolean | null = null;
+  if (dateStatus.configured) {
+    isOpen = isMinuteWithinOperatingHours(dateStatus, local.minute);
+  }
+
   return {
     ...dateStatus,
     timezone,
     localMinute: local.minute,
-    isOpen: dateStatus.configured
-      ? isMinuteWithinOperatingHours(dateStatus, local.minute)
-      : null,
+    isOpen,
   };
 }
 

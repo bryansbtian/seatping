@@ -86,8 +86,16 @@ const PEOPLE_OPTIONS: string[] = [
 ];
 
 function peopleLabel(value: string) {
-  if (value === "large") return "Larger Party";
-  return `${value} ${value === "1" ? "Guest" : "Guests"}`;
+  if (value === "large") {
+    return "Larger Party";
+  }
+  let guestWord: string;
+  if (value === "1") {
+    guestWord = "Guest";
+  } else {
+    guestWord = "Guests";
+  }
+  return `${value} ${guestWord}`;
 }
 
 type SearchResult = {
@@ -165,15 +173,29 @@ const EMPTY_FILTERS: Filters = {
 };
 
 function countActiveFilters(f: Filters): number {
-  return (
-    (f.cuisine ? 1 : 0) +
-    (f.price ? 1 : 0) +
-    (f.minRating != null ? 1 : 0) +
-    (f.location ? 1 : 0) +
-    (f.queue ? 1 : 0) +
-    (f.reservations ? 1 : 0) +
-    (f.openNow ? 1 : 0)
-  );
+  let count = 0;
+  if (f.cuisine) {
+    count += 1;
+  }
+  if (f.price) {
+    count += 1;
+  }
+  if (f.minRating != null) {
+    count += 1;
+  }
+  if (f.location) {
+    count += 1;
+  }
+  if (f.queue) {
+    count += 1;
+  }
+  if (f.reservations) {
+    count += 1;
+  }
+  if (f.openNow) {
+    count += 1;
+  }
+  return count;
 }
 
 function useActiveQuery(): string {
@@ -198,17 +220,25 @@ export default function SearchResults() {
     const dp = searchParams.get("date");
     if (dp && /^\d{4}-\d{2}-\d{2}$/.test(dp)) {
       const d = new Date(`${dp}T00:00:00`);
-      if (!Number.isNaN(d.getTime())) return d;
+      if (!Number.isNaN(d.getTime())) {
+        return d;
+      }
     }
     return new Date();
   });
   const [time, setTime] = useState<string>(() => {
     const tp = searchParams.get("time");
-    return tp && TIME_OPTIONS.includes(tp) ? tp : getNextTimeSlot();
+    if (tp && TIME_OPTIONS.includes(tp)) {
+      return tp;
+    }
+    return getNextTimeSlot();
   });
   const [people, setPeople] = useState(() => {
     const pp = searchParams.get("partySize");
-    return pp && PEOPLE_OPTIONS.includes(pp) ? pp : "2";
+    if (pp && PEOPLE_OPTIONS.includes(pp)) {
+      return pp;
+    }
+    return "2";
   });
   const [inputQuery, setInputQuery] = useState(activeQuery);
   const [dateOpen, setDateOpen] = useState(false);
@@ -224,21 +254,28 @@ export default function SearchResults() {
     return d;
   }, []);
 
-  const dateLabel = isToday(date)
-    ? "Today"
-    : isTomorrow(date)
-      ? "Tomorrow"
-      : format(date, "MMM d");
+  let dateLabel: string;
+  if (isToday(date)) {
+    dateLabel = "Today";
+  } else if (isTomorrow(date)) {
+    dateLabel = "Tomorrow";
+  } else {
+    dateLabel = format(date, "MMM d");
+  }
   const searchDateStr = localDateStr(date);
 
   const submit = (e?: React.FormEvent) => {
     e?.preventDefault();
     const q = inputQuery.trim();
-    if (!q) return;
+    if (!q) {
+      return;
+    }
     const params = new URLSearchParams();
     params.set("date", searchDateStr);
     params.set("time", time);
-    if (people !== "large") params.set("partySize", people);
+    if (people !== "large") {
+      params.set("partySize", people);
+    }
     navigate(`/search/${encodeURIComponent(q)}?${params.toString()}`);
   };
 
@@ -254,27 +291,39 @@ export default function SearchResults() {
     setLoading(true);
     setError(null);
     setResults(null);
-    const url = activeQuery
-      ? `/api/search/restaurants?query=${encodeURIComponent(activeQuery)}`
-      : `/api/search/restaurants`;
+    let url: string;
+    if (activeQuery) {
+      url = `/api/search/restaurants?query=${encodeURIComponent(activeQuery)}`;
+    } else {
+      url = `/api/search/restaurants`;
+    }
     api(url)
       .then((res: any) => {
-        if (cancelled) return;
-        const list = Array.isArray(res)
-          ? res
-          : Array.isArray(res?.results)
-            ? res.results
-            : [];
+        if (cancelled) {
+          return;
+        }
+        let list: SearchResult[];
+        if (Array.isArray(res)) {
+          list = res;
+        } else if (Array.isArray(res?.results)) {
+          list = res.results;
+        } else {
+          list = [];
+        }
         setResults(list);
       })
       .catch((e: any) => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         console.error("Search failed:", e);
         setResults([]);
         setError("We couldn’t load restaurants right now. Please try again.");
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -299,20 +348,41 @@ export default function SearchResults() {
   );
 
   const visible = useMemo(() => {
-    if (!results) return [];
+    if (!results) {
+      return [];
+    }
     let list = results.filter((r) => {
-      if (filters.cuisine && r.cuisine !== filters.cuisine) return false;
-      if (filters.price && r.priceRange !== filters.price) return false;
-      if (filters.minRating != null && (r.rating ?? 0) < filters.minRating)
+      if (filters.cuisine && r.cuisine !== filters.cuisine) {
         return false;
-      if (filters.location && areaLabel(r) !== filters.location) return false;
-      if (filters.queue && !r.queueEnabled) return false;
-      if (filters.reservations && !r.reservationsEnabled) return false;
-      if (filters.openNow && r.openNow !== true) return false;
+      }
+      if (filters.price && r.priceRange !== filters.price) {
+        return false;
+      }
+      if (filters.minRating != null && (r.rating ?? 0) < filters.minRating)
+        {
+          return false;
+        }
+      if (filters.location && areaLabel(r) !== filters.location) {
+        return false;
+      }
+      if (filters.queue && !r.queueEnabled) {
+        return false;
+      }
+      if (filters.reservations && !r.reservationsEnabled) {
+        return false;
+      }
+      if (filters.openNow && r.openNow !== true) {
+        return false;
+      }
       return true;
     });
 
-    const priceRank = (p: string | null) => (p ? p.length : 0);
+    const priceRank = (p: string | null) => {
+      if (p) {
+        return p.length;
+      }
+      return 0;
+    };
     const byName = (a: SearchResult, b: SearchResult) =>
       a.name.localeCompare(b.name);
 
@@ -354,18 +424,78 @@ export default function SearchResults() {
   const clearFilters = () => setFilters(EMPTY_FILTERS);
 
   const summaryText = (() => {
-    if (loading) return "Searching restaurants…";
+    if (loading) {
+      return "Searching restaurants…";
+    }
     if (error) {
-      return activeQuery
-        ? `Showing restaurants for "${activeQuery}"`
-        : "Restaurants";
+      if (activeQuery) {
+        return `Showing restaurants for "${activeQuery}"`;
+      }
+      return "Restaurants";
     }
     const count = visible.length;
     if (activeQuery) {
-      return `${count} ${count === 1 ? "result" : "results"} for "${activeQuery}"`;
+      let resultWord: string;
+      if (count === 1) {
+        resultWord = "result";
+      } else {
+        resultWord = "results";
+      }
+      return `${count} ${resultWord} for "${activeQuery}"`;
     }
-    return `${count} ${count === 1 ? "Restaurant" : "Restaurants"} Available`;
+    let restaurantWord: string;
+    if (count === 1) {
+      restaurantWord = "Restaurant";
+    } else {
+      restaurantWord = "Restaurants";
+    }
+    return `${count} ${restaurantWord} Available`;
   })();
+
+  let ratingFilterCurrent: string | null;
+  if (filters.minRating != null) {
+    ratingFilterCurrent = String(filters.minRating);
+  } else {
+    ratingFilterCurrent = null;
+  }
+
+  let ratingFilterDisplayValue: string | undefined;
+  if (filters.minRating != null) {
+    ratingFilterDisplayValue = `${filters.minRating}+`;
+  } else {
+    ratingFilterDisplayValue = undefined;
+  }
+
+  let resultsContent: React.ReactNode;
+  if (loading) {
+    resultsContent = <ResultsSkeleton />;
+  } else if (error) {
+    resultsContent = (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
+        {error}
+      </div>
+    );
+  } else if (visible.length === 0) {
+    if (filtersApplied && (results?.length ?? 0) > 0) {
+      resultsContent = <NoFilterMatch onClear={clearFilters} />;
+    } else {
+      resultsContent = <EmptyState query={activeQuery} />;
+    }
+  } else {
+    resultsContent = (
+      <div className="flex flex-col gap-4">
+        {visible.map((r) => (
+          <RestaurantCard
+            key={r.locationId}
+            r={r}
+            searchDate={searchDateStr}
+            searchTime={time}
+            searchPartySize={people}
+          />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -403,7 +533,9 @@ export default function SearchResults() {
                       mode="single"
                       selected={date}
                       onSelect={(d) => {
-                        if (d) setDate(d);
+                        if (d) {
+                          setDate(d);
+                        }
                         setDateOpen(false);
                       }}
                       disabled={{ before: startOfToday }}
@@ -517,19 +649,21 @@ export default function SearchResults() {
             />
             <SelectFilter
               label="Rating"
-              current={
-                filters.minRating != null ? String(filters.minRating) : null
-              }
-              displayValue={
-                filters.minRating != null ? `${filters.minRating}+` : undefined
-              }
+              current={ratingFilterCurrent}
+              displayValue={ratingFilterDisplayValue}
               options={RATING_OPTIONS.map((r) => ({
                 value: String(r.value),
                 label: r.label,
               }))}
-              onChange={(v) =>
-                setFilters((f) => ({ ...f, minRating: v ? Number(v) : null }))
-              }
+              onChange={(v) => {
+                let nextMinRating: number | null;
+                if (v) {
+                  nextMinRating = Number(v);
+                } else {
+                  nextMinRating = null;
+                }
+                setFilters((f) => ({ ...f, minRating: nextMinRating }));
+              }}
             />
             {locationOptions.length > 0 && (
               <SelectFilter
@@ -607,31 +741,7 @@ export default function SearchResults() {
           <h1 className="text-sm font-medium text-slate-700">{summaryText}</h1>
         </div>
 
-        {loading ? (
-          <ResultsSkeleton />
-        ) : error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
-            {error}
-          </div>
-        ) : visible.length === 0 ? (
-          filtersApplied && (results?.length ?? 0) > 0 ? (
-            <NoFilterMatch onClear={clearFilters} />
-          ) : (
-            <EmptyState query={activeQuery} />
-          )
-        ) : (
-          <div className="flex flex-col gap-4">
-            {visible.map((r) => (
-              <RestaurantCard
-                key={r.locationId}
-                r={r}
-                searchDate={searchDateStr}
-                searchTime={time}
-                searchPartySize={people}
-              />
-            ))}
-          </div>
-        )}
+        {resultsContent}
       </main>
 
       <Footer />
@@ -652,46 +762,143 @@ function RestaurantCard({
   searchPartySize: string;
 }) {
   const navigate = useNavigate();
-  const detailsPath =
-    r.businessUsername && r.locationId
-      ? `/${encodeURIComponent(r.businessUsername)}/${encodeURIComponent(r.locationId)}`
-      : null;
-  const queuePath =
-    r.businessUsername && r.locationId
-      ? `/queue/${encodeURIComponent(r.businessUsername)}/${encodeURIComponent(r.locationId)}`
-      : null;
+  let detailsPath: string | null;
+  if (r.businessUsername && r.locationId) {
+    detailsPath = `/${encodeURIComponent(r.businessUsername)}/${encodeURIComponent(r.locationId)}`;
+  } else {
+    detailsPath = null;
+  }
+  let queuePath: string | null;
+  if (r.businessUsername && r.locationId) {
+    queuePath = `/queue/${encodeURIComponent(r.businessUsername)}/${encodeURIComponent(r.locationId)}`;
+  } else {
+    queuePath = null;
+  }
 
   const bookPath = (() => {
-    if (!detailsPath) return null;
+    if (!detailsPath) {
+      return null;
+    }
     const params = new URLSearchParams();
-    if (searchDate) params.set("date", searchDate);
-    if (searchTime) params.set("time", searchTime);
+    if (searchDate) {
+      params.set("date", searchDate);
+    }
+    if (searchTime) {
+      params.set("time", searchTime);
+    }
     if (searchPartySize && searchPartySize !== "large")
-      params.set("partySize", searchPartySize);
+      {
+        params.set("partySize", searchPartySize);
+      }
     params.set("book", "1");
     return `${detailsPath}?${params.toString()}`;
   })();
 
   const openDetails = () => {
-    if (detailsPath) navigate(detailsPath);
+    if (detailsPath) {
+      navigate(detailsPath);
+    }
   };
 
   const subAddress = r.shortAddress || r.city || r.area || r.address || "";
 
   const cuisinePrice = [r.cuisine, r.priceRange].filter(Boolean).join(" · ");
 
+  let articleRole: string | undefined;
+  if (detailsPath) {
+    articleRole = "link";
+  } else {
+    articleRole = undefined;
+  }
+
+  let articleTabIndex: number | undefined;
+  if (detailsPath) {
+    articleTabIndex = 0;
+  } else {
+    articleTabIndex = undefined;
+  }
+
+  let bannerContent: React.ReactNode;
+  if (r.bannerImageUrl) {
+    bannerContent = (
+      <img
+        src={r.bannerImageUrl}
+        alt={r.name}
+        className="absolute inset-0 h-full w-full object-cover"
+        loading="lazy"
+      />
+    );
+  } else {
+    bannerContent = (
+      <div className="absolute inset-0 flex items-center justify-center text-slate-300">
+        <ImageIcon className="h-10 w-10" />
+      </div>
+    );
+  }
+
+  let ratingContent: React.ReactNode;
+  if (r.reviewCount > 0 && r.rating != null) {
+    let reviewWord: string;
+    if (r.reviewCount === 1) {
+      reviewWord = "review";
+    } else {
+      reviewWord = "reviews";
+    }
+    ratingContent = (
+      <>
+        <Stars rating={r.rating} />
+        <span className="font-medium text-slate-700">
+          {r.rating.toFixed(1)}
+        </span>
+        <span className="text-slate-500">
+          ({r.reviewCount} {reviewWord})
+        </span>
+      </>
+    );
+  } else {
+    ratingContent = <span className="text-slate-500">No Reviews Yet</span>;
+  }
+
+  let bookAction: React.ReactNode;
+  if (bookPath && r.reservationsEnabled) {
+    bookAction = (
+      <Button
+        asChild
+        onClick={(e) => e.stopPropagation()}
+        className="flex-1 min-w-0 justify-center whitespace-nowrap px-3"
+      >
+        <Link to={bookPath}>
+          <Utensils className="h-4 w-4" />
+          <span>Book Table</span>
+        </Link>
+      </Button>
+    );
+  } else {
+    bookAction = !r.reservationsEnabled && (
+      <div
+        aria-disabled="true"
+        title="Reservations unavailable"
+        className="flex h-10 flex-1 min-w-0 cursor-not-allowed select-none items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-400 max-[320px]:px-2 max-[320px]:text-xs"
+      >
+        Reservations Unavailable
+      </div>
+    );
+  }
+
   return (
     <article
       onClick={openDetails}
       onKeyDown={(e) => {
-        if (!detailsPath) return;
+        if (!detailsPath) {
+          return;
+        }
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           openDetails();
         }
       }}
-      role={detailsPath ? "link" : undefined}
-      tabIndex={detailsPath ? 0 : undefined}
+      role={articleRole}
+      tabIndex={articleTabIndex}
       className={cn(
         "group rounded-2xl border border-slate-200 bg-white overflow-hidden transition-shadow",
         detailsPath &&
@@ -701,18 +908,7 @@ function RestaurantCard({
       <div className="flex flex-col sm:flex-row">
         {}
         <div className="sm:w-[280px] sm:shrink-0 aspect-[16/10] sm:aspect-auto sm:h-auto sm:min-h-[200px] bg-slate-100 relative">
-          {r.bannerImageUrl ? (
-            <img
-              src={r.bannerImageUrl}
-              alt={r.name}
-              className="absolute inset-0 h-full w-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-slate-300">
-              <ImageIcon className="h-10 w-10" />
-            </div>
-          )}
+          {bannerContent}
           {r.featured && (
             <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-slate-900/90 text-white text-xs font-medium px-2.5 py-1">
               <Sparkles className="h-3 w-3" />
@@ -729,19 +925,7 @@ function RestaurantCard({
 
           {}
           <div className="flex items-center gap-2 text-sm">
-            {r.reviewCount > 0 && r.rating != null ? (
-              <>
-                <Stars rating={r.rating} />
-                <span className="font-medium text-slate-700">
-                  {r.rating.toFixed(1)}
-                </span>
-                <span className="text-slate-500">
-                  ({r.reviewCount} {r.reviewCount === 1 ? "review" : "reviews"})
-                </span>
-              </>
-            ) : (
-              <span className="text-slate-500">No Reviews Yet</span>
-            )}
+            {ratingContent}
           </div>
 
           {}
@@ -766,28 +950,7 @@ function RestaurantCard({
 
           {}
           <div className="mt-2 flex items-center gap-2 sm:gap-3">
-            {bookPath && r.reservationsEnabled ? (
-              <Button
-                asChild
-                onClick={(e) => e.stopPropagation()}
-                className="flex-1 min-w-0 justify-center whitespace-nowrap px-3"
-              >
-                <Link to={bookPath}>
-                  <Utensils className="h-4 w-4" />
-                  <span>Book Table</span>
-                </Link>
-              </Button>
-            ) : (
-              !r.reservationsEnabled && (
-                <div
-                  aria-disabled="true"
-                  title="Reservations unavailable"
-                  className="flex h-10 flex-1 min-w-0 cursor-not-allowed select-none items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-400 max-[320px]:px-2 max-[320px]:text-xs"
-                >
-                  Reservations Unavailable
-                </div>
-              )
-            )}
+            {bookAction}
             {queuePath && r.queueEnabled && (
               <Button
                 asChild
@@ -816,17 +979,17 @@ function Stars({ rating }: { rating: number }) {
       className="inline-flex items-center gap-0.5"
       aria-label={`${rating.toFixed(1)} out of 5 stars`}
     >
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          className={cn(
-            "h-3.5 w-3.5",
-            i <= filled
-              ? "fill-amber-400 text-amber-400"
-              : "fill-slate-200 text-slate-200",
-          )}
-        />
-      ))}
+      {[1, 2, 3, 4, 5].map((i) => {
+        let starClassName: string;
+        if (i <= filled) {
+          starClassName = "fill-amber-400 text-amber-400";
+        } else {
+          starClassName = "fill-slate-200 text-slate-200";
+        }
+        return (
+          <Star key={i} className={cn("h-3.5 w-3.5", starClassName)} />
+        );
+      })}
     </span>
   );
 }
@@ -879,6 +1042,22 @@ function SelectFilter({
   const selectedLabel =
     displayValue ?? options.find((o) => o.value === current)?.label ?? null;
   const isActive = current != null && current !== neutralValue;
+
+  let triggerStateClassName: string;
+  if (isActive) {
+    triggerStateClassName = "border-slate-900 bg-slate-900 text-white";
+  } else {
+    triggerStateClassName =
+      "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50";
+  }
+
+  let triggerLabel: string;
+  if (current != null && selectedLabel) {
+    triggerLabel = `${label}: ${selectedLabel}`;
+  } else {
+    triggerLabel = label;
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -886,14 +1065,10 @@ function SelectFilter({
           type="button"
           className={cn(
             "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm transition-colors",
-            isActive
-              ? "border-slate-900 bg-slate-900 text-white"
-              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
+            triggerStateClassName,
           )}
         >
-          {current != null && selectedLabel
-            ? `${label}: ${selectedLabel}`
-            : label}
+          {triggerLabel}
           <ChevronDown className="h-3.5 w-3.5 opacity-60" />
         </button>
       </PopoverTrigger>
@@ -939,6 +1114,13 @@ function ToggleChip({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  let stateClassName: string;
+  if (active) {
+    stateClassName = "border-slate-900 bg-slate-900 text-white";
+  } else {
+    stateClassName =
+      "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50";
+  }
   return (
     <button
       type="button"
@@ -946,9 +1128,7 @@ function ToggleChip({
       aria-pressed={active}
       className={cn(
         "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm transition-colors",
-        active
-          ? "border-slate-900 bg-slate-900 text-white"
-          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
+        stateClassName,
       )}
     >
       {children}
@@ -975,13 +1155,19 @@ function MobileFiltersDialog({
   onClear: () => void;
   activeCount: number;
 }) {
-  const pill = (active: boolean) =>
-    cn(
+  const pill = (active: boolean) => {
+    let stateClassName: string;
+    if (active) {
+      stateClassName = "border-slate-900 bg-slate-900 text-white";
+    } else {
+      stateClassName =
+        "border-slate-200 bg-white text-slate-700 hover:border-slate-300";
+    }
+    return cn(
       "rounded-full border px-3 py-1.5 text-sm transition-colors",
-      active
-        ? "border-slate-900 bg-slate-900 text-white"
-        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
+      stateClassName,
     );
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {}
@@ -998,10 +1184,15 @@ function MobileFiltersDialog({
                   type="button"
                   className={pill(filters.cuisine === c)}
                   onClick={() =>
-                    setFilters((f) => ({
-                      ...f,
-                      cuisine: f.cuisine === c ? null : c,
-                    }))
+                    setFilters((f) => {
+                      let nextCuisine: string | null;
+                      if (f.cuisine === c) {
+                        nextCuisine = null;
+                      } else {
+                        nextCuisine = c;
+                      }
+                      return { ...f, cuisine: nextCuisine };
+                    })
                   }
                 >
                   {c}
@@ -1017,7 +1208,15 @@ function MobileFiltersDialog({
                 type="button"
                 className={pill(filters.price === p)}
                 onClick={() =>
-                  setFilters((f) => ({ ...f, price: f.price === p ? null : p }))
+                  setFilters((f) => {
+                    let nextPrice: string | null;
+                    if (f.price === p) {
+                      nextPrice = null;
+                    } else {
+                      nextPrice = p;
+                    }
+                    return { ...f, price: nextPrice };
+                  })
                 }
               >
                 {p}
@@ -1032,10 +1231,15 @@ function MobileFiltersDialog({
                 type="button"
                 className={pill(filters.minRating === r.value)}
                 onClick={() =>
-                  setFilters((f) => ({
-                    ...f,
-                    minRating: f.minRating === r.value ? null : r.value,
-                  }))
+                  setFilters((f) => {
+                    let nextMinRating: number | null;
+                    if (f.minRating === r.value) {
+                      nextMinRating = null;
+                    } else {
+                      nextMinRating = r.value;
+                    }
+                    return { ...f, minRating: nextMinRating };
+                  })
                 }
               >
                 {r.label}
@@ -1051,10 +1255,15 @@ function MobileFiltersDialog({
                   type="button"
                   className={pill(filters.location === l)}
                   onClick={() =>
-                    setFilters((f) => ({
-                      ...f,
-                      location: f.location === l ? null : l,
-                    }))
+                    setFilters((f) => {
+                      let nextLocation: string | null;
+                      if (f.location === l) {
+                        nextLocation = null;
+                      } else {
+                        nextLocation = l;
+                      }
+                      return { ...f, location: nextLocation };
+                    })
                   }
                 >
                   {l}
@@ -1140,17 +1349,19 @@ function NoFilterMatch({ onClear }: { onClear: () => void }) {
 }
 
 function EmptyState({ query }: { query: string }) {
+  let hintText: string;
+  if (query) {
+    hintText = "Try searching for another restaurant, cuisine, or area.";
+  } else {
+    hintText = "Try a search above to discover restaurants.";
+  }
   return (
     <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
       <SearchIcon className="mx-auto mb-3 h-8 w-8 text-slate-300" />
       <p className="text-base font-medium text-slate-800">
         No Restaurants Found
       </p>
-      <p className="mt-1 text-sm text-slate-500">
-        {query
-          ? "Try searching for another restaurant, cuisine, or area."
-          : "Try a search above to discover restaurants."}
-      </p>
+      <p className="mt-1 text-sm text-slate-500">{hintText}</p>
     </div>
   );
 }

@@ -44,17 +44,32 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function clampInt(v: any, min: number, max: number, fallback: number): number {
   const n = Math.round(Number(v));
-  if (!Number.isFinite(n)) return fallback;
+  if (!Number.isFinite(n)) {
+    return fallback;
+  }
   return Math.min(max, Math.max(min, n));
 }
 
 function validTime(v: any, fallback: string): string {
-  return typeof v === "string" && TIME_RE.test(v) ? v : fallback;
+  if (typeof v === "string" && TIME_RE.test(v)) {
+    return v;
+  }
+  return fallback;
 }
 
 export function normalizeSettings(raw: any): ReservationSettings {
-  const s = raw && typeof raw === "object" ? raw : {};
-  const mode: ConfirmationMode = s.confirmationMode === "manual" ? "manual" : "auto";
+  let s: any = {};
+  if (raw && typeof raw === "object") {
+    s = raw;
+  }
+  let mode: ConfirmationMode = "auto";
+  if (s.confirmationMode === "manual") {
+    mode = "manual";
+  }
+  let cancellationPolicy = "";
+  if (typeof s.cancellationPolicy === "string") {
+    cancellationPolicy = s.cancellationPolicy.slice(0, 1000);
+  }
   return {
     reservationStartTime: validTime(
       s.reservationStartTime,
@@ -74,8 +89,7 @@ export function normalizeSettings(raw: any): ReservationSettings {
     bookingWindowDays: clampInt(s.bookingWindowDays, 0, 365, DEFAULT_RESERVATION_SETTINGS.bookingWindowDays),
     minNoticeMinutes: clampInt(s.minNoticeMinutes, 0, 7 * 24 * 60, DEFAULT_RESERVATION_SETTINGS.minNoticeMinutes),
     confirmationMode: mode,
-    cancellationPolicy:
-      typeof s.cancellationPolicy === "string" ? s.cancellationPolicy.slice(0, 1000) : "",
+    cancellationPolicy,
   };
 }
 
@@ -103,9 +117,16 @@ function tzOffsetMinutes(timeZone: string, at: Date): number {
   });
   const map: Record<string, string> = {};
   for (const p of dtf.formatToParts(at)) {
-    if (p.type !== "literal") map[p.type] = p.value;
+    if (p.type !== "literal") {
+      map[p.type] = p.value;
+    }
   }
-  const hour = map.hour === "24" ? 0 : Number(map.hour);
+  let hour: number;
+  if (map.hour === "24") {
+    hour = 0;
+  } else {
+    hour = Number(map.hour);
+  }
   const asUTC = Date.UTC(
     Number(map.year),
     Number(map.month) - 1,
@@ -122,7 +143,9 @@ export function zonedWallTimeToMs(
   time: string,
   timeZone?: string,
 ): number {
-  if (!timeZone) return new Date(`${date}T${time}:00`).getTime();
+  if (!timeZone) {
+    return new Date(`${date}T${time}:00`).getTime();
+  }
   try {
     const [y, mo, d] = date.split("-").map(Number);
     const [h, mi] = time.split(":").map(Number);
@@ -130,7 +153,9 @@ export function zonedWallTimeToMs(
     const off1 = tzOffsetMinutes(timeZone, new Date(utcGuess));
     let ms = utcGuess - off1 * 60000;
     const off2 = tzOffsetMinutes(timeZone, new Date(ms));
-    if (off2 !== off1) ms = utcGuess - off2 * 60000;
+    if (off2 !== off1) {
+      ms = utcGuess - off2 * 60000;
+    }
     return ms;
   } catch {
     return new Date(`${date}T${time}:00`).getTime();
@@ -168,9 +193,16 @@ export function formatTimeLabel(t: string): string {
   const [hStr, mStr] = t.split(":");
   let h = Number(hStr);
   const m = mStr;
-  const ampm = h >= 12 ? "PM" : "AM";
+  let ampm: string;
+  if (h >= 12) {
+    ampm = "PM";
+  } else {
+    ampm = "AM";
+  }
   h = h % 12;
-  if (h === 0) h = 12;
+  if (h === 0) {
+    h = 12;
+  }
   return `${h}:${m} ${ampm}`;
 }
 
@@ -200,12 +232,20 @@ function activeGuestsInHour(
 ): number {
   let total = 0;
   for (const r of reservations) {
-    if (!r || (excludeId && r.id === excludeId)) continue;
-    if (!ACTIVE_STATUSES.includes(r.status)) continue;
+    if (!r || (excludeId && r.id === excludeId)) {
+      continue;
+    }
+    if (!ACTIVE_STATUSES.includes(r.status)) {
+      continue;
+    }
     const { date: rDate, time: rTime } = splitDateTime(r.reservationDateTime);
-    if (rDate !== date) continue;
+    if (rDate !== date) {
+      continue;
+    }
     const rHour = Number(rTime.split(":")[0]);
-    if (rHour !== hour) continue;
+    if (rHour !== hour) {
+      continue;
+    }
     total += Number(r.partySize) || 0;
   }
   return total;
@@ -232,7 +272,10 @@ export function computeAvailability(params: {
   const partyTooLarge = partySize > settings.maxPartySize;
 
   const todayStr = zonedDateStr(now, timeZone);
-  const daysAhead = DATE_RE.test(date) ? daysBetweenDateStr(todayStr, date) : 0;
+  let daysAhead = 0;
+  if (DATE_RE.test(date)) {
+    daysAhead = daysBetweenDateStr(todayStr, date);
+  }
   const outsideWindow = daysAhead < 0 || daysAhead > settings.bookingWindowDays;
 
   const slots: Slot[] = [];
@@ -250,7 +293,9 @@ export function computeAvailability(params: {
   }
 
   for (let m = startMin; m < endMin; m += 30) {
-    if (!isMinuteWithinOperatingHours(operatingStatus, m)) continue;
+    if (!isMinuteWithinOperatingHours(operatingStatus, m)) {
+      continue;
+    }
     const time = minutesToTime(m);
     const hour = Math.floor(m / 60);
     const used = activeGuestsInHour(reservations, date, hour, params.excludeId);
@@ -294,8 +339,12 @@ export function validateReservationRequest(params: {
   const { settings, reservations, date, time, partySize, timeZone, openingHours } = params;
   const now = params.now || new Date();
 
-  if (!DATE_RE.test(date)) return "A valid date is required.";
-  if (!TIME_RE.test(time)) return "A valid time is required.";
+  if (!DATE_RE.test(date)) {
+    return "A valid date is required.";
+  }
+  if (!TIME_RE.test(time)) {
+    return "A valid time is required.";
+  }
   if (!Number.isInteger(partySize) || partySize < 1) {
     return "Number of guests must be at least 1.";
   }
@@ -322,11 +371,14 @@ export function validateReservationRequest(params: {
 
   const slot = slots.find((s) => s.time === time);
   if (!slot) {
-    return operatingStatus.configured
-      ? "That time is outside the restaurant's operating hours."
-      : "That time is outside reservation hours.";
+    if (operatingStatus.configured) {
+      return "That time is outside the restaurant's operating hours.";
+    }
+    return "That time is outside reservation hours.";
   }
-  if (slot.available) return null;
+  if (slot.available) {
+    return null;
+  }
 
   switch (slot.reason) {
     case "too_soon":
@@ -364,7 +416,9 @@ export function serializeReservation(r: any, opts: { includeToken?: boolean } = 
     completedAt: r.completedAt ?? null,
     noShowAt: r.noShowAt ?? null,
   };
-  if (opts.includeToken) return { ...base, manageToken: r.manageToken ?? null };
+  if (opts.includeToken) {
+    return { ...base, manageToken: r.manageToken ?? null };
+  }
   return base;
 }
 
@@ -372,12 +426,16 @@ export async function syncCustomerReservation(
   reservation: any,
   opts: { businessName?: string | null; locationName?: string | null } = {},
 ): Promise<void> {
-  if (!reservation?.customerId) return;
+  if (!reservation?.customerId) {
+    return;
+  }
   const user = await prisma.user.findUnique({
     where: { id: reservation.customerId },
     select: { upcomingReservations: true, pastReservations: true },
   });
-  if (!user) return;
+  if (!user) {
+    return;
+  }
 
   const { date, time } = splitDateTime(reservation.reservationDateTime);
   const entry = {
@@ -395,17 +453,23 @@ export async function syncCustomerReservation(
   };
 
   const active = ACTIVE_STATUSES.includes(reservation.status);
-  const upcoming = (Array.isArray(user.upcomingReservations)
-    ? (user.upcomingReservations as any[])
-    : []
-  ).filter((r) => r?.id !== reservation.id);
-  const past = (Array.isArray(user.pastReservations)
-    ? (user.pastReservations as any[])
-    : []
-  ).filter((r) => r?.id !== reservation.id);
+  let upcomingSource: any[] = [];
+  if (Array.isArray(user.upcomingReservations)) {
+    upcomingSource = user.upcomingReservations as any[];
+  }
+  let pastSource: any[] = [];
+  if (Array.isArray(user.pastReservations)) {
+    pastSource = user.pastReservations as any[];
+  }
+  const upcoming = upcomingSource.filter((r) => r?.id !== reservation.id);
+  const past = pastSource.filter((r) => r?.id !== reservation.id);
 
-  if (active) upcoming.unshift(entry);
-  else past.unshift(entry);
+  if (active) {
+    upcoming.unshift(entry);
+  }
+  else {
+    past.unshift(entry);
+  }
 
   await prisma.user.update({
     where: { id: reservation.customerId },

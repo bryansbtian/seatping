@@ -141,12 +141,25 @@ const LandingPage = () => {
   const testimonialsRef = useRef<HTMLDivElement>(null);
   const scrollTestimonials = () => {
     const el = testimonialsRef.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const card = el.querySelector<HTMLElement>("[data-card]");
-    const step = card ? card.offsetWidth + 20 : el.clientWidth;
+    let step: number;
+    if (card) {
+      step = card.offsetWidth + 20;
+    } else {
+      step = el.clientWidth;
+    }
     const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+    let scrollLeftTarget: number;
+    if (atEnd) {
+      scrollLeftTarget = 0;
+    } else {
+      scrollLeftTarget = el.scrollLeft + step;
+    }
     el.scrollTo({
-      left: atEnd ? 0 : el.scrollLeft + step,
+      left: scrollLeftTarget,
       behavior: "smooth",
     });
   };
@@ -155,7 +168,9 @@ const LandingPage = () => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) entry.target.classList.add("animate-in");
+          if (entry.isIntersecting) {
+            entry.target.classList.add("animate-in");
+          }
         });
       },
       { threshold: 0.1, rootMargin: "0px 0px -50px 0px" },

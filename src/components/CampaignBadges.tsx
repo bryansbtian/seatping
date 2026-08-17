@@ -52,7 +52,14 @@ export function ChannelBadge({ channel, className }: { channel: string; classNam
     WHATSAPP: "border-emerald-200 bg-emerald-50 text-emerald-700",
     SMS: "border-cyan-200 bg-cyan-50 text-cyan-700",
   };
-  const label = channel === "WHATSAPP" ? "WhatsApp" : channel === "SMS" ? "SMS" : "Email";
+  let label: string;
+  if (channel === "WHATSAPP") {
+    label = "WhatsApp";
+  } else if (channel === "SMS") {
+    label = "SMS";
+  } else {
+    label = "Email";
+  }
   return (
     <Badge variant="outline" className={cn(PILL_BASE_CLASS, map[channel] || "", className)}>
       {label}

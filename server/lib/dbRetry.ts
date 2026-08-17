@@ -16,7 +16,9 @@ export async function withWriteRetry<T>(
     try {
       return await fn();
     } catch (err) {
-      if (!isRetryable(err)) throw err;
+      if (!isRetryable(err)) {
+        throw err;
+      }
       lastErr = err;
       const backoff = Math.min(5 * 2 ** i, 200) + Math.random() * 10;
       await sleep(backoff);

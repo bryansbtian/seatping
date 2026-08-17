@@ -57,13 +57,21 @@ export const sendEmailDetailed = async (
         console.log("[EMAIL] Attempting to send email to:", options.to);
       }
 
-      const mailOptions = {
+      const mailOptions: {
+        from: string;
+        to: string;
+        subject: string;
+        html: string;
+        replyTo?: string;
+      } = {
         from: options.from || FROM_ADDRESS,
         to: options.to,
         subject: options.subject,
         html: options.html,
-        ...(options.replyTo ? { replyTo: options.replyTo } : {}),
       };
+      if (options.replyTo) {
+        mailOptions.replyTo = options.replyTo;
+      }
 
       const info: any = await transporter.sendMail(mailOptions);
       const accepted: string[] = (info.accepted || []).map((a: any) => String(a));
@@ -227,11 +235,15 @@ export function detailCard(title: string, rows: Array<[string, string]>): string
       </tr>`
     )
     .join("");
+  let titleHtml = "";
+  if (title) {
+    titleHtml = `<p style="margin: 0 0 10px; color: ${COLORS.ink}; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;">${title}</p>`;
+  }
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
            style="${SECTION_WIDTH} background: ${COLORS.panel}; border: 1px solid ${COLORS.border}; border-radius: 12px; ${SECTION_GAP}">
       <tr><td style="padding: 18px 20px;">
-        ${title ? `<p style="margin: 0 0 10px; color: ${COLORS.ink}; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;">${title}</p>` : ""}
+        ${titleHtml}
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="${SECTION_WIDTH}">${body}</table>
       </td></tr>
     </table>`;
@@ -267,9 +279,10 @@ export function renderEmail(opts: {
   tagline?: string;
 }): string {
   const year = new Date().getFullYear();
-  const preheader = opts.preheader
-    ? `<span style="display:none !important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden;">${opts.preheader}</span>`
-    : "";
+  let preheader = "";
+  if (opts.preheader) {
+    preheader = `<span style="display:none !important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden;">${opts.preheader}</span>`;
+  }
   const tagline = opts.tagline ?? "Queues & Reservations For Hospitality";
 
   return `<!DOCTYPE html>
@@ -331,9 +344,11 @@ export const sendPasswordResetEmail = async (
   baseUrl?: string
 ): Promise<boolean> => {
   const origin = (baseUrl || FRONTEND()).replace(/\/+$/, "");
-  const resetUrl = `${origin}/reset?token=${resetToken}${
-    accountType === "business" ? "&type=business" : ""
-  }`;
+  let accountTypeParam = "";
+  if (accountType === "business") {
+    accountTypeParam = "&type=business";
+  }
+  const resetUrl = `${origin}/reset?token=${resetToken}${accountTypeParam}`;
 
   const html = renderEmail({
     heading: "Reset Your Password",
@@ -358,11 +373,15 @@ export const sendPasswordChangeConfirmationEmail = async (
   email: string,
   name?: string
 ): Promise<boolean> => {
+  let greeting = "";
+  if (name) {
+    greeting = `Hi ${esc(name)}, `;
+  }
   const html = renderEmail({
     heading: "Your Password Was Changed",
     preheader: "Your SeatPing Password Was Just Updated",
     bodyHtml: `
-      ${p(`${name ? `Hi ${esc(name)}, ` : ""}your SeatPing password was just updated. You can now sign in with your new password.`)}
+      ${p(`${greeting}your SeatPing password was just updated. You can now sign in with your new password.`)}
       ${calloutBox(
         `<strong>Didn't make this change?</strong> Reach out to us right away at <a href="mailto:${SUPPORT_EMAIL}" style="color: ${COLORS.accent}; word-break: break-word;">${SUPPORT_EMAIL}</a> and we'll help secure your account.`
       )}
@@ -493,6 +512,18 @@ export const sendReservationConfirmationEmail = async (params: {
     cancellationPolicy,
   } = params;
 
+  let guestWord = "Guests";
+  if (partySize === 1) {
+    guestWord = "Guest";
+  }
+  let cancellationPolicyHtml = "";
+  if (cancellationPolicy) {
+    cancellationPolicyHtml = calloutBox(
+      `<strong>Cancellation Policy:</strong> ${esc(cancellationPolicy)}`,
+      COLORS.muted,
+      COLORS.panel
+    );
+  }
   const html = renderEmail({
     heading: "Reservation Confirmed",
     preheader: `Reservation Confirmed For ${esc(businessName)}, ${esc(dateLabel)} At ${esc(timeLabel)}`,
@@ -509,19 +540,11 @@ export const sendReservationConfirmationEmail = async (params: {
         ["Name", esc(`${firstName} ${lastName}`.trim())],
         ["Date", esc(dateLabel)],
         ["Time", esc(timeLabel)],
-        ["Number of Guests", `${Number(partySize)} ${partySize === 1 ? "Guest" : "Guests"}`],
+        ["Number of Guests", `${Number(partySize)} ${guestWord}`],
       ])}
       ${emailButton(manageUrl, "Manage Reservation")}
       ${p(`Need to change your time, number of guests, or cancel? Use the button above. No login required.`)}
-      ${
-        cancellationPolicy
-          ? calloutBox(
-              `<strong>Cancellation Policy:</strong> ${esc(cancellationPolicy)}`,
-              COLORS.muted,
-              COLORS.panel
-            )
-          : ""
-      }
+      ${cancellationPolicyHtml}
       ${fallbackLink(manageUrl)}
     `,
   });
@@ -547,6 +570,16 @@ export const sendReservationReminderEmail = async (params: {
   const { email, firstName, businessName, address, dateLabel, timeLabel, partySize, manageUrl } =
     params;
 
+  let guestWord = "Guests";
+  if (partySize === 1) {
+    guestWord = "Guest";
+  }
+  let manageButtonHtml = "";
+  let manageFallbackHtml = "";
+  if (manageUrl) {
+    manageButtonHtml = emailButton(manageUrl, "Manage Reservation");
+    manageFallbackHtml = fallbackLink(manageUrl);
+  }
   const html = renderEmail({
     heading: "Your Reservation Is Coming Up",
     preheader: `Your Reservation At ${esc(businessName)} Is In About 2 Hours`,
@@ -557,10 +590,10 @@ export const sendReservationReminderEmail = async (params: {
         ["Location", esc(address)],
         ["Date", esc(dateLabel)],
         ["Time", esc(timeLabel)],
-        ["Number of Guests", `${Number(partySize)} ${partySize === 1 ? "Guest" : "Guests"}`],
+        ["Number of Guests", `${Number(partySize)} ${guestWord}`],
       ])}
-      ${manageUrl ? emailButton(manageUrl, "Manage Reservation") : ""}
-      ${manageUrl ? fallbackLink(manageUrl) : ""}
+      ${manageButtonHtml}
+      ${manageFallbackHtml}
     `,
   });
 
@@ -581,8 +614,10 @@ export const sendBusinessOnboardingEmail = async (
 ): Promise<boolean> => {
   const dashboardUrl = `${FRONTEND()}/business/dashboard`;
 
-  const trialSentence =
-    trialDays && trialDays > 0 ? ` Your ${trialDays}-day trial is active.` : "";
+  let trialSentence = "";
+  if (trialDays && trialDays > 0) {
+    trialSentence = ` Your ${trialDays}-day trial is active.`;
+  }
   const intro = `Welcome to SeatPing, ${esc(name)}.${trialSentence} Follow these steps to start accepting queues and reservations.`;
 
   const html = renderEmail({
@@ -642,11 +677,26 @@ export const sendNewReservationBusinessEmail = async (params: {
     ["Guest", esc(customerName)],
     ["Email", `<a href="mailto:${esc(customerEmail)}" style="color: ${COLORS.accent};">${esc(customerEmail)}</a>`],
   ];
-  if (customerPhone) rows.push(["Phone", esc(customerPhone)]);
+  if (customerPhone) {
+    rows.push(["Phone", esc(customerPhone)]);
+  }
   rows.push(["Date", esc(dateLabel)]);
   rows.push(["Time", esc(timeLabel)]);
-  rows.push(["Number of Guests", `${Number(partySize)} ${partySize === 1 ? "Guest" : "Guests"}`]);
+  let guestWord = "Guests";
+  if (partySize === 1) {
+    guestWord = "Guest";
+  }
+  rows.push(["Number of Guests", `${Number(partySize)} ${guestWord}`]);
   rows.push(["Status", "Confirmed"]);
+
+  let guestNotesHtml = "";
+  if (notes) {
+    guestNotesHtml = calloutBox(
+      `<strong>Guest Notes:</strong> ${esc(notes)}`,
+      COLORS.muted,
+      COLORS.panel
+    );
+  }
 
   const html = renderEmail({
     heading: "New Reservation",
@@ -654,7 +704,7 @@ export const sendNewReservationBusinessEmail = async (params: {
     bodyHtml: `
       ${p(`A new reservation was just booked at <strong>${esc(locationName)}</strong>.`)}
       ${detailCard("Reservation", rows)}
-      ${notes ? calloutBox(`<strong>Guest Notes:</strong> ${esc(notes)}`, COLORS.muted, COLORS.panel) : ""}
+      ${guestNotesHtml}
       ${emailButton(dashboardUrl, "View In Dashboard")}
     `,
   });
@@ -699,11 +749,17 @@ export const sendFeedbackEmail = async (data: FeedbackData): Promise<boolean> =>
   const rows: Array<[string, string]> = [
     ["Type", esc(feedbackTypeLabels[data.feedbackType] || data.feedbackType)],
   ];
-  if (data.severity) rows.push(["Severity", esc(severityLabels[data.severity] || data.severity)]);
+  if (data.severity) {
+    rows.push(["Severity", esc(severityLabels[data.severity] || data.severity)]);
+  }
   rows.push(["Name", esc(data.name)]);
   rows.push(["Email", `<a href="mailto:${esc(data.email)}" style="color: ${COLORS.accent};">${esc(data.email)}</a>`]);
-  if (data.businessName) rows.push(["Business", esc(data.businessName)]);
-  if (data.phone) rows.push(["Phone", esc(data.phone)]);
+  if (data.businessName) {
+    rows.push(["Business", esc(data.businessName)]);
+  }
+  if (data.phone) {
+    rows.push(["Phone", esc(data.phone)]);
+  }
 
   const html = renderEmail({
     heading: data.subject || "New Feedback",

@@ -93,12 +93,16 @@ export type NotificationJob =
 const qstashToken = process.env.QSTASH_TOKEN;
 const qstashBaseUrl = process.env.QSTASH_URL;
 const isDev = process.env.NODE_ENV !== "production";
-const qstash: Client | null = !isDev && qstashToken
-  ? new Client({
-      token: qstashToken,
-      ...(qstashBaseUrl ? { baseUrl: qstashBaseUrl } : {}),
-    })
-  : null;
+let qstash: Client | null = null;
+if (!isDev && qstashToken) {
+  const clientOptions: ConstructorParameters<typeof Client>[0] = {
+    token: qstashToken,
+  };
+  if (qstashBaseUrl) {
+    clientOptions.baseUrl = qstashBaseUrl;
+  }
+  qstash = new Client(clientOptions);
+}
 
 const NOTIFY_DAILY_MAX = Number(
   process.env.NOTIFY_DAILY_MAX_PER_RECIPIENT || 20,
@@ -115,7 +119,9 @@ async function withinDailyRecipientCap(
   channel: NotificationChannel,
   recipient: string | undefined,
 ): Promise<boolean> {
-  if (!recipient) return true;
+  if (!recipient) {
+    return true;
+  }
   return consumeQuota(
     "notify-daily",
     dailyCapKey(channel, recipient),
@@ -128,7 +134,9 @@ export async function canNotifyRecipient(
   channel: NotificationChannel,
   recipient: string | undefined,
 ): Promise<boolean> {
-  if (!recipient) return true;
+  if (!recipient) {
+    return true;
+  }
   return peekQuota(
     "notify-daily",
     dailyCapKey(channel, recipient),
@@ -141,7 +149,12 @@ async function applyRecipientCap(
   job: NotificationJob,
 ): Promise<NotificationJob | null> {
   if (job.type === "queue_join") {
-    const recipient = job.channel === "email" ? job.email : job.phoneNumber;
+    let recipient: string | undefined;
+    if (job.channel === "email") {
+      recipient = job.email;
+    } else {
+      recipient = job.phoneNumber;
+    }
     if (!(await withinDailyRecipientCap(job.channel, recipient))) {
       console.warn(
         `[NOTIFY] daily per-recipient cap reached (${job.channel}) — dropping queue_join notification`,
@@ -169,7 +182,9 @@ function workerUrl(): string {
 
 export async function enqueueNotification(job: NotificationJob): Promise<void> {
   const capped = await applyRecipientCap(job);
-  if (capped === null) return;
+  if (capped === null) {
+    return;
+  }
   job = capped;
 
   if (qstash) {
@@ -200,13 +215,18 @@ async function sendSms(
     console.error("[NOTIFY] Missing Telnyx credentials — cannot send SMS");
     return null;
   }
-  if (!phoneNumber) return null;
+  if (!phoneNumber) {
+    return null;
+  }
   const telnyx = new Telnyx({ apiKey });
   const to = (countryCode || "+1") + phoneNumber.trim().replace(/\D/g, "");
   const message = await telnyx.messages.send({ from, to, text });
   const id = (message as any)?.data?.id ?? null;
   console.log("[NOTIFY] SMS sent:", id, "to", to);
-  return id ? String(id) : "sent";
+  if (id) {
+    return String(id);
+  }
+  return "sent";
 }
 
 async function sendCampaignSms(
@@ -233,7 +253,9 @@ export async function processNotification(job: NotificationJob): Promise<void> {
           businessName: job.restaurantName,
           position: job.position,
         });
-        if (!ok) throw new Error("WhatsApp queue_join send failed");
+        if (!ok) {
+          throw new Error("WhatsApp queue_join send failed");
+        }
       } else if (job.channel === "email" && job.email) {
         await sendQueueJoinConfirmationEmail(
           job.email,
@@ -260,7 +282,9 @@ export async function processNotification(job: NotificationJob): Promise<void> {
           phoneNumber: job.phoneNumber || "",
           businessName: job.restaurantName,
         });
-        if (!ok) throw new Error("WhatsApp queue_admitted send failed");
+        if (!ok) {
+          throw new Error("WhatsApp queue_admitted send failed");
+        }
       } else if (job.channel === "email" && job.email) {
         await sendQueueYourTurnEmail(job.email, job.restaurantName);
       }
@@ -348,13 +372,18 @@ export async function rawCampaignSend(
   content: CampaignSendContent,
 ): Promise<string> {
   if (content.channel === "email") {
-    if (!content.email) throw new Error("No email address for recipient");
-    const result = await sendEmailDetailed({
+    if (!content.email) {
+      throw new Error("No email address for recipient");
+    }
+    const emailPayload: Parameters<typeof sendEmailDetailed>[0] = {
       to: content.email,
       subject: content.subject || `A message from ${content.businessName}`,
       html: content.bodyHtml || content.bodyText.replace(/\n/g, "<br>"),
-      ...(content.replyTo ? { replyTo: content.replyTo } : {}),
-    });
+    };
+    if (content.replyTo) {
+      emailPayload.replyTo = content.replyTo;
+    }
+    const result = await sendEmailDetailed(emailPayload);
     if (!result.ok) {
       throw new Error(result.error || "Email provider rejected the recipient");
     }
@@ -364,12 +393,18 @@ export async function rawCampaignSend(
     return result.messageId || "sent";
   }
   if (content.channel === "sms") {
-    if (!content.phone) throw new Error("No phone number for recipient");
+    if (!content.phone) {
+      throw new Error("No phone number for recipient");
+    }
     const id = await sendCampaignSms(content.phone, content.bodyText);
-    if (!id) throw new Error("SMS provider returned failure");
+    if (!id) {
+      throw new Error("SMS provider returned failure");
+    }
     return id;
   }
-  if (!content.phone) throw new Error("No phone number for recipient");
+  if (!content.phone) {
+    throw new Error("No phone number for recipient");
+  }
   if (!content.whatsappTemplateName) {
     throw new Error("WhatsApp template is not available for this message");
   }
@@ -380,7 +415,9 @@ export async function rawCampaignSend(
     bodyParams: content.whatsappParams || [{ text: content.bodyText }],
     bodyValues: content.whatsappValues,
   });
-  if (!id) throw new Error("WhatsApp provider returned failure");
+  if (!id) {
+    throw new Error("WhatsApp provider returned failure");
+  }
   return id;
 }
 

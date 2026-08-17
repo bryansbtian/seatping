@@ -50,11 +50,17 @@ async function loadLocationsForBusiness(businessId: string) {
     where: { businessId },
     orderBy: { createdAt: "asc" },
   });
-  return rows.map((loc) => ({
-    address: loc.address ?? "",
-    displayName: loc.displayName ?? null,
-    credits: typeof loc.credits === "number" ? loc.credits : 0,
-  }));
+  return rows.map((loc) => {
+    let credits = 0;
+    if (typeof loc.credits === "number") {
+      credits = loc.credits;
+    }
+    return {
+      address: loc.address ?? "",
+      displayName: loc.displayName ?? null,
+      credits,
+    };
+  });
 }
 
 router.get("/customer/:username", async (req, res) => {
@@ -139,7 +145,9 @@ router.patch("/customer/:username", async (req, res) => {
       ["phone", phone],
     ];
     for (const [key, value] of stringFields) {
-      if (value === undefined) continue;
+      if (value === undefined) {
+        continue;
+      }
       if (typeof value !== "string" || !value.trim()) {
         return res.status(400).json({ error: `${key} must be a non-empty string` });
       }
@@ -180,7 +188,9 @@ router.patch("/customer/:username", async (req, res) => {
       ["baseCredits", baseCredits],
     ];
     for (const [key, value] of numericFields) {
-      if (value === undefined) continue;
+      if (value === undefined) {
+        continue;
+      }
       if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
         return res.status(400).json({ error: `${key} must be a non-negative number` });
       }
@@ -218,12 +228,16 @@ router.patch("/customer/:username", async (req, res) => {
         if (addr !== undefined && (typeof addr !== "string" || !addr.trim())) {
           return res.status(400).json({ error: `locations[${idx}].address must be a non-empty string` });
         }
+        const locationData: { address?: string; credits?: number } = {};
+        if (addr !== undefined) {
+          locationData.address = addr.trim();
+        }
+        if (credits !== undefined) {
+          locationData.credits = Math.floor(credits);
+        }
         await prisma.location.update({
           where: { id: locationRows[idx].id },
-          data: {
-            ...(addr !== undefined ? { address: addr.trim() } : {}),
-            ...(credits !== undefined ? { credits: Math.floor(credits) } : {}),
-          },
+          data: locationData,
         });
       }
     }
@@ -247,26 +261,38 @@ router.patch("/customer/:username", async (req, res) => {
       return res.status(400).json({ error: "No editable fields provided" });
     }
 
-    const updated =
-      Object.keys(data).length > 0
-        ? await prisma.business.update({
-            where: { username: username.trim() },
-            data,
-            select: {
-              id: true,
-              name: true,
-              username: true,
-              email: true,
-              phone: true,
-              trial: true,
-              trialDurationDays: true,
-              maxLocations: true,
-              baseCredits: true,
-              creditsStartedAt: true,
-              updatedAt: true,
-            },
-          })
-        : existing;
+    let updated: {
+      id: string;
+      name: string;
+      username: string;
+      email: string;
+      phone: string;
+      trial: boolean;
+      trialDurationDays: number;
+      maxLocations: number;
+      baseCredits: number;
+      creditsStartedAt: Date | null;
+      updatedAt: Date;
+    } = existing;
+    if (Object.keys(data).length > 0) {
+      updated = await prisma.business.update({
+        where: { username: username.trim() },
+        data,
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          email: true,
+          phone: true,
+          trial: true,
+          trialDurationDays: true,
+          maxLocations: true,
+          baseCredits: true,
+          creditsStartedAt: true,
+          updatedAt: true,
+        },
+      });
+    }
 
     const sanitizedLocations = await loadLocationsForBusiness(existing.id);
 
@@ -306,22 +332,32 @@ function pickLocation(loc: any) {
 }
 
 function serializeFeatured(f: any) {
+  let sortOrder = 0;
+  if (typeof f.sortOrder === "number") {
+    sortOrder = f.sortOrder;
+  }
+  let business = null;
+  if (f.business) {
+    business = {
+      id: f.business.id,
+      username: f.business.username,
+      name: f.business.name ?? null,
+      email: f.business.email ?? null,
+    };
+  }
+  let location = null;
+  if (f.location) {
+    location = pickLocation(f.location);
+  }
   return {
     id: f.id,
     businessId: f.businessId,
     locationId: f.locationId,
     isActive: f.isActive ?? true,
-    sortOrder: typeof f.sortOrder === "number" ? f.sortOrder : 0,
+    sortOrder,
     createdAt: f.createdAt,
-    business: f.business
-      ? {
-          id: f.business.id,
-          username: f.business.username,
-          name: f.business.name ?? null,
-          email: f.business.email ?? null,
-        }
-      : null,
-    location: f.location ? pickLocation(f.location) : null,
+    business,
+    location,
   };
 }
 
@@ -354,7 +390,9 @@ router.get("/businesses/:businessId/locations", async (req, res) => {
       where: { id: businessId },
       select: { id: true },
     });
-    if (!business) return res.status(404).json({ error: "Business not found" });
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
 
     const locations = await prisma.location.findMany({
       where: { businessId },
@@ -395,13 +433,17 @@ router.post("/featured-restaurants", async (req, res) => {
       where: { id: businessId },
       select: { id: true },
     });
-    if (!business) return res.status(404).json({ error: "Business not found" });
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
 
     const location = await prisma.location.findUnique({
       where: { id: locationId },
       select: { id: true, businessId: true },
     });
-    if (!location) return res.status(404).json({ error: "Location not found" });
+    if (!location) {
+      return res.status(404).json({ error: "Location not found" });
+    }
     if (location.businessId !== businessId) {
       return res
         .status(400)
@@ -519,6 +561,15 @@ function adminIdentity(req: express.Request): string {
 }
 
 function serializeAdminTemplate(t: any) {
+  let templateBusiness = null;
+  if (t.business) {
+    templateBusiness = {
+      id: t.business.id,
+      name: t.business.name,
+      username: t.business.username,
+      email: t.business.email,
+    };
+  }
   return {
     id: t.id,
     templateType: t.templateType,
@@ -552,9 +603,7 @@ function serializeAdminTemplate(t: any) {
     rejectedAt: t.rejectedAt,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
-    business: t.business
-      ? { id: t.business.id, name: t.business.name, username: t.business.username, email: t.business.email }
-      : null,
+    business: templateBusiness,
   };
 }
 
@@ -584,12 +633,18 @@ router.get("/campaign-templates", async (req, res) => {
     const businessIds = Array.from(
       new Set(templates.map((t) => t.businessId).filter(Boolean) as string[]),
     );
-    const businesses = businessIds.length
-      ? await prisma.business.findMany({
-          where: { id: { in: businessIds } },
-          select: { id: true, name: true, username: true, email: true },
-        })
-      : [];
+    let businesses: Array<{
+      id: string;
+      name: string;
+      username: string;
+      email: string;
+    }> = [];
+    if (businessIds.length) {
+      businesses = await prisma.business.findMany({
+        where: { id: { in: businessIds } },
+        select: { id: true, name: true, username: true, email: true },
+      });
+    }
     const bMap = new Map(businesses.map((b) => [b.id, b]));
 
     const grouped = await prisma.campaignTemplate.groupBy({
@@ -598,12 +653,18 @@ router.get("/campaign-templates", async (req, res) => {
       _count: { _all: true },
     });
     const counts: Record<string, number> = {};
-    for (const g of grouped) counts[g.approvalStatus] = g._count._all;
+    for (const g of grouped) {
+      counts[g.approvalStatus] = g._count._all;
+    }
 
     return res.json({
-      templates: templates.map((t) =>
-        serializeAdminTemplate({ ...t, business: t.businessId ? bMap.get(t.businessId) : null }),
-      ),
+      templates: templates.map((t) => {
+        let templateBusiness = null;
+        if (t.businessId) {
+          templateBusiness = bMap.get(t.businessId);
+        }
+        return serializeAdminTemplate({ ...t, business: templateBusiness });
+      }),
       counts,
     });
   } catch (error: any) {
@@ -615,19 +676,31 @@ router.get("/campaign-templates", async (req, res) => {
 router.get("/campaign-templates/:id", async (req, res) => {
   try {
     const id = String(req.params.id || "");
-    if (!OBJECT_ID_RE.test(id)) return res.status(404).json({ error: "Template not found" });
+    if (!OBJECT_ID_RE.test(id)) {
+      return res.status(404).json({ error: "Template not found" });
+    }
     const t = await prisma.campaignTemplate.findUnique({ where: { id } });
-    if (!t) return res.status(404).json({ error: "Template not found" });
-    const business = t.businessId
-      ? await prisma.business.findUnique({
-          where: { id: t.businessId },
-          select: { id: true, name: true, username: true, email: true },
-        })
-      : null;
+    if (!t) {
+      return res.status(404).json({ error: "Template not found" });
+    }
+    let business: {
+      id: string;
+      name: string;
+      username: string;
+      email: string;
+    } | null = null;
+    if (t.businessId) {
+      business = await prisma.business.findUnique({
+        where: { id: t.businessId },
+        select: { id: true, name: true, username: true, email: true },
+      });
+    }
     let location = null;
     if (t.locationId) {
       const loc = await prisma.location.findUnique({ where: { id: t.locationId } });
-      if (loc) location = pickLocation(loc);
+      if (loc) {
+        location = pickLocation(loc);
+      }
     }
     return res.json({ template: serializeAdminTemplate({ ...t, business }), location });
   } catch (error: any) {
@@ -639,9 +712,13 @@ router.get("/campaign-templates/:id", async (req, res) => {
 router.patch("/campaign-templates/:id/review", async (req, res) => {
   try {
     const id = String(req.params.id || "");
-    if (!OBJECT_ID_RE.test(id)) return res.status(404).json({ error: "Template not found" });
+    if (!OBJECT_ID_RE.test(id)) {
+      return res.status(404).json({ error: "Template not found" });
+    }
     const t = await prisma.campaignTemplate.findUnique({ where: { id } });
-    if (!t) return res.status(404).json({ error: "Template not found" });
+    if (!t) {
+      return res.status(404).json({ error: "Template not found" });
+    }
 
     const data: Record<string, unknown> = {};
     const stringFields = [
@@ -654,13 +731,21 @@ router.patch("/campaign-templates/:id/review", async (req, res) => {
     ] as const;
     for (const f of stringFields) {
       if (req.body?.[f] !== undefined) {
-        data[f] = req.body[f] === null ? null : String(req.body[f]).slice(0, 2000);
+        if (req.body[f] === null) {
+          data[f] = null;
+        } else {
+          data[f] = String(req.body[f]).slice(0, 2000);
+        }
       }
     }
     const dateFields = ["whatsappSubmittedAt", "whatsappApprovedAt", "whatsappRejectedAt"] as const;
     for (const f of dateFields) {
       if (req.body?.[f] !== undefined) {
-        data[f] = req.body[f] ? new Date(req.body[f]) : null;
+        if (req.body[f]) {
+          data[f] = new Date(req.body[f]);
+        } else {
+          data[f] = null;
+        }
       }
     }
     if (Object.keys(data).length === 0) {
@@ -677,14 +762,29 @@ router.patch("/campaign-templates/:id/review", async (req, res) => {
 router.post("/campaign-templates/:id/approve", async (req, res) => {
   try {
     const id = String(req.params.id || "");
-    if (!OBJECT_ID_RE.test(id)) return res.status(404).json({ error: "Template not found" });
+    if (!OBJECT_ID_RE.test(id)) {
+      return res.status(404).json({ error: "Template not found" });
+    }
     const t = await prisma.campaignTemplate.findUnique({ where: { id } });
-    if (!t) return res.status(404).json({ error: "Template not found" });
+    if (!t) {
+      return res.status(404).json({ error: "Template not found" });
+    }
     if (t.templateType !== "CUSTOM") {
       return res.status(400).json({ error: "Only custom templates require approval" });
     }
 
     const now = new Date();
+    const approvalData: Record<string, unknown> = {};
+    if (req.body?.whatsappProviderTemplateName !== undefined) {
+      approvalData.whatsappProviderTemplateName = String(
+        req.body.whatsappProviderTemplateName,
+      ).slice(0, 500);
+    }
+    if (req.body?.whatsappMetaStatus !== undefined) {
+      approvalData.whatsappMetaStatus = String(
+        req.body.whatsappMetaStatus,
+      ).slice(0, 200);
+    }
     const updated = await prisma.campaignTemplate.update({
       where: { id },
       data: {
@@ -694,12 +794,7 @@ router.post("/campaign-templates/:id/approve", async (req, res) => {
         rejectionReason: null,
         rejectedAt: null,
         whatsappApprovedAt: t.whatsappApprovedAt ?? now,
-        ...(req.body?.whatsappProviderTemplateName !== undefined
-          ? { whatsappProviderTemplateName: String(req.body.whatsappProviderTemplateName).slice(0, 500) }
-          : {}),
-        ...(req.body?.whatsappMetaStatus !== undefined
-          ? { whatsappMetaStatus: String(req.body.whatsappMetaStatus).slice(0, 200) }
-          : {}),
+        ...approvalData,
       },
     });
     return res.json({ template: serializeAdminTemplate(updated) });
@@ -712,11 +807,17 @@ router.post("/campaign-templates/:id/approve", async (req, res) => {
 router.post("/campaign-templates/:id/reject", async (req, res) => {
   try {
     const id = String(req.params.id || "");
-    if (!OBJECT_ID_RE.test(id)) return res.status(404).json({ error: "Template not found" });
+    if (!OBJECT_ID_RE.test(id)) {
+      return res.status(404).json({ error: "Template not found" });
+    }
     const reason = String(req.body?.rejectionReason || "").trim();
-    if (!reason) return res.status(400).json({ error: "A rejection reason is required" });
+    if (!reason) {
+      return res.status(400).json({ error: "A rejection reason is required" });
+    }
     const t = await prisma.campaignTemplate.findUnique({ where: { id } });
-    if (!t) return res.status(404).json({ error: "Template not found" });
+    if (!t) {
+      return res.status(404).json({ error: "Template not found" });
+    }
     if (t.templateType !== "CUSTOM") {
       return res.status(400).json({ error: "Only custom templates can be rejected" });
     }

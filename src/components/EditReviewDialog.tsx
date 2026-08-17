@@ -30,29 +30,41 @@ function StarRatingInput({
 }) {
   const [hover, setHover] = useState(0);
   const shown = hover || value;
+  let ratingText: string;
+  if (shown) {
+    ratingText = `${shown}/5`;
+  } else {
+    ratingText = "Tap to Rate";
+  }
   return (
     <div className="flex items-center gap-1" onMouseLeave={() => setHover(0)}>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          aria-label={`${n} star${n === 1 ? "" : "s"}`}
-          onClick={() => onChange(n)}
-          onMouseEnter={() => setHover(n)}
-          className="rounded p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20"
-        >
-          <Star
-            className={
-              n <= shown
-                ? "h-7 w-7 fill-yellow-400 text-yellow-400"
-                : "h-7 w-7 fill-slate-200 text-slate-200"
-            }
-          />
-        </button>
-      ))}
-      <span className="ml-2 text-sm text-slate-500">
-        {shown ? `${shown}/5` : "Tap to Rate"}
-      </span>
+      {[1, 2, 3, 4, 5].map((n) => {
+        let starPlural: string;
+        if (n === 1) {
+          starPlural = "";
+        } else {
+          starPlural = "s";
+        }
+        let starClass: string;
+        if (n <= shown) {
+          starClass = "h-7 w-7 fill-yellow-400 text-yellow-400";
+        } else {
+          starClass = "h-7 w-7 fill-slate-200 text-slate-200";
+        }
+        return (
+          <button
+            key={n}
+            type="button"
+            aria-label={`${n} star${starPlural}`}
+            onClick={() => onChange(n)}
+            onMouseEnter={() => setHover(n)}
+            className="rounded p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20"
+          >
+            <Star className={starClass} />
+          </button>
+        );
+      })}
+      <span className="ml-2 text-sm text-slate-500">{ratingText}</span>
     </div>
   );
 }
@@ -79,7 +91,9 @@ export function EditReviewDialog({
   }, [review]);
 
   const save = async () => {
-    if (!review) return;
+    if (!review) {
+      return;
+    }
     if (rating < 1) {
       toast({ title: "Pick a rating", variant: "destructive" });
       return;
@@ -102,6 +116,13 @@ export function EditReviewDialog({
       setSaving(false);
     }
   };
+
+  let saveButtonLabel: string;
+  if (saving) {
+    saveButtonLabel = "Saving…";
+  } else {
+    saveButtonLabel = "Save Changes";
+  }
 
   return (
     <Dialog open={!!review} onOpenChange={onOpenChange}>
@@ -140,7 +161,7 @@ export function EditReviewDialog({
             onClick={save}
             disabled={saving}
           >
-            {saving ? "Saving…" : "Save Changes"}
+            {saveButtonLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

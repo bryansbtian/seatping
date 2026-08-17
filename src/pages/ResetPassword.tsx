@@ -30,8 +30,15 @@ const ResetPassword = () => {
   const token = searchParams.get("token");
 
   const isBusiness = searchParams.get("type") === "business";
-  const headerVariant = isBusiness ? "business" : "customer";
-  const loginPath = isBusiness ? "/business/login" : "/login";
+  let headerVariant: "business" | "customer";
+  let loginPath: string;
+  if (isBusiness) {
+    headerVariant = "business";
+    loginPath = "/business/login";
+  } else {
+    headerVariant = "customer";
+    loginPath = "/login";
+  }
 
   useEffect(() => {
     if (!token) {
@@ -40,7 +47,13 @@ const ResetPassword = () => {
         description: "This password reset link is invalid.",
         variant: "destructive",
       });
-      navigate(isBusiness ? "/forgot?type=business" : "/forgot");
+      let forgotPath: string;
+      if (isBusiness) {
+        forgotPath = "/forgot?type=business";
+      } else {
+        forgotPath = "/forgot";
+      }
+      navigate(forgotPath);
     }
   }, [token, navigate, toast, isBusiness]);
 
@@ -133,6 +146,13 @@ const ResetPassword = () => {
     return null;
   }
 
+  let submitLabel: string;
+  if (loading) {
+    submitLabel = "Updating...";
+  } else {
+    submitLabel = "Update Password";
+  }
+
   return (
     <>
       <Header variant={headerVariant} />
@@ -194,7 +214,7 @@ const ResetPassword = () => {
                   className="h-11 w-full text-base"
                   disabled={loading}
                 >
-                  {loading ? "Updating..." : "Update Password"}
+                  {submitLabel}
                 </Button>
               </form>
 

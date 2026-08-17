@@ -115,8 +115,12 @@ function formatDayLabel(d: string) {
 }
 
 function formatHoursForDay(day: DayHours | undefined) {
-  if (!day || day.enabled === false) return "Closed";
-  if (day.open === "00:00" && day.close === "00:00") return "Open 24 Hours";
+  if (!day || day.enabled === false) {
+    return "Closed";
+  }
+  if (day.open === "00:00" && day.close === "00:00") {
+    return "Open 24 Hours";
+  }
   return `${formatTimeLabel(day.open)} – ${formatTimeLabel(day.close)}`;
 }
 
@@ -148,11 +152,16 @@ function formatDate(iso: string) {
 
 function normalizeUrl(url: string): string {
   const trimmed = url.trim();
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
 }
 
 function getRestaurantStatus(openingHours: OpeningHours | null): { isOpen: boolean; text: string; color: string } | null {
-  if (!openingHours) return null;
+  if (!openingHours) {
+    return null;
+  }
   const timezone = openingHours.timezone || "Asia/Jakarta";
   let currentHourMinute: string;
   let currentDayName: string;
@@ -165,7 +174,9 @@ function getRestaurantStatus(openingHours: OpeningHours | null): { isOpen: boole
       minute: "2-digit"
     });
     let timeStr = dtfTime.format(new Date());
-    if (timeStr.startsWith("24:")) timeStr = "00" + timeStr.slice(2);
+    if (timeStr.startsWith("24:")) {
+      timeStr = "00" + timeStr.slice(2);
+    }
     currentHourMinute = timeStr;
     
     const dtfDay = new Intl.DateTimeFormat("en-US", {
@@ -218,7 +229,12 @@ function getRestaurantStatus(openingHours: OpeningHours | null): { isOpen: boole
     const nextDay = days[(currentIndex + i) % 7];
     const hours = openingHours[nextDay];
     if (hours?.enabled && hours.open) {
-      const dayLabel = i === 1 ? "Tomorrow" : formatDayLabel(nextDay);
+      let dayLabel: string;
+      if (i === 1) {
+        dayLabel = "Tomorrow";
+      } else {
+        dayLabel = formatDayLabel(nextDay);
+      }
       if (hours.open === "00:00" && hours.close === "00:00") {
         return {
           isOpen: false,
@@ -241,16 +257,15 @@ function Stars({ rating }: { rating: number }) {
   const filled = Math.round(rating);
   return (
     <span className="inline-flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          className={
-            i <= filled
-              ? "h-3.5 w-3.5 fill-yellow-400 text-yellow-400"
-              : "h-3.5 w-3.5 fill-slate-200 text-slate-200"
-          }
-        />
-      ))}
+      {[1, 2, 3, 4, 5].map((i) => {
+        let starClass: string;
+        if (i <= filled) {
+          starClass = "h-3.5 w-3.5 fill-yellow-400 text-yellow-400";
+        } else {
+          starClass = "h-3.5 w-3.5 fill-slate-200 text-slate-200";
+        }
+        return <Star key={i} className={starClass} />;
+      })}
     </span>
   );
 }
@@ -282,10 +297,24 @@ export default function RestaurantPage() {
   const qpDate = searchParams.get("date") || "";
   const qpTime = searchParams.get("time") || "";
   const qpParty = Number(searchParams.get("partySize"));
-  const initialDate = /^\d{4}-\d{2}-\d{2}$/.test(qpDate) ? qpDate : undefined;
-  const initialTime = /^\d{2}:\d{2}$/.test(qpTime) ? qpTime : undefined;
-  const initialPartySize =
-    Number.isFinite(qpParty) && qpParty > 0 ? qpParty : undefined;
+  let initialDate: string | undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(qpDate)) {
+    initialDate = qpDate;
+  } else {
+    initialDate = undefined;
+  }
+  let initialTime: string | undefined;
+  if (/^\d{2}:\d{2}$/.test(qpTime)) {
+    initialTime = qpTime;
+  } else {
+    initialTime = undefined;
+  }
+  let initialPartySize: number | undefined;
+  if (Number.isFinite(qpParty) && qpParty > 0) {
+    initialPartySize = qpParty;
+  } else {
+    initialPartySize = undefined;
+  }
 
   const isLgUp = useIsLgUp();
 
@@ -313,7 +342,9 @@ export default function RestaurantPage() {
 
   useEffect(() => {
     const el = navSentinelRef.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const observer = new IntersectionObserver(
       ([entry]) => {
         setNavTakeover(
@@ -329,12 +360,27 @@ export default function RestaurantPage() {
   useEffect(() => {
     let cancelled = false;
     fetch("/auth/session", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : { customer: null }))
+      .then((r) => {
+        if (r.ok) {
+          return r.json();
+        }
+        return { customer: null };
+      })
       .then((d) => {
-        if (!cancelled) setAccountType(d?.customer ? "customer" : null);
+        if (!cancelled) {
+          let nextAccountType: "customer" | null;
+          if (d?.customer) {
+            nextAccountType = "customer";
+          } else {
+            nextAccountType = null;
+          }
+          setAccountType(nextAccountType);
+        }
       })
       .catch(() => {
-        if (!cancelled) setAccountType(null);
+        if (!cancelled) {
+          setAccountType(null);
+        }
       });
     return () => {
       cancelled = true;
@@ -349,14 +395,18 @@ export default function RestaurantPage() {
     let cancelled = false;
     api("/auth/me/reviews")
       .then((d) => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         const mine = (d.reviews || []).find(
           (rv: any) => rv.locationId === locationId,
         );
         setMyReviewId(mine?.id ?? null);
       })
       .catch(() => {
-        if (!cancelled) setMyReviewId(null);
+        if (!cancelled) {
+          setMyReviewId(null);
+        }
       });
     return () => {
       cancelled = true;
@@ -364,14 +414,18 @@ export default function RestaurantPage() {
   }, [accountType, locationId, refreshKey]);
 
   useEffect(() => {
-    if (accountType === undefined || !locationId) return;
+    if (accountType === undefined || !locationId) {
+      return;
+    }
     if (accountType !== "customer") {
       setSaved(false);
       return;
     }
     let cancelled = false;
     const pending = localStorage.getItem(SAVE_INTENT_KEY) === locationId;
-    if (pending) localStorage.removeItem(SAVE_INTENT_KEY);
+    if (pending) {
+      localStorage.removeItem(SAVE_INTENT_KEY);
+    }
     (async () => {
       try {
         if (pending) {
@@ -386,9 +440,13 @@ export default function RestaurantPage() {
           return;
         }
         const d = await api(`/auth/me/saved-locations/${locationId}`);
-        if (!cancelled) setSaved(Boolean(d?.saved));
+        if (!cancelled) {
+          setSaved(Boolean(d?.saved));
+        }
       } catch {
-        if (!cancelled) setSaved(false);
+        if (!cancelled) {
+          setSaved(false);
+        }
       }
     })();
     return () => {
@@ -444,15 +502,21 @@ export default function RestaurantPage() {
       )}`,
     )
       .then((res) => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         setRestaurant(res.restaurant ?? null);
         setVisibleReviewCount(REVIEWS_PAGE_SIZE);
       })
       .catch((e: any) => {
-        if (!cancelled) setError(e?.message || "Restaurant Not Found.");
+        if (!cancelled) {
+          setError(e?.message || "Restaurant Not Found.");
+        }
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -464,14 +528,20 @@ export default function RestaurantPage() {
   }, [businessUsername, locationId]);
 
   const visibleSections = useMemo(() => {
-    if (!restaurant) return [] as Array<{ id: string; label: string }>;
+    if (!restaurant) {
+      return [] as Array<{ id: string; label: string }>;
+    }
     const list: Array<{ id: string; label: string }> = [
       { id: "overview", label: "Overview" },
     ];
     if (restaurant.photos.length > 0)
-      list.push({ id: "photos", label: "Photos" });
+      {
+        list.push({ id: "photos", label: "Photos" });
+      }
     if (restaurant.menu.length > 0 || Boolean(restaurant.menuUrl))
-      list.push({ id: "menu", label: "Menu" });
+      {
+        list.push({ id: "menu", label: "Menu" });
+      }
     list.push({ id: "reviews", label: "Reviews" });
     const hasDetails =
       Boolean(restaurant.address) ||
@@ -480,35 +550,49 @@ export default function RestaurantPage() {
       restaurant.cuisineTypes.length > 0 ||
       Boolean(restaurant.priceRange) ||
       Boolean(restaurant.openingHours);
-    if (hasDetails) list.push({ id: "details", label: "Details" });
+    if (hasDetails) {
+      list.push({ id: "details", label: "Details" });
+    }
     return list;
   }, [restaurant]);
 
   const scrollToSection = (id: string) => {
     setActiveSection(id);
     const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   useEffect(() => {
-    if (visibleSections.length === 0) return;
+    if (visibleSections.length === 0) {
+      return;
+    }
     setActiveSection(visibleSections[0].id);
     const ids = visibleSections.map((s) => s.id);
     const seen = new Set<string>();
     const observer = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
-          if (e.isIntersecting) seen.add(e.target.id);
-          else seen.delete(e.target.id);
+          if (e.isIntersecting) {
+            seen.add(e.target.id);
+          }
+          else {
+            seen.delete(e.target.id);
+          }
         }
         const next = ids.find((id) => seen.has(id));
-        if (next) setActiveSection(next);
+        if (next) {
+          setActiveSection(next);
+        }
       },
       { rootMargin: "-128px 0px -55% 0px", threshold: 0 },
     );
     ids.forEach((id) => {
       const el = document.getElementById(id);
-      if (el) observer.observe(el);
+      if (el) {
+        observer.observe(el);
+      }
     });
     return () => observer.disconnect();
   }, [visibleSections]);
@@ -549,28 +633,132 @@ export default function RestaurantPage() {
     />
   );
 
+  let locationSuffix: string;
+  if (locationText) {
+    locationSuffix = ` in ${locationText}`;
+  } else {
+    locationSuffix = "";
+  }
+
+  let heroContent: React.ReactNode;
+  if (heroImage) {
+    heroContent = (
+      <img src={heroImage} alt={r.name} className="h-full w-full object-cover" />
+    );
+  } else {
+    heroContent = (
+      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
+        <Utensils className="h-10 w-10" />
+      </div>
+    );
+  }
+
+  let ratingSummary: React.ReactNode;
+  if (r.rating != null) {
+    let reviewWordLabel: string;
+    if (r.reviewCount === 1) {
+      reviewWordLabel = "Review";
+    } else {
+      reviewWordLabel = "Reviews";
+    }
+    ratingSummary = (
+      <span className="inline-flex items-center gap-1 font-medium text-slate-700">
+        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+        {r.rating.toFixed(1)}
+        <span className="font-normal text-slate-500">
+          ({r.reviewCount} {reviewWordLabel})
+        </span>
+      </span>
+    );
+  } else {
+    ratingSummary = <span>No Reviews Yet</span>;
+  }
+
+  let navStickyClass: string;
+  if (navTakeover) {
+    navStickyClass = "top-0 z-50";
+  } else {
+    navStickyClass = "top-16 z-30";
+  }
+
+  let aboutParagraph: React.ReactNode;
+  if (r.description) {
+    aboutParagraph = (
+      <p className="mt-3 whitespace-pre-line text-slate-700">{r.description}</p>
+    );
+  } else {
+    aboutParagraph = <p className="mt-3 text-slate-600">{r.tagline}</p>;
+  }
+
+  let photoWordLabel: string;
+  if (r.photos.length === 1) {
+    photoWordLabel = "Photo";
+  } else {
+    photoWordLabel = "Photos";
+  }
+
+  let reviewsHeading: string;
+  if (r.reviewCount > 0) {
+    let reviewerPhrase: string;
+    if (r.reviewCount === 1) {
+      reviewerPhrase = "Person Is";
+    } else {
+      reviewerPhrase = "People Are";
+    }
+    reviewsHeading = `What ${r.reviewCount.toLocaleString()} ${reviewerPhrase} Saying`;
+  } else {
+    reviewsHeading = "Reviews";
+  }
+
+  let reviewsSummaryBlock: React.ReactNode;
+  if (r.reviewCount > 0) {
+    reviewsSummaryBlock = (
+      <ReviewsSummary rating={r.rating ?? 0} count={r.reviewCount} />
+    );
+  } else {
+    reviewsSummaryBlock = (
+      <p className="text-sm text-slate-500">
+        No reviews yet. Be the first to share your experience.
+      </p>
+    );
+  }
+
+  let orderedReviews: Review[];
+  if (myReviewId) {
+    orderedReviews = [
+      ...r.reviews.filter((rv) => rv.id === myReviewId),
+      ...r.reviews.filter((rv) => rv.id !== myReviewId),
+    ];
+  } else {
+    orderedReviews = r.reviews;
+  }
+
+  let addressValue: React.ReactNode;
+  if (r.googleMapsUrl) {
+    addressValue = (
+      <a
+        href={r.googleMapsUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-slate-900 underline-offset-4 hover:underline"
+      >
+        {r.address}
+      </a>
+    );
+  } else {
+    addressValue = r.address;
+  }
+
   return (
     <PageShell hideHeader={navTakeover}>
       <SEO
         title={`${r.name} | SeatPing`}
-        description={`Book a table or join the queue at ${r.name}${
-          locationText ? ` in ${locationText}` : ""
-        } with SeatPing.`}
+        description={`Book a table or join the queue at ${r.name}${locationSuffix} with SeatPing.`}
         canonical={`/${r.businessUsername}/${r.locationId}`}
       />
       {}
       <div className="relative h-56 w-full overflow-hidden bg-slate-100 sm:h-72 md:h-96">
-        {heroImage ? (
-          <img
-            src={heroImage}
-            alt={r.name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
-            <Utensils className="h-10 w-10" />
-          </div>
-        )}
+        {heroContent}
         {r.photos.length > 0 && (
           <Button
             size="sm"
@@ -603,18 +791,7 @@ export default function RestaurantPage() {
               />
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
-              {r.rating != null ? (
-                <span className="inline-flex items-center gap-1 font-medium text-slate-700">
-                  <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                  {r.rating.toFixed(1)}
-                  <span className="font-normal text-slate-500">
-                    ({r.reviewCount}{" "}
-                    {r.reviewCount === 1 ? "Review" : "Reviews"})
-                  </span>
-                </span>
-              ) : (
-                <span>No Reviews Yet</span>
-              )}
+              {ratingSummary}
               {r.cuisineTypes[0] && (
                 <>
                   <span className="text-slate-300">·</span>
@@ -637,7 +814,9 @@ export default function RestaurantPage() {
             </div>
             {(() => {
               const status = getRestaurantStatus(r.openingHours);
-              if (!status) return null;
+              if (!status) {
+                return null;
+              }
               return (
                 <div className="mt-1.5 text-sm">
                   <span className={status.color}>{status.text}</span>
@@ -661,23 +840,31 @@ export default function RestaurantPage() {
               <nav
                 className={cn(
                   "sticky -mx-4 mt-8 border-b border-slate-200 bg-white/95 px-4 backdrop-blur",
-                  navTakeover ? "top-0 z-50" : "top-16 z-30",
+                  navStickyClass,
                 )}
               >
                 <div className="flex gap-2 overflow-x-auto py-3">
                   {visibleSections.map((s) => {
                     const isActive = activeSection === s.id;
+                    let sectionAriaCurrent: "true" | undefined;
+                    let sectionClass: string;
+                    if (isActive) {
+                      sectionAriaCurrent = "true";
+                      sectionClass = "border-slate-900 bg-slate-900 text-white";
+                    } else {
+                      sectionAriaCurrent = undefined;
+                      sectionClass =
+                        "border-slate-200 bg-white text-slate-700 hover:border-slate-900 hover:text-slate-900";
+                    }
                     return (
                       <button
                         key={s.id}
                         type="button"
                         onClick={() => scrollToSection(s.id)}
-                        aria-current={isActive ? "true" : undefined}
+                        aria-current={sectionAriaCurrent}
                         className={cn(
                           "shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition",
-                          isActive
-                            ? "border-slate-900 bg-slate-900 text-white"
-                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-900 hover:text-slate-900",
+                          sectionClass,
                         )}
                       >
                         {s.label}
@@ -697,13 +884,7 @@ export default function RestaurantPage() {
                     <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
                       About {r.name}
                     </h2>
-                    {r.description ? (
-                      <p className="mt-3 whitespace-pre-line text-slate-700">
-                        {r.description}
-                      </p>
-                    ) : (
-                      <p className="mt-3 text-slate-600">{r.tagline}</p>
-                    )}
+                    {aboutParagraph}
                   </div>
                 )}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -742,8 +923,7 @@ export default function RestaurantPage() {
               {r.photos.length > 0 && (
                 <section id="photos" className="scroll-mt-32">
                   <h2 className="mb-4 text-lg sm:text-xl font-semibold text-slate-900">
-                    {r.photos.length}{" "}
-                    {r.photos.length === 1 ? "Photo" : "Photos"}
+                    {r.photos.length} {photoWordLabel}
                   </h2>
                   <PhotosGrid
                     photos={r.photos}
@@ -783,23 +963,10 @@ export default function RestaurantPage() {
               {}
               <section id="reviews" className="scroll-mt-32 space-y-4">
                 <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
-                  {r.reviewCount > 0
-                    ? `What ${r.reviewCount.toLocaleString()} ${
-                        r.reviewCount === 1 ? "Person Is" : "People Are"
-                      } Saying`
-                    : "Reviews"}
+                  {reviewsHeading}
                 </h2>
 
-                {r.reviewCount > 0 ? (
-                  <ReviewsSummary
-                    rating={r.rating ?? 0}
-                    count={r.reviewCount}
-                  />
-                ) : (
-                  <p className="text-sm text-slate-500">
-                    No reviews yet. Be the first to share your experience.
-                  </p>
-                )}
+                {reviewsSummaryBlock}
 
                 {}
                 {!myReviewId && (
@@ -814,13 +981,7 @@ export default function RestaurantPage() {
                 {r.reviews.length > 0 && (
                   <>
                     <div className="space-y-3">
-                      {(myReviewId
-                        ? [
-                            ...r.reviews.filter((rv) => rv.id === myReviewId),
-                            ...r.reviews.filter((rv) => rv.id !== myReviewId),
-                          ]
-                        : r.reviews
-                      )
+                      {orderedReviews
                         .slice(0, visibleReviewCount)
                         .map((rv) => (
                           <ReviewCard
@@ -872,20 +1033,7 @@ export default function RestaurantPage() {
                     <DetailRow
                       icon={MapPin}
                       label="Location"
-                      value={
-                        r.googleMapsUrl ? (
-                          <a
-                            href={r.googleMapsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-slate-900 underline-offset-4 hover:underline"
-                          >
-                            {r.address}
-                          </a>
-                        ) : (
-                          r.address
-                        )
-                      }
+                      value={addressValue}
                     />
                   )}
                   {r.phone && (
@@ -1036,7 +1184,16 @@ function SaveButton({
   onClick: () => void;
   className?: string;
 }) {
-  const label = saved ? "Saved" : "Save";
+  let label: string;
+  let savedClass: string;
+  if (saved) {
+    label = "Saved";
+    savedClass = "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100";
+  } else {
+    label = "Save";
+    savedClass =
+      "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50";
+  }
   return (
     <button
       type="button"
@@ -1046,9 +1203,7 @@ function SaveButton({
       aria-label={label}
       className={cn(
         "inline-flex items-center gap-2 rounded-full border p-2 text-sm font-medium transition-colors disabled:opacity-60 sm:px-4 sm:py-2",
-        saved
-          ? "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
-          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
+        savedClass,
         className,
       )}
     >
@@ -1111,7 +1266,9 @@ function PhotosGrid({
   photos: Photo[];
   onShowAll: () => void;
 }) {
-  if (photos.length === 0) return null;
+  if (photos.length === 0) {
+    return null;
+  }
 
   const tileBase =
     "group relative overflow-hidden rounded-xl border border-slate-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/30";
@@ -1177,14 +1334,18 @@ function PhotosGrid({
         {small.map((p, i) => {
           const isLast = i === small.length - 1;
           const showOverlay = isLast && hidden > 0;
+          let tileAriaLabel: string;
+          if (showOverlay) {
+            tileAriaLabel = `See all ${hidden + 5} photos`;
+          } else {
+            tileAriaLabel = "View photos";
+          }
           return (
             <button
               key={p.id}
               type="button"
               onClick={onShowAll}
-              aria-label={
-                showOverlay ? `See all ${hidden + 5} photos` : "View photos"
-              }
+              aria-label={tileAriaLabel}
               className={cn(tileBase, "aspect-[4/3] md:aspect-auto md:h-full")}
             >
               <img
@@ -1218,6 +1379,30 @@ function PhotosModal({
   restaurantName: string;
   photos: Photo[];
 }) {
+  let photosContent: React.ReactNode;
+  if (photos.length === 0) {
+    photosContent = (
+      <p className="py-6 text-sm text-slate-500">No photos yet.</p>
+    );
+  } else {
+    photosContent = (
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        {photos.map((p) => (
+          <div
+            key={p.id}
+            className="aspect-[4/3] overflow-hidden rounded-lg border border-slate-200"
+          >
+            <img
+              src={p.url}
+              alt={p.altText || "Restaurant photo"}
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {}
@@ -1229,25 +1414,7 @@ function PhotosModal({
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 sm:px-6 sm:pb-6">
-          {photos.length === 0 ? (
-            <p className="py-6 text-sm text-slate-500">No photos yet.</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-              {photos.map((p) => (
-                <div
-                  key={p.id}
-                  className="aspect-[4/3] overflow-hidden rounded-lg border border-slate-200"
-                >
-                  <img
-                    src={p.url}
-                    alt={p.altText || "Restaurant photo"}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          {photosContent}
         </div>
       </DialogContent>
     </Dialog>
@@ -1268,26 +1435,46 @@ function MenuList({
   const groups = new Map<string, MenuItem[]>();
   for (const it of items) {
     const key = it.category?.trim() || "Menu";
-    if (!groups.has(key)) groups.set(key, []);
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
     groups.get(key)!.push(it);
   }
 
   const collapsible = items.length > MENU_PREVIEW_ITEMS;
-  const limit = !collapsible || expanded ? Infinity : MENU_PREVIEW_ITEMS;
+  let limit: number;
+  if (!collapsible || expanded) {
+    limit = Infinity;
+  } else {
+    limit = MENU_PREVIEW_ITEMS;
+  }
 
   const visibleGroups: [string, MenuItem[]][] = [];
   let shown = 0;
   for (const [cat, list] of groups) {
-    if (shown >= limit) break;
+    if (shown >= limit) {
+      break;
+    }
     const take = list.slice(0, Math.max(0, limit - shown));
-    if (take.length) visibleGroups.push([cat, take]);
+    if (take.length) {
+      visibleGroups.push([cat, take]);
+    }
     shown += take.length;
   }
 
-  const priceLabel = (it: MenuItem) =>
-    typeof it.price === "number" && Number.isFinite(it.price)
-      ? `${it.currency || fallbackCurrency || ""} ${it.price.toLocaleString("en-US")}`.trim()
-      : "";
+  const priceLabel = (it: MenuItem) => {
+    if (typeof it.price === "number" && Number.isFinite(it.price)) {
+      return `${it.currency || fallbackCurrency || ""} ${it.price.toLocaleString("en-US")}`.trim();
+    }
+    return "";
+  };
+
+  let expandToggleLabel: string;
+  if (expanded) {
+    expandToggleLabel = "Show Less";
+  } else {
+    expandToggleLabel = "View Full Menu";
+  }
 
   return (
     <div className="space-y-6">
@@ -1331,7 +1518,7 @@ function MenuList({
             onClick={() => setExpanded((v) => !v)}
             className="rounded-full px-6"
           >
-            {expanded ? "Show Less" : "View Full Menu"}
+            {expandToggleLabel}
           </Button>
         </div>
       )}
@@ -1340,6 +1527,12 @@ function MenuList({
 }
 
 function ReviewsSummary({ rating, count }: { rating: number; count: number }) {
+  let reviewPlural: string;
+  if (count === 1) {
+    reviewPlural = "";
+  } else {
+    reviewPlural = "s";
+  }
   return (
     <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center gap-1.5">
@@ -1349,7 +1542,7 @@ function ReviewsSummary({ rating, count }: { rating: number; count: number }) {
         <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
       </div>
       <span className="text-sm text-slate-500">
-        {count} Review{count === 1 ? "" : "s"}
+        {count} Review{reviewPlural}
       </span>
     </div>
   );
@@ -1372,7 +1565,9 @@ function WriteReviewBlock({
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  if (accountType === undefined) return null;
+  if (accountType === undefined) {
+    return null;
+  }
 
   if (accountType !== "customer") {
     return (
@@ -1429,6 +1624,20 @@ function WriteReviewBlock({
 
   const shown = hoverRating || rating;
 
+  let ratingHint: string;
+  if (shown) {
+    ratingHint = `${shown}/5`;
+  } else {
+    ratingHint = "Tap to Rate";
+  }
+
+  let submitLabel: string;
+  if (submitting) {
+    submitLabel = "Posting...";
+  } else {
+    submitLabel = "Post Review";
+  }
+
   return (
     <form
       onSubmit={submit}
@@ -1439,27 +1648,33 @@ function WriteReviewBlock({
         className="flex items-center gap-1"
         onMouseLeave={() => setHoverRating(0)}
       >
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            type="button"
-            aria-label={`${n} star${n === 1 ? "" : "s"}`}
-            onClick={() => setRating(n)}
-            onMouseEnter={() => setHoverRating(n)}
-            className="rounded p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20"
-          >
-            <Star
-              className={
-                n <= shown
-                  ? "h-6 w-6 fill-yellow-400 text-yellow-400"
-                  : "h-6 w-6 fill-slate-200 text-slate-200"
-              }
-            />
-          </button>
-        ))}
-        <span className="ml-2 text-sm text-slate-500">
-          {shown ? `${shown}/5` : "Tap to Rate"}
-        </span>
+        {[1, 2, 3, 4, 5].map((n) => {
+          let starPlural: string;
+          if (n === 1) {
+            starPlural = "";
+          } else {
+            starPlural = "s";
+          }
+          let starClass: string;
+          if (n <= shown) {
+            starClass = "h-6 w-6 fill-yellow-400 text-yellow-400";
+          } else {
+            starClass = "h-6 w-6 fill-slate-200 text-slate-200";
+          }
+          return (
+            <button
+              key={n}
+              type="button"
+              aria-label={`${n} star${starPlural}`}
+              onClick={() => setRating(n)}
+              onMouseEnter={() => setHoverRating(n)}
+              className="rounded p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20"
+            >
+              <Star className={starClass} />
+            </button>
+          );
+        })}
+        <span className="ml-2 text-sm text-slate-500">{ratingHint}</span>
       </div>
       <Textarea
         value={description}
@@ -1472,7 +1687,7 @@ function WriteReviewBlock({
           type="submit"
           disabled={submitting}
         >
-          {submitting ? "Posting..." : "Post Review"}
+          {submitLabel}
         </Button>
       </div>
     </form>
@@ -1490,13 +1705,42 @@ function ReviewCard({
   isOwn?: boolean;
   onEdit?: () => void;
 }) {
+  let ownCardClass: string;
+  if (isOwn) {
+    ownCardClass = "border-slate-300 bg-slate-50/60";
+  } else {
+    ownCardClass = "border-slate-200";
+  }
+
+  let headerTrailing: React.ReactNode;
+  if (isOwn) {
+    headerTrailing = (
+      <span className="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
+        Your Review
+      </span>
+    );
+  } else {
+    headerTrailing = (
+      <div className="flex shrink-0 items-center gap-1.5">
+        <Stars rating={review.rating} />
+        <span className="text-sm font-medium text-slate-700">
+          {review.rating.toFixed(1)}
+        </span>
+      </div>
+    );
+  }
+
+  let serviceTypeLabel: string | null | undefined;
+  if (review.serviceType === "queue") {
+    serviceTypeLabel = "Walk-in";
+  } else if (review.serviceType === "reservation") {
+    serviceTypeLabel = "Reservation";
+  } else {
+    serviceTypeLabel = review.serviceType;
+  }
+
   return (
-    <div
-      className={cn(
-        "rounded-lg border p-3",
-        isOwn ? "border-slate-300 bg-slate-50/60" : "border-slate-200",
-      )}
-    >
+    <div className={cn("rounded-lg border p-3", ownCardClass)}>
       {}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -1509,18 +1753,7 @@ function ReviewCard({
             </p>
           )}
         </div>
-        {isOwn ? (
-          <span className="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
-            Your Review
-          </span>
-        ) : (
-          <div className="flex shrink-0 items-center gap-1.5">
-            <Stars rating={review.rating} />
-            <span className="text-sm font-medium text-slate-700">
-              {review.rating.toFixed(1)}
-            </span>
-          </div>
-        )}
+        {headerTrailing}
       </div>
 
       {}
@@ -1557,11 +1790,7 @@ function ReviewCard({
         {review.serviceType && (
           <span>
             ·{" "}
-            {review.serviceType === "queue"
-              ? "Walk-in"
-              : review.serviceType === "reservation"
-                ? "Reservation"
-                : review.serviceType}
+            {serviceTypeLabel}
           </span>
         )}
       </div>

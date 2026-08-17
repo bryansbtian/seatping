@@ -92,7 +92,9 @@ app.get("/api/health", async (_req, res) => {
       prisma.business.findFirst({ select: { id: true } }).then(() => "ok" as const),
       timeout,
     ]);
-    if (result === "ok") return res.json({ ok: true, db: "ok" });
+    if (result === "ok") {
+      return res.json({ ok: true, db: "ok" });
+    }
     return res.status(503).json({ ok: false, db: "timeout" });
   } catch {
     return res.status(503).json({ ok: false, db: "error" });

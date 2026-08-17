@@ -20,14 +20,18 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
   useEffect(() => {
     const calculateTrialTimeLeft = () => {
       if (!me || !me.trial || !me.createdAt || !me.trialDurationDays)
-        return null;
+        {
+          return null;
+        }
       const createdAt = new Date(me.createdAt);
       const trialDurationDays = me.trialDurationDays || 7;
       const trialEndDate = new Date(
         createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
       );
       const timeLeft = trialEndDate.getTime() - Date.now();
-      if (timeLeft <= 0) return null;
+      if (timeLeft <= 0) {
+        return null;
+      }
       return {
         days: Math.floor(timeLeft / (1000 * 60 * 60 * 24)),
         hours: Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
@@ -35,24 +39,32 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
       };
     };
 
-    if (trialCountdownRef.current) clearInterval(trialCountdownRef.current);
+    if (trialCountdownRef.current) {
+      clearInterval(trialCountdownRef.current);
+    }
     if (me && me.trial) {
       setTrialTimeLeft(calculateTrialTimeLeft());
       trialCountdownRef.current = setInterval(() => {
         const timeLeft = calculateTrialTimeLeft();
         setTrialTimeLeft(timeLeft);
         if (!timeLeft && trialCountdownRef.current)
-          clearInterval(trialCountdownRef.current);
+          {
+            clearInterval(trialCountdownRef.current);
+          }
       }, 60000);
     } else {
       setTrialTimeLeft(null);
     }
     return () => {
-      if (trialCountdownRef.current) clearInterval(trialCountdownRef.current);
+      if (trialCountdownRef.current) {
+        clearInterval(trialCountdownRef.current);
+      }
     };
   }, [me]);
 
-  if (!me) return null;
+  if (!me) {
+    return null;
+  }
 
   if (me.trial === true && (me.trialDurationDays ?? 0) > 0) {
     const createdAt = new Date(me.createdAt!);

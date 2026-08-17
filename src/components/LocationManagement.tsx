@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/lib/i18n";
@@ -74,7 +74,9 @@ interface MeLike {
 }
 
 function deriveShortAddress(full?: string | null): string {
-  if (!full) return "";
+  if (!full) {
+    return "";
+  }
   const parts = full
     .split(",")
     .map((s) => s.trim())
@@ -107,8 +109,12 @@ export default function LocationManagement({
   const toggleExpanded = (id: string) =>
     setExpandedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      }
+      else {
+        next.add(id);
+      }
       return next;
     });
 
@@ -140,7 +146,9 @@ export default function LocationManagement({
   };
 
   const copyQueueLink = async () => {
-    if (!qrLocation) return;
+    if (!qrLocation) {
+      return;
+    }
     try {
       await navigator.clipboard.writeText(queueUrlFor(qrLocation));
       toast({
@@ -157,7 +165,9 @@ export default function LocationManagement({
   };
 
   const downloadQrCode = () => {
-    if (!qrDataUrl || !qrLocation) return;
+    if (!qrDataUrl || !qrLocation) {
+      return;
+    }
     const label =
       qrLocation.displayName || qrLocation.name || qrLocation.id || "location";
     const safe = label
@@ -263,6 +273,214 @@ export default function LocationManagement({
     }
   };
 
+  let locWord: string;
+  if (maxLocations === 1) {
+    locWord = t("loc.location");
+  } else {
+    locWord = t("loc.locations");
+  }
+
+  let atMaxFieldClass: string;
+  if (atMax) {
+    atMaxFieldClass = "bg-gray-100 cursor-not-allowed";
+  } else {
+    atMaxFieldClass = "";
+  }
+
+  let locationsContent: ReactNode;
+  if (locations.length === 0) {
+    locationsContent = (
+      <div className="text-center py-6 md:py-8">
+        <MapPin className="w-10 h-10 md:w-12 md:h-12 text-gray-300 mx-auto mb-3 md:mb-4" />
+        <p className="text-gray-500 text-sm md:text-base">{t("loc.none")}</p>
+        <p className="text-xs md:text-sm text-gray-400 mt-1">
+          {t("loc.none.help")}
+        </p>
+      </div>
+    );
+  } else {
+    locationsContent = (
+      <div className="space-y-3">
+        {locations.map((location: Location, index: number) => {
+          const short =
+            location.shortAddress || deriveShortAddress(location.address);
+          const isExpanded = expandedIds.has(location.id);
+          const hasFullMore = Boolean(
+            location.address && location.address.trim() !== short.trim(),
+          );
+          let fullAddressToggleLabel: string;
+          if (isExpanded) {
+            fullAddressToggleLabel = t("loc.hideFullAddress");
+          } else {
+            fullAddressToggleLabel = t("loc.viewFullAddress");
+          }
+          return (
+            <div
+              key={location.id || index}
+              className="flex flex-col gap-4 p-3 md:p-4 bg-gray-50 rounded-lg lg:flex-row lg:items-start lg:justify-between lg:gap-4"
+            >
+              <div className="flex items-start space-x-3 min-w-0 flex-1">
+                <MapPin className="w-4 h-4 md:w-5 md:h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  {}
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {}
+                    <p className="font-medium text-gray-800 text-sm md:text-base break-words">
+                      {location.displayName ||
+                        location.name ||
+                        location.address ||
+                        t("loc.unnamed")}
+                    </p>
+                    <span className="inline-flex w-fit shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
+                      {t("loc.credits", { n: location?.credits || 0 })}
+                    </span>
+                  </div>
+                  {!location.displayName && (
+                    <p className="text-xs text-amber-600">
+                      {t("loc.addDisplayNameHint")}
+                    </p>
+                  )}
+
+                  {}
+                  {location.address && (
+                    <>
+                      <p
+                        className="mt-1 text-xs md:text-sm text-gray-500 truncate"
+                        title={location.address}
+                      >
+                        {short}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        {hasFullMore && (
+                          <button
+                            type="button"
+                            onClick={() => toggleExpanded(location.id)}
+                            className="text-xs font-medium text-indigo-600 hover:underline"
+                          >
+                            {fullAddressToggleLabel}
+                          </button>
+                        )}
+                        {location.googleMapsUrl && (
+                          <a
+                            href={location.googleMapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-medium text-indigo-600 hover:underline"
+                          >
+                            {t("loc.viewOnMaps")}
+                          </a>
+                        )}
+                      </div>
+                      {isExpanded && (
+                        <p className="mt-1 text-xs text-gray-500 break-words">
+                          {location.address}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end lg:gap-3 lg:shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-10 w-full justify-center lg:w-auto"
+                  onClick={() => setEditing(location)}
+                >
+                  <Pencil size={16} className="mr-2" /> {t("loc.editProfile")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-10 w-full justify-center lg:w-auto"
+                  onClick={() => {
+                    setSelectedLocationForReviews(location);
+                    setIsReviewsModalOpen(true);
+                  }}
+                >
+                  <Star size={16} className="mr-2" /> {t("loc.viewReviews")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-10 w-full justify-center lg:w-auto"
+                  onClick={() => openQrModal(location)}
+                >
+                  <QrCode size={16} className="mr-2" /> {t("loc.qrCode")}
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="destructiveOutline"
+                      className="h-10 w-full justify-center lg:w-10 lg:px-0"
+                      disabled={loading}
+                    >
+                      <Trash2 size={16} className="mr-2 lg:mr-0" />
+                      <span className="lg:hidden">
+                        {t("loc.removeLocation")}
+                      </span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="max-w-sm md:max-w-lg">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {t("loc.removeLocation")}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t("loc.remove.confirmBody", {
+                          name: location.displayName || location.address,
+                        })}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
+                      <AlertDialogCancel className="w-full md:w-auto">
+                        {t("common.cancel")}
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => removeLocation(index)}
+                        variant="destructive"
+                        className="w-full md:w-auto"
+                      >
+                        {t("loc.removeLocation")}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  let qrPreviewContent: ReactNode;
+  if (qrDataUrl) {
+    qrPreviewContent = (
+      <img
+        src={qrDataUrl}
+        alt={t("loc.qrModal.title")}
+        className="mx-auto h-56 w-56"
+      />
+    );
+  } else {
+    qrPreviewContent = (
+      <div className="flex h-56 w-56 items-center justify-center text-sm text-gray-400">
+        {t("loc.qrModal.generating")}
+      </div>
+    );
+  }
+
+  let queueLinkText: string;
+  if (qrLocation) {
+    queueLinkText = queueUrlFor(qrLocation);
+  } else {
+    queueLinkText = "";
+  }
+
   return (
     <>
       <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
@@ -274,7 +492,7 @@ export default function LocationManagement({
             {t("loc.desc", {
               count: locations.length,
               max: maxLocations,
-              locWord: t(maxLocations === 1 ? "loc.location" : "loc.locations"),
+              locWord: locWord,
             })}
           </CardDescription>
         </CardHeader>
@@ -310,9 +528,7 @@ export default function LocationManagement({
                     value={newLocationDisplayName}
                     onChange={(e) => setNewLocationDisplayName(e.target.value)}
                     disabled={atMax}
-                    className={`text-sm md:text-base ${
-                      atMax ? "bg-gray-100 cursor-not-allowed" : ""
-                    }`}
+                    className={`text-sm md:text-base ${atMaxFieldClass}`}
                   />
                   <p className="text-xs text-gray-500">
                     {t("loc.displayName.help")}
@@ -329,9 +545,12 @@ export default function LocationManagement({
                     value={newLocationAddress}
                     onChange={(t) => {
                       setNewLocationAddress(t);
-                      setNewLocationPlace((p) =>
-                        p && p.address === t ? p : null,
-                      );
+                      setNewLocationPlace((p) => {
+                        if (p && p.address === t) {
+                          return p;
+                        }
+                        return null;
+                      });
                     }}
                     onPlaceSelected={(d) => {
                       setNewLocationPlace(d);
@@ -339,9 +558,7 @@ export default function LocationManagement({
                     }}
                     placeholder={t("loc.searchAddress.placeholder")}
                     disabled={atMax}
-                    className={`text-sm md:text-base ${
-                      atMax ? "bg-gray-100 cursor-not-allowed" : ""
-                    }`}
+                    className={`text-sm md:text-base ${atMaxFieldClass}`}
                   />
                 </div>
               </div>
@@ -366,173 +583,7 @@ export default function LocationManagement({
             <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-3 md:mb-4">
               {t("loc.current")}
             </h3>
-            {locations.length === 0 ? (
-              <div className="text-center py-6 md:py-8">
-                <MapPin className="w-10 h-10 md:w-12 md:h-12 text-gray-300 mx-auto mb-3 md:mb-4" />
-                <p className="text-gray-500 text-sm md:text-base">
-                  {t("loc.none")}
-                </p>
-                <p className="text-xs md:text-sm text-gray-400 mt-1">
-                  {t("loc.none.help")}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {locations.map((location: Location, index: number) => {
-                  const short =
-                    location.shortAddress ||
-                    deriveShortAddress(location.address);
-                  const isExpanded = expandedIds.has(location.id);
-                  const hasFullMore = Boolean(
-                    location.address &&
-                    location.address.trim() !== short.trim(),
-                  );
-                  return (
-                    <div
-                      key={location.id || index}
-                      className="flex flex-col gap-4 p-3 md:p-4 bg-gray-50 rounded-lg lg:flex-row lg:items-start lg:justify-between lg:gap-4"
-                    >
-                      <div className="flex items-start space-x-3 min-w-0 flex-1">
-                        <MapPin className="w-4 h-4 md:w-5 md:h-5 text-gray-400 flex-shrink-0 mt-0.5" />
-                        <div className="min-w-0 flex-1">
-                          {}
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                            {}
-                            <p className="font-medium text-gray-800 text-sm md:text-base break-words">
-                              {location.displayName ||
-                                location.name ||
-                                location.address ||
-                                t("loc.unnamed")}
-                            </p>
-                            <span className="inline-flex w-fit shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
-                              {t("loc.credits", { n: location?.credits || 0 })}
-                            </span>
-                          </div>
-                          {!location.displayName && (
-                            <p className="text-xs text-amber-600">
-                              {t("loc.addDisplayNameHint")}
-                            </p>
-                          )}
-
-                          {}
-                          {location.address && (
-                            <>
-                              <p
-                                className="mt-1 text-xs md:text-sm text-gray-500 truncate"
-                                title={location.address}
-                              >
-                                {short}
-                              </p>
-                              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                                {hasFullMore && (
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleExpanded(location.id)}
-                                    className="text-xs font-medium text-indigo-600 hover:underline"
-                                  >
-                                    {isExpanded
-                                      ? t("loc.hideFullAddress")
-                                      : t("loc.viewFullAddress")}
-                                  </button>
-                                )}
-                                {location.googleMapsUrl && (
-                                  <a
-                                    href={location.googleMapsUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs font-medium text-indigo-600 hover:underline"
-                                  >
-                                    {t("loc.viewOnMaps")}
-                                  </a>
-                                )}
-                              </div>
-                              {isExpanded && (
-                                <p className="mt-1 text-xs text-gray-500 break-words">
-                                  {location.address}
-                                </p>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {}
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end lg:gap-3 lg:shrink-0">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-10 w-full justify-center lg:w-auto"
-                          onClick={() => setEditing(location)}
-                        >
-                          <Pencil size={16} className="mr-2" />{" "}
-                          {t("loc.editProfile")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-10 w-full justify-center lg:w-auto"
-                          onClick={() => {
-                            setSelectedLocationForReviews(location);
-                            setIsReviewsModalOpen(true);
-                          }}
-                        >
-                          <Star size={16} className="mr-2" />{" "}
-                          {t("loc.viewReviews")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-10 w-full justify-center lg:w-auto"
-                          onClick={() => openQrModal(location)}
-                        >
-                          <QrCode size={16} className="mr-2" /> {t("loc.qrCode")}
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="destructiveOutline"
-                              className="h-10 w-full justify-center lg:w-10 lg:px-0"
-                              disabled={loading}
-                            >
-                              <Trash2 size={16} className="mr-2 lg:mr-0" />
-                              <span className="lg:hidden">
-                                {t("loc.removeLocation")}
-                              </span>
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="max-w-sm md:max-w-lg">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                {t("loc.removeLocation")}
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                {t("loc.remove.confirmBody", {
-                                  name:
-                                    location.displayName || location.address,
-                                })}
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter className="flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
-                              <AlertDialogCancel className="w-full md:w-auto">
-                                {t("common.cancel")}
-                              </AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => removeLocation(index)}
-                                variant="destructive"
-                                className="w-full md:w-auto"
-                              >
-                                {t("loc.removeLocation")}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            {locationsContent}
           </div>
         </CardContent>
       </Card>
@@ -541,7 +592,9 @@ export default function LocationManagement({
       <Dialog
         open={!!editing}
         onOpenChange={(open) => {
-          if (!open) setEditing(null);
+          if (!open) {
+            setEditing(null);
+          }
         }}
       >
         {}
@@ -562,13 +615,15 @@ export default function LocationManagement({
               }}
               onMediaChange={(u: any) => {
                 onChanged(u);
-                setEditing((prev) =>
-                  prev
-                    ? ((u?.locations || []).find(
-                        (l: Location) => l.id === prev.id,
-                      ) ?? prev)
-                    : prev,
-                );
+                setEditing((prev) => {
+                  if (!prev) {
+                    return prev;
+                  }
+                  const match = (u?.locations || []).find(
+                    (l: Location) => l.id === prev.id,
+                  );
+                  return match ?? prev;
+                });
               }}
             />
           )}
@@ -581,7 +636,9 @@ export default function LocationManagement({
         open={isReviewsModalOpen}
         onOpenChange={(open) => {
           setIsReviewsModalOpen(open);
-          if (!open) setSelectedLocationForReviews(null);
+          if (!open) {
+            setSelectedLocationForReviews(null);
+          }
         }}
       />
 
@@ -609,17 +666,7 @@ export default function LocationManagement({
             {}
             <div className="flex justify-center">
               <div className="inline-block rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm">
-                {qrDataUrl ? (
-                  <img
-                    src={qrDataUrl}
-                    alt={t("loc.qrModal.title")}
-                    className="mx-auto h-56 w-56"
-                  />
-                ) : (
-                  <div className="flex h-56 w-56 items-center justify-center text-sm text-gray-400">
-                    {t("loc.qrModal.generating")}
-                  </div>
-                )}
+                {qrPreviewContent}
               </div>
             </div>
 
@@ -627,7 +674,7 @@ export default function LocationManagement({
             <div className="space-y-1.5">
               <Label className="text-sm">{t("loc.qrModal.queueLink")}</Label>
               <code className="block break-all rounded-md bg-gray-100 px-3 py-2 font-mono text-xs text-indigo-600">
-                {qrLocation ? queueUrlFor(qrLocation) : ""}
+                {queueLinkText}
               </code>
             </div>
 

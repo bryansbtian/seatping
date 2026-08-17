@@ -26,9 +26,13 @@ const OPTIONAL_PROVIDERS = [
 let checked = false;
 
 export function logEnvStatus(): void {
-  if (checked) return;
+  if (checked) {
+    return;
+  }
   checked = true;
-  if (process.env.NODE_ENV !== "production") return;
+  if (process.env.NODE_ENV !== "production") {
+    return;
+  }
 
   const missingRequired = REQUIRED_IN_PROD.filter((k) => !process.env[k]);
   const missingOptional = OPTIONAL_PROVIDERS.filter((k) => !process.env[k]);

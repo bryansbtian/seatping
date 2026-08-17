@@ -56,46 +56,65 @@ function FeatureAccordion() {
     <div className="flex flex-col gap-3 lg:h-full lg:justify-between lg:gap-2">
       {ACCORDION_ITEMS.map((item, i) => {
         const active = i === open;
+        let nextOpenIndex: number;
+        if (active) {
+          nextOpenIndex = -1;
+        } else {
+          nextOpenIndex = i;
+        }
+        let buttonStateClass: string;
+        if (active) {
+          buttonStateClass = "border-slate-300 bg-slate-100/80 shadow-sm";
+        } else {
+          buttonStateClass =
+            "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50";
+        }
+        let iconStateClass: string;
+        if (active) {
+          iconStateClass = "bg-slate-900 text-white";
+        } else {
+          iconStateClass = "bg-slate-100 text-slate-600";
+        }
+        let toggleIcon: React.ReactNode;
+        if (active) {
+          toggleIcon = <Minus className="h-5 w-5" />;
+        } else {
+          toggleIcon = <Plus className="h-5 w-5" />;
+        }
+        let bodyStateClass: string;
+        if (active) {
+          bodyStateClass = "mt-3 grid-rows-[1fr] opacity-100";
+        } else {
+          bodyStateClass = "grid-rows-[0fr] opacity-0";
+        }
         return (
           <button
             key={item.title}
             type="button"
-            onClick={() => setOpen(active ? -1 : i)}
+            onClick={() => setOpen(nextOpenIndex)}
             aria-expanded={active}
             className={cn(
               "block w-full rounded-2xl border p-4 text-left transition-all duration-300 sm:p-5",
-              active
-                ? "border-slate-300 bg-slate-100/80 shadow-sm"
-                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+              buttonStateClass,
             )}
           >
             <div className="flex items-center gap-3">
               <span
                 className={cn(
                   "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-300",
-                  active
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100 text-slate-600",
+                  iconStateClass,
                 )}
               >
                 <item.icon className="h-4 w-4" />
               </span>
               <span className={cn("flex-1", CARD_TITLE)}>{item.title}</span>
-              <span className="shrink-0 text-slate-400">
-                {active ? (
-                  <Minus className="h-5 w-5" />
-                ) : (
-                  <Plus className="h-5 w-5" />
-                )}
-              </span>
+              <span className="shrink-0 text-slate-400">{toggleIcon}</span>
             </div>
             {}
             <div
               className={cn(
                 "grid transition-all duration-300 ease-out",
-                active
-                  ? "mt-3 grid-rows-[1fr] opacity-100"
-                  : "grid-rows-[0fr] opacity-0",
+                bodyStateClass,
               )}
             >
               <p className={cn("overflow-hidden pl-12", CARD_DESCRIPTION)}>

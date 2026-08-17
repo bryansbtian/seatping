@@ -181,8 +181,15 @@ router.post('/:ticketNumber/respond', express.json(), async (req, res) => {
       return res.status(404).json({ error: 'Ticket not found' });
     }
 
-    const kind = ticket.type === 'sales' ? 'sales inquiry' : 'feedback';
-    const kindTitle = ticket.type === 'sales' ? 'Sales Inquiry' : 'Feedback';
+    let kind: string;
+    let kindTitle: string;
+    if (ticket.type === 'sales') {
+      kind = 'sales inquiry';
+      kindTitle = 'Sales Inquiry';
+    } else {
+      kind = 'feedback';
+      kindTitle = 'Feedback';
+    }
     const emailSubject = `Re: ${ticket.subject} [Ticket #${ticket.ticketNumber}]`;
     const emailHtml = renderEmail({
       heading: `Response To Your ${kindTitle}`,

@@ -13,7 +13,9 @@ type SignData = {
 };
 
 function fitWithin(w: number, h: number, max: number) {
-  if (w <= max && h <= max) return { width: w, height: h };
+  if (w <= max && h <= max) {
+    return { width: w, height: h };
+  }
   const scale = Math.min(max / w, max / h);
   return { width: Math.round(w * scale), height: Math.round(h * scale) };
 }
@@ -51,7 +53,9 @@ async function loadImage(
 }
 
 export async function compressImage(file: File): Promise<Blob> {
-  if (file.size <= SKIP_COMPRESS_BELOW) return file;
+  if (file.size <= SKIP_COMPRESS_BELOW) {
+    return file;
+  }
   try {
     const img = await loadImage(file);
     try {
@@ -60,12 +64,17 @@ export async function compressImage(file: File): Promise<Blob> {
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext("2d");
-      if (!ctx) return file;
+      if (!ctx) {
+        return file;
+      }
       ctx.drawImage(img.source, 0, 0, width, height);
       const blob = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob(resolve, "image/jpeg", TARGET_QUALITY)
       );
-      return blob && blob.size < file.size ? blob : file;
+      if (blob && blob.size < file.size) {
+        return blob;
+      }
+      return file;
     } finally {
       img.close();
     }

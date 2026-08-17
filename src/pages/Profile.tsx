@@ -119,7 +119,12 @@ const Profile = () => {
 
   const applyReviewUpdate = (updated: CustomerReview) => {
     setReviews((list) =>
-      list.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)),
+      list.map((r) => {
+        if (r.id === updated.id) {
+          return { ...r, ...updated };
+        }
+        return r;
+      }),
     );
   };
 
@@ -129,14 +134,17 @@ const Profile = () => {
 
   const removeSavedRestaurant = async (s: SavedRestaurant) => {
     try {
-      const res = s.locationId
-        ? await api(`/auth/me/saved-locations/${s.locationId}`, {
-            method: "DELETE",
-          })
-        : await api(
-            `/auth/me/saved-restaurants/${encodeURIComponent(s.businessUsername)}`,
-            { method: "DELETE" },
-          );
+      let res: any;
+      if (s.locationId) {
+        res = await api(`/auth/me/saved-locations/${s.locationId}`, {
+          method: "DELETE",
+        });
+      } else {
+        res = await api(
+          `/auth/me/saved-restaurants/${encodeURIComponent(s.businessUsername)}`,
+          { method: "DELETE" },
+        );
+      }
       setProfile(res.user);
       toast({ title: "Restaurant removed from saved" });
     } catch (err: any) {
@@ -152,10 +160,14 @@ const Profile = () => {
     let active = true;
     api("/auth/me")
       .then((data) => {
-        if (active) setProfile(data.user);
+        if (active) {
+          setProfile(data.user);
+        }
       })
       .catch(() => {
-        if (active) navigate("/login", { replace: true });
+        if (active) {
+          navigate("/login", { replace: true });
+        }
       })
       .finally(() => active && setLoading(false));
     return () => {
@@ -167,7 +179,9 @@ const Profile = () => {
     let active = true;
     api("/auth/me/reviews")
       .then((data) => {
-        if (active) setReviews(data.reviews || []);
+        if (active) {
+          setReviews(data.reviews || []);
+        }
       })
       .catch(() => {});
     return () => {
@@ -198,6 +212,125 @@ const Profile = () => {
     })),
   ].sort((a, b) => b.ts - a.ts);
 
+  let profileContent: React.ReactNode;
+  if (loading) {
+    profileContent = (
+      <p className="text-center text-muted-foreground">
+        Loading your profile…
+      </p>
+    );
+  } else if (!profile) {
+    profileContent = null;
+  } else {
+    profileContent = (
+      <>
+        <ProfileHeaderCard profile={profile} onUpdated={setProfile} />
+
+        {}
+        <ActivitySection
+          title="Saved Spots"
+          emptyState="Restaurants you save will appear here."
+          items={profile.savedRestaurants || []}
+          limits={{ mobile: 2, tablet: 2, desktop: 3 }}
+          keyOf={(s, i) =>
+            s.id || s.locationId || s.businessUsername || String(i)
+          }
+          renderItem={(s) => (
+            <SavedRestaurantCard
+              s={s}
+              onView={() => {
+                let target: string;
+                if (s.locationId && s.businessUsername) {
+                  target = `/${s.businessUsername}/${s.locationId}`;
+                } else {
+                  target = `/queue/${s.businessUsername}`;
+                }
+                navigate(target);
+              }}
+              onRemove={() => removeSavedRestaurant(s)}
+            />
+          )}
+        />
+
+        {}
+        <ActivitySection
+          title="Happening Now"
+          emptyState="No active queue activity right now."
+          items={activeQueue}
+          limits={{ mobile: 1, tablet: 2, desktop: 2 }}
+          keyOf={(q) => q.id}
+          renderItem={(q) => <QueueCard q={q} />}
+        />
+
+        {}
+        <ActivitySection
+          title="Tables Coming Up"
+          emptyState="Your upcoming reservations will appear here."
+          items={upcomingReservations}
+          limits={{ mobile: 2, tablet: 2, desktop: 3 }}
+          keyOf={(r) => r.id}
+          renderItem={(r) => <ReservationCard r={r} />}
+        />
+
+        {}
+        <ActivitySection
+          title="Your Reviews"
+          emptyState={
+            <>
+              <p>Your restaurant reviews will appear here.</p>
+              <p className="mt-1 text-xs">
+                After you leave a review, you can edit or delete it from this
+                section.
+              </p>
+            </>
+          }
+          items={reviews}
+          limits={{ mobile: 2, tablet: 2, desktop: 3 }}
+          keyOf={(rv) => rv.id}
+          renderItem={(rv) => (
+            <ProfileReviewCard
+              review={rv}
+              onEdit={() => setEditingReview(rv)}
+              onDelete={() => setDeletingReview(rv)}
+            />
+          )}
+        />
+
+        {}
+        <ActivitySection
+          title="Your Dining Rewind"
+          emptyState="Your past reservations and queue visits will appear here."
+          items={diningHistory}
+          limits={{ mobile: 2, tablet: 4, desktop: 4 }}
+          keyOf={(item) => item.key}
+          renderItem={(item) => {
+            if (item.kind === "reservation") {
+              return <ReservationCard r={item.r} typeLabel="Reservation" />;
+            }
+            return <QueueCard q={item.q} typeLabel="Queue" />;
+          }}
+        />
+
+        <EditReviewDialog
+          review={editingReview}
+          onOpenChange={(open) => !open && setEditingReview(null)}
+          onSaved={(updated) => {
+            applyReviewUpdate(updated);
+            setEditingReview(null);
+          }}
+        />
+        <DeleteReviewDialog
+          review={deletingReview}
+          onOpenChange={(open) => !open && setDeletingReview(null)}
+          onDeleted={(id) => {
+            removeReview(id);
+            setDeletingReview(null);
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <SEO
@@ -208,116 +341,7 @@ const Profile = () => {
       <Header />
       <main className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 pb-12 pt-24 sm:pb-16">
         <div className="mx-auto w-full max-w-3xl space-y-5 sm:space-y-6">
-          {loading ? (
-            <p className="text-center text-muted-foreground">
-              Loading your profile…
-            </p>
-          ) : !profile ? null : (
-            <>
-              <ProfileHeaderCard profile={profile} onUpdated={setProfile} />
-
-              {}
-              <ActivitySection
-                title="Saved Spots"
-                emptyState="Restaurants you save will appear here."
-                items={profile.savedRestaurants || []}
-                limits={{ mobile: 2, tablet: 2, desktop: 3 }}
-                keyOf={(s, i) =>
-                  s.id || s.locationId || s.businessUsername || String(i)
-                }
-                renderItem={(s) => (
-                  <SavedRestaurantCard
-                    s={s}
-                    onView={() =>
-                      navigate(
-                        s.locationId && s.businessUsername
-                          ? `/${s.businessUsername}/${s.locationId}`
-                          : `/queue/${s.businessUsername}`,
-                      )
-                    }
-                    onRemove={() => removeSavedRestaurant(s)}
-                  />
-                )}
-              />
-
-              {}
-              <ActivitySection
-                title="Happening Now"
-                emptyState="No active queue activity right now."
-                items={activeQueue}
-                limits={{ mobile: 1, tablet: 2, desktop: 2 }}
-                keyOf={(q) => q.id}
-                renderItem={(q) => <QueueCard q={q} />}
-              />
-
-              {}
-              <ActivitySection
-                title="Tables Coming Up"
-                emptyState="Your upcoming reservations will appear here."
-                items={upcomingReservations}
-                limits={{ mobile: 2, tablet: 2, desktop: 3 }}
-                keyOf={(r) => r.id}
-                renderItem={(r) => <ReservationCard r={r} />}
-              />
-
-              {}
-              <ActivitySection
-                title="Your Reviews"
-                emptyState={
-                  <>
-                    <p>Your restaurant reviews will appear here.</p>
-                    <p className="mt-1 text-xs">
-                      After you leave a review, you can edit or delete it from
-                      this section.
-                    </p>
-                  </>
-                }
-                items={reviews}
-                limits={{ mobile: 2, tablet: 2, desktop: 3 }}
-                keyOf={(rv) => rv.id}
-                renderItem={(rv) => (
-                  <ProfileReviewCard
-                    review={rv}
-                    onEdit={() => setEditingReview(rv)}
-                    onDelete={() => setDeletingReview(rv)}
-                  />
-                )}
-              />
-
-              {}
-              <ActivitySection
-                title="Your Dining Rewind"
-                emptyState="Your past reservations and queue visits will appear here."
-                items={diningHistory}
-                limits={{ mobile: 2, tablet: 4, desktop: 4 }}
-                keyOf={(item) => item.key}
-                renderItem={(item) =>
-                  item.kind === "reservation" ? (
-                    <ReservationCard r={item.r} typeLabel="Reservation" />
-                  ) : (
-                    <QueueCard q={item.q} typeLabel="Queue" />
-                  )
-                }
-              />
-
-              <EditReviewDialog
-                review={editingReview}
-                onOpenChange={(open) => !open && setEditingReview(null)}
-                onSaved={(updated) => {
-                  applyReviewUpdate(updated);
-                  setEditingReview(null);
-                }}
-              />
-              <DeleteReviewDialog
-                review={deletingReview}
-                onOpenChange={(open) => !open && setDeletingReview(null)}
-                onDeleted={(id) => {
-                  removeReview(id);
-                  setDeletingReview(null);
-                }}
-              />
-            </>
-          )}
+          {profileContent}
         </div>
       </main>
       <Footer />
@@ -330,16 +354,29 @@ type HistoryItem =
   | { kind: "queue"; key: string; ts: number; q: QueueActivity };
 
 function upcomingReservationTs(r: Reservation): number {
-  if (!r.date || !r.time) return Number.POSITIVE_INFINITY;
+  if (!r.date || !r.time) {
+    return Number.POSITIVE_INFINITY;
+  }
   const ts = Date.parse(`${r.date}T${r.time}`);
-  return Number.isNaN(ts) ? Number.POSITIVE_INFINITY : ts;
+  if (Number.isNaN(ts)) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return ts;
 }
 
 function reservationTs(r: Reservation): number {
   const dt = Date.parse(`${r.date ?? ""} ${r.time ?? ""}`.trim());
-  if (!Number.isNaN(dt)) return dt;
-  const c = r.createdAt ? Date.parse(r.createdAt) : NaN;
-  return Number.isNaN(c) ? 0 : c;
+  if (!Number.isNaN(dt)) {
+    return dt;
+  }
+  let c = NaN;
+  if (r.createdAt) {
+    c = Date.parse(r.createdAt);
+  }
+  if (Number.isNaN(c)) {
+    return 0;
+  }
+  return c;
 }
 
 function queueTs(q: QueueActivity): number {
@@ -350,13 +387,21 @@ function queueTs(q: QueueActivity): number {
     q.removedAt ||
     q.leftAt ||
     q.joinedAt;
-  const t = s ? Date.parse(s) : NaN;
-  return Number.isNaN(t) ? 0 : t;
+  let t = NaN;
+  if (s) {
+    t = Date.parse(s);
+  }
+  if (Number.isNaN(t)) {
+    return 0;
+  }
+  return t;
 }
 
 
 function initialsOf(name?: string) {
-  if (!name?.trim()) return "?";
+  if (!name?.trim()) {
+    return "?";
+  }
   return name
     .trim()
     .split(/\s+/)
@@ -447,7 +492,9 @@ function EditDetailsDialog({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const p = splitPhone(profile.phone);
     setName(profile.name);
     setUsername(profile.username ?? "");
@@ -468,13 +515,17 @@ function EditDetailsDialog({
     try {
       setSaving(true);
       const digits = phone.replace(/\D/g, "");
+      let phoneValue = "";
+      if (digits) {
+        phoneValue = `${countryCode}${digits}`;
+      }
       const res = await api("/auth/me", {
         method: "PUT",
         body: JSON.stringify({
           name: name.trim(),
           username: username.trim(),
           email: email.trim(),
-          phone: digits ? `${countryCode}${digits}` : "",
+          phone: phoneValue,
         }),
       });
       onUpdated(res.user);
@@ -490,6 +541,11 @@ function EditDetailsDialog({
       setSaving(false);
     }
   };
+
+  let saveLabel = "Save Changes";
+  if (saving) {
+    saveLabel = "Saving...";
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -558,7 +614,7 @@ function EditDetailsDialog({
             Cancel
           </Button>
           <Button onClick={save} disabled={saving}>
-            {saving ? "Saving..." : "Save Changes"}
+            {saveLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -623,6 +679,11 @@ function ChangePasswordDialog({
     }
   };
 
+  let updateLabel = "Update Password";
+  if (saving) {
+    updateLabel = "Updating...";
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -670,7 +731,7 @@ function ChangePasswordDialog({
             Cancel
           </Button>
           <Button onClick={save} disabled={saving}>
-            {saving ? "Updating..." : "Update Password"}
+            {updateLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -717,12 +778,25 @@ function ReservationCard({
 }) {
   const displayName =
     r.restaurantName || r.businessName || r.businessUsername;
+  let manageHoverClass = "";
+  if (r.manageToken) {
+    manageHoverClass = " transition-colors hover:border-slate-300";
+  }
+  let reservationStatus = r.status || "";
+  if (reservationStatus === "arrived") {
+    reservationStatus = "served";
+  }
+  let guestWord = "guests";
+  if (r.people === 1) {
+    guestWord = "guest";
+  }
+  let manageLinkLabel = "View Reservation";
+  if (r.status === "confirmed" || !r.status) {
+    manageLinkLabel = "View or Manage";
+  }
   const inner = (
     <Card
-      className={
-        "border border-border bg-background" +
-        (r.manageToken ? " transition-colors hover:border-slate-300" : "")
-      }
+      className={"border border-border bg-background" + manageHoverClass}
     >
       <CardContent className="flex gap-2.5 p-3 sm:gap-3 sm:p-4">
         <ActivityThumb imageUrl={r.imageUrl} name={displayName} />
@@ -739,7 +813,7 @@ function ReservationCard({
               )}
               {r.status && (
                 <StatusBadge
-                  status={r.status === "arrived" ? "served" : r.status}
+                  status={reservationStatus}
                 />
               )}
             </div>
@@ -754,15 +828,13 @@ function ReservationCard({
             {typeof r.people === "number" && (
               <span className="text-muted-foreground">
                 {" "}
-                · {r.people} {r.people === 1 ? "guest" : "guests"}
+                · {r.people} {guestWord}
               </span>
             )}
           </p>
           {r.manageToken && (
             <p className="mt-1 text-xs font-medium text-indigo-600">
-              {r.status === "confirmed" || !r.status
-                ? "View or Manage"
-                : "View Reservation"}{" "}
+              {manageLinkLabel}{" "}
               →
             </p>
           )}
@@ -771,24 +843,28 @@ function ReservationCard({
     </Card>
   );
 
-  return r.manageToken ? (
-    <Link to={`/reservations/manage/${r.manageToken}`} className="block">
-      {inner}
-    </Link>
-  ) : (
-    inner
-  );
+  if (r.manageToken) {
+    return (
+      <Link to={`/reservations/manage/${r.manageToken}`} className="block">
+        {inner}
+      </Link>
+    );
+  }
+  return inner;
 }
 
 function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
   const displayName =
     q.restaurantName || q.businessName || q.businessUsername;
   const isActive = q.active || q.status === "waiting";
-  const liveHref =
-    isActive && q.businessUsername && q.locationId
-      ? `/queue/${q.businessUsername}/${q.locationId}` +
-        (q.queueToken ? `?token=${encodeURIComponent(q.queueToken)}` : "")
-      : null;
+  let liveHref: string | null = null;
+  if (isActive && q.businessUsername && q.locationId) {
+    let tokenQuery = "";
+    if (q.queueToken) {
+      tokenQuery = `?token=${encodeURIComponent(q.queueToken)}`;
+    }
+    liveHref = `/queue/${q.businessUsername}/${q.locationId}` + tokenQuery;
+  }
 
   const finalTime =
     q.confirmedAt ||
@@ -796,16 +872,28 @@ function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
     q.noShowMarkedAt ||
     q.removedAt ||
     q.leftAt;
-  const finalTimeLabel =
-    !isActive && finalTime
-      ? q.status === "arrived" || q.status === "admitted"
-        ? `Served ${new Date(finalTime).toLocaleString()}`
-        : q.status === "no_show"
-          ? `Marked No-Show ${new Date(finalTime).toLocaleString()}`
-          : q.status === "left"
-            ? `Left ${new Date(finalTime).toLocaleString()}`
-            : `Removed ${new Date(finalTime).toLocaleString()}`
-      : null;
+  let finalTimeLabel: string | null = null;
+  if (!isActive && finalTime) {
+    const finalTimeText = new Date(finalTime).toLocaleString();
+    if (q.status === "arrived" || q.status === "admitted") {
+      finalTimeLabel = `Served ${finalTimeText}`;
+    } else if (q.status === "no_show") {
+      finalTimeLabel = `Marked No-Show ${finalTimeText}`;
+    } else if (q.status === "left") {
+      finalTimeLabel = `Left ${finalTimeText}`;
+    } else {
+      finalTimeLabel = `Removed ${finalTimeText}`;
+    }
+  }
+
+  let queueStatus = q.status || "";
+  if (queueStatus === "arrived") {
+    queueStatus = "served";
+  }
+  let partySizeWord = "guests";
+  if (q.partySize === 1) {
+    partySizeWord = "guest";
+  }
 
   return (
     <Card className="border border-border bg-background">
@@ -824,7 +912,7 @@ function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
               )}
               {q.status && (
                 <StatusBadge
-                  status={q.status === "arrived" ? "served" : q.status}
+                  status={queueStatus}
                 />
               )}
             </div>
@@ -839,7 +927,7 @@ function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
             {typeof q.partySize === "number" && q.partySize > 0 && (
               <span className="text-muted-foreground">
                 {" "}
-                · {q.partySize} {q.partySize === 1 ? "guest" : "guests"}
+                · {q.partySize} {partySizeWord}
               </span>
             )}
           </p>
@@ -874,13 +962,25 @@ function SavedRestaurantCard({
   const name = s.name || s.businessName || s.businessUsername;
   const locationLabel =
     s.locationName || [s.area, s.city].filter(Boolean).join(", ");
-  const meta = [
-    locationLabel || null,
-    typeof s.rating === "number" ? `★ ${s.rating.toFixed(1)}` : null,
-    s.cuisine,
-  ]
+  let ratingLabel: string | null = null;
+  if (typeof s.rating === "number") {
+    ratingLabel = `★ ${s.rating.toFixed(1)}`;
+  }
+  const meta = [locationLabel || null, ratingLabel, s.cuisine]
     .filter(Boolean)
     .join(" · ");
+  let thumb: React.ReactNode;
+  if (s.imageUrl) {
+    thumb = (
+      <img
+        src={s.imageUrl}
+        alt={name}
+        className="h-11 w-11 shrink-0 rounded-lg object-cover sm:h-12 sm:w-12"
+      />
+    );
+  } else {
+    thumb = <BusinessThumb name={name} />;
+  }
   return (
     <Card
       role="link"
@@ -896,15 +996,7 @@ function SavedRestaurantCard({
       className="cursor-pointer border border-border bg-background transition-colors hover:border-slate-300 hover:bg-slate-50"
     >
       <CardContent className="flex gap-2.5 p-3 sm:gap-3 sm:p-4">
-        {s.imageUrl ? (
-          <img
-            src={s.imageUrl}
-            alt={name}
-            className="h-11 w-11 shrink-0 rounded-lg object-cover sm:h-12 sm:w-12"
-          />
-        ) : (
-          <BusinessThumb name={name} />
-        )}
+        {thumb}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-slate-900 sm:text-base">
             {name}
@@ -936,9 +1028,17 @@ function SavedRestaurantCard({
 type Tier = "mobile" | "tablet" | "desktop";
 
 function currentTier(): Tier {
-  if (typeof window === "undefined") return "desktop";
+  if (typeof window === "undefined") {
+    return "desktop";
+  }
   const w = window.innerWidth;
-  return w < 640 ? "mobile" : w < 1024 ? "tablet" : "desktop";
+  if (w < 640) {
+    return "mobile";
+  }
+  if (w < 1024) {
+    return "tablet";
+  }
+  return "desktop";
 }
 
 function useTier(): Tier {
@@ -970,7 +1070,36 @@ function ActivitySection<T>({
   const [expanded, setExpanded] = useState(false);
   const limit = limits[tier];
   const hasMore = items.length > limit;
-  const visible = expanded ? items : items.slice(0, limit);
+  let visible: T[];
+  if (expanded) {
+    visible = items;
+  } else {
+    visible = items.slice(0, limit);
+  }
+
+  let toggleLabel = `View All (${items.length})`;
+  if (expanded) {
+    toggleLabel = "View Less";
+  }
+
+  let itemsContent: React.ReactNode;
+  if (items.length === 0) {
+    itemsContent = (
+      <Card className="border border-dashed border-border bg-background/60">
+        <CardContent className="p-6 text-center text-sm text-muted-foreground">
+          {emptyState}
+        </CardContent>
+      </Card>
+    );
+  } else {
+    itemsContent = (
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
+        {visible.map((item, i) => (
+          <Fragment key={keyOf(item, i)}>{renderItem(item)}</Fragment>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <section className="space-y-3">
@@ -985,23 +1114,11 @@ function ActivitySection<T>({
             className="h-auto px-2 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 sm:text-sm"
             onClick={() => setExpanded((v) => !v)}
           >
-            {expanded ? "View Less" : `View All (${items.length})`}
+            {toggleLabel}
           </Button>
         )}
       </div>
-      {items.length === 0 ? (
-        <Card className="border border-dashed border-border bg-background/60">
-          <CardContent className="p-6 text-center text-sm text-muted-foreground">
-            {emptyState}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
-          {visible.map((item, i) => (
-            <Fragment key={keyOf(item, i)}>{renderItem(item)}</Fragment>
-          ))}
-        </div>
-      )}
+      {itemsContent}
     </section>
   );
 }
@@ -1014,24 +1131,25 @@ function StarsDisplay({ rating }: { rating: number }) {
       className="flex items-center gap-0.5"
       aria-label={`${rating} out of 5`}
     >
-      {[1, 2, 3, 4, 5].map((n) => (
-        <Star
-          key={n}
-          className={
-            n <= filled
-              ? "h-4 w-4 fill-yellow-400 text-yellow-400"
-              : "h-4 w-4 fill-slate-200 text-slate-200"
-          }
-        />
-      ))}
+      {[1, 2, 3, 4, 5].map((n) => {
+        let starClass = "h-4 w-4 fill-slate-200 text-slate-200";
+        if (n <= filled) {
+          starClass = "h-4 w-4 fill-yellow-400 text-yellow-400";
+        }
+        return <Star key={n} className={starClass} />;
+      })}
     </div>
   );
 }
 
 function reviewDate(value?: string | null): string {
-  if (!value) return "";
+  if (!value) {
+    return "";
+  }
   const t = Date.parse(value);
-  if (Number.isNaN(t)) return "";
+  if (Number.isNaN(t)) {
+    return "";
+  }
   return new Date(t).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
@@ -1049,12 +1167,14 @@ function ProfileReviewCard({
   onDelete: () => void;
 }) {
   const posted = reviewDate(review.createdAt);
-  const updated =
+  let updated = "";
+  if (
     review.updatedAt &&
     review.createdAt &&
     Date.parse(review.updatedAt) - Date.parse(review.createdAt) > 60_000
-      ? reviewDate(review.updatedAt)
-      : "";
+  ) {
+    updated = reviewDate(review.updatedAt);
+  }
 
   return (
     <Card className="border border-border bg-background">
@@ -1135,7 +1255,9 @@ function DeleteReviewDialog({
   const [deleting, setDeleting] = useState(false);
 
   const confirm = async () => {
-    if (!review) return;
+    if (!review) {
+      return;
+    }
     setDeleting(true);
     try {
       await api(`/auth/me/reviews/${review.id}`, { method: "DELETE" });
@@ -1151,6 +1273,13 @@ function DeleteReviewDialog({
       setDeleting(false);
     }
   };
+
+  let deleteButtonLabel: string;
+  if (deleting) {
+    deleteButtonLabel = "Deleting…";
+  } else {
+    deleteButtonLabel = "Delete Review";
+  }
 
   return (
     <Dialog open={!!review} onOpenChange={onOpenChange}>
@@ -1170,7 +1299,7 @@ function DeleteReviewDialog({
             Cancel
           </Button>
           <Button variant="destructive" onClick={confirm} disabled={deleting}>
-            {deleting ? "Deleting…" : "Delete Review"}
+            {deleteButtonLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

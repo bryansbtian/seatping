@@ -55,20 +55,30 @@ export function BentoFeatureCard({
   children: React.ReactNode;
 }) {
   const large = size === "large";
+  let spanClass: string;
+  if (large) {
+    spanClass = "md:col-span-2 lg:col-span-4";
+  } else {
+    spanClass = "lg:col-span-2";
+  }
+  let revealStyle: React.CSSProperties | undefined;
+  if (reveal === "animate") {
+    revealStyle = { animationDelay: `${index * 0.07}s` };
+  } else {
+    revealStyle = undefined;
+  }
   return (
     <article
       className={cn(
         "relative flex flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6",
         "shadow-[0_1px_2px_rgba(15,23,42,0.05),0_18px_40px_-28px_rgba(15,23,42,0.22)]",
         "transition-[box-shadow,border-color] duration-300 hover:border-slate-300 hover:shadow-[0_1px_2px_rgba(15,23,42,0.05),0_24px_48px_-24px_rgba(15,23,42,0.28)]",
-        large ? "md:col-span-2 lg:col-span-4" : "lg:col-span-2",
+        spanClass,
         reveal === "hidden" && "opacity-0",
         reveal === "animate" && "animate-bento-reveal opacity-0",
         className,
       )}
-      style={
-        reveal === "animate" ? { animationDelay: `${index * 0.07}s` } : undefined
-      }
+      style={revealStyle}
     >
       <div className="flex items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
@@ -170,9 +180,13 @@ interface AnimatedBentoFeatureGridProps {
 
 function useBentoReveal(animated: boolean) {
   const gridRef = useRef<HTMLDivElement>(null);
-  const [reveal, setReveal] = useState<BentoRevealState>(
-    animated ? "hidden" : "instant",
-  );
+  let initialReveal: BentoRevealState;
+  if (animated) {
+    initialReveal = "hidden";
+  } else {
+    initialReveal = "instant";
+  }
+  const [reveal, setReveal] = useState<BentoRevealState>(initialReveal);
 
   useEffect(() => {
     if (!animated) {
@@ -214,9 +228,15 @@ export default function AnimatedBentoFeatureGrid({
   className,
 }: AnimatedBentoFeatureGridProps) {
   const { gridRef, reveal } = useBentoReveal(animated);
+  let bentoAnimatedAttr: string | undefined;
+  if (animated) {
+    bentoAnimatedAttr = undefined;
+  } else {
+    bentoAnimatedAttr = "false";
+  }
   return (
     <section
-      data-bento-animated={animated ? undefined : "false"}
+      data-bento-animated={bentoAnimatedAttr}
       className={cn(
         "relative overflow-hidden border-t border-slate-200 bg-slate-50/60",
         SECTION_PADDING,

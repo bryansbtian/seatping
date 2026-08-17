@@ -168,13 +168,20 @@ const CHANNEL_META: Record<Channel, { label: string; icon: typeof Mail }> = {
 };
 
 function errMsg(e: unknown, fallback = "Something went wrong"): string {
-  return e instanceof Error ? e.message : fallback;
+  if (e instanceof Error) {
+    return e.message;
+  }
+  return fallback;
 }
 
 function fmtDate(value: string | null): string {
-  if (!value) return "--";
+  if (!value) {
+    return "--";
+  }
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "--";
+  if (Number.isNaN(d.getTime())) {
+    return "--";
+  }
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -183,7 +190,9 @@ function fmtDate(value: string | null): string {
 }
 
 function parseLocalDate(s: string): Date | undefined {
-  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined;
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return undefined;
+  }
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
@@ -204,15 +213,25 @@ function DateField({
 }) {
   const [open, setOpen] = useState(false);
   const selected = parseLocalDate(value);
+  let triggerLabel: React.ReactNode;
+  if (selected) {
+    triggerLabel = format(selected, "MMM d, yyyy");
+  } else {
+    triggerLabel = (
+      <span className="text-slate-400 font-normal">{placeholder}</span>
+    );
+  }
+  let disabledMatcher: { before: Date } | undefined;
+  if (minDate) {
+    disabledMatcher = { before: minDate };
+  } else {
+    disabledMatcher = undefined;
+  }
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <FieldTrigger icon={CalendarIcon} className="bg-slate-50">
-          {selected ? (
-            format(selected, "MMM d, yyyy")
-          ) : (
-            <span className="text-slate-400 font-normal">{placeholder}</span>
-          )}
+          {triggerLabel}
         </FieldTrigger>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
@@ -220,10 +239,12 @@ function DateField({
           mode="single"
           selected={selected}
           onSelect={(d) => {
-            if (d) onChange(toLocalDateStr(d));
+            if (d) {
+              onChange(toLocalDateStr(d));
+            }
             setOpen(false);
           }}
-          disabled={minDate ? { before: minDate } : undefined}
+          disabled={disabledMatcher}
           initialFocus
         />
       </PopoverContent>
@@ -232,7 +253,9 @@ function DateField({
 }
 
 function nowWallClockInTz(tz?: string): string {
-  if (!tz) tz = "Asia/Jakarta";
+  if (!tz) {
+    tz = "Asia/Jakarta";
+  }
   const d = new Date();
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
@@ -245,8 +268,15 @@ function nowWallClockInTz(tz?: string): string {
       hourCycle: "h23",
     }).formatToParts(d);
     const m: Record<string, string> = {};
-    for (const p of parts) if (p.type !== "literal") m[p.type] = p.value;
-    const hour = m.hour === "24" ? "00" : m.hour;
+    for (const p of parts) {if (p.type !== "literal") {
+      m[p.type] = p.value;
+    }}
+    let hour: string;
+    if (m.hour === "24") {
+      hour = "00";
+    } else {
+      hour = m.hour;
+    }
     return `${m.year}-${m.month}-${m.day}T${hour}:${m.minute}`;
   } catch {
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
@@ -291,9 +321,13 @@ const BusinessCampaigns = () => {
     let cancelled = false;
     api("/api/campaigns/meta")
       .then((d: Meta) => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         setMeta(d);
-        if (d.locations.length) setLocationId((p) => p || d.locations[0].id);
+        if (d.locations.length) {
+          setLocationId((p) => p || d.locations[0].id);
+        }
         setMetaLoaded(true);
       })
       .catch(() => setMetaLoaded(true));
@@ -304,20 +338,28 @@ const BusinessCampaigns = () => {
 
   const campaignsReqRef = useRef(0);
   const fetchCampaigns = useCallback(() => {
-    if (!locationId) return;
+    if (!locationId) {
+      return;
+    }
     const reqId = ++campaignsReqRef.current;
     setCampaignsLoading(true);
     api(`/api/campaigns?locationId=${locationId}`)
       .then((d) => {
-        if (reqId !== campaignsReqRef.current) return;
+        if (reqId !== campaignsReqRef.current) {
+          return;
+        }
         setCampaigns(d?.campaigns ?? []);
       })
       .catch(() => {
-        if (reqId !== campaignsReqRef.current) return;
+        if (reqId !== campaignsReqRef.current) {
+          return;
+        }
         setCampaigns([]);
       })
       .finally(() => {
-        if (reqId !== campaignsReqRef.current) return;
+        if (reqId !== campaignsReqRef.current) {
+          return;
+        }
         setCampaignsLoading(false);
       });
   }, [locationId]);
@@ -332,20 +374,28 @@ const BusinessCampaigns = () => {
 
   const savedAudiencesReqRef = useRef(0);
   const fetchSavedAudiences = useCallback(() => {
-    if (!locationId) return;
+    if (!locationId) {
+      return;
+    }
     const reqId = ++savedAudiencesReqRef.current;
     setSavedAudiencesLoading(true);
     api(`/api/audiences?locationId=${locationId}`)
       .then((d) => {
-        if (reqId !== savedAudiencesReqRef.current) return;
+        if (reqId !== savedAudiencesReqRef.current) {
+          return;
+        }
         setSavedAudiences(d?.audiences ?? []);
       })
       .catch(() => {
-        if (reqId !== savedAudiencesReqRef.current) return;
+        if (reqId !== savedAudiencesReqRef.current) {
+          return;
+        }
         setSavedAudiences([]);
       })
       .finally(() => {
-        if (reqId !== savedAudiencesReqRef.current) return;
+        if (reqId !== savedAudiencesReqRef.current) {
+          return;
+        }
         setSavedAudiencesLoading(false);
       });
   }, [locationId]);
@@ -383,23 +433,29 @@ const BusinessCampaigns = () => {
           body: JSON.stringify({}),
         });
       }
+      let successTitle: string;
+      if (action === "cancel") {
+        successTitle = "Campaign cancelled";
+      } else if (action === "pause") {
+        successTitle = "Campaign paused";
+      } else if (action === "delete") {
+        successTitle = "Campaign deleted";
+      } else {
+        successTitle = "Campaign resumed";
+      }
       toast({
-        title:
-          action === "cancel"
-            ? "Campaign cancelled"
-            : action === "pause"
-              ? "Campaign paused"
-              : action === "delete"
-                ? "Campaign deleted"
-                : "Campaign resumed",
+        title: successTitle,
       });
       fetchCampaigns();
     } catch (e) {
+      let errorTitle: string;
+      if (action === "delete") {
+        errorTitle = "Could not delete campaign";
+      } else {
+        errorTitle = "Could not update campaign";
+      }
       toast({
-        title:
-          action === "delete"
-            ? "Could not delete campaign"
-            : "Could not update campaign",
+        title: errorTitle,
         description: errMsg(e),
         variant: "destructive",
       });
@@ -419,6 +475,17 @@ const BusinessCampaigns = () => {
       ),
     [campaigns],
   );
+
+  let locationOptions: React.ReactNode;
+  if (meta?.locations.length) {
+    locationOptions = meta.locations.map((l) => (
+      <option key={l.id} value={l.id}>
+        {l.label}
+      </option>
+    ));
+  } else {
+    locationOptions = <option value="">{t("camp.noLocations")}</option>;
+  }
 
   return (
     <>
@@ -450,19 +517,23 @@ const BusinessCampaigns = () => {
                   ["audiences", t("camp.tab.audiences")],
                   ["history", t("camp.tab.history")],
                 ] as [TabKey, string][]
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  onClick={() => setTab(key)}
-                  className={`flex-1 min-w-[110px] px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    tab === key
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+              ).map(([key, label]) => {
+                let tabClass: string;
+                if (tab === key) {
+                  tabClass = "bg-slate-900 text-white";
+                } else {
+                  tabClass = "text-slate-600 hover:bg-slate-50";
+                }
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setTab(key)}
+                    className={`flex-1 min-w-[110px] px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tabClass}`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
             {}
             <div className="relative md:w-56 shrink-0">
@@ -472,15 +543,7 @@ const BusinessCampaigns = () => {
                 onChange={(e) => setLocationId(e.target.value)}
                 disabled={!meta?.locations.length}
               >
-                {meta?.locations.length ? (
-                  meta.locations.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.label}
-                    </option>
-                  ))
-                ) : (
-                  <option value="">{t("camp.noLocations")}</option>
-                )}
+                {locationOptions}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
             </div>
@@ -533,7 +596,9 @@ const BusinessCampaigns = () => {
               }}
               onDeleteCustom={async (a) => {
                 if (!confirm(`Are you sure you want to delete "${a.name}"?`))
-                  return;
+                  {
+                    return;
+                  }
                 try {
                   await api(`/api/audiences/${a.id}`, { method: "DELETE" });
                   toast({ title: "Custom Group deleted" });
@@ -657,9 +722,13 @@ function normalizeVar(raw: string): string {
 }
 
 function bodyParamPositionError(body: string): string | null {
-  if (!body) return null;
+  if (!body) {
+    return null;
+  }
   const firstOpen = body.indexOf("{{");
-  if (firstOpen === -1) return null;
+  if (firstOpen === -1) {
+    return null;
+  }
   const lastClose = body.lastIndexOf("}}");
   const hasWord = (s: string) => /[a-z0-9]/i.test(s);
   if (!hasWord(body.slice(0, firstOpen))) {
@@ -692,6 +761,157 @@ function CampaignsTab({
   ) => void;
 }) {
   const { t } = useLang();
+  let countLabel: string;
+  if (loading) {
+    countLabel = "Loading...";
+  } else {
+    let campaignNoun: string;
+    if (campaigns.length === 1) {
+      campaignNoun = "Campaign";
+    } else {
+      campaignNoun = "Campaigns";
+    }
+    countLabel = `${campaigns.length} ${campaignNoun}`;
+  }
+  let refreshIconClass: string;
+  if (loading) {
+    refreshIconClass = "animate-spin";
+  } else {
+    refreshIconClass = "";
+  }
+  let campaignsBody: React.ReactNode;
+  if (loading) {
+    campaignsBody = <ListSkeleton />;
+  } else if (campaigns.length === 0) {
+    campaignsBody = (
+      <EmptyState
+        icon={Megaphone}
+        title={t("camp.empty.campaigns.title")}
+        body={t("camp.empty.campaigns.body")}
+      />
+    );
+  } else {
+    campaignsBody = (
+      <>
+        {}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
+                <th className="px-6 py-3 font-medium">
+                  {t("camp.col.name")}
+                </th>
+                <th className="px-6 py-3 font-medium text-center">
+                  {t("camp.col.channel")}
+                </th>
+                <th className="px-6 py-3 font-medium">
+                  {t("camp.col.audience")}
+                </th>
+                <th className="px-6 py-3 font-medium">
+                  <div className="flex justify-center">
+                    {t("camp.col.status")}
+                  </div>
+                </th>
+                <th className="px-6 py-3 font-medium text-center">
+                  {t("camp.col.recipients")}
+                </th>
+                <th className="px-6 py-3 font-medium">Activity</th>
+                <th className="px-6 py-3 font-medium text-center">
+                  {t("camp.col.actions")}
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {campaigns.map((c) => (
+                <tr
+                  key={c.id}
+                  className="hover:bg-slate-50 transition-colors"
+                >
+                  <td className="px-6 py-3">
+                    <div className="font-medium text-slate-800">
+                      {c.name}
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      {c.templateName}
+                    </div>
+                  </td>
+                  <td className="px-6 py-3 text-center">
+                    <ChannelBadge channel={c.channel} />
+                  </td>
+                  <td className="px-6 py-3 text-slate-600">
+                    {c.audienceLabel}
+                  </td>
+                  <td className="px-6 py-3">
+                    <div className="flex justify-center">
+                      <CampaignStatusBadge status={c.status} />
+                    </div>
+                  </td>
+                  <td className="px-6 py-3 text-center tabular-nums text-slate-700">
+                    {c.recipientCount}
+                  </td>
+                  <td className="px-6 py-3 text-slate-600 whitespace-nowrap text-xs">
+                    {timingSummary(c)}
+                  </td>
+                  <td className="px-6 py-3 text-center">
+                    <CampaignActions
+                      c={c}
+                      onOpen={onOpen}
+                      onAction={onAction}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="md:hidden divide-y divide-slate-100">
+          {campaigns.map((c) => {
+            const canEdit = c.status === "DRAFT" || c.status === "READY";
+            let editableClass: string;
+            if (canEdit) {
+              editableClass = "hover:bg-slate-50 cursor-pointer";
+            } else {
+              editableClass = "";
+            }
+            let recipientNoun: string;
+            if (c.recipientCount === 1) {
+              recipientNoun = "Recipient";
+            } else {
+              recipientNoun = "Recipients";
+            }
+            return (
+              <div
+                key={c.id}
+                onClick={() => {
+                  if (canEdit) {
+                    onOpen(c);
+                  }
+                }}
+                className={`w-full text-left p-4 transition-colors ${editableClass}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-slate-800 truncate">
+                    {c.name}
+                  </span>
+                  <CampaignStatusBadge status={c.status} />
+                </div>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <ChannelBadge channel={c.channel} />
+                  <span className="text-xs text-slate-500">
+                    {c.recipientCount} {recipientNoun}
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    · {timingSummary(c)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </>
+    );
+  }
+
   return (
     <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
       <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
@@ -699,11 +919,7 @@ function CampaignsTab({
           <CardTitle className="text-lg md:text-xl text-slate-800">
             {t("camp.tab.campaigns")}
           </CardTitle>
-          <CardDescription className="text-sm">
-            {loading
-              ? "Loading..."
-              : `${campaigns.length} ${campaigns.length === 1 ? "Campaign" : "Campaigns"}`}
-          </CardDescription>
+          <CardDescription className="text-sm">{countLabel}</CardDescription>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -712,7 +928,7 @@ function CampaignsTab({
             onClick={onRefresh}
             disabled={loading}
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${refreshIconClass}`} />
           </Button>
           <Button
             size="sm"
@@ -728,118 +944,7 @@ function CampaignsTab({
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        {loading ? (
-          <ListSkeleton />
-        ) : campaigns.length === 0 ? (
-          <EmptyState
-            icon={Megaphone}
-            title={t("camp.empty.campaigns.title")}
-            body={t("camp.empty.campaigns.body")}
-          />
-        ) : (
-          <>
-            {}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
-                    <th className="px-6 py-3 font-medium">
-                      {t("camp.col.name")}
-                    </th>
-                    <th className="px-6 py-3 font-medium text-center">
-                      {t("camp.col.channel")}
-                    </th>
-                    <th className="px-6 py-3 font-medium">
-                      {t("camp.col.audience")}
-                    </th>
-                    <th className="px-6 py-3 font-medium">
-                      <div className="flex justify-center">
-                        {t("camp.col.status")}
-                      </div>
-                    </th>
-                    <th className="px-6 py-3 font-medium text-center">
-                      {t("camp.col.recipients")}
-                    </th>
-                    <th className="px-6 py-3 font-medium">Activity</th>
-                    <th className="px-6 py-3 font-medium text-center">
-                      {t("camp.col.actions")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {campaigns.map((c) => (
-                    <tr
-                      key={c.id}
-                      className="hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="px-6 py-3">
-                        <div className="font-medium text-slate-800">
-                          {c.name}
-                        </div>
-                        <div className="text-xs text-slate-400">
-                          {c.templateName}
-                        </div>
-                      </td>
-                      <td className="px-6 py-3 text-center">
-                        <ChannelBadge channel={c.channel} />
-                      </td>
-                      <td className="px-6 py-3 text-slate-600">
-                        {c.audienceLabel}
-                      </td>
-                      <td className="px-6 py-3">
-                        <div className="flex justify-center">
-                          <CampaignStatusBadge status={c.status} />
-                        </div>
-                      </td>
-                      <td className="px-6 py-3 text-center tabular-nums text-slate-700">
-                        {c.recipientCount}
-                      </td>
-                      <td className="px-6 py-3 text-slate-600 whitespace-nowrap text-xs">
-                        {timingSummary(c)}
-                      </td>
-                      <td className="px-6 py-3 text-center">
-                        <CampaignActions
-                          c={c}
-                          onOpen={onOpen}
-                          onAction={onAction}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="md:hidden divide-y divide-slate-100">
-              {campaigns.map((c) => {
-                const canEdit = c.status === "DRAFT" || c.status === "READY";
-                return (
-                  <div
-                    key={c.id}
-                    onClick={() => (canEdit ? onOpen(c) : undefined)}
-                    className={`w-full text-left p-4 transition-colors ${canEdit ? "hover:bg-slate-50 cursor-pointer" : ""}`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-slate-800 truncate">
-                        {c.name}
-                      </span>
-                      <CampaignStatusBadge status={c.status} />
-                    </div>
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <ChannelBadge channel={c.channel} />
-                      <span className="text-xs text-slate-500">
-                        {c.recipientCount}{" "}
-                        {c.recipientCount === 1 ? "Recipient" : "Recipients"}
-                      </span>
-                      <span className="text-xs text-slate-400">
-                        · {timingSummary(c)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
+        {campaignsBody}
       </CardContent>
     </Card>
   );
@@ -847,12 +952,20 @@ function CampaignsTab({
 
 function timingSummary(c: Campaign): string {
   if (c.status === "SCHEDULED")
-    return `Scheduled · ${c.scheduledAtLabel || "--"}`;
+    {
+      return `Scheduled · ${c.scheduledAtLabel || "--"}`;
+    }
   if (c.status === "RECURRING")
-    return `${(c.recurrenceFrequency || "").toLowerCase()} · next ${c.nextRunAtLabel || "--"}`;
+    {
+      return `${(c.recurrenceFrequency || "").toLowerCase()} · next ${c.nextRunAtLabel || "--"}`;
+    }
   if (c.status === "PAUSED")
-    return `Paused · ${(c.recurrenceFrequency || "").toLowerCase()}`;
-  if (c.sentAt) return `Sent on ${fmtDate(c.sentAt)}`;
+    {
+      return `Paused · ${(c.recurrenceFrequency || "").toLowerCase()}`;
+    }
+  if (c.sentAt) {
+    return `Sent on ${fmtDate(c.sentAt)}`;
+  }
   return `Created on ${fmtDate(c.createdAt)}`;
 }
 
@@ -932,6 +1045,46 @@ function TemplatesTab({
   const seatping = templates.filter((x) => x.templateType === "SEATPING");
   const custom = templates.filter((x) => x.templateType === "CUSTOM");
 
+  let seatpingBody: React.ReactNode;
+  if (loading) {
+    seatpingBody = <ListSkeleton />;
+  } else {
+    seatpingBody = (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {seatping.map((tpl) => (
+          <TemplateCard key={tpl.id} template={tpl} onUse={() => onUse(tpl)} />
+        ))}
+      </div>
+    );
+  }
+  let refreshIconClass: string;
+  if (loading) {
+    refreshIconClass = "animate-spin";
+  } else {
+    refreshIconClass = "";
+  }
+  let customBody: React.ReactNode;
+  if (custom.length === 0) {
+    customBody = (
+      <p className="text-sm text-slate-500 text-center py-6">
+        No custom templates yet. Create one to request a tailored message.
+      </p>
+    );
+  } else {
+    customBody = (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {custom.map((tpl) => (
+          <TemplateCard
+            key={tpl.id}
+            template={tpl}
+            onEdit={() => onEdit(tpl)}
+            onUse={() => onUse(tpl)}
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
@@ -944,19 +1097,7 @@ function TemplatesTab({
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 md:p-6">
-          {loading ? (
-            <ListSkeleton />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {seatping.map((tpl) => (
-                <TemplateCard
-                  key={tpl.id}
-                  template={tpl}
-                  onUse={() => onUse(tpl)}
-                />
-              ))}
-            </div>
-          )}
+          {seatpingBody}
         </CardContent>
       </Card>
 
@@ -978,9 +1119,7 @@ function TemplatesTab({
               onClick={onRefresh}
               disabled={loading}
             >
-              <RefreshCw
-                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
-              />
+              <RefreshCw className={`w-4 h-4 ${refreshIconClass}`} />
             </Button>
             <Button
               size="sm"
@@ -995,22 +1134,7 @@ function TemplatesTab({
           </div>
         </CardHeader>
         <CardContent className="p-4 md:p-6">
-          {custom.length === 0 ? (
-            <p className="text-sm text-slate-500 text-center py-6">
-              No custom templates yet. Create one to request a tailored message.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {custom.map((tpl) => (
-                <TemplateCard
-                  key={tpl.id}
-                  template={tpl}
-                  onEdit={() => onEdit(tpl)}
-                  onUse={() => onUse(tpl)}
-                />
-              ))}
-            </div>
-          )}
+          {customBody}
         </CardContent>
       </Card>
     </div>
@@ -1027,17 +1151,19 @@ function TemplateCard({
   onUse?: () => void;
 }) {
   const isCustom = template.templateType === "CUSTOM";
+  let templateBadge: React.ReactNode;
+  if (isCustom) {
+    templateBadge = <TemplateStatusBadge status={template.approvalStatus} />;
+  } else {
+    templateBadge = <SeatPingPill />;
+  }
   return (
     <div className="border border-slate-200 rounded-xl p-4 flex flex-col h-full bg-slate-50/50">
       <div className="flex items-start justify-between gap-2">
         <h4 className="font-semibold text-slate-800 text-sm">
           {template.name}
         </h4>
-        {isCustom ? (
-          <TemplateStatusBadge status={template.approvalStatus} />
-        ) : (
-          <SeatPingPill />
-        )}
+        {templateBadge}
       </div>
       {template.purpose && (
         <p className="text-xs text-slate-500 mt-1 line-clamp-2">
@@ -1101,6 +1227,67 @@ function AudiencesTab({
   onEditCustom: (a: SavedAudience) => void;
   onDeleteCustom: (a: SavedAudience) => void;
 }) {
+  let refreshIconClass: string;
+  if (loading) {
+    refreshIconClass = "animate-spin";
+  } else {
+    refreshIconClass = "";
+  }
+  let savedAudiencesBody: React.ReactNode;
+  if (savedAudiences.length === 0) {
+    savedAudiencesBody = (
+      <div className="text-center py-8 text-slate-500">
+        <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+        <p>No custom groups yet.</p>
+        <p className="text-sm">
+          Create one to target specific segments of your guests.
+        </p>
+      </div>
+    );
+  } else {
+    savedAudiencesBody = (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {savedAudiences.map((a) => (
+          <div
+            key={a.id}
+            className="border border-slate-200 rounded-xl p-4 bg-white shadow-sm flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-emerald-500" />
+                  <h4 className="font-semibold text-slate-800 text-sm">
+                    {a.name}
+                  </h4>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-slate-400 hover:text-slate-600"
+                    onClick={() => onEditCustom(a)}
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-slate-400 hover:text-red-500"
+                    onClick={() => onDeleteCustom(a)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+              {a.description && (
+                <p className="text-xs text-slate-500 mt-1.5">{a.description}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-6">
       <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
@@ -1150,9 +1337,7 @@ function AudiencesTab({
                 onClick={onRefresh}
                 disabled={loading}
               >
-                <RefreshCw
-                  className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
-                />
+                <RefreshCw className={`w-4 h-4 ${refreshIconClass}`} />
               </Button>
               <Button
                 onClick={onCreateCustom}
@@ -1166,58 +1351,7 @@ function AudiencesTab({
           </div>
         </CardHeader>
         <CardContent className="p-4 md:p-6">
-          {savedAudiences.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-              <p>No custom groups yet.</p>
-              <p className="text-sm">
-                Create one to target specific segments of your guests.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {savedAudiences.map((a) => (
-                <div
-                  key={a.id}
-                  className="border border-slate-200 rounded-xl p-4 bg-white shadow-sm flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-emerald-500" />
-                        <h4 className="font-semibold text-slate-800 text-sm">
-                          {a.name}
-                        </h4>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-slate-400 hover:text-slate-600"
-                          onClick={() => onEditCustom(a)}
-                        >
-                          <Settings className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-slate-400 hover:text-red-500"
-                          onClick={() => onDeleteCustom(a)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                    {a.description && (
-                      <p className="text-xs text-slate-500 mt-1.5">
-                        {a.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {savedAudiencesBody}
         </CardContent>
       </Card>
     </div>
@@ -1234,6 +1368,66 @@ function HistoryTab({
   onRefresh: () => void;
 }) {
   const { t } = useLang();
+  let refreshIconClass: string;
+  if (loading) {
+    refreshIconClass = "animate-spin";
+  } else {
+    refreshIconClass = "";
+  }
+  let historyBody: React.ReactNode;
+  if (loading) {
+    historyBody = <ListSkeleton />;
+  } else if (campaigns.length === 0) {
+    historyBody = (
+      <EmptyState
+        icon={Inbox}
+        title={t("camp.empty.history.title")}
+        body={t("camp.empty.history.body")}
+      />
+    );
+  } else {
+    historyBody = (
+      <div className="divide-y divide-slate-100">
+        {campaigns.map((c) => {
+          let timingLabel: string;
+          if (c.sentAt) {
+            timingLabel = `Sent on ${fmtDate(c.sentAt)}`;
+          } else {
+            timingLabel = `Created on ${fmtDate(c.createdAt)}`;
+          }
+          return (
+            <div key={c.id} className="w-full text-left p-4 md:px-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-slate-800 truncate">
+                      {c.name}
+                    </span>
+                    <ChannelBadge channel={c.channel} />
+                    <CampaignStatusBadge status={c.status} />
+                  </div>
+                  <div className="text-xs text-slate-400 mt-0.5">
+                    {c.templateName} · {timingLabel}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="flex items-center gap-1 text-emerald-700">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {c.sentCount} Sent
+                  </span>
+                  <span className="flex items-center gap-1 text-red-600">
+                    <XCircle className="w-3.5 h-3.5" /> {c.failedCount} Failed
+                  </span>
+                  <span className="text-slate-500">
+                    {c.skippedCount} Skipped
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
   return (
     <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
       <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
@@ -1251,64 +1445,24 @@ function HistoryTab({
           onClick={onRefresh}
           disabled={loading}
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          <RefreshCw className={`w-4 h-4 ${refreshIconClass}`} />
         </Button>
       </CardHeader>
       <CardContent className="p-0">
-        {loading ? (
-          <ListSkeleton />
-        ) : campaigns.length === 0 ? (
-          <EmptyState
-            icon={Inbox}
-            title={t("camp.empty.history.title")}
-            body={t("camp.empty.history.body")}
-          />
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {campaigns.map((c) => (
-              <div key={c.id} className="w-full text-left p-4 md:px-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-slate-800 truncate">
-                        {c.name}
-                      </span>
-                      <ChannelBadge channel={c.channel} />
-                      <CampaignStatusBadge status={c.status} />
-                    </div>
-                    <div className="text-xs text-slate-400 mt-0.5">
-                      {c.templateName} ·{" "}
-                      {c.sentAt
-                        ? `Sent on ${fmtDate(c.sentAt)}`
-                        : `Created on ${fmtDate(c.createdAt)}`}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="flex items-center gap-1 text-emerald-700">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> {c.sentCount}{" "}
-                      Sent
-                    </span>
-                    <span className="flex items-center gap-1 text-red-600">
-                      <XCircle className="w-3.5 h-3.5" /> {c.failedCount} Failed
-                    </span>
-                    <span className="text-slate-500">
-                      {c.skippedCount} Skipped
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {historyBody}
       </CardContent>
     </Card>
   );
 }
 
 function splitWallClock(utcStr: string | null | undefined, tz: string) {
-  if (!utcStr) return null;
+  if (!utcStr) {
+    return null;
+  }
   const d = new Date(utcStr);
-  if (isNaN(d.getTime())) return null;
+  if (isNaN(d.getTime())) {
+    return null;
+  }
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: tz,
@@ -1320,11 +1474,18 @@ function splitWallClock(utcStr: string | null | undefined, tz: string) {
       hourCycle: "h23",
     }).formatToParts(d);
     const m: Record<string, string> = {};
-    for (const p of parts) if (p.type !== "literal") m[p.type] = p.value;
+    for (const p of parts) {if (p.type !== "literal") {
+      m[p.type] = p.value;
+    }}
     const yyyy = m.year;
     const mm = m.month;
     const dd = m.day;
-    const hh = m.hour === "24" ? "00" : (m.hour ?? "00");
+    let hh: string;
+    if (m.hour === "24") {
+      hh = "00";
+    } else {
+      hh = m.hour ?? "00";
+    }
     const min = m.minute ?? "00";
     return { date: `${yyyy}-${mm}-${dd}`, time: `${hh}:${min}` };
   } catch {
@@ -1337,9 +1498,13 @@ type ManualGuest = { id: string; name: string; contact: string };
 function nextUntitledName(existingNames: string[]): string {
   const base = "Untitled Campaign";
   const taken = new Set(existingNames.map((n) => n.toLowerCase()));
-  if (!taken.has(base.toLowerCase())) return base;
+  if (!taken.has(base.toLowerCase())) {
+    return base;
+  }
   let i = 2;
-  while (taken.has(`${base} ${i}`.toLowerCase())) i++;
+  while (taken.has(`${base} ${i}`.toLowerCase())) {
+    i++;
+  }
   return `${base} ${i}`;
 }
 
@@ -1377,11 +1542,13 @@ function CampaignBuilderDialog({
   );
   const [name, setName] = useState(existing?.name ?? "");
   const [channel, setChannel] = useState<Channel>(existing?.channel ?? "EMAIL");
-  const [audienceType, setAudienceType] = useState(
-    existing?.audienceType === "custom_group"
-      ? `custom_group:${existing.audienceConfig?.savedAudienceId}`
-      : (existing?.audienceType ?? "all_guests"),
-  );
+  let initialAudienceType: string;
+  if (existing?.audienceType === "custom_group") {
+    initialAudienceType = `custom_group:${existing.audienceConfig?.savedAudienceId}`;
+  } else {
+    initialAudienceType = existing?.audienceType ?? "all_guests";
+  }
+  const [audienceType, setAudienceType] = useState(initialAudienceType);
   const [tag, setTag] = useState(existing?.audienceConfig?.tag ?? "");
   const [manualGuests, setManualGuests] = useState<ManualGuest[]>([]);
   const [templateId, setTemplateId] = useState<string>(
@@ -1482,7 +1649,9 @@ function CampaignBuilderDialog({
   }, [channel, templateId, locationId, JSON.stringify(templateValues)]);
 
   useEffect(() => {
-    if (!locationId) return;
+    if (!locationId) {
+      return;
+    }
     if (audienceType === "with_tag" && !tag) {
       setAudiencePreview(null);
       return;
@@ -1502,12 +1671,18 @@ function CampaignBuilderDialog({
         channel,
         audienceType: at,
       });
-      if (at === "with_tag") params.set("tag", tagParam);
+      if (at === "with_tag") {
+        params.set("tag", tagParam);
+      }
       if (at === "custom_group") {
         const sid = audienceType.split(":")[1];
-        if (sid) params.set("savedAudienceId", sid);
+        if (sid) {
+          params.set("savedAudienceId", sid);
+        }
       }
-      if (at === "manual") params.set("guestIds", manualGuestIds.join(","));
+      if (at === "manual") {
+        params.set("guestIds", manualGuestIds.join(","));
+      }
       api(`/api/campaigns/audiences/preview?${params.toString()}`)
         .then((d) => setAudiencePreview(d))
         .catch(() => setAudiencePreview(null));
@@ -1521,8 +1696,12 @@ function CampaignBuilderDialog({
       at = "custom_group";
     }
     const audienceConfig: any = {};
-    if (at === "with_tag") audienceConfig.tag = tag;
-    if (at === "manual") audienceConfig.guestIds = manualGuestIds;
+    if (at === "with_tag") {
+      audienceConfig.tag = tag;
+    }
+    if (at === "manual") {
+      audienceConfig.guestIds = manualGuestIds;
+    }
     if (at === "custom_group") {
       audienceConfig.savedAudienceId = audienceType.split(":")[1];
     }
@@ -1538,13 +1717,22 @@ function CampaignBuilderDialog({
   }
 
   function validate(): string | null {
-    if (!templateId) return "Choose a template.";
-    const at = audienceType.startsWith("custom_group:")
-      ? "custom_group"
-      : audienceType;
-    if (at === "with_tag" && !tag) return "Please enter a tag.";
+    if (!templateId) {
+      return "Choose a template.";
+    }
+    let at: string;
+    if (audienceType.startsWith("custom_group:")) {
+      at = "custom_group";
+    } else {
+      at = audienceType;
+    }
+    if (at === "with_tag" && !tag) {
+      return "Please enter a tag.";
+    }
     if (at === "manual" && manualGuestIds.length === 0)
-      return "Select at least one guest.";
+      {
+        return "Select at least one guest.";
+      }
     return null;
   }
 
@@ -1592,7 +1780,9 @@ function CampaignBuilderDialog({
 
   function timingBody(): { body?: any; error?: string } {
     if (sendMode === "SCHEDULED") {
-      if (timingError) return { error: timingError };
+      if (timingError) {
+        return { error: timingError };
+      }
       return {
         body: {
           sendMode: "SCHEDULED",
@@ -1601,14 +1791,22 @@ function CampaignBuilderDialog({
       };
     }
     if (sendMode === "RECURRING") {
-      if (timingError) return { error: timingError };
+      if (timingError) {
+        return { error: timingError };
+      }
+      let endLocal: string | undefined;
+      if (recurEndDate) {
+        endLocal = `${recurEndDate}T23:59`;
+      } else {
+        endLocal = undefined;
+      }
       return {
         body: {
           sendMode: "RECURRING",
           recurrence: {
             frequency: recurFreq,
             startLocal: `${recurStartDate}T${recurStartTime}`,
-            endLocal: recurEndDate ? `${recurEndDate}T23:59` : undefined,
+            endLocal,
           },
           maxSendsPerGuestWindowDays: Number(recurWindow) || 30,
         },
@@ -1636,17 +1834,29 @@ function CampaignBuilderDialog({
         method: "POST",
         body: JSON.stringify(tb.body),
       });
+      let launchTitle: string;
+      if (sendMode === "SCHEDULED") {
+        launchTitle = "Campaign scheduled";
+      } else if (sendMode === "RECURRING") {
+        launchTitle = "Recurring campaign started";
+      } else {
+        launchTitle = "Campaign sending";
+      }
+      let launchDescription: string | undefined;
+      if (sendMode === "NOW" && d?.recipientCount != null) {
+        let recipientNoun: string;
+        if (d.recipientCount === 1) {
+          recipientNoun = "recipient";
+        } else {
+          recipientNoun = "recipients";
+        }
+        launchDescription = `${d.recipientCount} ${recipientNoun}.`;
+      } else {
+        launchDescription = undefined;
+      }
       toast({
-        title:
-          sendMode === "SCHEDULED"
-            ? "Campaign scheduled"
-            : sendMode === "RECURRING"
-              ? "Recurring campaign started"
-              : "Campaign sending",
-        description:
-          sendMode === "NOW" && d?.recipientCount != null
-            ? `${d.recipientCount} ${d.recipientCount === 1 ? "recipient" : "recipients"}.`
-            : undefined,
+        title: launchTitle,
+        description: launchDescription,
       });
       analytics.campaignSent(channel);
       onSent(sendMode);
@@ -1664,7 +1874,9 @@ function CampaignBuilderDialog({
   }
 
   async function handleDelete() {
-    if (!campaignId) return;
+    if (!campaignId) {
+      return;
+    }
     try {
       await api(`/api/campaigns/${campaignId}`, { method: "DELETE" });
       toast({ title: "Campaign deleted" });
@@ -1686,36 +1898,188 @@ function CampaignBuilderDialog({
   let timingError: string | null = null;
   if (sendMode === "SCHEDULED") {
     if (!schedDate || !schedTime)
-      timingError = "Pick a date and time to schedule.";
+      {
+        timingError = "Pick a date and time to schedule.";
+      }
     else if (`${schedDate}T${schedTime}` <= nowLocal)
-      timingError = "The scheduled time must be in the future.";
+      {
+        timingError = "The scheduled time must be in the future.";
+      }
   } else if (sendMode === "RECURRING") {
     if (!recurStartDate || !recurStartTime)
-      timingError = "Pick a start date and time.";
+      {
+        timingError = "Pick a start date and time.";
+      }
     else if (recurEndDate && recurEndDate < recurStartDate)
-      timingError = "The end date must be after the start date.";
+      {
+        timingError = "The end date must be after the start date.";
+      }
   }
 
-  const sendLabel =
-    sendMode === "SCHEDULED"
-      ? "Schedule Campaign"
-      : sendMode === "RECURRING"
-        ? "Start Recurring"
-        : "Send Now";
+  let sendLabel: string;
+  if (sendMode === "SCHEDULED") {
+    sendLabel = "Schedule Campaign";
+  } else if (sendMode === "RECURRING") {
+    sendLabel = "Start Recurring";
+  } else {
+    sendLabel = "Send Now";
+  }
   const canLaunch =
     !!templateId &&
     !timingError &&
     (sendMode !== "NOW" ||
       (!!audiencePreview && audiencePreview.recipientCount > 0));
 
+  let dialogTitle: string;
+  if (existing) {
+    dialogTitle = "Edit Campaign";
+  } else {
+    dialogTitle = "New Campaign";
+  }
+
+  let channelHint: string;
+  if (channel === "EMAIL") {
+    channelHint = "Requires guests with an email address.";
+  } else if (channel === "SMS") {
+    channelHint =
+      "SMS is only available for US and Canada (+1) phone numbers right now.";
+  } else {
+    channelHint = "Requires guests with a phone number.";
+  }
+
+  let recipientCountLabel = "Recipients";
+  if (audiencePreview && audiencePreview.recipientCount === 1) {
+    recipientCountLabel = "Recipient";
+  }
+
+  let templateSection: React.ReactNode;
+  if (usableTemplates.length === 0) {
+    templateSection = (
+      <p className="text-sm text-slate-500">
+        No usable templates yet. SeatPing templates load automatically.
+      </p>
+    );
+  } else {
+    templateSection = (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+        {usableTemplates.map((tpl) => {
+          const selected = tpl.id === templateId;
+          let cardClass: string;
+          if (selected) {
+            cardClass = "border-indigo-400 bg-indigo-50 ring-1 ring-indigo-300";
+          } else {
+            cardClass = "border-slate-200 bg-white hover:bg-slate-50";
+          }
+          let templateBadge: React.ReactNode;
+          if (tpl.templateType === "CUSTOM") {
+            templateBadge = <TemplateStatusBadge status={tpl.approvalStatus} />;
+          } else {
+            templateBadge = <SeatPingPill />;
+          }
+          return (
+            <button
+              key={tpl.id}
+              onClick={() => {
+                setTemplateId(tpl.id);
+                setTemplateValues((prev) => ({
+                  ...tpl.exampleValues,
+                  ...prev,
+                }));
+              }}
+              className={`text-left rounded-xl border p-3 flex flex-col h-full transition-colors ${cardClass}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="font-medium text-slate-800 text-sm line-clamp-2">
+                  {tpl.name}
+                </span>
+                {templateBadge}
+              </div>
+              <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-[2rem]">
+                {tpl.purpose || ""}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const hasEditableVars = !!selectedTemplate && editableVars.length > 0;
+
+  let previewStep: number;
+  if (hasEditableVars) {
+    previewStep = 5;
+  } else {
+    previewStep = 4;
+  }
+
+  let timingStep: number;
+  if (hasEditableVars) {
+    timingStep = 6;
+  } else {
+    timingStep = 5;
+  }
+
+  let previewContent: React.ReactNode;
+  if (previewLoading) {
+    previewContent = <Skeleton className="h-24 w-full rounded-xl" />;
+  } else if (preview) {
+    previewContent = (
+      <div className="rounded-xl border border-slate-200 overflow-hidden">
+        {channel === "EMAIL" && preview.subject && (
+          <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 text-xs">
+            <span className="text-slate-500">Subject:</span>{" "}
+            <span className="font-medium text-slate-800">
+              {preview.subject}
+            </span>
+          </div>
+        )}
+        <div className="p-4 text-sm text-slate-700 whitespace-pre-wrap bg-white">
+          {preview.text}
+        </div>
+        <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex items-center gap-3 flex-wrap">
+          <span className="flex items-center gap-1">
+            <ChannelIcon className="w-3.5 h-3.5" /> SeatPing on behalf of your
+            restaurant
+          </span>
+        </div>
+      </div>
+    );
+  } else {
+    previewContent = (
+      <p className="text-sm text-slate-400">
+        Choose a template to see a preview.
+      </p>
+    );
+  }
+
+  let saveDraftLabel: string;
+  if (saving) {
+    saveDraftLabel = "Saving...";
+  } else {
+    saveDraftLabel = "Save Draft";
+  }
+
+  let launchButtonLabel: string;
+  if (sending && sendMode !== "NOW") {
+    launchButtonLabel = "Working...";
+  } else {
+    launchButtonLabel = sendLabel;
+  }
+
+  let confirmSendLabel: string;
+  if (sending) {
+    confirmSendLabel = "Sending...";
+  } else {
+    confirmSendLabel = "Send Now";
+  }
+
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
         <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>
-              {existing ? "Edit Campaign" : "New Campaign"}
-            </DialogTitle>
+            <DialogTitle>{dialogTitle}</DialogTitle>
             <DialogDescription>
               Sending as SeatPing on behalf of your restaurant to your guests.
             </DialogDescription>
@@ -1727,15 +2091,19 @@ function CampaignBuilderDialog({
               <div className="flex gap-1.5 sm:gap-2">
                 {(["SMS", "WHATSAPP", "EMAIL"] as Channel[]).map((ch) => {
                   const Icon = CHANNEL_META[ch].icon;
+                  let channelButtonClass: string;
+                  if (channel === ch) {
+                    channelButtonClass =
+                      "border-indigo-300 bg-indigo-100 text-indigo-700";
+                  } else {
+                    channelButtonClass =
+                      "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+                  }
                   return (
                     <button
                       key={ch}
                       onClick={() => setChannel(ch)}
-                      className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-medium transition-colors ${
-                        channel === ch
-                          ? "border-indigo-300 bg-indigo-100 text-indigo-700"
-                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                      }`}
+                      className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-medium transition-colors ${channelButtonClass}`}
                     >
                       <Icon className="w-4 h-4 shrink-0" />
                       <span className="truncate">{CHANNEL_META[ch].label}</span>
@@ -1743,13 +2111,7 @@ function CampaignBuilderDialog({
                   );
                 })}
               </div>
-              <p className="text-xs text-slate-500 mt-1.5">
-                {channel === "EMAIL"
-                  ? "Requires guests with an email address."
-                  : channel === "SMS"
-                    ? "SMS is only available for US and Canada (+1) phone numbers right now."
-                    : "Requires guests with a phone number."}
-              </p>
+              <p className="text-xs text-slate-500 mt-1.5">{channelHint}</p>
             </Section>
 
             {}
@@ -1816,10 +2178,7 @@ function CampaignBuilderDialog({
                       {audiencePreview.audienceName}
                     </span>
                     <span className="text-indigo-700 font-semibold">
-                      {audiencePreview.recipientCount}{" "}
-                      {audiencePreview.recipientCount === 1
-                        ? "Recipient"
-                        : "Recipients"}
+                      {audiencePreview.recipientCount} {recipientCountLabel}
                     </span>
                   </div>
                   <div className="text-xs text-slate-500 mt-1">
@@ -1841,49 +2200,7 @@ function CampaignBuilderDialog({
 
             {}
             <Section step={3} title="Template">
-              {usableTemplates.length === 0 ? (
-                <p className="text-sm text-slate-500">
-                  No usable templates yet. SeatPing templates load
-                  automatically.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
-                  {usableTemplates.map((tpl) => {
-                    const selected = tpl.id === templateId;
-                    return (
-                      <button
-                        key={tpl.id}
-                        onClick={() => {
-                          setTemplateId(tpl.id);
-                          setTemplateValues((prev) => ({
-                            ...tpl.exampleValues,
-                            ...prev,
-                          }));
-                        }}
-                        className={`text-left rounded-xl border p-3 flex flex-col h-full transition-colors ${
-                          selected
-                            ? "border-indigo-400 bg-indigo-50 ring-1 ring-indigo-300"
-                            : "border-slate-200 bg-white hover:bg-slate-50"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="font-medium text-slate-800 text-sm line-clamp-2">
-                            {tpl.name}
-                          </span>
-                          {tpl.templateType === "CUSTOM" ? (
-                            <TemplateStatusBadge status={tpl.approvalStatus} />
-                          ) : (
-                            <SeatPingPill />
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-[2rem]">
-                          {tpl.purpose || ""}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+              {templateSection}
             </Section>
 
             {}
@@ -1915,37 +2232,8 @@ function CampaignBuilderDialog({
             )}
 
             {}
-            <Section
-              step={selectedTemplate && editableVars.length > 0 ? 5 : 4}
-              title="Message Preview"
-            >
-              {previewLoading ? (
-                <Skeleton className="h-24 w-full rounded-xl" />
-              ) : preview ? (
-                <div className="rounded-xl border border-slate-200 overflow-hidden">
-                  {channel === "EMAIL" && preview.subject && (
-                    <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 text-xs">
-                      <span className="text-slate-500">Subject:</span>{" "}
-                      <span className="font-medium text-slate-800">
-                        {preview.subject}
-                      </span>
-                    </div>
-                  )}
-                  <div className="p-4 text-sm text-slate-700 whitespace-pre-wrap bg-white">
-                    {preview.text}
-                  </div>
-                  <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex items-center gap-3 flex-wrap">
-                    <span className="flex items-center gap-1">
-                      <ChannelIcon className="w-3.5 h-3.5" /> SeatPing on behalf
-                      of your restaurant
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-slate-400">
-                  Choose a template to see a preview.
-                </p>
-              )}
+            <Section step={previewStep} title="Message Preview">
+              {previewContent}
             </Section>
 
             {}
@@ -1962,10 +2250,7 @@ function CampaignBuilderDialog({
             </div>
 
             {}
-            <Section
-              step={selectedTemplate && editableVars.length > 0 ? 6 : 5}
-              title="Timing"
-            >
+            <Section step={timingStep} title="Timing">
               <div className="flex gap-2">
                 {(
                   [
@@ -1973,19 +2258,25 @@ function CampaignBuilderDialog({
                     ["SCHEDULED", "Schedule"],
                     ["RECURRING", "Recurring"],
                   ] as [typeof sendMode, string][]
-                ).map(([mode, label]) => (
-                  <button
-                    key={mode}
-                    onClick={() => setSendMode(mode)}
-                    className={`flex-1 min-w-0 truncate px-2 sm:px-3 py-2 rounded-xl border text-xs sm:text-sm font-medium transition-colors ${
-                      sendMode === mode
-                        ? "border-indigo-300 bg-indigo-100 text-indigo-700"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+                ).map(([mode, label]) => {
+                  let modeButtonClass: string;
+                  if (sendMode === mode) {
+                    modeButtonClass =
+                      "border-indigo-300 bg-indigo-100 text-indigo-700";
+                  } else {
+                    modeButtonClass =
+                      "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+                  }
+                  return (
+                    <button
+                      key={mode}
+                      onClick={() => setSendMode(mode)}
+                      className={`flex-1 min-w-0 truncate px-2 sm:px-3 py-2 rounded-xl border text-xs sm:text-sm font-medium transition-colors ${modeButtonClass}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
 
               {sendMode !== "NOW" && (
@@ -2024,19 +2315,25 @@ function CampaignBuilderDialog({
               {sendMode === "RECURRING" && (
                 <div className="space-y-2 mt-2">
                   <div className="flex gap-2">
-                    {(["DAILY", "WEEKLY", "MONTHLY"] as const).map((f) => (
-                      <button
-                        key={f}
-                        onClick={() => setRecurFreq(f)}
-                        className={`flex-1 px-3 py-1.5 rounded-lg border text-xs font-medium capitalize transition-colors ${
-                          recurFreq === f
-                            ? "border-indigo-300 bg-indigo-100 text-indigo-700"
-                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                        }`}
-                      >
-                        {f.toLowerCase()}
-                      </button>
-                    ))}
+                    {(["DAILY", "WEEKLY", "MONTHLY"] as const).map((f) => {
+                      let freqButtonClass: string;
+                      if (recurFreq === f) {
+                        freqButtonClass =
+                          "border-indigo-300 bg-indigo-100 text-indigo-700";
+                      } else {
+                        freqButtonClass =
+                          "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+                      }
+                      return (
+                        <button
+                          key={f}
+                          onClick={() => setRecurFreq(f)}
+                          className={`flex-1 px-3 py-1.5 rounded-lg border text-xs font-medium capitalize transition-colors ${freqButtonClass}`}
+                        >
+                          {f.toLowerCase()}
+                        </button>
+                      );
+                    })}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
@@ -2116,17 +2413,21 @@ function CampaignBuilderDialog({
                 className="flex-1"
               >
                 <Save className="w-4 h-4 mr-1.5" />
-                {saving ? "Saving..." : "Save Draft"}
+                {saveDraftLabel}
               </Button>
               <Button
-                onClick={() =>
-                  sendMode === "NOW" ? setConfirmSend(true) : launch()
-                }
+                onClick={() => {
+                  if (sendMode === "NOW") {
+                    setConfirmSend(true);
+                  } else {
+                    launch();
+                  }
+                }}
                 disabled={!canLaunch || sending}
                 className="flex-1"
               >
                 <Send className="w-4 h-4 mr-1.5" />
-                {sending && sendMode !== "NOW" ? "Working..." : sendLabel}
+                {launchButtonLabel}
               </Button>
             </div>
             {existing && (
@@ -2153,20 +2454,45 @@ function CampaignBuilderDialog({
                   const exc = audiencePreview?.excludedCount ?? 0;
                   const isPlural = rc !== 1;
                   let msgType = `${CHANNEL_META[channel].label} Messages`;
-                  if (channel === "SMS")
-                    msgType = isPlural ? "SMS Messages" : "an SMS Message";
-                  else if (channel === "WHATSAPP")
-                    msgType = isPlural
-                      ? "WhatsApp Messages"
-                      : "a WhatsApp Message";
-                  else if (channel === "EMAIL")
-                    msgType = isPlural ? "Email Messages" : "an Email Message";
+                  if (channel === "SMS") {
+                    if (isPlural) {
+                      msgType = "SMS Messages";
+                    } else {
+                      msgType = "an SMS Message";
+                    }
+                  } else if (channel === "WHATSAPP") {
+                    if (isPlural) {
+                      msgType = "WhatsApp Messages";
+                    } else {
+                      msgType = "a WhatsApp Message";
+                    }
+                  } else if (channel === "EMAIL") {
+                    if (isPlural) {
+                      msgType = "Email Messages";
+                    } else {
+                      msgType = "an Email Message";
+                    }
+                  }
 
-                  const guestWord = rc === 1 ? "guest" : "guests";
-                  const skipText =
-                    exc === 0
-                      ? "no guests will be skipped."
-                      : `${exc} ${exc === 1 ? "guest" : "guests"} will be skipped.`;
+                  let guestWord: string;
+                  if (rc === 1) {
+                    guestWord = "guest";
+                  } else {
+                    guestWord = "guests";
+                  }
+
+                  let skipText: string;
+                  if (exc === 0) {
+                    skipText = "no guests will be skipped.";
+                  } else {
+                    let excludedGuestWord: string;
+                    if (exc === 1) {
+                      excludedGuestWord = "guest";
+                    } else {
+                      excludedGuestWord = "guests";
+                    }
+                    skipText = `${exc} ${excludedGuestWord} will be skipped.`;
+                  }
                   const restName =
                     meta?.locations.find((l) => l.id === locationId)
                       ?.restaurantName || locationLabel;
@@ -2184,7 +2510,7 @@ function CampaignBuilderDialog({
             <AlertDialogFooter>
               <AlertDialogCancel disabled={sending}>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={launch} disabled={sending}>
-                {sending ? "Sending..." : "Send Now"}
+                {confirmSendLabel}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -2251,11 +2577,15 @@ function ManualGuestPicker({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!locationId) return;
+    if (!locationId) {
+      return;
+    }
     const handle = setTimeout(() => {
       setLoading(true);
       const params = new URLSearchParams({ locationId });
-      if (search.trim()) params.set("search", search.trim());
+      if (search.trim()) {
+        params.set("search", search.trim());
+      }
       api(`/api/guests?${params.toString()}`)
         .then((d) => {
           const rows = (d?.guests ?? []).map((g: any) => ({
@@ -2280,9 +2610,57 @@ function ManualGuestPicker({
 
   const selectedIds = new Set(selected.map((g) => g.id));
   const toggle = (g: ManualGuest) => {
-    if (selectedIds.has(g.id)) onChange(selected.filter((x) => x.id !== g.id));
-    else onChange([...selected, g]);
+    if (selectedIds.has(g.id)) {
+      onChange(selected.filter((x) => x.id !== g.id));
+    }
+    else {
+      onChange([...selected, g]);
+    }
   };
+
+  let guestListContent: React.ReactNode;
+  if (loading) {
+    guestListContent = (
+      <div className="p-3 text-sm text-slate-400">Searching...</div>
+    );
+  } else if (results.length === 0) {
+    guestListContent = (
+      <div className="p-3 text-sm text-slate-400">No guests found.</div>
+    );
+  } else {
+    guestListContent = results.map((g) => {
+      let rowClass: string;
+      if (selectedIds.has(g.id)) {
+        rowClass = "bg-indigo-50";
+      } else {
+        rowClass = "";
+      }
+      return (
+        <button
+          key={g.id}
+          onClick={() => toggle(g)}
+          className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-slate-50 ${rowClass}`}
+        >
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-slate-700 truncate">
+              {g.name}
+            </div>
+            <div className="text-xs text-slate-400 truncate">{g.contact}</div>
+          </div>
+          {selectedIds.has(g.id) && (
+            <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+          )}
+        </button>
+      );
+    });
+  }
+
+  let selectedGuestWord: string;
+  if (selected.length === 1) {
+    selectedGuestWord = "guest";
+  } else {
+    selectedGuestWord = "guests";
+  }
 
   return (
     <div className="mt-2 space-y-2">
@@ -2314,36 +2692,10 @@ function ManualGuestPicker({
         </div>
       )}
       <div className="max-h-44 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
-        {loading ? (
-          <div className="p-3 text-sm text-slate-400">Searching...</div>
-        ) : results.length === 0 ? (
-          <div className="p-3 text-sm text-slate-400">No guests found.</div>
-        ) : (
-          results.map((g) => (
-            <button
-              key={g.id}
-              onClick={() => toggle(g)}
-              className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-slate-50 ${
-                selectedIds.has(g.id) ? "bg-indigo-50" : ""
-              }`}
-            >
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-slate-700 truncate">
-                  {g.name}
-                </div>
-                <div className="text-xs text-slate-400 truncate">
-                  {g.contact}
-                </div>
-              </div>
-              {selectedIds.has(g.id) && (
-                <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-              )}
-            </button>
-          ))
-        )}
+        {guestListContent}
       </div>
       <p className="text-xs text-slate-500">
-        {selected.length} {selected.length === 1 ? "guest" : "guests"} selected.
+        {selected.length} {selectedGuestWord} selected.
       </p>
     </div>
   );
@@ -2382,11 +2734,13 @@ function TemplateBuilderDialog({
   const isApprovedEdit = existing?.approvalStatus === "APPROVED";
 
   const bodyError = bodyParamPositionError(body);
-  const exampleError =
+  let exampleError: string | null = null;
+  if (
     variables.length > 0 &&
     variables.some((v) => !(exampleValues[v] ?? "").trim())
-      ? "Add an example value for every variable."
-      : null;
+  ) {
+    exampleError = "Add an example value for every variable.";
+  }
 
   function buildBody() {
     return {
@@ -2497,13 +2851,75 @@ function TemplateBuilderDialog({
     }
   }
 
+  let builderTitle: string;
+  if (existing) {
+    builderTitle = "Custom Template";
+  } else {
+    builderTitle = "New Custom Template";
+  }
+
+  let bodyFieldClass: string;
+  if (bodyError) {
+    bodyFieldClass = "border-red-300 focus-visible:ring-red-400";
+  } else {
+    bodyFieldClass = "border-slate-200";
+  }
+
+  let busyLabel: string;
+  if (busy) {
+    busyLabel = "Saving...";
+  } else {
+    busyLabel = "Save & Resubmit For Review";
+  }
+
+  let saveDraftLabel: string;
+  if (busy) {
+    saveDraftLabel = "Saving...";
+  } else {
+    saveDraftLabel = "Save Draft";
+  }
+
+  let actionButtons: React.ReactNode;
+  if (isApprovedEdit) {
+    actionButtons = (
+      <Button
+        onClick={saveApprovedEdit}
+        disabled={busy || !!bodyError || !!exampleError}
+        className="flex-1"
+      >
+        <Send className="w-4 h-4 mr-1.5" />
+        {busyLabel}
+      </Button>
+    );
+  } else {
+    actionButtons = (
+      <>
+        <Button
+          variant="outline"
+          onClick={saveDraft}
+          disabled={busy || !!bodyError}
+          className="flex-1"
+        >
+          <Save className="w-4 h-4 mr-1.5" />
+          {saveDraftLabel}
+        </Button>
+        <Button
+          onClick={submitForReview}
+          disabled={busy || !!bodyError || !!exampleError}
+          className="flex-1"
+        >
+          <Send className="w-4 h-4 mr-1.5" />
+          Submit For Review
+        </Button>
+      </>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {existing ? "Custom Template" : "New Custom Template"}
-          </DialogTitle>
+          <DialogTitle>{builderTitle}</DialogTitle>
           <DialogDescription>
             Submit one general template request. SeatPing prepares it for SMS,
             WhatsApp, and Email.
@@ -2560,7 +2976,7 @@ function TemplateBuilderDialog({
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Hi {{First Name}}, ... Use {{Variable Name}} for personalization."
-              className={`bg-slate-50 min-h-[100px] ${bodyError ? "border-red-300 focus-visible:ring-red-400" : "border-slate-200"}`}
+              className={`bg-slate-50 min-h-[100px] ${bodyFieldClass}`}
             />
             {bodyError && (
               <p className="text-xs text-red-600 mt-1">{bodyError}</p>
@@ -2583,6 +2999,12 @@ function TemplateBuilderDialog({
               <div className="space-y-2">
                 {variables.map((v) => {
                   const empty = !(exampleValues[v] ?? "").trim();
+                  let exampleInputClass: string;
+                  if (empty) {
+                    exampleInputClass = "border-red-300";
+                  } else {
+                    exampleInputClass = "border-slate-200";
+                  }
                   return (
                     <div key={v} className="flex items-center gap-2">
                       <span className="text-xs text-slate-500 w-28 shrink-0 capitalize">
@@ -2596,7 +3018,7 @@ function TemplateBuilderDialog({
                             [v]: e.target.value,
                           }))
                         }
-                        className={`h-9 bg-slate-50 ${empty ? "border-red-300" : "border-slate-200"}`}
+                        className={`h-9 bg-slate-50 ${exampleInputClass}`}
                       />
                     </div>
                   );
@@ -2615,36 +3037,7 @@ function TemplateBuilderDialog({
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 pt-1">
-          {isApprovedEdit ? (
-            <Button
-              onClick={saveApprovedEdit}
-              disabled={busy || !!bodyError || !!exampleError}
-              className="flex-1"
-            >
-              <Send className="w-4 h-4 mr-1.5" />
-              {busy ? "Saving..." : "Save & Resubmit For Review"}
-            </Button>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                onClick={saveDraft}
-                disabled={busy || !!bodyError}
-                className="flex-1"
-              >
-                <Save className="w-4 h-4 mr-1.5" />
-                {busy ? "Saving..." : "Save Draft"}
-              </Button>
-              <Button
-                onClick={submitForReview}
-                disabled={busy || !!bodyError || !!exampleError}
-                className="flex-1"
-              >
-                <Send className="w-4 h-4 mr-1.5" />
-                Submit For Review
-              </Button>
-            </>
-          )}
+          {actionButtons}
         </div>
       </DialogContent>
     </Dialog>

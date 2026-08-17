@@ -48,7 +48,9 @@ const BusinessSignup = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name as keyof typeof errors])
-      setErrors((p) => ({ ...p, [name]: "" }));
+      {
+        setErrors((p) => ({ ...p, [name]: "" }));
+      }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,20 +65,38 @@ const BusinessSignup = () => {
     };
 
     if (!formData.businessName)
-      newErrors.businessName = "Business name is required";
+      {
+        newErrors.businessName = "Business name is required";
+      }
     if (!formData.businessUsername)
-      newErrors.businessUsername = "Business username is required";
+      {
+        newErrors.businessUsername = "Business username is required";
+      }
     else if (formData.businessUsername.length < 3)
-      newErrors.businessUsername = "Username must be at least 3 characters";
-    if (!formData.email) newErrors.email = "Email is required";
-    if (!formData.phone) newErrors.phone = "Phone number is required";
+      {
+        newErrors.businessUsername = "Username must be at least 3 characters";
+      }
+    if (!formData.email) {
+      newErrors.email = "Email is required";
+    }
+    if (!formData.phone) {
+      newErrors.phone = "Phone number is required";
+    }
     else if (formData.phone.replace(/\D/g, "").length < 6)
-      newErrors.phone = "Phone must be at least 6 digits";
-    if (!formData.password) newErrors.password = "Password is required";
+      {
+        newErrors.phone = "Phone must be at least 6 digits";
+      }
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    }
     else if (formData.password.length < 8)
-      newErrors.password = "Password must be at least 8 chars";
+      {
+        newErrors.password = "Password must be at least 8 chars";
+      }
     if (!formData.confirmPassword)
-      newErrors.confirmPassword = "Please confirm your password";
+      {
+        newErrors.confirmPassword = "Please confirm your password";
+      }
     if (
       formData.password &&
       formData.confirmPassword &&
@@ -86,7 +106,9 @@ const BusinessSignup = () => {
     }
 
     setErrors(newErrors);
-    if (Object.values(newErrors).some(Boolean)) return;
+    if (Object.values(newErrors).some(Boolean)) {
+      return;
+    }
 
     try {
       setLoading(true);
@@ -118,6 +140,13 @@ const BusinessSignup = () => {
       setLoading(false);
     }
   };
+
+  let submitLabel: string;
+  if (loading) {
+    submitLabel = "Creating...";
+  } else {
+    submitLabel = "Start Free Trial";
+  }
 
   return (
     <>
@@ -261,7 +290,7 @@ const BusinessSignup = () => {
                 className="h-11 w-full text-base"
                 disabled={loading}
               >
-                {loading ? "Creating..." : "Start Free Trial"}
+                {submitLabel}
               </Button>
             </form>
 

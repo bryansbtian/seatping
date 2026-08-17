@@ -22,7 +22,9 @@ router.post('/inquiry', express.json(), async (req, res) => {
         { name: 'sales-email', key: data.businessEmail.toLowerCase(), windowMs: HOURS(1), max: 3 },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     if (!data.businessName || !data.businessEmail || !data.contactName || !data.phoneNumber) {
       return res.status(400).json({ error: 'Missing required fields' });

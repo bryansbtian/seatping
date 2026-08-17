@@ -377,6 +377,9 @@ const en = {
   "rpe.toast.altFailed.title": "Failed to save alt text",
   "rpe.toast.nameRequired.title": "Restaurant name required",
   "rpe.toast.nameRequired.desc": "Give your restaurant a public name.",
+  "rpe.toast.reservationNumbersRequired.title": "Reservation limits required",
+  "rpe.toast.reservationNumbersRequired.desc":
+    "Fill in max guests, max per hour, booking window, and minimum notice.",
   "rpe.toast.profileSaved.title": "Profile saved",
   "rpe.toast.profileSaved.desc": "Your restaurant profile was updated.",
   "rpe.toast.saveFailed.title": "Save failed",
@@ -928,6 +931,9 @@ const id: Partial<Record<TKey, string>> = {
   "rpe.toast.altFailed.title": "Gagal menyimpan teks alt",
   "rpe.toast.nameRequired.title": "Nama restoran wajib diisi",
   "rpe.toast.nameRequired.desc": "Beri restoran Anda nama publik.",
+  "rpe.toast.reservationNumbersRequired.title": "Batas reservasi wajib diisi",
+  "rpe.toast.reservationNumbersRequired.desc":
+    "Isi maks tamu, maks per jam, jendela pemesanan, dan pemberitahuan minimum.",
   "rpe.toast.profileSaved.title": "Profil disimpan",
   "rpe.toast.profileSaved.desc": "Profil restoran Anda telah diperbarui.",
   "rpe.toast.saveFailed.title": "Penyimpanan gagal",
@@ -1145,10 +1151,15 @@ const DICTS: Record<Lang, Partial<Record<TKey, string>>> = { en, id };
 type Params = Record<string, string | number>;
 
 function format(str: string, params?: Params): string {
-  if (!params) return str;
-  return str.replace(/\{(\w+)\}/g, (_, k: string) =>
-    k in params ? String(params[k]) : `{${k}}`,
-  );
+  if (!params) {
+    return str;
+  }
+  return str.replace(/\{(\w+)\}/g, (_, k: string) => {
+    if (k in params) {
+      return String(params[k]);
+    }
+    return `{${k}}`;
+  });
 }
 
 export function translate(lang: Lang, key: TKey, params?: Params): string {
@@ -1175,7 +1186,9 @@ export function translateStatus(lang: Lang, status: string): string {
     .replace(/[\s-]+/g, "_");
   const canonical = STATUS_ALIASES[normalized] || normalized;
   const key = `status.${canonical}` as TKey;
-  if (key in en) return translate(lang, key);
+  if (key in en) {
+    return translate(lang, key);
+  }
   return canonical
     .split("_")
     .filter(Boolean)
@@ -1194,7 +1207,9 @@ interface LangContextValue {
 function readStoredLang(): Lang {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "en" || v === "id") return v;
+    if (v === "en" || v === "id") {
+      return v;
+    }
   } catch {
   }
   return "en";
@@ -1227,7 +1242,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     api("/auth/business/language")
       .then((d) => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         if (d?.language === "en" || d?.language === "id") {
           setLangState(d.language);
           persistLang(d.language);
@@ -1236,7 +1253,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {
       })
       .finally(() => {
-        if (!cancelled) setReady(true);
+        if (!cancelled) {
+          setReady(true);
+        }
       });
     return () => {
       cancelled = true;
@@ -1245,7 +1264,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const setLang = useCallback(async (next: Lang) => {
     const prev = langRef.current;
-    if (next === prev) return;
+    if (next === prev) {
+      return;
+    }
     setLangState(next);
     persistLang(next);
     try {

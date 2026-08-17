@@ -28,10 +28,16 @@ const BusinessLogin = () => {
     e.preventDefault();
     const newErrors = { emailOrUsername: "", password: "" };
     if (!emailOrUsername)
-      newErrors.emailOrUsername = "Email or username is required";
-    if (!password) newErrors.password = "Password is required";
+      {
+        newErrors.emailOrUsername = "Email or username is required";
+      }
+    if (!password) {
+      newErrors.password = "Password is required";
+    }
     setErrors(newErrors);
-    if (newErrors.emailOrUsername || newErrors.password) return;
+    if (newErrors.emailOrUsername || newErrors.password) {
+      return;
+    }
 
     try {
       setLoading(true);
@@ -54,6 +60,13 @@ const BusinessLogin = () => {
       setLoading(false);
     }
   };
+
+  let submitLabel: string;
+  if (loading) {
+    submitLabel = "Signing in...";
+  } else {
+    submitLabel = "Sign In";
+  }
 
   return (
     <>
@@ -87,7 +100,9 @@ const BusinessLogin = () => {
                     onChange={(e) => {
                       setEmailOrUsername(e.target.value);
                       if (errors.emailOrUsername)
-                        setErrors((p) => ({ ...p, emailOrUsername: "" }));
+                        {
+                          setErrors((p) => ({ ...p, emailOrUsername: "" }));
+                        }
                     }}
                     required
                   />
@@ -107,7 +122,9 @@ const BusinessLogin = () => {
                     onChange={(e) => {
                       setPassword(e.target.value);
                       if (errors.password)
-                        setErrors((p) => ({ ...p, password: "" }));
+                        {
+                          setErrors((p) => ({ ...p, password: "" }));
+                        }
                     }}
                     required
                   />
@@ -122,7 +139,7 @@ const BusinessLogin = () => {
                   className="h-11 w-full text-base"
                   disabled={loading}
                 >
-                  {loading ? "Signing in..." : "Sign In"}
+                  {submitLabel}
                 </Button>
               </form>
 
