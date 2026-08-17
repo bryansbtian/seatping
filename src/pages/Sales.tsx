@@ -50,29 +50,45 @@ const Sales = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
   };
 
   const validate = () => {
     const next: Record<string, string> = {};
     if (!formData.businessName.trim())
-      next.businessName = "Business name is required";
+      {
+        next.businessName = "Business name is required";
+      }
     if (!formData.businessEmail.trim())
-      next.businessEmail = "Business email is required";
+      {
+        next.businessEmail = "Business email is required";
+      }
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.businessEmail.trim()))
-      next.businessEmail = "Enter a valid email";
+      {
+        next.businessEmail = "Enter a valid email";
+      }
     if (!formData.contactName.trim())
-      next.contactName = "Contact name is required";
-    if (!formData.phone.trim()) next.phone = "Phone number is required";
+      {
+        next.contactName = "Contact name is required";
+      }
+    if (!formData.phone.trim()) {
+      next.phone = "Phone number is required";
+    }
     else if (formData.phone.replace(/\D/g, "").length < 6)
-      next.phone = "Phone must be at least 6 digits";
+      {
+        next.phone = "Phone must be at least 6 digits";
+      }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate()) {
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -113,6 +129,37 @@ const Sales = () => {
       setSubmitting(false);
     }
   };
+
+  let businessNameErrorClass: string;
+  if (errors.businessName) {
+    businessNameErrorClass = "border-destructive";
+  } else {
+    businessNameErrorClass = "";
+  }
+  let businessEmailErrorClass: string;
+  if (errors.businessEmail) {
+    businessEmailErrorClass = "border-destructive";
+  } else {
+    businessEmailErrorClass = "";
+  }
+  let contactNameErrorClass: string;
+  if (errors.contactName) {
+    contactNameErrorClass = "border-destructive";
+  } else {
+    contactNameErrorClass = "";
+  }
+  let phoneErrorClass: string;
+  if (errors.phone) {
+    phoneErrorClass = "border-destructive";
+  } else {
+    phoneErrorClass = "";
+  }
+  let submitLabel: string;
+  if (submitting) {
+    submitLabel = "Sending...";
+  } else {
+    submitLabel = "Request A Demo";
+  }
 
   return (
     <>
@@ -162,7 +209,7 @@ const Sales = () => {
                   value={formData.businessName}
                   onChange={handleChange}
                   className={`h-11 placeholder:text-sm sm:placeholder:text-base ${
-                    errors.businessName ? "border-destructive" : ""
+                    businessNameErrorClass
                   }`}
                   required
                 />
@@ -183,7 +230,7 @@ const Sales = () => {
                   value={formData.businessEmail}
                   onChange={handleChange}
                   className={`h-11 placeholder:text-sm sm:placeholder:text-base ${
-                    errors.businessEmail ? "border-destructive" : ""
+                    businessEmailErrorClass
                   }`}
                   required
                 />
@@ -203,7 +250,7 @@ const Sales = () => {
                   value={formData.contactName}
                   onChange={handleChange}
                   className={`h-11 placeholder:text-sm sm:placeholder:text-base ${
-                    errors.contactName ? "border-destructive" : ""
+                    contactNameErrorClass
                   }`}
                   required
                 />
@@ -232,7 +279,7 @@ const Sales = () => {
                     value={formData.phone}
                     onChange={handleChange}
                     className={`h-11 flex-1 placeholder:text-sm sm:placeholder:text-base ${
-                      errors.phone ? "border-destructive" : ""
+                      phoneErrorClass
                     }`}
                     required
                   />
@@ -247,7 +294,7 @@ const Sales = () => {
                 className="h-11 w-full text-base"
                 disabled={submitting}
               >
-                {submitting ? "Sending..." : "Request A Demo"}
+                {submitLabel}
               </Button>
             </form>
           </div>

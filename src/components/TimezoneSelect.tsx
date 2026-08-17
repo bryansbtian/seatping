@@ -34,7 +34,9 @@ export function TimezoneSelect({
   const attachScrollHandlers = useCallback((el: HTMLDivElement | null) => {
     cleanupRef.current?.();
     cleanupRef.current = null;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
 
     const onWheel = (e: WheelEvent) => {
       el.scrollTop += e.deltaY;
@@ -47,7 +49,9 @@ export function TimezoneSelect({
       lastTouchY = e.touches[0]?.clientY ?? null;
     };
     const onTouchMove = (e: TouchEvent) => {
-      if (lastTouchY == null) return;
+      if (lastTouchY == null) {
+        return;
+      }
       const y = e.touches[0]?.clientY ?? lastTouchY;
       el.scrollTop += lastTouchY - y;
       lastTouchY = y;
@@ -65,6 +69,13 @@ export function TimezoneSelect({
     };
   }, []);
 
+  let selectedLabel: string;
+  if (selected) {
+    selectedLabel = selected.label;
+  } else {
+    selectedLabel = "Select timezone";
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -78,9 +89,7 @@ export function TimezoneSelect({
             className,
           )}
         >
-          <span className="truncate">
-            {selected ? selected.label : "Select timezone"}
-          </span>
+          <span className="truncate">{selectedLabel}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
@@ -92,9 +101,12 @@ export function TimezoneSelect({
       >
         <Command
           className="overflow-hidden"
-          filter={(value, search) =>
-            value.toLowerCase().includes(search.toLowerCase().trim()) ? 1 : 0
-          }
+          filter={(value, search) => {
+            if (value.toLowerCase().includes(search.toLowerCase().trim())) {
+              return 1;
+            }
+            return 0;
+          }}
         >
           {}
           <CommandInput placeholder="Search timezone or city..." />
@@ -106,24 +118,29 @@ export function TimezoneSelect({
           >
             <CommandEmpty>No timezone found.</CommandEmpty>
             <CommandGroup>
-              {TIMEZONE_OPTIONS.map((t) => (
-                <CommandItem
-                  key={t.value}
-                  value={`${t.label} ${t.value}`}
-                  onSelect={() => {
-                    onChange(t.value);
-                    setOpen(false);
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4 shrink-0",
-                      value === t.value ? "opacity-100" : "opacity-0",
-                    )}
-                  />
-                  <span className="flex-1 truncate">{t.label}</span>
-                </CommandItem>
-              ))}
+              {TIMEZONE_OPTIONS.map((t) => {
+                let checkOpacityClass: string;
+                if (value === t.value) {
+                  checkOpacityClass = "opacity-100";
+                } else {
+                  checkOpacityClass = "opacity-0";
+                }
+                return (
+                  <CommandItem
+                    key={t.value}
+                    value={`${t.label} ${t.value}`}
+                    onSelect={() => {
+                      onChange(t.value);
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn("mr-2 h-4 w-4 shrink-0", checkOpacityClass)}
+                    />
+                    <span className="flex-1 truncate">{t.label}</span>
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
           </CommandList>
         </Command>

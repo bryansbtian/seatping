@@ -42,7 +42,9 @@ export function AddressAutocomplete({
     const unsubAuth = onMapsAuthFailure(() => setWarning(LOAD_FAIL_WARNING));
     loadGoogleMaps()
       .then((google) => {
-        if (!inputRef.current) return;
+        if (!inputRef.current) {
+          return;
+        }
         const jakarta = new google.maps.LatLngBounds(
           new google.maps.LatLng(-6.4, 106.6),
           new google.maps.LatLng(-6.0, 107.0)
@@ -61,13 +63,17 @@ export function AddressAutocomplete({
         });
         listener = ac.addListener("place_changed", () => {
           const details = parsePlace(ac.getPlace());
-          if (details.address) onChange(details.address);
+          if (details.address) {
+            onChange(details.address);
+          }
           onPlaceSelected(details);
         });
       })
       .catch(() => setWarning(LOAD_FAIL_WARNING));
     return () => {
-      if (listener?.remove) listener.remove();
+      if (listener?.remove) {
+        listener.remove();
+      }
       unsubAuth();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -81,7 +87,9 @@ export function AddressAutocomplete({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter") e.preventDefault();
+          if (e.key === "Enter") {
+            e.preventDefault();
+          }
         }}
         placeholder={placeholder}
         disabled={disabled}

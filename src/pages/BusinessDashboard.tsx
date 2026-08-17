@@ -54,7 +54,10 @@ import {
 
 function getLocationTimezone(location: any): string {
   const tz = location?.restaurantProfile?.openingHours?.timezone;
-  return typeof tz === "string" && tz ? tz : DEFAULT_TIMEZONE;
+  if (typeof tz === "string" && tz) {
+    return tz;
+  }
+  return DEFAULT_TIMEZONE;
 }
 
 const TOOLTIP_CONTENT_STYLE = {
@@ -158,15 +161,17 @@ const BusinessDashboard = () => {
       }
     });
 
-    const avgWaitTime =
-      waitTimeCount > 0 ? Math.round(totalWaitTime / waitTimeCount) : 0;
+    let avgWaitTime = 0;
+    if (waitTimeCount > 0) {
+      avgWaitTime = Math.round(totalWaitTime / waitTimeCount);
+    }
 
     const totalProcessed =
       todayServed.length + todayNoShows + todayRemoved.length;
-    const successRate =
-      totalProcessed > 0
-        ? Math.round((todayServed.length / totalProcessed) * 100)
-        : 100;
+    let successRate = 100;
+    if (totalProcessed > 0) {
+      successRate = Math.round((todayServed.length / totalProcessed) * 100);
+    }
 
     const reservations = currentLocation.reservations || [];
     const isToday = (iso: any) =>
@@ -175,7 +180,9 @@ const BusinessDashboard = () => {
     let reservationNoShowsToday = 0;
     for (const r of reservations) {
       if (r?.status === "arrived" || r?.status === "completed") {
-        if (isToday(r.arrivedAt || r.completedAt)) reservationsServedToday++;
+        if (isToday(r.arrivedAt || r.completedAt)) {
+          reservationsServedToday++;
+        }
       } else if (r?.status === "no_show" && isToday(r.noShowAt)) {
         reservationNoShowsToday++;
       }
@@ -199,8 +206,10 @@ const BusinessDashboard = () => {
     }
 
     const createdAt = new Date(me.createdAt);
-    const trialDurationDays =
-      typeof me.trialDurationDays === "number" ? me.trialDurationDays : 7;
+    let trialDurationDays = 7;
+    if (typeof me.trialDurationDays === "number") {
+      trialDurationDays = me.trialDurationDays;
+    }
     const trialEndDate = new Date(
       createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
     );
@@ -304,10 +313,14 @@ const BusinessDashboard = () => {
         const res = await api(
           `/auth/business/${me.username}/locations/${currentLocation.id}/queue-etas`,
         );
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         const map: Record<string, any> = {};
         for (const e of res.etas || []) {
-          if (e?.queueToken) map[e.queueToken] = e;
+          if (e?.queueToken) {
+            map[e.queueToken] = e;
+          }
         }
         setQueueEtas(map);
       } catch {
@@ -331,7 +344,9 @@ const BusinessDashboard = () => {
   }, []);
 
   const admitCustomer = async (customerIndex: number) => {
-    if (!currentLocation) return;
+    if (!currentLocation) {
+      return;
+    }
 
     setLoading(true);
     try {
@@ -363,7 +378,9 @@ const BusinessDashboard = () => {
   };
 
   const removeCustomer = async (customerIndex: number) => {
-    if (!currentLocation) return;
+    if (!currentLocation) {
+      return;
+    }
 
     setLoading(true);
     try {
@@ -395,7 +412,9 @@ const BusinessDashboard = () => {
   };
 
   const confirmArrival = async (customer: any) => {
-    if (!me) return;
+    if (!me) {
+      return;
+    }
 
     setLoading(true);
     try {
@@ -429,7 +448,9 @@ const BusinessDashboard = () => {
   };
 
   const markNoShow = async (customer: any) => {
-    if (!me) return;
+    if (!me) {
+      return;
+    }
 
     setLoading(true);
     try {
@@ -468,8 +489,12 @@ const BusinessDashboard = () => {
     const diffMs = now.getTime() - joined.getTime();
     const diffMins = Math.floor(diffMs / 60000);
 
-    if (diffMins < 1) return t("dash.justNow");
-    if (diffMins < 60) return t("dash.minAgo", { n: diffMins });
+    if (diffMins < 1) {
+      return t("dash.justNow");
+    }
+    if (diffMins < 60) {
+      return t("dash.minAgo", { n: diffMins });
+    }
     const diffHours = Math.floor(diffMins / 60);
     return t("dash.hourMinAgo", { h: diffHours, m: diffMins % 60 });
   };
@@ -489,11 +514,16 @@ const BusinessDashboard = () => {
 
   const formatPhone = (countryCode?: string, phoneNumber?: string) => {
     const national = String(phoneNumber || "").replace(/\D/g, "");
-    if (!national) return "";
+    if (!national) {
+      return "";
+    }
     const codeDigits = String(countryCode || "").replace(/\D/g, "");
-    const result = codeDigits
-      ? formatPhoneIntl(`${codeDigits}${national}`, null)
-      : formatPhoneIntl(null, national);
+    let result: string | null;
+    if (codeDigits) {
+      result = formatPhoneIntl(`${codeDigits}${national}`, null);
+    } else {
+      result = formatPhoneIntl(null, national);
+    }
     return result ?? "";
   };
 
@@ -501,14 +531,24 @@ const BusinessDashboard = () => {
     const method = c?.notificationMethod;
     const phone = formatPhone(c?.countryCode, c?.phoneNumber);
     if (method === "email") {
-      return c?.email ? `Email: ${c.email}` : "Email";
+      if (c?.email) {
+        return `Email: ${c.email}`;
+      }
+      return "Email";
     }
     if (method === "sms" || method === "whatsapp") {
       const label = formatNotificationMethod(method);
-      return phone ? `${label}: ${phone}` : label;
+      if (phone) {
+        return `${label}: ${phone}`;
+      }
+      return label;
     }
-    if (phone) return `Phone: ${phone}`;
-    if (c?.email) return `Email: ${c.email}`;
+    if (phone) {
+      return `Phone: ${phone}`;
+    }
+    if (c?.email) {
+      return `Email: ${c.email}`;
+    }
     return null;
   };
 
@@ -549,7 +589,9 @@ const BusinessDashboard = () => {
     avgWait: number;
     noShows: number;
   }[] => {
-    if (!currentLocation) return [];
+    if (!currentLocation) {
+      return [];
+    }
 
     const admittedCustomers = currentLocation.admittedCustomers || [];
     const removedCustomers = currentLocation.removedCustomers || [];
@@ -578,9 +620,13 @@ const BusinessDashboard = () => {
       }
 
       for (const c of admittedCustomers) {
-        if (!c.admittedAt) continue;
+        if (!c.admittedAt) {
+          continue;
+        }
         const key = getDateKeyInTimezone(c.admittedAt, tz);
-        if (!dataMap.has(key)) continue;
+        if (!dataMap.has(key)) {
+          continue;
+        }
 
         if (c.finalStatus !== "no_show") {
           dataMap.get(key)!.served += 1;
@@ -606,13 +652,17 @@ const BusinessDashboard = () => {
       for (const c of removedCustomers) {
         if (c.status === "left" && c.leftAt) {
           const key = getDateKeyInTimezone(c.leftAt, tz);
-          if (dataMap.has(key)) dataMap.get(key)!.noShows += 1;
+          if (dataMap.has(key)) {
+            dataMap.get(key)!.noShows += 1;
+          }
         }
       }
       for (const c of admittedCustomers) {
         if (c.finalStatus === "no_show" && c.admittedAt) {
           const key = getDateKeyInTimezone(c.admittedAt, tz);
-          if (dataMap.has(key)) dataMap.get(key)!.noShows += 1;
+          if (dataMap.has(key)) {
+            dataMap.get(key)!.noShows += 1;
+          }
         }
       }
       for (const r of currentLocation.reservations || []) {
@@ -620,11 +670,15 @@ const BusinessDashboard = () => {
           const ts = r.arrivedAt || r.completedAt;
           if (ts) {
             const key = getDateKeyInTimezone(ts, tz);
-            if (dataMap.has(key)) dataMap.get(key)!.served += 1;
+            if (dataMap.has(key)) {
+              dataMap.get(key)!.served += 1;
+            }
           }
         } else if (r?.status === "no_show" && r.noShowAt) {
           const key = getDateKeyInTimezone(r.noShowAt, tz);
-          if (dataMap.has(key)) dataMap.get(key)!.noShows += 1;
+          if (dataMap.has(key)) {
+            dataMap.get(key)!.noShows += 1;
+          }
         }
       }
 
@@ -661,9 +715,13 @@ const BusinessDashboard = () => {
       startOfWeekDateKey(getDateKeyInTimezone(iso, tz));
 
     for (const c of admittedCustomers) {
-      if (!c.admittedAt) continue;
+      if (!c.admittedAt) {
+        continue;
+      }
       const key = weekKeyFrom(new Date(c.admittedAt));
-      if (!weekRows.has(key)) continue;
+      if (!weekRows.has(key)) {
+        continue;
+      }
 
       if (c.finalStatus !== "no_show") {
         weekRows.get(key)!.served += 1;
@@ -689,13 +747,17 @@ const BusinessDashboard = () => {
     for (const c of removedCustomers) {
       if (c.status === "left" && c.leftAt) {
         const key = weekKeyFrom(new Date(c.leftAt));
-        if (weekRows.has(key)) weekRows.get(key)!.noShows += 1;
+        if (weekRows.has(key)) {
+          weekRows.get(key)!.noShows += 1;
+        }
       }
     }
     for (const c of admittedCustomers) {
       if (c.finalStatus === "no_show" && c.admittedAt) {
         const key = weekKeyFrom(new Date(c.admittedAt));
-        if (weekRows.has(key)) weekRows.get(key)!.noShows += 1;
+        if (weekRows.has(key)) {
+          weekRows.get(key)!.noShows += 1;
+        }
       }
     }
     for (const r of currentLocation.reservations || []) {
@@ -703,11 +765,15 @@ const BusinessDashboard = () => {
         const ts = r.arrivedAt || r.completedAt;
         if (ts) {
           const key = weekKeyFrom(new Date(ts));
-          if (weekRows.has(key)) weekRows.get(key)!.served += 1;
+          if (weekRows.has(key)) {
+            weekRows.get(key)!.served += 1;
+          }
         }
       } else if (r?.status === "no_show" && r.noShowAt) {
         const key = weekKeyFrom(new Date(r.noShowAt));
-        if (weekRows.has(key)) weekRows.get(key)!.noShows += 1;
+        if (weekRows.has(key)) {
+          weekRows.get(key)!.noShows += 1;
+        }
       }
     }
 
@@ -717,7 +783,9 @@ const BusinessDashboard = () => {
   };
 
   const getPeakHoursData = () => {
-    if (!currentLocation) return [];
+    if (!currentLocation) {
+      return [];
+    }
 
     const admittedCustomers = currentLocation.admittedCustomers || [];
     const tz = getLocationTimezone(currentLocation);
@@ -730,7 +798,9 @@ const BusinessDashboard = () => {
     admittedCustomers.forEach((customer: any) => {
       if (customer.finalStatus !== "no_show") {
         const hour = getHourInTimezone(customer.joinedAt, tz);
-        if (Number.isNaN(hour)) return;
+        if (Number.isNaN(hour)) {
+          return;
+        }
         hourMap.set(hour, (hourMap.get(hour) || 0) + 1);
       }
     });
@@ -740,21 +810,28 @@ const BusinessDashboard = () => {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
       .sort((a, b) => a[0] - b[0])
-      .map(([hour, count]) => ({
-        hour:
-          hour === 0
-            ? "12 AM"
-            : hour < 12
-              ? `${hour} AM`
-              : hour === 12
-                ? "12 PM"
-                : `${hour - 12} PM`,
-        customers: count,
-      }));
+      .map(([hour, count]) => {
+        let hourLabel: string;
+        if (hour === 0) {
+          hourLabel = "12 AM";
+        } else if (hour < 12) {
+          hourLabel = `${hour} AM`;
+        } else if (hour === 12) {
+          hourLabel = "12 PM";
+        } else {
+          hourLabel = `${hour - 12} PM`;
+        }
+        return {
+          hour: hourLabel,
+          customers: count,
+        };
+      });
   };
 
   const getWaitTimeDistribution = () => {
-    if (!currentLocation) return [];
+    if (!currentLocation) {
+      return [];
+    }
 
     const admittedCustomers = currentLocation.admittedCustomers || [];
     const buckets = [
@@ -778,7 +855,9 @@ const BusinessDashboard = () => {
         const bucket = buckets.find(
           (b) => waitTime >= b.min && waitTime < b.max,
         );
-        if (bucket) bucket.count++;
+        if (bucket) {
+          bucket.count++;
+        }
       }
     });
 
@@ -792,6 +871,400 @@ const BusinessDashboard = () => {
   );
   const peakHoursData = getPeakHoursData();
   const waitTimeDistribution = getWaitTimeDistribution();
+
+  let locationOptions: JSX.Element | JSX.Element[];
+  if (locations.length > 0) {
+    locationOptions = locations.map((loc, idx) => (
+      <option key={idx} value={idx}>
+        {locLabel(loc, idx)}
+      </option>
+    ));
+  } else {
+    locationOptions = <option value={0}>{t("dash.noLocations")}</option>;
+  }
+
+  let reservationsLocationLabel: string;
+  if (currentLocation) {
+    reservationsLocationLabel = locLabel(currentLocation, selectedLocationIndex);
+  } else {
+    reservationsLocationLabel = "";
+  }
+
+  let reservationsEnabled: boolean;
+  if (currentLocation) {
+    reservationsEnabled = currentLocation.reservationsEnabled !== false;
+  } else {
+    reservationsEnabled = true;
+  }
+
+  let queueCountKey: "dash.queue.customerOne" | "dash.queue.customerMany";
+  if (queueData.length === 1) {
+    queueCountKey = "dash.queue.customerOne";
+  } else {
+    queueCountKey = "dash.queue.customerMany";
+  }
+
+  let queueManagingText: string;
+  if (currentLocation) {
+    queueManagingText = t("dash.queue.managingFor", {
+      label: locLabel(currentLocation, selectedLocationIndex),
+    });
+  } else {
+    queueManagingText = t("dash.queue.noLocationSelected");
+  }
+
+  let queueContent: JSX.Element;
+  if (queueData.length === 0) {
+    queueContent = (
+      <div className="flex flex-col items-center py-10 text-center text-slate-400">
+        <Users className="h-8 w-8" />
+        <p className="mt-2 text-sm">{t("dash.queue.empty")}</p>
+      </div>
+    );
+  } else {
+    queueContent = (
+      <div className="space-y-3 md:space-y-4">
+        {queueData.map((customer: any, index: number) => {
+          let guestCountKey: "dash.guestOne" | "dash.guestMany";
+          if (customer.numGuests === 1) {
+            guestCountKey = "dash.guestOne";
+          } else {
+            guestCountKey = "dash.guestMany";
+          }
+          return (
+            <div
+              key={index}
+              className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <div className="flex items-start space-x-3 md:space-x-4">
+                <span className="mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-2 py-1 text-xs md:text-sm font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
+                  #{index + 1}
+                </span>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-800 text-sm md:text-base flex items-center gap-2 flex-wrap">
+                    {customer.firstName} {customer.lastName}
+                    {customer.isReturning && <GuestStatusBadge returning />}
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
+                    <span className="whitespace-nowrap">
+                      {t("dash.queue.joined", {
+                        time: formatTimeSince(customer.joinedAt),
+                      })}
+                    </span>
+                    <span className="text-gray-400">•</span>
+                    <span className="whitespace-nowrap">
+                      {t(guestCountKey, { n: customer.numGuests })}
+                    </span>
+                  </div>
+
+                  {}
+                  {notificationContact(customer) && (
+                    <p className="text-xs md:text-sm text-gray-500 mt-1 break-all">
+                      {notificationContact(customer)}
+                    </p>
+                  )}
+                  {customer.queueToken && queueEtas[customer.queueToken] && (
+                    <p className="text-xs md:text-sm font-medium text-indigo-600 mt-1">
+                      {t("dash.queue.estimatedWait", {
+                        text: queueEtas[customer.queueToken].displayText,
+                      })}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center space-x-2 md:space-x-3">
+                <Button
+                  size="sm"
+                  variant="success"
+                  className="flex-1 md:flex-none"
+                  onClick={() => admitCustomer(index)}
+                  disabled={loading}
+                >
+                  {t("dash.admit")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructiveOutline"
+                  onClick={() => removeCustomer(index)}
+                  disabled={loading}
+                  className="flex-1 md:flex-none"
+                >
+                  {t("dash.remove")}
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  let trialBanner: JSX.Element | null = null;
+  if (me && me.trial === true) {
+    const createdAt = new Date(me.createdAt);
+    let trialDurationDays = 7;
+    if (typeof me.trialDurationDays === "number") {
+      trialDurationDays = me.trialDurationDays;
+    }
+    const trialEndDate = new Date(
+      createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
+    );
+    const now = new Date();
+    if (now > trialEndDate) {
+      trialBanner = (
+        <div className="mb-6">
+          <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
+              <div>
+                <h3 className="text-lg md:text-xl font-semibold">
+                  {t("banner.trialExpired.title")}
+                </h3>
+                <p className="text-sm md:text-base opacity-90">
+                  {t("banner.trialExpired.body")}
+                </p>
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  variant="inverseOutline"
+                  className="border-2"
+                  onClick={() => (window.location.href = "/sales")}
+                >
+                  {t("common.contactSeatPing")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    } else {
+      trialBanner = (
+        <div className="mb-6">
+          <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
+              <div>
+                <h3 className="text-lg md:text-xl font-semibold">
+                  {t("banner.trialActive.title")}
+                </h3>
+                <p className="text-sm md:text-base opacity-90">
+                  {t("banner.trialActive.body")}
+                </p>
+                {trialTimeLeft && (
+                  <div className="mt-2 flex items-center space-x-2 text-indigo-100">
+                    <span className="text-sm font-medium">
+                      {t("banner.trialActive.countdown", {
+                        days: trialTimeLeft.days,
+                        hours: trialTimeLeft.hours,
+                        minutes: trialTimeLeft.minutes,
+                      })}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  variant="inverseOutline"
+                  className="border-2"
+                  onClick={() => (window.location.href = "/sales")}
+                >
+                  {t("common.contactSeatPing")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
+
+  let dailyTimeframeVariant: "default" | "outline";
+  if (analyticsTimeframe === "daily") {
+    dailyTimeframeVariant = "default";
+  } else {
+    dailyTimeframeVariant = "outline";
+  }
+
+  let weeklyTimeframeVariant: "default" | "outline";
+  if (analyticsTimeframe === "weekly") {
+    weeklyTimeframeVariant = "default";
+  } else {
+    weeklyTimeframeVariant = "outline";
+  }
+
+  let summaryChartContent: JSX.Element;
+  if (dailyWeeklySummary.length > 0) {
+    summaryChartContent = (
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart
+          data={dailyWeeklySummary}
+          margin={{ top: 8, right: 16, left: 28, bottom: 44 }}
+        >
+          <XAxis dataKey="date" tickMargin={14} height={32} />
+
+          {}
+          <YAxis yAxisId="left" width={40} allowDecimals={false} />
+
+          {}
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            width={40}
+            tick={false}
+            axisLine={false}
+            tickLine={false}
+          />
+
+          <Tooltip contentStyle={TOOLTIP_CONTENT_STYLE} />
+          <Legend
+            verticalAlign="bottom"
+            align="center"
+            wrapperStyle={{ bottom: 4 }}
+          />
+
+          {}
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="served"
+            stroke="#3b82f6"
+            strokeWidth={2}
+            dot={false}
+            name={t("dash.legend.served")}
+          />
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="avgWait"
+            stroke="#10b981"
+            strokeWidth={2}
+            dot={false}
+            name={t("dash.legend.avgWait")}
+          />
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="noShows"
+            stroke="#f59e0b"
+            strokeWidth={2}
+            dot={false}
+            name={t("dash.legend.noShows")}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    );
+  } else {
+    summaryChartContent = (
+      <div className="flex h-full flex-col items-center justify-center text-center">
+        <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">{t("dash.noData")}</p>
+      </div>
+    );
+  }
+
+  let peakHoursXAxisInterval: "preserveStartEnd" | 0;
+  if (isMobile) {
+    peakHoursXAxisInterval = "preserveStartEnd";
+  } else {
+    peakHoursXAxisInterval = 0;
+  }
+
+  let peakHoursMinTickGap: number;
+  if (isMobile) {
+    peakHoursMinTickGap = 16;
+  } else {
+    peakHoursMinTickGap = 0;
+  }
+
+  let waitDistributionContent: JSX.Element;
+  if (waitTimeDistribution.some((b) => b.count > 0)) {
+    waitDistributionContent = (
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart
+          data={waitTimeDistribution}
+          margin={{ top: 8, right: 16, left: 28, bottom: 0 }}
+        >
+          <XAxis dataKey="range" height={40} tick={{ fontSize: 12 }} />
+
+          {}
+          <YAxis yAxisId="left" width={40} />
+
+          {}
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            width={40}
+            tick={false}
+            axisLine={false}
+            tickLine={false}
+          />
+
+          <Tooltip cursor={false} contentStyle={TOOLTIP_CONTENT_STYLE} />
+          <Bar
+            yAxisId="left"
+            dataKey="count"
+            fill="#64748b"
+            name={t("dash.waitDist.legend")}
+            radius={[8, 8, 0, 0]}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  } else {
+    waitDistributionContent = (
+      <div className="text-center py-12">
+        <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">{t("dash.waitDist.noData")}</p>
+      </div>
+    );
+  }
+
+  let peakHoursContent: JSX.Element;
+  if (peakHoursData.length > 0) {
+    peakHoursContent = (
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart
+          data={peakHoursData}
+          margin={{ top: 8, right: 16, left: 28, bottom: 0 }}
+        >
+          <XAxis
+            dataKey="hour"
+            height={40}
+            interval={peakHoursXAxisInterval}
+            minTickGap={peakHoursMinTickGap}
+            tick={{ fontSize: 12 }}
+          />
+
+          {}
+          <YAxis yAxisId="left" width={40} />
+
+          {}
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            width={40}
+            tick={false}
+            axisLine={false}
+            tickLine={false}
+          />
+
+          <Tooltip cursor={false} contentStyle={TOOLTIP_CONTENT_STYLE} />
+          <Bar
+            yAxisId="left"
+            dataKey="customers"
+            fill="#4f46e5"
+            name={t("dash.peak.legend")}
+            radius={[8, 8, 0, 0]}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  } else {
+    peakHoursContent = (
+      <div className="text-center py-12">
+        <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">{t("dash.peak.noData")}</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -807,77 +1280,7 @@ const BusinessDashboard = () => {
           {me && me.trial === true && (
             <>
               {}
-              {(() => {
-                const createdAt = new Date(me.createdAt);
-                const trialDurationDays =
-                  typeof me.trialDurationDays === "number"
-                    ? me.trialDurationDays
-                    : 7;
-                const trialEndDate = new Date(
-                  createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
-                );
-                const now = new Date();
-                return now > trialEndDate;
-              })() ? (
-                <div className="mb-6">
-                  <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
-                      <div>
-                        <h3 className="text-lg md:text-xl font-semibold">
-                          {t("banner.trialExpired.title")}
-                        </h3>
-                        <p className="text-sm md:text-base opacity-90">
-                          {t("banner.trialExpired.body")}
-                        </p>
-                      </div>
-                      <div className="flex justify-end">
-                        <Button
-                          variant="inverseOutline"
-                          className="border-2"
-                          onClick={() => (window.location.href = "/sales")}
-                        >
-                          {t("common.contactSeatPing")}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="mb-6">
-                  <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
-                      <div>
-                        <h3 className="text-lg md:text-xl font-semibold">
-                          {t("banner.trialActive.title")}
-                        </h3>
-                        <p className="text-sm md:text-base opacity-90">
-                          {t("banner.trialActive.body")}
-                        </p>
-                        {trialTimeLeft && (
-                          <div className="mt-2 flex items-center space-x-2 text-indigo-100">
-                            <span className="text-sm font-medium">
-                              {t("banner.trialActive.countdown", {
-                                days: trialTimeLeft.days,
-                                hours: trialTimeLeft.hours,
-                                minutes: trialTimeLeft.minutes,
-                              })}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex justify-end">
-                        <Button
-                          variant="inverseOutline"
-                          className="border-2"
-                          onClick={() => (window.location.href = "/sales")}
-                        >
-                          {t("common.contactSeatPing")}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {trialBanner}
             </>
           )}
 
@@ -952,15 +1355,7 @@ const BusinessDashboard = () => {
                   setSelectedLocationIndex(Number(e.target.value))
                 }
               >
-                {locations.length > 0 ? (
-                  locations.map((loc, idx) => (
-                    <option key={idx} value={idx}>
-                      {locLabel(loc, idx)}
-                    </option>
-                  ))
-                ) : (
-                  <option value={0}>{t("dash.noLocations")}</option>
-                )}
+                {locationOptions}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
             </div>
@@ -1002,15 +1397,7 @@ const BusinessDashboard = () => {
                       setSelectedLocationIndex(Number(e.target.value))
                     }
                   >
-                    {locations.length > 0 ? (
-                      locations.map((loc, idx) => (
-                        <option key={idx} value={idx}>
-                          {locLabel(loc, idx)}
-                        </option>
-                      ))
-                    ) : (
-                      <option value={0}>{t("dash.noLocations")}</option>
-                    )}
+                    {locationOptions}
                   </select>
                   <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
@@ -1177,20 +1564,11 @@ const BusinessDashboard = () => {
                     variant="secondary"
                     className="bg-indigo-100 text-indigo-700 text-[10px] sm:text-xs px-2 py-1 sm:px-3 whitespace-nowrap max-[374px]:hidden"
                   >
-                    {t(
-                      queueData.length === 1
-                        ? "dash.queue.customerOne"
-                        : "dash.queue.customerMany",
-                      { n: queueData.length },
-                    )}
+                    {t(queueCountKey, { n: queueData.length })}
                   </Badge>
                 </div>
                 <CardDescription className="text-gray-600 text-sm mb-3 mt-0.5">
-                  {currentLocation
-                    ? t("dash.queue.managingFor", {
-                        label: locLabel(currentLocation, selectedLocationIndex),
-                      })
-                    : t("dash.queue.noLocationSelected")}
+                  {queueManagingText}
                 </CardDescription>
                 <Button
                   size="sm"
@@ -1227,14 +1605,7 @@ const BusinessDashboard = () => {
                     {t("dash.queue.title")}
                   </CardTitle>
                   <CardDescription className="text-gray-600 text-sm">
-                    {currentLocation
-                      ? t("dash.queue.managingFor", {
-                          label: locLabel(
-                            currentLocation,
-                            selectedLocationIndex,
-                          ),
-                        })
-                      : t("dash.queue.noLocationSelected")}
+                    {queueManagingText}
                   </CardDescription>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -1268,98 +1639,13 @@ const BusinessDashboard = () => {
                     variant="secondary"
                     className="bg-indigo-100 text-indigo-700"
                   >
-                    {t(
-                      queueData.length === 1
-                        ? "dash.queue.customerOne"
-                        : "dash.queue.customerMany",
-                      { n: queueData.length },
-                    )}
+                    {t(queueCountKey, { n: queueData.length })}
                   </Badge>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-4 md:p-6">
-              {queueData.length === 0 ? (
-                <div className="flex flex-col items-center py-10 text-center text-slate-400">
-                  <Users className="h-8 w-8" />
-                  <p className="mt-2 text-sm">{t("dash.queue.empty")}</p>
-                </div>
-              ) : (
-                <div className="space-y-3 md:space-y-4">
-                  {queueData.map((customer: any, index: number) => (
-                    <div
-                      key={index}
-                      className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex items-start space-x-3 md:space-x-4">
-                        <span className="mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-2 py-1 text-xs md:text-sm font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
-                          #{index + 1}
-                        </span>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-800 text-sm md:text-base flex items-center gap-2 flex-wrap">
-                            {customer.firstName} {customer.lastName}
-                            {customer.isReturning && (
-                              <GuestStatusBadge returning />
-                            )}
-                          </h3>
-                          <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
-                            <span className="whitespace-nowrap">
-                              {t("dash.queue.joined", {
-                                time: formatTimeSince(customer.joinedAt),
-                              })}
-                            </span>
-                            <span className="text-gray-400">•</span>
-                            <span className="whitespace-nowrap">
-                              {t(
-                                customer.numGuests === 1
-                                  ? "dash.guestOne"
-                                  : "dash.guestMany",
-                                { n: customer.numGuests },
-                              )}
-                            </span>
-                          </div>
-
-                          {}
-                          {notificationContact(customer) && (
-                            <p className="text-xs md:text-sm text-gray-500 mt-1 break-all">
-                              {notificationContact(customer)}
-                            </p>
-                          )}
-                          {customer.queueToken &&
-                            queueEtas[customer.queueToken] && (
-                              <p className="text-xs md:text-sm font-medium text-indigo-600 mt-1">
-                                {t("dash.queue.estimatedWait", {
-                                  text: queueEtas[customer.queueToken]
-                                    .displayText,
-                                })}
-                              </p>
-                            )}
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2 md:space-x-3">
-                        <Button
-                          size="sm"
-                          variant="success"
-                          className="flex-1 md:flex-none"
-                          onClick={() => admitCustomer(index)}
-                          disabled={loading}
-                        >
-                          {t("dash.admit")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructiveOutline"
-                          onClick={() => removeCustomer(index)}
-                          disabled={loading}
-                          className="flex-1 md:flex-none"
-                        >
-                          {t("dash.remove")}
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {queueContent}
             </CardContent>
           </Card>
 
@@ -1389,6 +1675,24 @@ const BusinessDashboard = () => {
                             customer.admittedAt,
                           );
                           const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
+                          let countdownLabel: string;
+                          if (timeRemaining.expired) {
+                            countdownLabel = "!";
+                          } else {
+                            countdownLabel = `${
+                              timeRemaining.minutes
+                            }:${timeRemaining.seconds
+                              .toString()
+                              .padStart(2, "0")}`;
+                          }
+                          let guestCountKey:
+                            | "dash.guestOne"
+                            | "dash.guestMany";
+                          if (customer.numGuests === 1) {
+                            guestCountKey = "dash.guestOne";
+                          } else {
+                            guestCountKey = "dash.guestMany";
+                          }
 
                           return (
                             <div
@@ -1399,13 +1703,7 @@ const BusinessDashboard = () => {
                                 <div className="flex-shrink-0">
                                   <div className="w-8 h-8 md:w-10 md:h-10 bg-amber-600 rounded-full flex items-center justify-center">
                                     <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-white leading-none tabular-nums">
-                                      {timeRemaining.expired
-                                        ? "!"
-                                        : `${
-                                            timeRemaining.minutes
-                                          }:${timeRemaining.seconds
-                                            .toString()
-                                            .padStart(2, "0")}`}
+                                      {countdownLabel}
                                     </span>
                                   </div>
                                 </div>
@@ -1426,12 +1724,9 @@ const BusinessDashboard = () => {
                                     </span>
                                     <span className="text-gray-400">•</span>
                                     <span className="whitespace-nowrap">
-                                      {t(
-                                        customer.numGuests === 1
-                                          ? "dash.guestOne"
-                                          : "dash.guestMany",
-                                        { n: customer.numGuests },
-                                      )}
+                                      {t(guestCountKey, {
+                                        n: customer.numGuests,
+                                      })}
                                     </span>
 
                                     {timeRemaining.expired && (
@@ -1482,16 +1777,8 @@ const BusinessDashboard = () => {
             businessUsername={me?.username || ""}
             locationId={currentLocation?.id || ""}
             timeZone={getLocationTimezone(currentLocation)}
-            locationLabel={
-              currentLocation
-                ? locLabel(currentLocation, selectedLocationIndex)
-                : ""
-            }
-            reservationsEnabled={
-              currentLocation
-                ? currentLocation.reservationsEnabled !== false
-                : true
-            }
+            locationLabel={reservationsLocationLabel}
+            reservationsEnabled={reservationsEnabled}
             onUpdated={(user) => setMe(user)}
           />
 
@@ -1513,6 +1800,84 @@ const BusinessDashboard = () => {
               })
               .slice(-5);
 
+            let recentlyLeftContent: JSX.Element;
+            if (recentlyLeftCustomers.length === 0) {
+              recentlyLeftContent = (
+                <div className="flex flex-col items-center py-10 text-center text-slate-400">
+                  <Users className="h-8 w-8" />
+                  <p className="mt-2 text-sm">{t("dash.left.empty")}</p>
+                </div>
+              );
+            } else {
+              recentlyLeftContent = (
+                <div className="space-y-3 md:space-y-4">
+                  {recentlyLeftCustomers.map((customer: any, index: number) => {
+                    let leftStatus: string;
+                    let leftStatusLabel: string;
+                    let leftTimeLabel: string;
+                    if (customer.status === "left") {
+                      leftStatus = "left";
+                      leftStatusLabel = t("dash.left.leftQueue");
+                      leftTimeLabel = t("dash.left.left");
+                    } else {
+                      leftStatus = "removed";
+                      leftStatusLabel = t("dash.left.removedByBusiness");
+                      leftTimeLabel = t("dash.left.removed");
+                    }
+                    let guestCountKey: "dash.guestOne" | "dash.guestMany";
+                    if (customer.numGuests === 1) {
+                      guestCountKey = "dash.guestOne";
+                    } else {
+                      guestCountKey = "dash.guestMany";
+                    }
+                    const statusBadge = (
+                      <StatusBadge status={leftStatus} label={leftStatusLabel} />
+                    );
+                    return (
+                      <div
+                        key={index}
+                        className="flex flex-col space-y-1.5 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-start md:items-center">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-800 text-sm md:text-base">
+                              {customer.firstName} {customer.lastName}
+                            </h3>
+                            <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
+                              <span className="whitespace-nowrap">
+                                {leftTimeLabel}
+                                :{" "}
+                                {formatTimeSince(
+                                  customer.leftAt || customer.removedAt,
+                                )}
+                              </span>
+                              <span className="text-gray-400">•</span>
+                              <span className="whitespace-nowrap">
+                                {t(guestCountKey, {
+                                  n: customer.numGuests,
+                                })}
+                              </span>
+                            </div>
+
+                            {}
+                            {notificationContact(customer) && (
+                              <p className="text-xs md:text-sm text-gray-500 mt-1 break-all">
+                                {notificationContact(customer)}
+                              </p>
+                            )}
+                            {}
+                            <div className="mt-1.5 md:hidden">{statusBadge}</div>
+                          </div>
+                        </div>
+                        {}
+                        <div className="hidden md:block">{statusBadge}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            }
+
             return (
               <Card className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
@@ -1525,80 +1890,7 @@ const BusinessDashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 md:p-6">
-                  {recentlyLeftCustomers.length === 0 ? (
-                    <div className="flex flex-col items-center py-10 text-center text-slate-400">
-                      <Users className="h-8 w-8" />
-                      <p className="mt-2 text-sm">{t("dash.left.empty")}</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3 md:space-y-4">
-                      {recentlyLeftCustomers.map(
-                        (customer: any, index: number) => {
-                          const statusBadge = (
-                            <StatusBadge
-                              status={
-                                customer.status === "left" ? "left" : "removed"
-                              }
-                              label={
-                                customer.status === "left"
-                                  ? t("dash.left.leftQueue")
-                                  : t("dash.left.removedByBusiness")
-                              }
-                            />
-                          );
-                          return (
-                            <div
-                              key={index}
-                              className="flex flex-col space-y-1.5 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg"
-                            >
-                              <div className="flex items-start md:items-center">
-                                <div className="flex-1">
-                                  <h3 className="font-semibold text-gray-800 text-sm md:text-base">
-                                    {customer.firstName} {customer.lastName}
-                                  </h3>
-                                  <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
-                                    <span className="whitespace-nowrap">
-                                      {customer.status === "left"
-                                        ? t("dash.left.left")
-                                        : t("dash.left.removed")}
-                                      :{" "}
-                                      {formatTimeSince(
-                                        customer.leftAt || customer.removedAt,
-                                      )}
-                                    </span>
-                                    <span className="text-gray-400">•</span>
-                                    <span className="whitespace-nowrap">
-                                      {t(
-                                        customer.numGuests === 1
-                                          ? "dash.guestOne"
-                                          : "dash.guestMany",
-                                        { n: customer.numGuests },
-                                      )}
-                                    </span>
-                                  </div>
-
-                                  {}
-                                  {notificationContact(customer) && (
-                                    <p className="text-xs md:text-sm text-gray-500 mt-1 break-all">
-                                      {notificationContact(customer)}
-                                    </p>
-                                  )}
-                                  {}
-                                  <div className="mt-1.5 md:hidden">
-                                    {statusBadge}
-                                  </div>
-                                </div>
-                              </div>
-                              {}
-                              <div className="hidden md:block">
-                                {statusBadge}
-                              </div>
-                            </div>
-                          );
-                        },
-                      )}
-                    </div>
-                  )}
+                  {recentlyLeftContent}
                 </CardContent>
               </Card>
             );
@@ -1622,18 +1914,14 @@ const BusinessDashboard = () => {
                   <div className="flex space-x-2">
                     <Button
                       size="sm"
-                      variant={
-                        analyticsTimeframe === "daily" ? "default" : "outline"
-                      }
+                      variant={dailyTimeframeVariant}
                       onClick={() => changeAnalyticsTimeframe("daily")}
                     >
                       {t("dash.daily")}
                     </Button>
                     <Button
                       size="sm"
-                      variant={
-                        analyticsTimeframe === "weekly" ? "default" : "outline"
-                      }
+                      variant={weeklyTimeframeVariant}
                       onClick={() => changeAnalyticsTimeframe("weekly")}
                     >
                       {t("dash.weekly")}
@@ -1644,74 +1932,7 @@ const BusinessDashboard = () => {
               <CardContent className="p-4 md:p-6">
                 {}
                 <div className="h-[300px] w-full">
-                  {dailyWeeklySummary.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={dailyWeeklySummary}
-                        margin={{ top: 8, right: 16, left: 28, bottom: 44 }}
-                      >
-                        <XAxis dataKey="date" tickMargin={14} height={32} />
-
-                        {}
-                        <YAxis
-                          yAxisId="left"
-                          width={40}
-                          allowDecimals={false}
-                        />
-
-                        {}
-                        <YAxis
-                          yAxisId="right"
-                          orientation="right"
-                          width={40}
-                          tick={false}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-
-                        <Tooltip contentStyle={TOOLTIP_CONTENT_STYLE} />
-                        <Legend
-                          verticalAlign="bottom"
-                          align="center"
-                          wrapperStyle={{ bottom: 4 }}
-                        />
-
-                        {}
-                        <Line
-                          yAxisId="left"
-                          type="monotone"
-                          dataKey="served"
-                          stroke="#3b82f6"
-                          strokeWidth={2}
-                          dot={false}
-                          name={t("dash.legend.served")}
-                        />
-                        <Line
-                          yAxisId="left"
-                          type="monotone"
-                          dataKey="avgWait"
-                          stroke="#10b981"
-                          strokeWidth={2}
-                          dot={false}
-                          name={t("dash.legend.avgWait")}
-                        />
-                        <Line
-                          yAxisId="left"
-                          type="monotone"
-                          dataKey="noShows"
-                          stroke="#f59e0b"
-                          strokeWidth={2}
-                          dot={false}
-                          name={t("dash.legend.noShows")}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center text-center">
-                      <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500">{t("dash.noData")}</p>
-                    </div>
-                  )}
+                  {summaryChartContent}
                 </div>
               </CardContent>
             </Card>
@@ -1730,52 +1951,7 @@ const BusinessDashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 md:p-6">
-                  {peakHoursData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart
-                        data={peakHoursData}
-                        margin={{ top: 8, right: 16, left: 28, bottom: 0 }}
-                      >
-                        <XAxis
-                          dataKey="hour"
-                          height={40}
-                          interval={isMobile ? "preserveStartEnd" : 0}
-                          minTickGap={isMobile ? 16 : 0}
-                          tick={{ fontSize: 12 }}
-                        />
-
-                        {}
-                        <YAxis yAxisId="left" width={40} />
-
-                        {}
-                        <YAxis
-                          yAxisId="right"
-                          orientation="right"
-                          width={40}
-                          tick={false}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-
-                        <Tooltip
-                          cursor={false}
-                          contentStyle={TOOLTIP_CONTENT_STYLE}
-                        />
-                        <Bar
-                          yAxisId="left"
-                          dataKey="customers"
-                          fill="#4f46e5"
-                          name={t("dash.peak.legend")}
-                          radius={[8, 8, 0, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="text-center py-12">
-                      <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500">{t("dash.peak.noData")}</p>
-                    </div>
-                  )}
+                  {peakHoursContent}
                 </CardContent>
               </Card>
 
@@ -1791,52 +1967,7 @@ const BusinessDashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 md:p-6">
-                  {waitTimeDistribution.some((b) => b.count > 0) ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart
-                        data={waitTimeDistribution}
-                        margin={{ top: 8, right: 16, left: 28, bottom: 0 }}
-                      >
-                        <XAxis
-                          dataKey="range"
-                          height={40}
-                          tick={{ fontSize: 12 }}
-                        />
-
-                        {}
-                        <YAxis yAxisId="left" width={40} />
-
-                        {}
-                        <YAxis
-                          yAxisId="right"
-                          orientation="right"
-                          width={40}
-                          tick={false}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-
-                        <Tooltip
-                          cursor={false}
-                          contentStyle={TOOLTIP_CONTENT_STYLE}
-                        />
-                        <Bar
-                          yAxisId="left"
-                          dataKey="count"
-                          fill="#64748b"
-                          name={t("dash.waitDist.legend")}
-                          radius={[8, 8, 0, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="text-center py-12">
-                      <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500">
-                        {t("dash.waitDist.noData")}
-                      </p>
-                    </div>
-                  )}
+                  {waitDistributionContent}
                 </CardContent>
               </Card>
             </div>

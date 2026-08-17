@@ -24,8 +24,15 @@ const ForgotPassword = () => {
 
   const [searchParams] = useSearchParams();
   const isBusiness = searchParams.get("type") === "business";
-  const headerVariant = isBusiness ? "business" : "customer";
-  const loginPath = isBusiness ? "/business/login" : "/login";
+  let headerVariant: "business" | "customer";
+  let loginPath: string;
+  if (isBusiness) {
+    headerVariant = "business";
+    loginPath = "/business/login";
+  } else {
+    headerVariant = "customer";
+    loginPath = "/login";
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,11 +48,17 @@ const ForgotPassword = () => {
 
     try {
       setLoading(true);
+      let accountType: string;
+      if (isBusiness) {
+        accountType = "business";
+      } else {
+        accountType = "customer";
+      }
       await api("/auth/forgot-password", {
         method: "POST",
         body: JSON.stringify({
           email: email.trim(),
-          type: isBusiness ? "business" : "customer",
+          type: accountType,
         }),
       });
 
@@ -122,6 +135,13 @@ const ForgotPassword = () => {
     );
   }
 
+  let submitLabel: string;
+  if (loading) {
+    submitLabel = "Sending...";
+  } else {
+    submitLabel = "Send Reset Link";
+  }
+
   return (
     <>
       <Header variant={headerVariant} />
@@ -160,7 +180,7 @@ const ForgotPassword = () => {
                   className="h-11 w-full text-base"
                   disabled={loading}
                 >
-                  {loading ? "Sending..." : "Send Reset Link"}
+                  {submitLabel}
                 </Button>
               </form>
 

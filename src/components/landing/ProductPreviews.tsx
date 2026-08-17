@@ -210,6 +210,12 @@ export function QueueCardPreview({
   className?: string;
   rows?: typeof QUEUE;
 }) {
+  let customerNoun: string;
+  if (rows.length === 1) {
+    customerNoun = "customer";
+  } else {
+    customerNoun = "customers";
+  }
   return (
     <Preview className={className}>
       <Card className="bg-white rounded-xl shadow-sm border-0">
@@ -225,7 +231,7 @@ export function QueueCardPreview({
                 variant="secondary"
                 className="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-1 whitespace-nowrap max-[374px]:hidden"
               >
-                {rows.length} {rows.length === 1 ? "customer" : "customers"}
+                {rows.length} {customerNoun}
               </Badge>
             </div>
             <CardDescription className="text-gray-600 text-sm mb-3 mt-0.5">
@@ -254,52 +260,60 @@ export function QueueCardPreview({
                 Refresh
               </span>
               <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
-                {rows.length} {rows.length === 1 ? "customer" : "customers"}
+                {rows.length} {customerNoun}
               </Badge>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-4 md:p-6">
           <div className="space-y-3 md:space-y-4">
-            {rows.map((c, index) => (
-              <div
-                key={c.name}
-                className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg"
-              >
-                <div className="flex items-start space-x-3 md:space-x-4">
-                  <span className="mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-2 py-1 text-xs md:text-sm font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
-                    #{index + 1}
-                  </span>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800 text-sm md:text-base">
-                      {c.name}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
-                      <span className="whitespace-nowrap">
-                        Joined: {c.joined}
-                      </span>
-                      <span className="text-gray-400">•</span>
-                      <span className="whitespace-nowrap">
-                        {c.guests} {c.guests === 1 ? "Guest" : "Guests"}
-                      </span>
-                      <span className="text-gray-400">•</span>
-                      <span className="whitespace-nowrap">{c.method}</span>
+            {rows.map((c, index) => {
+              let guestNoun: string;
+              if (c.guests === 1) {
+                guestNoun = "Guest";
+              } else {
+                guestNoun = "Guests";
+              }
+              return (
+                <div
+                  key={c.name}
+                  className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex items-start space-x-3 md:space-x-4">
+                    <span className="mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-2 py-1 text-xs md:text-sm font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
+                      #{index + 1}
+                    </span>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-800 text-sm md:text-base">
+                        {c.name}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
+                        <span className="whitespace-nowrap">
+                          Joined: {c.joined}
+                        </span>
+                        <span className="text-gray-400">•</span>
+                        <span className="whitespace-nowrap">
+                          {c.guests} {guestNoun}
+                        </span>
+                        <span className="text-gray-400">•</span>
+                        <span className="whitespace-nowrap">{c.method}</span>
+                      </div>
+                      <p className="text-xs md:text-sm font-medium text-indigo-600 mt-1">
+                        Estimated Wait: {c.wait}
+                      </p>
                     </div>
-                    <p className="text-xs md:text-sm font-medium text-indigo-600 mt-1">
-                      Estimated Wait: {c.wait}
-                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2 md:space-x-3">
+                    <Pill variant="green" className="flex-1 md:flex-none">
+                      Admit
+                    </Pill>
+                    <Pill variant="outline" className="flex-1 md:flex-none">
+                      Remove
+                    </Pill>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2 md:space-x-3">
-                  <Pill variant="green" className="flex-1 md:flex-none">
-                    Admit
-                  </Pill>
-                  <Pill variant="outline" className="flex-1 md:flex-none">
-                    Remove
-                  </Pill>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -358,7 +372,12 @@ export function ReservationsCardPreview({
   className?: string;
   limit?: number;
 }) {
-  const rows = limit ? RESERVATIONS.slice(0, limit) : RESERVATIONS;
+  let rows: typeof RESERVATIONS;
+  if (limit) {
+    rows = RESERVATIONS.slice(0, limit);
+  } else {
+    rows = RESERVATIONS;
+  }
   const tabs = [
     { label: "Today", count: 3, active: true },
     { label: "Upcoming", count: 8, active: false },
@@ -376,42 +395,57 @@ export function ReservationsCardPreview({
             Bookings for: Downtown
           </CardDescription>
           <div className="!mt-4 flex flex-wrap gap-2">
-            {tabs.map((t) => (
-              <span
-                key={t.label}
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-medium",
-                  t.active
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100 text-slate-600",
-                )}
-              >
-                {t.label}
-                {t.count > 0 && (
-                  <span
-                    className={cn(
-                      "ml-1.5 rounded-full px-1.5 text-[10px]",
-                      t.active
-                        ? "bg-white/20 text-white"
-                        : "bg-white text-slate-500",
-                    )}
-                  >
-                    {t.count}
-                  </span>
-                )}
-              </span>
-            ))}
+            {tabs.map((t) => {
+              let tabClass: string;
+              let tabCountClass: string;
+              if (t.active) {
+                tabClass = "bg-slate-900 text-white";
+                tabCountClass = "bg-white/20 text-white";
+              } else {
+                tabClass = "bg-slate-100 text-slate-600";
+                tabCountClass = "bg-white text-slate-500";
+              }
+              return (
+                <span
+                  key={t.label}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-xs font-medium",
+                    tabClass,
+                  )}
+                >
+                  {t.label}
+                  {t.count > 0 && (
+                    <span
+                      className={cn(
+                        "ml-1.5 rounded-full px-1.5 text-[10px]",
+                        tabCountClass,
+                      )}
+                    >
+                      {t.count}
+                    </span>
+                  )}
+                </span>
+              );
+            })}
           </div>
         </CardHeader>
         <CardContent className="p-4 md:p-6">
           <div className="space-y-3">
             {rows.map((r) => {
-              const ContactIcon =
-                r.contact === "email"
-                  ? Mail
-                  : r.contact === "whatsapp"
-                    ? MessageSquare
-                    : Phone;
+              let ContactIcon: typeof Mail;
+              if (r.contact === "email") {
+                ContactIcon = Mail;
+              } else if (r.contact === "whatsapp") {
+                ContactIcon = MessageSquare;
+              } else {
+                ContactIcon = Phone;
+              }
+              let contactLabel: string;
+              if (r.contact === "sms") {
+                contactLabel = "SMS";
+              } else {
+                contactLabel = r.contact;
+              }
               return (
                 <div
                   key={r.name}
@@ -437,9 +471,7 @@ export function ReservationsCardPreview({
                     </div>
                     <span className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-slate-500">
                       <ContactIcon className="h-3.5 w-3.5" />
-                      <span className="capitalize">
-                        {r.contact === "sms" ? "SMS" : r.contact}
-                      </span>
+                      <span className="capitalize">{contactLabel}</span>
                     </span>
                   </div>
                   {r.status === "confirmed" && (
@@ -595,31 +627,38 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
             Bookings for: Marina Bay
           </CardDescription>
           <div className="!mt-4 flex flex-wrap gap-2">
-            {tabs.map((t) => (
-              <span
-                key={t.label}
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-medium",
-                  t.active
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100 text-slate-600",
-                )}
-              >
-                {t.label}
-                {t.count > 0 && (
-                  <span
-                    className={cn(
-                      "ml-1.5 rounded-full px-1.5 text-[10px]",
-                      t.active
-                        ? "bg-white/20 text-white"
-                        : "bg-white text-slate-500",
-                    )}
-                  >
-                    {t.count}
-                  </span>
-                )}
-              </span>
-            ))}
+            {tabs.map((t) => {
+              let tabClass: string;
+              let tabCountClass: string;
+              if (t.active) {
+                tabClass = "bg-slate-900 text-white";
+                tabCountClass = "bg-white/20 text-white";
+              } else {
+                tabClass = "bg-slate-100 text-slate-600";
+                tabCountClass = "bg-white text-slate-500";
+              }
+              return (
+                <span
+                  key={t.label}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-xs font-medium",
+                    tabClass,
+                  )}
+                >
+                  {t.label}
+                  {t.count > 0 && (
+                    <span
+                      className={cn(
+                        "ml-1.5 rounded-full px-1.5 text-[10px]",
+                        tabCountClass,
+                      )}
+                    >
+                      {t.count}
+                    </span>
+                  )}
+                </span>
+              );
+            })}
           </div>
         </CardHeader>
         <CardContent className="p-4">
@@ -809,31 +848,38 @@ function HeroDashboardWindow() {
               Bookings for: Downtown
             </CardDescription>
             <div className="!mt-4 flex gap-2">
-              {HERO_RES_TABS.map((t) => (
-                <span
-                  key={t.label}
-                  className={cn(
-                    "rounded-full px-3 py-1.5 text-xs font-medium",
-                    t.active
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-100 text-slate-600",
-                  )}
-                >
-                  {t.label}
-                  {t.count > 0 && (
-                    <span
-                      className={cn(
-                        "ml-1.5 rounded-full px-1.5 text-[10px]",
-                        t.active
-                          ? "bg-white/20 text-white"
-                          : "bg-white text-slate-500",
-                      )}
-                    >
-                      {t.count}
-                    </span>
-                  )}
-                </span>
-              ))}
+              {HERO_RES_TABS.map((t) => {
+                let tabClass: string;
+                let tabCountClass: string;
+                if (t.active) {
+                  tabClass = "bg-slate-900 text-white";
+                  tabCountClass = "bg-white/20 text-white";
+                } else {
+                  tabClass = "bg-slate-100 text-slate-600";
+                  tabCountClass = "bg-white text-slate-500";
+                }
+                return (
+                  <span
+                    key={t.label}
+                    className={cn(
+                      "rounded-full px-3 py-1.5 text-xs font-medium",
+                      tabClass,
+                    )}
+                  >
+                    {t.label}
+                    {t.count > 0 && (
+                      <span
+                        className={cn(
+                          "ml-1.5 rounded-full px-1.5 text-[10px]",
+                          tabCountClass,
+                        )}
+                      >
+                        {t.count}
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
             </div>
           </CardHeader>
           <CardContent className="p-6">
@@ -881,10 +927,17 @@ export function HeroDashboardPreview({ className }: { className?: string }) {
   useLayoutEffect(() => {
     const wrap = wrapRef.current;
     const inner = innerRef.current;
-    if (!wrap || !inner) return;
+    if (!wrap || !inner) {
+      return;
+    }
     const measure = () => {
       const w = wrap.clientWidth;
-      const dw = w < 640 ? 860 : 1120;
+      let dw: number;
+      if (w < 640) {
+        dw = 860;
+      } else {
+        dw = 1120;
+      }
       const s = Math.min(1, w / dw);
       setDesignWidth(dw);
       setScale(s);
@@ -1333,6 +1386,15 @@ function HoursRow({
   close?: string;
   closed?: boolean;
 }) {
+  let openLabel: string;
+  let closeLabel: string;
+  if (closed) {
+    openLabel = "Closed";
+    closeLabel = "Closed";
+  } else {
+    openLabel = `From ${open}`;
+    closeLabel = `To ${close}`;
+  }
   return (
     <div className="grid grid-cols-[5rem_1fr_auto] items-center gap-x-3 py-1.5">
       <span className="font-medium capitalize text-slate-800 text-sm">
@@ -1340,10 +1402,10 @@ function HoursRow({
       </span>
       <div className={cn("flex items-center gap-2", closed && "opacity-50")}>
         <span className="flex-1 truncate rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600">
-          {closed ? "Closed" : `From ${open}`}
+          {openLabel}
         </span>
         <span className="flex-1 truncate rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600">
-          {closed ? "Closed" : `To ${close}`}
+          {closeLabel}
         </span>
       </div>
       <Switch on={!closed} />
@@ -1352,11 +1414,17 @@ function HoursRow({
 }
 
 function Switch({ on }: { on: boolean }) {
+  let stateClass: string;
+  if (on) {
+    stateClass = "justify-end bg-primary";
+  } else {
+    stateClass = "justify-start bg-slate-200";
+  }
   return (
     <span
       className={cn(
         "flex h-5 w-9 items-center rounded-full p-0.5 transition-colors",
-        on ? "justify-end bg-primary" : "justify-start bg-slate-200",
+        stateClass,
       )}
     >
       <span className="h-4 w-4 rounded-full bg-white shadow-sm" />

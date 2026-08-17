@@ -94,6 +94,20 @@ interface CustomerRecord {
   locations: CustomerLocation[];
 }
 
+type CustomerLocationDraft = Omit<CustomerLocation, "credits"> & {
+  credits: number | "";
+};
+
+type CustomerDraft = Omit<
+  CustomerRecord,
+  "trialDurationDays" | "maxLocations" | "baseCredits" | "locations"
+> & {
+  trialDurationDays: number | "";
+  maxLocations: number | "";
+  baseCredits: number | "";
+  locations: CustomerLocationDraft[];
+};
+
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
@@ -105,7 +119,7 @@ const Admin = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [customerError, setCustomerError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editDraft, setEditDraft] = useState<CustomerRecord | null>(null);
+  const [editDraft, setEditDraft] = useState<CustomerDraft | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
@@ -137,7 +151,9 @@ const Admin = () => {
     fetch("/auth/admin/session", { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
-        if (active && d?.authenticated) setIsAuthenticated(true);
+        if (active && d?.authenticated) {
+          setIsAuthenticated(true);
+        }
       })
       .catch(() => {});
     return () => {
@@ -244,7 +260,9 @@ const Admin = () => {
   };
 
   const startEditing = () => {
-    if (!selectedCustomer) return;
+    if (!selectedCustomer) {
+      return;
+    }
     setEditDraft({
       ...selectedCustomer,
       locations: selectedCustomer.locations.map((l) => ({ ...l })),
@@ -261,14 +279,24 @@ const Admin = () => {
     key: "trialDurationDays" | "maxLocations" | "baseCredits",
     raw: string,
   ) => {
-    if (!editDraft) return;
-    const parsed = raw === "" ? 0 : parseInt(raw, 10);
-    if (Number.isNaN(parsed) || parsed < 0) return;
+    if (!editDraft) {
+      return;
+    }
+    if (raw === "") {
+      setEditDraft({ ...editDraft, [key]: "" });
+      return;
+    }
+    const parsed = parseInt(raw, 10);
+    if (Number.isNaN(parsed) || parsed < 0) {
+      return;
+    }
     setEditDraft({ ...editDraft, [key]: parsed });
   };
 
   const updateDraftBoolean = (key: "trial", value: boolean) => {
-    if (!editDraft) return;
+    if (!editDraft) {
+      return;
+    }
     setEditDraft({ ...editDraft, [key]: value });
   };
 
@@ -276,30 +304,66 @@ const Admin = () => {
     key: "name" | "username" | "email" | "phone",
     value: string,
   ) => {
-    if (!editDraft) return;
+    if (!editDraft) {
+      return;
+    }
     setEditDraft({ ...editDraft, [key]: value });
   };
 
   const updateDraftLocation = (index: number, key: "credits", raw: string) => {
-    if (!editDraft) return;
-    const parsed = raw === "" ? 0 : parseInt(raw, 10);
-    if (Number.isNaN(parsed) || parsed < 0) return;
-    const next = editDraft.locations.map((loc, i) =>
-      i === index ? { ...loc, [key]: parsed } : loc,
-    );
+    if (!editDraft) {
+      return;
+    }
+    let parsed: number | "" = "";
+    if (raw !== "") {
+      parsed = parseInt(raw, 10);
+      if (Number.isNaN(parsed) || parsed < 0) {
+        return;
+      }
+    }
+    const next = editDraft.locations.map((loc, i) => {
+      if (i === index) {
+        return { ...loc, [key]: parsed };
+      }
+      return loc;
+    });
     setEditDraft({ ...editDraft, locations: next });
   };
 
   const updateDraftLocationAddress = (index: number, value: string) => {
-    if (!editDraft) return;
-    const next = editDraft.locations.map((loc, i) =>
-      i === index ? { ...loc, address: value } : loc,
-    );
+    if (!editDraft) {
+      return;
+    }
+    const next = editDraft.locations.map((loc, i) => {
+      if (i === index) {
+        return { ...loc, address: value };
+      }
+      return loc;
+    });
     setEditDraft({ ...editDraft, locations: next });
   };
 
   const handleSaveCustomer = async () => {
-    if (!editDraft || !selectedCustomer) return;
+    if (!editDraft || !selectedCustomer) {
+      return;
+    }
+
+    const { trialDurationDays, maxLocations, baseCredits } = editDraft;
+    if (
+      trialDurationDays === "" ||
+      maxLocations === "" ||
+      baseCredits === "" ||
+      editDraft.locations.some((l) => l.credits === "")
+    ) {
+      setIsConfirmOpen(false);
+      toast({
+        title: "Error",
+        description:
+          "Trial duration, max locations, base credits, and location credits cannot be blank",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -314,12 +378,12 @@ const Admin = () => {
             email: editDraft.email,
             phone: editDraft.phone,
             trial: editDraft.trial,
-            trialDurationDays: editDraft.trialDurationDays,
-            maxLocations: editDraft.maxLocations,
-            baseCredits: editDraft.baseCredits,
+            trialDurationDays,
+            maxLocations,
+            baseCredits,
             locations: editDraft.locations.map((l) => ({
               address: l.address,
-              credits: l.credits,
+              credits: Number(l.credits),
             })),
           }),
         },
@@ -356,12 +420,21 @@ const Admin = () => {
     }
   };
 
-  const formatBoolean = (value: boolean) => (value ? "Yes" : "No");
+  const formatBoolean = (value: boolean) => {
+    if (value) {
+      return "Yes";
+    }
+    return "No";
+  };
 
   const formatDate = (value: string | null) => {
-    if (!value) return "Not started";
+    if (!value) {
+      return "Not started";
+    }
     const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "Not started";
+    if (Number.isNaN(d.getTime())) {
+      return "Not started";
+    }
     return d.toLocaleDateString(undefined, {
       year: "numeric",
       month: "short",
@@ -384,9 +457,15 @@ const Admin = () => {
   const fetchTickets = async () => {
     try {
       const params = new URLSearchParams();
-      if (filter.status !== "all") params.append("status", filter.status);
-      if (filter.type !== "all") params.append("type", filter.type);
-      if (filter.priority !== "all") params.append("priority", filter.priority);
+      if (filter.status !== "all") {
+        params.append("status", filter.status);
+      }
+      if (filter.type !== "all") {
+        params.append("type", filter.type);
+      }
+      if (filter.priority !== "all") {
+        params.append("priority", filter.priority);
+      }
 
       const response = await fetch(`/tickets?${params.toString()}`);
       if (response.ok) {
@@ -544,7 +623,9 @@ const Admin = () => {
   };
 
   const getPriorityBadge = (priority?: string) => {
-    if (!priority) return null;
+    if (!priority) {
+      return null;
+    }
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
       high: "destructive",
       medium: "default",
@@ -598,6 +679,298 @@ const Admin = () => {
         </Card>
       </div>
     );
+  }
+
+  let searchCustomerLabel: string;
+  if (isSearching) {
+    searchCustomerLabel = "Searching...";
+  } else {
+    searchCustomerLabel = "Search Customer";
+  }
+
+  let saveChangesLabel: string;
+  if (isSaving) {
+    saveChangesLabel = "Saving...";
+  } else {
+    saveChangesLabel = "Save Changes";
+  }
+
+  let confirmButtonLabel: string;
+  if (isSaving) {
+    confirmButtonLabel = "Saving...";
+  } else {
+    confirmButtonLabel = "Confirm";
+  }
+
+  let sendResponseLabel: string;
+  if (isLoading) {
+    sendResponseLabel = "Sending...";
+  } else {
+    sendResponseLabel = "Send Response";
+  }
+
+  let customerEditActions: React.ReactNode;
+  if (!isEditing) {
+    customerEditActions = <Button onClick={startEditing}>Edit Customer</Button>;
+  } else {
+    customerEditActions = (
+      <>
+        <Button variant="outline" onClick={cancelEditing} disabled={isSaving}>
+          Cancel
+        </Button>
+        <Button onClick={() => setIsConfirmOpen(true)} disabled={isSaving}>
+          {saveChangesLabel}
+        </Button>
+      </>
+    );
+  }
+
+  let trialChangeMessage = "";
+  if (editDraft) {
+    if (editDraft.trial) {
+      trialChangeMessage = "Trial ON — credits cycle will be cleared";
+    } else {
+      trialChangeMessage =
+        "Trial OFF — credits cycle starts now, refills next month";
+    }
+  }
+
+  let nameField: React.ReactNode = null;
+  let usernameField: React.ReactNode = null;
+  let emailField: React.ReactNode = null;
+  let phoneField: React.ReactNode = null;
+  let trialField: React.ReactNode = null;
+  let trialDurationField: React.ReactNode = null;
+  let maxLocationsField: React.ReactNode = null;
+  let baseCreditsField: React.ReactNode = null;
+  let creditsStartedText = "—";
+  let locationsDescription = "";
+  let locationsContent: React.ReactNode = null;
+
+  if (selectedCustomer) {
+    if (isEditing && editDraft) {
+      nameField = (
+        <Input
+          value={editDraft.name}
+          onChange={(e) => updateDraftString("name", e.target.value)}
+        />
+      );
+    } else {
+      nameField = (
+        <p className="text-sm md:text-base font-medium break-words">
+          {selectedCustomer.name || "—"}
+        </p>
+      );
+    }
+
+    if (isEditing && editDraft) {
+      usernameField = (
+        <Input
+          value={editDraft.username}
+          onChange={(e) => updateDraftString("username", e.target.value)}
+        />
+      );
+    } else {
+      usernameField = (
+        <p className="text-sm md:text-base font-medium break-words">
+          {selectedCustomer.username || "—"}
+        </p>
+      );
+    }
+
+    if (isEditing && editDraft) {
+      emailField = (
+        <Input
+          type="email"
+          value={editDraft.email}
+          onChange={(e) => updateDraftString("email", e.target.value)}
+        />
+      );
+    } else {
+      emailField = (
+        <p className="text-sm md:text-base font-medium break-words">
+          {selectedCustomer.email || "—"}
+        </p>
+      );
+    }
+
+    if (isEditing && editDraft) {
+      phoneField = (
+        <Input
+          value={editDraft.phone}
+          onChange={(e) => updateDraftString("phone", e.target.value)}
+        />
+      );
+    } else {
+      phoneField = (
+        <p className="text-sm md:text-base font-medium break-words">
+          {formatPhone(selectedCustomer.phone) || "—"}
+        </p>
+      );
+    }
+
+    if (isEditing && editDraft) {
+      trialField = (
+        <div className="flex items-center gap-3 pt-1">
+          <Switch
+            checked={editDraft.trial}
+            onCheckedChange={(v) => updateDraftBoolean("trial", v)}
+          />
+          <span className="text-sm">{formatBoolean(editDraft.trial)}</span>
+        </div>
+      );
+    } else {
+      trialField = (
+        <p className="text-sm md:text-base font-medium">
+          {formatBoolean(selectedCustomer.trial)}
+        </p>
+      );
+    }
+
+    if (isEditing && editDraft) {
+      trialDurationField = (
+        <Input
+          type="number"
+          min={0}
+          value={editDraft.trialDurationDays}
+          onChange={(e) =>
+            updateDraftNumber("trialDurationDays", e.target.value)
+          }
+        />
+      );
+    } else {
+      trialDurationField = (
+        <p className="text-sm md:text-base font-medium">
+          {selectedCustomer.trialDurationDays ?? 0}
+        </p>
+      );
+    }
+
+    if (isEditing && editDraft) {
+      maxLocationsField = (
+        <Input
+          type="number"
+          min={0}
+          value={editDraft.maxLocations}
+          onChange={(e) => updateDraftNumber("maxLocations", e.target.value)}
+        />
+      );
+    } else {
+      maxLocationsField = (
+        <p className="text-sm md:text-base font-medium">
+          {selectedCustomer.maxLocations ?? 0}
+        </p>
+      );
+    }
+
+    if (isEditing && editDraft) {
+      baseCreditsField = (
+        <Input
+          type="number"
+          min={0}
+          value={editDraft.baseCredits}
+          onChange={(e) => updateDraftNumber("baseCredits", e.target.value)}
+        />
+      );
+    } else {
+      baseCreditsField = (
+        <p className="text-sm md:text-base font-medium">
+          {selectedCustomer.baseCredits ?? 0}
+        </p>
+      );
+    }
+
+    if (selectedCustomer.creditsStartedAt) {
+      creditsStartedText = formatDate(selectedCustomer.creditsStartedAt);
+    } else {
+      creditsStartedText = "—";
+    }
+
+    if (selectedCustomer.locations.length === 0) {
+      locationsDescription = "No locations registered";
+    } else {
+      let locationCountSuffix: string;
+      if (selectedCustomer.locations.length === 1) {
+        locationCountSuffix = "";
+      } else {
+        locationCountSuffix = "s";
+      }
+      locationsDescription = `${selectedCustomer.locations.length} location${locationCountSuffix}`;
+    }
+
+    if (selectedCustomer.locations.length === 0) {
+      locationsContent = (
+        <p className="text-sm text-muted-foreground">
+          This business has not added any locations yet.
+        </p>
+      );
+    } else {
+      let locationsToRender: (CustomerLocation | CustomerLocationDraft)[];
+      if (isEditing && editDraft) {
+        locationsToRender = editDraft.locations;
+      } else {
+        locationsToRender = selectedCustomer.locations;
+      }
+      locationsContent = (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {locationsToRender.map((location, idx) => {
+            let addressField: React.ReactNode;
+            if (isEditing && editDraft) {
+              addressField = (
+                <Input
+                  value={location.address}
+                  onChange={(e) =>
+                    updateDraftLocationAddress(idx, e.target.value)
+                  }
+                />
+              );
+            } else {
+              addressField = (
+                <p className="text-sm md:text-base font-medium break-words">
+                  {location.address || "—"}
+                </p>
+              );
+            }
+
+            let locationCreditsField: React.ReactNode;
+            if (isEditing && editDraft) {
+              locationCreditsField = (
+                <Input
+                  type="number"
+                  min={0}
+                  value={location.credits}
+                  onChange={(e) =>
+                    updateDraftLocation(idx, "credits", e.target.value)
+                  }
+                />
+              );
+            } else {
+              locationCreditsField = (
+                <p className="text-sm md:text-base font-medium">
+                  {location.credits}
+                </p>
+              );
+            }
+
+            return (
+              <div
+                key={idx}
+                className="rounded-lg border bg-muted/30 p-4 space-y-3"
+              >
+                <div>
+                  <Label className="text-muted-foreground">Address</Label>
+                  {addressField}
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Credits</Label>
+                  {locationCreditsField}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
   }
 
   return (
@@ -826,7 +1199,7 @@ const Admin = () => {
                   onClick={handleSearchCustomer}
                   disabled={isSearching}
                 >
-                  {isSearching ? "Searching..." : "Search Customer"}
+                  {searchCustomerLabel}
                 </Button>
               </CardContent>
             </Card>
@@ -850,27 +1223,7 @@ const Admin = () => {
                       </span>
                     </p>
                   </div>
-                  <div className="flex gap-2">
-                    {!isEditing ? (
-                      <Button onClick={startEditing}>Edit Customer</Button>
-                    ) : (
-                      <>
-                        <Button
-                          variant="outline"
-                          onClick={cancelEditing}
-                          disabled={isSaving}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          onClick={() => setIsConfirmOpen(true)}
-                          disabled={isSaving}
-                        >
-                          {isSaving ? "Saving..." : "Save Changes"}
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                  <div className="flex gap-2">{customerEditActions}</div>
                 </div>
 
                 <Card>
@@ -886,66 +1239,21 @@ const Admin = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label className="text-muted-foreground">Name</Label>
-                        {isEditing && editDraft ? (
-                          <Input
-                            value={editDraft.name}
-                            onChange={(e) =>
-                              updateDraftString("name", e.target.value)
-                            }
-                          />
-                        ) : (
-                          <p className="text-sm md:text-base font-medium break-words">
-                            {selectedCustomer.name || "—"}
-                          </p>
-                        )}
+                        {nameField}
                       </div>
                       <div>
                         <Label className="text-muted-foreground">
                           Username
                         </Label>
-                        {isEditing && editDraft ? (
-                          <Input
-                            value={editDraft.username}
-                            onChange={(e) =>
-                              updateDraftString("username", e.target.value)
-                            }
-                          />
-                        ) : (
-                          <p className="text-sm md:text-base font-medium break-words">
-                            {selectedCustomer.username || "—"}
-                          </p>
-                        )}
+                        {usernameField}
                       </div>
                       <div>
                         <Label className="text-muted-foreground">Email</Label>
-                        {isEditing && editDraft ? (
-                          <Input
-                            type="email"
-                            value={editDraft.email}
-                            onChange={(e) =>
-                              updateDraftString("email", e.target.value)
-                            }
-                          />
-                        ) : (
-                          <p className="text-sm md:text-base font-medium break-words">
-                            {selectedCustomer.email || "—"}
-                          </p>
-                        )}
+                        {emailField}
                       </div>
                       <div>
                         <Label className="text-muted-foreground">Phone</Label>
-                        {isEditing && editDraft ? (
-                          <Input
-                            value={editDraft.phone}
-                            onChange={(e) =>
-                              updateDraftString("phone", e.target.value)
-                            }
-                          />
-                        ) : (
-                          <p className="text-sm md:text-base font-medium break-words">
-                            {formatPhone(selectedCustomer.phone) || "—"}
-                          </p>
-                        )}
+                        {phoneField}
                       </div>
                     </div>
                   </CardContent>
@@ -963,92 +1271,32 @@ const Admin = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div>
                         <Label className="text-muted-foreground">Trial</Label>
-                        {isEditing && editDraft ? (
-                          <div className="flex items-center gap-3 pt-1">
-                            <Switch
-                              checked={editDraft.trial}
-                              onCheckedChange={(v) =>
-                                updateDraftBoolean("trial", v)
-                              }
-                            />
-                            <span className="text-sm">
-                              {formatBoolean(editDraft.trial)}
-                            </span>
-                          </div>
-                        ) : (
-                          <p className="text-sm md:text-base font-medium">
-                            {formatBoolean(selectedCustomer.trial)}
-                          </p>
-                        )}
+                        {trialField}
                       </div>
                       <div>
                         <Label className="text-muted-foreground">
                           Trial Duration (Days)
                         </Label>
-                        {isEditing && editDraft ? (
-                          <Input
-                            type="number"
-                            min={0}
-                            value={editDraft.trialDurationDays}
-                            onChange={(e) =>
-                              updateDraftNumber(
-                                "trialDurationDays",
-                                e.target.value,
-                              )
-                            }
-                          />
-                        ) : (
-                          <p className="text-sm md:text-base font-medium">
-                            {selectedCustomer.trialDurationDays ?? 0}
-                          </p>
-                        )}
+                        {trialDurationField}
                       </div>
                       <div>
                         <Label className="text-muted-foreground">
                           Max Locations
                         </Label>
-                        {isEditing && editDraft ? (
-                          <Input
-                            type="number"
-                            min={0}
-                            value={editDraft.maxLocations}
-                            onChange={(e) =>
-                              updateDraftNumber("maxLocations", e.target.value)
-                            }
-                          />
-                        ) : (
-                          <p className="text-sm md:text-base font-medium">
-                            {selectedCustomer.maxLocations ?? 0}
-                          </p>
-                        )}
+                        {maxLocationsField}
                       </div>
                       <div>
                         <Label className="text-muted-foreground">
                           Base Credits
                         </Label>
-                        {isEditing && editDraft ? (
-                          <Input
-                            type="number"
-                            min={0}
-                            value={editDraft.baseCredits}
-                            onChange={(e) =>
-                              updateDraftNumber("baseCredits", e.target.value)
-                            }
-                          />
-                        ) : (
-                          <p className="text-sm md:text-base font-medium">
-                            {selectedCustomer.baseCredits ?? 0}
-                          </p>
-                        )}
+                        {baseCreditsField}
                       </div>
                       <div>
                         <Label className="text-muted-foreground">
                           Credits Cycle Started
                         </Label>
                         <p className="text-sm md:text-base font-medium">
-                          {selectedCustomer.creditsStartedAt
-                            ? formatDate(selectedCustomer.creditsStartedAt)
-                            : "—"}
+                          {creditsStartedText}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           Set automatically when Trial is turned off.
@@ -1061,75 +1309,9 @@ const Admin = () => {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Locations</CardTitle>
-                    <CardDescription>
-                      {selectedCustomer.locations.length === 0
-                        ? "No locations registered"
-                        : `${selectedCustomer.locations.length} location${selectedCustomer.locations.length === 1 ? "" : "s"}`}
-                    </CardDescription>
+                    <CardDescription>{locationsDescription}</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    {selectedCustomer.locations.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        This business has not added any locations yet.
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {(isEditing && editDraft
-                          ? editDraft.locations
-                          : selectedCustomer.locations
-                        ).map((location, idx) => (
-                          <div
-                            key={idx}
-                            className="rounded-lg border bg-muted/30 p-4 space-y-3"
-                          >
-                            <div>
-                              <Label className="text-muted-foreground">
-                                Address
-                              </Label>
-                              {isEditing && editDraft ? (
-                                <Input
-                                  value={location.address}
-                                  onChange={(e) =>
-                                    updateDraftLocationAddress(
-                                      idx,
-                                      e.target.value,
-                                    )
-                                  }
-                                />
-                              ) : (
-                                <p className="text-sm md:text-base font-medium break-words">
-                                  {location.address || "—"}
-                                </p>
-                              )}
-                            </div>
-                            <div>
-                              <Label className="text-muted-foreground">
-                                Credits
-                              </Label>
-                              {isEditing && editDraft ? (
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  value={location.credits}
-                                  onChange={(e) =>
-                                    updateDraftLocation(
-                                      idx,
-                                      "credits",
-                                      e.target.value,
-                                    )
-                                  }
-                                />
-                              ) : (
-                                <p className="text-sm md:text-base font-medium">
-                                  {location.credits}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
+                  <CardContent>{locationsContent}</CardContent>
                 </Card>
               </div>
             )}
@@ -1180,9 +1362,7 @@ const Admin = () => {
                           <>
                             <br />
                             <span className="text-amber-600">
-                              {editDraft.trial
-                                ? "Trial ON — credits cycle will be cleared"
-                                : "Trial OFF — credits cycle starts now, refills next month"}
+                              {trialChangeMessage}
                             </span>
                           </>
                         )}
@@ -1206,7 +1386,7 @@ const Admin = () => {
                     onClick={handleSaveCustomer}
                     disabled={isSaving}
                   >
-                    {isSaving ? "Saving..." : "Confirm"}
+                    {confirmButtonLabel}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -1375,24 +1555,29 @@ const Admin = () => {
 
                 <TabsContent value="messages" className="space-y-4">
                   <div className="space-y-4">
-                    {selectedTicket.messages.map((msg, idx) => (
-                      <div
-                        key={idx}
-                        className={`p-4 rounded-md ${
-                          msg.isTeamResponse
-                            ? "bg-indigo-50 border-l-4 border-indigo-500"
-                            : "bg-muted"
-                        }`}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <p className="font-semibold">{msg.sender}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(msg.timestamp).toLocaleString()}
-                          </p>
+                    {selectedTicket.messages.map((msg, idx) => {
+                      let messageToneClass: string;
+                      if (msg.isTeamResponse) {
+                        messageToneClass =
+                          "bg-indigo-50 border-l-4 border-indigo-500";
+                      } else {
+                        messageToneClass = "bg-muted";
+                      }
+                      return (
+                        <div
+                          key={idx}
+                          className={`p-4 rounded-md ${messageToneClass}`}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <p className="font-semibold">{msg.sender}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(msg.timestamp).toLocaleString()}
+                            </p>
+                          </div>
+                          <p className="whitespace-pre-wrap">{msg.message}</p>
                         </div>
-                        <p className="whitespace-pre-wrap">{msg.message}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </TabsContent>
 
@@ -1436,7 +1621,7 @@ const Admin = () => {
               </Button>
               {selectedTicket && (
                 <Button onClick={handleRespond} disabled={isLoading}>
-                  {isLoading ? "Sending..." : "Send Response"}
+                  {sendResponseLabel}
                 </Button>
               )}
             </DialogFooter>

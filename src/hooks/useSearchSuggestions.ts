@@ -36,13 +36,24 @@ export function useSearchSuggestions(query: string, enabled: boolean) {
         `/api/locations/search-suggestions?query=${encodeURIComponent(q)}&limit=3`,
         { signal: ctrl.signal, credentials: "include" },
       )
-        .then((r) => (r.ok ? r.json() : Promise.reject(new Error("request failed"))))
+        .then((r) => {
+          if (r.ok) {
+            return r.json();
+          }
+          return Promise.reject(new Error("request failed"));
+        })
         .then((d) => {
-          setSuggestions(Array.isArray(d?.suggestions) ? d.suggestions.slice(0, 3) : []);
+          let nextSuggestions: Suggestion[] = [];
+          if (Array.isArray(d?.suggestions)) {
+            nextSuggestions = d.suggestions.slice(0, 3);
+          }
+          setSuggestions(nextSuggestions);
           setLoading(false);
         })
         .catch((e) => {
-          if (e?.name === "AbortError") return;
+          if (e?.name === "AbortError") {
+            return;
+          }
           setError(true);
           setSuggestions([]);
           setLoading(false);

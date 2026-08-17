@@ -15,7 +15,9 @@ export default function LanguageSelector() {
   const [saving, setSaving] = useState(false);
 
   const onChange = async (next: Lang) => {
-    if (next === lang || saving) return;
+    if (next === lang || saving) {
+      return;
+    }
     setSaving(true);
     try {
       await setLang(next);

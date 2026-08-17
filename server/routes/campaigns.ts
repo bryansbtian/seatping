@@ -6,7 +6,7 @@ import { rateLimit, limitGuard, HOURS } from "../lib/rateLimit.js";
 import { getLocationTimezone } from "../lib/operatingHours.js";
 import { SUGGESTED_GUEST_TAGS } from "../lib/guests.js";
 import { rawCampaignSend } from "../lib/notifications.js";
-import { sendEmailDetailed, renderEmail, p } from "../lib/email.js";
+import { sendEmailDetailed, renderEmail, p, esc } from "../lib/email.js";
 import {
   AUDIENCE_GROUPS,
   MANUAL_AUDIENCE,
@@ -24,6 +24,7 @@ import {
   restaurantNameForLocation,
   wallClockToUtc,
   advanceRecurrence,
+  zonedDayOfMonth,
   formatInstantInTimezone,
   smsSegments,
   type Channel,
@@ -63,7 +64,9 @@ function locationLabel(loc: {
 }
 
 async function ownedLocation(businessId: string, locationId: string) {
-  if (!locationId) return null;
+  if (!locationId) {
+    return null;
+  }
   return prisma.location.findFirst({
     where: { id: locationId, businessId },
     select: {
@@ -84,11 +87,19 @@ async function loadBusiness(businessId: string) {
 }
 
 function isTemplateUsable(t: CampaignTemplate): boolean {
-  if (t.templateType === "SEATPING") return t.isActive && t.approvalStatus === "APPROVED";
+  if (t.templateType === "SEATPING") {
+    return t.isActive && t.approvalStatus === "APPROVED";
+  }
   return t.approvalStatus === "APPROVED";
 }
 
 function serializeTemplate(t: CampaignTemplate) {
+  let rejectionReason: string | null;
+  if (t.approvalStatus === "REJECTED") {
+    rejectionReason = t.rejectionReason;
+  } else {
+    rejectionReason = null;
+  }
   return {
     id: t.id,
     templateType: t.templateType,
@@ -103,7 +114,7 @@ function serializeTemplate(t: CampaignTemplate) {
     editableVariables: editableVariables(t),
     exampleValues: t.exampleValues ?? {},
     approvalStatus: t.approvalStatus,
-    rejectionReason: t.approvalStatus === "REJECTED" ? t.rejectionReason : null,
+    rejectionReason,
     usable: isTemplateUsable(t),
     locationId: t.locationId,
     submittedAt: t.submittedAt,
@@ -116,11 +127,17 @@ async function audienceLabelFor(
   c: Campaign,
   nameCache?: Map<string, string>,
 ): Promise<string> {
-  if (c.audienceType === MANUAL_AUDIENCE) return "Manually Selected Guests";
+  if (c.audienceType === MANUAL_AUDIENCE) {
+    return "Manually Selected Guests";
+  }
   if (c.audienceType === CUSTOM_GROUP_AUDIENCE) {
     const sid = (c.audienceConfig as any)?.savedAudienceId as string | undefined;
-    if (!sid) return "Custom Group";
-    if (nameCache?.has(sid)) return nameCache.get(sid)!;
+    if (!sid) {
+      return "Custom Group";
+    }
+    if (nameCache?.has(sid)) {
+      return nameCache.get(sid)!;
+    }
     const sa = await prisma.savedAudience.findFirst({
       where: { id: sid, businessId: c.businessId },
       select: { name: true },
@@ -143,6 +160,18 @@ async function serializeCampaign(
     audienceLabel?: string | null;
   },
 ) {
+  let scheduledAtLabel: string | null;
+  if (c.timezone) {
+    scheduledAtLabel = formatInstantInTimezone(c.scheduledAt, c.timezone);
+  } else {
+    scheduledAtLabel = null;
+  }
+  let nextRunAtLabel: string | null;
+  if (c.timezone) {
+    nextRunAtLabel = formatInstantInTimezone(c.nextRunAt, c.timezone);
+  } else {
+    nextRunAtLabel = null;
+  }
   return {
     id: c.id,
     name: c.name,
@@ -166,17 +195,13 @@ async function serializeCampaign(
     sendMode: c.sendMode,
     timezone: c.timezone,
     scheduledAt: c.scheduledAt,
-    scheduledAtLabel: c.timezone
-      ? formatInstantInTimezone(c.scheduledAt, c.timezone)
-      : null,
+    scheduledAtLabel,
     recurrenceFrequency: c.recurrenceFrequency,
     recurrenceStartAt: c.recurrenceStartAt,
     recurrenceEndAt: c.recurrenceEndAt,
     maxSendsPerGuestWindowDays: c.maxSendsPerGuestWindowDays,
     nextRunAt: c.nextRunAt,
-    nextRunAtLabel: c.timezone
-      ? formatInstantInTimezone(c.nextRunAt, c.timezone)
-      : null,
+    nextRunAtLabel,
     lastRunAt: c.lastRunAt,
     isPaused: c.isPaused,
     createdAt: c.createdAt,
@@ -207,12 +232,20 @@ router.get("/meta", async (req, res) => {
     ]);
 
     return res.json({
-      locations: locations.map((l) => ({
-        id: l.id,
-        label: locationLabel(l),
-        timezone: getLocationTimezone(l),
-        restaurantName: business ? restaurantNameForLocation(l, business.name) : locationLabel(l),
-      })),
+      locations: locations.map((l) => {
+        let restaurantName: string;
+        if (business) {
+          restaurantName = restaurantNameForLocation(l, business.name);
+        } else {
+          restaurantName = locationLabel(l);
+        }
+        return {
+          id: l.id,
+          label: locationLabel(l),
+          timezone: getLocationTimezone(l),
+          restaurantName,
+        };
+      }),
       channels: CHANNELS,
       audiences: AUDIENCE_GROUPS,
       suggestedTags: SUGGESTED_GUEST_TAGS,
@@ -256,7 +289,9 @@ router.get("/templates/:id", async (req, res) => {
         OR: [{ templateType: "SEATPING" }, { templateType: "CUSTOM", businessId }],
       },
     });
-    if (!t) return res.status(404).json({ error: "Template not found" });
+    if (!t) {
+      return res.status(404).json({ error: "Template not found" });
+    }
     return res.json({ template: serializeTemplate(t) });
   } catch (err: any) {
     console.error("[campaigns] get template error:", err?.message || err);
@@ -266,18 +301,28 @@ router.get("/templates/:id", async (req, res) => {
 
 function parseTemplateBody(body: any): { data?: any; error?: string } {
   const name = String(body?.name || "").trim();
-  if (!name) return { error: "Template name is required" };
+  if (!name) {
+    return { error: "Template name is required" };
+  }
   const message = String(body?.body ?? body?.mainMessage ?? "").trim();
-  if (!message) return { error: "Main message is required" };
+  if (!message) {
+    return { error: "Main message is required" };
+  }
 
   let variables: string[] = [];
   if (body?.variables !== undefined) {
-    if (!Array.isArray(body.variables)) return { error: "variables must be an array" };
+    if (!Array.isArray(body.variables)) {
+      return { error: "variables must be an array" };
+    }
     const seen = new Set<string>();
     for (const raw of body.variables) {
-      if (typeof raw !== "string") return { error: "variables must be strings" };
+      if (typeof raw !== "string") {
+        return { error: "variables must be strings" };
+      }
       const v = normalizeVariableName(raw);
-      if (!v || seen.has(v)) continue;
+      if (!v || seen.has(v)) {
+        continue;
+      }
       seen.add(v);
       variables.push(v);
     }
@@ -285,12 +330,17 @@ function parseTemplateBody(body: any): { data?: any; error?: string } {
   }
 
   const normalizedBody = normalizeBodyPlaceholders(message.slice(0, 4000));
-  const normalizedOffer = body?.offerDetails
-    ? normalizeBodyPlaceholders(String(body.offerDetails).slice(0, 1000))
-    : null;
+  let normalizedOffer: string | null;
+  if (body?.offerDetails) {
+    normalizedOffer = normalizeBodyPlaceholders(String(body.offerDetails).slice(0, 1000));
+  } else {
+    normalizedOffer = null;
+  }
 
   const posError = validateBodyParamPositions(normalizedBody);
-  if (posError) return { error: posError };
+  if (posError) {
+    return { error: posError };
+  }
 
   const exampleValues: Record<string, string> = {};
   if (body?.exampleValues !== undefined) {
@@ -299,18 +349,33 @@ function parseTemplateBody(body: any): { data?: any; error?: string } {
     }
     for (const [k, v] of Object.entries(body.exampleValues)) {
       const key = normalizeVariableName(String(k));
-      if (key) exampleValues[key] = String(v ?? "").slice(0, 200);
+      if (key) {
+        exampleValues[key] = String(v ?? "").slice(0, 200);
+      }
     }
+  }
+
+  let purposeValue: string | null = null;
+  if (body?.purpose !== undefined) {
+    purposeValue = String(body.purpose).slice(0, 300);
+  }
+  let ctaTextValue: string | null = null;
+  if (body?.ctaText) {
+    ctaTextValue = String(body.ctaText).slice(0, 120);
+  }
+  let ctaUrlValue: string | null = null;
+  if (body?.ctaUrl) {
+    ctaUrlValue = String(body.ctaUrl).slice(0, 500);
   }
 
   return {
     data: {
       name: name.slice(0, 120),
-      purpose: body?.purpose !== undefined ? String(body.purpose).slice(0, 300) : null,
+      purpose: purposeValue,
       body: normalizedBody,
       offerDetails: normalizedOffer,
-      ctaText: body?.ctaText ? String(body.ctaText).slice(0, 120) : null,
-      ctaUrl: body?.ctaUrl ? String(body.ctaUrl).slice(0, 500) : null,
+      ctaText: ctaTextValue,
+      ctaUrl: ctaUrlValue,
       variables,
       exampleValues,
     },
@@ -321,15 +386,21 @@ router.post("/templates", async (req, res) => {
   try {
     const businessId = bizId(req);
     const business = await loadBusiness(businessId);
-    if (!business) return res.status(404).json({ error: "Business not found" });
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
 
     const { data, error } = parseTemplateBody(req.body || {});
-    if (error) return res.status(400).json({ error });
+    if (error) {
+      return res.status(400).json({ error });
+    }
 
     let locationId: string | null = null;
     if (req.body?.locationId) {
       const loc = await ownedLocation(businessId, String(req.body.locationId));
-      if (!loc) return res.status(404).json({ error: "Location not found or access denied" });
+      if (!loc) {
+        return res.status(404).json({ error: "Location not found or access denied" });
+      }
       locationId = loc.id;
     }
 
@@ -361,9 +432,13 @@ router.patch("/templates/:id", async (req, res) => {
     const t = await prisma.campaignTemplate.findFirst({
       where: { id, templateType: "CUSTOM", businessId },
     });
-    if (!t) return res.status(404).json({ error: "Template not found" });
+    if (!t) {
+      return res.status(404).json({ error: "Template not found" });
+    }
     const { data, error } = parseTemplateBody(req.body || {});
-    if (error) return res.status(400).json({ error });
+    if (error) {
+      return res.status(400).json({ error });
+    }
 
     let statusUpdate: {
       approvalStatus?: "PENDING_SEATPING_REVIEW";
@@ -382,10 +457,14 @@ router.patch("/templates/:id", async (req, res) => {
 
     let locationId = t.locationId;
     if (req.body?.locationId !== undefined) {
-      if (!req.body.locationId) locationId = null;
+      if (!req.body.locationId) {
+        locationId = null;
+      }
       else {
         const loc = await ownedLocation(businessId, String(req.body.locationId));
-        if (!loc) return res.status(404).json({ error: "Location not found or access denied" });
+        if (!loc) {
+          return res.status(404).json({ error: "Location not found or access denied" });
+        }
         locationId = loc.id;
       }
     }
@@ -417,7 +496,9 @@ router.post("/templates/:id/submit", async (req, res) => {
     const t = await prisma.campaignTemplate.findFirst({
       where: { id, templateType: "CUSTOM", businessId },
     });
-    if (!t) return res.status(404).json({ error: "Template not found" });
+    if (!t) {
+      return res.status(404).json({ error: "Template not found" });
+    }
     if (t.approvalStatus === "APPROVED") {
       return res.status(400).json({ error: "This template is already approved" });
     }
@@ -451,7 +532,9 @@ router.get("/audiences/preview", async (req, res) => {
       return res.status(400).json({ error: "Invalid audience" });
     }
     const location = await ownedLocation(businessId, locationId);
-    if (!location) return res.status(404).json({ error: "Location not found or access denied" });
+    if (!location) {
+      return res.status(404).json({ error: "Location not found or access denied" });
+    }
 
     const audienceConfig: {
       tag?: string;
@@ -459,7 +542,9 @@ router.get("/audiences/preview", async (req, res) => {
       savedAudienceId?: string;
       filters?: any;
     } = {};
-    if (req.query.tag) audienceConfig.tag = String(req.query.tag);
+    if (req.query.tag) {
+      audienceConfig.tag = String(req.query.tag);
+    }
     if (req.query.guestIds) {
       audienceConfig.guestIds = String(req.query.guestIds)
         .split(",")
@@ -520,7 +605,9 @@ router.get("/", async (req, res) => {
     const where: any = { businessId };
     if (req.query.locationId) {
       const loc = await ownedLocation(businessId, String(req.query.locationId));
-      if (!loc) return res.status(404).json({ error: "Location not found or access denied" });
+      if (!loc) {
+        return res.status(404).json({ error: "Location not found or access denied" });
+      }
       where.locationId = loc.id;
     }
     const campaigns = await prisma.campaign.findMany({
@@ -530,9 +617,12 @@ router.get("/", async (req, res) => {
     });
     const RECONCILE = new Set(["SENDING", "RECURRING", "PAUSED"]);
     const reconciled = await Promise.all(
-      campaigns.map((c) =>
-        RECONCILE.has(c.status) ? reconcileCampaign(c) : Promise.resolve(c),
-      ),
+      campaigns.map((c) => {
+        if (RECONCILE.has(c.status)) {
+          return reconcileCampaign(c);
+        }
+        return Promise.resolve(c);
+      }),
     );
 
     const [templates, locations] = await Promise.all([
@@ -572,10 +662,14 @@ async function validateCampaignInput(
   body: any,
 ): Promise<{ error?: string; status?: number; data?: any }> {
   const name = String(body?.name || "").trim();
-  if (!name) return { error: "Campaign name is required", status: 400 };
+  if (!name) {
+    return { error: "Campaign name is required", status: 400 };
+  }
 
   const loc = await ownedLocation(businessId, String(body?.locationId || ""));
-  if (!loc) return { error: "Location not found or access denied", status: 404 };
+  if (!loc) {
+    return { error: "Location not found or access denied", status: 404 };
+  }
 
   const channel = String(body?.channel || "").toUpperCase();
   if (!CHANNELS.includes(channel as Channel)) {
@@ -589,24 +683,35 @@ async function validateCampaignInput(
   const audienceConfig: any = {};
   if (audienceType === "with_tag") {
     const tag = String(body?.audienceConfig?.tag || "").trim();
-    if (!tag) return { error: "Choose a tag for this audience", status: 400 };
+    if (!tag) {
+      return { error: "Choose a tag for this audience", status: 400 };
+    }
     audienceConfig.tag = tag.slice(0, 60);
   }
   if (audienceType === MANUAL_AUDIENCE) {
-    const ids = Array.isArray(body?.audienceConfig?.guestIds)
-      ? body.audienceConfig.guestIds.map((x: any) => String(x)).filter(Boolean)
-      : [];
-    if (!ids.length) return { error: "Select at least one guest", status: 400 };
+    let ids: string[] = [];
+    if (Array.isArray(body?.audienceConfig?.guestIds)) {
+      ids = body.audienceConfig.guestIds
+        .map((x: any) => String(x))
+        .filter(Boolean);
+    }
+    if (!ids.length) {
+      return { error: "Select at least one guest", status: 400 };
+    }
     audienceConfig.guestIds = ids.slice(0, MANUAL_GUEST_LIMIT);
   }
   if (audienceType === CUSTOM_GROUP_AUDIENCE) {
     const sid = String(body?.audienceConfig?.savedAudienceId || "").trim();
-    if (!sid) return { error: "Select a custom group", status: 400 };
+    if (!sid) {
+      return { error: "Select a custom group", status: 400 };
+    }
     const saved = await prisma.savedAudience.findFirst({
       where: { id: sid, businessId, locationId: loc.id },
       select: { id: true },
     });
-    if (!saved) return { error: "Custom group not found", status: 404 };
+    if (!saved) {
+      return { error: "Custom group not found", status: 404 };
+    }
     audienceConfig.savedAudienceId = saved.id;
   }
 
@@ -616,7 +721,9 @@ async function validateCampaignInput(
       OR: [{ templateType: "SEATPING" }, { templateType: "CUSTOM", businessId }],
     },
   });
-  if (!template) return { error: "Template not found or access denied", status: 404 };
+  if (!template) {
+    return { error: "Template not found or access denied", status: 404 };
+  }
 
   const templateValues: Record<string, string> = {};
   if (body?.templateValues && typeof body.templateValues === "object") {
@@ -654,10 +761,14 @@ router.post("/", async (req, res) => {
   try {
     const businessId = bizId(req);
     const business = await loadBusiness(businessId);
-    if (!business) return res.status(404).json({ error: "Business not found" });
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
 
     const { error, status, data } = await validateCampaignInput(businessId, req.body || {});
-    if (error) return res.status(status || 400).json({ error });
+    if (error) {
+      return res.status(status || 400).json({ error });
+    }
 
     const created = await prisma.campaign.create({
       data: {
@@ -679,7 +790,9 @@ router.get("/:id", async (req, res) => {
     const businessId = bizId(req);
     const id = String(req.params.id || "");
     let campaign = await prisma.campaign.findFirst({ where: { id, businessId } });
-    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+    if (!campaign) {
+      return res.status(404).json({ error: "Campaign not found" });
+    }
     campaign = await reconcileCampaign(campaign);
 
     const [template, location, logs, runs] = await Promise.all([
@@ -700,13 +813,21 @@ router.get("/:id", async (req, res) => {
       }),
     ]);
 
+    let campaignLocationLabel: string | null = null;
+    if (location) {
+      campaignLocationLabel = locationLabel(location);
+    }
+    let serializedTemplate = null;
+    if (template) {
+      serializedTemplate = serializeTemplate(template);
+    }
     return res.json({
       campaign: await serializeCampaign(campaign, {
         templateName: template?.name ?? null,
         templateType: template?.templateType ?? null,
-        locationLabel: location ? locationLabel(location) : null,
+        locationLabel: campaignLocationLabel,
       }),
-      template: template ? serializeTemplate(template) : null,
+      template: serializedTemplate,
       logs: logs.map((l) => ({
         id: l.id,
         eventType: l.eventType,
@@ -739,7 +860,9 @@ router.patch("/:id", async (req, res) => {
     const businessId = bizId(req);
     const id = String(req.params.id || "");
     const existing = await prisma.campaign.findFirst({ where: { id, businessId } });
-    if (!existing) return res.status(404).json({ error: "Campaign not found" });
+    if (!existing) {
+      return res.status(404).json({ error: "Campaign not found" });
+    }
     if (existing.status !== "DRAFT" && existing.status !== "READY" && existing.status !== "CANCELLED") {
       return res.status(400).json({ error: "Only draft and cancelled campaigns can be edited" });
     }
@@ -754,7 +877,9 @@ router.patch("/:id", async (req, res) => {
       templateValues: req.body?.templateValues ?? existing.templateValues,
     };
     const { error, status, data } = await validateCampaignInput(businessId, merged);
-    if (error) return res.status(status || 400).json({ error });
+    if (error) {
+      return res.status(status || 400).json({ error });
+    }
 
     const updated = await prisma.campaign.update({ where: { id: existing.id }, data });
     return res.json({ campaign: await serializeCampaign(updated) });
@@ -779,17 +904,25 @@ async function prepareSend(businessId: string, campaign: Campaign) {
     }),
     prisma.campaignTemplate.findUnique({ where: { id: campaign.templateId } }),
   ]);
-  if (!business) return { error: "Business not found", status: 404 as const };
-  if (!location) return { error: "Location not found", status: 404 as const };
-  if (!template) return { error: "Template not found", status: 404 as const };
+  if (!business) {
+    return { error: "Business not found", status: 404 as const };
+  }
+  if (!location) {
+    return { error: "Location not found", status: 404 as const };
+  }
+  if (!template) {
+    return { error: "Template not found", status: 404 as const };
+  }
   if (!isTemplateUsable(template)) {
+    let templateError = "This template is not available for sending.";
+    if (template.approvalStatus === "PENDING_SEATPING_REVIEW") {
+      templateError =
+        "This template is still pending SeatPing review and cannot be used yet.";
+    } else if (template.approvalStatus === "REJECTED") {
+      templateError = "This template was rejected and cannot be used.";
+    }
     return {
-      error:
-        template.approvalStatus === "PENDING_SEATPING_REVIEW"
-          ? "This template is still pending SeatPing review and cannot be used yet."
-          : template.approvalStatus === "REJECTED"
-            ? "This template was rejected and cannot be used."
-            : "This template is not available for sending.",
+      error: templateError,
       status: 400 as const,
     };
   }
@@ -805,18 +938,30 @@ router.post("/:id/send-test", async (req, res) => {
         { name: "campaign-test", key: businessId, windowMs: HOURS(1), max: 30 },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     const campaign = await prisma.campaign.findFirst({ where: { id, businessId } });
-    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+    if (!campaign) {
+      return res.status(404).json({ error: "Campaign not found" });
+    }
 
     const prepared = await prepareSend(businessId, campaign);
-    if ("error" in prepared) return res.status(prepared.status).json({ error: prepared.error });
+    if ("error" in prepared) {
+      return res.status(prepared.status).json({ error: prepared.error });
+    }
     const { business, location, template } = prepared;
 
     const channel = campaign.channel as Channel;
-    const overrideEmail = req.body?.testEmail ? String(req.body.testEmail).trim() : "";
-    const overridePhone = req.body?.testPhone ? String(req.body.testPhone).replace(/\D/g, "") : "";
+    let overrideEmail = "";
+    if (req.body?.testEmail) {
+      overrideEmail = String(req.body.testEmail).trim();
+    }
+    let overridePhone = "";
+    if (req.body?.testPhone) {
+      overridePhone = String(req.body.testPhone).replace(/\D/g, "");
+    }
 
     const restName = restaurantNameForLocation(location, business.name);
     const message = buildMessage(
@@ -836,10 +981,14 @@ router.post("/:id/send-test", async (req, res) => {
     let phone: string | undefined;
     if (channel === "EMAIL") {
       email = overrideEmail || business.email;
-      if (!email) return res.status(400).json({ error: "No email address to send the test to" });
+      if (!email) {
+        return res.status(400).json({ error: "No email address to send the test to" });
+      }
     } else {
       phone = overridePhone || business.phone?.replace(/\D/g, "");
-      if (!phone) return res.status(400).json({ error: "No phone number to send the test to" });
+      if (!phone) {
+        return res.status(400).json({ error: "No phone number to send the test to" });
+      }
     }
 
     try {
@@ -851,7 +1000,7 @@ router.post("/:id/send-test", async (req, res) => {
         phone,
         subject: message.subject,
         bodyText: message.text,
-        bodyHtml: message.html,
+        emailParts: message.emailParts,
         whatsappTemplateName: message.whatsappTemplateName,
         whatsappLanguage: message.whatsappLanguage,
         whatsappParams: message.whatsappParams,
@@ -872,9 +1021,13 @@ router.post("/debug/email-test", async (req, res) => {
     return res.status(404).json({ error: "Not found" });
   }
   try {
-    const emails: string[] = Array.isArray(req.body?.emails)
-      ? req.body.emails.map((e: any) => String(e).trim()).filter(Boolean).slice(0, 10)
-      : [];
+    let emails: string[] = [];
+    if (Array.isArray(req.body?.emails)) {
+      emails = req.body.emails
+        .map((e: any) => String(e).trim())
+        .filter(Boolean)
+        .slice(0, 10);
+    }
     if (!emails.length) {
       return res.status(400).json({ error: "Provide emails: string[]" });
     }
@@ -885,7 +1038,7 @@ router.post("/debug/email-test", async (req, res) => {
     const html = renderEmail({
       heading: "Email Delivery Test",
       preheader: "SeatPing delivery test",
-      bodyHtml: p(bodyText),
+      bodyHtml: p(esc(bodyText).replace(/\n/g, "<br>")),
     });
 
     const results = [];
@@ -918,13 +1071,19 @@ router.post("/:id/send", async (req, res) => {
         { name: "campaign-send", key: businessId, windowMs: HOURS(1), max: 20 },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     const campaign = await prisma.campaign.findFirst({ where: { id, businessId } });
-    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+    if (!campaign) {
+      return res.status(404).json({ error: "Campaign not found" });
+    }
 
     const prepared = await prepareSend(businessId, campaign);
-    if ("error" in prepared) return res.status(prepared.status).json({ error: prepared.error });
+    if ("error" in prepared) {
+      return res.status(prepared.status).json({ error: prepared.error });
+    }
     const { location } = prepared;
     const timezone = getLocationTimezone(location);
 
@@ -953,7 +1112,11 @@ router.post("/:id/send", async (req, res) => {
         return res.status(409).json({ error: "This campaign can no longer be scheduled." });
       }
       const fresh = await prisma.campaign.findUnique({ where: { id: campaign.id } });
-      return res.json({ campaign: fresh ? await serializeCampaign(fresh) : null });
+      let serializedFresh = null;
+      if (fresh) {
+        serializedFresh = await serializeCampaign(fresh);
+      }
+      return res.json({ campaign: serializedFresh });
     }
 
     if (sendMode === "RECURRING") {
@@ -973,14 +1136,19 @@ router.post("/:id/send", async (req, res) => {
           return res.status(400).json({ error: "The end date must be after the start date." });
         }
       }
+      const anchorDay = zonedDayOfMonth(start, timezone);
       let next = start;
       while (next.getTime() <= Date.now()) {
-        next = advanceRecurrence(next, freq as any, timezone);
+        next = advanceRecurrence(next, freq as any, timezone, anchorDay);
       }
       if (endAt && next.getTime() > endAt.getTime()) {
         return res.status(400).json({ error: "The end date is before the first run." });
       }
       const windowDays = Number(req.body?.maxSendsPerGuestWindowDays);
+      let normalizedWindowDays = 30;
+      if (Number.isFinite(windowDays) && windowDays > 0) {
+        normalizedWindowDays = Math.floor(windowDays);
+      }
       const claim = await prisma.campaign.updateMany({
         where: { id: campaign.id, businessId, status: { in: ["DRAFT", "READY", "CANCELLED"] } },
         data: {
@@ -990,8 +1158,7 @@ router.post("/:id/send", async (req, res) => {
           recurrenceFrequency: freq as any,
           recurrenceStartAt: start,
           recurrenceEndAt: endAt,
-          maxSendsPerGuestWindowDays:
-            Number.isFinite(windowDays) && windowDays > 0 ? Math.floor(windowDays) : 30,
+          maxSendsPerGuestWindowDays: normalizedWindowDays,
           nextRunAt: next,
           isPaused: false,
         },
@@ -1000,7 +1167,11 @@ router.post("/:id/send", async (req, res) => {
         return res.status(409).json({ error: "This campaign can no longer be made recurring." });
       }
       const fresh = await prisma.campaign.findUnique({ where: { id: campaign.id } });
-      return res.json({ campaign: fresh ? await serializeCampaign(fresh) : null });
+      let serializedFresh = null;
+      if (fresh) {
+        serializedFresh = await serializeCampaign(fresh);
+      }
+      return res.json({ campaign: serializedFresh });
     }
 
     const claim = await prisma.campaign.updateMany({
@@ -1032,8 +1203,12 @@ router.post("/:id/send", async (req, res) => {
     });
 
     const fresh = await prisma.campaign.findUnique({ where: { id: campaign.id } });
+    let serializedFresh = null;
+    if (fresh) {
+      serializedFresh = await serializeCampaign(fresh);
+    }
     return res.json({
-      campaign: fresh ? await serializeCampaign(fresh) : null,
+      campaign: serializedFresh,
       recipientCount: result.recipientCount,
       excludedCount: result.excludedCount,
     });
@@ -1055,7 +1230,11 @@ router.post("/:id/cancel", async (req, res) => {
       return res.status(400).json({ error: "This campaign can't be cancelled." });
     }
     const fresh = await prisma.campaign.findFirst({ where: { id, businessId } });
-    return res.json({ campaign: fresh ? await serializeCampaign(fresh) : null });
+    let serializedFresh = null;
+    if (fresh) {
+      serializedFresh = await serializeCampaign(fresh);
+    }
+    return res.json({ campaign: serializedFresh });
   } catch (err: any) {
     console.error("[campaigns] cancel error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
@@ -1094,7 +1273,11 @@ router.post("/:id/pause", async (req, res) => {
       return res.status(400).json({ error: "Only an active recurring campaign can be paused." });
     }
     const fresh = await prisma.campaign.findFirst({ where: { id, businessId } });
-    return res.json({ campaign: fresh ? await serializeCampaign(fresh) : null });
+    let serializedFresh = null;
+    if (fresh) {
+      serializedFresh = await serializeCampaign(fresh);
+    }
+    return res.json({ campaign: serializedFresh });
   } catch (err: any) {
     console.error("[campaigns] pause error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
@@ -1113,16 +1296,28 @@ router.post("/:id/resume", async (req, res) => {
     }
     const tz = campaign.timezone || "Asia/Jakarta";
     const freq = (campaign.recurrenceFrequency || "WEEKLY") as any;
+    const anchorDay = zonedDayOfMonth(campaign.recurrenceStartAt, tz);
     let next = campaign.nextRunAt ?? new Date();
-    while (next.getTime() <= Date.now()) next = advanceRecurrence(next, freq, tz);
-    const ended = campaign.recurrenceEndAt
-      ? next.getTime() > campaign.recurrenceEndAt.getTime()
-      : false;
+    while (next.getTime() <= Date.now()) {
+      next = advanceRecurrence(next, freq, tz, anchorDay);
+    }
+    let ended = false;
+    if (campaign.recurrenceEndAt) {
+      ended = next.getTime() > campaign.recurrenceEndAt.getTime();
+    }
+    let resumeData: {
+      status: "SENT" | "RECURRING";
+      isPaused: boolean;
+      nextRunAt: Date | null;
+    };
+    if (ended) {
+      resumeData = { status: "SENT", isPaused: false, nextRunAt: null };
+    } else {
+      resumeData = { status: "RECURRING", isPaused: false, nextRunAt: next };
+    }
     const updated = await prisma.campaign.update({
       where: { id: campaign.id },
-      data: ended
-        ? { status: "SENT", isPaused: false, nextRunAt: null }
-        : { status: "RECURRING", isPaused: false, nextRunAt: next },
+      data: resumeData,
     });
     return res.json({ campaign: await serializeCampaign(updated) });
   } catch (err: any) {
@@ -1135,10 +1330,14 @@ router.post("/preview-message", async (req, res) => {
   try {
     const businessId = bizId(req);
     const business = await loadBusiness(businessId);
-    if (!business) return res.status(404).json({ error: "Business not found" });
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
 
     const channel = String(req.body?.channel || "").toUpperCase() as Channel;
-    if (!CHANNELS.includes(channel)) return res.status(400).json({ error: "Invalid channel" });
+    if (!CHANNELS.includes(channel)) {
+      return res.status(400).json({ error: "Invalid channel" });
+    }
 
     const template = await prisma.campaignTemplate.findFirst({
       where: {
@@ -1146,7 +1345,9 @@ router.post("/preview-message", async (req, res) => {
         OR: [{ templateType: "SEATPING" }, { templateType: "CUSTOM", businessId }],
       },
     });
-    if (!template) return res.status(404).json({ error: "Template not found" });
+    if (!template) {
+      return res.status(404).json({ error: "Template not found" });
+    }
 
     let locationLabelStr = "Your Location";
     let restName = business.name;
@@ -1163,7 +1364,9 @@ router.post("/preview-message", async (req, res) => {
     };
     if (req.body?.templateValues && typeof req.body.templateValues === "object") {
       for (const v of editableVariables(template)) {
-        if (req.body.templateValues[v]) filled[v] = String(req.body.templateValues[v]);
+        if (req.body.templateValues[v]) {
+          filled[v] = String(req.body.templateValues[v]);
+        }
       }
     }
 
@@ -1180,14 +1383,21 @@ router.post("/preview-message", async (req, res) => {
       channel,
     );
 
-    const seg = channel === "SMS" ? smsSegments(message.text) : null;
+    let seg: ReturnType<typeof smsSegments> | null = null;
+    if (channel === "SMS") {
+      seg = smsSegments(message.text);
+    }
+    let whatsappReady: boolean | null = null;
+    if (channel === "WHATSAPP") {
+      whatsappReady = !!message.whatsappTemplateName;
+    }
     return res.json({
       subject: message.subject ?? null,
       text: message.text,
       html: message.html ?? null,
       smsSegments: seg?.segments ?? null,
       smsCharacters: seg?.characters ?? null,
-      whatsappReady: channel === "WHATSAPP" ? !!message.whatsappTemplateName : null,
+      whatsappReady,
     });
   } catch (err: any) {
     console.error("[campaigns] preview-message error:", err?.message || err);

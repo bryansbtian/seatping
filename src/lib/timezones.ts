@@ -16,9 +16,16 @@ function offsetMinutes(timeZone: string, date: Date): number {
   });
   const map: Record<string, string> = {};
   for (const p of dtf.formatToParts(date)) {
-    if (p.type !== "literal") map[p.type] = p.value;
+    if (p.type !== "literal") {
+      map[p.type] = p.value;
+    }
   }
-  const hour = map.hour === "24" ? 0 : Number(map.hour);
+  let hour: number;
+  if (map.hour === "24") {
+    hour = 0;
+  } else {
+    hour = Number(map.hour);
+  }
   const asUTC = Date.UTC(
     Number(map.year),
     Number(map.month) - 1,
@@ -31,7 +38,12 @@ function offsetMinutes(timeZone: string, date: Date): number {
 }
 
 function offsetLabel(min: number): string {
-  const sign = min >= 0 ? "+" : "-";
+  let sign: string;
+  if (min >= 0) {
+    sign = "+";
+  } else {
+    sign = "-";
+  }
   const abs = Math.abs(min);
   const h = String(Math.floor(abs / 60)).padStart(2, "0");
   const m = String(abs % 60).padStart(2, "0");
@@ -54,7 +66,9 @@ function listZones(): string[] {
     const supported = (Intl as any).supportedValuesOf;
     if (typeof supported === "function") {
       const zones = supported.call(Intl, "timeZone") as string[];
-      if (Array.isArray(zones) && zones.length) return zones;
+      if (Array.isArray(zones) && zones.length) {
+        return zones;
+      }
     }
   } catch {
   }
@@ -66,8 +80,15 @@ export function getDateKeyInTimezone(
   date: Date | string | number,
   timezone: string = DEFAULT_TIMEZONE,
 ): string {
-  const d = date instanceof Date ? date : new Date(date);
-  if (Number.isNaN(d.getTime())) return "";
+  let d: Date;
+  if (date instanceof Date) {
+    d = date;
+  } else {
+    d = new Date(date);
+  }
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
   try {
     return new Intl.DateTimeFormat("en-CA", {
       timeZone: timezone,
@@ -105,8 +126,14 @@ export function getNowWallClockInTimezone(
       hourCycle: "h23",
     }).formatToParts(now);
     const v: Record<string, string> = {};
-    for (const p of parts) if (p.type !== "literal") v[p.type] = p.value;
-    hh = v.hour === "24" ? "00" : (v.hour ?? "00");
+    for (const p of parts) {if (p.type !== "literal") {
+      v[p.type] = p.value;
+    }}
+    if (v.hour === "24") {
+      hh = "00";
+    } else {
+      hh = v.hour ?? "00";
+    }
     mm = v.minute ?? "00";
   } catch {
     hh = String(now.getHours()).padStart(2, "0");
@@ -119,15 +146,25 @@ export function getHourInTimezone(
   date: Date | string | number,
   timezone: string = DEFAULT_TIMEZONE,
 ): number {
-  const d = date instanceof Date ? date : new Date(date);
-  if (Number.isNaN(d.getTime())) return NaN;
+  let d: Date;
+  if (date instanceof Date) {
+    d = date;
+  } else {
+    d = new Date(date);
+  }
+  if (Number.isNaN(d.getTime())) {
+    return NaN;
+  }
   try {
     const hour = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
       hour: "2-digit",
       hour12: false,
     }).format(d);
-    return hour === "24" ? 0 : Number(hour);
+    if (hour === "24") {
+      return 0;
+    }
+    return Number(hour);
   } catch {
     return d.getHours();
   }
@@ -145,8 +182,15 @@ export function formatDateLabelInTimezone(
       day: "numeric",
     });
   }
-  const dt = date instanceof Date ? date : new Date(date);
-  if (Number.isNaN(dt.getTime())) return "";
+  let dt: Date;
+  if (date instanceof Date) {
+    dt = date;
+  } else {
+    dt = new Date(date);
+  }
+  if (Number.isNaN(dt.getTime())) {
+    return "";
+  }
   try {
     return dt.toLocaleDateString("en-US", {
       timeZone: timezone,

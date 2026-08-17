@@ -5,7 +5,9 @@ const authFailureListeners = new Set<() => void>();
 
 function ensureAuthFailureHook() {
   const w = window as any;
-  if (w.__seatpingGmAuthHook) return;
+  if (w.__seatpingGmAuthHook) {
+    return;
+  }
   w.__seatpingGmAuthHook = true;
   w.gm_authFailure = () => {
     authFailed = true;
@@ -14,7 +16,9 @@ function ensureAuthFailureHook() {
 }
 
 export function onMapsAuthFailure(cb: () => void): () => void {
-  if (authFailed) cb();
+  if (authFailed) {
+    cb();
+  }
   authFailureListeners.add(cb);
   return () => authFailureListeners.delete(cb);
 }
@@ -25,8 +29,12 @@ export function getMapsApiKey(): string | undefined {
 
 export function loadGoogleMaps(): Promise<any> {
   const w = window as any;
-  if (w.google?.maps?.places) return Promise.resolve(w.google);
-  if (loadPromise) return loadPromise;
+  if (w.google?.maps?.places) {
+    return Promise.resolve(w.google);
+  }
+  if (loadPromise) {
+    return loadPromise;
+  }
 
   const key = getMapsApiKey();
   if (!key) {
@@ -85,23 +93,34 @@ export function parsePlace(place: any): PlaceDetails {
     get("administrative_area_level_1") ||
     undefined;
 
-  const googleMapsUrl =
-    place?.url ||
-    (placeId
-      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-          place?.formatted_address || ""
-        )}&query_place_id=${placeId}`
-      : typeof lat === "number" && typeof lng === "number"
-        ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
-        : undefined);
+  let derivedMapsUrl: string | undefined;
+  if (placeId) {
+    derivedMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      place?.formatted_address || ""
+    )}&query_place_id=${placeId}`;
+  } else if (typeof lat === "number" && typeof lng === "number") {
+    derivedMapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  } else {
+    derivedMapsUrl = undefined;
+  }
+  const googleMapsUrl = place?.url || derivedMapsUrl;
+
+  let latitude: number | null = null;
+  if (typeof lat === "number") {
+    latitude = lat;
+  }
+  let longitude: number | null = null;
+  if (typeof lng === "number") {
+    longitude = lng;
+  }
 
   return {
     address: place?.formatted_address || place?.name || "",
     area,
     city,
     country: get("country"),
-    latitude: typeof lat === "number" ? lat : null,
-    longitude: typeof lng === "number" ? lng : null,
+    latitude,
+    longitude,
     googlePlaceId: placeId,
     googleMapsUrl,
   };

@@ -24,16 +24,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Node.js
+      - name: Set Up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: npm ci
 
-      - name: Generate Prisma client
+      - name: Generate Prisma Client
         run: npx prisma generate
 
       - name: Lint
@@ -41,3 +41,142 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  test:
+    name: Tests and Coverage
+    runs-on: ubuntu-latest
+
+    env:
+      TEST_DATABASE_URL: mongodb://localhost:27017/seatping_test?replicaSet=rs0&directConnection=true
+      JWT_SECRET: ci-test-jwt-secret
+      CRON_SECRET: ci-test-cron-secret
+      ADMIN_USERNAME: ci-admin
+      CLIENT_ORIGIN: http://localhost:8080
+      FRONTEND_URL: http://localhost:8080
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set Up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Start MongoDB Replica Set
+        run: |
+          docker run -d --name mongo -p 27017:27017 mongo:7 mongod --replSet rs0 --bind_ip_all
+          for i in $(seq 1 30); do
+            if docker exec mongo mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          docker exec mongo mongosh --quiet --eval '
+            try { rs.status() } catch (e) {
+              rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "localhost:27017" }] })
+            }'
+          for i in $(seq 1 30); do
+            state=$(docker exec mongo mongosh --quiet --eval 'try { rs.status().members[0].stateStr } catch (e) { "" }')
+            if [ "$state" = "PRIMARY" ]; then
+              echo "replica set ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "replica set did not reach PRIMARY"
+          docker logs mongo
+          exit 1
+
+      - name: Push Prisma Schema to the Test Database
+        run: npx prisma db push --skip-generate
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+
+      - name: Test with Coverage
+        run: npm run test:coverage
+
+      - name: Upload Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage
+          retention-days: 7
+
+  e2e:
+    name: End to End
+    runs-on: ubuntu-latest
+
+    env:
+      TEST_DATABASE_URL: mongodb://localhost:27017/seatping_e2e_test?replicaSet=rs0&directConnection=true
+      JWT_SECRET: ci-e2e-jwt-secret
+      CRON_SECRET: ci-e2e-cron-secret
+      ADMIN_USERNAME: ci-admin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set Up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start MongoDB Replica Set
+        run: |
+          docker run -d --name mongo -p 27017:27017 mongo:7 mongod --replSet rs0 --bind_ip_all
+          for i in $(seq 1 30); do
+            if docker exec mongo mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          docker exec mongo mongosh --quiet --eval '
+            try { rs.status() } catch (e) {
+              rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "localhost:27017" }] })
+            }'
+          for i in $(seq 1 30); do
+            state=$(docker exec mongo mongosh --quiet --eval 'try { rs.status().members[0].stateStr } catch (e) { "" }')
+            if [ "$state" = "PRIMARY" ]; then
+              echo "replica set ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "replica set did not reach PRIMARY"
+          docker logs mongo
+          exit 1
+
+      - name: Push Prisma Schema to the Test Database
+        run: npx prisma db push --skip-generate
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+
+      - name: Run Playwright End to End Tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7

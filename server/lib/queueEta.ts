@@ -26,35 +26,56 @@ const DISPLAY_CAP_MIN = 60;
 
 export function partyWeight(partySize: any): number {
   const n = Number(partySize);
-  const size = Number.isFinite(n) && n > 0 ? n : 2;
+  let size: number;
+  if (Number.isFinite(n) && n > 0) {
+    size = n;
+  } else {
+    size = 2;
+  }
   return 1 + Math.max(0, size - 2) * 0.15;
 }
 
 function partySizeOf(c: any): number {
   const n = Number(c?.partySize ?? c?.numGuests);
-  return Number.isFinite(n) && n > 0 ? n : 2;
+  if (Number.isFinite(n) && n > 0) {
+    return n;
+  }
+  return 2;
 }
 
 function validDate(v: any): Date | null {
-  if (!v) return null;
+  if (!v) {
+    return null;
+  }
   const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d;
+  if (Number.isNaN(d.getTime())) {
+    return null;
+  }
+  return d;
 }
 
 function recentMinutesPerParty(admitted: any[], now: Date): number | null {
   const count = (windowMin: number) =>
     admitted.filter((c) => {
-      if (c?.finalStatus === "no_show") return false;
+      if (c?.finalStatus === "no_show") {
+        return false;
+      }
       const a = validDate(c?.admittedAt);
-      if (!a) return false;
+      if (!a) {
+        return false;
+      }
       const ageMin = (now.getTime() - a.getTime()) / 60000;
       return ageMin >= 0 && ageMin <= windowMin;
     }).length;
 
   const last30 = count(30);
-  if (last30 >= 2) return 30 / last30;
+  if (last30 >= 2) {
+    return 30 / last30;
+  }
   const last60 = count(60);
-  if (last60 >= 2) return 60 / last60;
+  if (last60 >= 2) {
+    return 60 / last60;
+  }
   return null;
 }
 
@@ -65,14 +86,20 @@ function historicalMinutesPerParty(
   type Sample = { wait: number; dow: number; hour: number };
   const samples: Sample[] = [];
   for (const c of admitted) {
-    if (c?.finalStatus === "no_show") continue;
+    if (c?.finalStatus === "no_show") {
+      continue;
+    }
     const join = validDate(c?.joinedAt);
     const admit = validDate(c?.admittedAt);
-    if (!join || !admit) continue;
+    if (!join || !admit) {
+      continue;
+    }
     const wait = Math.max(0, (admit.getTime() - join.getTime()) / 60000);
     samples.push({ wait, dow: admit.getDay(), hour: admit.getHours() });
   }
-  if (samples.length === 0) return { value: DEFAULT_MINUTES_PER_PARTY, hadData: false };
+  if (samples.length === 0) {
+    return { value: DEFAULT_MINUTES_PER_PARTY, hadData: false };
+  }
 
   const avg = (arr: Sample[]) =>
     arr.reduce((s, x) => s + x.wait, 0) / arr.length;
@@ -80,9 +107,13 @@ function historicalMinutesPerParty(
   const dowHour = samples.filter(
     (s) => s.dow === now.getDay() && s.hour === now.getHours(),
   );
-  if (dowHour.length) return { value: avg(dowHour), hadData: true };
+  if (dowHour.length) {
+    return { value: avg(dowHour), hadData: true };
+  }
   const hour = samples.filter((s) => s.hour === now.getHours());
-  if (hour.length) return { value: avg(hour), hadData: true };
+  if (hour.length) {
+    return { value: avg(hour), hadData: true };
+  }
   return { value: avg(samples), hadData: true };
 }
 
@@ -99,14 +130,20 @@ function reservationPressureMultiplier(
   const horizon = now.getTime() + 60 * 60000;
   let reservedGuestsNextHour = 0;
   for (const r of reservations) {
-    if (!ACTIVE_RESERVATION_STATUSES.includes(r?.status)) continue;
+    if (!ACTIVE_RESERVATION_STATUSES.includes(r?.status)) {
+      continue;
+    }
     const t = validDate(r?.reservationDateTime);
-    if (!t) continue;
+    if (!t) {
+      continue;
+    }
     if (t.getTime() >= now.getTime() && t.getTime() <= horizon) {
       reservedGuestsNextHour += partySizeOf(r);
     }
   }
-  if (reservedGuestsNextHour <= 0) return { multiplier: 1, used: false };
+  if (reservedGuestsNextHour <= 0) {
+    return { multiplier: 1, used: false };
+  }
   const pressure = reservedGuestsNextHour / maxPerHour;
   return { multiplier: 1 + Math.min(pressure, 1) * 0.5, used: true };
 }
@@ -143,11 +180,18 @@ export type ComputeQueueEtaInput = {
 
 export function computeQueueEta(input: ComputeQueueEtaInput): QueueEta {
   const now = input.now ?? new Date();
-  const queue = Array.isArray(input.queue) ? input.queue : [];
-  const admitted = Array.isArray(input.admittedCustomers)
-    ? input.admittedCustomers
-    : [];
-  const reservations = Array.isArray(input.reservations) ? input.reservations : [];
+  let queue: any[] = [];
+  if (Array.isArray(input.queue)) {
+    queue = input.queue;
+  }
+  let admitted: any[] = [];
+  if (Array.isArray(input.admittedCustomers)) {
+    admitted = input.admittedCustomers;
+  }
+  let reservations: any[] = [];
+  if (Array.isArray(input.reservations)) {
+    reservations = input.reservations;
+  }
 
   const ticketIndex = Math.max(0, input.ticketIndex);
   const peopleAhead = ticketIndex;
@@ -159,10 +203,12 @@ export function computeQueueEta(input: ComputeQueueEtaInput): QueueEta {
 
   const recent = recentMinutesPerParty(admitted, now);
   const historical = historicalMinutesPerParty(admitted, now);
-  let blended =
-    recent != null
-      ? 0.6 * recent + 0.4 * historical.value
-      : historical.value;
+  let blended: number;
+  if (recent != null) {
+    blended = 0.6 * recent + 0.4 * historical.value;
+  } else {
+    blended = historical.value;
+  }
   blended = clamp(blended, MIN_MINUTES_PER_PARTY, MAX_MINUTES_PER_PARTY);
 
   const pressure = reservationPressureMultiplier(
@@ -176,8 +222,12 @@ export function computeQueueEta(input: ComputeQueueEtaInput): QueueEta {
   const { min, max, text } = toDisplay(etaMinutes);
 
   let confidence: EtaConfidence = "low";
-  if (recent != null && historical.hadData) confidence = "high";
-  else if (recent != null || historical.hadData) confidence = "medium";
+  if (recent != null && historical.hadData) {
+    confidence = "high";
+  }
+  else if (recent != null || historical.hadData) {
+    confidence = "medium";
+  }
 
   return {
     position,
@@ -198,12 +248,22 @@ export function computeQueueEta(input: ComputeQueueEtaInput): QueueEta {
 }
 
 function locationData(location: any) {
+  let queue: any[] = [];
+  if (Array.isArray(location?.queue)) {
+    queue = location.queue;
+  }
+  let admittedCustomers: any[] = [];
+  if (Array.isArray(location?.admittedCustomers)) {
+    admittedCustomers = location.admittedCustomers;
+  }
+  let reservations: any[] = [];
+  if (Array.isArray(location?.reservations)) {
+    reservations = location.reservations;
+  }
   return {
-    queue: Array.isArray(location?.queue) ? location.queue : [],
-    admittedCustomers: Array.isArray(location?.admittedCustomers)
-      ? location.admittedCustomers
-      : [],
-    reservations: Array.isArray(location?.reservations) ? location.reservations : [],
+    queue,
+    admittedCustomers,
+    reservations,
     reservationSettings: location?.reservationSettings ?? {},
     reservationsEnabled: location?.reservationsEnabled ?? true,
   };
@@ -218,7 +278,9 @@ export function etaForToken(
   const ticketIndex = data.queue.findIndex(
     (c: any) => c?.queueToken === queueToken,
   );
-  if (ticketIndex === -1) return null;
+  if (ticketIndex === -1) {
+    return null;
+  }
   return computeQueueEta({ ...data, ticketIndex, now });
 }
 

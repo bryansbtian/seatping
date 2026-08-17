@@ -5,7 +5,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  { ignores: ["dist", "dist-server", "coverage"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -26,6 +26,22 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "no-empty": ["error", { "allowEmptyCatch": true }],
+      "no-ternary": "error",
+      "curly": ["error", "all"],
+    },
+  },
+  {
+    files: ["e2e/**/*.ts"],
+    rules: {
+      "react-hooks/rules-of-hooks": "off",
+      "no-empty-pattern": "off",
+    },
+  },
+  {
+    files: ["**/*.{js,jsx,mjs,cjs}"],
+    rules: {
+      "no-ternary": "error",
+      "curly": ["error", "all"],
     },
   }
 );

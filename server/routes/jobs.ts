@@ -8,10 +8,10 @@ const router = Router();
 
 const currentSigningKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
 const nextSigningKey = process.env.QSTASH_NEXT_SIGNING_KEY;
-const receiver =
-  currentSigningKey && nextSigningKey
-    ? new Receiver({ currentSigningKey, nextSigningKey })
-    : null;
+let receiver: Receiver | null = null;
+if (currentSigningKey && nextSigningKey) {
+  receiver = new Receiver({ currentSigningKey, nextSigningKey });
+}
 
 router.post(
   "/notify",
@@ -21,16 +21,21 @@ router.post(
       return res.status(503).json({ error: "Notification worker not configured" });
     }
 
-    const bodyStr = Buffer.isBuffer(req.body)
-      ? req.body.toString("utf8")
-      : typeof req.body === "string"
-        ? req.body
-        : JSON.stringify(req.body);
+    let bodyStr: string;
+    if (Buffer.isBuffer(req.body)) {
+      bodyStr = req.body.toString("utf8");
+    } else if (typeof req.body === "string") {
+      bodyStr = req.body;
+    } else {
+      bodyStr = JSON.stringify(req.body);
+    }
 
     const signature = req.header("Upstash-Signature") || "";
     try {
       const valid = await receiver.verify({ signature, body: bodyStr });
-      if (!valid) return res.status(401).json({ error: "Invalid signature" });
+      if (!valid) {
+        return res.status(401).json({ error: "Invalid signature" });
+      }
     } catch {
       return res.status(401).json({ error: "Invalid signature" });
     }

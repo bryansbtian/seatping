@@ -37,22 +37,30 @@ const router = Router();
 const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 
 async function resolveLocation(businessUsername: string, locationId: string) {
-  if (!businessUsername || !OBJECT_ID_RE.test(locationId)) return null;
+  if (!businessUsername || !OBJECT_ID_RE.test(locationId)) {
+    return null;
+  }
   const business = await prisma.business.findUnique({
     where: { username: businessUsername },
     select: { id: true, name: true, username: true, email: true },
   });
-  if (!business) return null;
+  if (!business) {
+    return null;
+  }
   const location = await prisma.location.findFirst({
     where: { id: locationId, businessId: business.id },
   });
-  if (!location) return null;
+  if (!location) {
+    return null;
+  }
   return { business, location };
 }
 
 function readableDate(date: string): string {
   const d = new Date(`${date}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return date;
+  if (Number.isNaN(d.getTime())) {
+    return date;
+  }
   return d.toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
@@ -63,7 +71,9 @@ function readableDate(date: string): string {
 
 function baseUrl(req: any): string {
   const origin = req.headers.origin;
-  if (typeof origin === "string" && origin) return origin.replace(/\/$/, "");
+  if (typeof origin === "string" && origin) {
+    return origin.replace(/\/$/, "");
+  }
   const proto = req.headers["x-forwarded-proto"] || req.protocol || "http";
   return `${proto}://${req.get("host")}`;
 }
@@ -111,12 +121,18 @@ router.get("/:businessUsername/:locationId/settings", async (req, res) => {
       String(req.params.businessUsername || "").trim(),
       String(req.params.locationId || "").trim(),
     );
-    if (!resolved) return res.status(404).json({ error: "Restaurant not found" });
+    if (!resolved) {
+      return res.status(404).json({ error: "Restaurant not found" });
+    }
     const { location } = resolved;
     const enabled = location.reservationsEnabled ?? true;
+    let settings: ReturnType<typeof normalizeSettings> | null = null;
+    if (enabled) {
+      settings = normalizeSettings(location.reservationSettings);
+    }
     return res.json({
       reservationsEnabled: enabled,
-      settings: enabled ? normalizeSettings(location.reservationSettings) : null,
+      settings,
     });
   } catch (err: any) {
     console.error("[reservations] settings error:", err?.message || err);
@@ -130,7 +146,9 @@ router.get("/:businessUsername/:locationId/availability", async (req, res) => {
       String(req.params.businessUsername || "").trim(),
       String(req.params.locationId || "").trim(),
     );
-    if (!resolved) return res.status(404).json({ error: "Restaurant not found" });
+    if (!resolved) {
+      return res.status(404).json({ error: "Restaurant not found" });
+    }
     const { location } = resolved;
 
     if (!(location.reservationsEnabled ?? true)) {
@@ -152,28 +170,41 @@ router.get("/:businessUsername/:locationId/availability", async (req, res) => {
         openingHours: getLocationOpeningHours(location),
       });
 
-    const availability = operatingStatus.isClosed
-      ? {
-          status: "closed",
-          dayName: operatingStatus.dayName,
-          hoursLabel: operatingStatus.hoursLabel,
-          message: `This restaurant is closed on ${operatingStatus.dayName || "this date"}.`,
-          helper: "Choose another date to view available reservation times.",
-        }
-      : operatingStatus.configured && slots.length === 0 && !outsideWindow
-        ? {
-            status: "outside_operating_hours",
-            dayName: operatingStatus.dayName,
-            hoursLabel: operatingStatus.hoursLabel,
-            message:
-              "No reservation times are available because the restaurant is closed during reservation hours on this date.",
-            helper: "Choose another date to view available reservation times.",
-          }
-        : {
-            status: "available",
-            dayName: operatingStatus.dayName,
-            hoursLabel: operatingStatus.hoursLabel,
-          };
+    let availability: {
+      status: string;
+      dayName: string | null;
+      hoursLabel: string | null;
+      message?: string;
+      helper?: string;
+    };
+    if (operatingStatus.isClosed) {
+      availability = {
+        status: "closed",
+        dayName: operatingStatus.dayName,
+        hoursLabel: operatingStatus.hoursLabel,
+        message: `This restaurant is closed on ${operatingStatus.dayName || "this date"}.`,
+        helper: "Choose another date to view available reservation times.",
+      };
+    } else if (
+      operatingStatus.configured &&
+      slots.length === 0 &&
+      !outsideWindow
+    ) {
+      availability = {
+        status: "outside_operating_hours",
+        dayName: operatingStatus.dayName,
+        hoursLabel: operatingStatus.hoursLabel,
+        message:
+          "No reservation times are available because the restaurant is closed during reservation hours on this date.",
+        helper: "Choose another date to view available reservation times.",
+      };
+    } else {
+      availability = {
+        status: "available",
+        dayName: operatingStatus.dayName,
+        hoursLabel: operatingStatus.hoursLabel,
+      };
+    }
 
     return res.json({
       reservationsEnabled: true,
@@ -197,7 +228,9 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
       String(req.params.businessUsername || "").trim(),
       String(req.params.locationId || "").trim(),
     );
-    if (!resolved) return res.status(404).json({ error: "Restaurant not found" });
+    if (!resolved) {
+      return res.status(404).json({ error: "Restaurant not found" });
+    }
     const { business, location } = resolved;
 
     if (!(location.reservationsEnabled ?? true)) {
@@ -236,7 +269,9 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
         },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     const settings = normalizeSettings(location.reservationSettings);
     const reservations = await activeReservationsForValidation(location.id);
@@ -251,7 +286,9 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
       timeZone: getLocationTimezone(location),
       openingHours: getLocationOpeningHours(location),
     });
-    if (error) return res.status(400).json({ error });
+    if (error) {
+      return res.status(400).json({ error });
+    }
 
     const reservationDateTime = buildReservationDateTime(String(date), String(time));
     const { dateKey, hour } = bucketOf(reservationDateTime);
@@ -286,10 +323,18 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
     }
 
     const session = readSession(req);
-    const customerId =
-      session?.accountType === "customer" ? session.sub : null;
+    let customerId: string | null = null;
+    if (session?.accountType === "customer") {
+      customerId = session.sub;
+    }
 
     const manageToken = crypto.randomBytes(24).toString("hex");
+
+    let notesValue = "";
+    if (notes) {
+      notesValue = String(notes).trim().slice(0, 1000);
+    }
+
     let row: Reservation;
     try {
       row = await prisma.reservation.create({
@@ -308,7 +353,7 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
           email: String(email).trim(),
           guestCount: size,
           reservationDateTime,
-          notes: notes ? String(notes).trim().slice(0, 1000) : "",
+          notes: notesValue,
           status: "CONFIRMED",
           source: "seatping_public",
         },
@@ -341,13 +386,19 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
 });
 
 async function findByManageToken(manageToken: string) {
-  if (!manageToken) return null;
+  if (!manageToken) {
+    return null;
+  }
   const reservation = await prisma.reservation.findUnique({ where: { manageToken } });
-  if (!reservation) return null;
+  if (!reservation) {
+    return null;
+  }
   const location = await prisma.location.findUnique({
     where: { id: reservation.locationId },
   });
-  if (!location) return null;
+  if (!location) {
+    return null;
+  }
   return { location, reservation };
 }
 
@@ -356,7 +407,9 @@ const TERMINAL_ENUM = ["CANCELLED", "COMPLETED", "NO_SHOW"];
 router.get("/manage/:manageToken", async (req, res) => {
   try {
     const found = await findByManageToken(String(req.params.manageToken || "").trim());
-    if (!found) return res.status(404).json({ error: "Reservation not found" });
+    if (!found) {
+      return res.status(404).json({ error: "Reservation not found" });
+    }
     const { location, reservation } = found;
 
     const business = await prisma.business.findUnique({
@@ -407,10 +460,14 @@ router.put("/manage/:manageToken", async (req, res) => {
         { name: "reservation-manage-token", key: manageToken, windowMs: MINUTES(10), max: 10 },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     const found = await findByManageToken(manageToken);
-    if (!found) return res.status(404).json({ error: "Reservation not found" });
+    if (!found) {
+      return res.status(404).json({ error: "Reservation not found" });
+    }
     const { location, reservation } = found;
 
     if (TERMINAL_ENUM.includes(reservation.status)) {
@@ -420,8 +477,12 @@ router.put("/manage/:manageToken", async (req, res) => {
     const current = splitDateTime(reservation.reservationDateTime);
     const date = String(req.body?.date || current.date);
     const time = String(req.body?.time || current.time);
-    const partySize =
-      req.body?.partySize !== undefined ? Number(req.body.partySize) : reservation.guestCount;
+    let partySize: number;
+    if (req.body?.partySize !== undefined) {
+      partySize = Number(req.body.partySize);
+    } else {
+      partySize = reservation.guestCount;
+    }
 
     const settings = normalizeSettings(location.reservationSettings);
     const error = validateReservationRequest({
@@ -434,7 +495,9 @@ router.put("/manage/:manageToken", async (req, res) => {
       timeZone: getLocationTimezone(location),
       openingHours: getLocationOpeningHours(location),
     });
-    if (error) return res.status(400).json({ error });
+    if (error) {
+      return res.status(400).json({ error });
+    }
 
     const oldBucket = bucketOf(reservation.reservationDateTime);
     const newDateTime = buildReservationDateTime(date, time);
@@ -469,7 +532,9 @@ router.put("/manage/:manageToken", async (req, res) => {
 });
 
 async function syncManageChange(location: any, reservationRow: Reservation) {
-  if (!reservationRow?.customerId) return;
+  if (!reservationRow?.customerId) {
+    return;
+  }
   const biz = await prisma.business.findUnique({
     where: { id: location.businessId },
     select: { name: true },
@@ -489,10 +554,14 @@ router.post("/manage/:manageToken/cancel", async (req, res) => {
         { name: "reservation-manage-token", key: manageToken, windowMs: MINUTES(10), max: 10 },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     const found = await findByManageToken(manageToken);
-    if (!found) return res.status(404).json({ error: "Reservation not found" });
+    if (!found) {
+      return res.status(404).json({ error: "Reservation not found" });
+    }
     const { location, reservation } = found;
 
     if (reservation.status === "CANCELLED") {

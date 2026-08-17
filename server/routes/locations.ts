@@ -26,16 +26,29 @@ const SUGGEST_WEIGHTS = {
 
 function pickCuisineSuggest(rp: any): string | null {
   const arr = rp?.cuisineTypes;
-  return Array.isArray(arr) && arr.length ? String(arr[0]) : null;
+  if (Array.isArray(arr) && arr.length) {
+    return String(arr[0]);
+  }
+  return null;
 }
 
 function fieldScore(value: any, needle: string): number {
-  if (!value) return 0;
+  if (!value) {
+    return 0;
+  }
   const v = String(value).toLowerCase();
-  if (v === needle) return 100;
-  if (v.startsWith(needle)) return 60;
-  if (v.split(/[\s,.&/-]+/).some((w) => w && w.startsWith(needle))) return 40;
-  if (v.includes(needle)) return 20;
+  if (v === needle) {
+    return 100;
+  }
+  if (v.startsWith(needle)) {
+    return 60;
+  }
+  if (v.split(/[\s,.&/-]+/).some((w) => w && w.startsWith(needle))) {
+    return 40;
+  }
+  if (v.includes(needle)) {
+    return 20;
+  }
   return 0;
 }
 
@@ -46,12 +59,20 @@ router.get("/search-suggestions", async (req, res) => {
         { name: "suggestions-ip", key: clientIp(req), windowMs: MINUTES(1), max: 120 },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     const q = String(req.query.query || "").trim().toLowerCase();
     const rawLimit = parseInt(String(req.query.limit || "3"), 10);
-    const limit = Math.min(3, Math.max(1, Number.isFinite(rawLimit) ? rawLimit : 3));
-    if (!q) return res.json({ suggestions: [] });
+    let boundedLimit = 3;
+    if (Number.isFinite(rawLimit)) {
+      boundedLimit = rawLimit;
+    }
+    const limit = Math.min(3, Math.max(1, boundedLimit));
+    if (!q) {
+      return res.json({ suggestions: [] });
+    }
 
     const locations = await prisma.location.findMany({
       where: { isPublished: true },
@@ -69,7 +90,9 @@ router.get("/search-suggestions", async (req, res) => {
     const scored = locations
       .map((loc: any) => {
         const rp = (loc.restaurantProfile || {}) as any;
-        if (rp.isPublished === false) return null;
+        if (rp.isPublished === false) {
+          return null;
+        }
         const details = (rp.details || {}) as any;
         const biz = businessById.get(loc.businessId);
 
@@ -88,7 +111,10 @@ router.get("/search-suggestions", async (req, res) => {
           fieldScore(details.area, q),
           fieldScore(details.city, q),
         );
-        const cuisineArr = Array.isArray(rp.cuisineTypes) ? rp.cuisineTypes : [];
+        let cuisineArr: any[] = [];
+        if (Array.isArray(rp.cuisineTypes)) {
+          cuisineArr = rp.cuisineTypes;
+        }
         const cuisineScore = cuisineArr.reduce(
           (m: number, c: any) => Math.max(m, fieldScore(c, q)),
           0,
@@ -111,31 +137,41 @@ router.get("/search-suggestions", async (req, res) => {
           addressScore * SUGGEST_WEIGHTS.address +
           textScore * SUGGEST_WEIGHTS.text;
 
-        if (score <= 0) return null;
+        if (score <= 0) {
+          return null;
+        }
         return { loc, biz, rp, score };
       })
       .filter(Boolean) as Array<{ loc: any; biz: any; rp: any; score: number }>;
 
     scored.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
       const an = (a.rp.displayName || a.biz?.name || "").toLowerCase();
       const bn = (b.rp.displayName || b.biz?.name || "").toLowerCase();
       return an.localeCompare(bn);
     });
 
-    const suggestions = scored.slice(0, limit).map(({ loc, biz, rp }) => ({
-      locationId: loc.id,
-      businessId: loc.businessId,
-      businessUsername: biz?.username ?? null,
-      businessName: biz?.name ?? null,
-      name: rp.displayName || biz?.name || loc.displayName || loc.name || "Restaurant",
-      shortAddress: rp.shortAddress || loc.displayName || loc.area || loc.city || null,
-      cuisine: pickCuisineSuggest(rp),
-      area: loc.area ?? null,
-      city: loc.city ?? null,
-      imageUrl: loc.bannerImageUrl || loc.photos?.[0]?.url || null,
-      url: biz?.username ? `/restaurants/${biz.username}/${loc.id}` : null,
-    }));
+    const suggestions = scored.slice(0, limit).map(({ loc, biz, rp }) => {
+      let url: string | null = null;
+      if (biz?.username) {
+        url = `/restaurants/${biz.username}/${loc.id}`;
+      }
+      return {
+        locationId: loc.id,
+        businessId: loc.businessId,
+        businessUsername: biz?.username ?? null,
+        businessName: biz?.name ?? null,
+        name: rp.displayName || biz?.name || loc.displayName || loc.name || "Restaurant",
+        shortAddress: rp.shortAddress || loc.displayName || loc.area || loc.city || null,
+        cuisine: pickCuisineSuggest(rp),
+        area: loc.area ?? null,
+        city: loc.city ?? null,
+        imageUrl: loc.bannerImageUrl || loc.photos?.[0]?.url || null,
+        url,
+      };
+    });
 
     return res.json({ suggestions });
   } catch (err: any) {
@@ -158,7 +194,9 @@ router.use(async (req, res, next) => {
       },
     ])
   )
-    return;
+    {
+      return;
+    }
   next();
 });
 
@@ -175,7 +213,9 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_FILE_SIZE_BYTES, files: MAX_PHOTOS_PER_LOCATION },
   fileFilter: (_req, file, cb) => {
-    if (ACCEPTED_MIME.has(file.mimetype)) return cb(null, true);
+    if (ACCEPTED_MIME.has(file.mimetype)) {
+      return cb(null, true);
+    }
     cb(new Error("Only JPG, PNG, and WEBP image files are allowed."));
   },
 });
@@ -186,14 +226,24 @@ function runMulter(
   mw: (req: Request, res: Response, cb: (err?: unknown) => void) => void
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    mw(req, res, (err?: unknown) => (err ? reject(err) : resolve()));
+    mw(req, res, (err?: unknown) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
   });
 }
 
 function uploadErrorMessage(err: any): string {
-  if (err?.code === "LIMIT_FILE_SIZE") return "Each image must be 5MB or smaller.";
+  if (err?.code === "LIMIT_FILE_SIZE") {
+    return "Each image must be 5MB or smaller.";
+  }
   if (err?.code === "LIMIT_FILE_COUNT")
-    return `You can upload at most ${MAX_PHOTOS_PER_LOCATION} images at once.`;
+    {
+      return `You can upload at most ${MAX_PHOTOS_PER_LOCATION} images at once.`;
+    }
   return err?.message || "Upload failed. Please try again.";
 }
 
@@ -510,10 +560,14 @@ router.patch(
         where: { id: photoId, locationId: location.id },
         select: { id: true },
       });
-      if (!photo) return res.status(404).json({ error: "Photo not found" });
+      if (!photo) {
+        return res.status(404).json({ error: "Photo not found" });
+      }
 
-      const trimmed =
-        typeof altText === "string" && altText.trim() ? altText.trim() : null;
+      let trimmed: string | null = null;
+      if (typeof altText === "string" && altText.trim()) {
+        trimmed = altText.trim();
+      }
       const updated = await prisma.photo.update({
         where: { id: photoId },
         data: { altText: trimmed },
@@ -543,7 +597,9 @@ router.delete(
         where: { id: photoId, locationId: location.id },
         select: { id: true, publicId: true },
       });
-      if (!photo) return res.status(404).json({ error: "Photo not found" });
+      if (!photo) {
+        return res.status(404).json({ error: "Photo not found" });
+      }
 
       await prisma.photo.delete({ where: { id: photoId } });
       await deleteImageByPublicId(photo.publicId);
@@ -559,15 +615,23 @@ router.delete(
 
 
 function serializeReview(r: any) {
+  let rating = 0;
+  if (typeof r.rating === "number") {
+    rating = r.rating;
+  }
+  let partySize: number | null = null;
+  if (typeof r.partySize === "number") {
+    partySize = r.partySize;
+  }
   return {
     id: r.id,
     locationId: r.locationId,
     customerId: r.customerId ?? null,
     customerName: r.customerName ?? null,
     customerUsername: r.customerUsername ?? null,
-    rating: typeof r.rating === "number" ? r.rating : 0,
+    rating,
     description: r.description ?? null,
-    partySize: typeof r.partySize === "number" ? r.partySize : null,
+    partySize,
     serviceType: r.serviceType ?? null,
     createdAt: r.createdAt,
     businessReply: r.businessReply ?? null,
@@ -625,7 +689,9 @@ router.patch(
         where: { id: reviewId, locationId: location.id },
         select: { id: true, businessReplyCreatedAt: true },
       });
-      if (!review) return res.status(404).json({ error: "Review not found" });
+      if (!review) {
+        return res.status(404).json({ error: "Review not found" });
+      }
 
       const now = new Date();
       const updated = await prisma.review.update({
@@ -658,7 +724,9 @@ router.delete(
         where: { id: reviewId, locationId: location.id },
         select: { id: true },
       });
-      if (!review) return res.status(404).json({ error: "Review not found" });
+      if (!review) {
+        return res.status(404).json({ error: "Review not found" });
+      }
 
       const updated = await prisma.review.update({
         where: { id: reviewId },

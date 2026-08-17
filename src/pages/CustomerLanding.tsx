@@ -58,7 +58,15 @@ const CustomerLanding = () => {
     api("/api/featured-restaurants")
       .then((res) => {
         if (!cancelled)
-          setFeatured(Array.isArray(res.featured) ? res.featured : []);
+          {
+            let nextFeatured: FeaturedRestaurant[];
+            if (Array.isArray(res.featured)) {
+              nextFeatured = res.featured;
+            } else {
+              nextFeatured = [];
+            }
+            setFeatured(nextFeatured);
+          }
       })
       .catch(() => {
         if (!cancelled) {
@@ -67,7 +75,9 @@ const CustomerLanding = () => {
         }
       })
       .finally(() => {
-        if (!cancelled) setLoadingFeatured(false);
+        if (!cancelled) {
+          setLoadingFeatured(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -78,7 +88,9 @@ const CustomerLanding = () => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) entry.target.classList.add("animate-in");
+          if (entry.isIntersecting) {
+            entry.target.classList.add("animate-in");
+          }
         });
       },
       { threshold: 0.1, rootMargin: "0px 0px -50px 0px" },
@@ -96,6 +108,229 @@ const CustomerLanding = () => {
       .getElementById("featured")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  let featuredContent;
+  if (loadingFeatured) {
+    featuredContent = (
+      <div className="flex items-center gap-2 py-12 text-slate-500">
+        <Loader2 className="h-5 w-5 animate-spin" /> Loading featured
+        restaurants...
+      </div>
+    );
+  } else if (featured.length === 0) {
+    let emptyStateMessage;
+    if (featuredError) {
+      emptyStateMessage = (
+        <>
+          <p className="text-lg font-semibold text-slate-900">
+            Couldn't load featured restaurants.
+          </p>
+          <p className="mt-2 text-sm text-slate-500">
+            Please refresh the page to try again.
+          </p>
+        </>
+      );
+    } else {
+      emptyStateMessage = (
+        <>
+          <p className="text-lg font-semibold text-slate-900">
+            No featured restaurants yet.
+          </p>
+          <p className="mt-2 text-sm text-slate-500">
+            New dining spots are coming soon. Check back later to discover
+            places to book, queue, and enjoy.
+          </p>
+        </>
+      );
+    }
+    featuredContent = (
+      <div className="max-w-2xl rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 md:p-12 text-left">
+        {emptyStateMessage}
+      </div>
+    );
+  } else {
+    featuredContent = (
+      <CarouselContent className="-ml-4">
+        {featured.map((r) => {
+          let resolvedDetailsHref: string | null;
+          if (r.businessUsername) {
+            resolvedDetailsHref = `/${r.businessUsername}/${r.locationId}`;
+          } else {
+            resolvedDetailsHref = null;
+          }
+          const detailsHref = resolvedDetailsHref;
+
+          let queueHref: string;
+          if (r.businessUsername && r.locationId) {
+            queueHref = `/queue/${r.businessUsername}/${r.locationId}`;
+          } else {
+            queueHref = detailsHref ?? "/";
+          }
+          const locationText =
+            r.shortAddress || r.city || r.area || r.address || "";
+
+          let cardCursorClass: string;
+          let cardClickHandler: (() => void) | undefined;
+          let cardRole: string | undefined;
+          let cardAriaLabel: string | undefined;
+          if (detailsHref) {
+            cardCursorClass = "cursor-pointer";
+            cardClickHandler = () => navigate(detailsHref);
+            cardRole = "link";
+            cardAriaLabel = `View ${r.name}`;
+          } else {
+            cardCursorClass = "";
+            cardClickHandler = undefined;
+            cardRole = undefined;
+            cardAriaLabel = undefined;
+          }
+
+          let bannerContent;
+          if (r.bannerImageUrl) {
+            bannerContent = (
+              <img
+                src={r.bannerImageUrl}
+                alt={r.name}
+                loading="lazy"
+                className="h-full w-full object-cover"
+              />
+            );
+          } else {
+            bannerContent = (
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
+                <Utensils className="h-8 w-8" />
+              </div>
+            );
+          }
+
+          let ratingContent;
+          if (r.rating != null) {
+            let reviewCountLabel: string;
+            if (r.reviewCount > 0) {
+              let reviewNoun: string;
+              if (r.reviewCount === 1) {
+                reviewNoun = "Review";
+              } else {
+                reviewNoun = "Reviews";
+              }
+              reviewCountLabel = `(${r.reviewCount} ${reviewNoun})`;
+            } else {
+              reviewCountLabel = "Reviews";
+            }
+            ratingContent = (
+              <span className="inline-flex items-center gap-1 font-medium text-slate-700">
+                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                {r.rating.toFixed(1)}
+                <span className="font-normal text-slate-500">
+                  {reviewCountLabel}
+                </span>
+              </span>
+            );
+          } else {
+            ratingContent = <span>No Reviews Yet</span>;
+          }
+
+          let reservationAction;
+          if (r.reservationsEnabled === false) {
+            reservationAction = (
+              <div
+                aria-disabled="true"
+                title="Reservations unavailable"
+                className="flex h-10 w-full min-w-0 cursor-not-allowed select-none items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-400 max-[320px]:px-2 max-[320px]:text-xs"
+              >
+                Reservations Unavailable
+              </div>
+            );
+          } else {
+            reservationAction = (
+              <Button
+                className="w-full min-w-0 justify-center whitespace-nowrap px-3"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (detailsHref) {
+                    navigate(detailsHref);
+                  }
+                }}
+              >
+                <Utensils className="h-4 w-4" />
+                <span>Book Table</span>
+              </Button>
+            );
+          }
+
+          return (
+            <CarouselItem
+              key={r.id}
+              className="pl-4 basis-[88%] sm:basis-[70%] lg:basis-1/2 xl:basis-1/3"
+            >
+              <Card
+                className={`h-full overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl transition-shadow duration-300 flex flex-col ${cardCursorClass}`}
+                onClick={cardClickHandler}
+                role={cardRole}
+                aria-label={cardAriaLabel}
+              >
+                <div className="relative aspect-[4/3] bg-slate-100">
+                  {bannerContent}
+                </div>
+
+                <CardContent className="flex flex-1 flex-col p-4">
+                  {}
+                  <h3 className="font-semibold text-slate-900 truncate">
+                    {r.name}
+                  </h3>
+
+                  {}
+                  <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-slate-500">
+                    {ratingContent}
+                    {r.cuisine && (
+                      <>
+                        <span aria-hidden className="text-slate-300">
+                          ·
+                        </span>
+                        <span>{r.cuisine}</span>
+                      </>
+                    )}
+                    {r.priceRange && (
+                      <>
+                        <span aria-hidden className="text-slate-300">
+                          ·
+                        </span>
+                        <span>{r.priceRange}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {}
+                  {locationText && (
+                    <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
+                      <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
+                      <span className="truncate">{locationText}</span>
+                    </p>
+                  )}
+
+                  {}
+                  <div className="mt-auto grid grid-cols-1 gap-3 pt-4 sm:grid-cols-2">
+                    {reservationAction}
+                    <Button
+                      variant="outline"
+                      aria-label={`Join queue at ${r.name}`}
+                      className="w-full min-w-0 justify-center whitespace-nowrap px-3"
+                      asChild
+                    >
+                      <Link to={queueHref} onClick={(e) => e.stopPropagation()}>
+                        <Users className="h-4 w-4" />
+                        <span>Join Queue</span>
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </CarouselItem>
+          );
+        })}
+      </CarouselContent>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -189,167 +424,7 @@ const CustomerLanding = () => {
               )}
             </div>
 
-            {loadingFeatured ? (
-              <div className="flex items-center gap-2 py-12 text-slate-500">
-                <Loader2 className="h-5 w-5 animate-spin" /> Loading featured
-                restaurants...
-              </div>
-            ) : featured.length === 0 ? (
-              <div className="max-w-2xl rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 md:p-12 text-left">
-                {featuredError ? (
-                  <>
-                    <p className="text-lg font-semibold text-slate-900">
-                      Couldn't load featured restaurants.
-                    </p>
-                    <p className="mt-2 text-sm text-slate-500">
-                      Please refresh the page to try again.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-lg font-semibold text-slate-900">
-                      No featured restaurants yet.
-                    </p>
-                    <p className="mt-2 text-sm text-slate-500">
-                      New dining spots are coming soon. Check back later to
-                      discover places to book, queue, and enjoy.
-                    </p>
-                  </>
-                )}
-              </div>
-            ) : (
-              <CarouselContent className="-ml-4">
-                {featured.map((r) => {
-                  const detailsHref = r.businessUsername
-                    ? `/${r.businessUsername}/${r.locationId}`
-                    : null;
-                  const queueHref =
-                    r.businessUsername && r.locationId
-                      ? `/queue/${r.businessUsername}/${r.locationId}`
-                      : (detailsHref ?? "/");
-                  const locationText =
-                    r.shortAddress || r.city || r.area || r.address || "";
-                  return (
-                    <CarouselItem
-                      key={r.id}
-                      className="pl-4 basis-[88%] sm:basis-[70%] lg:basis-1/2 xl:basis-1/3"
-                    >
-                      <Card
-                        className={`h-full overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl transition-shadow duration-300 flex flex-col ${
-                          detailsHref ? "cursor-pointer" : ""
-                        }`}
-                        onClick={
-                          detailsHref ? () => navigate(detailsHref) : undefined
-                        }
-                        role={detailsHref ? "link" : undefined}
-                        aria-label={detailsHref ? `View ${r.name}` : undefined}
-                      >
-                        <div className="relative aspect-[4/3] bg-slate-100">
-                          {r.bannerImageUrl ? (
-                            <img
-                              src={r.bannerImageUrl}
-                              alt={r.name}
-                              loading="lazy"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
-                              <Utensils className="h-8 w-8" />
-                            </div>
-                          )}
-                        </div>
-
-                        <CardContent className="flex flex-1 flex-col p-4">
-                          {}
-                          <h3 className="font-semibold text-slate-900 truncate">
-                            {r.name}
-                          </h3>
-
-                          {}
-                          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-slate-500">
-                            {r.rating != null ? (
-                              <span className="inline-flex items-center gap-1 font-medium text-slate-700">
-                                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                                {r.rating.toFixed(1)}
-                                <span className="font-normal text-slate-500">
-                                  {r.reviewCount > 0
-                                    ? `(${r.reviewCount} Review${r.reviewCount === 1 ? "" : "s"})`
-                                    : "Reviews"}
-                                </span>
-                              </span>
-                            ) : (
-                              <span>No Reviews Yet</span>
-                            )}
-                            {r.cuisine && (
-                              <>
-                                <span aria-hidden className="text-slate-300">
-                                  ·
-                                </span>
-                                <span>{r.cuisine}</span>
-                              </>
-                            )}
-                            {r.priceRange && (
-                              <>
-                                <span aria-hidden className="text-slate-300">
-                                  ·
-                                </span>
-                                <span>{r.priceRange}</span>
-                              </>
-                            )}
-                          </div>
-
-                          {}
-                          {locationText && (
-                            <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
-                              <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
-                              <span className="truncate">{locationText}</span>
-                            </p>
-                          )}
-
-                          {}
-                          <div className="mt-auto grid grid-cols-1 gap-3 pt-4 sm:grid-cols-2">
-                            {r.reservationsEnabled === false ? (
-                              <div
-                                aria-disabled="true"
-                                title="Reservations unavailable"
-                                className="flex h-10 w-full min-w-0 cursor-not-allowed select-none items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-400 max-[320px]:px-2 max-[320px]:text-xs"
-                              >
-                                Reservations Unavailable
-                              </div>
-                            ) : (
-                              <Button
-                                className="w-full min-w-0 justify-center whitespace-nowrap px-3"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (detailsHref) navigate(detailsHref);
-                                }}
-                              >
-                                <Utensils className="h-4 w-4" />
-                                <span>Book Table</span>
-                              </Button>
-                            )}
-                            <Button
-                              variant="outline"
-                              aria-label={`Join queue at ${r.name}`}
-                              className="w-full min-w-0 justify-center whitespace-nowrap px-3"
-                              asChild
-                            >
-                              <Link
-                                to={queueHref}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Users className="h-4 w-4" />
-                                <span>Join Queue</span>
-                              </Link>
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </CarouselItem>
-                  );
-                })}
-              </CarouselContent>
-            )}
+            {featuredContent}
           </Carousel>
         </div>
       </section>

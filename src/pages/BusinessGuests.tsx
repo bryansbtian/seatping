@@ -94,21 +94,33 @@ type LocationOption = { id: string; label: string };
 type TypeFilter = "all" | "new" | "returning";
 
 function fmtDate(value: string | null, timeZone?: string): string {
-  if (!value) return "--";
+  if (!value) {
+    return "--";
+  }
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "--";
+  if (Number.isNaN(d.getTime())) {
+    return "--";
+  }
+  let timeZoneOption: { timeZone?: string } = {};
+  if (timeZone) {
+    timeZoneOption = { timeZone };
+  }
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
-    ...(timeZone ? { timeZone } : {}),
+    ...timeZoneOption,
   });
 }
 
 function fmtDateTime(value: string | null): string {
-  if (!value) return "--";
+  if (!value) {
+    return "--";
+  }
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "--";
+  if (Number.isNaN(d.getTime())) {
+    return "--";
+  }
   return d.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -130,13 +142,20 @@ function guestName(
 }
 
 function errMsg(e: unknown, fallback = "Something went wrong"): string {
-  return e instanceof Error ? e.message : fallback;
+  if (e instanceof Error) {
+    return e.message;
+  }
+  return fallback;
 }
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "G";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  if (!parts.length) {
+    return "G";
+  }
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
@@ -185,15 +204,21 @@ const BusinessGuests = () => {
     let cancelled = false;
     api("/api/guests/meta")
       .then((d) => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         const locs: LocationOption[] = d?.locations ?? [];
         setLocations(locs);
         setSuggestedTags(d?.suggestedTags ?? []);
-        if (locs.length) setLocationId((prev) => prev || locs[0].id);
+        if (locs.length) {
+          setLocationId((prev) => prev || locs[0].id);
+        }
         setMetaLoaded(true);
       })
       .catch((e) => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         setError(e?.message || "Failed to load guests.");
         setMetaLoaded(true);
       });
@@ -203,16 +228,30 @@ const BusinessGuests = () => {
   }, []);
 
   const fetchGuests = useCallback(() => {
-    if (!locationId) return;
+    if (!locationId) {
+      return;
+    }
     setLoading(true);
     setError(null);
     const params = new URLSearchParams({ locationId });
-    if (debouncedSearch) params.set("search", debouncedSearch);
-    if (typeFilter !== "all") params.set("type", typeFilter);
-    if (tagFilters.length) params.set("tags", tagFilters.join(","));
-    if (hasUpcoming) params.set("hasUpcoming", "true");
-    if (hasNotes) params.set("hasNotes", "true");
-    if (hasNoShow) params.set("hasNoShow", "true");
+    if (debouncedSearch) {
+      params.set("search", debouncedSearch);
+    }
+    if (typeFilter !== "all") {
+      params.set("type", typeFilter);
+    }
+    if (tagFilters.length) {
+      params.set("tags", tagFilters.join(","));
+    }
+    if (hasUpcoming) {
+      params.set("hasUpcoming", "true");
+    }
+    if (hasNotes) {
+      params.set("hasNotes", "true");
+    }
+    if (hasNoShow) {
+      params.set("hasNoShow", "true");
+    }
 
     api(`/api/guests?${params.toString()}`)
       .then((d) => {
@@ -235,17 +274,36 @@ const BusinessGuests = () => {
     fetchGuests();
   }, [fetchGuests]);
 
+  let typeFilterActive = 0;
+  if (typeFilter !== "all") {
+    typeFilterActive = 1;
+  }
+  let hasUpcomingActive = 0;
+  if (hasUpcoming) {
+    hasUpcomingActive = 1;
+  }
+  let hasNotesActive = 0;
+  if (hasNotes) {
+    hasNotesActive = 1;
+  }
+  let hasNoShowActive = 0;
+  if (hasNoShow) {
+    hasNoShowActive = 1;
+  }
   const activeFilterCount =
-    (typeFilter !== "all" ? 1 : 0) +
+    typeFilterActive +
     tagFilters.length +
-    (hasUpcoming ? 1 : 0) +
-    (hasNotes ? 1 : 0) +
-    (hasNoShow ? 1 : 0);
+    hasUpcomingActive +
+    hasNotesActive +
+    hasNoShowActive;
 
   const toggleTagFilter = (tag: string) => {
-    setTagFilters((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    );
+    setTagFilters((prev) => {
+      if (prev.includes(tag)) {
+        return prev.filter((t) => t !== tag);
+      }
+      return [...prev, tag];
+    });
   };
 
   const clearFilters = () => {
@@ -258,13 +316,20 @@ const BusinessGuests = () => {
 
   const filterableTags = useMemo(() => {
     const set = new Set<string>(suggestedTags);
-    for (const g of guests) for (const t of g.tags) set.add(t);
+    for (const g of guests) {for (const t of g.tags) {
+      set.add(t);
+    }}
     return Array.from(set);
   }, [suggestedTags, guests]);
 
   const patchRow = useCallback((updated: GuestRow) => {
     setGuests((prev) =>
-      prev.map((g) => (g.id === updated.id ? { ...g, ...updated } : g)),
+      prev.map((g) => {
+        if (g.id === updated.id) {
+          return { ...g, ...updated };
+        }
+        return g;
+      }),
     );
   }, []);
 
@@ -272,27 +337,47 @@ const BusinessGuests = () => {
     locations.find((l) => l.id === locationId)?.label || "";
 
   const exportCsv = useCallback(() => {
-    if (!guests.length) return;
-    const rows = guests.map((g) => ({
-      Name: g.fullName || "",
-      Phone: formatPhone(g.normalizedPhone, g.phone) || "",
-      Email: g.email || "",
-      Status: g.returning ? "Returning" : "New",
-      Tags: g.tags.join("; "),
-      "Total Visits": g.totalVisits,
-      Waitlist: g.waitlistVisitCount,
-      Upcoming: g.upcomingReservationCount,
-      "Past Reservations": g.pastReservationCount,
-      "No-Shows": g.noShowCount,
-      Cancelled: g.cancelledCount,
-      "First Visit": g.firstVisitAt
-        ? fmtDate(g.firstVisitAt, locationTimezone)
-        : "",
-      "Last Visit": g.lastVisitAt
-        ? fmtDate(g.lastVisitAt, locationTimezone)
-        : "",
-      "Has Notes": g.hasNotes ? "Yes" : "No",
-    }));
+    if (!guests.length) {
+      return;
+    }
+    const rows = guests.map((g) => {
+      let statusLabel: string;
+      if (g.returning) {
+        statusLabel = "Returning";
+      } else {
+        statusLabel = "New";
+      }
+      let firstVisitLabel = "";
+      if (g.firstVisitAt) {
+        firstVisitLabel = fmtDate(g.firstVisitAt, locationTimezone);
+      }
+      let lastVisitLabel = "";
+      if (g.lastVisitAt) {
+        lastVisitLabel = fmtDate(g.lastVisitAt, locationTimezone);
+      }
+      let hasNotesLabel: string;
+      if (g.hasNotes) {
+        hasNotesLabel = "Yes";
+      } else {
+        hasNotesLabel = "No";
+      }
+      return {
+        Name: g.fullName || "",
+        Phone: formatPhone(g.normalizedPhone, g.phone) || "",
+        Email: g.email || "",
+        Status: statusLabel,
+        Tags: g.tags.join("; "),
+        "Total Visits": g.totalVisits,
+        Waitlist: g.waitlistVisitCount,
+        Upcoming: g.upcomingReservationCount,
+        "Past Reservations": g.pastReservationCount,
+        "No-Shows": g.noShowCount,
+        Cancelled: g.cancelledCount,
+        "First Visit": firstVisitLabel,
+        "Last Visit": lastVisitLabel,
+        "Has Notes": hasNotesLabel,
+      };
+    });
     const csv = Papa.unparse(rows);
     const blob = new Blob(["﻿" + csv], {
       type: "text/csv;charset=utf-8;",
@@ -311,6 +396,82 @@ const BusinessGuests = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, [guests, locationTimezone, currentLocationLabel]);
+
+  let locationOptions: React.ReactNode;
+  if (locations.length) {
+    locationOptions = locations.map((l) => (
+      <option key={l.id} value={l.id}>
+        {l.label}
+      </option>
+    ));
+  } else {
+    locationOptions = <option value="">{t("guests.noLocations")}</option>;
+  }
+
+  let filtersVisibilityClass: string;
+  if (filtersOpen) {
+    filtersVisibilityClass = "block";
+  } else {
+    filtersVisibilityClass = "hidden";
+  }
+
+  let guestsHeading: string;
+  if (currentLocationLabel) {
+    guestsHeading = t("guests.atLocation", { label: currentLocationLabel });
+  } else {
+    guestsHeading = t("guests.heading");
+  }
+
+  let guestsCountText: string;
+  if (loading) {
+    guestsCountText = t("guests.loading");
+  } else if (guests.length === 1) {
+    guestsCountText = t("guests.countOne", { n: guests.length });
+  } else {
+    guestsCountText = t("guests.countMany", { n: guests.length });
+  }
+
+  let refreshSpinClass: string;
+  if (loading) {
+    refreshSpinClass = "animate-spin";
+  } else {
+    refreshSpinClass = "";
+  }
+
+  let guestsPanel: React.ReactNode;
+  if (error) {
+    guestsPanel = <ErrorState message={error} onRetry={fetchGuests} />;
+  } else if (loading) {
+    guestsPanel = <LoadingState />;
+  } else if (!metaLoaded) {
+    guestsPanel = <LoadingState />;
+  } else if (!locations.length) {
+    guestsPanel = (
+      <EmptyState
+        title={t("guests.empty.noLocations.title")}
+        body={t("guests.empty.noLocations.body")}
+      />
+    );
+  } else if (guests.length === 0) {
+    let emptyTitle: string;
+    let emptyBody: string;
+    if (activeFilterCount > 0 || debouncedSearch) {
+      emptyTitle = t("guests.empty.noMatch.title");
+      emptyBody = t("guests.empty.noMatch.body");
+    } else {
+      emptyTitle = t("guests.empty.none.title");
+      emptyBody = t("guests.empty.none.body");
+    }
+    guestsPanel = <EmptyState title={emptyTitle} body={emptyBody} />;
+  } else {
+    guestsPanel = (
+      <GuestsTable
+        guests={guests}
+        timeZone={locationTimezone}
+        onSelect={(id) => setSelectedId(id)}
+      />
+    );
+  }
 
   return (
     <>
@@ -347,15 +508,7 @@ const BusinessGuests = () => {
                     }}
                     disabled={!locations.length}
                   >
-                    {locations.length ? (
-                      locations.map((l) => (
-                        <option key={l.id} value={l.id}>
-                          {l.label}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="">{t("guests.noLocations")}</option>
-                    )}
+                    {locationOptions}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
                 </div>
@@ -389,31 +542,41 @@ const BusinessGuests = () => {
 
               {}
               <div
-                className={`${filtersOpen ? "block" : "hidden"} md:block space-y-3`}
+                className={`${filtersVisibilityClass} md:block space-y-3`}
               >
                 {}
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-medium text-slate-500 mr-1">
                     {t("guests.status")}
                   </span>
-                  {(["all", "new", "returning"] as TypeFilter[]).map((tf) => (
-                    <button
-                      key={tf}
-                      type="button"
-                      onClick={() => setTypeFilter(tf)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                        typeFilter === tf
-                          ? "border-indigo-300 bg-indigo-100 text-indigo-700"
-                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      {tf === "all"
-                        ? t("guests.filter.all")
-                        : tf === "new"
-                          ? t("guests.filter.new")
-                          : t("guests.filter.returning")}
-                    </button>
-                  ))}
+                  {(["all", "new", "returning"] as TypeFilter[]).map((tf) => {
+                    let typeChipClass: string;
+                    if (typeFilter === tf) {
+                      typeChipClass =
+                        "border-indigo-300 bg-indigo-100 text-indigo-700";
+                    } else {
+                      typeChipClass =
+                        "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+                    }
+                    let typeChipLabel: string;
+                    if (tf === "all") {
+                      typeChipLabel = t("guests.filter.all");
+                    } else if (tf === "new") {
+                      typeChipLabel = t("guests.filter.new");
+                    } else {
+                      typeChipLabel = t("guests.filter.returning");
+                    }
+                    return (
+                      <button
+                        key={tf}
+                        type="button"
+                        onClick={() => setTypeFilter(tf)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${typeChipClass}`}
+                      >
+                        {typeChipLabel}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {}
@@ -444,23 +607,24 @@ const BusinessGuests = () => {
                     <span className="text-xs font-medium text-slate-500 mr-1 mt-0.5">
                       {t("guests.tags")}
                     </span>
-                    {filterableTags.map((tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => toggleTagFilter(tag)}
-                        className="focus:outline-none"
-                      >
-                        <GuestTagBadge
-                          tag={tag}
-                          className={
-                            tagFilters.includes(tag)
-                              ? "ring-2 ring-indigo-400 ring-offset-1"
-                              : "opacity-70 hover:opacity-100"
-                          }
-                        />
-                      </button>
-                    ))}
+                    {filterableTags.map((tag) => {
+                      let tagBadgeClass: string;
+                      if (tagFilters.includes(tag)) {
+                        tagBadgeClass = "ring-2 ring-indigo-400 ring-offset-1";
+                      } else {
+                        tagBadgeClass = "opacity-70 hover:opacity-100";
+                      }
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => toggleTagFilter(tag)}
+                          className="focus:outline-none"
+                        >
+                          <GuestTagBadge tag={tag} className={tagBadgeClass} />
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -482,19 +646,10 @@ const BusinessGuests = () => {
             <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle className="text-lg md:text-xl text-slate-800">
-                  {currentLocationLabel
-                    ? t("guests.atLocation", { label: currentLocationLabel })
-                    : t("guests.heading")}
+                  {guestsHeading}
                 </CardTitle>
                 <CardDescription className="text-sm">
-                  {loading
-                    ? t("guests.loading")
-                    : t(
-                        guests.length === 1
-                          ? "guests.countOne"
-                          : "guests.countMany",
-                        { n: guests.length },
-                      )}
+                  {guestsCountText}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -515,48 +670,14 @@ const BusinessGuests = () => {
                   onClick={fetchGuests}
                   disabled={loading || !locationId}
                 >
-                  <RefreshCw
-                    className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
-                  />
+                  <RefreshCw className={`w-4 h-4 ${refreshSpinClass}`} />
                   <span className="hidden sm:inline ml-2">
                     {t("common.refresh")}
                   </span>
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-0">
-              {error ? (
-                <ErrorState message={error} onRetry={fetchGuests} />
-              ) : loading ? (
-                <LoadingState />
-              ) : !metaLoaded ? (
-                <LoadingState />
-              ) : !locations.length ? (
-                <EmptyState
-                  title={t("guests.empty.noLocations.title")}
-                  body={t("guests.empty.noLocations.body")}
-                />
-              ) : guests.length === 0 ? (
-                <EmptyState
-                  title={
-                    activeFilterCount > 0 || debouncedSearch
-                      ? t("guests.empty.noMatch.title")
-                      : t("guests.empty.none.title")
-                  }
-                  body={
-                    activeFilterCount > 0 || debouncedSearch
-                      ? t("guests.empty.noMatch.body")
-                      : t("guests.empty.none.body")
-                  }
-                />
-              ) : (
-                <GuestsTable
-                  guests={guests}
-                  timeZone={locationTimezone}
-                  onSelect={(id) => setSelectedId(id)}
-                />
-              )}
-            </CardContent>
+            <CardContent className="p-0">{guestsPanel}</CardContent>
           </Card>
         </div>
         <Footer />
@@ -583,15 +704,18 @@ function FilterToggle({
   label: string;
   icon?: React.ReactNode;
 }) {
+  let toggleStateClass: string;
+  if (active) {
+    toggleStateClass = "border-indigo-300 bg-indigo-100 text-indigo-700";
+  } else {
+    toggleStateClass =
+      "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+  }
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-        active
-          ? "border-indigo-300 bg-indigo-100 text-indigo-700"
-          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-      }`}
+      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${toggleStateClass}`}
     >
       {icon}
       {label}
@@ -642,6 +766,47 @@ function GuestsTable({
             {guests.map((g) => {
               const name = guestName(g, t("guests.defaultName"));
               const phoneDisplay = formatPhone(g.normalizedPhone, g.phone);
+              let noShowLabel = "";
+              if (g.noShowCount === 1) {
+                noShowLabel = t("guests.noShowCountOne", { n: g.noShowCount });
+              } else if (g.noShowCount > 1) {
+                noShowLabel = t("guests.noShowCountMany", { n: g.noShowCount });
+              }
+              let tagsCell: React.ReactNode;
+              if (g.tags.length) {
+                tagsCell = (
+                  <div className="flex flex-nowrap items-center gap-1.5">
+                    {g.tags.slice(0, 3).map((t) => (
+                      <GuestTagBadge key={t} tag={t} />
+                    ))}
+                    {g.tags.length > 3 && (
+                      <span className="shrink-0 whitespace-nowrap text-[11px] text-slate-400">
+                        +{g.tags.length - 3}
+                      </span>
+                    )}
+                  </div>
+                );
+              } else {
+                tagsCell = <span className="text-slate-400">--</span>;
+              }
+              let upcomingCell: React.ReactNode;
+              if (g.upcomingReservationCount > 0) {
+                upcomingCell = (
+                  <span className="inline-flex items-center justify-center min-w-[1.5rem] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
+                    {g.upcomingReservationCount}
+                  </span>
+                );
+              } else {
+                upcomingCell = <span className="text-slate-400">--</span>;
+              }
+              let notesCell: React.ReactNode;
+              if (g.hasNotes) {
+                notesCell = (
+                  <Notebook className="w-4 h-4 text-amber-500 inline" />
+                );
+              } else {
+                notesCell = <span className="text-slate-300">--</span>;
+              }
               return (
                 <tr
                   key={g.id}
@@ -660,12 +825,7 @@ function GuestsTable({
                         </div>
                         {g.noShowCount > 0 && (
                           <span className="text-xs text-red-600">
-                            {t(
-                              g.noShowCount === 1
-                                ? "guests.noShowCountOne"
-                                : "guests.noShowCountMany",
-                              { n: g.noShowCount },
-                            )}
+                            {noShowLabel}
                           </span>
                         )}
                       </div>
@@ -692,22 +852,7 @@ function GuestsTable({
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-3">
-                    {g.tags.length ? (
-                      <div className="flex flex-nowrap items-center gap-1.5">
-                        {g.tags.slice(0, 3).map((t) => (
-                          <GuestTagBadge key={t} tag={t} />
-                        ))}
-                        {g.tags.length > 3 && (
-                          <span className="shrink-0 whitespace-nowrap text-[11px] text-slate-400">
-                            +{g.tags.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-slate-400">--</span>
-                    )}
-                  </td>
+                  <td className="px-6 py-3">{tagsCell}</td>
                   <td className="px-6 py-3 text-center font-medium text-slate-700 tabular-nums">
                     {g.totalVisits}
                   </td>
@@ -715,21 +860,9 @@ function GuestsTable({
                     {fmtDate(g.lastVisitAt, timeZone)}
                   </td>
                   <td className="px-6 py-3 text-center tabular-nums">
-                    {g.upcomingReservationCount > 0 ? (
-                      <span className="inline-flex items-center justify-center min-w-[1.5rem] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
-                        {g.upcomingReservationCount}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">--</span>
-                    )}
+                    {upcomingCell}
                   </td>
-                  <td className="px-6 py-3 text-center">
-                    {g.hasNotes ? (
-                      <Notebook className="w-4 h-4 text-amber-500 inline" />
-                    ) : (
-                      <span className="text-slate-300">--</span>
-                    )}
-                  </td>
+                  <td className="px-6 py-3 text-center">{notesCell}</td>
                   <td className="px-6 py-3 text-center">
                     <Button
                       variant="outline"
@@ -911,14 +1044,19 @@ function GuestDetailDrawer({
   }, [guestId]);
 
   const applyGuest = (g: GuestRow) => {
-    setDetail((prev) =>
-      prev ? { ...prev, guest: { ...prev.guest, ...g } } : prev,
-    );
+    setDetail((prev) => {
+      if (prev) {
+        return { ...prev, guest: { ...prev.guest, ...g } };
+      }
+      return prev;
+    });
     onRowChange(g);
   };
 
   const saveNotes = async () => {
-    if (!guestId) return;
+    if (!guestId) {
+      return;
+    }
     setSavingNotes(true);
     try {
       const d = await api(`/api/guests/${guestId}`, {
@@ -941,7 +1079,9 @@ function GuestDetailDrawer({
 
   const addTag = async (tag: string) => {
     const clean = tag.trim();
-    if (!guestId || !clean) return;
+    if (!guestId || !clean) {
+      return;
+    }
     setTagBusy(true);
     try {
       const d = await api(`/api/guests/${guestId}/tags`, {
@@ -962,7 +1102,9 @@ function GuestDetailDrawer({
   };
 
   const removeTag = async (tag: string) => {
-    if (!guestId) return;
+    if (!guestId) {
+      return;
+    }
     setTagBusy(true);
     try {
       const d = await api(
@@ -982,240 +1124,275 @@ function GuestDetailDrawer({
   };
 
   const g = detail?.guest;
-  const name = g ? guestName(g, t("guests.defaultName")) : t("guests.defaultName");
+  let noShowTone: "red" | undefined = undefined;
+  if (g && g.noShowCount > 0) {
+    noShowTone = "red";
+  }
+  let cancelledTone: "red" | undefined = undefined;
+  if (g && g.cancelledCount > 0) {
+    cancelledTone = "red";
+  }
+  const buildTagRemover = (tag: string) => {
+    if (tagBusy) {
+      return undefined;
+    }
+    return () => removeTag(tag);
+  };
+  let saveNotesLabel: string;
+  if (savingNotes) {
+    saveNotesLabel = t("guests.saving");
+  } else {
+    saveNotesLabel = t("guests.saveNotes");
+  }
+  let name: string;
+  if (g) {
+    name = guestName(g, t("guests.defaultName"));
+  } else {
+    name = t("guests.defaultName");
+  }
   const availableSuggestions = suggestedTags.filter(
     (t) => !(g?.tags || []).some((x) => x.toLowerCase() === t.toLowerCase()),
   );
 
-  return (
+  let tagListContent: React.ReactNode;
+  if (g && g.tags.length) {
+    tagListContent = g.tags.map((tag) => (
+      <GuestTagBadge key={tag} tag={tag} onRemove={buildTagRemover(tag)} />
+    ));
+  } else {
+    tagListContent = (
+      <span className="text-sm text-slate-400">{t("guests.noTags")}</span>
+    );
+  }
+
+  let sheetBody: React.ReactNode;
+  if (loading) {
+    sheetBody = (
+      <div className="p-6">
+      <LoadingState />
+    </div>
+    );
+  } else if (error) {
+    sheetBody = (
+      <div className="p-6">
+      <ErrorState
+        message={error}
+        onRetry={() => guestId && setDetail(null)}
+      />
+    </div>
+    );
+  } else if (g) {
+    sheetBody = (
+      <>
+      {}
+      <SheetHeader className="sr-only">
+        <SheetTitle>{name}</SheetTitle>
+        <SheetDescription>{g.location.label}</SheetDescription>
+      </SheetHeader>
+
+      <div className="p-4 sm:p-6 space-y-6">
+        {}
+        <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm p-4 sm:p-5">
+          {}
+          <div className="flex items-start gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-xl font-semibold shrink-0">
+              {initials(name)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-lg sm:text-xl font-semibold text-slate-800 truncate">
+                  {name}
+                </h3>
+                <GuestStatusBadge returning={g.returning} />
+              </div>
+              <p className="text-sm text-slate-500 mt-0.5 truncate">
+                {g.location.label}
+              </p>
+            </div>
+          </div>
+
+          {}
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
+            {}
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2 text-slate-800 min-w-0">
+                <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                <span className="truncate">
+                  {formatPhone(g.normalizedPhone, g.phone) ?? (
+                    <span className="text-slate-400">
+                      {t("guests.noPhone")}
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-800 min-w-0">
+                <Mail className="w-4 h-4 text-slate-400 shrink-0" />
+                <span className="truncate">
+                  {g.email || (
+                    <span className="text-slate-400">
+                      {t("guests.noEmail")}
+                    </span>
+                  )}
+                </span>
+              </div>
+            </div>
+            {}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-500">
+                  {t("guests.firstVisit")}
+                </span>
+                <span className="font-medium text-slate-800 tabular-nums">
+                  {fmtDate(g.firstVisitAt, g.location.timezone ?? undefined)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-500">
+                  {t("guests.lastVisit")}
+                </span>
+                <span className="font-medium text-slate-800 tabular-nums">
+                  {fmtDate(g.lastVisitAt, g.location.timezone ?? undefined)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {}
+          <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-3 sm:grid-cols-6 gap-y-3">
+            <ProfileStat
+              label={t("guests.stat.totalVisits")}
+              value={g.totalVisits}
+            />
+            <ProfileStat
+              label={t("guests.stat.waitlist")}
+              value={g.waitlistVisitCount}
+            />
+            <ProfileStat
+              label={t("guests.stat.upcoming")}
+              value={g.upcomingReservationCount}
+            />
+            <ProfileStat
+              label={t("guests.stat.pastRes")}
+              value={g.pastReservationCount}
+            />
+            <ProfileStat
+              label={t("guests.stat.noShows")}
+              value={g.noShowCount}
+              tone={noShowTone}
+            />
+            <ProfileStat
+              label={t("guests.stat.cancelled")}
+              value={g.cancelledCount}
+              tone={cancelledTone}
+            />
+          </div>
+        </div>
+
+        {}
+        <section>
+          <SectionHeading>{t("guests.summary")}</SectionHeading>
+          <p className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-3">
+            {g.summary || t("guests.summary.empty")}
+          </p>
+        </section>
+
+        {}
+        <section>
+          <SectionHeading>{t("guests.tags")}</SectionHeading>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {tagListContent}
+          </div>
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              addTag(newTag);
+            }}
+          >
+            <Input
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              placeholder={t("guests.addTag.placeholder")}
+              className="h-9 bg-slate-50 border-slate-200 text-xs sm:text-sm"
+              disabled={tagBusy}
+            />
+            <Button
+              type="submit"
+              size="sm"
+              disabled={tagBusy || !newTag.trim()}
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+          </form>
+          {availableSuggestions.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {availableSuggestions.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  disabled={tagBusy}
+                  onClick={() => addTag(tag)}
+                  className="text-xs px-2.5 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 transition-colors disabled:opacity-50"
+                >
+                  + {tag}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {}
+        <section>
+          <SectionHeading>{t("guests.internalNotes")}</SectionHeading>
+          <Textarea
+            value={notes}
+            onChange={(e) => {
+              setNotes(e.target.value);
+              notesDirtyRef.current = true;
+            }}
+            placeholder={t("guests.notes.placeholder")}
+            className="bg-slate-50 border-slate-200 min-h-[90px] text-xs sm:text-sm"
+          />
+          <div className="flex justify-end mt-2">
+            <Button
+              size="sm"
+              onClick={saveNotes}
+              disabled={savingNotes || notes === (g.notes || "")}
+              className="text-xs sm:text-sm"
+            >
+              {saveNotesLabel}
+            </Button>
+          </div>
+        </section>
+
+        {}
+        {detail.upcomingReservations.length > 0 && (
+          <HistorySection
+            title={t("guests.upcomingReservations")}
+            events={detail.upcomingReservations}
+          />
+        )}
+
+        {}
+        <HistorySection
+          title={t("guests.visitHistory")}
+          events={detail.timeline}
+          emptyText={t("guests.noVisitHistory")}
+        />
+      </div>
+    </>
+    );
+  } else {
+    sheetBody = null;
+  }
+
+return (
     <Sheet open={!!guestId} onOpenChange={(o) => !o && onClose()}>
       <SheetContent
         side="right"
         className="w-full sm:max-w-xl lg:max-w-2xl overflow-y-auto p-0"
       >
-        {loading ? (
-          <div className="p-6">
-            <LoadingState />
-          </div>
-        ) : error ? (
-          <div className="p-6">
-            <ErrorState
-              message={error}
-              onRetry={() => guestId && setDetail(null)}
-            />
-          </div>
-        ) : g ? (
-          <>
-            {}
-            <SheetHeader className="sr-only">
-              <SheetTitle>{name}</SheetTitle>
-              <SheetDescription>{g.location.label}</SheetDescription>
-            </SheetHeader>
-
-            <div className="p-4 sm:p-6 space-y-6">
-              {}
-              <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm p-4 sm:p-5">
-                {}
-                <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-xl font-semibold shrink-0">
-                    {initials(name)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-lg sm:text-xl font-semibold text-slate-800 truncate">
-                        {name}
-                      </h3>
-                      <GuestStatusBadge returning={g.returning} />
-                    </div>
-                    <p className="text-sm text-slate-500 mt-0.5 truncate">
-                      {g.location.label}
-                    </p>
-                  </div>
-                </div>
-
-                {}
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
-                  {}
-                  <div className="space-y-2.5">
-                    <div className="flex items-center gap-2 text-slate-800 min-w-0">
-                      <Phone className="w-4 h-4 text-slate-400 shrink-0" />
-                      <span className="truncate">
-                        {formatPhone(g.normalizedPhone, g.phone) ?? (
-                          <span className="text-slate-400">
-                            {t("guests.noPhone")}
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-800 min-w-0">
-                      <Mail className="w-4 h-4 text-slate-400 shrink-0" />
-                      <span className="truncate">
-                        {g.email || (
-                          <span className="text-slate-400">
-                            {t("guests.noEmail")}
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                  {}
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-slate-500">
-                        {t("guests.firstVisit")}
-                      </span>
-                      <span className="font-medium text-slate-800 tabular-nums">
-                        {fmtDate(g.firstVisitAt, g.location.timezone ?? undefined)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-slate-500">
-                        {t("guests.lastVisit")}
-                      </span>
-                      <span className="font-medium text-slate-800 tabular-nums">
-                        {fmtDate(g.lastVisitAt, g.location.timezone ?? undefined)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {}
-                <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-3 sm:grid-cols-6 gap-y-3">
-                  <ProfileStat
-                    label={t("guests.stat.totalVisits")}
-                    value={g.totalVisits}
-                  />
-                  <ProfileStat
-                    label={t("guests.stat.waitlist")}
-                    value={g.waitlistVisitCount}
-                  />
-                  <ProfileStat
-                    label={t("guests.stat.upcoming")}
-                    value={g.upcomingReservationCount}
-                  />
-                  <ProfileStat
-                    label={t("guests.stat.pastRes")}
-                    value={g.pastReservationCount}
-                  />
-                  <ProfileStat
-                    label={t("guests.stat.noShows")}
-                    value={g.noShowCount}
-                    tone={g.noShowCount > 0 ? "red" : undefined}
-                  />
-                  <ProfileStat
-                    label={t("guests.stat.cancelled")}
-                    value={g.cancelledCount}
-                    tone={g.cancelledCount > 0 ? "red" : undefined}
-                  />
-                </div>
-              </div>
-
-              {}
-              <section>
-                <SectionHeading>{t("guests.summary")}</SectionHeading>
-                <p className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-3">
-                  {g.summary || t("guests.summary.empty")}
-                </p>
-              </section>
-
-              {}
-              <section>
-                <SectionHeading>{t("guests.tags")}</SectionHeading>
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {g.tags.length ? (
-                    g.tags.map((tag) => (
-                      <GuestTagBadge
-                        key={tag}
-                        tag={tag}
-                        onRemove={tagBusy ? undefined : () => removeTag(tag)}
-                      />
-                    ))
-                  ) : (
-                    <span className="text-sm text-slate-400">
-                      {t("guests.noTags")}
-                    </span>
-                  )}
-                </div>
-                <form
-                  className="flex gap-2"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    addTag(newTag);
-                  }}
-                >
-                  <Input
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    placeholder={t("guests.addTag.placeholder")}
-                    className="h-9 bg-slate-50 border-slate-200 text-xs sm:text-sm"
-                    disabled={tagBusy}
-                  />
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={tagBusy || !newTag.trim()}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </form>
-                {availableSuggestions.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {availableSuggestions.map((tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        disabled={tagBusy}
-                        onClick={() => addTag(tag)}
-                        className="text-xs px-2.5 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 transition-colors disabled:opacity-50"
-                      >
-                        + {tag}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              {}
-              <section>
-                <SectionHeading>{t("guests.internalNotes")}</SectionHeading>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => {
-                    setNotes(e.target.value);
-                    notesDirtyRef.current = true;
-                  }}
-                  placeholder={t("guests.notes.placeholder")}
-                  className="bg-slate-50 border-slate-200 min-h-[90px] text-xs sm:text-sm"
-                />
-                <div className="flex justify-end mt-2">
-                  <Button
-                    size="sm"
-                    onClick={saveNotes}
-                    disabled={savingNotes || notes === (g.notes || "")}
-                    className="text-xs sm:text-sm"
-                  >
-                    {savingNotes ? t("guests.saving") : t("guests.saveNotes")}
-                  </Button>
-                </div>
-              </section>
-
-              {}
-              {detail.upcomingReservations.length > 0 && (
-                <HistorySection
-                  title={t("guests.upcomingReservations")}
-                  events={detail.upcomingReservations}
-                />
-              )}
-
-              {}
-              <HistorySection
-                title={t("guests.visitHistory")}
-                events={detail.timeline}
-                emptyText={t("guests.noVisitHistory")}
-              />
-            </div>
-          </>
-        ) : null}
+        {sheetBody}
       </SheetContent>
     </Sheet>
   );
@@ -1230,12 +1407,14 @@ function ProfileStat({
   value: number;
   tone?: "red";
 }) {
+  let toneClass = "text-slate-800";
+  if (tone === "red") {
+    toneClass = "text-red-600";
+  }
   return (
     <div className="px-1 text-center">
       <div
-        className={`text-lg font-semibold tabular-nums leading-tight ${
-          tone === "red" ? "text-red-600" : "text-slate-800"
-        }`}
+        className={`text-lg font-semibold tabular-nums leading-tight ${toneClass}`}
       >
         {value}
       </div>
@@ -1254,47 +1433,59 @@ function HistorySection({
   emptyText?: string;
 }) {
   const { t, tStatus } = useLang();
-  return (
+    let historyBody: React.ReactNode;
+  if (events.length === 0) {
+    historyBody = (
+      <p className="text-sm text-slate-400">
+      {emptyText || t("guests.nothingHere")}
+    </p>
+    );
+  } else {
+    historyBody = (
+      <ol className="relative border-l border-slate-200 ml-1.5 space-y-3">
+      {events.map((e) => {
+        let sourceLabel: string;
+        if (e.source === "reservation") {
+          sourceLabel = t("guests.source.reservation");
+        } else {
+          sourceLabel = t("guests.source.waitlist");
+        }
+        let guestCountKey: "guests.guestOne" | "guests.guestMany";
+        if (e.partySize === 1) {
+          guestCountKey = "guests.guestOne";
+        } else {
+          guestCountKey = "guests.guestMany";
+        }
+        return (
+        <li key={`${e.source}-${e.id}`} className="ml-4">
+          <span className="absolute -left-[5px] mt-1.5 w-2.5 h-2.5 rounded-full bg-indigo-400" />
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-slate-700">
+              {e.atLabel ?? fmtDateTime(e.at)}
+            </span>
+            <StatusBadge status={e.status} label={tStatus(e.status)} />
+          </div>
+          <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-2">
+            <span>{sourceLabel}</span>
+            <span>·</span>
+            <span>{t(guestCountKey, { n: e.partySize })}</span>
+          </div>
+          {e.notes && (
+            <p className="text-xs text-slate-500 mt-1 italic">
+              "{e.notes}"
+            </p>
+          )}
+        </li>
+        );
+      })}
+    </ol>
+    );
+  }
+
+return (
     <section>
       <SectionHeading>{title}</SectionHeading>
-      {events.length === 0 ? (
-        <p className="text-sm text-slate-400">
-          {emptyText || t("guests.nothingHere")}
-        </p>
-      ) : (
-        <ol className="relative border-l border-slate-200 ml-1.5 space-y-3">
-          {events.map((e) => (
-            <li key={`${e.source}-${e.id}`} className="ml-4">
-              <span className="absolute -left-[5px] mt-1.5 w-2.5 h-2.5 rounded-full bg-indigo-400" />
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-slate-700">
-                  {e.atLabel ?? fmtDateTime(e.at)}
-                </span>
-                <StatusBadge status={e.status} label={tStatus(e.status)} />
-              </div>
-              <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-2">
-                <span>
-                  {e.source === "reservation"
-                    ? t("guests.source.reservation")
-                    : t("guests.source.waitlist")}
-                </span>
-                <span>·</span>
-                <span>
-                  {t(
-                    e.partySize === 1 ? "guests.guestOne" : "guests.guestMany",
-                    { n: e.partySize },
-                  )}
-                </span>
-              </div>
-              {e.notes && (
-                <p className="text-xs text-slate-500 mt-1 italic">
-                  "{e.notes}"
-                </p>
-              )}
-            </li>
-          ))}
-        </ol>
-      )}
+      {historyBody}
     </section>
   );
 }

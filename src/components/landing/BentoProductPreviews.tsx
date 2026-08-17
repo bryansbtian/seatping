@@ -22,8 +22,12 @@ import { CampaignStatusBadge, ChannelBadge } from "@/components/CampaignBadges";
 
 export type PreviewProps = { className?: string; animated?: boolean };
 
-const bentoAnimatedAttr = (animated: boolean) =>
-  animated ? undefined : "false";
+const bentoAnimatedAttr = (animated: boolean) => {
+  if (animated) {
+    return undefined;
+  }
+  return "false";
+};
 
 
 export function BentoTicker({
@@ -74,23 +78,26 @@ export function CycleStack({
   const step = duration / layers.length;
   return (
     <div className={cn("relative", className)}>
-      {layers.map((layer, i) => (
-        <div
-          key={i}
-          className={cn(
-            "bento-loop animate-bento-cycle",
-            i === 0
-              ? "relative h-full opacity-100"
-              : "absolute inset-0 opacity-0",
-          )}
-          style={{
-            animationDuration: `${duration}s`,
-            animationDelay: `${offset + i * step}s`,
-          }}
-        >
-          {layer}
-        </div>
-      ))}
+      {layers.map((layer, i) => {
+        let layerPositionClass: string;
+        if (i === 0) {
+          layerPositionClass = "relative h-full opacity-100";
+        } else {
+          layerPositionClass = "absolute inset-0 opacity-0";
+        }
+        return (
+          <div
+            key={i}
+            className={cn("bento-loop animate-bento-cycle", layerPositionClass)}
+            style={{
+              animationDuration: `${duration}s`,
+              animationDelay: `${offset + i * step}s`,
+            }}
+          >
+            {layer}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -274,31 +281,41 @@ export function ReservationPreview({
         <div className="mx-auto flex w-full max-w-sm flex-col md:mx-0 md:max-w-none md:flex-1">
           {}
           <div className="mb-2 flex flex-wrap items-center gap-1.5">
-            {tabs.map((t) => (
-              <span
-                key={t.label}
-                className={cn(
-                  "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-medium",
-                  t.active
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100 text-slate-600",
-                )}
-              >
-                {t.label}
-                {t.count > 0 && (
-                  <span
-                    className={cn(
-                      "ml-1.5 rounded-full px-1.5 text-[9px]",
-                      t.active
-                        ? "bg-white/20 text-white"
-                        : "bg-white text-slate-500",
-                    )}
-                  >
-                    {t.count}
-                  </span>
-                )}
-              </span>
-            ))}
+            {tabs.map((t) => {
+              let tabStateClass: string;
+              if (t.active) {
+                tabStateClass = "bg-slate-900 text-white";
+              } else {
+                tabStateClass = "bg-slate-100 text-slate-600";
+              }
+              let countStateClass: string;
+              if (t.active) {
+                countStateClass = "bg-white/20 text-white";
+              } else {
+                countStateClass = "bg-white text-slate-500";
+              }
+              return (
+                <span
+                  key={t.label}
+                  className={cn(
+                    "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-medium",
+                    tabStateClass,
+                  )}
+                >
+                  {t.label}
+                  {t.count > 0 && (
+                    <span
+                      className={cn(
+                        "ml-1.5 rounded-full px-1.5 text-[9px]",
+                        countStateClass,
+                      )}
+                    >
+                      {t.count}
+                    </span>
+                  )}
+                </span>
+              );
+            })}
           </div>
           <BentoTicker
             className="h-48 sm:h-52"
@@ -496,6 +513,12 @@ function GuestProfilePanel({
 }: {
   profile: (typeof GUEST_PROFILES)[number];
 }) {
+  let visitWord: string;
+  if (profile.visits === 1) {
+    visitWord = "Visit";
+  } else {
+    visitWord = "Visits";
+  }
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-2.5">
       <div className="flex items-start gap-2.5">
@@ -518,7 +541,7 @@ function GuestProfilePanel({
               <strong className="font-semibold text-slate-800">
                 {profile.visits}
               </strong>{" "}
-              {profile.visits === 1 ? "Visit" : "Visits"}
+              {visitWord}
             </span>
             <span>Last: {profile.last}</span>
             {profile.upcoming && (
@@ -579,6 +602,12 @@ function CyclingChannelButton({
   duration: number;
 }) {
   const Icon = channel.icon;
+  let highlightOpacityClass: string;
+  if (index === 0) {
+    highlightOpacityClass = "opacity-100";
+  } else {
+    highlightOpacityClass = "opacity-0";
+  }
   return (
     <span className="relative flex min-w-0 flex-1 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-1.5 py-1.5 text-[10px] font-medium text-slate-600">
       <Icon className="h-3 w-3 shrink-0" />
@@ -586,7 +615,7 @@ function CyclingChannelButton({
       <span
         className={cn(
           "bento-loop animate-bento-cycle absolute -inset-px flex items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-indigo-300 bg-indigo-100 text-indigo-700",
-          index === 0 ? "opacity-100" : "opacity-0",
+          highlightOpacityClass,
         )}
         style={{
           animationDuration: `${duration}s`,

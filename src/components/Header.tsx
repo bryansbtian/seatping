@@ -26,7 +26,9 @@ const Header = ({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     const onResize = () => {
-      if (window.innerWidth >= 640) setOpen(false);
+      if (window.innerWidth >= 640) {
+        setOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("resize", onResize);
@@ -37,12 +39,21 @@ const Header = ({
   }, []);
 
   useEffect(() => {
-    if (variant !== "customer") return;
+    if (variant !== "customer") {
+      return;
+    }
     let active = true;
     fetch("/auth/session", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : { customer: null, business: null }))
+      .then((r) => {
+        if (r.ok) {
+          return r.json();
+        }
+        return { customer: null, business: null };
+      })
       .then((data: Session) => {
-        if (active) setSession(data);
+        if (active) {
+          setSession(data);
+        }
       })
       .catch(() => active && setSession({ customer: null, business: null }));
     return () => {
@@ -50,7 +61,12 @@ const Header = ({
     };
   }, [variant]);
 
-  const logoTo = variant === "business" ? "/business" : "/";
+  let logoTo: string;
+  if (variant === "business") {
+    logoTo = "/business";
+  } else {
+    logoTo = "/";
+  }
   const isCustomerLoggedIn = variant === "customer" && !!session?.customer;
 
   const handleLogout = (e: React.MouseEvent) => {
@@ -64,8 +80,75 @@ const Header = ({
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const q = searchQuery.trim();
-    navigate(q ? `/search?query=${encodeURIComponent(q)}` : "/search");
+    let searchPath: string;
+    if (q) {
+      searchPath = `/search?query=${encodeURIComponent(q)}`;
+    } else {
+      searchPath = "/search";
+    }
+    navigate(searchPath);
   };
+
+  let authArea: React.ReactNode;
+  if (isCustomerLoggedIn) {
+    authArea = (
+      <CustomerProfile name={session?.customer?.name} onLogout={handleLogout} />
+    );
+  } else if (variant === "business") {
+    authArea = (
+      <>
+        <div className="hidden sm:flex items-center gap-8">
+          <Link
+            to="/business/login"
+            className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
+          >
+            Log In
+          </Link>
+          <Link
+            to="/business/signup"
+            className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
+          >
+            Get Started
+          </Link>
+        </div>
+        <MobileMenu open={open} setOpen={setOpen}>
+          <MobileLink to="/business/login" onClick={() => setOpen(false)}>
+            Log In
+          </MobileLink>
+          <MobileLink to="/business/signup" onClick={() => setOpen(false)}>
+            Get Started
+          </MobileLink>
+        </MobileMenu>
+      </>
+    );
+  } else {
+    authArea = (
+      <>
+        <div className="hidden sm:flex items-center gap-8">
+          <Link
+            to="/login"
+            className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
+          >
+            Log In
+          </Link>
+          <Link
+            to="/signup"
+            className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
+          >
+            Sign Up
+          </Link>
+        </div>
+        <MobileMenu open={open} setOpen={setOpen}>
+          <MobileLink to="/login" onClick={() => setOpen(false)}>
+            Log In
+          </MobileLink>
+          <MobileLink to="/signup" onClick={() => setOpen(false)}>
+            Sign Up
+          </MobileLink>
+        </MobileMenu>
+      </>
+    );
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
@@ -102,62 +185,7 @@ const Header = ({
         )}
 
         {}
-        {isCustomerLoggedIn ? (
-          <CustomerProfile
-            name={session?.customer?.name}
-            onLogout={handleLogout}
-          />
-        ) : variant === "business" ? (
-          <>
-            <div className="hidden sm:flex items-center gap-8">
-              <Link
-                to="/business/login"
-                className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
-              >
-                Log In
-              </Link>
-              <Link
-                to="/business/signup"
-                className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
-              >
-                Get Started
-              </Link>
-            </div>
-            <MobileMenu open={open} setOpen={setOpen}>
-              <MobileLink to="/business/login" onClick={() => setOpen(false)}>
-                Log In
-              </MobileLink>
-              <MobileLink to="/business/signup" onClick={() => setOpen(false)}>
-                Get Started
-              </MobileLink>
-            </MobileMenu>
-          </>
-        ) : (
-          <>
-            <div className="hidden sm:flex items-center gap-8">
-              <Link
-                to="/login"
-                className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
-              >
-                Log In
-              </Link>
-              <Link
-                to="/signup"
-                className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
-              >
-                Sign Up
-              </Link>
-            </div>
-            <MobileMenu open={open} setOpen={setOpen}>
-              <MobileLink to="/login" onClick={() => setOpen(false)}>
-                Log In
-              </MobileLink>
-              <MobileLink to="/signup" onClick={() => setOpen(false)}>
-                Sign Up
-              </MobileLink>
-            </MobileMenu>
-          </>
-        )}
+        {authArea}
       </div>
     </header>
   );

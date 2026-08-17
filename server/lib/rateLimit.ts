@@ -7,18 +7,25 @@ const GENERIC_MESSAGE = "Too many requests. Please try again later.";
 
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-const redis =
-  redisUrl && redisToken
-    ? new Redis({ url: redisUrl, token: redisToken })
-    : null;
+let redis: Redis | null = null;
+if (redisUrl && redisToken) {
+  redis = new Redis({ url: redisUrl, token: redisToken });
+}
 
-export const rateLimitBackend: "redis" | "memory" = redis ? "redis" : "memory";
+let resolvedBackend: "redis" | "memory" = "memory";
+if (redis) {
+  resolvedBackend = "redis";
+}
+
+export const rateLimitBackend: "redis" | "memory" = resolvedBackend;
 
 const isProd = process.env.NODE_ENV === "production";
 
 let statusLogged = false;
 export function logRateLimitStatus(): void {
-  if (statusLogged) return;
+  if (statusLogged) {
+    return;
+  }
   statusLogged = true;
 
   if (rateLimitBackend === "redis") {
@@ -49,8 +56,12 @@ logRateLimitStatus();
 
 export function clientIp(req: Request): string {
   const fwd = req.headers["x-forwarded-for"];
-  if (typeof fwd === "string" && fwd) return fwd.split(",")[0].trim();
-  if (Array.isArray(fwd) && fwd.length) return String(fwd[0]).trim();
+  if (typeof fwd === "string" && fwd) {
+    return fwd.split(",")[0].trim();
+  }
+  if (Array.isArray(fwd) && fwd.length) {
+    return String(fwd[0]).trim();
+  }
   return req.ip || req.socket?.remoteAddress || "unknown";
 }
 
@@ -81,7 +92,9 @@ function memoryLimit(
 function memoryPeek(fullKey: string, windowMs: number, max: number): boolean {
   const now = Date.now();
   const existing = memoryBuckets.get(fullKey);
-  if (!existing || now >= existing.resetAt) return true;
+  if (!existing || now >= existing.resetAt) {
+    return true;
+  }
   return existing.count < max;
 }
 
@@ -110,9 +123,10 @@ async function checkOne(
   if (redis) {
     try {
       const res = await getRedisLimiter(windowMs, max).limit(fullKey);
-      const retryAfterSec = res.success
-        ? 0
-        : Math.max(1, Math.ceil((res.reset - Date.now()) / 1000));
+      let retryAfterSec = 0;
+      if (!res.success) {
+        retryAfterSec = Math.max(1, Math.ceil((res.reset - Date.now()) / 1000));
+      }
       return { success: res.success, retryAfterSec };
     } catch (err) {
       console.error("[rate-limit] redis error, allowing request:", err);
@@ -123,7 +137,9 @@ async function checkOne(
 }
 
 function send429(res: Response, retryAfterSec: number, message?: string): false {
-  if (retryAfterSec > 0) res.setHeader("Retry-After", String(retryAfterSec));
+  if (retryAfterSec > 0) {
+    res.setHeader("Retry-After", String(retryAfterSec));
+  }
   res.status(429).json({ error: message ?? GENERIC_MESSAGE });
   return false;
 }
@@ -146,7 +162,9 @@ export function rateLimit(opts: {
   ) {
     void checkOne(`${name}:${clientIp(req)}`, windowMs, max)
       .then(({ success, retryAfterSec }) => {
-        if (success) return next();
+        if (success) {
+          return next();
+        }
         send429(res, retryAfterSec, message);
       })
       .catch(() => next());
@@ -169,7 +187,9 @@ export async function limitGuard(
   const active = rules.filter(
     (r) => r.key != null && String(r.key).trim() !== "",
   );
-  if (active.length === 0) return false;
+  if (active.length === 0) {
+    return false;
+  }
 
   const results = await Promise.all(
     active.map((r) =>
@@ -178,7 +198,9 @@ export async function limitGuard(
   );
 
   const blockedIdx = results.findIndex((r) => !r.success);
-  if (blockedIdx === -1) return false;
+  if (blockedIdx === -1) {
+    return false;
+  }
 
   const retryAfterSec = Math.max(
     ...results.filter((r) => !r.success).map((r) => r.retryAfterSec),
@@ -193,7 +215,9 @@ export async function consumeQuota(
   windowMs: number,
   max: number,
 ): Promise<boolean> {
-  if (key == null || String(key).trim() === "") return true;
+  if (key == null || String(key).trim() === "") {
+    return true;
+  }
   const { success } = await checkOne(
     `${name}:${String(key).trim()}`,
     windowMs,
@@ -208,7 +232,9 @@ export async function peekQuota(
   windowMs: number,
   max: number,
 ): Promise<boolean> {
-  if (key == null || String(key).trim() === "") return true;
+  if (key == null || String(key).trim() === "") {
+    return true;
+  }
   const fullKey = `${name}:${String(key).trim()}`;
   if (redis) {
     try {

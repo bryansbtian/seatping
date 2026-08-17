@@ -2,89 +2,91 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
+const apiTarget = process.env.API_PROXY_TARGET || "http://localhost:4000";
+
 export default defineConfig(() => ({
   server: {
     host: "::",
     port: 8080,
     proxy: {
       "/auth": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/admin/update-credits": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/admin/customer": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/admin/featured-restaurants": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/admin/businesses": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/admin/campaign-templates": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/api/feedback": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/api/sales": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/api/locations": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/api/featured-restaurants": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/api/restaurants": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/api/reservations": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/api/search": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/api/guests": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/api/campaigns": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/api/audiences": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/api/jobs": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/api/cron": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/tickets": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/api/health": {
-        target: "http://localhost:4000",
+        target: apiTarget,
         changeOrigin: true,
       },
     },

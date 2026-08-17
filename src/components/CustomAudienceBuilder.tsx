@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
@@ -62,15 +62,23 @@ const PREVIEW_VISIBLE = 5;
 
 function previewInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "G";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  if (!parts.length) {
+    return "G";
+  }
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 function previewLastVisit(value: string | null): string {
-  if (!value) return "";
+  if (!value) {
+    return "";
+  }
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -109,7 +117,9 @@ export function CustomAudienceBuilder({
       const ids = existing.filters.guestIds.join(",");
       api(`/api/guests?locationId=${locationId}&ids=${ids}`)
         .then((data) => {
-          if (data.guests) setSelectedGuests(data.guests);
+          if (data.guests) {
+            setSelectedGuests(data.guests);
+          }
         })
         .catch((e) => console.error("Failed to fetch selected guests", e));
     }
@@ -148,9 +158,11 @@ export function CustomAudienceBuilder({
     setSelectedGuests(selectedGuests.filter((g) => g.id !== guestId));
   };
 
-  const [tags, setTags] = useState<string[]>(
-    existing?.filters?.tags ? existing.filters.tags : []
-  );
+  let initialTags: string[] = [];
+  if (existing?.filters?.tags) {
+    initialTags = existing.filters.tags;
+  }
+  const [tags, setTags] = useState<string[]>(initialTags);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
   const [visitsMin, setVisitsMin] = useState<string>(
     existing?.filters?.totalVisitsMin?.toString() || ""
@@ -185,13 +197,27 @@ export function CustomAudienceBuilder({
     if (tags.length > 0) {
       filters.tags = tags;
     }
-    if (visitsMin.trim()) filters.totalVisitsMin = Number(visitsMin);
-    if (visitsMax.trim()) filters.totalVisitsMax = Number(visitsMax);
-    if (lastVisitMin.trim()) filters.lastVisitMinDaysAgo = Number(lastVisitMin);
-    if (lastVisitMax.trim()) filters.lastVisitMaxDaysAgo = Number(lastVisitMax);
-    if (hasUpcomingReservation) filters.hasUpcomingReservation = true;
-    if (hasNoShowHistory) filters.hasNoShowHistory = true;
-    if (hasNotes) filters.hasNotes = true;
+    if (visitsMin.trim()) {
+      filters.totalVisitsMin = Number(visitsMin);
+    }
+    if (visitsMax.trim()) {
+      filters.totalVisitsMax = Number(visitsMax);
+    }
+    if (lastVisitMin.trim()) {
+      filters.lastVisitMinDaysAgo = Number(lastVisitMin);
+    }
+    if (lastVisitMax.trim()) {
+      filters.lastVisitMaxDaysAgo = Number(lastVisitMax);
+    }
+    if (hasUpcomingReservation) {
+      filters.hasUpcomingReservation = true;
+    }
+    if (hasNoShowHistory) {
+      filters.hasNoShowHistory = true;
+    }
+    if (hasNotes) {
+      filters.hasNotes = true;
+    }
     
     if (selectedGuests.length > 0) {
       filters.guestIds = selectedGuests.map(g => g.id);
@@ -215,7 +241,11 @@ export function CustomAudienceBuilder({
         }),
       });
       setPreviewCount(res.count);
-      setPreviewGuests(Array.isArray(res.guests) ? res.guests : []);
+      let nextPreviewGuests: PreviewGuest[] = [];
+      if (Array.isArray(res.guests)) {
+        nextPreviewGuests = res.guests;
+      }
+      setPreviewGuests(nextPreviewGuests);
       setPreviewExpanded(false);
     } catch (e: any) {
       toast({
@@ -244,10 +274,15 @@ export function CustomAudienceBuilder({
         filters,
       };
 
-      const url = existing
-        ? `/api/audiences/${existing.id}`
-        : `/api/audiences`;
-      const method = existing ? "PATCH" : "POST";
+      let url: string;
+      let method: string;
+      if (existing) {
+        url = `/api/audiences/${existing.id}`;
+        method = "PATCH";
+      } else {
+        url = `/api/audiences`;
+        method = "POST";
+      }
 
       await api(url, {
         method,
@@ -271,12 +306,71 @@ export function CustomAudienceBuilder({
     }
   };
 
+  let dialogTitle: string;
+  if (existing) {
+    dialogTitle = "Edit Custom Group";
+  } else {
+    dialogTitle = "Create Custom Group";
+  }
+
+  let tagsTriggerContent: ReactNode;
+  if (tags.length > 0) {
+    tagsTriggerContent = tags.map((tag) => (
+      <GuestTagBadge
+        key={tag}
+        tag={tag}
+        onRemove={() =>
+          setTags(tags.filter((t) => t !== tag))
+        }
+      />
+    ));
+  } else {
+    tagsTriggerContent = (
+      <span className="text-muted-foreground">Select Tags</span>
+    );
+  }
+
+  let previewButtonLabel: string;
+  if (isPreviewing) {
+    previewButtonLabel = "Calculating...";
+  } else {
+    previewButtonLabel = "Preview";
+  }
+
+  let previewCountSuffix: string;
+  if (previewCount === 1) {
+    previewCountSuffix = "";
+  } else {
+    previewCountSuffix = "s";
+  }
+
+  let visiblePreviewGuests: PreviewGuest[];
+  if (previewExpanded) {
+    visiblePreviewGuests = previewGuests;
+  } else {
+    visiblePreviewGuests = previewGuests.slice(0, PREVIEW_VISIBLE);
+  }
+
+  let previewToggleLabel: string;
+  if (previewExpanded) {
+    previewToggleLabel = "Show Less";
+  } else {
+    previewToggleLabel = `View More (${previewGuests.length - PREVIEW_VISIBLE})`;
+  }
+
+  let saveButtonLabel: string;
+  if (isSaving) {
+    saveButtonLabel = "Saving...";
+  } else {
+    saveButtonLabel = "Save Custom Group";
+  }
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {existing ? "Edit Custom Group" : "Create Custom Group"}
+            {dialogTitle}
           </DialogTitle>
         </DialogHeader>
 
@@ -315,19 +409,7 @@ export function CustomAudienceBuilder({
                       className="w-full justify-between h-auto min-h-10 text-left px-3 py-2 font-normal"
                     >
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {tags.length > 0 ? (
-                          tags.map((tag) => (
-                            <GuestTagBadge
-                              key={tag}
-                              tag={tag}
-                              onRemove={() =>
-                                setTags(tags.filter((t) => t !== tag))
-                              }
-                            />
-                          ))
-                        ) : (
-                          <span className="text-muted-foreground">Select Tags</span>
-                        )}
+                        {tagsTriggerContent}
                       </div>
                       <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 ml-2" />
                     </Button>
@@ -340,6 +422,12 @@ export function CustomAudienceBuilder({
                         <CommandGroup>
                           {suggestedTags?.map((tagOption) => {
                             const isSelected = tags.some((t) => t.toLowerCase() === tagOption.toLowerCase());
+                            let checkOpacityClass: string;
+                            if (isSelected) {
+                              checkOpacityClass = "opacity-100";
+                            } else {
+                              checkOpacityClass = "opacity-0";
+                            }
                             return (
                               <CommandItem
                                 key={tagOption}
@@ -355,7 +443,7 @@ export function CustomAudienceBuilder({
                                 <Check
                                   className={cn(
                                     "mr-2 h-4 w-4",
-                                    isSelected ? "opacity-100" : "opacity-0"
+                                    checkOpacityClass
                                   )}
                                 />
                                 {tagOption}
@@ -461,7 +549,9 @@ export function CustomAudienceBuilder({
                   value={guestSearch}
                   onChange={(e) => setGuestSearch(e.target.value)}
                   onFocus={() => {
-                    if (guestSearchResults.length > 0) setShowGuestDropdown(true);
+                    if (guestSearchResults.length > 0) {
+                      setShowGuestDropdown(true);
+                    }
                   }}
                   onBlur={() => {
                     setTimeout(() => setShowGuestDropdown(false), 200);
@@ -540,7 +630,7 @@ export function CustomAudienceBuilder({
                 onClick={handlePreview}
                 disabled={isPreviewing}
               >
-                {isPreviewing ? "Calculating..." : "Preview"}
+                {previewButtonLabel}
               </Button>
             </div>
 
@@ -548,7 +638,7 @@ export function CustomAudienceBuilder({
               <p className="text-sm text-slate-600">
                 This group currently matches{" "}
                 <strong>{previewCount}</strong> guest
-                {previewCount === 1 ? "" : "s"}. The exact recipient count will
+                {previewCountSuffix}. The exact recipient count will
                 be calculated at send-time.
               </p>
             )}
@@ -567,10 +657,7 @@ export function CustomAudienceBuilder({
             {previewGuests.length > 0 && (
               <>
                 <div className="rounded-lg border bg-white divide-y divide-slate-100 max-h-72 overflow-y-auto">
-                  {(previewExpanded
-                    ? previewGuests
-                    : previewGuests.slice(0, PREVIEW_VISIBLE)
-                  ).map((guest) => {
+                  {visiblePreviewGuests.map((guest) => {
                     const name = guest.fullName || "Unnamed Guest";
                     const phoneDisplay = formatPhone(
                       guest.normalizedPhone,
@@ -631,9 +718,7 @@ export function CustomAudienceBuilder({
                     onClick={() => setPreviewExpanded((v) => !v)}
                     className="self-start text-sm font-medium text-indigo-600 hover:text-indigo-700"
                   >
-                    {previewExpanded
-                      ? "Show Less"
-                      : `View More (${previewGuests.length - PREVIEW_VISIBLE})`}
+                    {previewToggleLabel}
                   </button>
                 )}
               </>
@@ -646,7 +731,7 @@ export function CustomAudienceBuilder({
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save Custom Group"}
+            {saveButtonLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -5,17 +5,24 @@ import { limitGuard, clientIp, MINUTES } from "../lib/rateLimit.js";
 const router = Router();
 
 function pickCuisine(rp: any): string | null {
-  if (!rp || typeof rp !== "object") return null;
+  if (!rp || typeof rp !== "object") {
+    return null;
+  }
   const arr = (rp as any).cuisineTypes;
-  return Array.isArray(arr) && arr.length ? String(arr[0]) : null;
+  if (Array.isArray(arr) && arr.length) {
+    return String(arr[0]);
+  }
+  return null;
 }
 
 function isOpenNow(openingHours: any): boolean | null {
-  if (!openingHours || typeof openingHours !== "object") return null;
-  const tz =
-    typeof openingHours.timezone === "string" && openingHours.timezone
-      ? openingHours.timezone
-      : undefined;
+  if (!openingHours || typeof openingHours !== "object") {
+    return null;
+  }
+  let tz: string | undefined = undefined;
+  if (typeof openingHours.timezone === "string" && openingHours.timezone) {
+    tz = openingHours.timezone;
+  }
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: tz,
@@ -27,14 +34,22 @@ function isOpenNow(openingHours: any): boolean | null {
     const weekday = parts.find((p) => p.type === "weekday")?.value?.toLowerCase();
     const hour = parts.find((p) => p.type === "hour")?.value ?? "00";
     const minute = parts.find((p) => p.type === "minute")?.value ?? "00";
-    if (!weekday) return null;
+    if (!weekday) {
+      return null;
+    }
     const day = openingHours[weekday];
-    if (!day || typeof day !== "object" || !day.enabled) return false;
+    if (!day || typeof day !== "object" || !day.enabled) {
+      return false;
+    }
     const open = String(day.open || "");
     const close = String(day.close || "");
-    if (!/^\d{2}:\d{2}$/.test(open) || !/^\d{2}:\d{2}$/.test(close)) return null;
+    if (!/^\d{2}:\d{2}$/.test(open) || !/^\d{2}:\d{2}$/.test(close)) {
+      return null;
+    }
     const cur = `${hour}:${minute}`;
-    if (close <= open) return cur >= open || cur < close;
+    if (close <= open) {
+      return cur >= open || cur < close;
+    }
     return cur >= open && cur < close;
   } catch {
     return null;
@@ -42,10 +57,16 @@ function isOpenNow(openingHours: any): boolean | null {
 }
 
 function matchesQuery(loc: any, business: any, q: string): boolean {
-  if (!q) return true;
+  if (!q) {
+    return true;
+  }
   const needle = q.toLowerCase();
   const rp = (loc?.restaurantProfile || {}) as any;
   const details = (rp?.details || {}) as any;
+  let cuisineTypes: any[] = [];
+  if (Array.isArray(rp?.cuisineTypes)) {
+    cuisineTypes = rp.cuisineTypes;
+  }
   const haystack = [
     loc?.displayName,
     loc?.name,
@@ -62,7 +83,7 @@ function matchesQuery(loc: any, business: any, q: string): boolean {
     details?.city,
     details?.area,
     details?.address,
-    ...(Array.isArray(rp?.cuisineTypes) ? rp.cuisineTypes : []),
+    ...cuisineTypes,
   ]
     .filter(Boolean)
     .map((v) => String(v).toLowerCase());
@@ -76,15 +97,23 @@ router.get("/restaurants", async (req, res) => {
         { name: "search-restaurants-ip", key: clientIp(req), windowMs: MINUTES(1), max: 60 },
       ])
     )
-      return;
+      {
+        return;
+      }
 
     const q = String(req.query.query || "").trim();
 
     const rawLimit = parseInt(String(req.query.limit ?? ""), 10);
     const paginate = Number.isFinite(rawLimit) && rawLimit > 0;
-    const limit = paginate ? Math.min(100, rawLimit) : Infinity;
+    let limit = Infinity;
+    if (paginate) {
+      limit = Math.min(100, rawLimit);
+    }
     const rawPage = parseInt(String(req.query.page ?? "1"), 10);
-    const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+    let page = 1;
+    if (Number.isFinite(rawPage) && rawPage > 0) {
+      page = rawPage;
+    }
 
     const locations = await prisma.location.findMany({
       where: { isPublished: true },
@@ -107,31 +136,40 @@ router.get("/restaurants", async (req, res) => {
       matchesQuery(loc, businessById.get(loc.businessId), q),
     );
     const total = matched.length;
-    const filtered = paginate
-      ? matched.slice((page - 1) * limit, (page - 1) * limit + limit)
-      : matched;
+    let filtered = matched;
+    if (paginate) {
+      filtered = matched.slice((page - 1) * limit, (page - 1) * limit + limit);
+    }
 
     const locationIds = filtered.map((l) => l.id);
-    const summaries =
-      locationIds.length > 0
-        ? await prisma.review.groupBy({
-            by: ["locationId"],
-            where: { locationId: { in: locationIds } },
-            _avg: { rating: true },
-            _count: { _all: true },
-          })
-        : [];
+    let summaries: Array<{
+      locationId: string;
+      _avg: { rating: number | null };
+      _count: { _all: number };
+    }> = [];
+    if (locationIds.length > 0) {
+      const grouped = await prisma.review.groupBy({
+        by: ["locationId"],
+        where: { locationId: { in: locationIds } },
+        _avg: { rating: true },
+        _count: { _all: true },
+      });
+      summaries = grouped;
+    }
     const summaryByLocation = new Map(
-      summaries.map((s) => [
-        s.locationId,
-        {
-          rating:
-            typeof s._avg.rating === "number"
-              ? Math.round(s._avg.rating * 10) / 10
-              : null,
-          reviewCount: s._count._all,
-        },
-      ]),
+      summaries.map((s): [string, { rating: number | null; reviewCount: number }] => {
+        let rating: number | null = null;
+        if (typeof s._avg.rating === "number") {
+          rating = Math.round(s._avg.rating * 10) / 10;
+        }
+        return [
+          s.locationId,
+          {
+            rating,
+            reviewCount: s._count._all,
+          },
+        ];
+      }),
     );
 
     const featuredRows = await prisma.featuredRestaurant.findMany({
@@ -178,14 +216,24 @@ router.get("/restaurants", async (req, res) => {
       };
     });
 
-    return res.json({
+    const payload: {
+      query: string;
+      results: typeof results;
+      total: number;
+      page?: number;
+      limit?: number;
+      hasMore?: boolean;
+    } = {
       query: q,
       results,
       total,
-      ...(paginate
-        ? { page, limit, hasMore: page * limit < total }
-        : {}),
-    });
+    };
+    if (paginate) {
+      payload.page = page;
+      payload.limit = limit;
+      payload.hasMore = page * limit < total;
+    }
+    return res.json(payload);
   } catch (err: any) {
     console.error("[search] error:", err?.message || err);
     return res.status(500).json({ error: "Search failed." });

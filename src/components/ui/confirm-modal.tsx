@@ -51,12 +51,24 @@ export function ConfirmModal({
   const { toast } = useToast();
 
   const isControlled = open !== undefined;
-  const actualOpen = isControlled ? open : isOpen;
-  const setActualOpen = isControlled ? onOpenChange || (() => {}) : setIsOpen;
+  let actualOpen: boolean | undefined;
+  if (isControlled) {
+    actualOpen = open;
+  } else {
+    actualOpen = isOpen;
+  }
+  let setActualOpen: (next: boolean) => void;
+  if (isControlled) {
+    setActualOpen = onOpenChange || (() => {});
+  } else {
+    setActualOpen = setIsOpen;
+  }
 
   const handleConfirm = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (loading) return;
+    if (loading) {
+      return;
+    }
     
     setLoading(true);
     try {
@@ -75,6 +87,13 @@ export function ConfirmModal({
       setLoading(false);
     }
   };
+
+  let confirmLabel: string;
+  if (loading) {
+    confirmLabel = loadingText;
+  } else {
+    confirmLabel = confirmText;
+  }
 
   return (
     <AlertDialog open={actualOpen} onOpenChange={setActualOpen}>
@@ -104,7 +123,7 @@ export function ConfirmModal({
             className="w-full sm:w-auto"
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {loading ? loadingText : confirmText}
+            {confirmLabel}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

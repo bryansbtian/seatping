@@ -106,6 +106,30 @@ type ReservationSettings = {
   cancellationPolicy: string;
 };
 
+type ReservationSettingsForm = Omit<
+  ReservationSettings,
+  | "maxPartySize"
+  | "maxReservedGuestsPerHour"
+  | "bookingWindowDays"
+  | "minNoticeMinutes"
+> & {
+  maxPartySize: number | "";
+  maxReservedGuestsPerHour: number | "";
+  bookingWindowDays: number | "";
+  minNoticeMinutes: number | "";
+};
+
+const toNumberOrBlank = (raw: string): number | "" => {
+  if (raw === "") {
+    return "";
+  }
+  const parsed = Number(raw);
+  if (Number.isNaN(parsed)) {
+    return "";
+  }
+  return parsed;
+};
+
 const DEFAULT_RESERVATION_SETTINGS: ReservationSettings = {
   reservationStartTime: "11:00",
   reservationEndTime: "22:00",
@@ -156,11 +180,11 @@ export default function RestaurantProfileEditor({
   );
   const [tagline, setTagline] = useState<string>(rp.tagline || "");
   const [description, setDescription] = useState<string>(rp.description || "");
-  const [cuisine, setCuisine] = useState<string>(
-    Array.isArray(rp.cuisineTypes) && rp.cuisineTypes.length
-      ? rp.cuisineTypes[0]
-      : "",
-  );
+  let initialCuisine: string = "";
+  if (Array.isArray(rp.cuisineTypes) && rp.cuisineTypes.length) {
+    initialCuisine = rp.cuisineTypes[0];
+  }
+  const [cuisine, setCuisine] = useState<string>(initialCuisine);
   const [priceRange, setPriceRange] = useState<string>(rp.priceRange || "$$");
   const [currency, setCurrency] = useState<string>(rp.currency || "IDR");
 
@@ -179,17 +203,19 @@ export default function RestaurantProfileEditor({
     details.googleMapsUrl || "",
   );
 
-  const [banner, setBanner] = useState<Banner>(
-    location.bannerImageUrl
-      ? {
-          url: location.bannerImageUrl,
-          publicId: location.bannerImagePublicId || "",
-        }
-      : null,
-  );
-  const [photos, setPhotos] = useState<Photo[]>(
-    Array.isArray(location.photos) ? location.photos : [],
-  );
+  let initialBanner: Banner = null;
+  if (location.bannerImageUrl) {
+    initialBanner = {
+      url: location.bannerImageUrl,
+      publicId: location.bannerImagePublicId || "",
+    };
+  }
+  const [banner, setBanner] = useState<Banner>(initialBanner);
+  let initialPhotos: Photo[] = [];
+  if (Array.isArray(location.photos)) {
+    initialPhotos = location.photos;
+  }
+  const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [bannerUploading, setBannerUploading] = useState(false);
   const [photosUploading, setPhotosUploading] = useState(false);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -197,24 +223,30 @@ export default function RestaurantProfileEditor({
 
   const remainingSlots = Math.max(0, MAX_PHOTOS - photos.length);
 
-  const [menu, setMenu] = useState<MenuItem[]>(
-    Array.isArray(rp.menu) ? rp.menu : [],
-  );
+  let initialMenu: MenuItem[] = [];
+  if (Array.isArray(rp.menu)) {
+    initialMenu = rp.menu;
+  }
+  const [menu, setMenu] = useState<MenuItem[]>(initialMenu);
   const [menuUrl, setMenuUrl] = useState<string>(rp.menuUrl || "");
 
   const initialHours: any = rp.openingHours || {};
-  const [timezone, setTimezone] = useState<string>(
-    typeof initialHours.timezone === "string" && initialHours.timezone
-      ? initialHours.timezone
-      : DEFAULT_TIMEZONE,
-  );
+  let initialTimezone: string = DEFAULT_TIMEZONE;
+  if (typeof initialHours.timezone === "string" && initialHours.timezone) {
+    initialTimezone = initialHours.timezone;
+  }
+  const [timezone, setTimezone] = useState<string>(initialTimezone);
   const [openingHours, setOpeningHours] = useState<Record<string, DayHours>>(
     () => {
       const base: Record<string, DayHours> = {};
       for (const d of DAYS) {
         const v = initialHours[d] || {};
+        let dayEnabled: boolean = true;
+        if (typeof v.enabled === "boolean") {
+          dayEnabled = v.enabled;
+        }
         base[d] = {
-          enabled: typeof v.enabled === "boolean" ? v.enabled : true,
+          enabled: dayEnabled,
           open: v.open || "11:00",
           close: v.close || "22:00",
         };
@@ -227,14 +259,20 @@ export default function RestaurantProfileEditor({
     location.reservationsEnabled ?? true,
   );
   const [reservationSettings, setReservationSettings] =
-    useState<ReservationSettings>(() => ({
-      ...DEFAULT_RESERVATION_SETTINGS,
-      ...(location.reservationSettings &&
-      typeof location.reservationSettings === "object"
-        ? location.reservationSettings
-        : {}),
-    }));
-  const setRS = (patch: Partial<ReservationSettings>) =>
+    useState<ReservationSettingsForm>(() => {
+      let storedReservationSettings: Partial<ReservationSettingsForm> = {};
+      if (
+        location.reservationSettings &&
+        typeof location.reservationSettings === "object"
+      ) {
+        storedReservationSettings = location.reservationSettings;
+      }
+      return {
+        ...DEFAULT_RESERVATION_SETTINGS,
+        ...storedReservationSettings,
+      };
+    });
+  const setRS = (patch: Partial<ReservationSettingsForm>) =>
     setReservationSettings((s) => ({ ...s, ...patch }));
   const [isPublished, setIsPublished] = useState<boolean>(
     Boolean(rp.isPublished),
@@ -242,13 +280,23 @@ export default function RestaurantProfileEditor({
 
   const [saving, setSaving] = useState(false);
 
-  const rating = typeof rp.rating === "number" ? rp.rating : null;
-  const reviewCount = typeof rp.reviewCount === "number" ? rp.reviewCount : 0;
+  let rating: number | null = null;
+  if (typeof rp.rating === "number") {
+    rating = rp.rating;
+  }
+  let reviewCount: number = 0;
+  if (typeof rp.reviewCount === "number") {
+    reviewCount = rp.reviewCount;
+  }
 
   const onBannerSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (bannerInputRef.current) bannerInputRef.current.value = "";
-    if (!file) return;
+    if (bannerInputRef.current) {
+      bannerInputRef.current.value = "";
+    }
+    if (!file) {
+      return;
+    }
     const err = validateImageFile(file);
     if (err) {
       toast({
@@ -300,19 +348,28 @@ export default function RestaurantProfileEditor({
 
   const onPhotosSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (photosInputRef.current) photosInputRef.current.value = "";
-    if (files.length === 0) return;
+    if (photosInputRef.current) {
+      photosInputRef.current.value = "";
+    }
+    if (files.length === 0) {
+      return;
+    }
 
     if (files.length > remainingSlots) {
+      let tooManyPhotosDescription: string;
+      if (remainingSlots === 0) {
+        tooManyPhotosDescription = t("rpe.toast.tooManyPhotos.full", {
+          max: MAX_PHOTOS,
+        });
+      } else {
+        tooManyPhotosDescription = t("rpe.toast.tooManyPhotos.some", {
+          n: remainingSlots,
+          max: MAX_PHOTOS,
+        });
+      }
       toast({
         title: t("rpe.toast.tooManyPhotos.title"),
-        description:
-          remainingSlots === 0
-            ? t("rpe.toast.tooManyPhotos.full", { max: MAX_PHOTOS })
-            : t("rpe.toast.tooManyPhotos.some", {
-                n: remainingSlots,
-                max: MAX_PHOTOS,
-              }),
+        description: tooManyPhotosDescription,
         variant: "destructive",
       });
       return;
@@ -335,7 +392,9 @@ export default function RestaurantProfileEditor({
     try {
       for (const f of files) {
         const res = await uploadPhoto(location.id, f);
-        if (res.photo) added.push(res.photo);
+        if (res.photo) {
+          added.push(res.photo);
+        }
         lastUser = res.user;
       }
       toast({
@@ -349,8 +408,12 @@ export default function RestaurantProfileEditor({
         variant: "destructive",
       });
     } finally {
-      if (added.length) setPhotos((prev) => [...prev, ...added]);
-      if (lastUser) onMediaChange?.(lastUser);
+      if (added.length) {
+        setPhotos((prev) => [...prev, ...added]);
+      }
+      if (lastUser) {
+        onMediaChange?.(lastUser);
+      }
       setPhotosUploading(false);
     }
   };
@@ -375,7 +438,12 @@ export default function RestaurantProfileEditor({
 
   const setPhotoAltLocal = (photoId: string, altText: string) =>
     setPhotos((p) =>
-      p.map((ph) => (ph.id === photoId ? { ...ph, altText } : ph)),
+      p.map((ph) => {
+        if (ph.id === photoId) {
+          return { ...ph, altText };
+        }
+        return ph;
+      }),
     );
 
   const savePhotoAlt = async (photoId: string, altText: string) => {
@@ -403,28 +471,51 @@ export default function RestaurantProfileEditor({
       });
       return;
     }
+    if (
+      reservationsEnabled &&
+      (reservationSettings.maxPartySize === "" ||
+        reservationSettings.maxReservedGuestsPerHour === "" ||
+        reservationSettings.bookingWindowDays === "" ||
+        reservationSettings.minNoticeMinutes === "")
+    ) {
+      toast({
+        title: t("rpe.toast.reservationNumbersRequired.title"),
+        description: t("rpe.toast.reservationNumbersRequired.desc"),
+        variant: "destructive",
+      });
+      return;
+    }
     const { photos: _legacyPhotos, slug: _legacySlug, ...rpRest } = rp;
+    let selectedCuisineTypes: string[] = [];
+    if (cuisine) {
+      selectedCuisineTypes = [cuisine];
+    }
     const restaurantProfile = {
       ...rpRest,
       displayName: displayName.trim(),
       shortAddress: shortAddress.trim(),
       tagline: tagline.trim(),
       description: description.trim(),
-      cuisineTypes: cuisine ? [cuisine] : [],
+      cuisineTypes: selectedCuisineTypes,
       priceRange,
       currency,
       menu: menu
         .filter((it) => it.name.trim())
-        .map((it) => ({
-          name: it.name.trim(),
-          description: it.description?.trim() || "",
-          price:
-            it.price === undefined || Number.isNaN(it.price)
-              ? null
-              : Number(it.price),
-          currency: it.currency || currency,
-          category: it.category?.trim() || "",
-        })),
+        .map((it) => {
+          let itemPrice: number | null;
+          if (it.price === undefined || Number.isNaN(it.price)) {
+            itemPrice = null;
+          } else {
+            itemPrice = Number(it.price);
+          }
+          return {
+            name: it.name.trim(),
+            description: it.description?.trim() || "",
+            price: itemPrice,
+            currency: it.currency || currency,
+            category: it.category?.trim() || "",
+          };
+        }),
       menuUrl: menuUrl.trim(),
       rating: rating,
       reviewCount,
@@ -442,6 +533,43 @@ export default function RestaurantProfileEditor({
       isPublished,
     };
 
+    let normalizedMaxPartySize: number;
+    if (reservationSettings.maxPartySize === "") {
+      normalizedMaxPartySize = DEFAULT_RESERVATION_SETTINGS.maxPartySize;
+    } else {
+      normalizedMaxPartySize = reservationSettings.maxPartySize;
+    }
+    let normalizedMaxReservedGuestsPerHour: number;
+    if (reservationSettings.maxReservedGuestsPerHour === "") {
+      normalizedMaxReservedGuestsPerHour =
+        DEFAULT_RESERVATION_SETTINGS.maxReservedGuestsPerHour;
+    } else {
+      normalizedMaxReservedGuestsPerHour =
+        reservationSettings.maxReservedGuestsPerHour;
+    }
+    let normalizedBookingWindowDays: number;
+    if (reservationSettings.bookingWindowDays === "") {
+      normalizedBookingWindowDays =
+        DEFAULT_RESERVATION_SETTINGS.bookingWindowDays;
+    } else {
+      normalizedBookingWindowDays = reservationSettings.bookingWindowDays;
+    }
+    let normalizedMinNoticeMinutes: number;
+    if (reservationSettings.minNoticeMinutes === "") {
+      normalizedMinNoticeMinutes =
+        DEFAULT_RESERVATION_SETTINGS.minNoticeMinutes;
+    } else {
+      normalizedMinNoticeMinutes = reservationSettings.minNoticeMinutes;
+    }
+    const normalizedReservationSettings: ReservationSettings = {
+      ...reservationSettings,
+      maxPartySize: normalizedMaxPartySize,
+      maxReservedGuestsPerHour: normalizedMaxReservedGuestsPerHour,
+      bookingWindowDays: normalizedBookingWindowDays,
+      minNoticeMinutes: normalizedMinNoticeMinutes,
+      confirmationMode: "auto",
+    };
+
     try {
       setSaving(true);
       const res = await api(`/auth/business/locations/${location.id}`, {
@@ -450,10 +578,7 @@ export default function RestaurantProfileEditor({
           restaurantProfile,
           address: address.trim() || location.address || "Main Location",
           reservationsEnabled,
-          reservationSettings: {
-            ...reservationSettings,
-            confirmationMode: "auto",
-          },
+          reservationSettings: normalizedReservationSettings,
         }),
       });
       onSaved(res.user);
@@ -474,6 +599,196 @@ export default function RestaurantProfileEditor({
 
   const cardCls = "bg-white rounded-xl border border-slate-200 shadow-sm";
   const sectionDesc = "text-gray-600 text-sm md:text-base";
+
+  let bannerUploadButtonContent: React.ReactNode;
+  if (bannerUploading) {
+    bannerUploadButtonContent = (
+      <>
+        <Loader2 className="h-7 w-7 animate-spin" />
+        <span className="text-sm font-medium">
+          {t("rpe.banner.uploading")}
+        </span>
+      </>
+    );
+  } else {
+    bannerUploadButtonContent = (
+      <>
+        <ImagePlus className="h-7 w-7" />
+        <span className="text-sm font-medium">
+          {t("rpe.banner.upload")}
+        </span>
+        <span className="text-xs text-slate-400">
+          {t("rpe.banner.recommend")}
+        </span>
+      </>
+    );
+  }
+
+  let bannerContent: React.ReactNode;
+  if (banner) {
+    bannerContent = (
+      <div className="space-y-3">
+        <div className="relative overflow-hidden rounded-xl border bg-gray-50">
+          <div className="aspect-video w-full">
+            <img
+              src={banner.url}
+              alt="Location banner"
+              className="h-full w-full object-cover"
+            />
+          </div>
+          {bannerUploading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />{" "}
+              {t("rpe.banner.uploading")}
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:w-auto"
+            disabled={bannerUploading}
+            onClick={() => bannerInputRef.current?.click()}
+          >
+            <Upload size={16} className="mr-2" /> {t("rpe.banner.replace")}
+          </Button>
+          <Button
+            type="button"
+            variant="destructiveOutline"
+            className="w-full sm:w-auto"
+            disabled={bannerUploading}
+            onClick={removeBanner}
+          >
+            <Trash2 size={16} className="mr-2" /> {t("rpe.banner.remove")}
+          </Button>
+        </div>
+      </div>
+    );
+  } else {
+    bannerContent = (
+      <button
+        type="button"
+        disabled={bannerUploading}
+        onClick={() => bannerInputRef.current?.click()}
+        className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500 transition hover:border-indigo-400 hover:bg-indigo-50/50 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {bannerUploadButtonContent}
+      </button>
+    );
+  }
+
+  let remainingSlotsText: string;
+  if (remainingSlots > 0) {
+    remainingSlotsText = t("rpe.photos.canAdd", { n: remainingSlots });
+  } else {
+    remainingSlotsText = t("rpe.photos.maxReached", { max: MAX_PHOTOS });
+  }
+
+  let photosUploadButtonContent: React.ReactNode;
+  if (photosUploading) {
+    photosUploadButtonContent = (
+      <>
+        <Loader2 size={16} className="mr-2 animate-spin" />{" "}
+        {t("rpe.photos.uploading")}
+      </>
+    );
+  } else {
+    photosUploadButtonContent = (
+      <>
+        <Upload size={16} className="mr-2" /> {t("rpe.photos.upload")}
+      </>
+    );
+  }
+
+  let photosContent: React.ReactNode;
+  if (photos.length === 0) {
+    photosContent = (
+      <p className="text-sm text-muted-foreground">{t("rpe.photos.none")}</p>
+    );
+  } else {
+    photosContent = (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        {photos.map((p) => (
+          <div
+            key={p.id}
+            className="group relative flex flex-col overflow-hidden rounded-lg border bg-gray-50"
+          >
+            <div className="relative">
+              <img
+                src={p.url}
+                alt={p.altText || "Restaurant photo"}
+                className="h-28 w-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => removePhoto(p.id)}
+                className="absolute right-1 top-1 rounded-md bg-white/90 p-1 text-red-600 shadow hover:bg-white"
+                aria-label="Remove photo"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+            <Input
+              value={p.altText || ""}
+              onChange={(e) => setPhotoAltLocal(p.id, e.target.value)}
+              onBlur={(e) => savePhotoAlt(p.id, e.target.value)}
+              placeholder={t("rpe.photos.altPlaceholder")}
+              className="h-8 rounded-none border-0 border-t text-xs focus-visible:ring-0"
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  let previewCoverContent: React.ReactNode;
+  if (banner?.url || photos[0]?.url) {
+    let previewCoverAlt: string;
+    if (banner) {
+      previewCoverAlt = "Banner";
+    } else {
+      previewCoverAlt = photos[0]?.altText || "Cover";
+    }
+    previewCoverContent = (
+      <img
+        src={banner?.url || photos[0]?.url}
+        alt={previewCoverAlt}
+        className="h-44 w-full object-cover"
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).style.display = "none";
+        }}
+      />
+    );
+  } else {
+    previewCoverContent = (
+      <div className="flex h-44 w-full items-center justify-center bg-gradient-to-br from-indigo-100 to-slate-100 text-slate-400">
+        <ImageIcon className="mr-2 h-6 w-6" /> {t("rpe.preview.noBanner")}
+      </div>
+    );
+  }
+
+  let publishStatusBadge: React.ReactNode;
+  if (isPublished) {
+    publishStatusBadge = (
+      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+        {t("rpe.preview.published")}
+      </span>
+    );
+  } else {
+    publishStatusBadge = (
+      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+        {t("rpe.preview.draft")}
+      </span>
+    );
+  }
+
+  let saveButtonLabel: string;
+  if (saving) {
+    saveButtonLabel = t("rpe.saving");
+  } else {
+    saveButtonLabel = t("rpe.save");
+  }
 
   return (
     <div className="space-y-5 md:space-y-6">
@@ -748,7 +1063,7 @@ export default function RestaurantProfileEditor({
                     min={1}
                     value={reservationSettings.maxPartySize}
                     onChange={(e) =>
-                      setRS({ maxPartySize: Number(e.target.value) })
+                      setRS({ maxPartySize: toNumberOrBlank(e.target.value) })
                     }
                   />
                   <p className="text-xs text-muted-foreground">
@@ -764,7 +1079,9 @@ export default function RestaurantProfileEditor({
                     value={reservationSettings.maxReservedGuestsPerHour}
                     onChange={(e) =>
                       setRS({
-                        maxReservedGuestsPerHour: Number(e.target.value),
+                        maxReservedGuestsPerHour: toNumberOrBlank(
+                          e.target.value,
+                        ),
                       })
                     }
                   />
@@ -782,7 +1099,9 @@ export default function RestaurantProfileEditor({
                     min={0}
                     value={reservationSettings.bookingWindowDays}
                     onChange={(e) =>
-                      setRS({ bookingWindowDays: Number(e.target.value) })
+                      setRS({
+                        bookingWindowDays: toNumberOrBlank(e.target.value),
+                      })
                     }
                   />
                   <p className="text-xs text-muted-foreground">
@@ -797,7 +1116,9 @@ export default function RestaurantProfileEditor({
                     min={0}
                     value={reservationSettings.minNoticeMinutes}
                     onChange={(e) =>
-                      setRS({ minNoticeMinutes: Number(e.target.value) })
+                      setRS({
+                        minNoticeMinutes: toNumberOrBlank(e.target.value),
+                      })
                     }
                   />
                   <p className="text-xs text-muted-foreground">
@@ -848,71 +1169,7 @@ export default function RestaurantProfileEditor({
             onChange={onBannerSelected}
           />
 
-          {banner ? (
-            <div className="space-y-3">
-              <div className="relative overflow-hidden rounded-xl border bg-gray-50">
-                <div className="aspect-video w-full">
-                  <img
-                    src={banner.url}
-                    alt="Location banner"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                {bannerUploading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />{" "}
-                    {t("rpe.banner.uploading")}
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  disabled={bannerUploading}
-                  onClick={() => bannerInputRef.current?.click()}
-                >
-                  <Upload size={16} className="mr-2" /> {t("rpe.banner.replace")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructiveOutline"
-                  className="w-full sm:w-auto"
-                  disabled={bannerUploading}
-                  onClick={removeBanner}
-                >
-                  <Trash2 size={16} className="mr-2" /> {t("rpe.banner.remove")}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              disabled={bannerUploading}
-              onClick={() => bannerInputRef.current?.click()}
-              className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500 transition hover:border-indigo-400 hover:bg-indigo-50/50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {bannerUploading ? (
-                <>
-                  <Loader2 className="h-7 w-7 animate-spin" />
-                  <span className="text-sm font-medium">
-                    {t("rpe.banner.uploading")}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <ImagePlus className="h-7 w-7" />
-                  <span className="text-sm font-medium">
-                    {t("rpe.banner.upload")}
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    {t("rpe.banner.recommend")}
-                  </span>
-                </>
-              )}
-            </button>
-          )}
+          {bannerContent}
         </CardContent>
       </Card>
 
@@ -938,9 +1195,7 @@ export default function RestaurantProfileEditor({
           />
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              {remainingSlots > 0
-                ? t("rpe.photos.canAdd", { n: remainingSlots })
-                : t("rpe.photos.maxReached", { max: MAX_PHOTOS })}
+              {remainingSlotsText}
             </p>
             <Button
               type="button"
@@ -949,56 +1204,11 @@ export default function RestaurantProfileEditor({
               disabled={photosUploading || remainingSlots === 0}
               onClick={() => photosInputRef.current?.click()}
             >
-              {photosUploading ? (
-                <>
-                  <Loader2 size={16} className="mr-2 animate-spin" />{" "}
-                  {t("rpe.photos.uploading")}
-                </>
-              ) : (
-                <>
-                  <Upload size={16} className="mr-2" /> {t("rpe.photos.upload")}
-                </>
-              )}
+              {photosUploadButtonContent}
             </Button>
           </div>
 
-          {photos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t("rpe.photos.none")}
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-              {photos.map((p) => (
-                <div
-                  key={p.id}
-                  className="group relative flex flex-col overflow-hidden rounded-lg border bg-gray-50"
-                >
-                  <div className="relative">
-                    <img
-                      src={p.url}
-                      alt={p.altText || "Restaurant photo"}
-                      className="h-28 w-full object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(p.id)}
-                      className="absolute right-1 top-1 rounded-md bg-white/90 p-1 text-red-600 shadow hover:bg-white"
-                      aria-label="Remove photo"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                  <Input
-                    value={p.altText || ""}
-                    onChange={(e) => setPhotoAltLocal(p.id, e.target.value)}
-                    onBlur={(e) => savePhotoAlt(p.id, e.target.value)}
-                    placeholder={t("rpe.photos.altPlaceholder")}
-                    className="h-8 rounded-none border-0 border-t text-xs focus-visible:ring-0"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          {photosContent}
         </CardContent>
       </Card>
 
@@ -1115,34 +1325,13 @@ export default function RestaurantProfileEditor({
         <CardContent className="p-4 md:p-6 pt-0">
           <div className="overflow-hidden rounded-xl border">
             {}
-            {banner?.url || photos[0]?.url ? (
-              <img
-                src={banner?.url || photos[0]?.url}
-                alt={banner ? "Banner" : photos[0]?.altText || "Cover"}
-                className="h-44 w-full object-cover"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-              />
-            ) : (
-              <div className="flex h-44 w-full items-center justify-center bg-gradient-to-br from-indigo-100 to-slate-100 text-slate-400">
-                <ImageIcon className="mr-2 h-6 w-6" /> {t("rpe.preview.noBanner")}
-              </div>
-            )}
+            {previewCoverContent}
             <div className="space-y-2 p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-xl font-semibold text-gray-900">
                   {displayName || t("rpe.preview.yourRestaurant")}
                 </h3>
-                {isPublished ? (
-                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                    {t("rpe.preview.published")}
-                  </span>
-                ) : (
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-                    {t("rpe.preview.draft")}
-                  </span>
-                )}
+                {publishStatusBadge}
               </div>
               <p className="text-sm text-gray-500">
                 {[cuisine, priceRange, [area, city].filter(Boolean).join(", ")]
@@ -1173,7 +1362,7 @@ export default function RestaurantProfileEditor({
             </div>
           </div>
           <Button onClick={save} disabled={saving} className="w-full sm:w-auto">
-            {saving ? t("rpe.saving") : t("rpe.save")}
+            {saveButtonLabel}
           </Button>
         </CardContent>
       </Card>
@@ -1185,17 +1374,26 @@ export default function RestaurantProfileEditor({
 const UNCATEGORIZED = "Other";
 
 function formatMenuPrice(price: number | undefined, currency: string): string {
-  if (price === undefined || price === null || Number.isNaN(price)) return "";
+  if (price === undefined || price === null || Number.isNaN(price)) {
+    return "";
+  }
   return `${currency} ${price.toLocaleString("en-US")}`;
 }
 
 function parseCsvPrice(raw: string): number | undefined {
-  if (!raw) return undefined;
+  if (!raw) {
+    return undefined;
+  }
   let s = raw.replace(/[^0-9.,]/g, "");
-  if (!s) return undefined;
+  if (!s) {
+    return undefined;
+  }
   s = s.replace(/,/g, "");
   const n = Number(s);
-  return Number.isFinite(n) ? n : undefined;
+  if (Number.isFinite(n)) {
+    return n;
+  }
+  return undefined;
 }
 
 function MenuSection({
@@ -1262,35 +1460,55 @@ function MenuSection({
           const category = (row.category ?? "").trim();
           const description = (row.description ?? "").trim();
           const priceRaw = (row.price ?? "").trim();
-          if (!name && !category && !description && !priceRaw) continue;
+          if (!name && !category && !description && !priceRaw) {
+            continue;
+          }
           if (!name) {
             skipped++;
             continue;
           }
           const price = parseCsvPrice(priceRaw);
-          if (priceRaw && price === undefined) pricelessRows++;
+          if (priceRaw && price === undefined) {
+            pricelessRows++;
+          }
           imported.push({ name, category, description, price, currency });
         }
         if (imported.length === 0) {
+          let noItemsDetail: string;
+          if (skipped > 0) {
+            noItemsDetail = t("rpe.csv.noItems.skipped", { n: skipped });
+          } else {
+            noItemsDetail = t("rpe.csv.noItems.empty");
+          }
           setCsvError({
             title: t("rpe.csv.noItems.title"),
-            detail:
-              skipped > 0
-                ? t("rpe.csv.noItems.skipped", { n: skipped })
-                : t("rpe.csv.noItems.empty"),
+            detail: noItemsDetail,
           });
           return;
         }
         setMenu((m) => [...m, ...imported]);
         const notes: string[] = [];
-        if (skipped > 0) notes.push(t("rpe.csv.skippedNote", { n: skipped }));
+        if (skipped > 0) {
+          notes.push(t("rpe.csv.skippedNote", { n: skipped }));
+        }
         if (pricelessRows > 0)
-          notes.push(t("rpe.csv.pricelessNote", { n: pricelessRows }));
-        const count = t(
-          imported.length === 1 ? "rpe.csv.importedOne" : "rpe.csv.importedMany",
-          { n: imported.length },
-        );
-        setCsvSuccess(notes.length ? `${count} · ${notes.join(" · ")}` : count);
+          {
+            notes.push(t("rpe.csv.pricelessNote", { n: pricelessRows }));
+          }
+        let importedCountKey: TKey;
+        if (imported.length === 1) {
+          importedCountKey = "rpe.csv.importedOne";
+        } else {
+          importedCountKey = "rpe.csv.importedMany";
+        }
+        const count = t(importedCountKey, { n: imported.length });
+        let successMessage: string;
+        if (notes.length) {
+          successMessage = `${count} · ${notes.join(" · ")}`;
+        } else {
+          successMessage = count;
+        }
+        setCsvSuccess(successMessage);
       },
       error: (err) => {
         setCsvError({ title: t("rpe.csv.couldNotRead"), detail: err.message });
@@ -1300,7 +1518,9 @@ function MenuSection({
 
   const onCsvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) handleCsvFile(file);
+    if (file) {
+      handleCsvFile(file);
+    }
     e.target.value = "";
   };
 
@@ -1317,12 +1537,21 @@ function MenuSection({
   const cancel = () => setForm(null);
 
   const setDraft = (patch: Partial<MenuItem>) =>
-    setForm((f) => (f ? { ...f, draft: { ...f.draft, ...patch } } : f));
+    setForm((f) => {
+      if (f) {
+        return { ...f, draft: { ...f.draft, ...patch } };
+      }
+      return f;
+    });
 
   const saveItem = () => {
-    if (!form) return;
+    if (!form) {
+      return;
+    }
     const draft = form.draft;
-    if (!draft.name.trim()) return;
+    if (!draft.name.trim()) {
+      return;
+    }
     const cleaned: MenuItem = {
       ...draft,
       name: draft.name.trim(),
@@ -1331,15 +1560,27 @@ function MenuSection({
       currency: draft.currency || currency,
     };
     setMenu((m) => {
-      if (form.index === null) return [...m, cleaned];
-      return m.map((it, idx) => (idx === form.index ? cleaned : it));
+      if (form.index === null) {
+        return [...m, cleaned];
+      }
+      return m.map((it, idx) => {
+        if (idx === form.index) {
+          return cleaned;
+        }
+        return it;
+      });
     });
     setForm(null);
   };
 
   const remove = (i: number) => {
     setMenu((m) => m.filter((_, idx) => idx !== i));
-    setForm((f) => (f && f.index === i ? null : f));
+    setForm((f) => {
+      if (f && f.index === i) {
+        return null;
+      }
+      return f;
+    });
   };
 
   const groups: {
@@ -1355,6 +1596,15 @@ function MenuSection({
     }
     group.items.push({ item, index });
   });
+
+  let menuFormTitle: string = "";
+  if (form) {
+    if (form.index === null) {
+      menuFormTitle = t("rpe.menu.addItem");
+    } else {
+      menuFormTitle = t("rpe.menu.editItem");
+    }
+  }
 
   return (
     <Card className={cardCls}>
@@ -1451,9 +1701,7 @@ function MenuSection({
         {form && (
           <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 shadow-sm">
             <p className="text-sm font-semibold text-gray-800">
-              {form.index === null
-                ? t("rpe.menu.addItem")
-                : t("rpe.menu.editItem")}
+              {menuFormTitle}
             </p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -1485,14 +1733,15 @@ function MenuSection({
                   inputMode="decimal"
                   placeholder={t("rpe.menu.price.ph")}
                   value={form.draft.price ?? ""}
-                  onChange={(e) =>
-                    setDraft({
-                      price:
-                        e.target.value === ""
-                          ? undefined
-                          : Number(e.target.value),
-                    })
-                  }
+                  onChange={(e) => {
+                    let nextPrice: number | undefined;
+                    if (e.target.value === "") {
+                      nextPrice = undefined;
+                    } else {
+                      nextPrice = Number(e.target.value);
+                    }
+                    setDraft({ price: nextPrice });
+                  }}
                 />
               </div>
             </div>

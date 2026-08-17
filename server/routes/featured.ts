@@ -17,26 +17,34 @@ router.get("/", async (_req, res) => {
     });
 
     const locationIds = rows.map((r) => r.locationId);
-    const summaries =
-      locationIds.length > 0
-        ? await prisma.review.groupBy({
-            by: ["locationId"],
-            where: { locationId: { in: locationIds } },
-            _avg: { rating: true },
-            _count: { _all: true },
-          })
-        : [];
+    let summaries: Array<{
+      locationId: string;
+      _avg: { rating: number | null };
+      _count: { _all: number };
+    }> = [];
+    if (locationIds.length > 0) {
+      const grouped = await prisma.review.groupBy({
+        by: ["locationId"],
+        where: { locationId: { in: locationIds } },
+        _avg: { rating: true },
+        _count: { _all: true },
+      });
+      summaries = grouped;
+    }
     const summaryByLocation = new Map(
-      summaries.map((s) => [
-        s.locationId,
-        {
-          rating:
-            typeof s._avg.rating === "number"
-              ? Math.round(s._avg.rating * 10) / 10
-              : null,
-          reviewCount: s._count._all,
-        },
-      ]),
+      summaries.map((s): [string, { rating: number | null; reviewCount: number }] => {
+        let rating: number | null = null;
+        if (typeof s._avg.rating === "number") {
+          rating = Math.round(s._avg.rating * 10) / 10;
+        }
+        return [
+          s.locationId,
+          {
+            rating,
+            reviewCount: s._count._all,
+          },
+        ];
+      }),
     );
 
     const featured = rows.map((r) => {
@@ -48,6 +56,10 @@ router.get("/", async (_req, res) => {
       };
       const bannerImageUrl =
         loc.bannerImageUrl || (loc.photos?.[0]?.url ?? null);
+      let cuisine = null;
+      if (Array.isArray(rp.cuisineTypes) && rp.cuisineTypes.length) {
+        cuisine = rp.cuisineTypes[0];
+      }
 
       return {
         id: r.id,
@@ -61,10 +73,7 @@ router.get("/", async (_req, res) => {
         address: loc.address ?? "",
         area: loc.area ?? null,
         city: loc.city ?? null,
-        cuisine:
-          Array.isArray(rp.cuisineTypes) && rp.cuisineTypes.length
-            ? rp.cuisineTypes[0]
-            : null,
+        cuisine,
         priceRange: rp.priceRange ?? null,
         bannerImageUrl,
         rating: summary.rating,

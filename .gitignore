@@ -1,3 +1,11 @@
+node_modules
+dist
+dist-ssr
+dist-server
+*.local
+*.tsbuildinfo
+/generated/prisma
+
 logs
 *.log
 npm-debug.log*
@@ -5,21 +13,17 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-.claude 
 
-node_modules
-dist
-dist-server
-dist-ssr
-*.local
-*.tsbuildinfo
-
-remotion
 .env
 .env.local
 .env.development
 .env.production
 .env.*.local
+.env.test
+
+coverage
+playwright-report
+test-results
 
 .vscode/*
 !.vscode/extensions.json
@@ -31,5 +35,6 @@ remotion
 *.sln
 *.sw?
 
-/generated/prisma
+.claude
 CLAUDE.md
+remotion

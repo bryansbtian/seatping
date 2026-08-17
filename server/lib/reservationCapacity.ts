@@ -19,8 +19,12 @@ export async function tryReserveCapacity(
   guestCount: number,
   cap: number,
 ): Promise<boolean> {
-  if (guestCount <= 0) return true;
-  if (guestCount > cap) return false;
+  if (guestCount <= 0) {
+    return true;
+  }
+  if (guestCount > cap) {
+    return false;
+  }
 
   await withWriteRetry(() =>
     prisma.slotCounter.upsert({
@@ -50,7 +54,9 @@ export async function addCapacity(
   hour: number,
   guestCount: number,
 ): Promise<void> {
-  if (guestCount <= 0) return;
+  if (guestCount <= 0) {
+    return;
+  }
   await withWriteRetry(() =>
     prisma.slotCounter.upsert({
       where: { locationId_dateKey_hour: { locationId, dateKey, hour } },
@@ -66,7 +72,9 @@ export async function releaseCapacity(
   hour: number,
   guestCount: number,
 ): Promise<void> {
-  if (guestCount <= 0) return;
+  if (guestCount <= 0) {
+    return;
+  }
   await withWriteRetry(() =>
     prisma.slotCounter.updateMany({
       where: { locationId, dateKey, hour, reservedGuests: { gte: guestCount } },
@@ -86,9 +94,13 @@ export async function applyStatusCapacityDelta(params: {
 }): Promise<void> {
   const wasActive = ACTIVE_ENUM.includes(params.oldStatus);
   const isActive = ACTIVE_ENUM.includes(params.newStatus);
-  if (wasActive === isActive) return;
+  if (wasActive === isActive) {
+    return;
+  }
   const { dateKey, hour } = bucketOf(params.reservationDateTime);
-  if (!dateKey) return;
+  if (!dateKey) {
+    return;
+  }
   if (wasActive && !isActive) {
     await releaseCapacity(params.locationId, dateKey, hour, params.guestCount);
   } else {
@@ -108,7 +120,9 @@ export async function recountSlots(locationId: string): Promise<void> {
   const totals = new Map<string, number>();
   for (const r of active) {
     const { dateKey, hour } = bucketOf(r.reservationDateTime);
-    if (!dateKey) continue;
+    if (!dateKey) {
+      continue;
+    }
     const key = `${dateKey}|${hour}`;
     totals.set(key, (totals.get(key) ?? 0) + (Number(r.guestCount) || 0));
   }

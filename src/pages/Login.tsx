@@ -26,16 +26,27 @@ const Login = () => {
   const { toast } = useToast();
 
   const nextParam = searchParams.get("next");
-  const redirectTo = nextParam && nextParam.startsWith("/") ? nextParam : "/";
+  let redirectTo: string;
+  if (nextParam && nextParam.startsWith("/")) {
+    redirectTo = nextParam;
+  } else {
+    redirectTo = "/";
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors = { emailOrUsername: "", password: "" };
     if (!emailOrUsername)
-      newErrors.emailOrUsername = "Email or username is required";
-    if (!password) newErrors.password = "Password is required";
+      {
+        newErrors.emailOrUsername = "Email or username is required";
+      }
+    if (!password) {
+      newErrors.password = "Password is required";
+    }
     setErrors(newErrors);
-    if (newErrors.emailOrUsername || newErrors.password) return;
+    if (newErrors.emailOrUsername || newErrors.password) {
+      return;
+    }
 
     try {
       setLoading(true);
@@ -58,6 +69,13 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  let submitLabel: string;
+  if (loading) {
+    submitLabel = "Signing in...";
+  } else {
+    submitLabel = "Sign In";
+  }
 
   return (
     <>
@@ -90,7 +108,9 @@ const Login = () => {
                     onChange={(e) => {
                       setEmailOrUsername(e.target.value);
                       if (errors.emailOrUsername)
-                        setErrors((p) => ({ ...p, emailOrUsername: "" }));
+                        {
+                          setErrors((p) => ({ ...p, emailOrUsername: "" }));
+                        }
                     }}
                     required
                   />
@@ -110,7 +130,9 @@ const Login = () => {
                     onChange={(e) => {
                       setPassword(e.target.value);
                       if (errors.password)
-                        setErrors((p) => ({ ...p, password: "" }));
+                        {
+                          setErrors((p) => ({ ...p, password: "" }));
+                        }
                     }}
                     required
                   />
@@ -125,7 +147,7 @@ const Login = () => {
                   className="h-11 w-full text-base"
                   disabled={loading}
                 >
-                  {loading ? "Signing in..." : "Sign In"}
+                  {submitLabel}
                 </Button>
               </form>
 

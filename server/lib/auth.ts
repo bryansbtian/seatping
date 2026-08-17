@@ -1,5 +1,10 @@
 import jwt, { SignOptions, JwtPayload, Secret } from "jsonwebtoken";
-import type { Response, Request, NextFunction } from "express";
+import type {
+  Response,
+  Request,
+  NextFunction,
+  CookieOptions,
+} from "express";
 
 export type AccountType = "customer" | "business" | "admin";
 
@@ -15,7 +20,9 @@ function parseExpiresInToMs(expiresIn: string | number): number | undefined {
     return expiresIn * 1000;
   }
   const match = /^\s*(\d+)\s*([a-zA-Z]+)\s*$/.exec(expiresIn);
-  if (!match) return undefined;
+  if (!match) {
+    return undefined;
+  }
   const value = Number(match[1]);
   const unit = match[2].toLowerCase();
   const msPerUnit: Record<string, number> = {
@@ -47,13 +54,17 @@ function parseExpiresInToMs(expiresIn: string | number): number | undefined {
     years: 365 * 24 * 60 * 60 * 1000,
   };
   const factor = msPerUnit[unit];
-  if (!factor) return undefined;
+  if (!factor) {
+    return undefined;
+  }
   return value * factor;
 }
 
 function getJwtSecret(): Secret {
   const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error("JWT_SECRET is not set");
+  if (!secret) {
+    throw new Error("JWT_SECRET is not set");
+  }
   return secret;
 }
 
@@ -78,13 +89,16 @@ export function setAuthCookie(
   const isProd = process.env.NODE_ENV === "production";
   const expiresInEnv = process.env.JWT_EXPIRES_IN ?? "7d";
   const maxAge = parseExpiresInToMs(expiresInEnv) ?? parseExpiresInToMs("7d");
-  res.cookie(COOKIE_NAMES[accountType], token, {
+  const cookieOptions: CookieOptions = {
     httpOnly: true,
     secure: isProd,
     sameSite: "lax",
     path: "/",
-    ...(maxAge ? { maxAge } : {}),
-  });
+  };
+  if (maxAge) {
+    cookieOptions.maxAge = maxAge;
+  }
+  res.cookie(COOKIE_NAMES[accountType], token, cookieOptions);
 }
 
 export function clearAuthCookie(res: Response, accountType: AccountType) {
@@ -110,7 +124,9 @@ export function requireAccountType(accountType: AccountType) {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.cookies?.[COOKIE_NAMES[accountType]];
-      if (!token) return res.status(401).json({ error: "Unauthorized" });
+      if (!token) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
       const payload = verifyJwt(token) as JwtPayload & {
         accountType?: AccountType;
       };
@@ -135,12 +151,16 @@ export function readSession(
 ): { accountType: AccountType; sub: string; name: string | null } | null {
   try {
     const token = req.cookies?.[COOKIE_NAMES[accountType]];
-    if (!token) return null;
+    if (!token) {
+      return null;
+    }
     const payload = verifyJwt(token) as JwtPayload & {
       accountType?: AccountType;
       name?: string;
     };
-    if (payload.accountType !== accountType || !payload.sub) return null;
+    if (payload.accountType !== accountType || !payload.sub) {
+      return null;
+    }
     return {
       accountType: payload.accountType,
       sub: String(payload.sub),

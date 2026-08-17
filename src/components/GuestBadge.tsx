@@ -31,18 +31,21 @@ export function GuestStatusBadge({
   className?: string;
 }) {
   const { t } = useLang();
+  let toneClass: string;
+  let label: string;
+  if (returning) {
+    toneClass = "border-emerald-200 bg-emerald-100 text-emerald-700";
+    label = t("badge.returning");
+  } else {
+    toneClass = "border-indigo-200 bg-indigo-100 text-indigo-700";
+    label = t("badge.new");
+  }
   return (
     <Badge
       variant="outline"
-      className={cn(
-        PILL_BASE_CLASS,
-        returning
-          ? "border-emerald-200 bg-emerald-100 text-emerald-700"
-          : "border-indigo-200 bg-indigo-100 text-indigo-700",
-        className,
-      )}
+      className={cn(PILL_BASE_CLASS, toneClass, className)}
     >
-      {returning ? t("badge.returning") : t("badge.new")}
+      {label}
     </Badge>
   );
 }

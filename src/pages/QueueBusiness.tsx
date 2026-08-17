@@ -77,7 +77,9 @@ type AddressOption = {
 async function fetchAddressesForBusiness(
   username: string,
 ): Promise<AddressOption[]> {
-  if (!username) return [];
+  if (!username) {
+    return [];
+  }
   try {
     const response = await api(`/auth/business/${username}/addresses`);
     return response.addresses || [];
@@ -88,7 +90,9 @@ async function fetchAddressesForBusiness(
 }
 
 function locationLabel(loc: AddressOption | null): string {
-  if (!loc) return "";
+  if (!loc) {
+    return "";
+  }
   return loc.displayName || loc.name || loc.address || "Location";
 }
 
@@ -116,7 +120,9 @@ export default function QueueBusiness() {
   const [step, setStep] = useState<Step>(2);
 
   useEffect(() => {
-    if (locationId) analytics.qrCodeScanned(locationId);
+    if (locationId) {
+      analytics.qrCodeScanned(locationId);
+    }
   }, [locationId]);
 
   const [loadingAddresses, setLoadingAddresses] = useState(false);
@@ -145,10 +151,13 @@ export default function QueueBusiness() {
   const [whatsappCountryOpen, setWhatsappCountryOpen] = useState(false);
   const [smsCountryOpen, setSmsCountryOpen] = useState(false);
 
-  const storageKey = useMemo(
-    () => `queue_${businessUsername}${locationId ? `_${locationId}` : ""}`,
-    [businessUsername, locationId],
-  );
+  const storageKey = useMemo(() => {
+    let locationSuffix = "";
+    if (locationId) {
+      locationSuffix = `_${locationId}`;
+    }
+    return `queue_${businessUsername}${locationSuffix}`;
+  }, [businessUsername, locationId]);
 
   const selectedWhatsappCountry = useMemo(
     () =>
@@ -304,13 +313,19 @@ export default function QueueBusiness() {
   }, [businessUsername, locationId, storageKey, navigate, toast, searchParams]);
 
   useEffect(() => {
-    if (step !== 2 || !businessUsername || !locationId) return;
+    if (step !== 2 || !businessUsername || !locationId) {
+      return;
+    }
     let cancelled = false;
     const refreshLocationStatus = async () => {
       const list = await fetchAddressesForBusiness(businessUsername);
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
       const match = list.find((location) => location.id === locationId);
-      if (match) setSelectedLocation(match);
+      if (match) {
+        setSelectedLocation(match);
+      }
     };
     const interval = setInterval(refreshLocationStatus, 60_000);
     return () => {
@@ -323,11 +338,20 @@ export default function QueueBusiness() {
     let cancelled = false;
     api("/auth/me")
       .then((d) => {
-        if (cancelled || !d?.user) return;
+        if (cancelled || !d?.user) {
+          return;
+        }
         const full = String(d.user.name || "").trim();
         const sp = full.indexOf(" ");
-        const first = sp === -1 ? full : full.slice(0, sp);
-        const last = sp === -1 ? "" : full.slice(sp + 1);
+        let first: string;
+        let last: string;
+        if (sp === -1) {
+          first = full;
+          last = "";
+        } else {
+          first = full.slice(0, sp);
+          last = full.slice(sp + 1);
+        }
         setForm((prev) => ({
           ...prev,
           firstName: prev.firstName || first,
@@ -342,7 +366,9 @@ export default function QueueBusiness() {
   }, []);
 
   useEffect(() => {
-    if ((step !== 4 && step !== 5) || hasLeftQueue) return;
+    if ((step !== 4 && step !== 5) || hasLeftQueue) {
+      return;
+    }
 
     const checkAdmissionStatus = async () => {
       try {
@@ -353,7 +379,9 @@ export default function QueueBusiness() {
           );
         } else {
           const customerId = `${form.firstName}${form.lastName}${form.joinedAt}`;
-          if (!customerId || !form.joinedAt) return;
+          if (!customerId || !form.joinedAt) {
+            return;
+          }
           response = await api(
             `/auth/business/${businessUsername}/queue/${customerId}/status`,
           );
@@ -447,9 +475,13 @@ export default function QueueBusiness() {
           setEtaError(false);
         }
       } catch {
-        if (!cancelled) setEtaError(true);
+        if (!cancelled) {
+          setEtaError(true);
+        }
       } finally {
-        if (!cancelled) setEtaLoading(false);
+        if (!cancelled) {
+          setEtaLoading(false);
+        }
       }
     };
     fetchEta();
@@ -461,16 +493,27 @@ export default function QueueBusiness() {
   }, [step, queueToken, businessUsername, peopleAhead]);
 
   useEffect(() => {
-    if (step !== 5) return;
-    if (countdownRef.current) clearInterval(countdownRef.current);
+    if (step !== 5) {
+      return;
+    }
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+    }
 
-    const startMs = admittedAt ? new Date(admittedAt).getTime() : Date.now();
+    let startMs: number;
+    if (admittedAt) {
+      startMs = new Date(admittedAt).getTime();
+    } else {
+      startMs = Date.now();
+    }
     const expiresMs = startMs + HOLD_SECONDS * 1000;
     const remaining = () =>
       Math.max(0, Math.ceil((expiresMs - Date.now()) / 1000));
 
     setSecondsLeft(remaining());
-    if (remaining() <= 0) return;
+    if (remaining() <= 0) {
+      return;
+    }
 
     countdownRef.current = setInterval(() => {
       const left = remaining();
@@ -480,7 +523,9 @@ export default function QueueBusiness() {
       }
     }, 1000);
     return () => {
-      if (countdownRef.current) clearInterval(countdownRef.current);
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
     };
   }, [step, admittedAt]);
 
@@ -489,7 +534,9 @@ export default function QueueBusiness() {
   ) => {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
-    if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
+    if (errors[name]) {
+      setErrors((p) => ({ ...p, [name]: "" }));
+    }
   };
 
   const joinQueue = async (e: React.FormEvent) => {
@@ -497,12 +544,20 @@ export default function QueueBusiness() {
     analytics.joinQueueClicked(selectedLocation?.id);
     const newErrors: Record<string, string> = {};
 
-    if (!selectedLocation) newErrors.location = "Please select a location";
-    if (!form.firstName.trim()) newErrors.firstName = "First name is required";
-    if (!form.lastName.trim()) newErrors.lastName = "Last name is required";
+    if (!selectedLocation) {
+      newErrors.location = "Please select a location";
+    }
+    if (!form.firstName.trim()) {
+      newErrors.firstName = "First name is required";
+    }
+    if (!form.lastName.trim()) {
+      newErrors.lastName = "Last name is required";
+    }
     const numGuests = parseInt(form.numGuests);
     if (isNaN(numGuests) || numGuests < 1)
-      newErrors.numGuests = "Number of guests must be at least 1";
+      {
+        newErrors.numGuests = "Number of guests must be at least 1";
+      }
 
     if (!form.notificationMethod) {
       newErrors.notificationMethod = "Please choose how we should notify you";
@@ -529,7 +584,9 @@ export default function QueueBusiness() {
     }
 
     setErrors(newErrors);
-    if (Object.keys(newErrors).length) return;
+    if (Object.keys(newErrors).length) {
+      return;
+    }
 
     setJoiningQueue(true);
     try {
@@ -637,12 +694,155 @@ export default function QueueBusiness() {
   const queueUnavailable = selectedLocation?.queueEnabled === false;
   const queueClosed = selectedLocation?.operatingStatus?.isOpen === false;
   const queueBlocked = queueUnavailable || queueClosed;
-  const todayHours =
-    selectedLocation?.operatingStatus?.todayHours ||
-    (queueClosed ? "Closed" : "Hours not available");
+  const configuredTodayHours = selectedLocation?.operatingStatus?.todayHours;
+  let todayHours: string;
+  if (configuredTodayHours) {
+    todayHours = configuredTodayHours;
+  } else if (queueClosed) {
+    todayHours = "Closed";
+  } else {
+    todayHours = "Hours not available";
+  }
 
   if (invalidLink) {
     return <NotFound />;
+  }
+
+  let cardTitleText: string;
+  if (step !== 2) {
+    cardTitleText = restaurantName;
+  } else if (queueUnavailable) {
+    cardTitleText = "Queue Unavailable";
+  } else if (queueClosed) {
+    cardTitleText = "Restaurant Closed";
+  } else {
+    cardTitleText = "Join The Queue";
+  }
+
+  let stepTwoDescription: string;
+  if (queueUnavailable) {
+    stepTwoDescription = `${restaurantName} is not currently accepting queue entries at this location.`;
+  } else if (queueClosed) {
+    stepTwoDescription = `${restaurantName} is currently closed. Please come back during operating hours to join the queue.`;
+  } else if (selectedLabel) {
+    stepTwoDescription = `You're joining the queue at ${selectedLabel}. We'll notify you when it's your turn.`;
+  } else {
+    stepTwoDescription = "Enter your details to join the queue.";
+  }
+
+  let blockedHoursText: string;
+  if (queueUnavailable) {
+    blockedHoursText = "Queue unavailable";
+  } else {
+    blockedHoursText = todayHours;
+  }
+
+  let blockedHelpText: string;
+  if (queueUnavailable) {
+    blockedHelpText = "Please contact the restaurant for assistance.";
+  } else {
+    blockedHelpText =
+      "Queue joining will be available again during operating hours.";
+  }
+
+  let firstNameInputClass = "";
+  if (errors.firstName) {
+    firstNameInputClass = "border-destructive focus:ring-destructive";
+  }
+
+  let lastNameInputClass = "";
+  if (errors.lastName) {
+    lastNameInputClass = "border-destructive focus:ring-destructive";
+  }
+
+  let numGuestsInputClass = "";
+  if (errors.numGuests) {
+    numGuestsInputClass = "border-destructive focus:ring-destructive";
+  }
+
+  let phoneNumberInputClass = "flex-1";
+  if (errors.phoneNumber) {
+    phoneNumberInputClass = "border-destructive focus:ring-destructive flex-1";
+  }
+
+  let smsConsentBorderClass = "";
+  if (errors.smsConsent) {
+    smsConsentBorderClass = "border-destructive";
+  }
+
+  let emailInputClass = "";
+  if (errors.email) {
+    emailInputClass = "border-destructive focus:ring-destructive";
+  }
+
+  let joinButtonLabel: string;
+  if (joiningQueue) {
+    joinButtonLabel = "Joining...";
+  } else {
+    joinButtonLabel = "Join Queue";
+  }
+
+  let peopleAheadVerb: string;
+  let peopleAheadNoun: string;
+  if (peopleAhead === 1) {
+    peopleAheadVerb = "is";
+    peopleAheadNoun = "party";
+  } else {
+    peopleAheadVerb = "are";
+    peopleAheadNoun = "parties";
+  }
+
+  let estimatedWaitText: string;
+  if (eta) {
+    estimatedWaitText = eta.displayText;
+  } else if (etaLoading) {
+    estimatedWaitText = "Calculating wait time…";
+  } else if (etaError) {
+    estimatedWaitText = "Updating soon";
+  } else {
+    estimatedWaitText = "Calculating wait time…";
+  }
+
+  let turnContent: ReactNode;
+  if (turnExpired) {
+    turnContent = (
+      <>
+        <h2 className="text-2xl sm:text-3xl font-bold text-destructive">
+          Time's Up
+        </h2>
+
+        {}
+        <div className="rounded-2xl border border-destructive/15 bg-destructive/5 px-6 py-6">
+          <p className="text-base font-semibold text-foreground">
+            Time's up. Your spot has been released.
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Please speak with the host if you still need assistance.
+          </p>
+        </div>
+      </>
+    );
+  } else {
+    turnContent = (
+      <>
+        <h2 className="text-2xl sm:text-3xl font-bold text-primary">
+          It's Your Turn!
+        </h2>
+
+        {}
+        <div className="rounded-2xl border border-primary/10 bg-primary/5 px-6 py-6">
+          <p className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Please Arrive Within
+          </p>
+          <div className="mt-2 text-6xl sm:text-7xl font-bold leading-none tabular-nums text-primary">
+            {mm}:{ss}
+          </div>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Your spot will be held for 5 minutes.
+          </p>
+        </div>
+      </>
+    );
   }
 
   return (
@@ -654,24 +854,11 @@ export default function QueueBusiness() {
           <Card className="w-full max-w-xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
             <CardHeader className="text-center">
               <CardTitle className="text-xl sm:text-2xl text-primary">
-                {step === 2
-                  ? queueUnavailable
-                    ? "Queue Unavailable"
-                    : queueClosed
-                      ? "Restaurant Closed"
-                      : "Join The Queue"
-                  : restaurantName}
+                {cardTitleText}
               </CardTitle>
               {step !== 5 && (
                 <CardDescription>
-                  {step === 2 &&
-                    (queueUnavailable
-                      ? `${restaurantName} is not currently accepting queue entries at this location.`
-                      : queueClosed
-                        ? `${restaurantName} is currently closed. Please come back during operating hours to join the queue.`
-                        : selectedLabel
-                          ? `You're joining the queue at ${selectedLabel}. We'll notify you when it's your turn.`
-                          : "Enter your details to join the queue.")}
+                  {step === 2 && stepTwoDescription}
                   {step === 4 && "Queue Status"}
                 </CardDescription>
               )}
@@ -701,15 +888,13 @@ export default function QueueBusiness() {
                         Today's Hours
                       </p>
                       <p className="mt-1 text-base text-slate-500">
-                        {queueUnavailable ? "Queue unavailable" : todayHours}
+                        {blockedHoursText}
                       </p>
                     </div>
                   </div>
                   <div className="space-y-4">
                     <p className="text-center text-sm text-slate-500">
-                      {queueUnavailable
-                        ? "Please contact the restaurant for assistance."
-                        : "Queue joining will be available again during operating hours."}
+                      {blockedHelpText}
                     </p>
                     <Button asChild className="w-full h-11 text-base" variant="default">
                       <Link to="/search">Explore Other Restaurants</Link>
@@ -742,11 +927,7 @@ export default function QueueBusiness() {
                         placeholder="John"
                         value={form.firstName}
                         onChange={handleChange}
-                        className={
-                          errors.firstName
-                            ? "border-destructive focus:ring-destructive"
-                            : ""
-                        }
+                        className={firstNameInputClass}
                       />
                       {errors.firstName && (
                         <p className="text-sm text-destructive">
@@ -762,11 +943,7 @@ export default function QueueBusiness() {
                         placeholder="Doe"
                         value={form.lastName}
                         onChange={handleChange}
-                        className={
-                          errors.lastName
-                            ? "border-destructive focus:ring-destructive"
-                            : ""
-                        }
+                        className={lastNameInputClass}
                       />
                       {errors.lastName && (
                         <p className="text-sm text-destructive">
@@ -788,11 +965,7 @@ export default function QueueBusiness() {
                       onChange={(e) =>
                         setForm((p) => ({ ...p, numGuests: e.target.value }))
                       }
-                      className={
-                        errors.numGuests
-                          ? "border-destructive focus:ring-destructive"
-                          : ""
-                      }
+                      className={numGuestsInputClass}
                     />
                     {errors.numGuests && (
                       <p className="text-sm text-destructive">
@@ -823,30 +996,38 @@ export default function QueueBusiness() {
                             desc: "Receive Email Notifications",
                           },
                         ] as const
-                      ).map((opt) => (
-                        <button
-                          key={opt.key}
-                          type="button"
-                          onClick={() =>
-                            setForm((p) => ({
-                              ...p,
-                              notificationMethod: opt.key,
-                              countryCode:
-                                opt.key === "sms" ? "+1" : p.countryCode,
-                            }))
-                          }
-                          className={`rounded-lg border px-4 py-3 text-left transition ${
-                            form.notificationMethod === opt.key
-                              ? "border-primary ring-2 ring-primary/30"
-                              : "hover:bg-muted"
-                          }`}
-                        >
-                          <div className="font-medium">{opt.title}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {opt.desc}
-                          </div>
-                        </button>
-                      ))}
+                      ).map((opt) => {
+                        let optionStateClass = "hover:bg-muted";
+                        if (form.notificationMethod === opt.key) {
+                          optionStateClass =
+                            "border-primary ring-2 ring-primary/30";
+                        }
+                        return (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() =>
+                              setForm((p) => {
+                                let nextCountryCode = p.countryCode;
+                                if (opt.key === "sms") {
+                                  nextCountryCode = "+1";
+                                }
+                                return {
+                                  ...p,
+                                  notificationMethod: opt.key,
+                                  countryCode: nextCountryCode,
+                                };
+                              })
+                            }
+                            className={`rounded-lg border px-4 py-3 text-left transition ${optionStateClass}`}
+                          >
+                            <div className="font-medium">{opt.title}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {opt.desc}
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                     {errors.notificationMethod && (
                       <p className="text-sm text-destructive">
@@ -885,42 +1066,49 @@ export default function QueueBusiness() {
                                   const term = search
                                     .toLowerCase()
                                     .replace(/\+/g, "");
-                                  return value.toLowerCase().includes(term)
-                                    ? 1
-                                    : 0;
+                                  if (value.toLowerCase().includes(term)) {
+                                    return 1;
+                                  }
+                                  return 0;
                                 }}
                               >
                                 <CommandInput placeholder="Search country or code..." />
                                 <CommandList>
                                   <CommandEmpty>No country found.</CommandEmpty>
                                   <CommandGroup>
-                                    {SMS_COUNTRIES.map((c) => (
-                                      <CommandItem
-                                        key={c.dial}
-                                        value={`${c.name} ${c.dial}`}
-                                        onSelect={() => {
-                                          setForm((p) => ({
-                                            ...p,
-                                            countryCode: c.dial,
-                                          }));
-                                          setSmsCountryOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            form.countryCode === c.dial
-                                              ? "opacity-100"
-                                              : "opacity-0",
-                                          )}
-                                        />
-                                        <span className="mr-2">{c.flag}</span>
-                                        <span className="flex-1">{c.name}</span>
-                                        <span className="text-muted-foreground">
-                                          {c.dial}
-                                        </span>
-                                      </CommandItem>
-                                    ))}
+                                    {SMS_COUNTRIES.map((c) => {
+                                      let checkOpacityClass = "opacity-0";
+                                      if (form.countryCode === c.dial) {
+                                        checkOpacityClass = "opacity-100";
+                                      }
+                                      return (
+                                        <CommandItem
+                                          key={c.dial}
+                                          value={`${c.name} ${c.dial}`}
+                                          onSelect={() => {
+                                            setForm((p) => ({
+                                              ...p,
+                                              countryCode: c.dial,
+                                            }));
+                                            setSmsCountryOpen(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              checkOpacityClass,
+                                            )}
+                                          />
+                                          <span className="mr-2">{c.flag}</span>
+                                          <span className="flex-1">
+                                            {c.name}
+                                          </span>
+                                          <span className="text-muted-foreground">
+                                            {c.dial}
+                                          </span>
+                                        </CommandItem>
+                                      );
+                                    })}
                                   </CommandGroup>
                                 </CommandList>
                               </Command>
@@ -933,11 +1121,7 @@ export default function QueueBusiness() {
                             placeholder="(555) 123-4567"
                             value={form.phoneNumber}
                             onChange={handleChange}
-                            className={
-                              errors.phoneNumber
-                                ? "border-destructive focus:ring-destructive flex-1"
-                                : "flex-1"
-                            }
+                            className={phoneNumberInputClass}
                           />
                         </div>
                         {errors.phoneNumber && (
@@ -959,10 +1143,12 @@ export default function QueueBusiness() {
                                 smsConsent: checked as boolean,
                               }));
                               if (errors.smsConsent)
-                                setErrors((p) => ({ ...p, smsConsent: "" }));
+                                {
+                                  setErrors((p) => ({ ...p, smsConsent: "" }));
+                                }
                             }}
                             className={cn(
-                              errors.smsConsent ? "border-destructive" : "",
+                              smsConsentBorderClass,
                               "mt-1.5 flex-shrink-0",
                             )}
                           />
@@ -1072,42 +1258,47 @@ export default function QueueBusiness() {
                                 const term = search
                                   .toLowerCase()
                                   .replace(/\+/g, "");
-                                return value.toLowerCase().includes(term)
-                                  ? 1
-                                  : 0;
+                                if (value.toLowerCase().includes(term)) {
+                                  return 1;
+                                }
+                                return 0;
                               }}
                             >
                               <CommandInput placeholder="Search country or code..." />
                               <CommandList>
                                 <CommandEmpty>No country found.</CommandEmpty>
                                 <CommandGroup>
-                                  {WHATSAPP_COUNTRIES.map((c) => (
-                                    <CommandItem
-                                      key={c.dial}
-                                      value={`${c.name} ${c.dial}`}
-                                      onSelect={() => {
-                                        setForm((p) => ({
-                                          ...p,
-                                          countryCode: c.dial,
-                                        }));
-                                        setWhatsappCountryOpen(false);
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          form.countryCode === c.dial
-                                            ? "opacity-100"
-                                            : "opacity-0",
-                                        )}
-                                      />
-                                      <span className="mr-2">{c.flag}</span>
-                                      <span className="flex-1">{c.name}</span>
-                                      <span className="text-muted-foreground">
-                                        {c.dial}
-                                      </span>
-                                    </CommandItem>
-                                  ))}
+                                  {WHATSAPP_COUNTRIES.map((c) => {
+                                    let checkOpacityClass = "opacity-0";
+                                    if (form.countryCode === c.dial) {
+                                      checkOpacityClass = "opacity-100";
+                                    }
+                                    return (
+                                      <CommandItem
+                                        key={c.dial}
+                                        value={`${c.name} ${c.dial}`}
+                                        onSelect={() => {
+                                          setForm((p) => ({
+                                            ...p,
+                                            countryCode: c.dial,
+                                          }));
+                                          setWhatsappCountryOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            checkOpacityClass,
+                                          )}
+                                        />
+                                        <span className="mr-2">{c.flag}</span>
+                                        <span className="flex-1">{c.name}</span>
+                                        <span className="text-muted-foreground">
+                                          {c.dial}
+                                        </span>
+                                      </CommandItem>
+                                    );
+                                  })}
                                 </CommandGroup>
                               </CommandList>
                             </Command>
@@ -1120,11 +1311,7 @@ export default function QueueBusiness() {
                           placeholder="(555) 123-4567"
                           value={form.phoneNumber}
                           onChange={handleChange}
-                          className={
-                            errors.phoneNumber
-                              ? "border-destructive focus:ring-destructive flex-1"
-                              : "flex-1"
-                          }
+                          className={phoneNumberInputClass}
                         />
                       </div>
                       {errors.phoneNumber && (
@@ -1146,11 +1333,7 @@ export default function QueueBusiness() {
                         placeholder="you@example.com"
                         value={form.email}
                         onChange={handleChange}
-                        className={
-                          errors.email
-                            ? "border-destructive focus:ring-destructive"
-                            : ""
-                        }
+                        className={emailInputClass}
                       />
                       {errors.email && (
                         <p className="text-sm text-destructive">
@@ -1167,7 +1350,7 @@ export default function QueueBusiness() {
                     disabled={joiningQueue || loadingAddresses}
                   >
                     <Users className="h-4 w-4" />
-                    {joiningQueue ? "Joining..." : "Join Queue"}
+                    {joinButtonLabel}
                   </Button>
                 </form>
               )}
@@ -1198,8 +1381,8 @@ export default function QueueBusiness() {
                       You are #{positionInLine} in line
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      There {peopleAhead === 1 ? "is" : "are"} {peopleAhead}{" "}
-                      {peopleAhead === 1 ? "party" : "parties"} ahead of you
+                      There {peopleAheadVerb} {peopleAhead}{" "}
+                      {peopleAheadNoun} ahead of you
                     </div>
                   </div>
 
@@ -1209,13 +1392,7 @@ export default function QueueBusiness() {
                         Estimated Wait
                       </div>
                       <div className="text-lg font-semibold">
-                        {eta
-                          ? eta.displayText
-                          : etaLoading
-                            ? "Calculating wait time…"
-                            : etaError
-                              ? "Updating soon"
-                              : "Calculating wait time…"}
+                        {estimatedWaitText}
                       </div>
                     </div>
                     <div className="rounded-lg border p-4 text-center">
@@ -1247,43 +1424,7 @@ export default function QueueBusiness() {
 
               {step === 5 && (
                 <div className="space-y-5 text-center">
-                  {turnExpired ? (
-                    <>
-                      <h2 className="text-2xl sm:text-3xl font-bold text-destructive">
-                        Time's Up
-                      </h2>
-
-                      {}
-                      <div className="rounded-2xl border border-destructive/15 bg-destructive/5 px-6 py-6">
-                        <p className="text-base font-semibold text-foreground">
-                          Time's up. Your spot has been released.
-                        </p>
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          Please speak with the host if you still need
-                          assistance.
-                        </p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <h2 className="text-2xl sm:text-3xl font-bold text-primary">
-                        It's Your Turn!
-                      </h2>
-
-                      {}
-                      <div className="rounded-2xl border border-primary/10 bg-primary/5 px-6 py-6">
-                        <p className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                          Please Arrive Within
-                        </p>
-                        <div className="mt-2 text-6xl sm:text-7xl font-bold leading-none tabular-nums text-primary">
-                          {mm}:{ss}
-                        </div>
-                        <p className="mt-3 text-sm text-muted-foreground">
-                          Your spot will be held for 5 minutes.
-                        </p>
-                      </div>
-                    </>
-                  )}
+                  {turnContent}
 
                   {}
                   <div className="rounded-xl bg-muted px-4 py-3 text-left">

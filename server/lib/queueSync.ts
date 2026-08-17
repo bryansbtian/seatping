@@ -21,13 +21,17 @@ export async function syncCustomerQueue(
     locationId?: string | null;
   },
 ): Promise<void> {
-  if (!entry?.customerId) return;
+  if (!entry?.customerId) {
+    return;
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: entry.customerId },
     select: { queueingActivity: true },
   });
-  if (!user) return;
+  if (!user) {
+    return;
+  }
 
   const key =
     entry.queueToken ||
@@ -53,9 +57,11 @@ export async function syncCustomerQueue(
     leftAt: entry.leftAt ?? null,
   };
 
-  const list = (
-    Array.isArray(user.queueingActivity) ? (user.queueingActivity as any[]) : []
-  ).filter((q) => (q?.id ?? null) !== key);
+  let activity: any[] = [];
+  if (Array.isArray(user.queueingActivity)) {
+    activity = user.queueingActivity as any[];
+  }
+  const list = activity.filter((q) => (q?.id ?? null) !== key);
   list.unshift(item);
 
   await prisma.user.update({

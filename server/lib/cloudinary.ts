@@ -15,9 +15,15 @@ const BASE_FOLDER = "seatping/locations";
 
 export function assertCloudinaryConfigured() {
   const missing: string[] = [];
-  if (!CLOUD_NAME) missing.push("CLOUDINARY_CLOUD_NAME");
-  if (!API_KEY) missing.push("CLOUDINARY_API_KEY");
-  if (!API_SECRET) missing.push("CLOUDINARY_API_SECRET");
+  if (!CLOUD_NAME) {
+    missing.push("CLOUDINARY_CLOUD_NAME");
+  }
+  if (!API_KEY) {
+    missing.push("CLOUDINARY_API_KEY");
+  }
+  if (!API_SECRET) {
+    missing.push("CLOUDINARY_API_SECRET");
+  }
   if (missing.length > 0) {
     throw new Error(
       `Cloudinary is not configured. Missing env var(s): ${missing.join(
@@ -69,7 +75,9 @@ export function publicIdInLocationFolder(
   locationId: string,
   kind: "banner" | "photo"
 ): boolean {
-  if (!publicId) return false;
+  if (!publicId) {
+    return false;
+  }
   return publicId.startsWith(`${locationFolder(locationId, kind)}/`);
 }
 
@@ -88,9 +96,13 @@ export function uploadImageBuffer(
       },
       (error, result) => {
         if (error || !result) {
-          return reject(
-            error instanceof Error ? error : new Error("Cloudinary upload failed")
-          );
+          let uploadError: Error;
+          if (error instanceof Error) {
+            uploadError = error;
+          } else {
+            uploadError = new Error("Cloudinary upload failed");
+          }
+          return reject(uploadError);
         }
         resolve({ url: result.secure_url, publicId: result.public_id });
       }
@@ -102,7 +114,9 @@ export function uploadImageBuffer(
 export async function deleteImageByPublicId(
   publicId: string | null | undefined
 ): Promise<void> {
-  if (!publicId) return;
+  if (!publicId) {
+    return;
+  }
   try {
     assertCloudinaryConfigured();
     await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
