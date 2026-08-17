@@ -3,8 +3,17 @@ import { Router, type Request, type Response } from "express";
 import { runReservationReminderSweep } from "../lib/reservationReminders.js";
 import { runDailyCreditRefillSweep } from "../lib/trial.js";
 import { runDueCampaignsSweep } from "../lib/campaignRunner.js";
+import { rateLimit, MINUTES } from "../lib/rateLimit.js";
 
 const router = Router();
+
+router.use(
+  rateLimit({
+    name: "cron-ip",
+    windowMs: MINUTES(1),
+    max: 30,
+  }),
+);
 
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;

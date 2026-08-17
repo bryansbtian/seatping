@@ -96,10 +96,10 @@ npm run start
 ## CI/CD
 
 - Lint and build CI is handled by GitHub Actions (`.github/workflows/ci.yml`), running on pull requests targeting `main` and pushes to `main`.
-- CI runs three jobs. `Lint and Build` runs install (`npm ci`), Prisma client generation, lint, and build. `Tests and Coverage` starts a disposable MongoDB replica set service container, pushes the Prisma schema to it, and runs `npm run test:coverage`. `End to End` starts the same kind of service container and runs `npm run test:e2e`.
+- CI runs three jobs. `Lint and Build` runs install (`npm ci`), Prisma client generation, lint, and build. `Tests and Coverage` starts a disposable single node MongoDB replica set container (`docker run ... mongod --replSet rs0`, since a service container cannot override the image command), pushes the Prisma schema to it, and runs `npm run test:coverage`. `End to End` starts the same kind of container and runs `npm run test:e2e`.
 - The coverage gate is enforced by Vitest (70% lines, statements, functions, branches). CI fails on a shortfall; the coverage report is uploaded as an artifact.
 - The end to end job is pass/fail only. Playwright is not part of the coverage percentage.
-- CI never uses production infrastructure for tests: `TEST_DATABASE_URL` points at the ephemeral service container, not `secrets.DATABASE_URL`.
+- CI never uses production infrastructure for tests: `TEST_DATABASE_URL` points at the ephemeral container, not `secrets.DATABASE_URL`.
 - CD is handled by Vercel automatically after merging to `main`. GitHub Actions does not deploy.
 - Add `DATABASE_URL` as a GitHub Actions repository secret (Settings > Secrets and variables > Actions). Other CI env vars are safe placeholders defined in the workflow.
 - Pull requests should pass CI before merging.

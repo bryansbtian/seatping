@@ -175,6 +175,53 @@ describe("cron sweep failures", () => {
   });
 });
 
+describe("cron rate limiting", () => {
+  it("blocks authorized traffic once the per-minute cap is exceeded", async () => {
+    const app = await cronApp();
+    const auth = `Bearer ${SECRET}`;
+
+    for (let i = 0; i < 30; i++) {
+      const res = await app.post(ROUTES[0]).set("Authorization", auth);
+      expect(res.status).toBe(200);
+    }
+
+    const blocked = await app.post(ROUTES[0]).set("Authorization", auth);
+
+    expect(blocked.status).toBe(429);
+    expect(runReservationReminderSweep).toHaveBeenCalledTimes(30);
+  });
+
+  it("caps unauthorized attempts so the secret cannot be brute forced", async () => {
+    const app = await cronApp();
+
+    for (let i = 0; i < 30; i++) {
+      const res = await app.post(ROUTES[0]).set("Authorization", "Bearer wrong");
+      expect(res.status).toBe(401);
+    }
+
+    const blocked = await app
+      .post(ROUTES[0])
+      .set("Authorization", "Bearer wrong");
+
+    expect(blocked.status).toBe(429);
+  });
+
+  it("shares one budget across every cron route", async () => {
+    const app = await cronApp();
+    const auth = `Bearer ${SECRET}`;
+
+    for (let i = 0; i < 30; i++) {
+      const route = ROUTES[i % ROUTES.length];
+      const res = await app.post(route).set("Authorization", auth);
+      expect(res.status).toBe(200);
+    }
+
+    const blocked = await app.post(ROUTES[2]).set("Authorization", auth);
+
+    expect(blocked.status).toBe(429);
+  });
+});
+
 describe("cron sweep results", () => {
   it("runs each sweep exactly once per authorized call", async () => {
     const app = await cronApp();

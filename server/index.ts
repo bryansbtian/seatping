@@ -59,7 +59,7 @@ function redactUrlSecrets(url: string): string {
 }
 
 app.use((req, _res, next) => {
-  console.log(`[api] ${req.method} ${redactUrlSecrets(req.originalUrl)}`);
+  console.log("[api] %s %s", req.method, redactUrlSecrets(req.originalUrl));
   next();
 });
 
