@@ -1000,7 +1000,7 @@ router.post("/:id/send-test", async (req, res) => {
         phone,
         subject: message.subject,
         bodyText: message.text,
-        bodyHtml: message.html,
+        emailParts: message.emailParts,
         whatsappTemplateName: message.whatsappTemplateName,
         whatsappLanguage: message.whatsappLanguage,
         whatsappParams: message.whatsappParams,

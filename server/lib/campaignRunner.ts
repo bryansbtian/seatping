@@ -186,7 +186,7 @@ export async function executeCampaignRun(
       phone: recipient.phone || undefined,
       subject: message.subject,
       bodyText: message.text,
-      bodyHtml: message.html,
+      emailParts: message.emailParts,
       whatsappTemplateName: message.whatsappTemplateName,
       whatsappLanguage: message.whatsappLanguage,
       whatsappParams: message.whatsappParams,

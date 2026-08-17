@@ -147,10 +147,42 @@ export function extractBodyPlaceholders(body: string): string[] {
   return out;
 }
 
+export interface CampaignEmailParts {
+  heading: string;
+  bodyText: string;
+  businessName: string;
+  offer?: string;
+  ctaText?: string;
+  ctaUrl?: string;
+}
+
+export function renderCampaignEmailHtml(parts: CampaignEmailParts): string {
+  let offerHtml = "";
+  if (parts.offer) {
+    offerHtml = calloutBox(`<strong>${esc(parts.offer)}</strong>`);
+  }
+  let ctaHtml = "";
+  if (parts.ctaText && parts.ctaUrl) {
+    ctaHtml = emailButton(parts.ctaUrl, parts.ctaText);
+  }
+  return renderEmail({
+    heading: parts.heading,
+    preheader: parts.bodyText.slice(0, 110),
+    tagline: `Sent by SeatPing on behalf of ${parts.businessName}`,
+    bodyHtml: `
+      ${p(esc(parts.bodyText).replace(/\n/g, "<br>"))}
+      ${offerHtml}
+      ${ctaHtml}
+      ${p(`<span style="color:#64748B;font-size:12px;">You are receiving this because you visited ${esc(parts.businessName)}. Sent by SeatPing on behalf of ${esc(parts.businessName)}.</span>`)}
+    `,
+  });
+}
+
 export interface BuiltMessage {
   subject?: string;
   text: string;
   html?: string;
+  emailParts?: CampaignEmailParts;
   whatsappTemplateName?: string | null;
   whatsappLanguage?: string;
   whatsappParams?: WhatsAppBodyParam[];
@@ -185,29 +217,21 @@ export function buildMessage(
 
   if (channel === "EMAIL") {
     const subject = `${ctx.businessName}: ${nameLine}`;
-    let offerHtml = "";
-    if (offer) {
-      offerHtml = calloutBox(`<strong>${esc(offer)}</strong>`);
-    }
-    let ctaHtml = "";
     let ctaLine = "";
     if (ctaText && ctaUrl) {
-      ctaHtml = emailButton(ctaUrl, ctaText);
       ctaLine = `${ctaText}: ${ctaUrl}`;
     }
-    const html = renderEmail({
+    const emailParts: CampaignEmailParts = {
       heading: nameLine,
-      preheader: bodyText.slice(0, 110),
-      tagline: `Sent by SeatPing on behalf of ${ctx.businessName}`,
-      bodyHtml: `
-        ${p(esc(bodyText).replace(/\n/g, "<br>"))}
-        ${offerHtml}
-        ${ctaHtml}
-        ${p(`<span style="color:#64748B;font-size:12px;">You are receiving this because you visited ${esc(ctx.businessName)}. Sent by SeatPing on behalf of ${esc(ctx.businessName)}.</span>`)}
-      `,
-    });
+      bodyText,
+      businessName: ctx.businessName,
+      offer,
+      ctaText,
+      ctaUrl,
+    };
+    const html = renderCampaignEmailHtml(emailParts);
     const text = [bodyText, offer, ctaLine].filter(Boolean).join("\n\n");
-    return { subject, text, html };
+    return { subject, text, html, emailParts };
   }
 
   const lines = [bodyText];

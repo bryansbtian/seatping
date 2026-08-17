@@ -16,6 +16,8 @@ import {
 import type { WhatsAppBodyParam } from "./whatsapp.js";
 import { sendEmailDetailed, esc } from "./email.js";
 import { prisma } from "./prisma.js";
+import { renderCampaignEmailHtml } from "./campaigns.js";
+import type { CampaignEmailParts } from "./campaigns.js";
 import { consumeQuota, peekQuota, DAYS } from "./rateLimit.js";
 
 export type NotificationChannel = "sms" | "whatsapp" | "email";
@@ -83,7 +85,7 @@ export type NotificationJob =
       phone?: string;
       subject?: string;
       bodyText: string;
-      bodyHtml?: string;
+      emailParts?: CampaignEmailParts;
       whatsappTemplateName?: string | null;
       whatsappLanguage?: string;
       whatsappParams?: WhatsAppBodyParam[];
@@ -361,7 +363,7 @@ export interface CampaignSendContent {
   phone?: string;
   subject?: string;
   bodyText: string;
-  bodyHtml?: string;
+  emailParts?: CampaignEmailParts;
   whatsappTemplateName?: string | null;
   whatsappLanguage?: string;
   whatsappParams?: WhatsAppBodyParam[];
@@ -375,10 +377,14 @@ export async function rawCampaignSend(
     if (!content.email) {
       throw new Error("No email address for recipient");
     }
+    let emailHtml = esc(content.bodyText).replace(/\n/g, "<br>");
+    if (content.emailParts) {
+      emailHtml = renderCampaignEmailHtml(content.emailParts);
+    }
     const emailPayload: Parameters<typeof sendEmailDetailed>[0] = {
       to: content.email,
       subject: content.subject || `A message from ${content.businessName}`,
-      html: content.bodyHtml || esc(content.bodyText).replace(/\n/g, "<br>"),
+      html: emailHtml,
     };
     if (content.replyTo) {
       emailPayload.replyTo = content.replyTo;
