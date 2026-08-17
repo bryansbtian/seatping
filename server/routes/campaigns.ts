@@ -6,7 +6,7 @@ import { rateLimit, limitGuard, HOURS } from "../lib/rateLimit.js";
 import { getLocationTimezone } from "../lib/operatingHours.js";
 import { SUGGESTED_GUEST_TAGS } from "../lib/guests.js";
 import { rawCampaignSend } from "../lib/notifications.js";
-import { sendEmailDetailed, renderEmail, p } from "../lib/email.js";
+import { sendEmailDetailed, renderEmail, p, esc } from "../lib/email.js";
 import {
   AUDIENCE_GROUPS,
   MANUAL_AUDIENCE,
@@ -1038,7 +1038,7 @@ router.post("/debug/email-test", async (req, res) => {
     const html = renderEmail({
       heading: "Email Delivery Test",
       preheader: "SeatPing delivery test",
-      bodyHtml: p(bodyText),
+      bodyHtml: p(esc(bodyText).replace(/\n/g, "<br>")),
     });
 
     const results = [];

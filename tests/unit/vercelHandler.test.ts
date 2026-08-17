@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const compiledApp = vi.fn();
 
-vi.mock("../../dist-server/index.js", () => {
+vi.mock("../stubs/distServerApp", () => {
   return { default: compiledApp };
 });
 

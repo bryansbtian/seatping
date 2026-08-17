@@ -52,10 +52,41 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+function maskLongHex(value: string): string {
+  return value.replace(/[0-9a-f]{32,}/gi, (m) => `${m.slice(0, 6)}…`);
+}
+
 function redactUrlSecrets(url: string): string {
-  return url
-    .replace(/([?&][^?&=]*token[^?&=]*=)[^&#]+/gi, "$1[redacted]")
-    .replace(/[0-9a-f]{32,}/gi, (m) => `${m.slice(0, 6)}…`);
+  const queryStart = url.indexOf("?");
+  if (queryStart === -1) {
+    return maskLongHex(url);
+  }
+
+  const pathPart = url.slice(0, queryStart);
+  let query = url.slice(queryStart + 1);
+  let fragment = "";
+  const fragmentStart = query.indexOf("#");
+  if (fragmentStart !== -1) {
+    fragment = query.slice(fragmentStart);
+    query = query.slice(0, fragmentStart);
+  }
+
+  const redactedQuery = query
+    .split("&")
+    .map((pair) => {
+      const eq = pair.indexOf("=");
+      if (eq === -1) {
+        return pair;
+      }
+      const key = pair.slice(0, eq);
+      if (!key.toLowerCase().includes("token")) {
+        return pair;
+      }
+      return `${key}=[redacted]`;
+    })
+    .join("&");
+
+  return maskLongHex(`${pathPart}?${redactedQuery}${fragment}`);
 }
 
 app.use((req, _res, next) => {

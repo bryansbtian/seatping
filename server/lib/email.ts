@@ -183,6 +183,14 @@ export function esc(value: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
+export function safeUrl(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!/^(https?:|mailto:)/i.test(raw)) {
+    return "#";
+  }
+  return esc(raw);
+}
+
 export function p(html: string): string {
   return `<p style="margin: 0 0 16px; color: ${COLORS.body}; font-size: 15px; line-height: 1.65;">${html}</p>`;
 }
@@ -195,9 +203,9 @@ export function emailButton(href: string, label: string): string {
           <table role="presentation" cellpadding="0" cellspacing="0" border="0">
             <tr>
               <td bgcolor="${COLORS.accent}" style="border-radius: 10px;">
-                <a href="${href}" target="_blank"
+                <a href="${safeUrl(href)}" target="_blank"
                    style="display: inline-block; padding: 14px 30px; font-family: ${FONT_STACK}; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 10px;">
-                  ${label}
+                  ${esc(label)}
                 </a>
               </td>
             </tr>
@@ -215,9 +223,9 @@ export function emailSecondaryButton(href: string, label: string): string {
           <table role="presentation" cellpadding="0" cellspacing="0" border="0">
             <tr>
               <td bgcolor="${COLORS.card}" style="border-radius: 10px; border: 1px solid ${COLORS.accent};">
-                <a href="${href}" target="_blank"
+                <a href="${safeUrl(href)}" target="_blank"
                    style="display: inline-block; padding: 13px 29px; font-family: ${FONT_STACK}; font-size: 15px; font-weight: 600; color: ${COLORS.accent}; text-decoration: none; border-radius: 10px;">
-                  ${label}
+                  ${esc(label)}
                 </a>
               </td>
             </tr>
@@ -228,7 +236,7 @@ export function emailSecondaryButton(href: string, label: string): string {
 }
 
 export function fallbackLink(href: string): string {
-  return `<p style="margin: 0 0 8px; color: ${COLORS.muted}; font-size: 13px; line-height: 1.6;">If the button doesn't work, paste this link into your browser:<br><a href="${href}" style="color: ${COLORS.accent}; word-break: break-all;">${href}</a></p>`;
+  return `<p style="margin: 0 0 8px; color: ${COLORS.muted}; font-size: 13px; line-height: 1.6;">If the button doesn't work, paste this link into your browser:<br><a href="${safeUrl(href)}" style="color: ${COLORS.accent}; word-break: break-all;">${esc(href)}</a></p>`;
 }
 
 export function detailCard(title: string, rows: Array<[string, string]>): string {
@@ -287,7 +295,7 @@ export function renderEmail(opts: {
   const year = new Date().getFullYear();
   let preheader = "";
   if (opts.preheader) {
-    preheader = `<span style="display:none !important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden;">${opts.preheader}</span>`;
+    preheader = `<span style="display:none !important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden;">${esc(opts.preheader)}</span>`;
   }
   const tagline = opts.tagline ?? "Queues & Reservations For Hospitality";
 
@@ -444,7 +452,7 @@ export const sendQueueJoinConfirmationEmail = async (
 ): Promise<boolean> => {
   const html = renderEmail({
     heading: "You're in the Queue",
-    preheader: `You're #${Number(position)} In Line At ${esc(businessName)}`,
+    preheader: `You're #${Number(position)} In Line At ${businessName}`,
     bodyHtml: `
       ${p(`Hi ${esc(firstName)}, you're on the waitlist at <strong>${esc(businessName)}</strong>. We'll let you know when your table is ready.`)}
       ${calloutBox(
@@ -474,7 +482,7 @@ export const sendQueueYourTurnEmail = async (
 ): Promise<boolean> => {
   const html = renderEmail({
     heading: "Your Table Is Ready",
-    preheader: `Your Table Is Ready At ${esc(businessName)}`,
+    preheader: `Your Table Is Ready At ${businessName}`,
     bodyHtml: `
       ${calloutBox(
         `<span style="font-size: 15px; font-weight: 700;">Your table is ready at ${esc(businessName)}</span>`,
@@ -532,7 +540,7 @@ export const sendReservationConfirmationEmail = async (params: {
   }
   const html = renderEmail({
     heading: "Reservation Confirmed",
-    preheader: `Reservation Confirmed For ${esc(businessName)}, ${esc(dateLabel)} At ${esc(timeLabel)}`,
+    preheader: `Reservation Confirmed For ${businessName}, ${dateLabel} At ${timeLabel}`,
     bodyHtml: `
       ${p(`Hi ${esc(firstName)},`)}
       ${calloutBox(
@@ -588,7 +596,7 @@ export const sendReservationReminderEmail = async (params: {
   }
   const html = renderEmail({
     heading: "Your Reservation Is Coming Up",
-    preheader: `Your Reservation At ${esc(businessName)} Is In About 2 Hours`,
+    preheader: `Your Reservation At ${businessName} Is In About 2 Hours`,
     bodyHtml: `
       ${p(`Hi ${esc(firstName)}, a quick reminder that your table at <strong>${esc(businessName)}</strong> is coming up in about 2 hours.`)}
       ${detailCard("Reservation", [
@@ -706,7 +714,7 @@ export const sendNewReservationBusinessEmail = async (params: {
 
   const html = renderEmail({
     heading: "New Reservation",
-    preheader: `${esc(customerName)} · Party Of ${Number(partySize)} · ${esc(dateLabel)} At ${esc(timeLabel)}`,
+    preheader: `${customerName} · Party Of ${Number(partySize)} · ${dateLabel} At ${timeLabel}`,
     bodyHtml: `
       ${p(`A new reservation was just booked at <strong>${esc(locationName)}</strong>.`)}
       ${detailCard("Reservation", rows)}
@@ -769,7 +777,7 @@ export const sendFeedbackEmail = async (data: FeedbackData): Promise<boolean> =>
 
   const html = renderEmail({
     heading: data.subject || "New Feedback",
-    preheader: `New Feedback From ${esc(data.name)}`,
+    preheader: `New Feedback From ${data.name}`,
     bodyHtml: `
       ${detailCard("Feedback", rows)}
       ${calloutBox(`<strong>Message</strong><br>${esc(data.message).replace(/\n/g, "<br>")}`, COLORS.muted, COLORS.panel)}

@@ -14,7 +14,7 @@ import {
   sendCampaignWhatsApp,
 } from "./whatsapp.js";
 import type { WhatsAppBodyParam } from "./whatsapp.js";
-import { sendEmailDetailed } from "./email.js";
+import { sendEmailDetailed, esc } from "./email.js";
 import { prisma } from "./prisma.js";
 import { consumeQuota, peekQuota, DAYS } from "./rateLimit.js";
 
@@ -378,7 +378,7 @@ export async function rawCampaignSend(
     const emailPayload: Parameters<typeof sendEmailDetailed>[0] = {
       to: content.email,
       subject: content.subject || `A message from ${content.businessName}`,
-      html: content.bodyHtml || content.bodyText.replace(/\n/g, "<br>"),
+      html: content.bodyHtml || esc(content.bodyText).replace(/\n/g, "<br>"),
     };
     if (content.replyTo) {
       emailPayload.replyTo = content.replyTo;

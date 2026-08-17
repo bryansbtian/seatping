@@ -21,7 +21,13 @@ export default defineConfig({
     projects: [
       {
         resolve: {
-          alias: { "@": path.resolve(__dirname, "./src") },
+          alias: {
+            "@": path.resolve(__dirname, "./src"),
+            "../dist-server/index.js": path.resolve(
+              __dirname,
+              "./tests/stubs/distServerApp.ts",
+            ),
+          },
         },
         test: {
           name: "unit",
