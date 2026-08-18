@@ -110,6 +110,27 @@ export async function runReservationReminderSweep(): Promise<void> {
       manageUrl = `${frontend}/reservations/manage/${r.manageToken}`;
     }
 
+    let claimed = false;
+    try {
+      const claim = await prisma.reservation.updateMany({
+        where: {
+          id: r.id,
+          OR: [
+            { reminderEmailSentAt: null },
+            { reminderEmailSentAt: { isSet: false } },
+          ],
+        },
+        data: { reminderEmailSentAt: new Date() },
+      });
+      claimed = claim.count > 0;
+    } catch (e: any) {
+      console.error("[RESERVATION-REMINDER] claim failed:", e?.message || e);
+      continue;
+    }
+    if (!claimed) {
+      continue;
+    }
+
     try {
       await enqueueNotification({
         type: "reservation_reminder",
@@ -122,13 +143,20 @@ export async function runReservationReminderSweep(): Promise<void> {
         partySize: Number(r.guestCount) || 1,
         manageUrl,
       });
-      await prisma.reservation.update({
-        where: { id: r.id },
-        data: { reminderEmailSentAt: new Date() },
-      });
       sentCount++;
     } catch (e: any) {
-      console.error("[RESERVATION-REMINDER] enqueue/stamp failed:", e?.message || e);
+      console.error("[RESERVATION-REMINDER] enqueue failed:", e?.message || e);
+      try {
+        await prisma.reservation.update({
+          where: { id: r.id },
+          data: { reminderEmailSentAt: null },
+        });
+      } catch (releaseErr: any) {
+        console.error(
+          "[RESERVATION-REMINDER] claim release failed:",
+          releaseErr?.message || releaseErr,
+        );
+      }
     }
   }
 
