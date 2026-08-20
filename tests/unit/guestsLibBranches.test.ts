@@ -56,17 +56,13 @@ function queueRow(overrides: Record<string, unknown> = {}): QueueEntry {
 function pastWallClock(daysAgo = 2): string {
   const d = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(
-    d.getUTCDate(),
-  )}T19:00`;
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T19:00`;
 }
 
 function futureWallClock(daysAhead = 5): string {
   const d = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(
-    d.getUTCDate(),
-  )}T19:00`;
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T19:00`;
 }
 
 function resRow(overrides: Record<string, unknown> = {}): Reservation {
@@ -294,18 +290,12 @@ describe("buildSummary", () => {
 
   it("describes a single visit and several visits differently", () => {
     expect(buildSummary(stats({ totalVisits: 1 }))).toContain("1 visit");
-    expect(buildSummary(stats({ totalVisits: 4 }))).toContain(
-      "Returning guest with 4 visits",
-    );
+    expect(buildSummary(stats({ totalVisits: 4 }))).toContain("Returning guest with 4 visits");
   });
 
   it("singularises the typical party size", () => {
-    expect(buildSummary(stats({ typicalPartySize: 1 }))).toContain(
-      "1 person",
-    );
-    expect(buildSummary(stats({ typicalPartySize: 3 }))).toContain(
-      "3 people",
-    );
+    expect(buildSummary(stats({ typicalPartySize: 1 }))).toContain("1 person");
+    expect(buildSummary(stats({ typicalPartySize: 3 }))).toContain("3 people");
   });
 
   it("mentions the last visit when there is one", () => {
@@ -360,9 +350,7 @@ describe("upsertGuestForVisit", () => {
   }
 
   it("refuses a visit with no usable contact details", async () => {
-    await expect(
-      upsertGuestForVisit(input({ email: null, phone: null })),
-    ).resolves.toBeNull();
+    await expect(upsertGuestForVisit(input({ email: null, phone: null }))).resolves.toBeNull();
     expect(guestFindFirst).not.toHaveBeenCalled();
   });
 
@@ -503,9 +491,7 @@ describe("upsertGuestForVisit", () => {
 
     await upsertGuestForVisit(input());
 
-    expect(guestUpdate.mock.calls[0][0].data.sourceQueueEntryIds).toEqual([
-      "qe-1",
-    ]);
+    expect(guestUpdate.mock.calls[0][0].data.sourceQueueEntryIds).toEqual(["qe-1"]);
   });
 
   it("leaves the id lists alone when no visit id is supplied", async () => {
@@ -523,9 +509,7 @@ describe("upsertGuestForVisit", () => {
 
     await upsertGuestForVisit(input({ queueEntryId: null }));
 
-    expect(guestUpdate.mock.calls[0][0].data.sourceQueueEntryIds).toEqual([
-      "qe-0",
-    ]);
+    expect(guestUpdate.mock.calls[0][0].data.sourceQueueEntryIds).toEqual(["qe-0"]);
   });
 });
 
@@ -676,13 +660,8 @@ describe("guest badges", () => {
       ["e:ada@test.invalid", { totalVisits: 1, returning: false }],
     ]);
 
-    expect(
-      badgeForContact(map, { phone: "81234567890", countryCode: "+62" })
-        ?.totalVisits,
-    ).toBe(5);
-    expect(
-      badgeForContact(map, { email: "ada@test.invalid" })?.totalVisits,
-    ).toBe(1);
+    expect(badgeForContact(map, { phone: "81234567890", countryCode: "+62" })?.totalVisits).toBe(5);
+    expect(badgeForContact(map, { email: "ada@test.invalid" })?.totalVisits).toBe(1);
   });
 
   it("reports nothing for a contact it has never seen", () => {

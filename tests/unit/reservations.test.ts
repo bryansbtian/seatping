@@ -42,12 +42,8 @@ describe("normalizeSettings", () => {
       reservationEndTime: "25:00",
     });
 
-    expect(s.reservationStartTime).toBe(
-      DEFAULT_RESERVATION_SETTINGS.reservationStartTime,
-    );
-    expect(s.reservationEndTime).toBe(
-      DEFAULT_RESERVATION_SETTINGS.reservationEndTime,
-    );
+    expect(s.reservationStartTime).toBe(DEFAULT_RESERVATION_SETTINGS.reservationStartTime);
+    expect(s.reservationEndTime).toBe(DEFAULT_RESERVATION_SETTINGS.reservationEndTime);
   });
 
   it("accepts well formed times", () => {
@@ -79,12 +75,8 @@ describe("normalizeSettings", () => {
   });
 
   it("only accepts the known confirmation modes", () => {
-    expect(normalizeSettings({ confirmationMode: "manual" }).confirmationMode).toBe(
-      "manual",
-    );
-    expect(
-      normalizeSettings({ confirmationMode: "whatever" }).confirmationMode,
-    ).toBe("auto");
+    expect(normalizeSettings({ confirmationMode: "manual" }).confirmationMode).toBe("manual");
+    expect(normalizeSettings({ confirmationMode: "whatever" }).confirmationMode).toBe("auto");
   });
 });
 

@@ -2,20 +2,14 @@ import { expect, type Page } from "@playwright/test";
 import type { Business, User } from "@prisma/client";
 import { E2E_PASSWORD } from "./db.js";
 
-export async function signInBusiness(
-  page: Page,
-  business: Pick<Business, "email">,
-): Promise<void> {
+export async function signInBusiness(page: Page, business: Pick<Business, "email">): Promise<void> {
   const response = await page.request.post("/auth/business/login", {
     data: { emailOrUsername: business.email, password: E2E_PASSWORD },
   });
   expect(response.status()).toBe(200);
 }
 
-export async function signInCustomer(
-  page: Page,
-  user: Pick<User, "email">,
-): Promise<void> {
+export async function signInCustomer(page: Page, user: Pick<User, "email">): Promise<void> {
   const response = await page.request.post("/auth/login", {
     data: { emailOrUsername: user.email, password: E2E_PASSWORD },
   });
@@ -43,9 +37,7 @@ export async function signInCustomerThroughForm(
 }
 
 export function queueManagementHeading(page: Page) {
-  return page
-    .getByRole("heading", { name: "Queue Management" })
-    .filter({ visible: true });
+  return page.getByRole("heading", { name: "Queue Management" }).filter({ visible: true });
 }
 
 export async function openBusinessDashboard(

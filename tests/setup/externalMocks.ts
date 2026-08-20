@@ -1,6 +1,5 @@
 import { vi } from "vitest";
 
-
 export type TelnyxSend = { to: string; from: string; text: string };
 export type WhatsappSend = { to: string; template?: string; params?: unknown };
 export type EmailSend = { to: string; subject: string; html: string };

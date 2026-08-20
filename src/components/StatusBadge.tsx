@@ -1,10 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import {
-  statusBadgeClass,
-  statusLabel,
-  PILL_BASE_CLASS,
-} from "@/lib/statusStyles";
+import { statusBadgeClass, statusLabel, PILL_BASE_CLASS } from "@/lib/statusStyles";
 
 export function StatusBadge({
   status,
@@ -16,10 +12,7 @@ export function StatusBadge({
   className?: string;
 }) {
   return (
-    <Badge
-      variant="outline"
-      className={cn(PILL_BASE_CLASS, statusBadgeClass(status), className)}
-    >
+    <Badge variant="outline" className={cn(PILL_BASE_CLASS, statusBadgeClass(status), className)}>
       {label || statusLabel(status)}
     </Badge>
   );

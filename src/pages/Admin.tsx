@@ -1,15 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -114,8 +108,7 @@ const Admin = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [searchUsername, setSearchUsername] = useState("");
-  const [selectedCustomer, setSelectedCustomer] =
-    useState<CustomerRecord | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerRecord | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [customerError, setCustomerError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -139,12 +132,47 @@ const Admin = () => {
 
   const { toast } = useToast();
 
+  const fetchStats = async () => {
+    try {
+      const response = await fetch("/tickets/stats");
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data.stats);
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    }
+  };
+
+  const fetchTickets = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (filter.status !== "all") {
+        params.append("status", filter.status);
+      }
+      if (filter.type !== "all") {
+        params.append("type", filter.type);
+      }
+      if (filter.priority !== "all") {
+        params.append("priority", filter.priority);
+      }
+
+      const response = await fetch(`/tickets?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setTickets(data.tickets);
+      }
+    } catch (error) {
+      console.error("Error fetching tickets:", error);
+    }
+  }, [filter]);
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchStats();
       fetchTickets();
     }
-  }, [isAuthenticated, filter]);
+  }, [isAuthenticated, fetchTickets]);
 
   useEffect(() => {
     let active = true;
@@ -200,8 +228,7 @@ const Admin = () => {
         method: "POST",
         credentials: "include",
       });
-    } catch {
-    }
+    } catch {}
     setIsAuthenticated(false);
   };
 
@@ -223,9 +250,7 @@ const Admin = () => {
     setEditDraft(null);
 
     try {
-      const response = await fetch(
-        `/admin/customer/${encodeURIComponent(trimmed)}`,
-      );
+      const response = await fetch(`/admin/customer/${encodeURIComponent(trimmed)}`);
 
       if (response.status === 404) {
         setCustomerError("No customer found with this username.");
@@ -300,10 +325,7 @@ const Admin = () => {
     setEditDraft({ ...editDraft, [key]: value });
   };
 
-  const updateDraftString = (
-    key: "name" | "username" | "email" | "phone",
-    value: string,
-  ) => {
+  const updateDraftString = (key: "name" | "username" | "email" | "phone", value: string) => {
     if (!editDraft) {
       return;
     }
@@ -442,41 +464,6 @@ const Admin = () => {
     });
   };
 
-  const fetchStats = async () => {
-    try {
-      const response = await fetch("/tickets/stats");
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats);
-      }
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-    }
-  };
-
-  const fetchTickets = async () => {
-    try {
-      const params = new URLSearchParams();
-      if (filter.status !== "all") {
-        params.append("status", filter.status);
-      }
-      if (filter.type !== "all") {
-        params.append("type", filter.type);
-      }
-      if (filter.priority !== "all") {
-        params.append("priority", filter.priority);
-      }
-
-      const response = await fetch(`/tickets?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setTickets(data.tickets);
-      }
-    } catch (error) {
-      console.error("Error fetching tickets:", error);
-    }
-  };
-
   const handleViewTicket = async (ticketNumber: string) => {
     try {
       const response = await fetch(`/tickets/${ticketNumber}`);
@@ -522,10 +509,7 @@ const Admin = () => {
     }
   };
 
-  const handleUpdatePriority = async (
-    ticketNumber: string,
-    priority: string,
-  ) => {
+  const handleUpdatePriority = async (ticketNumber: string, priority: string) => {
     try {
       const response = await fetch(`/tickets/${ticketNumber}/priority`, {
         method: "PATCH",
@@ -554,11 +538,7 @@ const Admin = () => {
   };
 
   const handleRespond = async () => {
-    if (
-      !selectedTicket ||
-      !responseForm.message ||
-      !responseForm.responderName
-    ) {
+    if (!selectedTicket || !responseForm.message || !responseForm.responderName) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -569,14 +549,11 @@ const Admin = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `/tickets/${selectedTicket.ticketNumber}/respond`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(responseForm),
-        },
-      );
+      const response = await fetch(`/tickets/${selectedTicket.ticketNumber}/respond`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(responseForm),
+      });
 
       if (response.ok) {
         toast({
@@ -607,10 +584,7 @@ const Admin = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<
-      string,
-      "default" | "secondary" | "destructive" | "outline"
-    > = {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       open: "destructive",
       in_progress: "default",
       closed: "secondary",
@@ -631,11 +605,7 @@ const Admin = () => {
       medium: "default",
       low: "secondary",
     };
-    return (
-      <Badge variant={variants[priority] || "secondary"}>
-        {priority.toUpperCase()}
-      </Badge>
-    );
+    return <Badge variant={variants[priority] || "secondary"}>{priority.toUpperCase()}</Badge>;
   };
 
   if (!isAuthenticated) {
@@ -653,9 +623,7 @@ const Admin = () => {
                   id="username"
                   type="text"
                   value={loginForm.username}
-                  onChange={(e) =>
-                    setLoginForm({ ...loginForm, username: e.target.value })
-                  }
+                  onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
                   required
                 />
               </div>
@@ -665,9 +633,7 @@ const Admin = () => {
                   id="password"
                   type="password"
                   value={loginForm.password}
-                  onChange={(e) =>
-                    setLoginForm({ ...loginForm, password: e.target.value })
-                  }
+                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
                   required
                 />
               </div>
@@ -728,10 +694,9 @@ const Admin = () => {
   let trialChangeMessage = "";
   if (editDraft) {
     if (editDraft.trial) {
-      trialChangeMessage = "Trial ON — credits cycle will be cleared";
+      trialChangeMessage = "Trial ON: credits cycle will be cleared";
     } else {
-      trialChangeMessage =
-        "Trial OFF — credits cycle starts now, refills next month";
+      trialChangeMessage = "Trial OFF: credits cycle starts now, refills next month";
     }
   }
 
@@ -743,22 +708,19 @@ const Admin = () => {
   let trialDurationField: React.ReactNode = null;
   let maxLocationsField: React.ReactNode = null;
   let baseCreditsField: React.ReactNode = null;
-  let creditsStartedText = "—";
+  let creditsStartedText = "-";
   let locationsDescription = "";
   let locationsContent: React.ReactNode = null;
 
   if (selectedCustomer) {
     if (isEditing && editDraft) {
       nameField = (
-        <Input
-          value={editDraft.name}
-          onChange={(e) => updateDraftString("name", e.target.value)}
-        />
+        <Input value={editDraft.name} onChange={(e) => updateDraftString("name", e.target.value)} />
       );
     } else {
       nameField = (
         <p className="text-sm md:text-base font-medium break-words">
-          {selectedCustomer.name || "—"}
+          {selectedCustomer.name || "-"}
         </p>
       );
     }
@@ -773,7 +735,7 @@ const Admin = () => {
     } else {
       usernameField = (
         <p className="text-sm md:text-base font-medium break-words">
-          {selectedCustomer.username || "—"}
+          {selectedCustomer.username || "-"}
         </p>
       );
     }
@@ -789,7 +751,7 @@ const Admin = () => {
     } else {
       emailField = (
         <p className="text-sm md:text-base font-medium break-words">
-          {selectedCustomer.email || "—"}
+          {selectedCustomer.email || "-"}
         </p>
       );
     }
@@ -804,7 +766,7 @@ const Admin = () => {
     } else {
       phoneField = (
         <p className="text-sm md:text-base font-medium break-words">
-          {formatPhone(selectedCustomer.phone) || "—"}
+          {formatPhone(selectedCustomer.phone) || "-"}
         </p>
       );
     }
@@ -821,9 +783,7 @@ const Admin = () => {
       );
     } else {
       trialField = (
-        <p className="text-sm md:text-base font-medium">
-          {formatBoolean(selectedCustomer.trial)}
-        </p>
+        <p className="text-sm md:text-base font-medium">{formatBoolean(selectedCustomer.trial)}</p>
       );
     }
 
@@ -833,9 +793,7 @@ const Admin = () => {
           type="number"
           min={0}
           value={editDraft.trialDurationDays}
-          onChange={(e) =>
-            updateDraftNumber("trialDurationDays", e.target.value)
-          }
+          onChange={(e) => updateDraftNumber("trialDurationDays", e.target.value)}
         />
       );
     } else {
@@ -857,9 +815,7 @@ const Admin = () => {
       );
     } else {
       maxLocationsField = (
-        <p className="text-sm md:text-base font-medium">
-          {selectedCustomer.maxLocations ?? 0}
-        </p>
+        <p className="text-sm md:text-base font-medium">{selectedCustomer.maxLocations ?? 0}</p>
       );
     }
 
@@ -874,16 +830,14 @@ const Admin = () => {
       );
     } else {
       baseCreditsField = (
-        <p className="text-sm md:text-base font-medium">
-          {selectedCustomer.baseCredits ?? 0}
-        </p>
+        <p className="text-sm md:text-base font-medium">{selectedCustomer.baseCredits ?? 0}</p>
       );
     }
 
     if (selectedCustomer.creditsStartedAt) {
       creditsStartedText = formatDate(selectedCustomer.creditsStartedAt);
     } else {
-      creditsStartedText = "—";
+      creditsStartedText = "-";
     }
 
     if (selectedCustomer.locations.length === 0) {
@@ -919,15 +873,13 @@ const Admin = () => {
               addressField = (
                 <Input
                   value={location.address}
-                  onChange={(e) =>
-                    updateDraftLocationAddress(idx, e.target.value)
-                  }
+                  onChange={(e) => updateDraftLocationAddress(idx, e.target.value)}
                 />
               );
             } else {
               addressField = (
                 <p className="text-sm md:text-base font-medium break-words">
-                  {location.address || "—"}
+                  {location.address || "-"}
                 </p>
               );
             }
@@ -939,24 +891,17 @@ const Admin = () => {
                   type="number"
                   min={0}
                   value={location.credits}
-                  onChange={(e) =>
-                    updateDraftLocation(idx, "credits", e.target.value)
-                  }
+                  onChange={(e) => updateDraftLocation(idx, "credits", e.target.value)}
                 />
               );
             } else {
               locationCreditsField = (
-                <p className="text-sm md:text-base font-medium">
-                  {location.credits}
-                </p>
+                <p className="text-sm md:text-base font-medium">{location.credits}</p>
               );
             }
 
             return (
-              <div
-                key={idx}
-                className="rounded-lg border bg-muted/30 p-4 space-y-3"
-              >
+              <div key={idx} className="rounded-lg border bg-muted/30 p-4 space-y-3">
                 <div>
                   <Label className="text-muted-foreground">Address</Label>
                   {addressField}
@@ -979,9 +924,7 @@ const Admin = () => {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
-            <p className="text-muted-foreground">
-              Manage customer accounts and support tickets
-            </p>
+            <p className="text-muted-foreground">Manage customer accounts and support tickets</p>
           </div>
           <Button variant="outline" onClick={handleLogout}>
             Log Out
@@ -1016,9 +959,7 @@ const Admin = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-semibold text-red-600">
-                      {stats.open}
-                    </div>
+                    <div className="text-2xl font-semibold text-red-600">{stats.open}</div>
                   </CardContent>
                 </Card>
                 <Card>
@@ -1028,9 +969,7 @@ const Admin = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-semibold text-indigo-600">
-                      {stats.inProgress}
-                    </div>
+                    <div className="text-2xl font-semibold text-indigo-600">{stats.inProgress}</div>
                   </CardContent>
                 </Card>
                 <Card>
@@ -1040,9 +979,7 @@ const Admin = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-semibold text-green-600">
-                      {stats.closed}
-                    </div>
+                    <div className="text-2xl font-semibold text-green-600">{stats.closed}</div>
                   </CardContent>
                 </Card>
                 <Card>
@@ -1062,9 +999,7 @@ const Admin = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-semibold">
-                      {stats.feedback}
-                    </div>
+                    <div className="text-2xl font-semibold">{stats.feedback}</div>
                   </CardContent>
                 </Card>
               </div>
@@ -1072,16 +1007,13 @@ const Admin = () => {
 
             <Card>
               <CardHeader>
-                {}
                 <CardTitle className="text-lg">Filters</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-4">
                 <div className="w-40">
                   <Select
                     value={filter.status}
-                    onValueChange={(value) =>
-                      setFilter({ ...filter, status: value })
-                    }
+                    onValueChange={(value) => setFilter({ ...filter, status: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Status" />
@@ -1097,9 +1029,7 @@ const Admin = () => {
                 <div className="w-40">
                   <Select
                     value={filter.type}
-                    onValueChange={(value) =>
-                      setFilter({ ...filter, type: value })
-                    }
+                    onValueChange={(value) => setFilter({ ...filter, type: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Type" />
@@ -1114,9 +1044,7 @@ const Admin = () => {
                 <div className="w-40">
                   <Select
                     value={filter.priority}
-                    onValueChange={(value) =>
-                      setFilter({ ...filter, priority: value })
-                    }
+                    onValueChange={(value) => setFilter({ ...filter, priority: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Priority" />
@@ -1143,18 +1071,13 @@ const Admin = () => {
                     <div className="flex justify-between items-start">
                       <div className="space-y-2 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-lg">
-                            {ticket.subject}
-                          </h3>
+                          <h3 className="font-semibold text-lg">{ticket.subject}</h3>
                           {getStatusBadge(ticket.status)}
                           {getPriorityBadge(ticket.priority)}
-                          <Badge variant="outline">
-                            {ticket.type.toUpperCase()}
-                          </Badge>
+                          <Badge variant="outline">{ticket.type.toUpperCase()}</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {ticket.ticketNumber} • From: {ticket.senderName} (
-                          {ticket.senderEmail})
+                          {ticket.ticketNumber} • From: {ticket.senderName} ({ticket.senderEmail})
                           {ticket.businessName && ` • ${ticket.businessName}`}
                         </p>
                         <p className="text-sm">
@@ -1172,9 +1095,7 @@ const Admin = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Customer Management</CardTitle>
-                <CardDescription>
-                  Search and view business account details
-                </CardDescription>
+                <CardDescription>Search and view business account details</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -1228,12 +1149,8 @@ const Admin = () => {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">
-                      Account Information
-                    </CardTitle>
-                    <CardDescription>
-                      Business contact and identity details
-                    </CardDescription>
+                    <CardTitle className="text-lg">Account Information</CardTitle>
+                    <CardDescription>Business contact and identity details</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1242,9 +1159,7 @@ const Admin = () => {
                         {nameField}
                       </div>
                       <div>
-                        <Label className="text-muted-foreground">
-                          Username
-                        </Label>
+                        <Label className="text-muted-foreground">Username</Label>
                         {usernameField}
                       </div>
                       <div>
@@ -1263,8 +1178,7 @@ const Admin = () => {
                   <CardHeader>
                     <CardTitle className="text-lg">Trial & Access</CardTitle>
                     <CardDescription>
-                      Turn Trial off to activate paid access. Credits start
-                      then and refill monthly
+                      Turn Trial off to activate paid access. Credits start then and refill monthly
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1274,30 +1188,20 @@ const Admin = () => {
                         {trialField}
                       </div>
                       <div>
-                        <Label className="text-muted-foreground">
-                          Trial Duration (Days)
-                        </Label>
+                        <Label className="text-muted-foreground">Trial Duration (Days)</Label>
                         {trialDurationField}
                       </div>
                       <div>
-                        <Label className="text-muted-foreground">
-                          Max Locations
-                        </Label>
+                        <Label className="text-muted-foreground">Max Locations</Label>
                         {maxLocationsField}
                       </div>
                       <div>
-                        <Label className="text-muted-foreground">
-                          Base Credits
-                        </Label>
+                        <Label className="text-muted-foreground">Base Credits</Label>
                         {baseCreditsField}
                       </div>
                       <div>
-                        <Label className="text-muted-foreground">
-                          Credits Cycle Started
-                        </Label>
-                        <p className="text-sm md:text-base font-medium">
-                          {creditsStartedText}
-                        </p>
+                        <Label className="text-muted-foreground">Credits Cycle Started</Label>
+                        <p className="text-sm md:text-base font-medium">{creditsStartedText}</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           Set automatically when Trial is turned off.
                         </p>
@@ -1324,9 +1228,7 @@ const Admin = () => {
                     {editDraft && selectedCustomer && (
                       <>
                         Apply these changes to{" "}
-                        <span className="font-medium">
-                          {selectedCustomer.username}
-                        </span>
+                        <span className="font-medium">{selectedCustomer.username}</span>
                         ?
                         <br />
                         <br />
@@ -1334,18 +1236,12 @@ const Admin = () => {
                         <br />
                         Username: {editDraft.username}
                         {editDraft.username !== selectedCustomer.username && (
-                          <span className="text-amber-600">
-                            {" "}
-                            (rename — must be unique)
-                          </span>
+                          <span className="text-amber-600"> (rename, must be unique)</span>
                         )}
                         <br />
                         Email: {editDraft.email}
                         {editDraft.email !== selectedCustomer.email && (
-                          <span className="text-amber-600">
-                            {" "}
-                            (changed — must be unique)
-                          </span>
+                          <span className="text-amber-600"> (changed, must be unique)</span>
                         )}
                         <br />
                         Phone: {editDraft.phone}
@@ -1361,17 +1257,14 @@ const Admin = () => {
                         {editDraft.trial !== selectedCustomer.trial && (
                           <>
                             <br />
-                            <span className="text-amber-600">
-                              {trialChangeMessage}
-                            </span>
+                            <span className="text-amber-600">{trialChangeMessage}</span>
                           </>
                         )}
                         {editDraft.locations.length > 0 && (
                           <>
                             <br />
                             <br />
-                            Location addresses and per-location credits will
-                            also be updated.
+                            Location addresses and per-location credits will also be updated.
                           </>
                         )}
                       </>
@@ -1379,13 +1272,8 @@ const Admin = () => {
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isSaving}>
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleSaveCustomer}
-                    disabled={isSaving}
-                  >
+                  <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleSaveCustomer} disabled={isSaving}>
                     {confirmButtonLabel}
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -1406,9 +1294,7 @@ const Admin = () => {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedTicket?.subject}</DialogTitle>
-              <DialogDescription>
-                Ticket #{selectedTicket?.ticketNumber}
-              </DialogDescription>
+              <DialogDescription>Ticket #{selectedTicket?.ticketNumber}</DialogDescription>
             </DialogHeader>
 
             {selectedTicket && (
@@ -1434,9 +1320,7 @@ const Admin = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="open">Open</SelectItem>
-                          <SelectItem value="in_progress">
-                            In Progress
-                          </SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
                           <SelectItem value="closed">Closed</SelectItem>
                         </SelectContent>
                       </Select>
@@ -1446,10 +1330,7 @@ const Admin = () => {
                       <Select
                         value={selectedTicket.priority || "low"}
                         onValueChange={(value) =>
-                          handleUpdatePriority(
-                            selectedTicket.ticketNumber,
-                            value,
-                          )
+                          handleUpdatePriority(selectedTicket.ticketNumber, value)
                         }
                       >
                         <SelectTrigger>
@@ -1480,8 +1361,7 @@ const Admin = () => {
                       )}
                       {selectedTicket.businessName && (
                         <p>
-                          <strong>Business:</strong>{" "}
-                          {selectedTicket.businessName}
+                          <strong>Business:</strong> {selectedTicket.businessName}
                         </p>
                       )}
                     </div>
@@ -1493,64 +1373,55 @@ const Admin = () => {
                       <div className="bg-muted p-4 rounded-md space-y-1 text-sm">
                         {selectedTicket.data.businessWebsite && (
                           <p>
-                            <strong>Website:</strong>{" "}
-                            {selectedTicket.data.businessWebsite}
+                            <strong>Website:</strong> {selectedTicket.data.businessWebsite}
                           </p>
                         )}
                         {selectedTicket.data.locations && (
                           <p>
-                            <strong>Locations:</strong>{" "}
-                            {selectedTicket.data.locations}
+                            <strong>Locations:</strong> {selectedTicket.data.locations}
                           </p>
                         )}
                         {selectedTicket.data.smsPerMonth && (
                           <p>
-                            <strong>SMS/Month:</strong>{" "}
-                            {selectedTicket.data.smsPerMonth}
+                            <strong>SMS/Month:</strong> {selectedTicket.data.smsPerMonth}
                           </p>
                         )}
                         {selectedTicket.data.customersPerDay && (
                           <p>
-                            <strong>Customers/Day:</strong>{" "}
-                            {selectedTicket.data.customersPerDay}
+                            <strong>Customers/Day:</strong> {selectedTicket.data.customersPerDay}
                           </p>
                         )}
                         {selectedTicket.data.useCase && (
                           <p>
-                            <strong>Use Case:</strong>{" "}
-                            {selectedTicket.data.useCase}
+                            <strong>Use Case:</strong> {selectedTicket.data.useCase}
                           </p>
                         )}
                         {selectedTicket.data.budget && (
                           <p>
-                            <strong>Budget:</strong>{" "}
-                            {selectedTicket.data.budget}
+                            <strong>Budget:</strong> {selectedTicket.data.budget}
                           </p>
                         )}
                       </div>
                     </div>
                   )}
 
-                  {selectedTicket.type === "feedback" &&
-                    selectedTicket.data && (
-                      <div className="space-y-2">
-                        <Label>Feedback Details</Label>
-                        <div className="bg-muted p-4 rounded-md space-y-1 text-sm">
-                          {selectedTicket.data.feedbackType && (
-                            <p>
-                              <strong>Type:</strong>{" "}
-                              {selectedTicket.data.feedbackType}
-                            </p>
-                          )}
-                          {selectedTicket.data.severity && (
-                            <p>
-                              <strong>Severity:</strong>{" "}
-                              {selectedTicket.data.severity}
-                            </p>
-                          )}
-                        </div>
+                  {selectedTicket.type === "feedback" && selectedTicket.data && (
+                    <div className="space-y-2">
+                      <Label>Feedback Details</Label>
+                      <div className="bg-muted p-4 rounded-md space-y-1 text-sm">
+                        {selectedTicket.data.feedbackType && (
+                          <p>
+                            <strong>Type:</strong> {selectedTicket.data.feedbackType}
+                          </p>
+                        )}
+                        {selectedTicket.data.severity && (
+                          <p>
+                            <strong>Severity:</strong> {selectedTicket.data.severity}
+                          </p>
+                        )}
                       </div>
-                    )}
+                    </div>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="messages" className="space-y-4">
@@ -1558,16 +1429,12 @@ const Admin = () => {
                     {selectedTicket.messages.map((msg, idx) => {
                       let messageToneClass: string;
                       if (msg.isTeamResponse) {
-                        messageToneClass =
-                          "bg-indigo-50 border-l-4 border-indigo-500";
+                        messageToneClass = "bg-indigo-50 border-l-4 border-indigo-500";
                       } else {
                         messageToneClass = "bg-muted";
                       }
                       return (
-                        <div
-                          key={idx}
-                          className={`p-4 rounded-md ${messageToneClass}`}
-                        >
+                        <div key={idx} className={`p-4 rounded-md ${messageToneClass}`}>
                           <div className="flex justify-between items-start mb-2">
                             <p className="font-semibold">{msg.sender}</p>
                             <p className="text-xs text-muted-foreground">

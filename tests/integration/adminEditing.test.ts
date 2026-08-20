@@ -1,11 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { api } from "../helpers/app.js";
 import { adminCookie } from "../helpers/auth.js";
-import {
-  clearTestDatabase,
-  disconnectTestPrisma,
-  getTestPrisma,
-} from "../helpers/db.js";
+import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
 import {
   seedBusiness,
   seedBusinessWithLocation,
@@ -29,7 +25,9 @@ function admin() {
 
 describe("credit adjustments", () => {
   it("rejects a request with no username", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/admin/update-credits")
       .set("Cookie", admin())
       .send({ baseCredits: 100 });
@@ -41,7 +39,9 @@ describe("credit adjustments", () => {
   it("rejects a non-numeric credit amount", async () => {
     const business = await seedBusiness();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/admin/update-credits")
       .set("Cookie", admin())
       .send({ username: business.username, baseCredits: "lots" });
@@ -53,7 +53,9 @@ describe("credit adjustments", () => {
   it("rejects a negative credit amount", async () => {
     const business = await seedBusiness();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/admin/update-credits")
       .set("Cookie", admin())
       .send({ username: business.username, baseCredits: -5 });
@@ -63,7 +65,9 @@ describe("credit adjustments", () => {
   });
 
   it("reports an unknown business", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/admin/update-credits")
       .set("Cookie", admin())
       .send({ username: "no-such-business", baseCredits: 100 });
@@ -74,7 +78,9 @@ describe("credit adjustments", () => {
   it("stores the new base credit allowance", async () => {
     const business = await seedBusiness();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/admin/update-credits")
       .set("Cookie", admin())
       .send({ username: business.username, baseCredits: 750 });
@@ -86,9 +92,7 @@ describe("credit adjustments", () => {
 
 describe("customer lookup", () => {
   it("rejects a blank username", async () => {
-    const res = await (await api())
-      .get("/admin/customer/%20")
-      .set("Cookie", admin());
+    const res = await (await api()).get("/admin/customer/%20").set("Cookie", admin());
 
     expect(res.status).toBe(400);
   });
@@ -104,7 +108,9 @@ describe("customer lookup", () => {
       credits: 0,
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/admin/customer/${business.username}`)
       .set("Cookie", admin());
 
@@ -117,10 +123,7 @@ describe("customer lookup", () => {
 
 describe("customer editing validation", () => {
   async function patch(username: string, body: Record<string, unknown>) {
-    return (await api())
-      .patch(`/admin/customer/${username}`)
-      .set("Cookie", admin())
-      .send(body);
+    return (await api()).patch(`/admin/customer/${username}`).set("Cookie", admin()).send(body);
   }
 
   it("rejects a blank username in the path", async () => {
@@ -244,7 +247,9 @@ describe("customer trial activation", () => {
   it("starts the credit clock when a trial business is activated", async () => {
     const business = await seedBusiness({ trial: true });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/admin/customer/${business.username}`)
       .set("Cookie", admin())
       .send({ trial: false });
@@ -264,7 +269,9 @@ describe("customer trial activation", () => {
       nextCreditRefillAt: new Date(),
     });
 
-    await (await api())
+    await (
+      await api()
+    )
       .patch(`/admin/customer/${business.username}`)
       .set("Cookie", admin())
       .send({ trial: true });
@@ -281,7 +288,9 @@ describe("customer trial activation", () => {
       creditsStartedAt: started,
     });
 
-    await (await api())
+    await (
+      await api()
+    )
       .patch(`/admin/customer/${business.username}`)
       .set("Cookie", admin())
       .send({ trial: false });
@@ -295,7 +304,9 @@ describe("customer location editing", () => {
   it("rejects a locations payload that is not an array", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/admin/customer/${business.username}`)
       .set("Cookie", admin())
       .send({ locations: { credits: 10 } });
@@ -307,7 +318,9 @@ describe("customer location editing", () => {
   it("rejects a locations payload of the wrong length", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/admin/customer/${business.username}`)
       .set("Cookie", admin())
       .send({ locations: [{}, {}] });
@@ -319,7 +332,9 @@ describe("customer location editing", () => {
   it("rejects negative location credits", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/admin/customer/${business.username}`)
       .set("Cookie", admin())
       .send({ locations: [{ credits: -1 }] });
@@ -331,7 +346,9 @@ describe("customer location editing", () => {
   it("rejects an empty location address", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/admin/customer/${business.username}`)
       .set("Cookie", admin())
       .send({ locations: [{ address: "   " }] });
@@ -343,7 +360,9 @@ describe("customer location editing", () => {
   it("updates the address and credits of each location", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/admin/customer/${business.username}`)
       .set("Cookie", admin())
       .send({ locations: [{ address: "  9 New Street  ", credits: 42.7 }] });
@@ -357,7 +376,9 @@ describe("customer location editing", () => {
   it("accepts a locations-only patch with no other fields", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/admin/customer/${business.username}`)
       .set("Cookie", admin())
       .send({ locations: [{}] });
@@ -368,15 +389,15 @@ describe("customer location editing", () => {
 
 describe("business lookup helpers", () => {
   it("requires a username query", async () => {
-    const res = await (await api())
-      .get("/admin/businesses/search")
-      .set("Cookie", admin());
+    const res = await (await api()).get("/admin/businesses/search").set("Cookie", admin());
 
     expect(res.status).toBe(400);
   });
 
   it("rejects a malformed business id when listing locations", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/admin/businesses/not-an-id/locations")
       .set("Cookie", admin());
 
@@ -384,7 +405,9 @@ describe("business lookup helpers", () => {
   });
 
   it("reports an unknown business when listing locations", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/admin/businesses/000000000000000000000000/locations")
       .set("Cookie", admin());
 
@@ -394,11 +417,15 @@ describe("business lookup helpers", () => {
 
 describe("featured restaurant validation", () => {
   it("rejects a malformed business or location id", async () => {
-    const badBusiness = await (await api())
+    const badBusiness = await (
+      await api()
+    )
       .post("/admin/featured-restaurants")
       .set("Cookie", admin())
       .send({ businessId: "nope", locationId: "000000000000000000000000" });
-    const badLocation = await (await api())
+    const badLocation = await (
+      await api()
+    )
       .post("/admin/featured-restaurants")
       .set("Cookie", admin())
       .send({ businessId: "000000000000000000000000", locationId: "nope" });
@@ -412,7 +439,9 @@ describe("featured restaurant validation", () => {
   it("reports an unknown business", async () => {
     const { location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/admin/featured-restaurants")
       .set("Cookie", admin())
       .send({
@@ -428,7 +457,9 @@ describe("featured restaurant validation", () => {
     const tenantA = await seedBusinessWithLocation();
     const tenantB = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/admin/featured-restaurants")
       .set("Cookie", admin())
       .send({
@@ -443,12 +474,11 @@ describe("featured restaurant validation", () => {
   it("refuses to feature the same location twice", async () => {
     const { business, location } = await seedBusinessWithLocation();
     const payload = { businessId: business.id, locationId: location.id };
-    await (await api())
-      .post("/admin/featured-restaurants")
-      .set("Cookie", admin())
-      .send(payload);
+    await (await api()).post("/admin/featured-restaurants").set("Cookie", admin()).send(payload);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/admin/featured-restaurants")
       .set("Cookie", admin())
       .send(payload);
@@ -459,7 +489,9 @@ describe("featured restaurant validation", () => {
   it("rejects a non-numeric sort order or non-boolean active flag", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const order = await (await api())
+    const order = await (
+      await api()
+    )
       .post("/admin/featured-restaurants")
       .set("Cookie", admin())
       .send({
@@ -467,7 +499,9 @@ describe("featured restaurant validation", () => {
         locationId: location.id,
         sortOrder: "first",
       });
-    const active = await (await api())
+    const active = await (
+      await api()
+    )
       .post("/admin/featured-restaurants")
       .set("Cookie", admin())
       .send({
@@ -483,7 +517,9 @@ describe("featured restaurant validation", () => {
   it("stores the supplied sort order and active flag", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/admin/featured-restaurants")
       .set("Cookie", admin())
       .send({
@@ -501,11 +537,15 @@ describe("featured restaurant validation", () => {
   });
 
   it("rejects a malformed id on update and delete", async () => {
-    const update = await (await api())
+    const update = await (
+      await api()
+    )
       .patch("/admin/featured-restaurants/not-an-id")
       .set("Cookie", admin())
       .send({ isActive: false });
-    const remove = await (await api())
+    const remove = await (
+      await api()
+    )
       .delete("/admin/featured-restaurants/not-an-id")
       .set("Cookie", admin());
 
@@ -515,21 +555,29 @@ describe("featured restaurant validation", () => {
 
   it("rejects an update with invalid or missing fields", async () => {
     const { business, location } = await seedBusinessWithLocation();
-    const created = await (await api())
+    const created = await (
+      await api()
+    )
       .post("/admin/featured-restaurants")
       .set("Cookie", admin())
       .send({ businessId: business.id, locationId: location.id });
     const id = created.body.featured.id;
 
-    const order = await (await api())
+    const order = await (
+      await api()
+    )
       .patch(`/admin/featured-restaurants/${id}`)
       .set("Cookie", admin())
       .send({ sortOrder: "first" });
-    const active = await (await api())
+    const active = await (
+      await api()
+    )
       .patch(`/admin/featured-restaurants/${id}`)
       .set("Cookie", admin())
       .send({ isActive: "yes" });
-    const empty = await (await api())
+    const empty = await (
+      await api()
+    )
       .patch(`/admin/featured-restaurants/${id}`)
       .set("Cookie", admin())
       .send({});
@@ -543,11 +591,15 @@ describe("featured restaurant validation", () => {
   it("reports an unknown featured entry on update and delete", async () => {
     const missing = "000000000000000000000000";
 
-    const update = await (await api())
+    const update = await (
+      await api()
+    )
       .patch(`/admin/featured-restaurants/${missing}`)
       .set("Cookie", admin())
       .send({ isActive: false });
-    const remove = await (await api())
+    const remove = await (
+      await api()
+    )
       .delete(`/admin/featured-restaurants/${missing}`)
       .set("Cookie", admin());
 
@@ -577,7 +629,9 @@ describe("admin campaign template review", () => {
     await seedTemplate({ businessId: business.id, approvalStatus: "APPROVED" });
     await seedTemplate({ businessId: business.id, approvalStatus: "REJECTED" });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/admin/campaign-templates?status=approved")
       .set("Cookie", admin());
 
@@ -592,7 +646,9 @@ describe("admin campaign template review", () => {
     const { business } = await seedBusinessWithLocation();
     await seedTemplate({ businessId: business.id });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/admin/campaign-templates?status=nonsense")
       .set("Cookie", admin());
 
@@ -607,7 +663,9 @@ describe("admin campaign template review", () => {
     });
     await seedTemplate({ businessId: business.id, name: "Unrelated" });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/admin/campaign-templates?search=ramadan")
       .set("Cookie", admin());
 
@@ -619,9 +677,7 @@ describe("admin campaign template review", () => {
     const { business } = await seedBusinessWithLocation();
     await seedTemplate({ businessId: business.id });
 
-    const res = await (await api())
-      .get("/admin/campaign-templates")
-      .set("Cookie", admin());
+    const res = await (await api()).get("/admin/campaign-templates").set("Cookie", admin());
 
     expect(res.body.templates[0].business.username).toBe(business.username);
   });
@@ -629,9 +685,7 @@ describe("admin campaign template review", () => {
   it("tolerates a template with no owning business", async () => {
     await seedTemplate();
 
-    const res = await (await api())
-      .get("/admin/campaign-templates")
-      .set("Cookie", admin());
+    const res = await (await api()).get("/admin/campaign-templates").set("Cookie", admin());
 
     expect(res.status).toBe(200);
     expect(res.body.templates[0].business).toBeNull();
@@ -644,7 +698,9 @@ describe("admin campaign template review", () => {
       locationId: location.id,
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/admin/campaign-templates/${template.id}`)
       .set("Cookie", admin());
 
@@ -654,17 +710,25 @@ describe("admin campaign template review", () => {
   });
 
   it("rejects a malformed template id on every review route", async () => {
-    const get = await (await api())
+    const get = await (
+      await api()
+    )
       .get("/admin/campaign-templates/not-an-id")
       .set("Cookie", admin());
-    const review = await (await api())
+    const review = await (
+      await api()
+    )
       .patch("/admin/campaign-templates/not-an-id/review")
       .set("Cookie", admin())
       .send({ internalReviewNotes: "x" });
-    const approve = await (await api())
+    const approve = await (
+      await api()
+    )
       .post("/admin/campaign-templates/not-an-id/approve")
       .set("Cookie", admin());
-    const reject = await (await api())
+    const reject = await (
+      await api()
+    )
       .post("/admin/campaign-templates/not-an-id/reject")
       .set("Cookie", admin())
       .send({ rejectionReason: "no" });
@@ -678,7 +742,9 @@ describe("admin campaign template review", () => {
   it("clears a review field when it is set to null", async () => {
     const template = await seedTemplate({ internalReviewNotes: "earlier note" });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/admin/campaign-templates/${template.id}/review`)
       .set("Cookie", admin())
       .send({ internalReviewNotes: null });
@@ -690,25 +756,29 @@ describe("admin campaign template review", () => {
   it("stores and clears the Meta review timestamps", async () => {
     const template = await seedTemplate();
 
-    const set = await (await api())
+    const set = await (
+      await api()
+    )
       .patch(`/admin/campaign-templates/${template.id}/review`)
       .set("Cookie", admin())
       .send({ whatsappSubmittedAt: "2026-08-01T00:00:00.000Z" });
-    const cleared = await (await api())
+    const cleared = await (
+      await api()
+    )
       .patch(`/admin/campaign-templates/${template.id}/review`)
       .set("Cookie", admin())
       .send({ whatsappSubmittedAt: null });
 
-    expect(set.body.template.whatsappSubmittedAt).toBe(
-      "2026-08-01T00:00:00.000Z",
-    );
+    expect(set.body.template.whatsappSubmittedAt).toBe("2026-08-01T00:00:00.000Z");
     expect(cleared.body.template.whatsappSubmittedAt).toBeNull();
   });
 
   it("rejects a review with no reviewable fields", async () => {
     const template = await seedTemplate();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/admin/campaign-templates/${template.id}/review`)
       .set("Cookie", admin())
       .send({ name: "Renamed" });
@@ -723,10 +793,14 @@ describe("admin campaign template review", () => {
       approvalStatus: "APPROVED",
     });
 
-    const approve = await (await api())
+    const approve = await (
+      await api()
+    )
       .post(`/admin/campaign-templates/${template.id}/approve`)
       .set("Cookie", admin());
-    const reject = await (await api())
+    const reject = await (
+      await api()
+    )
       .post(`/admin/campaign-templates/${template.id}/reject`)
       .set("Cookie", admin())
       .send({ rejectionReason: "not needed" });
@@ -739,7 +813,9 @@ describe("admin campaign template review", () => {
   it("records the Meta template name supplied at approval", async () => {
     const template = await seedTemplate();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/admin/campaign-templates/${template.id}/approve`)
       .set("Cookie", admin())
       .send({
@@ -757,7 +833,9 @@ describe("admin campaign template review", () => {
     const approvedAt = new Date("2026-01-01T00:00:00.000Z");
     const template = await seedTemplate({ whatsappApprovedAt: approvedAt });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/admin/campaign-templates/${template.id}/approve`)
       .set("Cookie", admin());
 
@@ -767,7 +845,9 @@ describe("admin campaign template review", () => {
   it("requires a reason to reject", async () => {
     const template = await seedTemplate();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/admin/campaign-templates/${template.id}/reject`)
       .set("Cookie", admin())
       .send({ rejectionReason: "   " });
@@ -779,15 +859,21 @@ describe("admin campaign template review", () => {
   it("reports an unknown template on review and reject", async () => {
     const missing = "000000000000000000000000";
 
-    const review = await (await api())
+    const review = await (
+      await api()
+    )
       .patch(`/admin/campaign-templates/${missing}/review`)
       .set("Cookie", admin())
       .send({ internalReviewNotes: "x" });
-    const reject = await (await api())
+    const reject = await (
+      await api()
+    )
       .post(`/admin/campaign-templates/${missing}/reject`)
       .set("Cookie", admin())
       .send({ rejectionReason: "no" });
-    const get = await (await api())
+    const get = await (
+      await api()
+    )
       .get(`/admin/campaign-templates/${missing}`)
       .set("Cookie", admin());
 

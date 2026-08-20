@@ -3,13 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -36,10 +30,9 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors = { emailOrUsername: "", password: "" };
-    if (!emailOrUsername)
-      {
-        newErrors.emailOrUsername = "Email or username is required";
-      }
+    if (!emailOrUsername) {
+      newErrors.emailOrUsername = "Email or username is required";
+    }
     if (!password) {
       newErrors.password = "Password is required";
     }
@@ -79,20 +72,13 @@ const Login = () => {
 
   return (
     <>
-      <SEO
-        title="Log In | SeatPing"
-        description={CUSTOMER_DESCRIPTION}
-        canonical="/login"
-      />
+      <SEO title="Log In | SeatPing" description={CUSTOMER_DESCRIPTION} canonical="/login" />
       <Header />
-      {}
       <div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/5 via-background to-success/5">
         <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10 sm:pt-28 sm:pb-14">
           <Card className="w-full max-w-[540px] shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
             <CardHeader className="space-y-2 px-6 pb-6 pt-8 text-center sm:px-10 sm:pt-10">
-              <CardTitle className="text-3xl text-primary">
-                Welcome Back
-              </CardTitle>
+              <CardTitle className="text-3xl text-primary">Welcome Back</CardTitle>
               <CardDescription className="whitespace-nowrap text-sm sm:text-base">
                 Sign in to your SeatPing Account
               </CardDescription>
@@ -107,17 +93,14 @@ const Login = () => {
                     value={emailOrUsername}
                     onChange={(e) => {
                       setEmailOrUsername(e.target.value);
-                      if (errors.emailOrUsername)
-                        {
-                          setErrors((p) => ({ ...p, emailOrUsername: "" }));
-                        }
+                      if (errors.emailOrUsername) {
+                        setErrors((p) => ({ ...p, emailOrUsername: "" }));
+                      }
                     }}
                     required
                   />
                   {errors.emailOrUsername && (
-                    <p className="text-sm text-destructive">
-                      {errors.emailOrUsername}
-                    </p>
+                    <p className="text-sm text-destructive">{errors.emailOrUsername}</p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -129,33 +112,21 @@ const Login = () => {
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
-                      if (errors.password)
-                        {
-                          setErrors((p) => ({ ...p, password: "" }));
-                        }
+                      if (errors.password) {
+                        setErrors((p) => ({ ...p, password: "" }));
+                      }
                     }}
                     required
                   />
-                  {errors.password && (
-                    <p className="text-sm text-destructive">
-                      {errors.password}
-                    </p>
-                  )}
+                  {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
                 </div>
-                <Button
-                  type="submit"
-                  className="h-11 w-full text-base"
-                  disabled={loading}
-                >
+                <Button type="submit" className="h-11 w-full text-base" disabled={loading}>
                   {submitLabel}
                 </Button>
               </form>
 
               <div className="mt-5 text-center">
-                <Link
-                  to="/forgot"
-                  className="text-sm text-primary hover:underline"
-                >
+                <Link to="/forgot" className="text-sm text-primary hover:underline">
                   Forgot Password?
                 </Link>
               </div>

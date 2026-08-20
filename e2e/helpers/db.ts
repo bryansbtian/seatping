@@ -24,11 +24,7 @@ export function uniqueId(): string {
   return randomUUID().replace(/-/g, "").slice(0, 10);
 }
 
-export function legacyKeyOf(
-  firstName: string,
-  lastName: string,
-  joinedAt: Date,
-): string {
+export function legacyKeyOf(firstName: string, lastName: string, joinedAt: Date): string {
   return `${firstName}${lastName}${joinedAt.toISOString()}`;
 }
 

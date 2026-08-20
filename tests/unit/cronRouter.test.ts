@@ -38,9 +38,7 @@ async function cronApp() {
 beforeEach(() => {
   runReservationReminderSweep.mockReset().mockResolvedValue(undefined);
   runDailyCreditRefillSweep.mockReset().mockResolvedValue(undefined);
-  runDueCampaignsSweep
-    .mockReset()
-    .mockResolvedValue({ scheduled: 0, recurring: 0 });
+  runDueCampaignsSweep.mockReset().mockResolvedValue({ scheduled: 0, recurring: 0 });
   process.env.CRON_SECRET = SECRET;
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -97,9 +95,7 @@ describe("cron authorization", () => {
   it("rejects a secret that only shares a prefix", async () => {
     const app = await cronApp();
 
-    const res = await app
-      .post(ROUTES[0])
-      .set("Authorization", `Bearer ${SECRET}-extra`);
+    const res = await app.post(ROUTES[0]).set("Authorization", `Bearer ${SECRET}-extra`);
 
     expect(res.status).toBe(401);
   });
@@ -107,12 +103,8 @@ describe("cron authorization", () => {
   it("accepts any http method on an authorized route", async () => {
     const app = await cronApp();
 
-    const get = await app
-      .get(ROUTES[0])
-      .set("Authorization", `Bearer ${SECRET}`);
-    const post = await app
-      .post(ROUTES[0])
-      .set("Authorization", `Bearer ${SECRET}`);
+    const get = await app.get(ROUTES[0]).set("Authorization", `Bearer ${SECRET}`);
+    const post = await app.post(ROUTES[0]).set("Authorization", `Bearer ${SECRET}`);
 
     expect(get.status).toBe(200);
     expect(post.status).toBe(200);
@@ -138,9 +130,7 @@ describe("cron sweep failures", () => {
     runDailyCreditRefillSweep.mockRejectedValue(new Error("db down"));
     const app = await cronApp();
 
-    const res = await app
-      .post("/api/cron/credit-refill")
-      .set("Authorization", `Bearer ${SECRET}`);
+    const res = await app.post("/api/cron/credit-refill").set("Authorization", `Bearer ${SECRET}`);
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: "Sweep failed" });
@@ -150,9 +140,7 @@ describe("cron sweep failures", () => {
     runDueCampaignsSweep.mockRejectedValue(new Error("queue unavailable"));
     const app = await cronApp();
 
-    const res = await app
-      .post("/api/cron/campaigns")
-      .set("Authorization", `Bearer ${SECRET}`);
+    const res = await app.post("/api/cron/campaigns").set("Authorization", `Bearer ${SECRET}`);
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: "Sweep failed" });
@@ -199,9 +187,7 @@ describe("cron rate limiting", () => {
       expect(res.status).toBe(401);
     }
 
-    const blocked = await app
-      .post(ROUTES[0])
-      .set("Authorization", "Bearer wrong");
+    const blocked = await app.post(ROUTES[0]).set("Authorization", "Bearer wrong");
 
     expect(blocked.status).toBe(429);
   });
@@ -240,9 +226,7 @@ describe("cron sweep results", () => {
     runDueCampaignsSweep.mockResolvedValue({ scheduled: 3, recurring: 2 });
     const app = await cronApp();
 
-    const res = await app
-      .post("/api/cron/campaigns")
-      .set("Authorization", `Bearer ${SECRET}`);
+    const res = await app.post("/api/cron/campaigns").set("Authorization", `Bearer ${SECRET}`);
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ ok: true, scheduled: 3, recurring: 2 });
@@ -252,12 +236,8 @@ describe("cron sweep results", () => {
     const app = await cronApp();
     const auth = `Bearer ${SECRET}`;
 
-    const reminders = await app
-      .post("/api/cron/reservation-reminders")
-      .set("Authorization", auth);
-    const credits = await app
-      .post("/api/cron/credit-refill")
-      .set("Authorization", auth);
+    const reminders = await app.post("/api/cron/reservation-reminders").set("Authorization", auth);
+    const credits = await app.post("/api/cron/credit-refill").set("Authorization", auth);
 
     expect(reminders.body).toEqual({ ok: true });
     expect(credits.body).toEqual({ ok: true });

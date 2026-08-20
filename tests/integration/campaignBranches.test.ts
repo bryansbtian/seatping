@@ -34,7 +34,9 @@ describe("custom template lifecycle", () => {
     const { business } = await seedBusinessWithLocation();
     const template = await customTemplate(business.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/campaigns/templates/${template.id}`)
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -54,22 +56,26 @@ describe("custom template lifecycle", () => {
     const tenantB = await seedBusinessWithLocation();
     const template = await customTemplate(tenantA.business.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/campaigns/templates/${template.id}`)
       .set("Cookie", businessCookie(tenantB.business.id))
       .send({ name: "Hijacked" });
 
     expect(res.status).toBeGreaterThanOrEqual(400);
-    expect(
-      (await db.campaignTemplate.findUnique({ where: { id: template.id } }))?.name,
-    ).not.toBe("Hijacked");
+    expect((await db.campaignTemplate.findUnique({ where: { id: template.id } }))?.name).not.toBe(
+      "Hijacked",
+    );
   });
 
   it("submits a draft template for review", async () => {
     const { business } = await seedBusinessWithLocation();
     const template = await customTemplate(business.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/templates/${template.id}/submit`)
       .set("Cookie", businessCookie(business.id))
       .send({});
@@ -95,7 +101,9 @@ describe("custom template lifecycle", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/templates/${managed.id}/submit`)
       .set("Cookie", businessCookie(business.id))
       .send({});
@@ -106,7 +114,9 @@ describe("custom template lifecycle", () => {
   it("rejects a template body with no variables placeholder syntax errors", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns/templates")
       .set("Cookie", businessCookie(business.id))
       .send({ name: "", body: "" });
@@ -127,7 +137,9 @@ describe("campaign guards", () => {
         isActive: true,
       },
     });
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns")
       .set("Cookie", businessCookie(businessId))
       .send({
@@ -153,7 +165,9 @@ describe("campaign guards", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns")
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -180,7 +194,9 @@ describe("campaign guards", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns")
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -208,7 +224,9 @@ describe("campaign guards", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns")
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -227,7 +245,9 @@ describe("campaign guards", () => {
     const { business, location } = await seedBusinessWithLocation();
     const campaign = await draft(business.id, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "NOW" });
@@ -239,7 +259,9 @@ describe("campaign guards", () => {
     const { business, location } = await seedBusinessWithLocation();
     const campaign = await draft(business.id, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/pause`)
       .set("Cookie", businessCookie(business.id));
 
@@ -250,7 +272,9 @@ describe("campaign guards", () => {
     const { business, location } = await seedBusinessWithLocation();
     const campaign = await draft(business.id, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/resume`)
       .set("Cookie", businessCookie(business.id));
 
@@ -276,7 +300,9 @@ describe("campaign guards", () => {
     const { business, location } = await seedBusinessWithLocation();
     const campaign = await draft(business.id, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "RECURRING", recurrence: { frequency: "HOURLY" } });

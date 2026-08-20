@@ -1,4 +1,3 @@
-
 import { Client } from "@upstash/qstash";
 import Telnyx from "telnyx";
 import {
@@ -19,6 +18,7 @@ import { prisma } from "./prisma.js";
 import { renderCampaignEmailHtml } from "./campaigns.js";
 import type { CampaignEmailParts } from "./campaigns.js";
 import { consumeQuota, peekQuota, DAYS } from "./rateLimit.js";
+import { maskEmail, maskPhone } from "./redact.js";
 
 export type NotificationChannel = "sms" | "whatsapp" | "email";
 
@@ -106,14 +106,9 @@ if (!isDev && qstashToken) {
   qstash = new Client(clientOptions);
 }
 
-const NOTIFY_DAILY_MAX = Number(
-  process.env.NOTIFY_DAILY_MAX_PER_RECIPIENT || 20,
-);
+const NOTIFY_DAILY_MAX = Number(process.env.NOTIFY_DAILY_MAX_PER_RECIPIENT || 20);
 
-function dailyCapKey(
-  channel: NotificationChannel,
-  recipient: string,
-): string {
+function dailyCapKey(channel: NotificationChannel, recipient: string): string {
   return `${channel}:${recipient.toLowerCase()}`;
 }
 
@@ -124,12 +119,7 @@ async function withinDailyRecipientCap(
   if (!recipient) {
     return true;
   }
-  return consumeQuota(
-    "notify-daily",
-    dailyCapKey(channel, recipient),
-    DAYS(1),
-    NOTIFY_DAILY_MAX,
-  );
+  return consumeQuota("notify-daily", dailyCapKey(channel, recipient), DAYS(1), NOTIFY_DAILY_MAX);
 }
 
 export async function canNotifyRecipient(
@@ -139,17 +129,10 @@ export async function canNotifyRecipient(
   if (!recipient) {
     return true;
   }
-  return peekQuota(
-    "notify-daily",
-    dailyCapKey(channel, recipient),
-    DAYS(1),
-    NOTIFY_DAILY_MAX,
-  );
+  return peekQuota("notify-daily", dailyCapKey(channel, recipient), DAYS(1), NOTIFY_DAILY_MAX);
 }
 
-async function applyRecipientCap(
-  job: NotificationJob,
-): Promise<NotificationJob | null> {
+async function applyRecipientCap(job: NotificationJob): Promise<NotificationJob | null> {
   if (job.type === "queue_join") {
     let recipient: string | undefined;
     if (job.channel === "email") {
@@ -159,14 +142,14 @@ async function applyRecipientCap(
     }
     if (!(await withinDailyRecipientCap(job.channel, recipient))) {
       console.warn(
-        `[NOTIFY] daily per-recipient cap reached (${job.channel}) — dropping queue_join notification`,
+        `[NOTIFY] daily per-recipient cap reached (${job.channel}), dropping queue_join notification`,
       );
       return null;
     }
   } else if (job.type === "reservation_created" && job.customerEmail) {
     if (!(await withinDailyRecipientCap("email", job.customerEmail))) {
       console.warn(
-        "[NOTIFY] daily cap reached for reservation customer email — sending business heads-up only",
+        "[NOTIFY] daily cap reached for reservation customer email, sending business heads-up only",
       );
       return { ...job, customerEmail: undefined };
     }
@@ -176,9 +159,7 @@ async function applyRecipientCap(
 
 function workerUrl(): string {
   const base =
-    process.env.PUBLIC_BASE_URL ||
-    process.env.FRONTEND_URL ||
-    "https://www.seatping.biz";
+    process.env.PUBLIC_BASE_URL || process.env.FRONTEND_URL || "https://www.seatping.biz";
   return `${base.replace(/\/$/, "")}/api/jobs/notify`;
 }
 
@@ -205,7 +186,6 @@ export async function enqueueNotification(job: NotificationJob): Promise<void> {
   );
 }
 
-
 async function sendSms(
   countryCode: string | undefined,
   phoneNumber: string | undefined,
@@ -214,7 +194,7 @@ async function sendSms(
   const apiKey = process.env.TELNYX_API_KEY;
   const from = process.env.TELNYX_PHONE_NUMBER;
   if (!apiKey || !from) {
-    console.error("[NOTIFY] Missing Telnyx credentials — cannot send SMS");
+    console.error("[NOTIFY] Missing Telnyx credentials: cannot send SMS");
     return null;
   }
   if (!phoneNumber) {
@@ -224,17 +204,14 @@ async function sendSms(
   const to = (countryCode || "+1") + phoneNumber.trim().replace(/\D/g, "");
   const message = await telnyx.messages.send({ from, to, text });
   const id = (message as any)?.data?.id ?? null;
-  console.log("[NOTIFY] SMS sent:", id, "to", to);
+  console.log("[NOTIFY] SMS sent: %s to %s", id, maskPhone(to));
   if (id) {
     return String(id);
   }
   return "sent";
 }
 
-async function sendCampaignSms(
-  digits: string,
-  text: string,
-): Promise<string | null> {
+async function sendCampaignSms(digits: string, text: string): Promise<string | null> {
   return sendSms("+", digits, text);
 }
 
@@ -370,9 +347,7 @@ export interface CampaignSendContent {
   whatsappValues?: Record<string, string>;
 }
 
-export async function rawCampaignSend(
-  content: CampaignSendContent,
-): Promise<string> {
+export async function rawCampaignSend(content: CampaignSendContent): Promise<string> {
   if (content.channel === "email") {
     if (!content.email) {
       throw new Error("No email address for recipient");
@@ -394,7 +369,9 @@ export async function rawCampaignSend(
       throw new Error(result.error || "Email provider rejected the recipient");
     }
     console.log(
-      `[EMAIL] Sent campaign email to ${content.email}, messageId=${result.messageId}`,
+      "[EMAIL] Sent campaign email to %s, messageId=%s",
+      maskEmail(content.email),
+      result.messageId,
     );
     return result.messageId || "sent";
   }
@@ -452,8 +429,7 @@ async function deliverCampaignMessage(
           providerMessageId: providerMessageId ?? null,
         },
       });
-    } catch {
-    }
+    } catch {}
   };
 
   try {

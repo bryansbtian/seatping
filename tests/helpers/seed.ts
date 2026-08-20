@@ -18,9 +18,7 @@ export function uniqueSuffix(): string {
   return randomUUID().slice(0, 8);
 }
 
-export async function seedBusiness(
-  overrides: Partial<Business> = {},
-): Promise<Business> {
+export async function seedBusiness(overrides: Partial<Business> = {}): Promise<Business> {
   const db = getTestPrisma();
   const suffix = uniqueSuffix();
   return db.business.create({
@@ -149,10 +147,6 @@ export async function seedBusinessWithLocation(
   locationOverrides: SeedLocationOptions = {},
 ): Promise<{ business: Business; location: Location }> {
   const business = await seedBusiness();
-  const location = await seedLocation(
-    business.id,
-    business.username,
-    locationOverrides,
-  );
+  const location = await seedLocation(business.id, business.username, locationOverrides);
   return { business, location };
 }

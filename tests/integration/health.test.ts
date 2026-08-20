@@ -11,9 +11,7 @@ describe("health endpoint", () => {
   });
 
   it("serves API routes as JSON rather than an HTML document", async () => {
-    const res = await (await api()).get(
-      "/api/search/restaurants?query=nothing-matches-this",
-    );
+    const res = await (await api()).get("/api/search/restaurants?query=nothing-matches-this");
 
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toMatch(/application\/json/);

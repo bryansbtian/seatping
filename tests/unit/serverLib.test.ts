@@ -105,9 +105,7 @@ function reservationRow(overrides: Partial<Reservation> = {}): Reservation {
 
 describe("legacy queue serialization", () => {
   it("builds a stable legacy key from the identity fields", () => {
-    expect(legacyKeyOf("Ada", "Lovelace", "2026-06-08")).toBe(
-      "AdaLovelace2026-06-08",
-    );
+    expect(legacyKeyOf("Ada", "Lovelace", "2026-06-08")).toBe("AdaLovelace2026-06-08");
   });
 
   it("tolerates missing parts when building the key", () => {
@@ -144,9 +142,7 @@ describe("legacy queue serialization", () => {
 
   it("distinguishes left from removed entries", () => {
     expect(queueEntryToLegacy(queueRow({ status: "LEFT" })).status).toBe("left");
-    expect(queueEntryToLegacy(queueRow({ status: "REMOVED" })).status).toBe(
-      "removed",
-    );
+    expect(queueEntryToLegacy(queueRow({ status: "REMOVED" })).status).toBe("removed");
   });
 
   it("splits rows into queue, admitted and removed buckets", () => {
@@ -282,9 +278,7 @@ describe("guest normalization and dedup keys", () => {
   });
 
   it("treats differently punctuated numbers as the same guest", () => {
-    expect(normalizePhone("(555) 123-4567", "+1")).toBe(
-      normalizePhone("+1 555 123 4567", ""),
-    );
+    expect(normalizePhone("(555) 123-4567", "+1")).toBe(normalizePhone("+1 555 123 4567", ""));
   });
 
   it("strips leading zeros so a local format matches the international one", () => {
@@ -337,10 +331,9 @@ describe("guest normalization and dedup keys", () => {
     const badge = badgeForContact(map, { email: "ADA@test.invalid" });
     expect(badge?.totalVisits).toBe(4);
 
-    expect(
-      badgeForContact(map, { phone: "812-3456-7890", countryCode: "+62" })
-        ?.totalVisits,
-    ).toBe(9);
+    expect(badgeForContact(map, { phone: "812-3456-7890", countryCode: "+62" })?.totalVisits).toBe(
+      9,
+    );
     expect(badgeForContact(map, { email: "nobody@test.invalid" })).toBeNull();
   });
 });
@@ -480,9 +473,7 @@ describe("request validation schemas", () => {
   });
 
   it("requires both fields on login", () => {
-    expect(
-      LoginSchema.safeParse({ emailOrUsername: "a@test.invalid" }).success,
-    ).toBe(false);
+    expect(LoginSchema.safeParse({ emailOrUsername: "a@test.invalid" }).success).toBe(false);
     expect(
       LoginSchema.safeParse({
         emailOrUsername: "a@test.invalid",
@@ -492,9 +483,7 @@ describe("request validation schemas", () => {
   });
 
   it("requires a new password when changing it", () => {
-    expect(
-      ChangePasswordSchema.safeParse({ currentPassword: "Passw0rd!" }).success,
-    ).toBe(false);
+    expect(ChangePasswordSchema.safeParse({ currentPassword: "Passw0rd!" }).success).toBe(false);
   });
 });
 

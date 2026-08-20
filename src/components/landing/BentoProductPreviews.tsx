@@ -29,7 +29,6 @@ const bentoAnimatedAttr = (animated: boolean) => {
   return "false";
 };
 
-
 export function BentoTicker({
   items,
   duration = 18,
@@ -102,7 +101,6 @@ export function CycleStack({
   );
 }
 
-
 export function MetricCardPreview({
   label,
   value,
@@ -117,21 +115,12 @@ export function MetricCardPreview({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm",
-        className,
-      )}
-    >
+    <div className={cn("rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm", className)}>
       <div className="flex flex-col gap-1">
         <p className="text-[10px] text-slate-600">{label}</p>
         <div className="flex items-center justify-between">
-          <p className="text-xl font-semibold leading-none text-slate-800">
-            {value}
-          </p>
-          <div
-            className={cn("grid h-7 w-7 place-items-center rounded-full", tint)}
-          >
+          <p className="text-xl font-semibold leading-none text-slate-800">{value}</p>
+          <div className={cn("grid h-7 w-7 place-items-center rounded-full", tint)}>
             <Icon className="h-3.5 w-3.5" />
           </div>
         </div>
@@ -139,7 +128,6 @@ export function MetricCardPreview({
     </div>
   );
 }
-
 
 const RESERVATION_ROWS: {
   name: string;
@@ -212,11 +200,7 @@ const RESERVATION_ROWS: {
   },
 ];
 
-function ReservationPreviewRow({
-  row,
-}: {
-  row: (typeof RESERVATION_ROWS)[number];
-}) {
+function ReservationPreviewRow({ row }: { row: (typeof RESERVATION_ROWS)[number] }) {
   const ContactIcon = row.contactIcon;
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
@@ -259,10 +243,7 @@ function ReservationPreviewRow({
   );
 }
 
-export function ReservationPreview({
-  className,
-  animated = true,
-}: PreviewProps) {
+export function ReservationPreview({ className, animated = true }: PreviewProps) {
   const tabs = [
     { label: "Today", count: 4, active: true },
     { label: "Upcoming", count: 2, active: false },
@@ -275,11 +256,8 @@ export function ReservationPreview({
       data-bento-animated={bentoAnimatedAttr(animated)}
       className={cn("flex h-full w-full flex-col justify-center", className)}
     >
-      {}
       <div className="flex flex-col gap-4 md:flex-row md:items-stretch md:gap-8">
-        {}
         <div className="mx-auto flex w-full max-w-sm flex-col md:mx-0 md:max-w-none md:flex-1">
-          {}
           <div className="mb-2 flex flex-wrap items-center gap-1.5">
             {tabs.map((t) => {
               let tabStateClass: string;
@@ -304,12 +282,7 @@ export function ReservationPreview({
                 >
                   {t.label}
                   {t.count > 0 && (
-                    <span
-                      className={cn(
-                        "ml-1.5 rounded-full px-1.5 text-[9px]",
-                        countStateClass,
-                      )}
-                    >
+                    <span className={cn("ml-1.5 rounded-full px-1.5 text-[9px]", countStateClass)}>
                       {t.count}
                     </span>
                   )}
@@ -326,7 +299,6 @@ export function ReservationPreview({
           />
         </div>
 
-        {}
         <div className="hidden w-36 shrink-0 flex-col justify-between md:flex">
           <div className="rotate-2">
             <MetricCardPreview
@@ -361,7 +333,6 @@ export function ReservationPreview({
   );
 }
 
-
 const QUEUE_ROWS = [
   {
     pos: "#1",
@@ -391,9 +362,7 @@ export function QueuePreview({ className, animated = true }: PreviewProps) {
       )}
     >
       <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
-        <span className="truncate text-[10px] text-gray-600">
-          Managing queue for: Marina Bay
-        </span>
+        <span className="truncate text-[10px] text-gray-600">Managing queue for: Marina Bay</span>
         <Badge
           variant="secondary"
           className="shrink-0 bg-indigo-100 px-2 py-0.5 text-[9px] text-indigo-700 hover:bg-indigo-100"
@@ -423,18 +392,11 @@ export function QueuePreview({ className, animated = true }: PreviewProps) {
                   <span className="text-gray-400">•</span>
                   <span>{row.guests}</span>
                 </p>
-                <p className="mt-0.5 text-[10px] font-medium text-indigo-600">
-                  {row.eta}
-                </p>
+                <p className="mt-0.5 text-[10px] font-medium text-indigo-600">{row.eta}</p>
               </div>
             </div>
             <div className="mt-2 flex gap-1.5">
-              <Button
-                size="sm"
-                variant="success"
-                tabIndex={-1}
-                className="h-6 flex-1 text-[10px]"
-              >
+              <Button size="sm" variant="success" tabIndex={-1} className="h-6 flex-1 text-[10px]">
                 Admit
               </Button>
               <Button
@@ -449,11 +411,8 @@ export function QueuePreview({ className, animated = true }: PreviewProps) {
           </div>
         ))}
 
-        {}
         <div className="bento-loop animate-bento-toast rounded-lg border border-slate-200 bg-white p-2.5 shadow-lg">
-          <p className="text-[11px] font-semibold text-slate-900">
-            Customer Admitted
-          </p>
+          <p className="text-[11px] font-semibold text-slate-900">Customer Admitted</p>
           <p className="mt-0.5 text-[10px] text-slate-500">
             Marcus has been admitted and will proceed to their turn.
           </p>
@@ -462,7 +421,6 @@ export function QueuePreview({ className, animated = true }: PreviewProps) {
     </div>
   );
 }
-
 
 const GUEST_PROFILES: {
   name: string;
@@ -508,11 +466,7 @@ const GUEST_PROFILES: {
   },
 ];
 
-function GuestProfilePanel({
-  profile,
-}: {
-  profile: (typeof GUEST_PROFILES)[number];
-}) {
+function GuestProfilePanel({ profile }: { profile: (typeof GUEST_PROFILES)[number] }) {
   let visitWord: string;
   if (profile.visits === 1) {
     visitWord = "Visit";
@@ -527,9 +481,7 @@ function GuestProfilePanel({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <span className="truncate text-xs font-medium text-slate-800">
-              {profile.name}
-            </span>
+            <span className="truncate text-xs font-medium text-slate-800">{profile.name}</span>
             <GuestStatusBadge returning={profile.returning} />
           </div>
           <div className="mt-0.5 space-y-0.5 text-[10px] text-slate-500">
@@ -538,15 +490,10 @@ function GuestProfilePanel({
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] text-slate-600">
             <span>
-              <strong className="font-semibold text-slate-800">
-                {profile.visits}
-              </strong>{" "}
-              {visitWord}
+              <strong className="font-semibold text-slate-800">{profile.visits}</strong> {visitWord}
             </span>
             <span>Last: {profile.last}</span>
-            {profile.upcoming && (
-              <span className="text-blue-700">{profile.upcoming}</span>
-            )}
+            {profile.upcoming && <span className="text-blue-700">{profile.upcoming}</span>}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1">
             {profile.tags.map((tag) => (
@@ -559,10 +506,7 @@ function GuestProfilePanel({
   );
 }
 
-export function GuestProfilePreview({
-  className,
-  animated = true,
-}: PreviewProps) {
+export function GuestProfilePreview({ className, animated = true }: PreviewProps) {
   return (
     <div
       data-bento-animated={bentoAnimatedAttr(animated)}
@@ -582,7 +526,6 @@ export function GuestProfilePreview({
     </div>
   );
 }
-
 
 const CAMPAIGN_CYCLE_SECONDS = 9;
 
@@ -644,17 +587,12 @@ function MessagePreviewPanel({
           <span className="font-medium text-slate-800">{subject}</span>
         </div>
       )}
-      {}
       <div className="flex-1 space-y-2 p-3 text-[11px] leading-relaxed text-slate-700">
-        <p>
-          Hi Sofia, it&apos;s been a while! Show this message for 10% off your
-          next visit.
-        </p>
+        <p>Hi Sofia, it&apos;s been a while! Show this message for 10% off your next visit.</p>
         <p className="text-slate-500">- Cafe Milano (via SeatPing)</p>
       </div>
       <div className="flex items-center gap-1.5 border-t border-slate-200 bg-slate-50 px-3 py-1.5 text-[9px] text-slate-500">
-        <Icon className="h-3 w-3 shrink-0" /> SeatPing on behalf of your
-        restaurant
+        <Icon className="h-3 w-3 shrink-0" /> SeatPing on behalf of your restaurant
       </div>
     </div>
   );
@@ -669,9 +607,7 @@ export function CampaignPreview({ className, animated = true }: PreviewProps) {
         className,
       )}
     >
-      {}
       <div className="flex h-full flex-col justify-between gap-2">
-        {}
         <div className="rounded-xl border border-slate-200 bg-white p-2.5">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-xs font-medium text-slate-800">
@@ -683,17 +619,12 @@ export function CampaignPreview({ className, animated = true }: PreviewProps) {
             <ChannelBadge channel="EMAIL" />
             <span className="text-[10px] text-slate-500">2 Recipients</span>
           </div>
-          <p className="mt-1 text-[10px] text-slate-400">
-            · Scheduled · Jun 14, 2026, 2:00 AM
-          </p>
+          <p className="mt-1 text-[10px] text-slate-400">· Scheduled · Jun 14, 2026, 2:00 AM</p>
         </div>
 
-        {}
         <div className="rounded-xl border border-slate-200 bg-white p-2.5">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="truncate text-xs font-medium text-slate-800">
-              June Win-Back
-            </span>
+            <span className="truncate text-xs font-medium text-slate-800">June Win-Back</span>
             <ChannelBadge channel="SMS" />
             <CampaignStatusBadge status="SENT" />
           </div>
@@ -711,7 +642,6 @@ export function CampaignPreview({ className, animated = true }: PreviewProps) {
           </div>
         </div>
 
-        {}
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-[11px] font-medium text-slate-700">
@@ -721,12 +651,9 @@ export function CampaignPreview({ className, animated = true }: PreviewProps) {
               128 Recipients
             </span>
           </div>
-          <p className="mt-0.5 text-[10px] text-slate-500">
-            134 Matched · 6 Excluded
-          </p>
+          <p className="mt-0.5 text-[10px] text-slate-500">134 Matched · 6 Excluded</p>
         </div>
 
-        {}
         <div className="flex gap-1.5">
           {CHANNELS.map((channel, i) => (
             <CyclingChannelButton
@@ -739,7 +666,6 @@ export function CampaignPreview({ className, animated = true }: PreviewProps) {
         </div>
       </div>
 
-      {}
       <CycleStack
         className="h-full min-h-[8.5rem]"
         duration={CAMPAIGN_CYCLE_SECONDS}

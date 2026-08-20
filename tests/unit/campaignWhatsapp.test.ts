@@ -6,10 +6,7 @@ import {
   slugifyTemplateName,
   SEATPING_TEMPLATE_SEEDS,
 } from "../../server/lib/campaigns.js";
-import {
-  resolveContractParams,
-  SEATPING_TEMPLATE_CONTRACTS,
-} from "../../server/lib/whatsapp.js";
+import { resolveContractParams, SEATPING_TEMPLATE_CONTRACTS } from "../../server/lib/whatsapp.js";
 import type { CampaignTemplate } from "@prisma/client";
 
 function tmpl(overrides: Partial<CampaignTemplate>): CampaignTemplate {
@@ -39,10 +36,10 @@ test("extractBodyPlaceholders returns distinct names in body order", () => {
     ),
     ["first_name", "business_name", "offer", "restaurant"],
   );
-  assert.deepEqual(
-    extractBodyPlaceholders("{{first_name}} {{first_name}} {{restaurant}}"),
-    ["first_name", "restaurant"],
-  );
+  assert.deepEqual(extractBodyPlaceholders("{{first_name}} {{first_name}} {{restaurant}}"), [
+    "first_name",
+    "restaurant",
+  ]);
 });
 
 test("lunch_comeback_offer builds 4 NAMED params in body order", () => {
@@ -91,10 +88,7 @@ test("legacy POSITIONAL template builds bare text params (no names)", () => {
     body: "Hi {{1}}, your offer at {{2}} is ready.",
   });
   const msg = buildMessage(t, { "1": "Sam", "2": "Bryan's Bistro" }, ctx, "WHATSAPP");
-  assert.deepEqual(msg.whatsappParams, [
-    { text: "Sam" },
-    { text: "Bryan's Bistro" },
-  ]);
+  assert.deepEqual(msg.whatsappParams, [{ text: "Sam" }, { text: "Bryan's Bistro" }]);
   assert.ok(msg.whatsappParams!.every((p) => p.name === undefined));
 });
 
@@ -180,7 +174,12 @@ test("seeded templates resolve non-empty values for every contract param", () =>
     const slug = slugifyTemplateName(seed.name);
     const contract = SEATPING_TEMPLATE_CONTRACTS[slug];
     const t = tmpl({ whatsappProviderTemplateName: slug, body: seed.body });
-    const msg = buildMessage(t, (seed.exampleValues ?? {}) as Record<string, string>, ctx, "WHATSAPP");
+    const msg = buildMessage(
+      t,
+      (seed.exampleValues ?? {}) as Record<string, string>,
+      ctx,
+      "WHATSAPP",
+    );
     const params = resolveContractParams(contract, msg.whatsappValues!);
     assert.equal(params.length, contract.names.length, slug);
     assert.ok(

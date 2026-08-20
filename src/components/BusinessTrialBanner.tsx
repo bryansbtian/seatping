@@ -19,15 +19,12 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
 
   useEffect(() => {
     const calculateTrialTimeLeft = () => {
-      if (!me || !me.trial || !me.createdAt || !me.trialDurationDays)
-        {
-          return null;
-        }
+      if (!me || !me.trial || !me.createdAt || !me.trialDurationDays) {
+        return null;
+      }
       const createdAt = new Date(me.createdAt);
       const trialDurationDays = me.trialDurationDays || 7;
-      const trialEndDate = new Date(
-        createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
-      );
+      const trialEndDate = new Date(createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000);
       const timeLeft = trialEndDate.getTime() - Date.now();
       if (timeLeft <= 0) {
         return null;
@@ -47,10 +44,9 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
       trialCountdownRef.current = setInterval(() => {
         const timeLeft = calculateTrialTimeLeft();
         setTrialTimeLeft(timeLeft);
-        if (!timeLeft && trialCountdownRef.current)
-          {
-            clearInterval(trialCountdownRef.current);
-          }
+        if (!timeLeft && trialCountdownRef.current) {
+          clearInterval(trialCountdownRef.current);
+        }
       }, 60000);
     } else {
       setTrialTimeLeft(null);
@@ -82,9 +78,7 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
                 <h3 className="text-lg md:text-xl font-semibold">
                   {t("banner.trialExpired.title")}
                 </h3>
-                <p className="text-sm md:text-base opacity-90">
-                  {t("banner.trialExpired.body")}
-                </p>
+                <p className="text-sm md:text-base opacity-90">{t("banner.trialExpired.body")}</p>
               </div>
               <div className="flex justify-end">
                 <Button
@@ -106,12 +100,8 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
         <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
             <div>
-              <h3 className="text-lg md:text-xl font-semibold">
-                {t("banner.trialActive.title")}
-              </h3>
-              <p className="text-sm md:text-base opacity-90">
-                {t("banner.trialActive.body")}
-              </p>
+              <h3 className="text-lg md:text-xl font-semibold">{t("banner.trialActive.title")}</h3>
+              <p className="text-sm md:text-base opacity-90">{t("banner.trialActive.body")}</p>
               {trialTimeLeft && (
                 <div className="mt-2 flex items-center space-x-2 text-indigo-100">
                   <span className="text-sm font-medium">
@@ -148,9 +138,7 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
               <h4 className="text-sm md:text-base font-semibold">
                 {t("banner.trialExpiredShort.title")}
               </h4>
-              <p className="text-xs md:text-sm opacity-80">
-                {t("banner.trialExpiredShort.body")}
-              </p>
+              <p className="text-xs md:text-sm opacity-80">{t("banner.trialExpiredShort.body")}</p>
             </div>
             <div className="flex justify-end">
               <Button

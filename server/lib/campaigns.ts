@@ -1,13 +1,6 @@
-
 import type { CampaignTemplate, GuestProfile } from "@prisma/client";
 import { prisma } from "./prisma.js";
-import {
-  p,
-  calloutBox,
-  emailButton,
-  esc,
-  renderEmail,
-} from "./email.js";
+import { p, calloutBox, emailButton, esc, renderEmail } from "./email.js";
 import { normalizeEmail, normalizePhone } from "./guests.js";
 import type { WhatsAppBodyParam } from "./whatsapp.js";
 
@@ -72,27 +65,56 @@ export const AUDIENCE_GROUPS: Array<{
   { key: "all_guests", label: "All Guests", description: "Every guest at this location." },
   { key: "returning", label: "Returning Guests", description: "Guests with two or more visits." },
   { key: "new", label: "New Guests", description: "Guests with fewer than two visits." },
-  { key: "with_tag", label: "Guests With Tag", description: "Guests who have a specific tag.", needsTag: true },
-  { key: "visited_yesterday", label: "Guests Who Visited Yesterday", description: "Guests whose last visit was yesterday." },
-  { key: "not_returned_15d", label: "Guests Who Have Not Returned In 15 Days", description: "Visited before but not in the last 15 days." },
-  { key: "not_returned_30d", label: "Guests Who Have Not Returned In 30 Days", description: "Visited before but not in the last 30 days." },
-  { key: "not_returned_60d", label: "Guests Who Have Not Returned In 60 Days", description: "Visited before but not in the last 60 days." },
-  { key: "upcoming_reservations", label: "Guests With Upcoming Reservations", description: "Guests with at least one upcoming reservation." },
-  { key: "no_show_history", label: "Guests With No-Show History", description: "Guests who have at least one no-show." },
+  {
+    key: "with_tag",
+    label: "Guests With Tag",
+    description: "Guests who have a specific tag.",
+    needsTag: true,
+  },
+  {
+    key: "visited_yesterday",
+    label: "Guests Who Visited Yesterday",
+    description: "Guests whose last visit was yesterday.",
+  },
+  {
+    key: "not_returned_15d",
+    label: "Guests Who Have Not Returned In 15 Days",
+    description: "Visited before but not in the last 15 days.",
+  },
+  {
+    key: "not_returned_30d",
+    label: "Guests Who Have Not Returned In 30 Days",
+    description: "Visited before but not in the last 30 days.",
+  },
+  {
+    key: "not_returned_60d",
+    label: "Guests Who Have Not Returned In 60 Days",
+    description: "Visited before but not in the last 60 days.",
+  },
+  {
+    key: "upcoming_reservations",
+    label: "Guests With Upcoming Reservations",
+    description: "Guests with at least one upcoming reservation.",
+  },
+  {
+    key: "no_show_history",
+    label: "Guests With No-Show History",
+    description: "Guests who have at least one no-show.",
+  },
 ];
 
 export const MANUAL_AUDIENCE = "manual";
 export const CUSTOM_GROUP_AUDIENCE = "custom_group";
 
 export function isValidAudienceType(type: string): boolean {
-  return type === MANUAL_AUDIENCE || type === CUSTOM_GROUP_AUDIENCE || AUDIENCE_GROUPS.some((g) => g.key === type);
+  return (
+    type === MANUAL_AUDIENCE ||
+    type === CUSTOM_GROUP_AUDIENCE ||
+    AUDIENCE_GROUPS.some((g) => g.key === type)
+  );
 }
 
-
-export function renderString(
-  template: string,
-  values: Record<string, string>,
-): string {
+export function renderString(template: string, values: Record<string, string>): string {
   if (!template) {
     return "";
   }
@@ -117,10 +139,7 @@ export interface RenderContext {
   guestName?: string | null;
 }
 
-function buildValueMap(
-  filled: Record<string, string>,
-  ctx: RenderContext,
-): Record<string, string> {
+function buildValueMap(filled: Record<string, string>, ctx: RenderContext): Record<string, string> {
   return {
     ...filled,
     first_name: ctx.firstName || "there",
@@ -198,9 +217,7 @@ export function buildMessage(
   channel: Channel,
 ): BuiltMessage {
   const values = buildValueMap(filled, ctx);
-  const bodyText = renderString(template.body, values)
-    .replace(SIGNATURE_FOOTER_RE, "")
-    .trim();
+  const bodyText = renderString(template.body, values).replace(SIGNATURE_FOOTER_RE, "").trim();
   let offer = "";
   if (template.offerDetails) {
     offer = renderString(template.offerDetails, values).trim();
@@ -246,8 +263,7 @@ export function buildMessage(
 
   if (channel === "WHATSAPP") {
     const placeholders = extractBodyPlaceholders(template.body);
-    const isPositional =
-      placeholders.length > 0 && placeholders.every((ph) => /^\d+$/.test(ph));
+    const isPositional = placeholders.length > 0 && placeholders.every((ph) => /^\d+$/.test(ph));
 
     const waValues: Record<string, string> = { ...values };
     if (!waValues.offer && offer) {
@@ -303,7 +319,11 @@ function isGsm7(text: string): boolean {
   return true;
 }
 
-export function smsSegments(text: string): { segments: number; characters: number; encoding: "GSM-7" | "UCS-2" } {
+export function smsSegments(text: string): {
+  segments: number;
+  characters: number;
+  encoding: "GSM-7" | "UCS-2";
+} {
   const gsm = isGsm7(text);
   let length = 0;
   if (gsm) {
@@ -338,7 +358,6 @@ export function smsSegments(text: string): { segments: number; characters: numbe
   }
   return { segments: Math.max(1, segments), characters: length, encoding };
 }
-
 
 function zonedDayRange(timeZone: string, dayOffset: number): { start: Date; end: Date } {
   const now = new Date();
@@ -390,7 +409,6 @@ function tzOffsetMs(instant: Date, timeZone: string): number {
   return asUtc - instant.getTime();
 }
 
-
 export function restaurantNameForLocation(loc: any, fallback: string): string {
   let profile: any = {};
   if (loc?.restaurantProfile && typeof loc.restaurantProfile === "object") {
@@ -403,10 +421,7 @@ export function restaurantNameForLocation(loc: any, fallback: string): string {
   return profileName || loc?.displayName || loc?.name || fallback;
 }
 
-export function wallClockToUtc(
-  local: string | null | undefined,
-  timeZone: string,
-): Date | null {
+export function wallClockToUtc(local: string | null | undefined, timeZone: string): Date | null {
   if (!local || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(local)) {
     return null;
   }
@@ -452,10 +467,7 @@ function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
-export function zonedDayOfMonth(
-  instant: Date | null | undefined,
-  timeZone: string,
-): number | null {
+export function zonedDayOfMonth(instant: Date | null | undefined, timeZone: string): number | null {
   if (!instant) {
     return null;
   }
@@ -497,9 +509,11 @@ export function advanceRecurrence(
     hourCycle: "h23",
   }).formatToParts(from);
   const m: Record<string, string> = {};
-  for (const p of parts) {if (p.type !== "literal") {
-    m[p.type] = p.value;
-  }}
+  for (const p of parts) {
+    if (p.type !== "literal") {
+      m[p.type] = p.value;
+    }
+  }
 
   const year = Number(m.year);
   const month = Number(m.month);
@@ -552,8 +566,7 @@ export function advanceRecurrence(
     fallbackDays = 7;
   }
   return (
-    wallClockToUtc(local, timeZone) ??
-    new Date(from.getTime() + fallbackDays * 24 * 60 * 60 * 1000)
+    wallClockToUtc(local, timeZone) ?? new Date(from.getTime() + fallbackDays * 24 * 60 * 60 * 1000)
   );
 }
 
@@ -561,13 +574,16 @@ export interface AudienceQuery {
   businessId: string;
   locationId: string;
   audienceType: string;
-  audienceConfig?: { tag?: string; guestIds?: string[]; savedAudienceId?: string; filters?: any } | null;
+  audienceConfig?: {
+    tag?: string;
+    guestIds?: string[];
+    savedAudienceId?: string;
+    filters?: any;
+  } | null;
   timezone: string;
 }
 
-export async function resolveAudienceGuests(
-  q: AudienceQuery,
-): Promise<GuestProfile[]> {
+export async function resolveAudienceGuests(q: AudienceQuery): Promise<GuestProfile[]> {
   const base = { businessId: q.businessId, locationId: q.locationId } as const;
 
   if (q.audienceType === MANUAL_AUDIENCE) {
@@ -646,7 +662,7 @@ export async function resolveAudienceGuests(
       if (filters.guestIds && Array.isArray(filters.guestIds)) {
         manualGuestIds = filters.guestIds;
       }
-      
+
       if (filters.tags && Array.isArray(filters.tags) && filters.tags.length > 0) {
         const idSets = await Promise.all(
           filters.tags.map(async (tag: string) => {
@@ -659,7 +675,7 @@ export async function resolveAudienceGuests(
               },
             })) as unknown as any[];
             return tagsRaw.map((t: any) => t._id.$oid as string);
-          })
+          }),
         );
         const matchedIds = Array.from(new Set(idSets.flat()));
         if (!matchedIds.length) {
@@ -698,7 +714,7 @@ export async function resolveAudienceGuests(
       if (filters.hasNotes) {
         where.notes = { not: null, notIn: ["", " "] };
       }
-      
+
       if (where.id?.in?.length === 0 && manualGuestIds.length === 0) {
         return [];
       }
@@ -720,9 +736,7 @@ export async function resolveAudienceGuests(
       }
 
       const combined = [...filterGuests, ...manualGuests];
-      const deduplicated = Array.from(
-        new Map(combined.map(g => [g.id, g])).values()
-      );
+      const deduplicated = Array.from(new Map(combined.map((g) => [g.id, g])).values());
 
       deduplicated.sort((a, b) => {
         let timeA = 0;
@@ -748,7 +762,6 @@ export async function resolveAudienceGuests(
     take: 5000,
   });
 }
-
 
 export interface EligibleRecipient {
   guest: GuestProfile;
@@ -780,10 +793,7 @@ export function isSmsDeliverable(digits: string): boolean {
   return /^1[2-9]\d{9}$/.test(digits);
 }
 
-export function filterRecipients(
-  guests: GuestProfile[],
-  channel: Channel,
-): AudienceResult {
+export function filterRecipients(guests: GuestProfile[], channel: Channel): AudienceResult {
   const eligible: EligibleRecipient[] = [];
   const exclusions = { noEmail: 0, noPhone: 0, optedOut: 0, invalid: 0 };
 
@@ -797,8 +807,7 @@ export function filterRecipients(
       if (!email) {
         if (g.email && g.email.trim()) {
           exclusions.invalid += 1;
-        }
-        else {
+        } else {
           exclusions.noEmail += 1;
         }
         continue;
@@ -809,8 +818,7 @@ export function filterRecipients(
       if (!phone) {
         if (g.phone && g.phone.trim()) {
           exclusions.invalid += 1;
-        }
-        else {
+        } else {
           exclusions.noPhone += 1;
         }
         continue;
@@ -827,7 +835,6 @@ export function filterRecipients(
     exclusions.noEmail + exclusions.noPhone + exclusions.optedOut + exclusions.invalid;
   return { total: guests.length, eligible, exclusions, excludedCount };
 }
-
 
 const SLUG_MAX_LEN = 64;
 
@@ -884,7 +891,6 @@ export async function generateUniqueTemplateSlug(
   }
   return `${base}_${Date.now()}`;
 }
-
 
 type SeedDef = {
   name: string;
@@ -993,7 +999,10 @@ export async function seedSeatPingTemplates(): Promise<void> {
       select: { id: true, name: true, businessId: true, whatsappProviderTemplateName: true },
     });
     for (const t of missing) {
-      const slug = await generateUniqueTemplateSlug(t.name, { businessId: t.businessId, ignoreId: t.id });
+      const slug = await generateUniqueTemplateSlug(t.name, {
+        businessId: t.businessId,
+        ignoreId: t.id,
+      });
       const providerNameData: { whatsappProviderTemplateName?: string } = {};
       if (!t.whatsappProviderTemplateName) {
         providerNameData.whatsappProviderTemplateName = slug;

@@ -2,16 +2,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { Location, User } from "@prisma/client";
 import { api } from "../helpers/app.js";
 import { customerCookie } from "../helpers/auth.js";
-import {
-  clearTestDatabase,
-  disconnectTestPrisma,
-  getTestPrisma,
-} from "../helpers/db.js";
-import {
-  seedBusinessWithLocation,
-  seedCustomer,
-  uniqueSuffix,
-} from "../helpers/seed.js";
+import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
+import { seedBusinessWithLocation, seedCustomer, uniqueSuffix } from "../helpers/seed.js";
 import { TEST_PASSWORD } from "../helpers/seed.js";
 import { sinks } from "../setup/externalMocks.js";
 
@@ -42,9 +34,7 @@ describe("customer profile", () => {
   it("returns the signed-in customer", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
-      .get("/auth/me")
-      .set("Cookie", customerCookie(customer.id));
+    const res = await (await api()).get("/auth/me").set("Cookie", customerCookie(customer.id));
 
     expect(res.status).toBe(200);
     expect(res.body.user.username).toBe(customer.username);
@@ -64,7 +54,9 @@ describe("customer profile", () => {
     const customer = await seedCustomer();
     const suffix = uniqueSuffix();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put("/auth/me")
       .set("Cookie", customerCookie(customer.id))
       .send({
@@ -82,7 +74,9 @@ describe("customer profile", () => {
   it("rejects an invalid profile update", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put("/auth/me")
       .set("Cookie", customerCookie(customer.id))
       .send({ name: "", username: "", email: "not-an-email", phone: "" });
@@ -96,7 +90,9 @@ describe("customer profile", () => {
     const customer = await seedCustomer();
     const other = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put("/auth/me")
       .set("Cookie", customerCookie(customer.id))
       .send({
@@ -114,7 +110,9 @@ describe("customer profile", () => {
     const customer = await seedCustomer();
     const other = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put("/auth/me")
       .set("Cookie", customerCookie(customer.id))
       .send({
@@ -133,7 +131,9 @@ describe("changing a customer password", () => {
   it("updates the password and emails a confirmation", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/change-password")
       .set("Cookie", customerCookie(customer.id))
       .send({
@@ -144,19 +144,19 @@ describe("changing a customer password", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
 
-    const login = await (await api())
-      .post("/auth/login")
-      .send({
-        emailOrUsername: customer.email,
-        password: "AnotherPassw0rd!",
-      });
+    const login = await (await api()).post("/auth/login").send({
+      emailOrUsername: customer.email,
+      password: "AnotherPassw0rd!",
+    });
     expect(login.status).toBe(200);
   });
 
   it("rejects a wrong current password", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/change-password")
       .set("Cookie", customerCookie(customer.id))
       .send({
@@ -171,7 +171,9 @@ describe("changing a customer password", () => {
   it("rejects a weak new password", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/change-password")
       .set("Cookie", customerCookie(customer.id))
       .send({ currentPassword: TEST_PASSWORD, newPassword: "short" });
@@ -185,13 +187,10 @@ describe("changing a customer password", () => {
     const cookie = customerCookie(customer.id);
     await db.user.delete({ where: { id: customer.id } });
 
-    const res = await (await api())
-      .post("/auth/me/change-password")
-      .set("Cookie", cookie)
-      .send({
-        currentPassword: TEST_PASSWORD,
-        newPassword: "AnotherPassw0rd!",
-      });
+    const res = await (await api()).post("/auth/me/change-password").set("Cookie", cookie).send({
+      currentPassword: TEST_PASSWORD,
+      newPassword: "AnotherPassw0rd!",
+    });
 
     expect(res.status).toBe(404);
   });
@@ -202,7 +201,9 @@ describe("saved restaurants", () => {
     const customer = await seedCustomer();
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/saved-restaurants")
       .set("Cookie", customerCookie(customer.id))
       .send({
@@ -228,11 +229,10 @@ describe("saved restaurants", () => {
     const cookie = customerCookie(customer.id);
     const payload = { businessUsername: business.username };
 
-    await (await api())
-      .post("/auth/me/saved-restaurants")
-      .set("Cookie", cookie)
-      .send(payload);
-    const res = await (await api())
+    await (await api()).post("/auth/me/saved-restaurants").set("Cookie", cookie).send(payload);
+    const res = await (
+      await api()
+    )
       .post("/auth/me/saved-restaurants")
       .set("Cookie", cookie)
       .send(payload);
@@ -243,7 +243,9 @@ describe("saved restaurants", () => {
   it("requires a business username", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/saved-restaurants")
       .set("Cookie", customerCookie(customer.id))
       .send({ businessUsername: "   " });
@@ -255,12 +257,16 @@ describe("saved restaurants", () => {
     const customer = await seedCustomer();
     const { business } = await seedBusinessWithLocation();
     const cookie = customerCookie(customer.id);
-    await (await api())
+    await (
+      await api()
+    )
       .post("/auth/me/saved-restaurants")
       .set("Cookie", cookie)
       .send({ businessUsername: business.username });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/auth/me/saved-restaurants/${business.username}`)
       .set("Cookie", cookie);
 
@@ -286,7 +292,9 @@ describe("saved locations", () => {
     });
     await seedReview(customer, location, 5);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/saved-locations")
       .set("Cookie", customerCookie(customer.id))
       .send({ locationId: location.id });
@@ -315,7 +323,9 @@ describe("saved locations", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/saved-locations")
       .set("Cookie", customerCookie(customer.id))
       .send({ locationId: location.id });
@@ -329,7 +339,9 @@ describe("saved locations", () => {
   it("rejects a malformed location id", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/saved-locations")
       .set("Cookie", customerCookie(customer.id))
       .send({ locationId: "not-an-object-id" });
@@ -340,7 +352,9 @@ describe("saved locations", () => {
   it("reports an unknown location", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/saved-locations")
       .set("Cookie", customerCookie(customer.id))
       .send({ locationId: "000000000000000000000000" });
@@ -353,14 +367,20 @@ describe("saved locations", () => {
     const { location } = await seedBusinessWithLocation();
     const cookie = customerCookie(customer.id);
 
-    const before = await (await api())
+    const before = await (
+      await api()
+    )
       .get(`/auth/me/saved-locations/${location.id}`)
       .set("Cookie", cookie);
-    await (await api())
+    await (
+      await api()
+    )
       .post("/auth/me/saved-locations")
       .set("Cookie", cookie)
       .send({ locationId: location.id });
-    const after = await (await api())
+    const after = await (
+      await api()
+    )
       .get(`/auth/me/saved-locations/${location.id}`)
       .set("Cookie", cookie);
 
@@ -373,11 +393,15 @@ describe("saved locations", () => {
     const { location } = await seedBusinessWithLocation();
     const cookie = customerCookie(customer.id);
 
-    await (await api())
+    await (
+      await api()
+    )
       .post("/auth/me/saved-locations")
       .set("Cookie", cookie)
       .send({ locationId: location.id });
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/saved-locations")
       .set("Cookie", cookie)
       .send({ locationId: location.id });
@@ -389,12 +413,16 @@ describe("saved locations", () => {
     const customer = await seedCustomer();
     const { location } = await seedBusinessWithLocation();
     const cookie = customerCookie(customer.id);
-    await (await api())
+    await (
+      await api()
+    )
       .post("/auth/me/saved-locations")
       .set("Cookie", cookie)
       .send({ locationId: location.id });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/auth/me/saved-locations/${location.id}`)
       .set("Cookie", cookie);
 
@@ -411,7 +439,9 @@ describe("customer reviews", () => {
     await seedReview(customer, first.location, 3);
     await seedReview(customer, second.location, 5);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/auth/me/reviews")
       .set("Cookie", customerCookie(customer.id));
 
@@ -429,7 +459,9 @@ describe("customer reviews", () => {
     await seedReview(customer, location, 2);
     await seedReview(customer, location, 5);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/auth/me/reviews")
       .set("Cookie", customerCookie(customer.id));
 
@@ -441,7 +473,9 @@ describe("customer reviews", () => {
     const { location } = await seedBusinessWithLocation();
     const review = await seedReview(customer, location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/auth/me/reviews/${review.id}`)
       .set("Cookie", customerCookie(customer.id))
       .send({ rating: 2.4, description: "  Slower this time.  " });
@@ -456,7 +490,9 @@ describe("customer reviews", () => {
     const { location } = await seedBusinessWithLocation();
     const review = await seedReview(customer, location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/auth/me/reviews/${review.id}`)
       .set("Cookie", customerCookie(customer.id))
       .send({ description: "   " });
@@ -470,11 +506,15 @@ describe("customer reviews", () => {
     const review = await seedReview(customer, location);
     const cookie = customerCookie(customer.id);
 
-    const text = await (await api())
+    const text = await (
+      await api()
+    )
       .patch(`/auth/me/reviews/${review.id}`)
       .set("Cookie", cookie)
       .send({ rating: "five" });
-    const outOfRange = await (await api())
+    const outOfRange = await (
+      await api()
+    )
       .patch(`/auth/me/reviews/${review.id}`)
       .set("Cookie", cookie)
       .send({ rating: 9 });
@@ -490,7 +530,9 @@ describe("customer reviews", () => {
     const { location } = await seedBusinessWithLocation();
     const review = await seedReview(customer, location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/auth/me/reviews/${review.id}`)
       .set("Cookie", customerCookie(customer.id))
       .send({ description: 7 });
@@ -504,7 +546,9 @@ describe("customer reviews", () => {
     const { location } = await seedBusinessWithLocation();
     const review = await seedReview(customer, location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/auth/me/reviews/${review.id}`)
       .set("Cookie", customerCookie(customer.id))
       .send({});
@@ -520,11 +564,15 @@ describe("customer reviews", () => {
     const review = await seedReview(other, location);
     const cookie = customerCookie(customer.id);
 
-    const patch = await (await api())
+    const patch = await (
+      await api()
+    )
       .patch(`/auth/me/reviews/${review.id}`)
       .set("Cookie", cookie)
       .send({ rating: 1 });
-    const remove = await (await api())
+    const remove = await (
+      await api()
+    )
       .delete(`/auth/me/reviews/${review.id}`)
       .set("Cookie", cookie);
 
@@ -536,13 +584,13 @@ describe("customer reviews", () => {
     const customer = await seedCustomer();
     const cookie = customerCookie(customer.id);
 
-    const patch = await (await api())
+    const patch = await (
+      await api()
+    )
       .patch("/auth/me/reviews/not-an-id")
       .set("Cookie", cookie)
       .send({ rating: 3 });
-    const remove = await (await api())
-      .delete("/auth/me/reviews/not-an-id")
-      .set("Cookie", cookie);
+    const remove = await (await api()).delete("/auth/me/reviews/not-an-id").set("Cookie", cookie);
 
     expect(patch.status).toBe(404);
     expect(remove.status).toBe(404);
@@ -553,7 +601,9 @@ describe("customer reviews", () => {
     const { location } = await seedBusinessWithLocation();
     const review = await seedReview(customer, location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/auth/me/reviews/${review.id}`)
       .set("Cookie", customerCookie(customer.id));
 
@@ -566,7 +616,9 @@ describe("password recovery emails", () => {
   it("sends a customer reset link without revealing the account", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/forgot-password")
       .send({ email: customer.email, type: "customer" });
 
@@ -577,7 +629,9 @@ describe("password recovery emails", () => {
   });
 
   it("answers the same way for an unknown address", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/forgot-password")
       .send({ email: "nobody@test.invalid", type: "customer" });
 

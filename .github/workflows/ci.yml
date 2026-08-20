@@ -1,19 +1,27 @@
 name: CI
 
 on:
-  pull_request:
-    branches: [main]
   push:
     branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  build:
-    name: Lint and Build
+  verify:
+    name: Lint, Typecheck, Test, and Build
     runs-on: ubuntu-latest
 
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL: mongodb://localhost:27017/seatping_ci_app?replicaSet=rs0&directConnection=true
+      TEST_DATABASE_URL: mongodb://localhost:27017/seatping_test?replicaSet=rs0&directConnection=true
       JWT_SECRET: ci-placeholder-jwt-secret
+      CRON_SECRET: ci-placeholder-cron-secret
       ADMIN_USERNAME: ci-admin
       ADMIN_PASSWORD_HASH: $2b$12$ciplaceholderciplaceholderciplaceholderciplaceholderci
       EMAIL_PASSWORD: ci-placeholder
@@ -25,43 +33,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set Up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
-          cache: npm
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Build
-        run: npm run build
-
-  test:
-    name: Tests and Coverage
-    runs-on: ubuntu-latest
-
-    env:
-      TEST_DATABASE_URL: mongodb://localhost:27017/seatping_test?replicaSet=rs0&directConnection=true
-      JWT_SECRET: ci-test-jwt-secret
-      CRON_SECRET: ci-test-cron-secret
-      ADMIN_USERNAME: ci-admin
-      CLIENT_ORIGIN: http://localhost:8080
-      FRONTEND_URL: http://localhost:8080
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set Up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install Dependencies
@@ -100,8 +74,20 @@ jobs:
         env:
           DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Check Formatting
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Test with Coverage
         run: npm run test:coverage
+
+      - name: Build
+        run: npm run build
 
       - name: Upload Coverage Report
         if: always()
@@ -110,12 +96,14 @@ jobs:
           name: coverage
           path: coverage
           retention-days: 7
+          if-no-files-found: ignore
 
   e2e:
     name: End to End
     runs-on: ubuntu-latest
 
     env:
+      DATABASE_URL: mongodb://localhost:27017/seatping_e2e_app?replicaSet=rs0&directConnection=true
       TEST_DATABASE_URL: mongodb://localhost:27017/seatping_e2e_test?replicaSet=rs0&directConnection=true
       JWT_SECRET: ci-e2e-jwt-secret
       CRON_SECRET: ci-e2e-cron-secret
@@ -126,9 +114,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set Up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install Dependencies
@@ -180,3 +168,4 @@ jobs:
           name: playwright-report
           path: playwright-report
           retention-days: 7
+          if-no-files-found: ignore

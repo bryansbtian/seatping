@@ -51,9 +51,7 @@ describe("generateTicketNumber", () => {
     vi.setSystemTime(new Date("2026-08-12T09:00:00.000Z"));
     ticketCount.mockResolvedValue(0);
 
-    await expect(generateTicketNumber("SALES")).resolves.toBe(
-      "SALES-20260812-0001",
-    );
+    await expect(generateTicketNumber("SALES")).resolves.toBe("SALES-20260812-0001");
   });
 
   it("continues the daily sequence", async () => {
@@ -61,9 +59,7 @@ describe("generateTicketNumber", () => {
     vi.setSystemTime(new Date("2026-08-12T09:00:00.000Z"));
     ticketCount.mockResolvedValue(41);
 
-    await expect(generateTicketNumber("FEEDBACK")).resolves.toBe(
-      "FEEDBACK-20260812-0042",
-    );
+    await expect(generateTicketNumber("FEEDBACK")).resolves.toBe("FEEDBACK-20260812-0042");
   });
 
   it("counts only tickets of the same type within the day", async () => {
@@ -74,9 +70,7 @@ describe("generateTicketNumber", () => {
     const where = ticketCount.mock.calls[0][0].where;
     expect(where.type).toBe("feedback");
     expect(where.createdAt.gte).toBeInstanceOf(Date);
-    expect(where.createdAt.lte.getTime()).toBeGreaterThan(
-      where.createdAt.gte.getTime(),
-    );
+    expect(where.createdAt.lte.getTime()).toBeGreaterThan(where.createdAt.gte.getTime());
   });
 });
 
@@ -95,23 +89,17 @@ describe("bucketOf", () => {
 
 describe("tryReserveCapacity", () => {
   it("allows a party of zero without touching the counter", async () => {
-    await expect(
-      tryReserveCapacity("loc-1", "2026-08-12", 19, 0, 40),
-    ).resolves.toBe(true);
+    await expect(tryReserveCapacity("loc-1", "2026-08-12", 19, 0, 40)).resolves.toBe(true);
     expect(slotCounterUpsert).not.toHaveBeenCalled();
   });
 
   it("refuses a party larger than the whole hourly cap", async () => {
-    await expect(
-      tryReserveCapacity("loc-1", "2026-08-12", 19, 41, 40),
-    ).resolves.toBe(false);
+    await expect(tryReserveCapacity("loc-1", "2026-08-12", 19, 41, 40)).resolves.toBe(false);
     expect(slotCounterUpdateMany).not.toHaveBeenCalled();
   });
 
   it("increments the counter only while headroom remains", async () => {
-    await expect(
-      tryReserveCapacity("loc-1", "2026-08-12", 19, 4, 40),
-    ).resolves.toBe(true);
+    await expect(tryReserveCapacity("loc-1", "2026-08-12", 19, 4, 40)).resolves.toBe(true);
 
     const args = slotCounterUpdateMany.mock.calls[0][0];
     expect(args.where.reservedGuests).toEqual({ lte: 36 });
@@ -121,9 +109,7 @@ describe("tryReserveCapacity", () => {
   it("reports failure when the guarded update matches nothing", async () => {
     slotCounterUpdateMany.mockResolvedValue({ count: 0 });
 
-    await expect(
-      tryReserveCapacity("loc-1", "2026-08-12", 19, 4, 40),
-    ).resolves.toBe(false);
+    await expect(tryReserveCapacity("loc-1", "2026-08-12", 19, 4, 40)).resolves.toBe(false);
   });
 });
 

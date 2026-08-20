@@ -161,9 +161,7 @@ describe("admitting a guest", () => {
         entryRow({ notificationMethod: method, phone: "81234567890" }),
       );
 
-      const res = await app()
-        .post(queuePath(KEY, "admit"))
-        .set("Cookie", businessCookie());
+      const res = await app().post(queuePath(KEY, "admit")).set("Cookie", businessCookie());
 
       expect(res.status).toBe(200);
       expect(enqueueNotification.mock.calls[0][0].channel).toBe(method);
@@ -171,13 +169,9 @@ describe("admitting a guest", () => {
   });
 
   it("sends nothing for a guest with no notification channel", async () => {
-    queueEntryFindFirst.mockResolvedValue(
-      entryRow({ notificationMethod: "none" }),
-    );
+    queueEntryFindFirst.mockResolvedValue(entryRow({ notificationMethod: "none" }));
 
-    const res = await app()
-      .post(queuePath(KEY, "admit"))
-      .set("Cookie", businessCookie());
+    const res = await app().post(queuePath(KEY, "admit")).set("Cookie", businessCookie());
 
     expect(res.status).toBe(200);
     expect(enqueueNotification).not.toHaveBeenCalled();
@@ -205,9 +199,7 @@ describe("admitting a guest", () => {
 
     await app().post(queuePath(KEY, "admit")).set("Cookie", businessCookie());
 
-    expect(enqueueNotification.mock.calls[0][0].restaurantName).toBe(
-      "The business",
-    );
+    expect(enqueueNotification.mock.calls[0][0].restaurantName).toBe("The business");
   });
 
   it("prefers the profile display name for the restaurant", async () => {
@@ -217,17 +209,13 @@ describe("admitting a guest", () => {
 
     await app().post(queuePath(KEY, "admit")).set("Cookie", businessCookie());
 
-    expect(enqueueNotification.mock.calls[0][0].restaurantName).toBe(
-      "Warung Nusantara",
-    );
+    expect(enqueueNotification.mock.calls[0][0].restaurantName).toBe("Warung Nusantara");
   });
 
   it("reports a race where the guest stopped waiting", async () => {
     queueEntryUpdateMany.mockResolvedValue({ count: 0 });
 
-    const res = await app()
-      .post(queuePath(KEY, "admit"))
-      .set("Cookie", businessCookie());
+    const res = await app().post(queuePath(KEY, "admit")).set("Cookie", businessCookie());
 
     expect(res.status).toBe(409);
   });
@@ -235,9 +223,7 @@ describe("admitting a guest", () => {
   it("reports a server error", async () => {
     businessFindFirst.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .post(queuePath(KEY, "admit"))
-      .set("Cookie", businessCookie());
+    const res = await app().post(queuePath(KEY, "admit")).set("Cookie", businessCookie());
 
     expect(res.status).toBe(500);
   });
@@ -297,13 +283,9 @@ describe("confirming arrival", () => {
 
 describe("marking a no-show", () => {
   it("falls back through the location label", async () => {
-    locationFindUnique.mockResolvedValue(
-      locationRow({ displayName: null, name: null }),
-    );
+    locationFindUnique.mockResolvedValue(locationRow({ displayName: null, name: null }));
 
-    const res = await app()
-      .post(admittedPath(KEY, "mark-no-show"))
-      .set("Cookie", businessCookie());
+    const res = await app().post(admittedPath(KEY, "mark-no-show")).set("Cookie", businessCookie());
 
     expect(res.status).toBe(200);
     expect(syncCustomerQueue.mock.calls[0][1].locationName).toBe("Bistro");
@@ -313,9 +295,7 @@ describe("marking a no-show", () => {
   it("reports a race where the guest is no longer admitted", async () => {
     queueEntryUpdateMany.mockResolvedValue({ count: 0 });
 
-    const res = await app()
-      .post(admittedPath(KEY, "mark-no-show"))
-      .set("Cookie", businessCookie());
+    const res = await app().post(admittedPath(KEY, "mark-no-show")).set("Cookie", businessCookie());
 
     expect(res.status).toBe(409);
   });
@@ -323,9 +303,7 @@ describe("marking a no-show", () => {
   it("refuses another business's guest", async () => {
     businessFindFirst.mockResolvedValue(null);
 
-    const res = await app()
-      .post(admittedPath(KEY, "mark-no-show"))
-      .set("Cookie", businessCookie());
+    const res = await app().post(admittedPath(KEY, "mark-no-show")).set("Cookie", businessCookie());
 
     expect(res.status).toBe(404);
   });
@@ -333,9 +311,7 @@ describe("marking a no-show", () => {
   it("reports a server error", async () => {
     businessFindFirst.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .post(admittedPath(KEY, "mark-no-show"))
-      .set("Cookie", businessCookie());
+    const res = await app().post(admittedPath(KEY, "mark-no-show")).set("Cookie", businessCookie());
 
     expect(res.status).toBe(500);
   });
@@ -345,9 +321,7 @@ describe("removing a guest", () => {
   it("falls back through the location label", async () => {
     locationFindUnique.mockResolvedValue(null);
 
-    const res = await app()
-      .delete(queuePath(KEY))
-      .set("Cookie", businessCookie());
+    const res = await app().delete(queuePath(KEY)).set("Cookie", businessCookie());
 
     expect(res.status).toBe(200);
     expect(syncCustomerQueue.mock.calls[0][1].locationName).toBe("Bistro");
@@ -356,9 +330,7 @@ describe("removing a guest", () => {
   it("reports a race where the guest already left", async () => {
     queueEntryUpdateMany.mockResolvedValue({ count: 0 });
 
-    const res = await app()
-      .delete(queuePath(KEY))
-      .set("Cookie", businessCookie());
+    const res = await app().delete(queuePath(KEY)).set("Cookie", businessCookie());
 
     expect(res.status).toBe(409);
   });
@@ -366,9 +338,7 @@ describe("removing a guest", () => {
   it("refuses another business's guest", async () => {
     businessFindFirst.mockResolvedValue(null);
 
-    const res = await app()
-      .delete(queuePath(KEY))
-      .set("Cookie", businessCookie());
+    const res = await app().delete(queuePath(KEY)).set("Cookie", businessCookie());
 
     expect(res.status).toBe(404);
   });
@@ -376,9 +346,7 @@ describe("removing a guest", () => {
   it("reports a server error", async () => {
     businessFindFirst.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .delete(queuePath(KEY))
-      .set("Cookie", businessCookie());
+    const res = await app().delete(queuePath(KEY)).set("Cookie", businessCookie());
 
     expect(res.status).toBe(500);
   });
@@ -473,9 +441,7 @@ describe("queue status by token", () => {
   });
 
   it("reports no hold window when there is no admit time", async () => {
-    queueEntryFindUnique.mockResolvedValue(
-      entryRow({ status: "ADMITTED", admittedAt: null }),
-    );
+    queueEntryFindUnique.mockResolvedValue(entryRow({ status: "ADMITTED", admittedAt: null }));
 
     const res = await app().get(queuePath("token/qt-1", "status"));
 
@@ -484,12 +450,8 @@ describe("queue status by token", () => {
   });
 
   it("rejects a blank username or token", async () => {
-    const noUser = await app().get(
-      "/auth/business/%20/queue/token/qt-1/status",
-    );
-    const noToken = await app().get(
-      "/auth/business/bistro/queue/token/%20/status",
-    );
+    const noUser = await app().get("/auth/business/%20/queue/token/qt-1/status");
+    const noToken = await app().get("/auth/business/bistro/queue/token/%20/status");
 
     expect(noUser.status).toBe(400);
     expect(noToken.status).toBe(400);
@@ -547,9 +509,7 @@ describe("queue status by customer key", () => {
   });
 
   it("reports an admitted guest with no recorded admit time", async () => {
-    queueEntryFindMany.mockResolvedValue([
-      entryRow({ status: "ADMITTED", admittedAt: null }),
-    ]);
+    queueEntryFindMany.mockResolvedValue([entryRow({ status: "ADMITTED", admittedAt: null })]);
 
     const res = await app().get(queuePath(KEY, "status"));
 

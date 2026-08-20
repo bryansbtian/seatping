@@ -62,9 +62,7 @@ test("a customer books a table from the public restaurant page and it is confirm
   });
   expect(counter.reservedGuests).toBe(2);
 
-  await expect(
-    dialog.getByRole("link", { name: "Manage Reservation" }),
-  ).toBeVisible();
+  await expect(dialog.getByRole("link", { name: "Manage Reservation" })).toBeVisible();
 });
 
 test("a reservation outside the configured opening hours is offered nowhere and refused by the server", async ({
@@ -72,17 +70,12 @@ test("a reservation outside the configured opening hours is offered nowhere and 
   db,
 }) => {
   const { business, location } = await db.createBusinessWithLocation({
-    restaurantProfile: publishedProfile(
-      "Morning Only",
-      openingHoursEveryDay("09:00", "12:00"),
-    ),
+    restaurantProfile: publishedProfile("Morning Only", openingHoursEveryDay("09:00", "12:00")),
   });
   const booking = buildBooking();
   const date = futureDateKey(3);
 
-  await page.goto(
-    `/${business.username}/${location.id}?date=${date}&partySize=2`,
-  );
+  await page.goto(`/${business.username}/${location.id}?date=${date}&partySize=2`);
 
   await expect(page.getByRole("button", { name: "9:00 AM" })).toBeVisible();
   await expect(page.getByRole("button", { name: "11:30 AM" })).toBeVisible();
@@ -93,14 +86,7 @@ test("a reservation outside the configured opening hours is offered nowhere and 
     `/api/reservations/${business.username}/${location.id}/availability?date=${date}&partySize=2`,
   );
   const slots = (await availability.json()).slots as Array<{ time: string }>;
-  expect(slots.map((s) => s.time)).toEqual([
-    "09:00",
-    "09:30",
-    "10:00",
-    "10:30",
-    "11:00",
-    "11:30",
-  ]);
+  expect(slots.map((s) => s.time)).toEqual(["09:00", "09:30", "10:00", "10:30", "11:00", "11:30"]);
 
   const rejected = await page.request.post(
     `/api/reservations/${business.username}/${location.id}`,
@@ -116,13 +102,9 @@ test("a reservation outside the configured opening hours is offered nowhere and 
     },
   );
   expect(rejected.status()).toBe(400);
-  expect((await rejected.json()).error).toContain(
-    "outside the restaurant's operating hours",
-  );
+  expect((await rejected.json()).error).toContain("outside the restaurant's operating hours");
 
-  expect(
-    await db.prisma.reservation.count({ where: { locationId: location.id } }),
-  ).toBe(0);
+  expect(await db.prisma.reservation.count({ where: { locationId: location.id } })).toBe(0);
 });
 
 test("hourly reservation capacity is enforced on the server and never oversells the hour", async ({
@@ -211,19 +193,16 @@ test("a guest opens the secure manage link, sees the booking and cancels it", as
   const booking = buildBooking();
   const date = futureDateKey(5);
 
-  const created = await page.request.post(
-    `/api/reservations/${business.username}/${location.id}`,
-    {
-      data: {
-        firstName: booking.firstName,
-        lastName: booking.lastName,
-        email: booking.email,
-        partySize: 3,
-        date,
-        time: "19:00",
-      },
+  const created = await page.request.post(`/api/reservations/${business.username}/${location.id}`, {
+    data: {
+      firstName: booking.firstName,
+      lastName: booking.lastName,
+      email: booking.email,
+      partySize: 3,
+      date,
+      time: "19:00",
     },
-  );
+  });
   expect(created.status()).toBe(200);
   const manageToken = (await created.json()).manageToken as string;
 
@@ -234,17 +213,12 @@ test("a guest opens the secure manage link, sees the booking and cancels it", as
 
   await page.goto(`/reservations/manage/${manageToken}`);
 
-  await expect(
-    page.getByRole("heading", { name: "Manage Your Reservation" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Manage Your Reservation" })).toBeVisible();
   await expect(page.getByText("7:00 PM")).toBeVisible();
   await expect(page.getByText("3 guests")).toBeVisible();
 
   await page.getByRole("button", { name: "Cancel Reservation" }).click();
-  await page
-    .getByRole("alertdialog")
-    .getByRole("button", { name: "Cancel Reservation" })
-    .click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Cancel Reservation" }).click();
 
   await expect
     .poll(async () => {
@@ -265,9 +239,7 @@ test("a guest opens the secure manage link, sees the booking and cancels it", as
   });
   expect(afterCancel.reservedGuests).toBe(0);
 
-  await expect(
-    page.getByText("This reservation can no longer be changed."),
-  ).toBeVisible();
+  await expect(page.getByText("This reservation can no longer be changed.")).toBeVisible();
 });
 
 test("reservations land in the right business dashboard tab and move when the status changes", async ({
@@ -320,9 +292,7 @@ test("reservations land in the right business dashboard tab and move when the st
   await expect(reservationsCard.getByText("Cara Cancelled")).toBeVisible();
 
   await reservationsCard.getByRole("button", { name: "Today" }).click();
-  await reservationsCard
-    .getByRole("button", { name: "Mark Arrived" })
-    .click();
+  await reservationsCard.getByRole("button", { name: "Mark Arrived" }).click();
 
   await expect
     .poll(async () => {
@@ -334,9 +304,7 @@ test("reservations land in the right business dashboard tab and move when the st
     .toBe("ARRIVED");
 
   await expect(reservationsCard.getByText("Tina Today")).toBeVisible();
-  await expect(
-    reservationsCard.getByRole("button", { name: "Mark Completed" }),
-  ).toBeVisible();
+  await expect(reservationsCard.getByRole("button", { name: "Mark Completed" })).toBeVisible();
 
   const untouched = await db.prisma.reservation.findMany({
     where: { id: { in: [upcomingReservation.id, cancelledReservation.id] } },

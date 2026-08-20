@@ -4,10 +4,7 @@ import { Search, MapPin, Loader2, Utensils } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import {
-  useSearchSuggestions,
-  type Suggestion,
-} from "@/hooks/useSearchSuggestions";
+import { useSearchSuggestions, type Suggestion } from "@/hooks/useSearchSuggestions";
 
 function localDateStr(d: Date): string {
   const y = d.getFullYear();
@@ -17,9 +14,7 @@ function localDateStr(d: Date): string {
 }
 
 function suggestionSubtitle(s: Suggestion): string {
-  return [s.cuisine, s.shortAddress || s.area || s.city]
-    .filter(Boolean)
-    .join(" · ");
+  return [s.cuisine, s.shortAddress || s.area || s.city].filter(Boolean).join(" · ");
 }
 
 export interface SearchSuggestInputProps {
@@ -50,10 +45,7 @@ export function SearchSuggestInput({
   const [highlighted, setHighlighted] = React.useState(-1);
   const searchBoxRef = React.useRef<HTMLDivElement>(null);
 
-  const { suggestions, loading, error } = useSearchSuggestions(
-    value,
-    !justSelected,
-  );
+  const { suggestions, loading, error } = useSearchSuggestions(value, !justSelected);
   const showDropdown = open && !justSelected && value.trim().length > 0;
 
   React.useEffect(() => {
@@ -65,10 +57,7 @@ export function SearchSuggestInput({
       return;
     }
     const onDown = (e: MouseEvent) => {
-      if (
-        searchBoxRef.current &&
-        !searchBoxRef.current.contains(e.target as Node)
-      ) {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
@@ -133,9 +122,7 @@ export function SearchSuggestInput({
       );
     } else if (suggestions.length === 0) {
       dropdownContent = (
-        <div className="px-4 py-3 text-sm text-slate-500">
-          No matching restaurants found
-        </div>
+        <div className="px-4 py-3 text-sm text-slate-500">No matching restaurants found</div>
       );
     } else {
       dropdownContent = (
@@ -150,11 +137,7 @@ export function SearchSuggestInput({
             let thumbnail: React.ReactNode;
             if (s.imageUrl) {
               thumbnail = (
-                <img
-                  src={s.imageUrl}
-                  alt={s.name}
-                  className="h-full w-full object-cover"
-                />
+                <img src={s.imageUrl} alt={s.name} className="h-full w-full object-cover" />
               );
             } else {
               thumbnail = <Utensils className="h-4 w-4 text-slate-400" />;
@@ -197,10 +180,7 @@ export function SearchSuggestInput({
   }
 
   return (
-    <div
-      ref={searchBoxRef}
-      className={cn("relative w-full min-w-0", className)}
-    >
+    <div ref={searchBoxRef} className={cn("relative w-full min-w-0", className)}>
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none max-[360px]:left-2" />
       <Input
         value={value}

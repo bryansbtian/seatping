@@ -62,8 +62,7 @@ vi.mock("../../server/lib/business.js", async () => {
   return { ...actual, assembleBusinessMe };
 });
 
-const locationsRouter = (await import("../../server/routes/locations.js"))
-  .default;
+const locationsRouter = (await import("../../server/routes/locations.js")).default;
 
 const ORIGINAL_ENV = { ...process.env };
 const LOC = "0123456789abcdef01234567";
@@ -90,9 +89,7 @@ function cookie(businessId = "biz-1"): string {
 
 async function suggest(query: string) {
   return app()
-    .get(
-      `/api/locations/search-suggestions?query=${encodeURIComponent(query)}`,
-    )
+    .get(`/api/locations/search-suggestions?query=${encodeURIComponent(query)}`)
     .set("X-Forwarded-For", freshIp());
 }
 
@@ -115,9 +112,7 @@ function suggestionRow(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   process.env.JWT_SECRET = "unit-test-jwt-secret";
   locationFindMany.mockReset().mockResolvedValue([]);
-  locationFindFirst
-    .mockReset()
-    .mockResolvedValue({ id: LOC, bannerImagePublicId: null });
+  locationFindFirst.mockReset().mockResolvedValue({ id: LOC, bannerImagePublicId: null });
   locationUpdate.mockReset().mockResolvedValue({});
   businessFindMany
     .mockReset()
@@ -132,9 +127,7 @@ beforeEach(() => {
   photoUpdate.mockReset().mockResolvedValue({ id: "photo-1" });
   photoDelete.mockReset().mockResolvedValue({});
   reviewFindMany.mockReset().mockResolvedValue([]);
-  reviewFindFirst
-    .mockReset()
-    .mockResolvedValue({ id: LOC, businessReplyCreatedAt: null });
+  reviewFindFirst.mockReset().mockResolvedValue({ id: LOC, businessReplyCreatedAt: null });
   reviewUpdate.mockReset().mockResolvedValue({ id: LOC });
   uploadImageBuffer.mockReset().mockResolvedValue({
     url: "https://test.invalid/uploaded.jpg",
@@ -240,9 +233,7 @@ describe("suggestion scoring", () => {
 
   it("omits the url when the business has no username", async () => {
     locationFindMany.mockResolvedValue([suggestionRow({ businessId: "biz-x" })]);
-    businessFindMany.mockResolvedValue([
-      { id: "biz-x", name: "Bistro", username: null },
-    ]);
+    businessFindMany.mockResolvedValue([{ id: "biz-x", name: "Bistro", username: null }]);
 
     const res = await suggest("bistro");
 
@@ -271,9 +262,7 @@ describe("ownership guard", () => {
   it("reports a server error when the lookup fails", async () => {
     locationFindFirst.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .post(`/api/locations/${LOC}/banner/sign`)
-      .set("Cookie", cookie());
+    const res = await app().post(`/api/locations/${LOC}/banner/sign`).set("Cookie", cookie());
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: "Server error" });
@@ -315,9 +304,7 @@ describe("banner endpoints", () => {
       throw new Error("Cloudinary is not configured");
     });
 
-    const res = await app()
-      .post(`/api/locations/${LOC}/banner/sign`)
-      .set("Cookie", cookie());
+    const res = await app().post(`/api/locations/${LOC}/banner/sign`).set("Cookie", cookie());
 
     expect(res.status).toBe(500);
     expect(res.body.error).toBe("Cloudinary is not configured");
@@ -328,9 +315,7 @@ describe("banner endpoints", () => {
       throw {};
     });
 
-    const res = await app()
-      .post(`/api/locations/${LOC}/banner/sign`)
-      .set("Cookie", cookie());
+    const res = await app().post(`/api/locations/${LOC}/banner/sign`).set("Cookie", cookie());
 
     expect(res.body.error).toBe("Failed to prepare upload.");
   });
@@ -352,9 +337,7 @@ describe("banner endpoints", () => {
   it("reports a failed banner delete", async () => {
     locationUpdate.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .delete(`/api/locations/${LOC}/banner`)
-      .set("Cookie", cookie());
+    const res = await app().delete(`/api/locations/${LOC}/banner`).set("Cookie", cookie());
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: "Failed to remove banner." });
@@ -380,9 +363,7 @@ describe("photo endpoints", () => {
   it("reports a failed photo signature", async () => {
     photoCount.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .post(`/api/locations/${LOC}/photos/sign`)
-      .set("Cookie", cookie());
+    const res = await app().post(`/api/locations/${LOC}/photos/sign`).set("Cookie", cookie());
 
     expect(res.status).toBe(500);
   });
@@ -399,9 +380,7 @@ describe("photo endpoints", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(deleteImageByPublicId).toHaveBeenCalledWith(
-      `seatping/locations/${LOC}/photo/p`,
-    );
+    expect(deleteImageByPublicId).toHaveBeenCalledWith(`seatping/locations/${LOC}/photo/p`);
   });
 
   it("reports a failed photo commit", async () => {
@@ -462,9 +441,7 @@ describe("photo endpoints", () => {
   it("reports a failed photo delete", async () => {
     photoDelete.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .delete(`/api/locations/${LOC}/photos/${LOC}`)
-      .set("Cookie", cookie());
+    const res = await app().delete(`/api/locations/${LOC}/photos/${LOC}`).set("Cookie", cookie());
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: "Failed to delete photo." });
@@ -475,9 +452,7 @@ describe("review endpoints", () => {
   it("defaults every optional review field", async () => {
     reviewFindMany.mockResolvedValue([{ id: "rev-1", locationId: LOC }]);
 
-    const res = await app()
-      .get(`/api/locations/${LOC}/reviews`)
-      .set("Cookie", cookie());
+    const res = await app().get(`/api/locations/${LOC}/reviews`).set("Cookie", cookie());
 
     const review = res.body.reviews[0];
     expect(review.rating).toBe(0);
@@ -506,9 +481,7 @@ describe("review endpoints", () => {
       },
     ]);
 
-    const res = await app()
-      .get(`/api/locations/${LOC}/reviews`)
-      .set("Cookie", cookie());
+    const res = await app().get(`/api/locations/${LOC}/reviews`).set("Cookie", cookie());
 
     expect(res.body.reviews[0].rating).toBe(4);
     expect(res.body.reviews[0].partySize).toBe(2);
@@ -518,9 +491,7 @@ describe("review endpoints", () => {
   it("reports a failed review listing", async () => {
     reviewFindMany.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .get(`/api/locations/${LOC}/reviews`)
-      .set("Cookie", cookie());
+    const res = await app().get(`/api/locations/${LOC}/reviews`).set("Cookie", cookie());
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: "Failed to load reviews." });

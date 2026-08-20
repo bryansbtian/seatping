@@ -145,10 +145,9 @@ describe("syncCustomerQueue", () => {
   });
 
   it("reads the party size from the legacy guest count field", async () => {
-    await syncCustomerQueue(
-      queueEntry({ partySize: undefined, numGuests: 5 }),
-      { status: "waiting" },
-    );
+    await syncCustomerQueue(queueEntry({ partySize: undefined, numGuests: 5 }), {
+      status: "waiting",
+    });
 
     expect(savedActivity()[0].partySize).toBe(5);
   });
@@ -300,9 +299,7 @@ describe("featured restaurants listing", () => {
   });
 
   it("falls back to a generic name when nothing is set", async () => {
-    featuredFindMany.mockResolvedValue([
-      featuredRow({ business: null, location: null }),
-    ]);
+    featuredFindMany.mockResolvedValue([featuredRow({ business: null, location: null })]);
 
     const res = await featuredApp().get("/api/featured-restaurants");
 
@@ -329,9 +326,7 @@ describe("featured restaurants listing", () => {
 
     const res = await featuredApp().get("/api/featured-restaurants");
 
-    expect(res.body.featured[0].bannerImageUrl).toBe(
-      "https://test.invalid/gallery.jpg",
-    );
+    expect(res.body.featured[0].bannerImageUrl).toBe("https://test.invalid/gallery.jpg");
   });
 
   it("reports no cuisine for an empty cuisine list", async () => {

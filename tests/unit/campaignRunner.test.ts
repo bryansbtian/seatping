@@ -52,12 +52,8 @@ vi.mock("../../server/lib/prisma.js", () => {
   };
 });
 
-const {
-  executeCampaignRun,
-  reconcileCampaign,
-  reconcileRun,
-  runDueCampaignsSweep,
-} = await import("../../server/lib/campaignRunner.js");
+const { executeCampaignRun, reconcileCampaign, reconcileRun, runDueCampaignsSweep } =
+  await import("../../server/lib/campaignRunner.js");
 
 function campaign(overrides: Record<string, unknown> = {}) {
   return {
@@ -206,9 +202,7 @@ describe("executeCampaignRun guards", () => {
 
   it("accepts an approved custom template", async () => {
     readyToRun();
-    templateFindUnique.mockResolvedValue(
-      template({ templateType: "CUSTOM", isActive: false }),
-    );
+    templateFindUnique.mockResolvedValue(template({ templateType: "CUSTOM", isActive: false }));
 
     const res = await executeCampaignRun("camp-1", "MANUAL");
 
@@ -275,20 +269,16 @@ describe("executeCampaignRun delivery", () => {
 
   it("sends to a guest last reached before the recurring window", async () => {
     readyToRun();
-    campaignFindUnique.mockResolvedValue(
-      campaign({ maxSendsPerGuestWindowDays: 7 }),
-    );
+    campaignFindUnique.mockResolvedValue(campaign({ maxSendsPerGuestWindowDays: 7 }));
     guestProfileFindMany.mockResolvedValue([guest()]);
-    recipientFindMany
-      .mockResolvedValueOnce([{ guestProfileId: "guest-9" }])
-      .mockResolvedValueOnce([
-        {
-          id: "rec-1",
-          guestProfileId: "guest-1",
-          email: "guest@test.invalid",
-          phone: null,
-        },
-      ]);
+    recipientFindMany.mockResolvedValueOnce([{ guestProfileId: "guest-9" }]).mockResolvedValueOnce([
+      {
+        id: "rec-1",
+        guestProfileId: "guest-1",
+        email: "guest@test.invalid",
+        phone: null,
+      },
+    ]);
 
     const res = await executeCampaignRun("camp-1", "RECURRING");
 
@@ -348,9 +338,7 @@ describe("reconcileRun", () => {
   });
 
   it("fails a run where nothing was sent", async () => {
-    recipientGroupBy.mockResolvedValue([
-      { status: "FAILED", _count: { _all: 2 } },
-    ]);
+    recipientGroupBy.mockResolvedValue([{ status: "FAILED", _count: { _all: 2 } }]);
 
     await reconcileRun({ id: "run-1", status: "RUNNING" } as never);
 
@@ -407,9 +395,7 @@ describe("reconcileCampaign", () => {
       failedCount: 0,
       skippedCount: 0,
     });
-    recipientGroupBy.mockResolvedValue([
-      { status: "SENT", _count: { _all: 1 } },
-    ]);
+    recipientGroupBy.mockResolvedValue([{ status: "SENT", _count: { _all: 1 } }]);
 
     await reconcileCampaign({ id: "camp-1", status: "SENDING" } as never);
 
@@ -602,9 +588,7 @@ describe("runDueCampaignsSweep", () => {
     const logged = (console.error as any).mock.calls.map((call: unknown[]) => {
       return String(call[0]);
     });
-    expect(logged.some((line: string) => line.includes("camp-broken"))).toBe(
-      true,
-    );
+    expect(logged.some((line: string) => line.includes("camp-broken"))).toBe(true);
   });
 
   it("uses the recurrence start day as the monthly anchor", async () => {
@@ -625,9 +609,9 @@ describe("runDueCampaignsSweep", () => {
 
     await runDueCampaignsSweep();
 
-    expect(
-      campaignUpdateMany.mock.calls[0][0].data.nextRunAt.toISOString(),
-    ).toBe("2027-03-31T09:00:00.000Z");
+    expect(campaignUpdateMany.mock.calls[0][0].data.nextRunAt.toISOString()).toBe(
+      "2027-03-31T09:00:00.000Z",
+    );
   });
 
   it("keeps sweeping when a recurring run throws", async () => {
@@ -699,9 +683,7 @@ describe("runDueCampaignsSweep", () => {
     const res = await runDueCampaignsSweep();
 
     expect(res.recurring).toBe(1);
-    expect(campaignUpdateMany.mock.calls[0][0].data.nextRunAt).toBeInstanceOf(
-      Date,
-    );
+    expect(campaignUpdateMany.mock.calls[0][0].data.nextRunAt).toBeInstanceOf(Date);
   });
 
   it("reconciles running runs and sending campaigns", async () => {
@@ -710,9 +692,7 @@ describe("runDueCampaignsSweep", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ id: "camp-1", status: "SENDING" }]);
     runFindMany.mockResolvedValue([{ id: "run-1", status: "RUNNING" }]);
-    recipientGroupBy.mockResolvedValue([
-      { status: "SENT", _count: { _all: 1 } },
-    ]);
+    recipientGroupBy.mockResolvedValue([{ status: "SENT", _count: { _all: 1 } }]);
     runFindFirst.mockResolvedValue({
       id: "run-1",
       status: "COMPLETED",

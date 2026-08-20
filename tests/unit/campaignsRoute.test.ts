@@ -77,8 +77,7 @@ vi.mock("../../server/lib/notifications.js", () => {
   return { rawCampaignSend };
 });
 
-const campaignsRouter = (await import("../../server/routes/campaigns.js"))
-  .default;
+const campaignsRouter = (await import("../../server/routes/campaigns.js")).default;
 
 const ORIGINAL_ENV = { ...process.env };
 const LOC = "0123456789abcdef01234567";
@@ -259,9 +258,7 @@ describe("template listing", () => {
   it("keeps going when the seed step fails", async () => {
     seedSeatPingTemplates.mockRejectedValue(new Error("seed down"));
 
-    const res = await app()
-      .get("/api/campaigns/templates")
-      .set("Cookie", cookie());
+    const res = await app().get("/api/campaigns/templates").set("Cookie", cookie());
 
     expect(res.status).toBe(200);
     expect(console.error).toHaveBeenCalled();
@@ -277,9 +274,7 @@ describe("template listing", () => {
       }),
     ]);
 
-    const res = await app()
-      .get("/api/campaigns/templates")
-      .set("Cookie", cookie());
+    const res = await app().get("/api/campaigns/templates").set("Cookie", cookie());
 
     expect(res.body.templates[0].rejectionReason).toBeNull();
     expect(res.body.templates[1].rejectionReason).toBe("Too promotional");
@@ -288,9 +283,7 @@ describe("template listing", () => {
   it("defaults the example values", async () => {
     templateFindMany.mockResolvedValue([template({ exampleValues: null })]);
 
-    const res = await app()
-      .get("/api/campaigns/templates")
-      .set("Cookie", cookie());
+    const res = await app().get("/api/campaigns/templates").set("Cookie", cookie());
 
     expect(res.body.templates[0].exampleValues).toEqual({});
   });
@@ -301,9 +294,7 @@ describe("template listing", () => {
       template({ id: "t2", templateType: "SEATPING", isActive: false }),
     ]);
 
-    const res = await app()
-      .get("/api/campaigns/templates")
-      .set("Cookie", cookie());
+    const res = await app().get("/api/campaigns/templates").set("Cookie", cookie());
 
     expect(res.body.templates[0].usable).toBe(false);
     expect(res.body.templates[1].usable).toBe(false);
@@ -313,12 +304,8 @@ describe("template listing", () => {
     templateFindMany.mockRejectedValue(new Error("db down"));
     templateFindFirst.mockRejectedValue(new Error("db down"));
 
-    const list = await app()
-      .get("/api/campaigns/templates")
-      .set("Cookie", cookie());
-    const detail = await app()
-      .get("/api/campaigns/templates/tmpl-1")
-      .set("Cookie", cookie());
+    const list = await app().get("/api/campaigns/templates").set("Cookie", cookie());
+    const detail = await app().get("/api/campaigns/templates/tmpl-1").set("Cookie", cookie());
 
     expect(list.status).toBe(500);
     expect(detail.status).toBe(500);
@@ -378,7 +365,12 @@ describe("template writes", () => {
       .send({
         name: "Winback",
         body: "Hi there friends.",
-        variables: ["firstName", "first_name", "  ", ...Array.from({ length: 30 }, (_, i) => `v${i}`)],
+        variables: [
+          "firstName",
+          "first_name",
+          "  ",
+          ...Array.from({ length: 30 }, (_, i) => `v${i}`),
+        ],
       });
 
     const variables = templateCreate.mock.calls[0][0].data.variables;
@@ -430,9 +422,7 @@ describe("template writes", () => {
     );
     templateUpdate.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .post("/api/campaigns/templates/tmpl-1/submit")
-      .set("Cookie", cookie());
+    const res = await app().post("/api/campaigns/templates/tmpl-1/submit").set("Cookie", cookie());
 
     expect(res.status).toBe(500);
   });
@@ -517,10 +507,7 @@ describe("campaign listing", () => {
 
     const res = await app().get("/api/campaigns").set("Cookie", cookie());
 
-    expect(res.body.campaigns.map((c: any) => c.audienceLabel)).toEqual([
-      "Regulars",
-      "Regulars",
-    ]);
+    expect(res.body.campaigns.map((c: any) => c.audienceLabel)).toEqual(["Regulars", "Regulars"]);
   });
 
   it("defaults the campaign json fields", async () => {
@@ -546,9 +533,7 @@ describe("campaign detail and deletion", () => {
   it("reports a server error on the detail route", async () => {
     campaignFindFirst.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .get("/api/campaigns/camp-1")
-      .set("Cookie", cookie());
+    const res = await app().get("/api/campaigns/camp-1").set("Cookie", cookie());
 
     expect(res.status).toBe(500);
   });
@@ -556,9 +541,7 @@ describe("campaign detail and deletion", () => {
   it("reports an unknown campaign on delete", async () => {
     campaignFindFirst.mockResolvedValue(null);
 
-    const res = await app()
-      .delete("/api/campaigns/camp-1")
-      .set("Cookie", cookie());
+    const res = await app().delete("/api/campaigns/camp-1").set("Cookie", cookie());
 
     expect(res.status).toBe(404);
   });
@@ -566,9 +549,7 @@ describe("campaign detail and deletion", () => {
   it("reports a failed delete", async () => {
     campaignDelete.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .delete("/api/campaigns/camp-1")
-      .set("Cookie", cookie());
+    const res = await app().delete("/api/campaigns/camp-1").set("Cookie", cookie());
 
     expect(res.status).toBe(500);
   });
@@ -577,15 +558,9 @@ describe("campaign detail and deletion", () => {
     campaignUpdateMany.mockRejectedValue(new Error("db down"));
     campaignFindFirst.mockRejectedValue(new Error("db down"));
 
-    const cancel = await app()
-      .post("/api/campaigns/camp-1/cancel")
-      .set("Cookie", cookie());
-    const pause = await app()
-      .post("/api/campaigns/camp-1/pause")
-      .set("Cookie", cookie());
-    const resume = await app()
-      .post("/api/campaigns/camp-1/resume")
-      .set("Cookie", cookie());
+    const cancel = await app().post("/api/campaigns/camp-1/cancel").set("Cookie", cookie());
+    const pause = await app().post("/api/campaigns/camp-1/pause").set("Cookie", cookie());
+    const resume = await app().post("/api/campaigns/camp-1/resume").set("Cookie", cookie());
 
     expect(cancel.status).toBe(500);
     expect(pause.status).toBe(500);
@@ -595,9 +570,7 @@ describe("campaign detail and deletion", () => {
   it("returns nothing when the cancelled campaign cannot be re-read", async () => {
     campaignFindFirst.mockResolvedValue(null);
 
-    const res = await app()
-      .post("/api/campaigns/camp-1/cancel")
-      .set("Cookie", cookie());
+    const res = await app().post("/api/campaigns/camp-1/cancel").set("Cookie", cookie());
 
     expect(res.status).toBe(200);
     expect(res.body.campaign).toBeNull();
@@ -608,10 +581,13 @@ describe("campaign creation and editing", () => {
   it("reports an unknown business", async () => {
     businessFindUnique.mockResolvedValue(null);
 
-    const res = await app()
-      .post("/api/campaigns")
-      .set("Cookie", cookie())
-      .send({ name: "Winback", locationId: LOC, channel: "EMAIL", audienceType: "all_guests", templateId: "tmpl-1" });
+    const res = await app().post("/api/campaigns").set("Cookie", cookie()).send({
+      name: "Winback",
+      locationId: LOC,
+      channel: "EMAIL",
+      audienceType: "all_guests",
+      templateId: "tmpl-1",
+    });
 
     expect(res.status).toBe(404);
   });
@@ -619,27 +595,20 @@ describe("campaign creation and editing", () => {
   it("caps a manual audience at the guest limit", async () => {
     const guestIds = Array.from({ length: 1200 }, (_, i) => `g${i}`);
 
-    await app()
-      .post("/api/campaigns")
-      .set("Cookie", cookie())
-      .send({
-        name: "Winback",
-        locationId: LOC,
-        channel: "email",
-        audienceType: "manual",
-        audienceConfig: { guestIds },
-        templateId: "tmpl-1",
-      });
+    await app().post("/api/campaigns").set("Cookie", cookie()).send({
+      name: "Winback",
+      locationId: LOC,
+      channel: "email",
+      audienceType: "manual",
+      audienceConfig: { guestIds },
+      templateId: "tmpl-1",
+    });
 
-    expect(
-      campaignCreate.mock.calls[0][0].data.audienceConfig.guestIds,
-    ).toHaveLength(1000);
+    expect(campaignCreate.mock.calls[0][0].data.audienceConfig.guestIds).toHaveLength(1000);
   });
 
   it("stores only the variables a business may edit", async () => {
-    templateFindFirst.mockResolvedValue(
-      template({ variables: ["first_name", "offer"] }),
-    );
+    templateFindFirst.mockResolvedValue(template({ variables: ["first_name", "offer"] }));
 
     await app()
       .post("/api/campaigns")
@@ -658,17 +627,14 @@ describe("campaign creation and editing", () => {
   });
 
   it("ignores a template values payload that is not an object", async () => {
-    await app()
-      .post("/api/campaigns")
-      .set("Cookie", cookie())
-      .send({
-        name: "Winback",
-        locationId: LOC,
-        channel: "EMAIL",
-        audienceType: "all_guests",
-        templateId: "tmpl-1",
-        templateValues: "nope",
-      });
+    await app().post("/api/campaigns").set("Cookie", cookie()).send({
+      name: "Winback",
+      locationId: LOC,
+      channel: "EMAIL",
+      audienceType: "all_guests",
+      templateId: "tmpl-1",
+      templateValues: "nope",
+    });
 
     expect(campaignCreate.mock.calls[0][0].data.templateValues).toEqual({});
   });
@@ -688,19 +654,20 @@ describe("campaign creation and editing", () => {
         templateValues: { offer: "x".repeat(700) },
       });
 
-    expect(
-      campaignCreate.mock.calls[0][0].data.templateValues.offer,
-    ).toHaveLength(500);
+    expect(campaignCreate.mock.calls[0][0].data.templateValues.offer).toHaveLength(500);
   });
 
   it("reports a failed create and patch", async () => {
     campaignCreate.mockRejectedValue(new Error("db down"));
     campaignUpdate.mockRejectedValue(new Error("db down"));
 
-    const create = await app()
-      .post("/api/campaigns")
-      .set("Cookie", cookie())
-      .send({ name: "Winback", locationId: LOC, channel: "EMAIL", audienceType: "all_guests", templateId: "tmpl-1" });
+    const create = await app().post("/api/campaigns").set("Cookie", cookie()).send({
+      name: "Winback",
+      locationId: LOC,
+      channel: "EMAIL",
+      audienceType: "all_guests",
+      templateId: "tmpl-1",
+    });
     const patch = await app()
       .patch("/api/campaigns/camp-1")
       .set("Cookie", cookie())
@@ -793,10 +760,7 @@ describe("sending", () => {
   it("returns the campaign to draft when the run reports an error", async () => {
     executeCampaignRun.mockResolvedValue({ error: "Template not found" });
 
-    const res = await app()
-      .post("/api/campaigns/camp-1/send")
-      .set("Cookie", cookie())
-      .send({});
+    const res = await app().post("/api/campaigns/camp-1/send").set("Cookie", cookie()).send({});
 
     expect(res.status).toBe(400);
     expect(res.body.error).toBe("Template not found");
@@ -805,10 +769,7 @@ describe("sending", () => {
   it("reports a server error while sending", async () => {
     executeCampaignRun.mockRejectedValue(new Error("runner down"));
 
-    const res = await app()
-      .post("/api/campaigns/camp-1/send")
-      .set("Cookie", cookie())
-      .send({});
+    const res = await app().post("/api/campaigns/camp-1/send").set("Cookie", cookie()).send({});
 
     expect(res.status).toBe(500);
   });
@@ -816,10 +777,7 @@ describe("sending", () => {
   it("returns nothing when the sent campaign cannot be re-read", async () => {
     campaignFindUnique.mockResolvedValue(null);
 
-    const res = await app()
-      .post("/api/campaigns/camp-1/send")
-      .set("Cookie", cookie())
-      .send({});
+    const res = await app().post("/api/campaigns/camp-1/send").set("Cookie", cookie()).send({});
 
     expect(res.status).toBe(200);
     expect(res.body.campaign).toBeNull();
@@ -904,9 +862,7 @@ describe("message preview", () => {
       .send({ channel: "WHATSAPP", templateId: "tmpl-1" });
     expect(wa.body.whatsappReady).toBe(true);
 
-    templateFindFirst.mockResolvedValue(
-      template({ whatsappProviderTemplateName: null }),
-    );
+    templateFindFirst.mockResolvedValue(template({ whatsappProviderTemplateName: null }));
     const notReady = await app()
       .post("/api/campaigns/preview-message")
       .set("Cookie", cookie())

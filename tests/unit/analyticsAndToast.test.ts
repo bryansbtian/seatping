@@ -23,6 +23,36 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe("analytics path redaction", () => {
+  it("never sends a reservation manage token to the tag", async () => {
+    const gtag = vi.fn();
+    const mod = await loadAnalytics("G-TEST", gtag);
+    const token = "a".repeat(48);
+
+    mod.trackPageView(`/reservations/manage/${token}`);
+
+    const params = gtag.mock.calls[0]?.[2] as { page_path: string };
+    expect(params.page_path).toBe("/reservations/manage/[token]");
+    expect(params.page_path).not.toContain(token);
+  });
+
+  it("masks any long hex run that reaches a page path", async () => {
+    const mod = await loadAnalytics("G-TEST", vi.fn());
+    const token = "9f".repeat(24);
+
+    expect(mod.redactAnalyticsPath(`/some/route/${token}`)).toBe("/some/route/[redacted]");
+  });
+
+  it("leaves ordinary paths and non-secret ids alone", async () => {
+    const mod = await loadAnalytics("G-TEST", vi.fn());
+
+    expect(mod.redactAnalyticsPath("/")).toBe("/");
+    expect(mod.redactAnalyticsPath("/acme/507f1f77bcf86cd799439011")).toBe(
+      "/acme/507f1f77bcf86cd799439011",
+    );
+  });
+});
+
 describe("analytics gating", () => {
   it("does nothing when no measurement id is configured", async () => {
     const gtag = vi.fn();
@@ -166,9 +196,7 @@ describe("toast", () => {
     expect(() =>
       toast({ title: "saved changes", description: "your profile is updated" }),
     ).not.toThrow();
-    expect(() =>
-      toast({ title: 42 as never, description: undefined }),
-    ).not.toThrow();
+    expect(() => toast({ title: 42 as never, description: undefined })).not.toThrow();
   });
 
   it("issues a distinct id for every toast", () => {

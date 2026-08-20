@@ -2,11 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { api } from "../helpers/app.js";
 import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
 import { businessCookie } from "../helpers/auth.js";
-import {
-  seedBusinessWithLocation,
-  seedQueueEntry,
-  uniqueSuffix,
-} from "../helpers/seed.js";
+import { seedBusinessWithLocation, seedQueueEntry, uniqueSuffix } from "../helpers/seed.js";
 import { tryReserveCapacity } from "../../server/lib/reservationCapacity.js";
 
 const db = getTestPrisma();

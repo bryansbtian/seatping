@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { maskEmail, maskEmailList } from "./redact.js";
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || "smtp.porkbun.com",
@@ -51,10 +52,10 @@ export const sendEmailDetailed = async (
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       if (attempt > 0) {
-        console.log("[EMAIL] Retry attempt %d/%d for:", attempt, retries, options.to);
+        console.log("[EMAIL] Retry attempt %d/%d for: %s", attempt, retries, maskEmail(options.to));
         await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
       } else {
-        console.log("[EMAIL] Attempting to send email to:", options.to);
+        console.log("[EMAIL] Attempting to send email to: %s", maskEmail(options.to));
       }
 
       const mailOptions: {
@@ -84,18 +85,18 @@ export const sendEmailDetailed = async (
 
       console.log(
         "[EMAIL] Sent email to %s | messageId=%s | accepted=[%s] | rejected=[%s] | response=%s",
-        options.to,
+        maskEmail(options.to),
         messageId,
-        accepted.join(", "),
-        rejected.join(", "),
+        maskEmailList(accepted),
+        maskEmailList(rejected),
         response,
       );
 
       if (!acceptedTarget || rejectedTarget) {
-        const reason = `Recipient not accepted by mail server (accepted=[${accepted.join(
-          ", ",
-        )}], rejected=[${rejected.join(", ")}], response=${response})`;
-        console.warn("[EMAIL] %s NOT accepted: %s", options.to, reason);
+        const reason = `Recipient not accepted by mail server (accepted=[${maskEmailList(
+          accepted,
+        )}], rejected=[${maskEmailList(rejected)}], response=${response})`;
+        console.warn("[EMAIL] %s NOT accepted: %s", maskEmail(options.to), reason);
         return {
           ok: false,
           recipient: options.to,
@@ -121,7 +122,7 @@ export const sendEmailDetailed = async (
       lastError = error;
       console.error(
         "[EMAIL] Error sending email to %s (attempt %d/%d):",
-        options.to,
+        maskEmail(options.to),
         attempt + 1,
         retries + 1,
         error?.message,
@@ -147,14 +148,10 @@ export const sendEmailDetailed = async (
   };
 };
 
-export const sendEmail = async (
-  options: EmailOptions,
-  retries = 2,
-): Promise<boolean> => {
+export const sendEmail = async (options: EmailOptions, retries = 2): Promise<boolean> => {
   const result = await sendEmailDetailed(options, retries);
   return result.ok;
 };
-
 
 const COLORS = {
   canvas: "#F4F6FA",
@@ -246,7 +243,7 @@ export function detailCard(title: string, rows: Array<[string, string]>): string
       <tr>
         <td style="padding: 7px 0; color: ${COLORS.muted}; font-size: 13px; vertical-align: top; width: 130px;">${label}</td>
         <td style="padding: 7px 0; color: ${COLORS.ink}; font-size: 14px; font-weight: 500; word-break: break-word;">${value}</td>
-      </tr>`
+      </tr>`,
     )
     .join("");
   let titleHtml = "";
@@ -280,7 +277,7 @@ export function stepList(items: string[]): string {
           <span style="display: inline-block; width: 24px; height: 24px; line-height: 24px; text-align: center; border-radius: 50%; background: ${COLORS.accentSoft}; color: ${COLORS.accent}; font-size: 13px; font-weight: 700;">${i + 1}</span>
         </td>
         <td style="padding: 0 0 14px; color: ${COLORS.body}; font-size: 14px; line-height: 1.5; vertical-align: top;">${item}</td>
-      </tr>`
+      </tr>`,
     )
     .join("");
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="${SECTION_WIDTH} margin: 0 0 8px;">${lis}</table>`;
@@ -350,12 +347,11 @@ export function renderEmail(opts: {
 
 const FRONTEND = () => process.env.FRONTEND_URL || "https://www.seatping.biz";
 
-
 export const sendPasswordResetEmail = async (
   email: string,
   resetToken: string,
   accountType: "customer" | "business" = "customer",
-  baseUrl?: string
+  baseUrl?: string,
 ): Promise<boolean> => {
   const origin = (baseUrl || FRONTEND()).replace(/\/+$/, "");
   let accountTypeParam = "";
@@ -385,7 +381,7 @@ export const sendPasswordResetEmail = async (
 
 export const sendPasswordChangeConfirmationEmail = async (
   email: string,
-  name?: string
+  name?: string,
 ): Promise<boolean> => {
   let greeting = "";
   if (name) {
@@ -397,7 +393,7 @@ export const sendPasswordChangeConfirmationEmail = async (
     bodyHtml: `
       ${p(`${greeting}your SeatPing password was just updated. You can now sign in with your new password.`)}
       ${calloutBox(
-        `<strong>Didn't make this change?</strong> Reach out to us right away at <a href="mailto:${SUPPORT_EMAIL}" style="color: ${COLORS.accent}; word-break: break-word;">${SUPPORT_EMAIL}</a> and we'll help secure your account.`
+        `<strong>Didn't make this change?</strong> Reach out to us right away at <a href="mailto:${SUPPORT_EMAIL}" style="color: ${COLORS.accent}; word-break: break-word;">${SUPPORT_EMAIL}</a> and we'll help secure your account.`,
       )}
     `,
   });
@@ -410,11 +406,7 @@ export const sendPasswordChangeConfirmationEmail = async (
   });
 };
 
-
-export const sendCustomerWelcomeEmail = async (
-  email: string,
-  name: string
-): Promise<boolean> => {
+export const sendCustomerWelcomeEmail = async (email: string, name: string): Promise<boolean> => {
   const homeUrl = FRONTEND();
   const profileUrl = `${FRONTEND()}/profile`;
 
@@ -436,7 +428,7 @@ export const sendCustomerWelcomeEmail = async (
 
   return sendEmail({
     to: email,
-    subject: "Welcome to SeatPing",
+    subject: "Welcome To SeatPing",
     html,
     from: FROM_ADDRESS,
   });
@@ -448,7 +440,7 @@ export const sendQueueJoinConfirmationEmail = async (
   lastName: string,
   businessName: string,
   address: string,
-  position: number
+  position: number,
 ): Promise<boolean> => {
   const html = renderEmail({
     heading: "You're in the Queue",
@@ -456,7 +448,7 @@ export const sendQueueJoinConfirmationEmail = async (
     bodyHtml: `
       ${p(`Hi ${esc(firstName)}, you're on the waitlist at <strong>${esc(businessName)}</strong>. We'll let you know when your table is ready.`)}
       ${calloutBox(
-        `<span style="font-size: 15px; font-weight: 700;">You're #${Number(position)} in line</span>`
+        `<span style="font-size: 15px; font-weight: 700;">You're #${Number(position)} in line</span>`,
       )}
       ${detailCard("Queue details", [
         ["Restaurant", esc(businessName)],
@@ -464,7 +456,7 @@ export const sendQueueJoinConfirmationEmail = async (
         ["Name", esc(`${firstName} ${lastName}`.trim())],
         ["Your Spot", `#${Number(position)}`],
       ])}
-      ${p("You can close this email — we'll notify you when it's your turn. Thanks for your patience!")}
+      ${p("You can close this email. We'll notify you when it's your turn. Thanks for your patience!")}
     `,
   });
 
@@ -478,7 +470,7 @@ export const sendQueueJoinConfirmationEmail = async (
 
 export const sendQueueYourTurnEmail = async (
   email: string,
-  businessName: string
+  businessName: string,
 ): Promise<boolean> => {
   const html = renderEmail({
     heading: "Your Table Is Ready",
@@ -487,7 +479,7 @@ export const sendQueueYourTurnEmail = async (
       ${calloutBox(
         `<span style="font-size: 15px; font-weight: 700;">Your table is ready at ${esc(businessName)}</span>`,
         "#15803D",
-        "#E7F4EC"
+        "#E7F4EC",
       )}
       ${p("Please head to the host within the next <strong>5 minutes</strong> to be seated. Thanks for waiting with SeatPing!")}
     `,
@@ -535,7 +527,7 @@ export const sendReservationConfirmationEmail = async (params: {
     cancellationPolicyHtml = calloutBox(
       `<strong>Cancellation Policy:</strong> ${esc(cancellationPolicy)}`,
       COLORS.muted,
-      COLORS.panel
+      COLORS.panel,
     );
   }
   const html = renderEmail({
@@ -546,7 +538,7 @@ export const sendReservationConfirmationEmail = async (params: {
       ${calloutBox(
         `<strong>You're booked. We look forward to seeing you!</strong>`,
         "#15803D",
-        "#E7F4EC"
+        "#E7F4EC",
       )}
       ${detailCard("Reservation", [
         ["Restaurant", esc(businessName)],
@@ -619,12 +611,11 @@ export const sendReservationReminderEmail = async (params: {
   });
 };
 
-
 export const sendBusinessOnboardingEmail = async (
   email: string,
   name: string,
   _username: string,
-  trialDays?: number
+  trialDays?: number,
 ): Promise<boolean> => {
   const dashboardUrl = `${FRONTEND()}/business/dashboard`;
 
@@ -648,7 +639,7 @@ export const sendBusinessOnboardingEmail = async (
         "Run a test booking to see the customer flow end to end",
       ])}
       ${emailButton(dashboardUrl, "Open Your Dashboard")}
-      ${p(`Anything unclear or not working the way you'd expect? Just reply to this email — it comes straight to us.`)}
+      ${p(`Anything unclear or not working the way you'd expect? Just reply to this email. It comes straight to us.`)}
     `,
   });
 
@@ -689,7 +680,10 @@ export const sendNewReservationBusinessEmail = async (params: {
   const rows: Array<[string, string]> = [
     ["Location", esc(locationName)],
     ["Guest", esc(customerName)],
-    ["Email", `<a href="mailto:${esc(customerEmail)}" style="color: ${COLORS.accent};">${esc(customerEmail)}</a>`],
+    [
+      "Email",
+      `<a href="mailto:${esc(customerEmail)}" style="color: ${COLORS.accent};">${esc(customerEmail)}</a>`,
+    ],
   ];
   if (customerPhone) {
     rows.push(["Phone", esc(customerPhone)]);
@@ -708,7 +702,7 @@ export const sendNewReservationBusinessEmail = async (params: {
     guestNotesHtml = calloutBox(
       `<strong>Guest Notes:</strong> ${esc(notes)}`,
       COLORS.muted,
-      COLORS.panel
+      COLORS.panel,
     );
   }
 
@@ -730,7 +724,6 @@ export const sendNewReservationBusinessEmail = async (params: {
     from: FROM_ADDRESS,
   });
 };
-
 
 export interface SalesInquiryData {
   businessName: string;
@@ -767,7 +760,10 @@ export const sendFeedbackEmail = async (data: FeedbackData): Promise<boolean> =>
     rows.push(["Severity", esc(severityLabels[data.severity] || data.severity)]);
   }
   rows.push(["Name", esc(data.name)]);
-  rows.push(["Email", `<a href="mailto:${esc(data.email)}" style="color: ${COLORS.accent};">${esc(data.email)}</a>`]);
+  rows.push([
+    "Email",
+    `<a href="mailto:${esc(data.email)}" style="color: ${COLORS.accent};">${esc(data.email)}</a>`,
+  ]);
   if (data.businessName) {
     rows.push(["Business", esc(data.businessName)]);
   }
@@ -794,14 +790,17 @@ export const sendFeedbackEmail = async (data: FeedbackData): Promise<boolean> =>
 export const sendSalesInquiryEmail = async (data: SalesInquiryData): Promise<boolean> => {
   const rows: Array<[string, string]> = [
     ["Business Name", esc(data.businessName)],
-    ["Business Email", `<a href="mailto:${esc(data.businessEmail)}" style="color: ${COLORS.accent};">${esc(data.businessEmail)}</a>`],
+    [
+      "Business Email",
+      `<a href="mailto:${esc(data.businessEmail)}" style="color: ${COLORS.accent};">${esc(data.businessEmail)}</a>`,
+    ],
     ["Contact Name", esc(data.contactName)],
     ["Phone Number", esc(data.phoneNumber)],
   ];
 
   const html = renderEmail({
     heading: `New Sales Inquiry From ${data.businessName}`,
-    preheader: `New sales inquiry from ${data.businessName}`,
+    preheader: `New Sales Inquiry From ${data.businessName}`,
     bodyHtml: detailCard("Lead", rows),
   });
 
@@ -816,11 +815,11 @@ export const sendFeedbackConfirmationEmail = async (
   userEmail: string,
   userName: string,
   ticketNumber: string,
-  subject: string
+  subject: string,
 ): Promise<boolean> => {
   const html = renderEmail({
     heading: "Thanks For The Feedback",
-    preheader: `We've logged your feedback — ${ticketNumber}.`,
+    preheader: `We've Logged Your Feedback: ${ticketNumber}`,
     bodyHtml: `
       ${p(`Hi ${esc(userName)}, we've logged your feedback and we'll review it shortly.`)}
       ${detailCard("Your ticket", [
@@ -834,7 +833,7 @@ export const sendFeedbackConfirmationEmail = async (
 
   return sendEmail({
     to: userEmail,
-    subject: `Feedback Received — ${ticketNumber}`,
+    subject: `Feedback Received: ${ticketNumber}`,
     html,
     from: FROM_ADDRESS,
   });
@@ -844,11 +843,11 @@ export const sendSalesInquiryConfirmationEmail = async (
   userEmail: string,
   contactName: string,
   businessName: string,
-  ticketNumber: string
+  ticketNumber: string,
 ): Promise<boolean> => {
   const html = renderEmail({
     heading: "We Received Your SeatPing Inquiry",
-    preheader: `We've received your inquiry — ${ticketNumber}.`,
+    preheader: `We've Received Your Inquiry: ${ticketNumber}`,
     bodyHtml: `
       ${p(`Hi ${esc(contactName)}, thanks for reaching out about SeatPing for ${esc(businessName)}. We received your inquiry and will get back to you soon.`)}
       ${detailCard("Your ticket", [

@@ -36,7 +36,9 @@ describe("feedback intake", () => {
   it("creates a feedback ticket and emails both the team and the sender", async () => {
     const payload = feedbackPayload();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/feedback/submit")
       .set("X-Forwarded-For", freshIp())
       .send(payload);
@@ -55,7 +57,9 @@ describe("feedback intake", () => {
   });
 
   it("defaults a bug report to medium priority", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/feedback/submit")
       .set("X-Forwarded-For", freshIp())
       .send(feedbackPayload({ feedbackType: "bug" }));
@@ -67,7 +71,9 @@ describe("feedback intake", () => {
   });
 
   it("defaults other feedback to low priority", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/feedback/submit")
       .set("X-Forwarded-For", freshIp())
       .send(feedbackPayload({ feedbackType: "feature" }));
@@ -79,7 +85,9 @@ describe("feedback intake", () => {
   });
 
   it("keeps an explicit severity as the ticket priority", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/feedback/submit")
       .set("X-Forwarded-For", freshIp())
       .send(feedbackPayload({ severity: "high" }));
@@ -93,7 +101,9 @@ describe("feedback intake", () => {
   it("stores the submitted message as the opening thread entry", async () => {
     const payload = feedbackPayload();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/feedback/submit")
       .set("X-Forwarded-For", freshIp())
       .send(payload);
@@ -108,7 +118,9 @@ describe("feedback intake", () => {
   });
 
   it("rejects a submission that is missing a required field", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/feedback/submit")
       .set("X-Forwarded-For", freshIp())
       .send(feedbackPayload({ subject: "" }));
@@ -118,7 +130,9 @@ describe("feedback intake", () => {
   });
 
   it("rejects a malformed email address", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/feedback/submit")
       .set("X-Forwarded-For", freshIp())
       .send(feedbackPayload({ email: "not-an-email" }));
@@ -133,7 +147,9 @@ describe("feedback intake", () => {
     const statuses: number[] = [];
 
     for (let i = 0; i < 5; i++) {
-      const res = await (await api())
+      const res = await (
+        await api()
+      )
         .post("/api/feedback/submit")
         .set("X-Forwarded-For", ip)
         .send(feedbackPayload({ email }));
@@ -148,7 +164,9 @@ describe("sales intake", () => {
   it("creates a sales ticket and emails both the team and the sender", async () => {
     const payload = salesPayload();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/sales/inquiry")
       .set("X-Forwarded-For", freshIp())
       .send(payload);
@@ -169,7 +187,9 @@ describe("sales intake", () => {
   it("trims the submitted contact details", async () => {
     const suffix = uniqueSuffix();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/sales/inquiry")
       .set("X-Forwarded-For", freshIp())
       .send(
@@ -187,7 +207,9 @@ describe("sales intake", () => {
   });
 
   it("rejects an inquiry that is missing the phone number", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/sales/inquiry")
       .set("X-Forwarded-For", freshIp())
       .send(salesPayload({ phoneNumber: "" }));
@@ -197,7 +219,9 @@ describe("sales intake", () => {
   });
 
   it("rejects a malformed business email", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/sales/inquiry")
       .set("X-Forwarded-For", freshIp())
       .send(salesPayload({ businessEmail: "not-an-email" }));
@@ -207,7 +231,9 @@ describe("sales intake", () => {
   });
 
   it("tolerates a request with no body at all", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/sales/inquiry")
       .set("X-Forwarded-For", freshIp())
       .set("Content-Type", "application/json")
@@ -222,7 +248,9 @@ describe("sales intake", () => {
     const statuses: number[] = [];
 
     for (let i = 0; i < 5; i++) {
-      const res = await (await api())
+      const res = await (
+        await api()
+      )
         .post("/api/sales/inquiry")
         .set("X-Forwarded-For", ip)
         .send(salesPayload({ businessEmail }));

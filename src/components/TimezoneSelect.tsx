@@ -1,10 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -108,9 +104,7 @@ export function TimezoneSelect({
             return 0;
           }}
         >
-          {}
           <CommandInput placeholder="Search timezone or city..." />
-          {}
           <CommandList
             ref={attachScrollHandlers}
             className="pointer-events-auto max-h-[300px] overflow-y-auto overscroll-contain [touch-action:pan-y]"
@@ -134,9 +128,7 @@ export function TimezoneSelect({
                       setOpen(false);
                     }}
                   >
-                    <Check
-                      className={cn("mr-2 h-4 w-4 shrink-0", checkOpacityClass)}
-                    />
+                    <Check className={cn("mr-2 h-4 w-4 shrink-0", checkOpacityClass)} />
                     <span className="flex-1 truncate">{t.label}</span>
                   </CommandItem>
                 );

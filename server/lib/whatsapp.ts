@@ -1,4 +1,5 @@
 import { WhatsAppClient } from "@kapso/whatsapp-cloud-api";
+import { maskPhone } from "./redact.js";
 
 const KAPSO_BASE_URL = "https://api.kapso.ai/meta/whatsapp";
 
@@ -43,13 +44,17 @@ export async function sendQueueJoinedWhatsApp(params: SendQueueJoinedParams): Pr
   const phoneNumberId = process.env.KAPSO_PHONE_NUMBER_ID;
 
   if (!client || !phoneNumberId) {
-    console.error("[WHATSAPP] Missing KAPSO_API_KEY or KAPSO_PHONE_NUMBER_ID env vars - cannot send queue_joined");
+    console.error(
+      "[WHATSAPP] Missing KAPSO_API_KEY or KAPSO_PHONE_NUMBER_ID env vars - cannot send queue_joined",
+    );
     return false;
   }
 
   const to = formatWhatsAppNumber(params.countryCode, params.phoneNumber);
   if (!to) {
-    console.error("[WHATSAPP] Invalid phone number for queue_joined", { countryCode: params.countryCode });
+    console.error("[WHATSAPP] Invalid phone number for queue_joined", {
+      countryCode: params.countryCode,
+    });
     return false;
   }
 
@@ -72,7 +77,7 @@ export async function sendQueueJoinedWhatsApp(params: SendQueueJoinedParams): Pr
         ],
       },
     });
-    console.log("[WHATSAPP] queue_joined template sent to", to);
+    console.log("[WHATSAPP] queue_joined template sent to %s", maskPhone(to));
     return true;
   } catch (error: any) {
     console.error("[WHATSAPP] Failed to send queue_joined:", error?.message || error);
@@ -170,8 +175,7 @@ async function getTemplateContract(
   templateName: string,
   language: string,
 ): Promise<TemplateContract | null> {
-  const wabaId =
-    process.env.KAPSO_WABA_ID || process.env.KAPSO_BUSINESS_ACCOUNT_ID;
+  const wabaId = process.env.KAPSO_WABA_ID || process.env.KAPSO_BUSINESS_ACCOUNT_ID;
   const client = getClient();
   if (!client || !wabaId) {
     return null;
@@ -198,9 +202,7 @@ async function getTemplateContract(
       return null;
     }
     const components: any[] = match.components || [];
-    const body = components.find(
-      (c) => String(c?.type || "").toLowerCase() === "body",
-    );
+    const body = components.find((c) => String(c?.type || "").toLowerCase() === "body");
     const names = placeholdersOf(String(body?.text || ""));
     let mode: TemplateContract["mode"] = "named";
     if (names.length > 0 && names.every((n) => /^\d+$/.test(n))) {
@@ -210,10 +212,7 @@ async function getTemplateContract(
     templateContractCache.set(key, contract);
     return contract;
   } catch (error: any) {
-    console.error(
-      "[WHATSAPP] template contract lookup failed:",
-      error?.message || error,
-    );
+    console.error("[WHATSAPP] template contract lookup failed:", error?.message || error);
     templateContractCache.set(key, null);
     return null;
   }
@@ -225,7 +224,7 @@ export async function sendCampaignWhatsApp(
   const client = getClient();
   const phoneNumberId = process.env.KAPSO_PHONE_NUMBER_ID;
   if (!client || !phoneNumberId) {
-    console.error("[WHATSAPP] Missing KAPSO creds — cannot send campaign message");
+    console.error("[WHATSAPP] Missing KAPSO creds: cannot send campaign message");
     return null;
   }
   const to = params.toDigits.replace(/\D/g, "");
@@ -295,9 +294,8 @@ export async function sendCampaignWhatsApp(
         components,
       },
     });
-    const id =
-      result?.messages?.[0]?.id || result?.data?.id || result?.id || null;
-    console.log("[WHATSAPP] campaign template sent to", to);
+    const id = result?.messages?.[0]?.id || result?.data?.id || result?.id || null;
+    console.log("[WHATSAPP] campaign template sent to %s", maskPhone(to));
     if (id) {
       return String(id);
     }
@@ -313,13 +311,17 @@ export async function sendQueueAdmittedWhatsApp(params: SendQueueAdmittedParams)
   const phoneNumberId = process.env.KAPSO_PHONE_NUMBER_ID;
 
   if (!client || !phoneNumberId) {
-    console.error("[WHATSAPP] Missing KAPSO_API_KEY or KAPSO_PHONE_NUMBER_ID env vars - cannot send queue_admitted");
+    console.error(
+      "[WHATSAPP] Missing KAPSO_API_KEY or KAPSO_PHONE_NUMBER_ID env vars - cannot send queue_admitted",
+    );
     return false;
   }
 
   const to = formatWhatsAppNumber(params.countryCode, params.phoneNumber);
   if (!to) {
-    console.error("[WHATSAPP] Invalid phone number for queue_admitted", { countryCode: params.countryCode });
+    console.error("[WHATSAPP] Invalid phone number for queue_admitted", {
+      countryCode: params.countryCode,
+    });
     return false;
   }
 
@@ -338,7 +340,7 @@ export async function sendQueueAdmittedWhatsApp(params: SendQueueAdmittedParams)
         ],
       },
     });
-    console.log("[WHATSAPP] queue_admitted template sent to", to);
+    console.log("[WHATSAPP] queue_admitted template sent to %s", maskPhone(to));
     return true;
   } catch (error: any) {
     console.error("[WHATSAPP] Failed to send queue_admitted:", error?.message || error);

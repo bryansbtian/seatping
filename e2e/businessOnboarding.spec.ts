@@ -13,17 +13,12 @@ test("a business creates a location from the settings page and it survives a rel
   await signInBusiness(page, business);
   await page.goto("/business/settings");
 
-  await expect(
-    page.getByRole("heading", { name: "Location Management" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Location Management" })).toBeVisible();
   await expect(page.getByText("No locations added yet.")).toBeVisible();
 
   await page.getByLabel("Location Display Name").fill(displayName);
   await page.getByLabel("Search Address").fill(address);
-  await page
-    .getByRole("button", { name: "Add Location" })
-    .filter({ visible: true })
-    .click();
+  await page.getByRole("button", { name: "Add Location" }).filter({ visible: true }).click();
 
   await expect
     .poll(async () => {
@@ -104,7 +99,5 @@ test("a business configures opening hours, reservation limits and publishes the 
 
   await page.reload();
   await page.getByRole("button", { name: "Edit Restaurant Profile" }).click();
-  await expect(
-    page.getByRole("dialog").getByLabel("Restaurant Name"),
-  ).toHaveValue(restaurantName);
+  await expect(page.getByRole("dialog").getByLabel("Restaurant Name")).toHaveValue(restaurantName);
 });

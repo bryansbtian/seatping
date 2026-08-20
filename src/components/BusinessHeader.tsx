@@ -32,25 +32,33 @@ const BusinessHeader = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between relative">
-        <Link
-          to="/business/dashboard"
-          className="text-2xl font-semibold text-slate-900"
-        >
+        <Link to="/business/dashboard" className="text-2xl font-semibold text-slate-900">
           SeatPing
         </Link>
 
-        {}
         <div className="hidden sm:flex items-center gap-8">
-          <Link to="/business/dashboard" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
+          <Link
+            to="/business/dashboard"
+            className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
+          >
             {t("nav.dashboard")}
           </Link>
-          <Link to="/business/guests" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
+          <Link
+            to="/business/guests"
+            className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
+          >
             {t("nav.guests")}
           </Link>
-          <Link to="/business/campaigns" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
+          <Link
+            to="/business/campaigns"
+            className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
+          >
             {t("nav.campaigns")}
           </Link>
-          <Link to="/business/settings" className="text-slate-900 hover:text-slate-600 transition-colors font-medium">
+          <Link
+            to="/business/settings"
+            className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
+          >
             {t("nav.settings")}
           </Link>
           <button
@@ -61,7 +69,6 @@ const BusinessHeader = () => {
           </button>
         </div>
 
-        {}
         <button
           type="button"
           aria-label={t("nav.openMenu")}

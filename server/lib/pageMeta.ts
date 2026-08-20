@@ -1,4 +1,3 @@
-
 export const SITE_URL = "https://www.seatping.biz";
 
 export type PageMeta = {

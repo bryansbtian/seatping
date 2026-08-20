@@ -47,15 +47,9 @@ describe("html building blocks", () => {
   it("renders the shared blocks", () => {
     expect(p("Hello")).toContain("Hello");
     expect(calloutBox("Note")).toContain("Note");
-    expect(emailButton("https://test.invalid", "Go")).toContain(
-      "https://test.invalid",
-    );
-    expect(emailSecondaryButton("https://test.invalid", "Maybe")).toContain(
-      "Maybe",
-    );
-    expect(fallbackLink("https://test.invalid")).toContain(
-      "https://test.invalid",
-    );
+    expect(emailButton("https://test.invalid", "Go")).toContain("https://test.invalid");
+    expect(emailSecondaryButton("https://test.invalid", "Maybe")).toContain("Maybe");
+    expect(fallbackLink("https://test.invalid")).toContain("https://test.invalid");
   });
 
   it("renders a detail card with and without a title", () => {
@@ -84,9 +78,9 @@ describe("html building blocks", () => {
     expect(renderEmail({ heading: "Hi", bodyHtml: "" })).toContain(
       "Queues &amp; Reservations For Hospitality",
     );
-    expect(
-      renderEmail({ heading: "Hi", bodyHtml: "", tagline: "Custom Tagline" }),
-    ).toContain("Custom Tagline");
+    expect(renderEmail({ heading: "Hi", bodyHtml: "", tagline: "Custom Tagline" })).toContain(
+      "Custom Tagline",
+    );
   });
 });
 
@@ -358,7 +352,12 @@ describe("transactional emails", () => {
       feedbackType: "bug",
     };
 
-    await sendFeedbackEmail({ ...base, severity: "high", businessName: "Bistro", phone: "+15550000000" });
+    await sendFeedbackEmail({
+      ...base,
+      severity: "high",
+      businessName: "Bistro",
+      phone: "+15550000000",
+    });
     expect(lastEmail().subject).toContain("Bug");
     expect(lastEmail().html).toContain("High");
     expect(lastEmail().html).toContain("Bistro");

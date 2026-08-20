@@ -32,10 +32,10 @@ export function useSearchSuggestions(query: string, enabled: boolean) {
     setError(false);
     const ctrl = new AbortController();
     const t = setTimeout(() => {
-      fetch(
-        `/api/locations/search-suggestions?query=${encodeURIComponent(q)}&limit=3`,
-        { signal: ctrl.signal, credentials: "include" },
-      )
+      fetch(`/api/locations/search-suggestions?query=${encodeURIComponent(q)}&limit=3`, {
+        signal: ctrl.signal,
+        credentials: "include",
+      })
         .then((r) => {
           if (r.ok) {
             return r.json();

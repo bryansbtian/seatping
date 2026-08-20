@@ -19,15 +19,12 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": [
-        "warn",
-        { allowConstantExport: true },
-      ],
+      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-explicit-any": "off",
-      "no-empty": ["error", { "allowEmptyCatch": true }],
+      "no-empty": ["error", { allowEmptyCatch: true }],
       "no-ternary": "error",
-      "curly": ["error", "all"],
+      curly: ["error", "all"],
     },
   },
   {
@@ -41,7 +38,7 @@ export default tseslint.config(
     files: ["**/*.{js,jsx,mjs,cjs}"],
     rules: {
       "no-ternary": "error",
-      "curly": ["error", "all"],
+      curly: ["error", "all"],
     },
-  }
+  },
 );

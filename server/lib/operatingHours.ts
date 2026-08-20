@@ -65,7 +65,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function normalizedDay(openingHours: unknown, key: DayKey): {
+function normalizedDay(
+  openingHours: unknown,
+  key: DayKey,
+): {
   configured: boolean;
   enabled: boolean;
   openMin: number;
@@ -121,7 +124,10 @@ export function formatOperatingTime(time: string): string {
   return `${hour12}:${minute} ${suffix}`;
 }
 
-function datePartsInTimezone(at: Date, timezone: string): {
+function datePartsInTimezone(
+  at: Date,
+  timezone: string,
+): {
   date: string;
   minute: number;
 } {
@@ -168,9 +174,7 @@ export function getOpeningHoursTimezone(openingHours: unknown): string {
   }
 }
 
-export function getLocationOpeningHours(
-  location: unknown,
-): OpeningHours | undefined {
+export function getLocationOpeningHours(location: unknown): OpeningHours | undefined {
   if (!isRecord(location) || !isRecord(location.restaurantProfile)) {
     return undefined;
   }
@@ -197,16 +201,9 @@ export function getNowWallClockInTimezone(timezone: string): string {
   return `${parts.date}T${hh}:${mm}`;
 }
 
-export function getDateOperatingStatus(
-  openingHours: unknown,
-  date: string,
-): DateOperatingStatus {
+export function getDateOperatingStatus(openingHours: unknown, date: string): DateOperatingStatus {
   const dayIndex = dayIndexForDate(date);
-  if (
-    dayIndex === null ||
-    !openingHours ||
-    typeof openingHours !== "object"
-  ) {
+  if (dayIndex === null || !openingHours || typeof openingHours !== "object") {
     return {
       configured: false,
       date,
@@ -224,11 +221,7 @@ export function getDateOperatingStatus(
   const previous = normalizedDay(openingHours, previousKey);
   const windows: OperatingWindow[] = [];
 
-  if (
-    previous?.enabled &&
-    previous.closeMin <= previous.openMin &&
-    previous.closeMin > 0
-  ) {
+  if (previous?.enabled && previous.closeMin <= previous.openMin && previous.closeMin > 0) {
     windows.push({
       openMin: 0,
       closeMin: previous.closeMin,
@@ -256,14 +249,8 @@ export function getDateOperatingStatus(
 
   const configured = Boolean(current || windows.length);
   const hoursLabels: string[] = [];
-  if (
-    previous?.enabled &&
-    previous.closeMin <= previous.openMin &&
-    previous.closeMin > 0
-  ) {
-    hoursLabels.push(
-      `${formatOperatingTime("00:00")} - ${formatOperatingTime(previous.close)}`,
-    );
+  if (previous?.enabled && previous.closeMin <= previous.openMin && previous.closeMin > 0) {
+    hoursLabels.push(`${formatOperatingTime("00:00")} - ${formatOperatingTime(previous.close)}`);
   }
   if (current?.enabled) {
     if (current.open === "00:00" && current.close === "00:00") {
@@ -294,16 +281,11 @@ export function getDateOperatingStatus(
   };
 }
 
-export function isMinuteWithinOperatingHours(
-  status: DateOperatingStatus,
-  minute: number,
-): boolean {
+export function isMinuteWithinOperatingHours(status: DateOperatingStatus, minute: number): boolean {
   if (!status.configured) {
     return true;
   }
-  return status.windows.some(
-    (window) => minute >= window.openMin && minute < window.closeMin,
-  );
+  return status.windows.some((window) => minute >= window.openMin && minute < window.closeMin);
 }
 
 export function getCurrentOperatingStatus(

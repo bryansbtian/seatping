@@ -43,12 +43,8 @@ describe("cloudinary configuration guard", () => {
   it("recognises a public id inside a location folder", () => {
     const folder = locationFolder("biz-1", "loc-1");
 
-    expect(publicIdInLocationFolder(`${folder}/photo123`, "biz-1", "loc-1")).toBe(
-      true,
-    );
-    expect(publicIdInLocationFolder("someone/else/photo", "biz-1", "loc-1")).toBe(
-      false,
-    );
+    expect(publicIdInLocationFolder(`${folder}/photo123`, "biz-1", "loc-1")).toBe(true);
+    expect(publicIdInLocationFolder("someone/else/photo", "biz-1", "loc-1")).toBe(false);
   });
 
   it("names the error after every missing credential", () => {
@@ -124,9 +120,7 @@ describe("campaign message rendering", () => {
   });
 
   it("tolerates whitespace inside the braces", () => {
-    expect(renderString("Hi {{  first_name  }}", { first_name: "Ada" })).toBe(
-      "Hi Ada",
-    );
+    expect(renderString("Hi {{  first_name  }}", { first_name: "Ada" })).toBe("Hi Ada");
   });
 
   it("extracts placeholders from a body", () => {

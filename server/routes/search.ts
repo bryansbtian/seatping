@@ -96,10 +96,9 @@ router.get("/restaurants", async (req, res) => {
       await limitGuard(req, res, [
         { name: "search-restaurants-ip", key: clientIp(req), windowMs: MINUTES(1), max: 60 },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
 
     const q = String(req.query.query || "").trim();
 
@@ -123,9 +122,7 @@ router.get("/restaurants", async (req, res) => {
       },
     });
 
-    const businessIds = Array.from(
-      new Set(locations.map((l) => l.businessId).filter(Boolean)),
-    );
+    const businessIds = Array.from(new Set(locations.map((l) => l.businessId).filter(Boolean)));
     const businesses = await prisma.business.findMany({
       where: { id: { in: businessIds } },
       select: { id: true, name: true, username: true },
@@ -185,18 +182,12 @@ router.get("/restaurants", async (req, res) => {
         rating: null,
         reviewCount: 0,
       };
-      const bannerImageUrl =
-        loc.bannerImageUrl || (loc.photos?.[0]?.url ?? null);
+      const bannerImageUrl = loc.bannerImageUrl || (loc.photos?.[0]?.url ?? null);
       return {
         locationId: loc.id,
         businessUsername: business?.username ?? null,
         businessName: business?.name ?? null,
-        name:
-          rp.displayName ||
-          business?.name ||
-          loc.displayName ||
-          loc.name ||
-          "Restaurant",
+        name: rp.displayName || business?.name || loc.displayName || loc.name || "Restaurant",
         shortAddress: rp.shortAddress || loc.displayName || loc.area || loc.city || null,
         locationDisplayName: loc.displayName ?? null,
         description: rp.description ?? null,

@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Link,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { format, isToday, isTomorrow } from "date-fns";
 import {
   Calendar as CalendarIcon,
@@ -26,24 +21,10 @@ import Footer from "@/components/Footer";
 import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  FieldTrigger,
-  FLAT_FIELD,
-  OptionRow,
-  TimeSelect,
-  formatTimeLabel,
-} from "@/components/TimeSelect";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { FieldTrigger, FLAT_FIELD, OptionRow, TimeSelect } from "@/components/TimeSelect";
+import { formatTimeLabel } from "@/components/timeOptions";
 import { SearchSuggestInput } from "@/components/SearchSuggestInput";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -51,9 +32,7 @@ import { cn } from "@/lib/utils";
 const TIME_OPTIONS: string[] = [];
 for (let h = 0; h <= 23; h++) {
   for (const m of [0, 30]) {
-    TIME_OPTIONS.push(
-      `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
-    );
+    TIME_OPTIONS.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
   }
 }
 const SLOT_INTERVAL_MIN = 30;
@@ -67,9 +46,10 @@ function getNextTimeSlot(): string {
   }
   now.setSeconds(0);
   now.setMilliseconds(0);
-  const target = `${String(now.getHours()).padStart(2, "0")}:${String(
-    now.getMinutes(),
-  ).padStart(2, "0")}`;
+  const target = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(
+    2,
+    "0",
+  )}`;
   return TIME_OPTIONS.find((t) => t >= target) ?? TIME_OPTIONS[0];
 }
 
@@ -80,10 +60,7 @@ function localDateStr(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-const PEOPLE_OPTIONS: string[] = [
-  ...Array.from({ length: 20 }, (_, i) => String(i + 1)),
-  "large",
-];
+const PEOPLE_OPTIONS: string[] = [...Array.from({ length: 20 }, (_, i) => String(i + 1)), "large"];
 
 function peopleLabel(value: string) {
   if (value === "large") {
@@ -122,13 +99,7 @@ type SearchResult = {
 };
 
 type SortKey =
-  | "recommended"
-  | "rating"
-  | "reviews"
-  | "name-az"
-  | "name-za"
-  | "price-asc"
-  | "price-desc";
+  "recommended" | "rating" | "reviews" | "name-az" | "name-za" | "price-asc" | "price-desc";
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "recommended", label: "Recommended" },
@@ -332,17 +303,15 @@ export default function SearchResults() {
 
   const cuisineOptions = useMemo(
     () =>
-      Array.from(
-        new Set(
-          (results || []).map((r) => r.cuisine).filter(Boolean) as string[],
-        ),
-      ).sort((a, b) => a.localeCompare(b)),
+      Array.from(new Set((results || []).map((r) => r.cuisine).filter(Boolean) as string[])).sort(
+        (a, b) => a.localeCompare(b),
+      ),
     [results],
   );
   const locationOptions = useMemo(
     () =>
-      Array.from(new Set((results || []).map(areaLabel).filter(Boolean))).sort(
-        (a, b) => a.localeCompare(b),
+      Array.from(new Set((results || []).map(areaLabel).filter(Boolean))).sort((a, b) =>
+        a.localeCompare(b),
       ),
     [results],
   );
@@ -358,10 +327,9 @@ export default function SearchResults() {
       if (filters.price && r.priceRange !== filters.price) {
         return false;
       }
-      if (filters.minRating != null && (r.rating ?? 0) < filters.minRating)
-        {
-          return false;
-        }
+      if (filters.minRating != null && (r.rating ?? 0) < filters.minRating) {
+        return false;
+      }
       if (filters.location && areaLabel(r) !== filters.location) {
         return false;
       }
@@ -383,8 +351,7 @@ export default function SearchResults() {
       }
       return 0;
     };
-    const byName = (a: SearchResult, b: SearchResult) =>
-      a.name.localeCompare(b.name);
+    const byName = (a: SearchResult, b: SearchResult) => a.name.localeCompare(b.name);
 
     switch (sort) {
       case "rating":
@@ -400,20 +367,14 @@ export default function SearchResults() {
         list = [...list].sort((a, b) => byName(b, a));
         break;
       case "price-asc":
-        list = [...list].sort(
-          (a, b) => priceRank(a.priceRange) - priceRank(b.priceRange),
-        );
+        list = [...list].sort((a, b) => priceRank(a.priceRange) - priceRank(b.priceRange));
         break;
       case "price-desc":
-        list = [...list].sort(
-          (a, b) => priceRank(b.priceRange) - priceRank(a.priceRange),
-        );
+        list = [...list].sort((a, b) => priceRank(b.priceRange) - priceRank(a.priceRange));
         break;
       case "recommended":
       default:
-        list = [...list].sort(
-          (a, b) => Number(b.featured) - Number(a.featured),
-        );
+        list = [...list].sort((a, b) => Number(b.featured) - Number(a.featured));
         break;
     }
     return list;
@@ -506,16 +467,9 @@ export default function SearchResults() {
       />
       <Header />
 
-      {}
       <section className="bg-slate-900 pt-24 pb-5">
-        <form
-          onSubmit={submit}
-          className="container mx-auto px-4"
-          aria-label="Search restaurants"
-        >
-          {}
+        <form onSubmit={submit} className="container mx-auto px-4" aria-label="Search restaurants">
           <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm max-[360px]:p-2 md:grid md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none md:grid-cols-[auto_auto_auto_minmax(0,1fr)] md:items-center md:gap-3 xl:grid-cols-[auto_auto_auto_minmax(0,1fr)_auto]">
-            {}
             <div className="flex items-stretch md:contents">
               <div className="flex-1 min-w-0 md:contents">
                 <Popover open={dateOpen} onOpenChange={setDateOpen}>
@@ -556,7 +510,6 @@ export default function SearchResults() {
               </div>
             </div>
 
-            {}
             <div className="border-t border-slate-200 md:border-t-0 md:contents">
               <Popover open={peopleOpen} onOpenChange={setPeopleOpen}>
                 <PopoverTrigger asChild>
@@ -568,10 +521,7 @@ export default function SearchResults() {
                     {peopleLabel(people)}
                   </FieldTrigger>
                 </PopoverTrigger>
-                <PopoverContent
-                  className="w-48 max-h-72 overflow-y-auto p-1"
-                  align="start"
-                >
+                <PopoverContent className="w-48 max-h-72 overflow-y-auto p-1" align="start">
                   {PEOPLE_OPTIONS.map((value) => (
                     <OptionRow
                       key={value}
@@ -588,7 +538,6 @@ export default function SearchResults() {
               </Popover>
             </div>
 
-            {}
             <SearchSuggestInput
               value={inputQuery}
               onChange={setInputQuery}
@@ -599,7 +548,6 @@ export default function SearchResults() {
               inputClassName="rounded-none border-0 bg-white text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-slate-50 max-[360px]:text-xs md:rounded-xl md:border md:border-slate-200 md:text-base md:focus-visible:ring-2 md:focus-visible:ring-offset-2 md:focus-visible:bg-white"
             />
 
-            {}
             <div className="border-t border-slate-200 pt-3 md:border-t-0 md:pt-0 md:contents">
               <Button
                 type="submit"
@@ -616,10 +564,8 @@ export default function SearchResults() {
         </form>
       </section>
 
-      {}
       <section className="border-b border-slate-200 bg-white">
         <div className="container mx-auto flex items-center gap-2 px-4 py-3">
-          {}
           <SelectFilter
             label="Sort"
             current={sort}
@@ -631,7 +577,6 @@ export default function SearchResults() {
             clearable={false}
           />
 
-          {}
           <div className="hidden flex-wrap items-center gap-2 md:flex">
             {cuisineOptions.length > 0 && (
               <SelectFilter
@@ -681,9 +626,7 @@ export default function SearchResults() {
             </ToggleChip>
             <ToggleChip
               active={filters.reservations}
-              onClick={() =>
-                setFilters((f) => ({ ...f, reservations: !f.reservations }))
-              }
+              onClick={() => setFilters((f) => ({ ...f, reservations: !f.reservations }))}
             >
               Reservations Available
             </ToggleChip>
@@ -695,7 +638,6 @@ export default function SearchResults() {
             </ToggleChip>
           </div>
 
-          {}
           <button
             type="button"
             onClick={() => setMobileFiltersOpen(true)}
@@ -710,7 +652,6 @@ export default function SearchResults() {
             )}
           </button>
 
-          {}
           {filtersApplied && (
             <button
               type="button"
@@ -723,7 +664,6 @@ export default function SearchResults() {
         </div>
       </section>
 
-      {}
       <MobileFiltersDialog
         open={mobileFiltersOpen}
         onOpenChange={setMobileFiltersOpen}
@@ -735,7 +675,6 @@ export default function SearchResults() {
         activeCount={activeFilterCount}
       />
 
-      {}
       <main className="container mx-auto w-full px-4 py-6 flex-1">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h1 className="text-sm font-medium text-slate-700">{summaryText}</h1>
@@ -748,7 +687,6 @@ export default function SearchResults() {
     </div>
   );
 }
-
 
 function RestaurantCard({
   r,
@@ -786,10 +724,9 @@ function RestaurantCard({
     if (searchTime) {
       params.set("time", searchTime);
     }
-    if (searchPartySize && searchPartySize !== "large")
-      {
-        params.set("partySize", searchPartySize);
-      }
+    if (searchPartySize && searchPartySize !== "large") {
+      params.set("partySize", searchPartySize);
+    }
     params.set("book", "1");
     return `${detailsPath}?${params.toString()}`;
   })();
@@ -847,9 +784,7 @@ function RestaurantCard({
     ratingContent = (
       <>
         <Stars rating={r.rating} />
-        <span className="font-medium text-slate-700">
-          {r.rating.toFixed(1)}
-        </span>
+        <span className="font-medium text-slate-700">{r.rating.toFixed(1)}</span>
         <span className="text-slate-500">
           ({r.reviewCount} {reviewWord})
         </span>
@@ -906,7 +841,6 @@ function RestaurantCard({
       )}
     >
       <div className="flex flex-col sm:flex-row">
-        {}
         <div className="sm:w-[280px] sm:shrink-0 aspect-[16/10] sm:aspect-auto sm:h-auto sm:min-h-[200px] bg-slate-100 relative">
           {bannerContent}
           {r.featured && (
@@ -917,23 +851,13 @@ function RestaurantCard({
           )}
         </div>
 
-        {}
         <div className="flex-1 p-4 sm:p-5 flex flex-col gap-2 min-w-0">
-          <h2 className="text-lg sm:text-xl font-semibold text-slate-900 truncate">
-            {r.name}
-          </h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-slate-900 truncate">{r.name}</h2>
 
-          {}
-          <div className="flex items-center gap-2 text-sm">
-            {ratingContent}
-          </div>
+          <div className="flex items-center gap-2 text-sm">{ratingContent}</div>
 
-          {}
-          {cuisinePrice && (
-            <p className="text-sm text-slate-600">{cuisinePrice}</p>
-          )}
+          {cuisinePrice && <p className="text-sm text-slate-600">{cuisinePrice}</p>}
 
-          {}
           {subAddress && (
             <p className="inline-flex items-center gap-1.5 text-sm text-slate-600">
               <MapPin className="h-3.5 w-3.5 text-slate-400" />
@@ -941,14 +865,8 @@ function RestaurantCard({
             </p>
           )}
 
-          {}
-          {r.description && (
-            <p className="text-sm text-slate-600 line-clamp-2">
-              {r.description}
-            </p>
-          )}
+          {r.description && <p className="text-sm text-slate-600 line-clamp-2">{r.description}</p>}
 
-          {}
           <div className="mt-2 flex items-center gap-2 sm:gap-3">
             {bookAction}
             {queuePath && r.queueEnabled && (
@@ -986,9 +904,7 @@ function Stars({ rating }: { rating: number }) {
         } else {
           starClassName = "fill-slate-200 text-slate-200";
         }
-        return (
-          <Star key={i} className={cn("h-3.5 w-3.5", starClassName)} />
-        );
+        return <Star key={i} className={cn("h-3.5 w-3.5", starClassName)} />;
       })}
     </span>
   );
@@ -1039,8 +955,7 @@ function SelectFilter({
   neutralValue?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const selectedLabel =
-    displayValue ?? options.find((o) => o.value === current)?.label ?? null;
+  const selectedLabel = displayValue ?? options.find((o) => o.value === current)?.label ?? null;
   const isActive = current != null && current !== neutralValue;
 
   let triggerStateClassName: string;
@@ -1160,17 +1075,12 @@ function MobileFiltersDialog({
     if (active) {
       stateClassName = "border-slate-900 bg-slate-900 text-white";
     } else {
-      stateClassName =
-        "border-slate-200 bg-white text-slate-700 hover:border-slate-300";
+      stateClassName = "border-slate-200 bg-white text-slate-700 hover:border-slate-300";
     }
-    return cn(
-      "rounded-full border px-3 py-1.5 text-sm transition-colors",
-      stateClassName,
-    );
+    return cn("rounded-full border px-3 py-1.5 text-sm transition-colors", stateClassName);
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {}
       <DialogContent className="flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-2xl p-0 max-sm:overflow-hidden max-sm:p-0 sm:max-w-md">
         <DialogHeader className="border-b border-slate-100 p-4 text-left">
           <DialogTitle>Filters</DialogTitle>
@@ -1283,9 +1193,7 @@ function MobileFiltersDialog({
             <button
               type="button"
               className={pill(filters.reservations)}
-              onClick={() =>
-                setFilters((f) => ({ ...f, reservations: !f.reservations }))
-              }
+              onClick={() => setFilters((f) => ({ ...f, reservations: !f.reservations }))}
             >
               Reservations Available
             </button>
@@ -1307,10 +1215,7 @@ function MobileFiltersDialog({
           >
             Clear
           </Button>
-          <Button
-            className="flex-1"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button className="flex-1" onClick={() => onOpenChange(false)}>
             Show Results
           </Button>
         </div>
@@ -1319,13 +1224,7 @@ function MobileFiltersDialog({
   );
 }
 
-function FilterGroup({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <p className="mb-2 text-sm font-medium text-slate-900">{label}</p>
@@ -1338,9 +1237,7 @@ function NoFilterMatch({ onClear }: { onClear: () => void }) {
   return (
     <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
       <SlidersHorizontal className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-      <p className="text-base font-medium text-slate-800">
-        No restaurants match your filters.
-      </p>
+      <p className="text-base font-medium text-slate-800">No restaurants match your filters.</p>
       <Button variant="outline" className="mt-4 rounded-full" onClick={onClear}>
         Clear Filters
       </Button>
@@ -1358,9 +1255,7 @@ function EmptyState({ query }: { query: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
       <SearchIcon className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-      <p className="text-base font-medium text-slate-800">
-        No Restaurants Found
-      </p>
+      <p className="text-base font-medium text-slate-800">No Restaurants Found</p>
       <p className="mt-1 text-sm text-slate-500">{hintText}</p>
     </div>
   );

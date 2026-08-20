@@ -1,4 +1,3 @@
-
 export type TimezoneOption = { value: string; label: string };
 
 export const DEFAULT_TIMEZONE = "Asia/Jakarta";
@@ -51,14 +50,34 @@ function offsetLabel(min: number): string {
 }
 
 const FALLBACK_ZONES = [
-  "Pacific/Midway", "Pacific/Honolulu", "America/Anchorage",
-  "America/Los_Angeles", "America/Denver", "America/Chicago",
-  "America/New_York", "America/Sao_Paulo", "Atlantic/Azores",
-  "UTC", "Europe/London", "Europe/Paris", "Europe/Berlin",
-  "Europe/Athens", "Europe/Moscow", "Asia/Dubai", "Asia/Karachi",
-  "Asia/Kolkata", "Asia/Dhaka", "Asia/Bangkok", "Asia/Jakarta",
-  "Asia/Singapore", "Asia/Makassar", "Asia/Shanghai", "Asia/Tokyo",
-  "Asia/Seoul", "Australia/Sydney", "Pacific/Auckland",
+  "Pacific/Midway",
+  "Pacific/Honolulu",
+  "America/Anchorage",
+  "America/Los_Angeles",
+  "America/Denver",
+  "America/Chicago",
+  "America/New_York",
+  "America/Sao_Paulo",
+  "Atlantic/Azores",
+  "UTC",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Europe/Athens",
+  "Europe/Moscow",
+  "Asia/Dubai",
+  "Asia/Karachi",
+  "Asia/Kolkata",
+  "Asia/Dhaka",
+  "Asia/Bangkok",
+  "Asia/Jakarta",
+  "Asia/Singapore",
+  "Asia/Makassar",
+  "Asia/Shanghai",
+  "Asia/Tokyo",
+  "Asia/Seoul",
+  "Australia/Sydney",
+  "Pacific/Auckland",
 ];
 
 function listZones(): string[] {
@@ -70,11 +89,9 @@ function listZones(): string[] {
         return zones;
       }
     }
-  } catch {
-  }
+  } catch {}
   return FALLBACK_ZONES;
 }
-
 
 export function getDateKeyInTimezone(
   date: Date | string | number,
@@ -105,15 +122,11 @@ export function getDateKeyInTimezone(
   }
 }
 
-export function getTodayKeyInTimezone(
-  timezone: string = DEFAULT_TIMEZONE,
-): string {
+export function getTodayKeyInTimezone(timezone: string = DEFAULT_TIMEZONE): string {
   return getDateKeyInTimezone(new Date(), timezone);
 }
 
-export function getNowWallClockInTimezone(
-  timezone: string = DEFAULT_TIMEZONE,
-): string {
+export function getNowWallClockInTimezone(timezone: string = DEFAULT_TIMEZONE): string {
   const now = new Date();
   const date = getDateKeyInTimezone(now, timezone);
   let hh = "00";
@@ -126,9 +139,11 @@ export function getNowWallClockInTimezone(
       hourCycle: "h23",
     }).formatToParts(now);
     const v: Record<string, string> = {};
-    for (const p of parts) {if (p.type !== "literal") {
-      v[p.type] = p.value;
-    }}
+    for (const p of parts) {
+      if (p.type !== "literal") {
+        v[p.type] = p.value;
+      }
+    }
     if (v.hour === "24") {
       hh = "00";
     } else {

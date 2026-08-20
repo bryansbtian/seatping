@@ -12,10 +12,7 @@ test("an unpublished location is kept out of public discovery while its publishe
   const published = await db.createLocation(business, {
     isPublished: true,
     displayName: `${marker} Published`,
-    restaurantProfile: publishedProfile(
-      `${marker} Published`,
-      openAllDayEveryDay(),
-    ),
+    restaurantProfile: publishedProfile(`${marker} Published`, openAllDayEveryDay()),
   });
   const unpublished = await db.createLocation(business, {
     isPublished: false,
@@ -26,18 +23,14 @@ test("an unpublished location is kept out of public discovery while its publishe
     },
   });
 
-  const response = await page.request.get(
-    `/api/search/restaurants?query=${marker}`,
-  );
+  const response = await page.request.get(`/api/search/restaurants?query=${marker}`);
   expect(response.status()).toBe(200);
   const body = await response.json();
   const listedIds = body.results.map((r: { locationId: string }) => r.locationId);
   expect(listedIds).toContain(published.id);
   expect(listedIds).not.toContain(unpublished.id);
 
-  const suggestions = await page.request.get(
-    `/api/locations/search-suggestions?query=${marker}`,
-  );
+  const suggestions = await page.request.get(`/api/locations/search-suggestions?query=${marker}`);
   expect(suggestions.status()).toBe(200);
   const suggestionText = JSON.stringify(await suggestions.json());
   expect(suggestionText).not.toContain(`${marker} Draft`);
@@ -55,10 +48,7 @@ test("a published restaurant page shows its details and offers the queue and res
   const { business, location } = await db.createBusinessWithLocation({
     isPublished: true,
     displayName: `${marker} Dining Room`,
-    restaurantProfile: publishedProfile(
-      `${marker} Dining Room`,
-      openAllDayEveryDay(),
-    ),
+    restaurantProfile: publishedProfile(`${marker} Dining Room`, openAllDayEveryDay()),
   });
 
   await page.goto(`/${business.username}/${location.id}`);

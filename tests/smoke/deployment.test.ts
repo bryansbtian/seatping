@@ -34,13 +34,11 @@ describe("deployment smoke", () => {
 
     const text = await res.text();
     expect(text.trimStart().startsWith("<!DOCTYPE")).toBe(false);
-    expect(text).not.toContain("<div id=\"root\"");
+    expect(text).not.toContain('<div id="root"');
   });
 
   it("serves a public search endpoint as JSON", async () => {
-    const res = await fetch(
-      url("/api/search/restaurants?query=smoke-test-no-match"),
-    );
+    const res = await fetch(url("/api/search/restaurants?query=smoke-test-no-match"));
 
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toMatch(/application\/json/);

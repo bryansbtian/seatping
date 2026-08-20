@@ -30,10 +30,7 @@ export async function openQueuePage(
   await page.goto(`/queue/${businessUsername}/${locationId}`);
 }
 
-export async function fillQueueForm(
-  page: Page,
-  guest: QueueGuest,
-): Promise<void> {
+export async function fillQueueForm(page: Page, guest: QueueGuest): Promise<void> {
   await expect(page.getByLabel("First Name")).toBeVisible();
   await page.getByLabel("First Name").fill(guest.firstName);
   await page.getByLabel("Last Name").fill(guest.lastName);

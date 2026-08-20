@@ -70,8 +70,5 @@ export function statusLabel(status: string): string {
 
 export function statusBadgeClass(status: string): string {
   const normalized = normalizeStatus(status);
-  return (
-    STATUS_STYLES[normalized] ||
-    "border-slate-200 bg-slate-100 text-slate-700"
-  );
+  return STATUS_STYLES[normalized] || "border-slate-200 bg-slate-100 text-slate-700";
 }

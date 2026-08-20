@@ -1,11 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "./ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -134,7 +128,9 @@ export function CustomAudienceBuilder({
     const timeout = setTimeout(async () => {
       setIsSearchingGuests(true);
       try {
-        const data = await api(`/api/guests?locationId=${locationId}&search=${encodeURIComponent(guestSearch)}`);
+        const data = await api(
+          `/api/guests?locationId=${locationId}&search=${encodeURIComponent(guestSearch)}`,
+        );
         setGuestSearchResults(data.guests || []);
         setShowGuestDropdown(true);
       } catch (e) {
@@ -165,26 +161,24 @@ export function CustomAudienceBuilder({
   const [tags, setTags] = useState<string[]>(initialTags);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
   const [visitsMin, setVisitsMin] = useState<string>(
-    existing?.filters?.totalVisitsMin?.toString() || ""
+    existing?.filters?.totalVisitsMin?.toString() || "",
   );
   const [visitsMax, setVisitsMax] = useState<string>(
-    existing?.filters?.totalVisitsMax?.toString() || ""
+    existing?.filters?.totalVisitsMax?.toString() || "",
   );
   const [lastVisitMin, setLastVisitMin] = useState<string>(
-    existing?.filters?.lastVisitMinDaysAgo?.toString() || ""
+    existing?.filters?.lastVisitMinDaysAgo?.toString() || "",
   );
   const [lastVisitMax, setLastVisitMax] = useState<string>(
-    existing?.filters?.lastVisitMaxDaysAgo?.toString() || ""
+    existing?.filters?.lastVisitMaxDaysAgo?.toString() || "",
   );
   const [hasUpcomingReservation, setHasUpcomingReservation] = useState(
-    existing?.filters?.hasUpcomingReservation || false
+    existing?.filters?.hasUpcomingReservation || false,
   );
   const [hasNoShowHistory, setHasNoShowHistory] = useState(
-    existing?.filters?.hasNoShowHistory || false
+    existing?.filters?.hasNoShowHistory || false,
   );
-  const [hasNotes, setHasNotes] = useState(
-    existing?.filters?.hasNotes || false
-  );
+  const [hasNotes, setHasNotes] = useState(existing?.filters?.hasNotes || false);
 
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [previewGuests, setPreviewGuests] = useState<PreviewGuest[]>([]);
@@ -218,9 +212,9 @@ export function CustomAudienceBuilder({
     if (hasNotes) {
       filters.hasNotes = true;
     }
-    
+
     if (selectedGuests.length > 0) {
-      filters.guestIds = selectedGuests.map(g => g.id);
+      filters.guestIds = selectedGuests.map((g) => g.id);
     } else {
       delete filters.guestIds;
     }
@@ -316,18 +310,10 @@ export function CustomAudienceBuilder({
   let tagsTriggerContent: ReactNode;
   if (tags.length > 0) {
     tagsTriggerContent = tags.map((tag) => (
-      <GuestTagBadge
-        key={tag}
-        tag={tag}
-        onRemove={() =>
-          setTags(tags.filter((t) => t !== tag))
-        }
-      />
+      <GuestTagBadge key={tag} tag={tag} onRemove={() => setTags(tags.filter((t) => t !== tag))} />
     ));
   } else {
-    tagsTriggerContent = (
-      <span className="text-muted-foreground">Select Tags</span>
-    );
+    tagsTriggerContent = <span className="text-muted-foreground">Select Tags</span>;
   }
 
   let previewButtonLabel: string;
@@ -369,9 +355,7 @@ export function CustomAudienceBuilder({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {dialogTitle}
-          </DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-6 py-4">
@@ -414,14 +398,19 @@ export function CustomAudienceBuilder({
                       <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 ml-2" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <PopoverContent
+                    className="w-[var(--radix-popover-trigger-width)] p-0"
+                    align="start"
+                  >
                     <Command>
                       <CommandInput placeholder="Search tags..." />
                       <CommandList>
                         <CommandEmpty>No Tags Yet</CommandEmpty>
                         <CommandGroup>
                           {suggestedTags?.map((tagOption) => {
-                            const isSelected = tags.some((t) => t.toLowerCase() === tagOption.toLowerCase());
+                            const isSelected = tags.some(
+                              (t) => t.toLowerCase() === tagOption.toLowerCase(),
+                            );
                             let checkOpacityClass: string;
                             if (isSelected) {
                               checkOpacityClass = "opacity-100";
@@ -434,18 +423,17 @@ export function CustomAudienceBuilder({
                                 value={tagOption}
                                 onSelect={(currentValue) => {
                                   if (isSelected) {
-                                    setTags(tags.filter((t) => t.toLowerCase() !== tagOption.toLowerCase()));
+                                    setTags(
+                                      tags.filter(
+                                        (t) => t.toLowerCase() !== tagOption.toLowerCase(),
+                                      ),
+                                    );
                                   } else {
                                     setTags([...tags, tagOption]);
                                   }
                                 }}
                               >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    checkOpacityClass
-                                  )}
-                                />
+                                <Check className={cn("mr-2 h-4 w-4", checkOpacityClass)} />
                                 {tagOption}
                               </CommandItem>
                             );
@@ -504,9 +492,7 @@ export function CustomAudienceBuilder({
                   <Checkbox
                     id="hasUpcoming"
                     checked={hasUpcomingReservation}
-                    onCheckedChange={(c) =>
-                      setHasUpcomingReservation(c === true)
-                    }
+                    onCheckedChange={(c) => setHasUpcomingReservation(c === true)}
                   />
                   <Label htmlFor="hasUpcoming" className="cursor-pointer">
                     Has Upcoming Reservation
@@ -571,7 +557,9 @@ export function CustomAudienceBuilder({
                         onClick={() => addGuest(guest)}
                       >
                         <div className="flex flex-col">
-                          <span className="font-medium text-sm">{guest.fullName || "Unnamed Guest"}</span>
+                          <span className="font-medium text-sm">
+                            {guest.fullName || "Unnamed Guest"}
+                          </span>
                           {(guest.phone || guest.email) && (
                             <span className="text-xs text-slate-500">
                               {[guest.phone, guest.email].filter(Boolean).join(" • ")}
@@ -582,11 +570,14 @@ export function CustomAudienceBuilder({
                     ))}
                   </div>
                 )}
-                {showGuestDropdown && guestSearch.trim() && guestSearchResults.length === 0 && !isSearchingGuests && (
-                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg px-3 py-2 text-sm text-slate-500 text-center">
-                    No matching guests found.
-                  </div>
-                )}
+                {showGuestDropdown &&
+                  guestSearch.trim() &&
+                  guestSearchResults.length === 0 &&
+                  !isSearchingGuests && (
+                    <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg px-3 py-2 text-sm text-slate-500 text-center">
+                      No matching guests found.
+                    </div>
+                  )}
               </div>
 
               {selectedGuests.length > 0 && (
@@ -596,7 +587,10 @@ export function CustomAudienceBuilder({
                   </div>
                   <div className="flex flex-col gap-2 max-h-40 overflow-y-auto">
                     {selectedGuests.map((guest) => (
-                      <div key={guest.id} className="flex items-center justify-between bg-white border rounded px-3 py-2 text-sm">
+                      <div
+                        key={guest.id}
+                        className="flex items-center justify-between bg-white border rounded px-3 py-2 text-sm"
+                      >
                         <div className="flex flex-col">
                           <span className="font-medium">{guest.fullName || "Unnamed Guest"}</span>
                           {(guest.phone || guest.email) && (
@@ -620,26 +614,19 @@ export function CustomAudienceBuilder({
               )}
             </div>
           </div>
-          
+
           <div className="bg-slate-50 border rounded-lg p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-sm">Audience Preview</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePreview}
-                disabled={isPreviewing}
-              >
+              <Button variant="outline" size="sm" onClick={handlePreview} disabled={isPreviewing}>
                 {previewButtonLabel}
               </Button>
             </div>
 
             {previewCount !== null && (
               <p className="text-sm text-slate-600">
-                This group currently matches{" "}
-                <strong>{previewCount}</strong> guest
-                {previewCountSuffix}. The exact recipient count will
-                be calculated at send-time.
+                This group currently matches <strong>{previewCount}</strong> guest
+                {previewCountSuffix}. The exact recipient count will be calculated at send-time.
               </p>
             )}
 
@@ -659,16 +646,10 @@ export function CustomAudienceBuilder({
                 <div className="rounded-lg border bg-white divide-y divide-slate-100 max-h-72 overflow-y-auto">
                   {visiblePreviewGuests.map((guest) => {
                     const name = guest.fullName || "Unnamed Guest";
-                    const phoneDisplay = formatPhone(
-                      guest.normalizedPhone,
-                      guest.phone,
-                    );
+                    const phoneDisplay = formatPhone(guest.normalizedPhone, guest.phone);
                     const lastVisit = previewLastVisit(guest.lastVisitAt);
                     return (
-                      <div
-                        key={guest.id}
-                        className="flex items-start gap-3 px-3 py-2.5"
-                      >
+                      <div key={guest.id} className="flex items-start gap-3 px-3 py-2.5">
                         <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-semibold shrink-0">
                           {previewInitials(name)}
                         </div>
@@ -677,16 +658,11 @@ export function CustomAudienceBuilder({
                             <span className="font-medium text-sm text-slate-800 truncate">
                               {name}
                             </span>
-                            <GuestStatusBadge
-                              returning={guest.returning}
-                              className="shrink-0"
-                            />
+                            <GuestStatusBadge returning={guest.returning} className="shrink-0" />
                           </div>
                           {(phoneDisplay || guest.email) && (
                             <div className="text-xs text-slate-500 truncate mt-0.5">
-                              {[phoneDisplay, guest.email]
-                                .filter(Boolean)
-                                .join(" • ")}
+                              {[phoneDisplay, guest.email].filter(Boolean).join(" • ")}
                             </div>
                           )}
                           {guest.tags.length > 0 && (

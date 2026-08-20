@@ -2,14 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate,
-  useParams,
-  useLocation,
-} from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
@@ -35,7 +28,7 @@ import Restaurant from "./pages/Restaurant";
 import ManageReservation from "./pages/ManageReservation";
 import SearchResults from "./pages/SearchResults";
 import Admin from "./pages/Admin";
-import { LanguageProvider } from "@/lib/i18n";
+import { LanguageProvider } from "@/components/LanguageProvider";
 import AnalyticsRouteTracker from "@/components/AnalyticsRouteTracker";
 
 const queryClient = new QueryClient();
@@ -69,12 +62,7 @@ function useSession() {
 function LegacyRestaurantRedirect() {
   const { businessUsername = "", locationId = "" } = useParams();
   const { search } = useLocation();
-  return (
-    <Navigate
-      to={`/${businessUsername}/${locationId}${search}`}
-      replace
-    />
-  );
+  return <Navigate to={`/${businessUsername}/${locationId}${search}`} replace />;
 }
 
 const App = () => (
@@ -85,14 +73,11 @@ const App = () => (
       <BrowserRouter>
         <AnalyticsRouteTracker />
         <Routes>
-          {}
           <Route path="/" element={<Index />} />
 
-          {}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
-          {}
           <Route
             path="/profile"
             element={
@@ -102,7 +87,6 @@ const App = () => (
             }
           />
 
-          {}
           <Route
             path="/business"
             element={
@@ -130,19 +114,12 @@ const App = () => (
 
           <Route path="/forgot" element={<ForgotPassword />} />
           <Route path="/reset" element={<ResetPassword />} />
-          <Route
-            path="/queue/:businessUsername/:locationId"
-            element={<QueueBusiness />}
-          />
-          {}
+          <Route path="/queue/:businessUsername/:locationId" element={<QueueBusiness />} />
           <Route
             path="/restaurants/:businessUsername/:locationId"
             element={<LegacyRestaurantRedirect />}
           />
-          <Route
-            path="/reservations/manage/:token"
-            element={<ManageReservation />}
-          />
+          <Route path="/reservations/manage/:token" element={<ManageReservation />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/search/:query" element={<SearchResults />} />
           <Route path="/policy" element={<Policy />} />
@@ -151,7 +128,6 @@ const App = () => (
           <Route path="/help" element={<Help />} />
           <Route path="/sales" element={<Sales />} />
 
-          {}
           <Route
             path="/business/dashboard"
             element={
@@ -162,7 +138,6 @@ const App = () => (
               </RequireBusiness>
             }
           />
-          {}
           <Route
             path="/business/guests"
             element={
@@ -173,7 +148,6 @@ const App = () => (
               </RequireBusiness>
             }
           />
-          {}
           <Route
             path="/business/campaigns"
             element={
@@ -184,7 +158,6 @@ const App = () => (
               </RequireBusiness>
             }
           />
-          {}
           <Route
             path="/business/settings"
             element={
@@ -197,11 +170,7 @@ const App = () => (
           />
           <Route path="/admin" element={<Admin />} />
 
-          {}
-          <Route
-            path="/:businessUsername/:locationId"
-            element={<Restaurant />}
-          />
+          <Route path="/:businessUsername/:locationId" element={<Restaurant />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

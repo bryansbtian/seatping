@@ -3,13 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +16,6 @@ import { TemplateStatusBadge } from "@/components/CampaignBadges";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { Search, RefreshCw, Inbox } from "lucide-react";
-
 
 type AdminTemplate = {
   id: string;
@@ -121,9 +114,7 @@ const CampaignTemplatesAdmin = () => {
 
   let templatesContent: ReactNode;
   if (loading) {
-    templatesContent = (
-      <div className="py-10 text-center text-sm text-slate-400">Loading...</div>
-    );
+    templatesContent = <div className="py-10 text-center text-sm text-slate-400">Loading...</div>;
   } else if (templates.length === 0) {
     templatesContent = (
       <div className="py-12 text-center">
@@ -163,9 +154,7 @@ const CampaignTemplatesAdmin = () => {
                   {purposeSuffix}
                 </div>
               </div>
-              <span className="text-xs text-slate-400 shrink-0">
-                {submittedLabel}
-              </span>
+              <span className="text-xs text-slate-400 shrink-0">{submittedLabel}</span>
             </button>
           );
         })}
@@ -177,10 +166,11 @@ const CampaignTemplatesAdmin = () => {
     <Card>
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          {}
           <div className="space-y-1.5">
             <CardTitle>Campaign Templates</CardTitle>
-            <CardDescription>Review and approve business-submitted custom templates.</CardDescription>
+            <CardDescription>
+              Review and approve business-submitted custom templates.
+            </CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={fetchTemplates} disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-1.5 ${refreshIconClass}`} />
@@ -189,7 +179,6 @@ const CampaignTemplatesAdmin = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {}
         <div className="flex flex-wrap items-center gap-2">
           {STATUS_FILTERS.map((f) => {
             let filterButtonClass: string;
@@ -226,7 +215,6 @@ const CampaignTemplatesAdmin = () => {
           />
         </div>
 
-        {}
         {templatesContent}
       </CardContent>
 
@@ -361,15 +349,17 @@ function ReviewDialog({
             <TemplateStatusBadge status={template.approvalStatus} />
           </DialogTitle>
           <DialogDescription>
-            {template.business?.name || template.businessUsername} · Submitted {fmtDate(template.submittedAt)}
+            {template.business?.name || template.businessUsername} · Submitted{" "}
+            {fmtDate(template.submittedAt)}
           </DialogDescription>
         </DialogHeader>
 
-        {}
         <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-indigo-500 w-32 shrink-0">Template Name</span>
-            <span className="text-sm font-medium text-slate-800 flex-1 min-w-0 break-words">{template.name}</span>
+            <span className="text-sm font-medium text-slate-800 flex-1 min-w-0 break-words">
+              {template.name}
+            </span>
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-indigo-500 w-32 shrink-0">Template Username</span>
@@ -377,11 +367,13 @@ function ReviewDialog({
           </div>
         </div>
 
-        {}
         <div className="space-y-3">
           <h4 className="text-sm font-semibold text-slate-800">Submitted Content</h4>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2 text-sm">
-            <Row label="Business" value={`${template.business?.name ?? template.businessUsername ?? "--"}${businessUsernameSuffix}`} />
+            <Row
+              label="Business"
+              value={`${template.business?.name ?? template.businessUsername ?? "--"}${businessUsernameSuffix}`}
+            />
             {template.locationId && <Row label="Location ID" value={template.locationId} />}
             {template.purpose && <Row label="Campaign Goal" value={template.purpose} />}
             <div>
@@ -432,7 +424,6 @@ function ReviewDialog({
             )}
           </div>
 
-          {}
           <div className="pt-1">
             <div className="flex flex-col sm:flex-row gap-2">
               <Button onClick={approve} disabled={busy} variant="success" className="flex-1">
@@ -451,7 +442,6 @@ function ReviewDialog({
         </div>
       </DialogContent>
 
-      {}
       <Dialog open={rejectOpen} onOpenChange={(o) => !busy && setRejectOpen(o)}>
         <DialogContent>
           <DialogHeader>

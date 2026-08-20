@@ -32,11 +32,7 @@ export async function api(path: string, init: RequestInit = {}) {
   return data;
 }
 
-export async function apiUpload(
-  path: string,
-  formData: FormData,
-  method: string = "POST",
-) {
+export async function apiUpload(path: string, formData: FormData, method: string = "POST") {
   const res = await fetch(path, {
     method,
     body: formData,

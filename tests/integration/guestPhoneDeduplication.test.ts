@@ -1,11 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { Business, Location } from "@prisma/client";
 import { api } from "../helpers/app.js";
-import {
-  clearTestDatabase,
-  disconnectTestPrisma,
-  getTestPrisma,
-} from "../helpers/db.js";
+import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
 import { seedBusinessWithLocation, seedReservation } from "../helpers/seed.js";
 import { syncGuestFromReservation } from "../../server/lib/guests.js";
 
@@ -56,18 +52,8 @@ describe("guest deduplication across phone representations", () => {
   it("keeps one profile when the same number is entered with and without the trunk prefix", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const withTrunk = await joinQueueByWhatsApp(
-      business,
-      location,
-      "081234567890",
-      "+62",
-    );
-    const withoutTrunk = await joinQueueByWhatsApp(
-      business,
-      location,
-      "81234567890",
-      "+62",
-    );
+    const withTrunk = await joinQueueByWhatsApp(business, location, "081234567890", "+62");
+    const withoutTrunk = await joinQueueByWhatsApp(business, location, "81234567890", "+62");
 
     expect(withTrunk.status).toBe(200);
     expect(withoutTrunk.status).toBe(200);
@@ -81,12 +67,7 @@ describe("guest deduplication across phone representations", () => {
   it("keeps one profile when a queue visit and a reservation use different formats", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const joined = await joinQueueByWhatsApp(
-      business,
-      location,
-      "081234567890",
-      "+62",
-    );
+    const joined = await joinQueueByWhatsApp(business, location, "081234567890", "+62");
     expect(joined.status).toBe(200);
 
     const reservation = await seedReservation(location, {

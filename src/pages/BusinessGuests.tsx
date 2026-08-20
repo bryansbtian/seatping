@@ -6,13 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -160,9 +154,7 @@ function initials(name: string): string {
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <h4 className="text-sm font-semibold text-slate-800 mb-2.5">{children}</h4>
-  );
+  return <h4 className="text-sm font-semibold text-slate-800 mb-2.5">{children}</h4>;
 }
 
 const BusinessGuests = () => {
@@ -187,9 +179,7 @@ const BusinessGuests = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [guests, setGuests] = useState<GuestRow[]>([]);
-  const [locationTimezone, setLocationTimezone] = useState<string | undefined>(
-    undefined,
-  );
+  const [locationTimezone, setLocationTimezone] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -260,15 +250,7 @@ const BusinessGuests = () => {
       })
       .catch((e) => setError(e?.message || "Failed to load guests."))
       .finally(() => setLoading(false));
-  }, [
-    locationId,
-    debouncedSearch,
-    typeFilter,
-    tagFilters,
-    hasUpcoming,
-    hasNotes,
-    hasNoShow,
-  ]);
+  }, [locationId, debouncedSearch, typeFilter, tagFilters, hasUpcoming, hasNotes, hasNoShow]);
 
   useEffect(() => {
     fetchGuests();
@@ -291,11 +273,7 @@ const BusinessGuests = () => {
     hasNoShowActive = 1;
   }
   const activeFilterCount =
-    typeFilterActive +
-    tagFilters.length +
-    hasUpcomingActive +
-    hasNotesActive +
-    hasNoShowActive;
+    typeFilterActive + tagFilters.length + hasUpcomingActive + hasNotesActive + hasNoShowActive;
 
   const toggleTagFilter = (tag: string) => {
     setTagFilters((prev) => {
@@ -316,9 +294,11 @@ const BusinessGuests = () => {
 
   const filterableTags = useMemo(() => {
     const set = new Set<string>(suggestedTags);
-    for (const g of guests) {for (const t of g.tags) {
-      set.add(t);
-    }}
+    for (const g of guests) {
+      for (const t of g.tags) {
+        set.add(t);
+      }
+    }
     return Array.from(set);
   }, [suggestedTags, guests]);
 
@@ -333,8 +313,7 @@ const BusinessGuests = () => {
     );
   }, []);
 
-  const currentLocationLabel =
-    locations.find((l) => l.id === locationId)?.label || "";
+  const currentLocationLabel = locations.find((l) => l.id === locationId)?.label || "";
 
   const exportCsv = useCallback(() => {
     if (!guests.length) {
@@ -475,28 +454,17 @@ const BusinessGuests = () => {
 
   return (
     <>
-      <SEO
-        title="Guests | SeatPing"
-        description={BUSINESS_DESCRIPTION}
-        image={BUSINESS_IMAGE}
-      />
+      <SEO title="Guests | SeatPing" description={BUSINESS_DESCRIPTION} image={BUSINESS_IMAGE} />
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100 flex flex-col">
         <div className="container mx-auto px-4 py-8 flex-1 w-full">
-          {}
           <div className="mb-6">
-            <h1 className="text-xl md:text-2xl font-semibold text-gray-800">
-              {t("guests.title")}
-            </h1>
-            <p className="text-gray-600 text-sm md:text-base">
-              {t("guests.subtitle")}
-            </p>
+            <h1 className="text-xl md:text-2xl font-semibold text-gray-800">{t("guests.title")}</h1>
+            <p className="text-gray-600 text-sm md:text-base">{t("guests.subtitle")}</p>
           </div>
 
-          {}
           <Card className="bg-white border border-slate-200 rounded-xl shadow-sm mb-6">
             <CardContent className="p-4 md:p-5 space-y-4">
-              {}
               <div className="flex flex-col md:flex-row gap-3">
                 <div className="relative md:w-64 shrink-0">
                   <select
@@ -540,11 +508,7 @@ const BusinessGuests = () => {
                 </Button>
               </div>
 
-              {}
-              <div
-                className={`${filtersVisibilityClass} md:block space-y-3`}
-              >
-                {}
+              <div className={`${filtersVisibilityClass} md:block space-y-3`}>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-medium text-slate-500 mr-1">
                     {t("guests.status")}
@@ -552,11 +516,9 @@ const BusinessGuests = () => {
                   {(["all", "new", "returning"] as TypeFilter[]).map((tf) => {
                     let typeChipClass: string;
                     if (typeFilter === tf) {
-                      typeChipClass =
-                        "border-indigo-300 bg-indigo-100 text-indigo-700";
+                      typeChipClass = "border-indigo-300 bg-indigo-100 text-indigo-700";
                     } else {
-                      typeChipClass =
-                        "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+                      typeChipClass = "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
                     }
                     let typeChipLabel: string;
                     if (tf === "all") {
@@ -579,7 +541,6 @@ const BusinessGuests = () => {
                   })}
                 </div>
 
-                {}
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-medium text-slate-500 mr-1">
                     {t("guests.showOnly")}
@@ -601,7 +562,6 @@ const BusinessGuests = () => {
                   />
                 </div>
 
-                {}
                 {filterableTags.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-medium text-slate-500 mr-1 mt-0.5">
@@ -641,16 +601,11 @@ const BusinessGuests = () => {
             </CardContent>
           </Card>
 
-          {}
           <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
             <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
               <div>
-                <CardTitle className="text-lg md:text-xl text-slate-800">
-                  {guestsHeading}
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  {guestsCountText}
-                </CardDescription>
+                <CardTitle className="text-lg md:text-xl text-slate-800">{guestsHeading}</CardTitle>
+                <CardDescription className="text-sm">{guestsCountText}</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -660,9 +615,7 @@ const BusinessGuests = () => {
                   disabled={loading || guests.length === 0}
                 >
                   <Download className="w-4 h-4" />
-                  <span className="hidden sm:inline ml-2">
-                    {t("guests.export")}
-                  </span>
+                  <span className="hidden sm:inline ml-2">{t("guests.export")}</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -671,9 +624,7 @@ const BusinessGuests = () => {
                   disabled={loading || !locationId}
                 >
                   <RefreshCw className={`w-4 h-4 ${refreshSpinClass}`} />
-                  <span className="hidden sm:inline ml-2">
-                    {t("common.refresh")}
-                  </span>
+                  <span className="hidden sm:inline ml-2">{t("common.refresh")}</span>
                 </Button>
               </div>
             </CardHeader>
@@ -708,8 +659,7 @@ function FilterToggle({
   if (active) {
     toggleStateClass = "border-indigo-300 bg-indigo-100 text-indigo-700";
   } else {
-    toggleStateClass =
-      "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+    toggleStateClass = "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
   }
   return (
     <button
@@ -735,31 +685,18 @@ function GuestsTable({
   const { t } = useLang();
   return (
     <>
-      {}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
               <th className="px-6 py-3 font-medium">{t("guests.col.guest")}</th>
-              <th className="px-6 py-3 font-medium">
-                {t("guests.col.contact")}
-              </th>
+              <th className="px-6 py-3 font-medium">{t("guests.col.contact")}</th>
               <th className="px-6 py-3 font-medium">{t("guests.col.tags")}</th>
-              <th className="px-6 py-3 font-medium text-center">
-                {t("guests.col.totalVisits")}
-              </th>
-              <th className="px-6 py-3 font-medium">
-                {t("guests.col.lastVisit")}
-              </th>
-              <th className="px-6 py-3 font-medium text-center">
-                {t("guests.col.upcoming")}
-              </th>
-              <th className="px-6 py-3 font-medium text-center">
-                {t("guests.col.notes")}
-              </th>
-              <th className="px-6 py-3 font-medium text-center">
-                {t("guests.col.actions")}
-              </th>
+              <th className="px-6 py-3 font-medium text-center">{t("guests.col.totalVisits")}</th>
+              <th className="px-6 py-3 font-medium">{t("guests.col.lastVisit")}</th>
+              <th className="px-6 py-3 font-medium text-center">{t("guests.col.upcoming")}</th>
+              <th className="px-6 py-3 font-medium text-center">{t("guests.col.notes")}</th>
+              <th className="px-6 py-3 font-medium text-center">{t("guests.col.actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -801,9 +738,7 @@ function GuestsTable({
               }
               let notesCell: React.ReactNode;
               if (g.hasNotes) {
-                notesCell = (
-                  <Notebook className="w-4 h-4 text-amber-500 inline" />
-                );
+                notesCell = <Notebook className="w-4 h-4 text-amber-500 inline" />;
               } else {
                 notesCell = <span className="text-slate-300">--</span>;
               }
@@ -824,9 +759,7 @@ function GuestsTable({
                           <GuestStatusBadge returning={g.returning} />
                         </div>
                         {g.noShowCount > 0 && (
-                          <span className="text-xs text-red-600">
-                            {noShowLabel}
-                          </span>
+                          <span className="text-xs text-red-600">{noShowLabel}</span>
                         )}
                       </div>
                     </div>
@@ -836,9 +769,7 @@ function GuestsTable({
                       {phoneDisplay && (
                         <div className="flex items-center gap-1.5 truncate">
                           <Phone className="w-3 h-3 text-slate-400" />
-                          <span className="tabular-nums whitespace-nowrap">
-                            {phoneDisplay}
-                          </span>
+                          <span className="tabular-nums whitespace-nowrap">{phoneDisplay}</span>
                         </div>
                       )}
                       {g.email && (
@@ -847,9 +778,7 @@ function GuestsTable({
                           <span className="truncate">{g.email}</span>
                         </div>
                       )}
-                      {!phoneDisplay && !g.email && (
-                        <span className="text-slate-400">--</span>
-                      )}
+                      {!phoneDisplay && !g.email && <span className="text-slate-400">--</span>}
                     </div>
                   </td>
                   <td className="px-6 py-3">{tagsCell}</td>
@@ -859,9 +788,7 @@ function GuestsTable({
                   <td className="px-6 py-3 text-slate-600 whitespace-nowrap">
                     {fmtDate(g.lastVisitAt, timeZone)}
                   </td>
-                  <td className="px-6 py-3 text-center tabular-nums">
-                    {upcomingCell}
-                  </td>
+                  <td className="px-6 py-3 text-center tabular-nums">{upcomingCell}</td>
                   <td className="px-6 py-3 text-center">{notesCell}</td>
                   <td className="px-6 py-3 text-center">
                     <Button
@@ -882,7 +809,6 @@ function GuestsTable({
         </table>
       </div>
 
-      {}
       <div className="md:hidden divide-y divide-slate-100">
         {guests.map((g) => {
           const name = guestName(g, t("guests.defaultName"));
@@ -900,24 +826,16 @@ function GuestsTable({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-slate-800 truncate">
-                      {name}
-                    </span>
+                    <span className="font-medium text-slate-800 truncate">{name}</span>
                     <GuestStatusBadge returning={g.returning} />
                   </div>
                   <div className="text-xs text-slate-500 mt-0.5 space-y-0.5">
-                    {phoneDisplay && (
-                      <div className="truncate tabular-nums">
-                        {phoneDisplay}
-                      </div>
-                    )}
+                    {phoneDisplay && <div className="truncate tabular-nums">{phoneDisplay}</div>}
                     {g.email && <div className="truncate">{g.email}</div>}
                   </div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 mt-2">
                     <span>
-                      <strong className="text-slate-800">
-                        {g.totalVisits}
-                      </strong>{" "}
+                      <strong className="text-slate-800">{g.totalVisits}</strong>{" "}
                       {t("guests.visitsWord")}
                     </span>
                     <span>
@@ -982,19 +900,11 @@ function EmptyState({ title, body }: { title: string; body: string }) {
   );
 }
 
-function ErrorState({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry: () => void;
-}) {
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   const { t } = useLang();
   return (
     <div className="px-6 py-16 text-center">
-      <h3 className="text-base font-semibold text-slate-800">
-        {t("common.somethingWrong")}
-      </h3>
+      <h3 className="text-base font-semibold text-slate-800">{t("common.somethingWrong")}</h3>
       <p className="text-sm text-slate-500 mt-1">{message}</p>
       <Button variant="outline" size="sm" onClick={onRetry} className="mt-4">
         {t("common.tryAgain")}
@@ -1107,10 +1017,9 @@ function GuestDetailDrawer({
     }
     setTagBusy(true);
     try {
-      const d = await api(
-        `/api/guests/${guestId}/tags/${encodeURIComponent(tag)}`,
-        { method: "DELETE" },
-      );
+      const d = await api(`/api/guests/${guestId}/tags/${encodeURIComponent(tag)}`, {
+        method: "DELETE",
+      });
       applyGuest(d.guest);
     } catch (e) {
       toast({
@@ -1160,264 +1069,202 @@ function GuestDetailDrawer({
       <GuestTagBadge key={tag} tag={tag} onRemove={buildTagRemover(tag)} />
     ));
   } else {
-    tagListContent = (
-      <span className="text-sm text-slate-400">{t("guests.noTags")}</span>
-    );
+    tagListContent = <span className="text-sm text-slate-400">{t("guests.noTags")}</span>;
   }
 
   let sheetBody: React.ReactNode;
   if (loading) {
     sheetBody = (
       <div className="p-6">
-      <LoadingState />
-    </div>
+        <LoadingState />
+      </div>
     );
   } else if (error) {
     sheetBody = (
       <div className="p-6">
-      <ErrorState
-        message={error}
-        onRetry={() => guestId && setDetail(null)}
-      />
-    </div>
+        <ErrorState message={error} onRetry={() => guestId && setDetail(null)} />
+      </div>
     );
   } else if (g) {
     sheetBody = (
       <>
-      {}
-      <SheetHeader className="sr-only">
-        <SheetTitle>{name}</SheetTitle>
-        <SheetDescription>{g.location.label}</SheetDescription>
-      </SheetHeader>
+        <SheetHeader className="sr-only">
+          <SheetTitle>{name}</SheetTitle>
+          <SheetDescription>{g.location.label}</SheetDescription>
+        </SheetHeader>
 
-      <div className="p-4 sm:p-6 space-y-6">
-        {}
-        <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm p-4 sm:p-5">
-          {}
-          <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-xl font-semibold shrink-0">
-              {initials(name)}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-lg sm:text-xl font-semibold text-slate-800 truncate">
-                  {name}
-                </h3>
-                <GuestStatusBadge returning={g.returning} />
+        <div className="p-4 sm:p-6 space-y-6">
+          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm p-4 sm:p-5">
+            <div className="flex items-start gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-xl font-semibold shrink-0">
+                {initials(name)}
               </div>
-              <p className="text-sm text-slate-500 mt-0.5 truncate">
-                {g.location.label}
-              </p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-lg sm:text-xl font-semibold text-slate-800 truncate">
+                    {name}
+                  </h3>
+                  <GuestStatusBadge returning={g.returning} />
+                </div>
+                <p className="text-sm text-slate-500 mt-0.5 truncate">{g.location.label}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2 text-slate-800 min-w-0">
+                  <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span className="truncate">
+                    {formatPhone(g.normalizedPhone, g.phone) ?? (
+                      <span className="text-slate-400">{t("guests.noPhone")}</span>
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-800 min-w-0">
+                  <Mail className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span className="truncate">
+                    {g.email || <span className="text-slate-400">{t("guests.noEmail")}</span>}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-500">{t("guests.firstVisit")}</span>
+                  <span className="font-medium text-slate-800 tabular-nums">
+                    {fmtDate(g.firstVisitAt, g.location.timezone ?? undefined)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-500">{t("guests.lastVisit")}</span>
+                  <span className="font-medium text-slate-800 tabular-nums">
+                    {fmtDate(g.lastVisitAt, g.location.timezone ?? undefined)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-3 sm:grid-cols-6 gap-y-3">
+              <ProfileStat label={t("guests.stat.totalVisits")} value={g.totalVisits} />
+              <ProfileStat label={t("guests.stat.waitlist")} value={g.waitlistVisitCount} />
+              <ProfileStat label={t("guests.stat.upcoming")} value={g.upcomingReservationCount} />
+              <ProfileStat label={t("guests.stat.pastRes")} value={g.pastReservationCount} />
+              <ProfileStat
+                label={t("guests.stat.noShows")}
+                value={g.noShowCount}
+                tone={noShowTone}
+              />
+              <ProfileStat
+                label={t("guests.stat.cancelled")}
+                value={g.cancelledCount}
+                tone={cancelledTone}
+              />
             </div>
           </div>
 
-          {}
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
-            {}
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 text-slate-800 min-w-0">
-                <Phone className="w-4 h-4 text-slate-400 shrink-0" />
-                <span className="truncate">
-                  {formatPhone(g.normalizedPhone, g.phone) ?? (
-                    <span className="text-slate-400">
-                      {t("guests.noPhone")}
-                    </span>
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-800 min-w-0">
-                <Mail className="w-4 h-4 text-slate-400 shrink-0" />
-                <span className="truncate">
-                  {g.email || (
-                    <span className="text-slate-400">
-                      {t("guests.noEmail")}
-                    </span>
-                  )}
-                </span>
-              </div>
-            </div>
-            {}
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-500">
-                  {t("guests.firstVisit")}
-                </span>
-                <span className="font-medium text-slate-800 tabular-nums">
-                  {fmtDate(g.firstVisitAt, g.location.timezone ?? undefined)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-500">
-                  {t("guests.lastVisit")}
-                </span>
-                <span className="font-medium text-slate-800 tabular-nums">
-                  {fmtDate(g.lastVisitAt, g.location.timezone ?? undefined)}
-                </span>
-              </div>
-            </div>
-          </div>
+          <section>
+            <SectionHeading>{t("guests.summary")}</SectionHeading>
+            <p className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-3">
+              {g.summary || t("guests.summary.empty")}
+            </p>
+          </section>
 
-          {}
-          <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-3 sm:grid-cols-6 gap-y-3">
-            <ProfileStat
-              label={t("guests.stat.totalVisits")}
-              value={g.totalVisits}
-            />
-            <ProfileStat
-              label={t("guests.stat.waitlist")}
-              value={g.waitlistVisitCount}
-            />
-            <ProfileStat
-              label={t("guests.stat.upcoming")}
-              value={g.upcomingReservationCount}
-            />
-            <ProfileStat
-              label={t("guests.stat.pastRes")}
-              value={g.pastReservationCount}
-            />
-            <ProfileStat
-              label={t("guests.stat.noShows")}
-              value={g.noShowCount}
-              tone={noShowTone}
-            />
-            <ProfileStat
-              label={t("guests.stat.cancelled")}
-              value={g.cancelledCount}
-              tone={cancelledTone}
-            />
-          </div>
-        </div>
-
-        {}
-        <section>
-          <SectionHeading>{t("guests.summary")}</SectionHeading>
-          <p className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-3">
-            {g.summary || t("guests.summary.empty")}
-          </p>
-        </section>
-
-        {}
-        <section>
-          <SectionHeading>{t("guests.tags")}</SectionHeading>
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {tagListContent}
-          </div>
-          <form
-            className="flex gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              addTag(newTag);
-            }}
-          >
-            <Input
-              value={newTag}
-              onChange={(e) => setNewTag(e.target.value)}
-              placeholder={t("guests.addTag.placeholder")}
-              className="h-9 bg-slate-50 border-slate-200 text-xs sm:text-sm"
-              disabled={tagBusy}
-            />
-            <Button
-              type="submit"
-              size="sm"
-              disabled={tagBusy || !newTag.trim()}
+          <section>
+            <SectionHeading>{t("guests.tags")}</SectionHeading>
+            <div className="flex flex-wrap gap-1.5 mb-2">{tagListContent}</div>
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                addTag(newTag);
+              }}
             >
-              <Plus className="w-4 h-4" />
-            </Button>
-          </form>
-          {availableSuggestions.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {availableSuggestions.map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  disabled={tagBusy}
-                  onClick={() => addTag(tag)}
-                  className="text-xs px-2.5 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 transition-colors disabled:opacity-50"
-                >
-                  + {tag}
-                </button>
-              ))}
+              <Input
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                placeholder={t("guests.addTag.placeholder")}
+                className="h-9 bg-slate-50 border-slate-200 text-xs sm:text-sm"
+                disabled={tagBusy}
+              />
+              <Button type="submit" size="sm" disabled={tagBusy || !newTag.trim()}>
+                <Plus className="w-4 h-4" />
+              </Button>
+            </form>
+            {availableSuggestions.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {availableSuggestions.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    disabled={tagBusy}
+                    onClick={() => addTag(tag)}
+                    className="text-xs px-2.5 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 transition-colors disabled:opacity-50"
+                  >
+                    + {tag}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <SectionHeading>{t("guests.internalNotes")}</SectionHeading>
+            <Textarea
+              value={notes}
+              onChange={(e) => {
+                setNotes(e.target.value);
+                notesDirtyRef.current = true;
+              }}
+              placeholder={t("guests.notes.placeholder")}
+              className="bg-slate-50 border-slate-200 min-h-[90px] text-xs sm:text-sm"
+            />
+            <div className="flex justify-end mt-2">
+              <Button
+                size="sm"
+                onClick={saveNotes}
+                disabled={savingNotes || notes === (g.notes || "")}
+                className="text-xs sm:text-sm"
+              >
+                {saveNotesLabel}
+              </Button>
             </div>
+          </section>
+
+          {detail.upcomingReservations.length > 0 && (
+            <HistorySection
+              title={t("guests.upcomingReservations")}
+              events={detail.upcomingReservations}
+            />
           )}
-        </section>
 
-        {}
-        <section>
-          <SectionHeading>{t("guests.internalNotes")}</SectionHeading>
-          <Textarea
-            value={notes}
-            onChange={(e) => {
-              setNotes(e.target.value);
-              notesDirtyRef.current = true;
-            }}
-            placeholder={t("guests.notes.placeholder")}
-            className="bg-slate-50 border-slate-200 min-h-[90px] text-xs sm:text-sm"
-          />
-          <div className="flex justify-end mt-2">
-            <Button
-              size="sm"
-              onClick={saveNotes}
-              disabled={savingNotes || notes === (g.notes || "")}
-              className="text-xs sm:text-sm"
-            >
-              {saveNotesLabel}
-            </Button>
-          </div>
-        </section>
-
-        {}
-        {detail.upcomingReservations.length > 0 && (
           <HistorySection
-            title={t("guests.upcomingReservations")}
-            events={detail.upcomingReservations}
+            title={t("guests.visitHistory")}
+            events={detail.timeline}
+            emptyText={t("guests.noVisitHistory")}
           />
-        )}
-
-        {}
-        <HistorySection
-          title={t("guests.visitHistory")}
-          events={detail.timeline}
-          emptyText={t("guests.noVisitHistory")}
-        />
-      </div>
-    </>
+        </div>
+      </>
     );
   } else {
     sheetBody = null;
   }
 
-return (
+  return (
     <Sheet open={!!guestId} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent
-        side="right"
-        className="w-full sm:max-w-xl lg:max-w-2xl overflow-y-auto p-0"
-      >
+      <SheetContent side="right" className="w-full sm:max-w-xl lg:max-w-2xl overflow-y-auto p-0">
         {sheetBody}
       </SheetContent>
     </Sheet>
   );
 }
 
-function ProfileStat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "red";
-}) {
+function ProfileStat({ label, value, tone }: { label: string; value: number; tone?: "red" }) {
   let toneClass = "text-slate-800";
   if (tone === "red") {
     toneClass = "text-red-600";
   }
   return (
     <div className="px-1 text-center">
-      <div
-        className={`text-lg font-semibold tabular-nums leading-tight ${toneClass}`}
-      >
-        {value}
-      </div>
+      <div className={`text-lg font-semibold tabular-nums leading-tight ${toneClass}`}>{value}</div>
       <div className="text-[11px] text-slate-500 mt-0.5">{label}</div>
     </div>
   );
@@ -1433,56 +1280,48 @@ function HistorySection({
   emptyText?: string;
 }) {
   const { t, tStatus } = useLang();
-    let historyBody: React.ReactNode;
+  let historyBody: React.ReactNode;
   if (events.length === 0) {
-    historyBody = (
-      <p className="text-sm text-slate-400">
-      {emptyText || t("guests.nothingHere")}
-    </p>
-    );
+    historyBody = <p className="text-sm text-slate-400">{emptyText || t("guests.nothingHere")}</p>;
   } else {
     historyBody = (
       <ol className="relative border-l border-slate-200 ml-1.5 space-y-3">
-      {events.map((e) => {
-        let sourceLabel: string;
-        if (e.source === "reservation") {
-          sourceLabel = t("guests.source.reservation");
-        } else {
-          sourceLabel = t("guests.source.waitlist");
-        }
-        let guestCountKey: "guests.guestOne" | "guests.guestMany";
-        if (e.partySize === 1) {
-          guestCountKey = "guests.guestOne";
-        } else {
-          guestCountKey = "guests.guestMany";
-        }
-        return (
-        <li key={`${e.source}-${e.id}`} className="ml-4">
-          <span className="absolute -left-[5px] mt-1.5 w-2.5 h-2.5 rounded-full bg-indigo-400" />
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium text-slate-700">
-              {e.atLabel ?? fmtDateTime(e.at)}
-            </span>
-            <StatusBadge status={e.status} label={tStatus(e.status)} />
-          </div>
-          <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-2">
-            <span>{sourceLabel}</span>
-            <span>·</span>
-            <span>{t(guestCountKey, { n: e.partySize })}</span>
-          </div>
-          {e.notes && (
-            <p className="text-xs text-slate-500 mt-1 italic">
-              "{e.notes}"
-            </p>
-          )}
-        </li>
-        );
-      })}
-    </ol>
+        {events.map((e) => {
+          let sourceLabel: string;
+          if (e.source === "reservation") {
+            sourceLabel = t("guests.source.reservation");
+          } else {
+            sourceLabel = t("guests.source.waitlist");
+          }
+          let guestCountKey: "guests.guestOne" | "guests.guestMany";
+          if (e.partySize === 1) {
+            guestCountKey = "guests.guestOne";
+          } else {
+            guestCountKey = "guests.guestMany";
+          }
+          return (
+            <li key={`${e.source}-${e.id}`} className="ml-4">
+              <span className="absolute -left-[5px] mt-1.5 w-2.5 h-2.5 rounded-full bg-indigo-400" />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium text-slate-700">
+                  {e.atLabel ?? fmtDateTime(e.at)}
+                </span>
+                <StatusBadge status={e.status} label={tStatus(e.status)} />
+              </div>
+              <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-2">
+                <span>{sourceLabel}</span>
+                <span>·</span>
+                <span>{t(guestCountKey, { n: e.partySize })}</span>
+              </div>
+              {e.notes && <p className="text-xs text-slate-500 mt-1 italic">"{e.notes}"</p>}
+            </li>
+          );
+        })}
+      </ol>
     );
   }
 
-return (
+  return (
     <section>
       <SectionHeading>{title}</SectionHeading>
       {historyBody}

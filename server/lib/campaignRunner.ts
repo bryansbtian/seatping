@@ -1,4 +1,3 @@
-
 import type { Campaign, CampaignRun } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import { enqueueNotification } from "./notifications.js";
@@ -86,8 +85,7 @@ export async function executeCampaignRun(
 
   let eligible = filtered.eligible;
   if (runType === "RECURRING") {
-    const windowDays =
-      campaign.maxSendsPerGuestWindowDays ?? DEFAULT_GUEST_WINDOW_DAYS;
+    const windowDays = campaign.maxSendsPerGuestWindowDays ?? DEFAULT_GUEST_WINDOW_DAYS;
     const cutoff = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
     const recent = await prisma.campaignRecipient.findMany({
       where: {
@@ -309,10 +307,7 @@ export async function runDueCampaignsSweep(): Promise<{
   for (const c of dueRecurring) {
     try {
       const tz = c.timezone || "Asia/Jakarta";
-      const freq = (c.recurrenceFrequency || "WEEKLY") as
-        | "DAILY"
-        | "WEEKLY"
-        | "MONTHLY";
+      const freq = (c.recurrenceFrequency || "WEEKLY") as "DAILY" | "WEEKLY" | "MONTHLY";
       const anchorDay = zonedDayOfMonth(c.recurrenceStartAt, tz);
       let next = advanceRecurrence(c.nextRunAt ?? now, freq, tz, anchorDay);
       while (next.getTime() <= now.getTime()) {
@@ -346,10 +341,7 @@ export async function runDueCampaignsSweep(): Promise<{
         recurringFired += 1;
       }
     } catch (err: any) {
-      console.error(
-        `[campaign-sweep] recurring campaign ${c.id} skipped:`,
-        err?.message || err,
-      );
+      console.error(`[campaign-sweep] recurring campaign ${c.id} skipped:`, err?.message || err);
     }
   }
 

@@ -3,13 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -59,21 +53,21 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     setErrors({ newPassword: "", confirmPassword: "" });
-    
+
     if (!newPassword.trim()) {
-      setErrors(prev => ({ ...prev, newPassword: "New password is required" }));
+      setErrors((prev) => ({ ...prev, newPassword: "New password is required" }));
       return;
     }
-    
+
     if (newPassword.length < 8) {
-      setErrors(prev => ({ ...prev, newPassword: "Password must be at least 8 characters" }));
+      setErrors((prev) => ({ ...prev, newPassword: "Password must be at least 8 characters" }));
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
-      setErrors(prev => ({ ...prev, confirmPassword: "Passwords don't match" }));
+      setErrors((prev) => ({ ...prev, confirmPassword: "Passwords don't match" }));
       return;
     }
 
@@ -81,9 +75,9 @@ const ResetPassword = () => {
       setLoading(true);
       await api("/auth/reset-password", {
         method: "POST",
-        body: JSON.stringify({ 
-          token, 
-          newPassword: newPassword.trim() 
+        body: JSON.stringify({
+          token,
+          newPassword: newPassword.trim(),
         }),
       });
 
@@ -114,9 +108,7 @@ const ResetPassword = () => {
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
                   <CheckCircle className="h-8 w-8 text-green-600" />
                 </div>
-                <CardTitle className="text-3xl text-primary">
-                  Password Reset Complete!
-                </CardTitle>
+                <CardTitle className="text-3xl text-primary">Password Reset Complete!</CardTitle>
                 <CardDescription className="text-sm sm:text-base">
                   Your password has been successfully updated.
                 </CardDescription>
@@ -129,9 +121,7 @@ const ResetPassword = () => {
                 </div>
 
                 <Button asChild className="h-11 w-full text-base">
-                  <Link to={loginPath}>
-                    Continue to Log In
-                  </Link>
+                  <Link to={loginPath}>Continue to Log In</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -156,7 +146,6 @@ const ResetPassword = () => {
   return (
     <>
       <Header variant={headerVariant} />
-      {}
       <div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/5 via-background to-success/5">
         <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10 sm:pt-28 sm:pb-14">
           <Card className="w-full max-w-[540px] shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
@@ -164,9 +153,7 @@ const ResetPassword = () => {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100">
                 <Lock className="h-8 w-8 text-indigo-600" />
               </div>
-              <CardTitle className="text-3xl text-primary">
-                Reset Your Password
-              </CardTitle>
+              <CardTitle className="text-3xl text-primary">Reset Your Password</CardTitle>
               <CardDescription className="text-sm sm:text-base">
                 Enter your new password below.
               </CardDescription>
@@ -185,9 +172,7 @@ const ResetPassword = () => {
                     required
                   />
                   {errors.newPassword && (
-                    <p className="text-sm text-destructive">
-                      {errors.newPassword}
-                    </p>
+                    <p className="text-sm text-destructive">{errors.newPassword}</p>
                   )}
                 </div>
 
@@ -203,17 +188,11 @@ const ResetPassword = () => {
                     required
                   />
                   {errors.confirmPassword && (
-                    <p className="text-sm text-destructive">
-                      {errors.confirmPassword}
-                    </p>
+                    <p className="text-sm text-destructive">{errors.confirmPassword}</p>
                   )}
                 </div>
 
-                <Button
-                  type="submit"
-                  className="h-11 w-full text-base"
-                  disabled={loading}
-                >
+                <Button type="submit" className="h-11 w-full text-base" disabled={loading}>
                   {submitLabel}
                 </Button>
               </form>

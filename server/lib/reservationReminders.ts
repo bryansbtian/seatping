@@ -1,10 +1,5 @@
-
 import { prisma } from "./prisma.js";
-import {
-  splitDateTime,
-  formatTimeLabel,
-  zonedWallTimeToMs,
-} from "./reservations.js";
+import { splitDateTime, formatTimeLabel, zonedWallTimeToMs } from "./reservations.js";
 import { enqueueNotification } from "./notifications.js";
 
 const REMINDER_WINDOW_MINUTES = 120;
@@ -34,11 +29,7 @@ function readableDate(date: string): string {
   });
 }
 
-function minutesUntil(
-  reservationDateTime: string,
-  now: Date,
-  timeZone: string,
-): number {
+function minutesUntil(reservationDateTime: string, now: Date, timeZone: string): number {
   const { date, time } = splitDateTime(reservationDateTime);
   const startMs = zonedWallTimeToMs(date, time || "00:00", timeZone);
   if (Number.isNaN(startMs)) {
@@ -57,10 +48,7 @@ export async function runReservationReminderSweep(): Promise<void> {
   const candidates = await prisma.reservation.findMany({
     where: {
       status: "CONFIRMED",
-      OR: [
-        { reminderEmailSentAt: null },
-        { reminderEmailSentAt: { isSet: false } },
-      ],
+      OR: [{ reminderEmailSentAt: null }, { reminderEmailSentAt: { isSet: false } }],
       reservationDateTime: {
         gte: boundStr(new Date(now.getTime() - 2 * dayMs)),
         lte: boundStr(new Date(now.getTime() + 2 * dayMs)),
@@ -115,10 +103,7 @@ export async function runReservationReminderSweep(): Promise<void> {
       const claim = await prisma.reservation.updateMany({
         where: {
           id: r.id,
-          OR: [
-            { reminderEmailSentAt: null },
-            { reminderEmailSentAt: { isSet: false } },
-          ],
+          OR: [{ reminderEmailSentAt: null }, { reminderEmailSentAt: { isSet: false } }],
         },
         data: { reminderEmailSentAt: new Date() },
       });
@@ -161,6 +146,6 @@ export async function runReservationReminderSweep(): Promise<void> {
   }
 
   if (sentCount > 0) {
-    console.log(`[RESERVATION-REMINDER] sweep done — enqueued ${sentCount} reminder(s)`);
+    console.log(`[RESERVATION-REMINDER] sweep done, enqueued ${sentCount} reminder(s)`);
   }
 }

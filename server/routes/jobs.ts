@@ -1,4 +1,3 @@
-
 import { Router, type Request, type Response } from "express";
 import express from "express";
 import { Receiver } from "@upstash/qstash";

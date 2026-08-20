@@ -2,14 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { GuestStatusBadge } from "@/components/GuestBadge";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { useEffect, useState, useRef, useMemo } from "react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { api } from "@/lib/api";
 import { formatPhone as formatPhoneIntl } from "@/lib/phone";
 import { useToast } from "@/hooks/use-toast";
@@ -78,9 +72,7 @@ const BusinessDashboard = () => {
   const [selectedLocationIndex, setSelectedLocationIndex] = useState(0);
   const [queueEtas, setQueueEtas] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
-  const [analyticsTimeframe, setAnalyticsTimeframe] = useState<
-    "daily" | "weekly"
-  >("daily");
+  const [analyticsTimeframe, setAnalyticsTimeframe] = useState<"daily" | "weekly">("daily");
   const changeAnalyticsTimeframe = (tf: "daily" | "weekly") => {
     setAnalyticsTimeframe(tf);
   };
@@ -118,16 +110,13 @@ const BusinessDashboard = () => {
     const tz = getLocationTimezone(currentLocation);
     const todayKey = getTodayKeyInTimezone(tz);
 
-    const reservationsToday = (currentLocation.reservations || []).filter(
-      (r: any) => {
-        const d = String(r?.reservationDateTime || "").split("T")[0];
-        return d === todayKey && ["confirmed", "arrived"].includes(r?.status);
-      },
-    ).length;
+    const reservationsToday = (currentLocation.reservations || []).filter((r: any) => {
+      const d = String(r?.reservationDateTime || "").split("T")[0];
+      return d === todayKey && ["confirmed", "arrived"].includes(r?.status);
+    }).length;
 
     const todayAdmitted = admittedCustomers.filter(
-      (customer: any) =>
-        getDateKeyInTimezone(customer.admittedAt, tz) === todayKey,
+      (customer: any) => getDateKeyInTimezone(customer.admittedAt, tz) === todayKey,
     );
 
     const todayServed = todayAdmitted.filter((customer: any) => {
@@ -140,8 +129,7 @@ const BusinessDashboard = () => {
 
     const todayRemoved = removedCustomers.filter(
       (customer: any) =>
-        getDateKeyInTimezone(customer.removedAt || customer.leftAt, tz) ===
-        todayKey,
+        getDateKeyInTimezone(customer.removedAt || customer.leftAt, tz) === todayKey,
     );
 
     const leftToday = removedCustomers.filter(
@@ -166,16 +154,14 @@ const BusinessDashboard = () => {
       avgWaitTime = Math.round(totalWaitTime / waitTimeCount);
     }
 
-    const totalProcessed =
-      todayServed.length + todayNoShows + todayRemoved.length;
+    const totalProcessed = todayServed.length + todayNoShows + todayRemoved.length;
     let successRate = 100;
     if (totalProcessed > 0) {
       successRate = Math.round((todayServed.length / totalProcessed) * 100);
     }
 
     const reservations = currentLocation.reservations || [];
-    const isToday = (iso: any) =>
-      !!iso && getDateKeyInTimezone(iso, tz) === todayKey;
+    const isToday = (iso: any) => !!iso && getDateKeyInTimezone(iso, tz) === todayKey;
     let reservationsServedToday = 0;
     let reservationNoShowsToday = 0;
     for (const r of reservations) {
@@ -200,7 +186,7 @@ const BusinessDashboard = () => {
 
   const todayStats = calculateStats();
 
-  const calculateTrialTimeLeft = () => {
+  const calculateTrialTimeLeft = useCallback(() => {
     if (!me || !me.trial || !me.createdAt) {
       return null;
     }
@@ -210,9 +196,7 @@ const BusinessDashboard = () => {
     if (typeof me.trialDurationDays === "number") {
       trialDurationDays = me.trialDurationDays;
     }
-    const trialEndDate = new Date(
-      createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
-    );
+    const trialEndDate = new Date(createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000);
     const now = new Date();
     const timeLeft = trialEndDate.getTime() - now.getTime();
 
@@ -221,13 +205,11 @@ const BusinessDashboard = () => {
     }
 
     const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-    const hours = Math.floor(
-      (timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
-    );
+    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
 
     return { days, hours, minutes };
-  };
+  }, [me]);
 
   useEffect(() => {
     if (trialCountdownRef.current) {
@@ -256,15 +238,13 @@ const BusinessDashboard = () => {
         clearInterval(trialCountdownRef.current);
       }
     };
-  }, [me]);
+  }, [me, calculateTrialTimeLeft]);
 
   useEffect(() => {
     if (me && me.trial) {
       const createdAt = new Date(me.createdAt);
       const trialDurationDays = me.trialDurationDays || 0;
-      const trialEndDate = new Date(
-        createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
-      );
+      const trialEndDate = new Date(createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000);
       const now = new Date();
       const isExpired = now > trialEndDate;
 
@@ -323,8 +303,7 @@ const BusinessDashboard = () => {
           }
         }
         setQueueEtas(map);
-      } catch {
-      }
+      } catch {}
     };
     fetchEtas();
     const id = setInterval(fetchEtas, 30000);
@@ -332,7 +311,6 @@ const BusinessDashboard = () => {
       cancelled = true;
       clearInterval(id);
     };
-     
   }, [me?.username, currentLocation?.id, queueData.length]);
 
   useEffect(() => {
@@ -420,12 +398,9 @@ const BusinessDashboard = () => {
     try {
       const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
 
-      await api(
-        `/auth/business/${me.username}/admitted/${customerId}/confirm-arrival`,
-        {
-          method: "POST",
-        },
-      );
+      await api(`/auth/business/${me.username}/admitted/${customerId}/confirm-arrival`, {
+        method: "POST",
+      });
 
       const updated = await api("/auth/business/me");
       setMe(updated.user);
@@ -456,12 +431,9 @@ const BusinessDashboard = () => {
     try {
       const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
 
-      await api(
-        `/auth/business/${me.username}/admitted/${customerId}/mark-no-show`,
-        {
-          method: "POST",
-        },
-      );
+      await api(`/auth/business/${me.username}/admitted/${customerId}/mark-no-show`, {
+        method: "POST",
+      });
 
       const updated = await api("/auth/business/me");
       setMe(updated.user);
@@ -583,7 +555,7 @@ const BusinessDashboard = () => {
     }
   };
 
-  const getDailyWeeklySummaryData = (): {
+  const getDailyWeeklySummaryData = useCallback((): {
     date: string;
     served: number;
     avgWait: number;
@@ -632,10 +604,7 @@ const BusinessDashboard = () => {
           dataMap.get(key)!.served += 1;
 
           if (c.joinedAt) {
-            const wt =
-              (new Date(c.admittedAt).getTime() -
-                new Date(c.joinedAt).getTime()) /
-              60000;
+            const wt = (new Date(c.admittedAt).getTime() - new Date(c.joinedAt).getTime()) / 60000;
             waitTimes.get(key)!.push(wt);
           }
         }
@@ -643,9 +612,7 @@ const BusinessDashboard = () => {
 
       for (const [key, times] of waitTimes.entries()) {
         if (times.length) {
-          dataMap.get(key)!.avgWait = Math.round(
-            times.reduce((a, b) => a + b, 0) / times.length,
-          );
+          dataMap.get(key)!.avgWait = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
         }
       }
 
@@ -711,8 +678,7 @@ const BusinessDashboard = () => {
       weekWaitTimes.set(key, []);
     }
 
-    const weekKeyFrom = (iso: any) =>
-      startOfWeekDateKey(getDateKeyInTimezone(iso, tz));
+    const weekKeyFrom = (iso: any) => startOfWeekDateKey(getDateKeyInTimezone(iso, tz));
 
     for (const c of admittedCustomers) {
       if (!c.admittedAt) {
@@ -727,10 +693,7 @@ const BusinessDashboard = () => {
         weekRows.get(key)!.served += 1;
 
         if (c.joinedAt) {
-          const wt =
-            (new Date(c.admittedAt).getTime() -
-              new Date(c.joinedAt).getTime()) /
-            60000;
+          const wt = (new Date(c.admittedAt).getTime() - new Date(c.joinedAt).getTime()) / 60000;
           weekWaitTimes.get(key)!.push(wt);
         }
       }
@@ -738,9 +701,7 @@ const BusinessDashboard = () => {
 
     for (const [key, times] of weekWaitTimes.entries()) {
       if (times.length) {
-        weekRows.get(key)!.avgWait = Math.round(
-          times.reduce((a, b) => a + b, 0) / times.length,
-        );
+        weekRows.get(key)!.avgWait = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
       }
     }
 
@@ -780,7 +741,7 @@ const BusinessDashboard = () => {
     return Array.from(weekRows.values())
       .sort((a, b) => a._key.localeCompare(b._key))
       .map(({ _key, ...rest }) => rest);
-  };
+  }, [analyticsTimeframe, currentLocation, t]);
 
   const getPeakHoursData = () => {
     if (!currentLocation) {
@@ -843,18 +804,12 @@ const BusinessDashboard = () => {
     ];
 
     admittedCustomers.forEach((customer: any) => {
-      if (
-        customer.finalStatus !== "no_show" &&
-        customer.joinedAt &&
-        customer.admittedAt
-      ) {
+      if (customer.finalStatus !== "no_show" && customer.joinedAt && customer.admittedAt) {
         const joinTime = new Date(customer.joinedAt).getTime();
         const admitTime = new Date(customer.admittedAt).getTime();
         const waitTime = (admitTime - joinTime) / (1000 * 60);
 
-        const bucket = buckets.find(
-          (b) => waitTime >= b.min && waitTime < b.max,
-        );
+        const bucket = buckets.find((b) => waitTime >= b.min && waitTime < b.max);
         if (bucket) {
           bucket.count++;
         }
@@ -866,8 +821,7 @@ const BusinessDashboard = () => {
 
   const dailyWeeklySummary = useMemo(
     () => getDailyWeeklySummaryData(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentLocation, analyticsTimeframe, lang],
+    [getDailyWeeklySummaryData],
   );
   const peakHoursData = getPeakHoursData();
   const waitTimeDistribution = getWaitTimeDistribution();
@@ -957,7 +911,6 @@ const BusinessDashboard = () => {
                     </span>
                   </div>
 
-                  {}
                   {notificationContact(customer) && (
                     <p className="text-xs md:text-sm text-gray-500 mt-1 break-all">
                       {notificationContact(customer)}
@@ -1006,9 +959,7 @@ const BusinessDashboard = () => {
     if (typeof me.trialDurationDays === "number") {
       trialDurationDays = me.trialDurationDays;
     }
-    const trialEndDate = new Date(
-      createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000,
-    );
+    const trialEndDate = new Date(createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000);
     const now = new Date();
     if (now > trialEndDate) {
       trialBanner = (
@@ -1019,9 +970,7 @@ const BusinessDashboard = () => {
                 <h3 className="text-lg md:text-xl font-semibold">
                   {t("banner.trialExpired.title")}
                 </h3>
-                <p className="text-sm md:text-base opacity-90">
-                  {t("banner.trialExpired.body")}
-                </p>
+                <p className="text-sm md:text-base opacity-90">{t("banner.trialExpired.body")}</p>
               </div>
               <div className="flex justify-end">
                 <Button
@@ -1045,9 +994,7 @@ const BusinessDashboard = () => {
                 <h3 className="text-lg md:text-xl font-semibold">
                   {t("banner.trialActive.title")}
                 </h3>
-                <p className="text-sm md:text-base opacity-90">
-                  {t("banner.trialActive.body")}
-                </p>
+                <p className="text-sm md:text-base opacity-90">{t("banner.trialActive.body")}</p>
                 {trialTimeLeft && (
                   <div className="mt-2 flex items-center space-x-2 text-indigo-100">
                     <span className="text-sm font-medium">
@@ -1094,16 +1041,11 @@ const BusinessDashboard = () => {
   if (dailyWeeklySummary.length > 0) {
     summaryChartContent = (
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={dailyWeeklySummary}
-          margin={{ top: 8, right: 16, left: 28, bottom: 44 }}
-        >
+        <LineChart data={dailyWeeklySummary} margin={{ top: 8, right: 16, left: 28, bottom: 44 }}>
           <XAxis dataKey="date" tickMargin={14} height={32} />
 
-          {}
           <YAxis yAxisId="left" width={40} allowDecimals={false} />
 
-          {}
           <YAxis
             yAxisId="right"
             orientation="right"
@@ -1114,13 +1056,8 @@ const BusinessDashboard = () => {
           />
 
           <Tooltip contentStyle={TOOLTIP_CONTENT_STYLE} />
-          <Legend
-            verticalAlign="bottom"
-            align="center"
-            wrapperStyle={{ bottom: 4 }}
-          />
+          <Legend verticalAlign="bottom" align="center" wrapperStyle={{ bottom: 4 }} />
 
-          {}
           <Line
             yAxisId="left"
             type="monotone"
@@ -1178,16 +1115,11 @@ const BusinessDashboard = () => {
   if (waitTimeDistribution.some((b) => b.count > 0)) {
     waitDistributionContent = (
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart
-          data={waitTimeDistribution}
-          margin={{ top: 8, right: 16, left: 28, bottom: 0 }}
-        >
+        <BarChart data={waitTimeDistribution} margin={{ top: 8, right: 16, left: 28, bottom: 0 }}>
           <XAxis dataKey="range" height={40} tick={{ fontSize: 12 }} />
 
-          {}
           <YAxis yAxisId="left" width={40} />
 
-          {}
           <YAxis
             yAxisId="right"
             orientation="right"
@@ -1221,10 +1153,7 @@ const BusinessDashboard = () => {
   if (peakHoursData.length > 0) {
     peakHoursContent = (
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart
-          data={peakHoursData}
-          margin={{ top: 8, right: 16, left: 28, bottom: 0 }}
-        >
+        <BarChart data={peakHoursData} margin={{ top: 8, right: 16, left: 28, bottom: 0 }}>
           <XAxis
             dataKey="hour"
             height={40}
@@ -1233,10 +1162,8 @@ const BusinessDashboard = () => {
             tick={{ fontSize: 12 }}
           />
 
-          {}
           <YAxis yAxisId="left" width={40} />
 
-          {}
           <YAxis
             yAxisId="right"
             orientation="right"
@@ -1276,64 +1203,45 @@ const BusinessDashboard = () => {
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100">
         <div className="container mx-auto px-4 py-8 [&_.text-3xl]:max-[374px]:text-2xl [&_.text-2xl]:max-[374px]:text-xl [&_.text-xl]:max-[374px]:text-lg [&_.text-lg]:max-[374px]:text-base [&_.text-base]:max-[374px]:text-sm [&_.text-sm]:max-[374px]:text-xs [&_.text-xs]:max-[374px]:text-[11px]">
-          {}
-          {me && me.trial === true && (
-            <>
-              {}
-              {trialBanner}
-            </>
-          )}
+          {me && me.trial === true && <>{trialBanner}</>}
 
-          {}
-          {me &&
-            me.trial === false &&
-            currentLocation &&
-            currentLocation.credits === 0 && (
-              <div className="mb-6">
-                <div className="bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
-                    <div>
-                      <h3 className="text-lg md:text-xl font-semibold">
-                        {t("banner.noCredits.title")}
-                      </h3>
-                      <p className="text-sm md:text-base opacity-90">
-                        {t("banner.noCredits.body")}
-                      </p>
-                    </div>
-                    <div className="flex justify-end">
-                      <Button
-                        variant="inverseOutline"
-                        onClick={() => (window.location.href = "/sales")}
-                      >
-                        {t("common.contactSeatPing")}
-                      </Button>
-                    </div>
+          {me && me.trial === false && currentLocation && currentLocation.credits === 0 && (
+            <div className="mb-6">
+              <div className="bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
+                  <div>
+                    <h3 className="text-lg md:text-xl font-semibold">
+                      {t("banner.noCredits.title")}
+                    </h3>
+                    <p className="text-sm md:text-base opacity-90">{t("banner.noCredits.body")}</p>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      variant="inverseOutline"
+                      onClick={() => (window.location.href = "/sales")}
+                    >
+                      {t("common.contactSeatPing")}
+                    </Button>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-          {}
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 md:p-6 mb-4 lg:hidden">
-            {}
             <div className="mb-4">
               <h2 className="text-xl md:text-2xl font-semibold text-slate-800 leading-tight">
                 {t("dash.hello", { name: me?.name || t("dash.ownerFallback") })}
               </h2>
-              <p className="text-slate-600 text-sm md:text-base">
-                {t("dash.dailyStat")}
-              </p>
+              <p className="text-slate-600 text-sm md:text-base">{t("dash.dailyStat")}</p>
             </div>
 
-            {}
             {currentLocation && (
               <div className="mb-3">
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs text-slate-600 mb-1">
-                        {t("dash.credits")}
-                      </p>
+                      <p className="text-xs text-slate-600 mb-1">{t("dash.credits")}</p>
                       <p className="text-xl md:text-2xl font-semibold text-slate-800">
                         {currentLocation?.credits || 0}
                       </p>
@@ -1346,14 +1254,11 @@ const BusinessDashboard = () => {
               </div>
             )}
 
-            {}
             <div className="relative">
               <select
                 className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={selectedLocationIndex}
-                onChange={(e) =>
-                  setSelectedLocationIndex(Number(e.target.value))
-                }
+                onChange={(e) => setSelectedLocationIndex(Number(e.target.value))}
               >
                 {locationOptions}
               </select>
@@ -1361,7 +1266,6 @@ const BusinessDashboard = () => {
             </div>
           </div>
 
-          {}
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 md:p-6 mb-6 hidden lg:block">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
@@ -1370,9 +1274,7 @@ const BusinessDashboard = () => {
                     name: me?.name || t("dash.ownerFallback"),
                   })}
                 </h2>
-                <p className="text-slate-600 text-sm md:text-base">
-                  {t("dash.dailyStat")}
-                </p>
+                <p className="text-slate-600 text-sm md:text-base">{t("dash.dailyStat")}</p>
                 {currentLocation && (
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
@@ -1393,9 +1295,7 @@ const BusinessDashboard = () => {
                   <select
                     className="appearance-none bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={selectedLocationIndex}
-                    onChange={(e) =>
-                      setSelectedLocationIndex(Number(e.target.value))
-                    }
+                    onChange={(e) => setSelectedLocationIndex(Number(e.target.value))}
                   >
                     {locationOptions}
                   </select>
@@ -1405,12 +1305,9 @@ const BusinessDashboard = () => {
             </div>
           </div>
 
-          {}
           <Card className="mb-6 bg-white rounded-xl shadow-sm border border-slate-200 lg:hidden">
             <div className="p-4">
-              <p className="text-sm font-semibold text-slate-800 mb-3">
-                {t("dash.todaysSummary")}
-              </p>
+              <p className="text-sm font-semibold text-slate-800 mb-3">{t("dash.todaysSummary")}</p>
               <div className="divide-y divide-slate-100">
                 {[
                   {
@@ -1444,19 +1341,14 @@ const BusinessDashboard = () => {
                     tint: "bg-teal-100 text-teal-600",
                   },
                 ].map(({ label, value, icon: Icon, tint }) => (
-                  <div
-                    key={label}
-                    className="flex items-center justify-between py-2.5"
-                  >
+                  <div key={label} className="flex items-center justify-between py-2.5">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div
                         className={`w-8 h-8 rounded-full grid place-items-center shrink-0 max-[325px]:hidden ${tint}`}
                       >
                         <Icon className="w-4 h-4" />
                       </div>
-                      <span className="text-sm text-slate-600 truncate">
-                        {label}
-                      </span>
+                      <span className="text-sm text-slate-600 truncate">{label}</span>
                     </div>
                     <span className="text-lg font-semibold text-slate-800 leading-none shrink-0">
                       {value}
@@ -1467,13 +1359,10 @@ const BusinessDashboard = () => {
             </div>
           </Card>
 
-          {}
           <div className="hidden lg:grid grid-cols-5 gap-4 mb-6">
             <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex flex-col gap-2">
-                <p className="text-slate-600 text-xs md:text-sm">
-                  {t("dash.stat.currentQueue")}
-                </p>
+                <p className="text-slate-600 text-xs md:text-sm">{t("dash.stat.currentQueue")}</p>
                 <div className="flex items-center justify-between">
                   <p className="text-2xl md:text-3xl font-semibold text-slate-800">
                     {todayStats.currentQueue}
@@ -1519,9 +1408,7 @@ const BusinessDashboard = () => {
 
             <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex flex-col gap-2">
-                <p className="text-slate-600 text-xs md:text-sm">
-                  {t("dash.stat.servedToday")}
-                </p>
+                <p className="text-slate-600 text-xs md:text-sm">{t("dash.stat.servedToday")}</p>
                 <div className="flex items-center justify-between">
                   <p className="text-2xl md:text-3xl font-semibold text-slate-800">
                     {todayStats.totalServed}
@@ -1535,9 +1422,7 @@ const BusinessDashboard = () => {
 
             <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
               <div className="flex flex-col gap-2">
-                <p className="text-slate-600 text-xs md:text-sm">
-                  {t("dash.stat.leftToday")}
-                </p>
+                <p className="text-slate-600 text-xs md:text-sm">{t("dash.stat.leftToday")}</p>
                 <div className="flex items-center justify-between">
                   <p className="text-2xl md:text-3xl font-semibold text-slate-800">
                     {todayStats.leftToday}
@@ -1550,10 +1435,8 @@ const BusinessDashboard = () => {
             </Card>
           </div>
 
-          {}
           <Card className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
             <CardHeader className="border-b border-gray-100 p-4 md:p-6">
-              {}
               <div className="md:hidden">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-lg text-gray-800">
@@ -1597,7 +1480,6 @@ const BusinessDashboard = () => {
                 </Button>
               </div>
 
-              {}
               <div className="hidden md:flex md:items-center md:justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
@@ -1623,8 +1505,7 @@ const BusinessDashboard = () => {
                       } catch (error: any) {
                         toast({
                           title: t("dash.toast.refreshFailed.title"),
-                          description:
-                            error.message || t("common.pleaseTryAgain"),
+                          description: error.message || t("common.pleaseTryAgain"),
                           variant: "destructive",
                         });
                       }
@@ -1635,25 +1516,19 @@ const BusinessDashboard = () => {
                     <RefreshCw size={16} />
                     <span>{t("common.refresh")}</span>
                   </Button>
-                  <Badge
-                    variant="secondary"
-                    className="bg-indigo-100 text-indigo-700"
-                  >
+                  <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
                     {t(queueCountKey, { n: queueData.length })}
                   </Badge>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-4 md:p-6">
-              {queueContent}
-            </CardContent>
+            <CardContent className="p-4 md:p-6">{queueContent}</CardContent>
           </Card>
 
-          {}
           {(() => {
-            const pendingAdmittedCustomers = (
-              currentLocation?.admittedCustomers || []
-            ).filter((customer: any) => customer.finalStatus === "pending");
+            const pendingAdmittedCustomers = (currentLocation?.admittedCustomers || []).filter(
+              (customer: any) => customer.finalStatus === "pending",
+            );
 
             return (
               pendingAdmittedCustomers.length > 0 && (
@@ -1669,101 +1544,89 @@ const BusinessDashboard = () => {
                   </CardHeader>
                   <CardContent className="p-4 md:p-6">
                     <div className="space-y-3 md:space-y-4">
-                      {pendingAdmittedCustomers.map(
-                        (customer: any, index: number) => {
-                          const timeRemaining = getTimeRemaining(
-                            customer.admittedAt,
-                          );
-                          const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
-                          let countdownLabel: string;
-                          if (timeRemaining.expired) {
-                            countdownLabel = "!";
-                          } else {
-                            countdownLabel = `${
-                              timeRemaining.minutes
-                            }:${timeRemaining.seconds
-                              .toString()
-                              .padStart(2, "0")}`;
-                          }
-                          let guestCountKey:
-                            | "dash.guestOne"
-                            | "dash.guestMany";
-                          if (customer.numGuests === 1) {
-                            guestCountKey = "dash.guestOne";
-                          } else {
-                            guestCountKey = "dash.guestMany";
-                          }
+                      {pendingAdmittedCustomers.map((customer: any, index: number) => {
+                        const timeRemaining = getTimeRemaining(customer.admittedAt);
+                        const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
+                        let countdownLabel: string;
+                        if (timeRemaining.expired) {
+                          countdownLabel = "!";
+                        } else {
+                          countdownLabel = `${timeRemaining.minutes}:${timeRemaining.seconds
+                            .toString()
+                            .padStart(2, "0")}`;
+                        }
+                        let guestCountKey: "dash.guestOne" | "dash.guestMany";
+                        if (customer.numGuests === 1) {
+                          guestCountKey = "dash.guestOne";
+                        } else {
+                          guestCountKey = "dash.guestMany";
+                        }
 
-                          return (
-                            <div
-                              key={customerId}
-                              className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-white rounded-lg border border-amber-200"
-                            >
-                              <div className="flex items-center space-x-3 md:space-x-4 flex-1">
-                                <div className="flex-shrink-0">
-                                  <div className="w-8 h-8 md:w-10 md:h-10 bg-amber-600 rounded-full flex items-center justify-center">
-                                    <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-white leading-none tabular-nums">
-                                      {countdownLabel}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="font-semibold text-gray-800 text-sm md:text-base flex items-center gap-2 flex-wrap">
-                                    {customer.firstName} {customer.lastName}
-                                    {customer.isReturning && (
-                                      <GuestStatusBadge returning />
-                                    )}
-                                  </h3>
-                                  <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
-                                    <span className="whitespace-nowrap">
-                                      {t("dash.admitted", {
-                                        time: formatTimeSince(
-                                          customer.admittedAt,
-                                        ),
-                                      })}
-                                    </span>
-                                    <span className="text-gray-400">•</span>
-                                    <span className="whitespace-nowrap">
-                                      {t(guestCountKey, {
-                                        n: customer.numGuests,
-                                      })}
-                                    </span>
-
-                                    {timeRemaining.expired && (
-                                      <>
-                                        <span className="text-gray-400">•</span>
-                                        <span className="text-red-600 font-semibold whitespace-nowrap">
-                                          {t("dash.timeExpired")}
-                                        </span>
-                                      </>
-                                    )}
-                                  </div>
+                        return (
+                          <div
+                            key={customerId}
+                            className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-white rounded-lg border border-amber-200"
+                          >
+                            <div className="flex items-center space-x-3 md:space-x-4 flex-1">
+                              <div className="flex-shrink-0">
+                                <div className="w-8 h-8 md:w-10 md:h-10 bg-amber-600 rounded-full flex items-center justify-center">
+                                  <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-white leading-none tabular-nums">
+                                    {countdownLabel}
+                                  </span>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2 md:gap-3">
-                                <Button
-                                  size="sm"
-                                  variant="success"
-                                  className="flex-1 md:flex-none"
-                                  onClick={() => confirmArrival(customer)}
-                                  disabled={loading}
-                                >
-                                  {t("dash.arrived")}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructiveOutline"
-                                  className="flex-1 md:flex-none"
-                                  onClick={() => markNoShow(customer)}
-                                  disabled={loading}
-                                >
-                                  {t("dash.noShow")}
-                                </Button>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-gray-800 text-sm md:text-base flex items-center gap-2 flex-wrap">
+                                  {customer.firstName} {customer.lastName}
+                                  {customer.isReturning && <GuestStatusBadge returning />}
+                                </h3>
+                                <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
+                                  <span className="whitespace-nowrap">
+                                    {t("dash.admitted", {
+                                      time: formatTimeSince(customer.admittedAt),
+                                    })}
+                                  </span>
+                                  <span className="text-gray-400">•</span>
+                                  <span className="whitespace-nowrap">
+                                    {t(guestCountKey, {
+                                      n: customer.numGuests,
+                                    })}
+                                  </span>
+
+                                  {timeRemaining.expired && (
+                                    <>
+                                      <span className="text-gray-400">•</span>
+                                      <span className="text-red-600 font-semibold whitespace-nowrap">
+                                        {t("dash.timeExpired")}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          );
-                        },
-                      )}
+                            <div className="flex items-center gap-2 md:gap-3">
+                              <Button
+                                size="sm"
+                                variant="success"
+                                className="flex-1 md:flex-none"
+                                onClick={() => confirmArrival(customer)}
+                                disabled={loading}
+                              >
+                                {t("dash.arrived")}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructiveOutline"
+                                className="flex-1 md:flex-none"
+                                onClick={() => markNoShow(customer)}
+                                disabled={loading}
+                              >
+                                {t("dash.noShow")}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
@@ -1771,7 +1634,6 @@ const BusinessDashboard = () => {
             );
           })()}
 
-          {}
           <ReservationsManager
             reservations={currentLocation?.reservations || []}
             businessUsername={me?.username || ""}
@@ -1782,20 +1644,13 @@ const BusinessDashboard = () => {
             onUpdated={(user) => setMe(user)}
           />
 
-          {}
           {(() => {
             const now = new Date();
-            const twentyFourHoursAgo = new Date(
-              now.getTime() - 24 * 60 * 60 * 1000,
-            );
+            const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-            const recentlyLeftCustomers = (
-              currentLocation?.removedCustomers || []
-            )
+            const recentlyLeftCustomers = (currentLocation?.removedCustomers || [])
               .filter((customer: any) => {
-                const leftTime = new Date(
-                  customer.leftAt || customer.removedAt,
-                );
+                const leftTime = new Date(customer.leftAt || customer.removedAt);
                 return leftTime >= twentyFourHoursAgo;
               })
               .slice(-5);
@@ -1830,9 +1685,7 @@ const BusinessDashboard = () => {
                     } else {
                       guestCountKey = "dash.guestMany";
                     }
-                    const statusBadge = (
-                      <StatusBadge status={leftStatus} label={leftStatusLabel} />
-                    );
+                    const statusBadge = <StatusBadge status={leftStatus} label={leftStatusLabel} />;
                     return (
                       <div
                         key={index}
@@ -1845,11 +1698,8 @@ const BusinessDashboard = () => {
                             </h3>
                             <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
                               <span className="whitespace-nowrap">
-                                {leftTimeLabel}
-                                :{" "}
-                                {formatTimeSince(
-                                  customer.leftAt || customer.removedAt,
-                                )}
+                                {leftTimeLabel}:{" "}
+                                {formatTimeSince(customer.leftAt || customer.removedAt)}
                               </span>
                               <span className="text-gray-400">•</span>
                               <span className="whitespace-nowrap">
@@ -1859,17 +1709,14 @@ const BusinessDashboard = () => {
                               </span>
                             </div>
 
-                            {}
                             {notificationContact(customer) && (
                               <p className="text-xs md:text-sm text-gray-500 mt-1 break-all">
                                 {notificationContact(customer)}
                               </p>
                             )}
-                            {}
                             <div className="mt-1.5 md:hidden">{statusBadge}</div>
                           </div>
                         </div>
-                        {}
                         <div className="hidden md:block">{statusBadge}</div>
                       </div>
                     );
@@ -1889,16 +1736,12 @@ const BusinessDashboard = () => {
                     {t("dash.left.desc")}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="p-4 md:p-6">
-                  {recentlyLeftContent}
-                </CardContent>
+                <CardContent className="p-4 md:p-6">{recentlyLeftContent}</CardContent>
               </Card>
             );
           })()}
 
-          {}
           <div className="mb-6 space-y-6">
-            {}
             <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
               <CardHeader className="border-b border-slate-100 p-4 md:p-6">
                 <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
@@ -1930,16 +1773,11 @@ const BusinessDashboard = () => {
                 </div>
               </CardHeader>
               <CardContent className="p-4 md:p-6">
-                {}
-                <div className="h-[300px] w-full">
-                  {summaryChartContent}
-                </div>
+                <div className="h-[300px] w-full">{summaryChartContent}</div>
               </CardContent>
             </Card>
 
-            {}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {}
               <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
                   <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
@@ -1950,12 +1788,9 @@ const BusinessDashboard = () => {
                     {t("dash.peak.desc")}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="p-4 md:p-6">
-                  {peakHoursContent}
-                </CardContent>
+                <CardContent className="p-4 md:p-6">{peakHoursContent}</CardContent>
               </Card>
 
-              {}
               <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
                   <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
@@ -1966,9 +1801,7 @@ const BusinessDashboard = () => {
                     {t("dash.waitDist.desc")}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="p-4 md:p-6">
-                  {waitDistributionContent}
-                </CardContent>
+                <CardContent className="p-4 md:p-6">{waitDistributionContent}</CardContent>
               </Card>
             </div>
           </div>

@@ -43,7 +43,7 @@ app.use(
   cors({
     origin: process.env.CLIENT_ORIGIN ?? "https://www.seatping.biz",
     credentials: true,
-  })
+  }),
 );
 
 app.use("/api/jobs", jobsRouter);
@@ -100,8 +100,7 @@ const globalLimiter = rateLimit({
   max: 200,
 });
 
-const CUSTOMER_POLL_EXEMPT_RE =
-  /^\/auth\/business\/[^/]+\/queue\/.+\/(status|eta)$/;
+const CUSTOMER_POLL_EXEMPT_RE = /^\/auth\/business\/[^/]+\/queue\/.+\/(status|eta)$/;
 
 app.use((req, res, next) => {
   if (
@@ -115,9 +114,7 @@ app.use((req, res, next) => {
 });
 
 app.get("/api/health", async (_req, res) => {
-  const timeout = new Promise<"timeout">((resolve) =>
-    setTimeout(() => resolve("timeout"), 2500),
-  );
+  const timeout = new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 2500));
   try {
     const result = await Promise.race([
       prisma.business.findFirst({ select: { id: true } }).then(() => "ok" as const),
@@ -155,15 +152,9 @@ if (process.env.NODE_ENV === "production") {
   app.get("*", (req, res) => {
     try {
       if (indexTemplate === null) {
-        indexTemplate = fs.readFileSync(
-          path.join(distPath, "index.html"),
-          "utf-8",
-        );
+        indexTemplate = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
       }
-      res
-        .status(200)
-        .type("html")
-        .send(injectSeo(indexTemplate, req.path));
+      res.status(200).type("html").send(injectSeo(indexTemplate, req.path));
     } catch {
       res.sendFile(path.join(distPath, "index.html"));
     }
@@ -172,7 +163,7 @@ if (process.env.NODE_ENV === "production") {
 
 const PORT = Number(process.env.PORT || 4000);
 
-if (process.env.VERCEL !== '1') {
+if (process.env.VERCEL !== "1") {
   app.listen(PORT, () => {
     console.log(`[api] listening on http://localhost:${PORT}`);
     logRateLimitStatus();
@@ -180,28 +171,28 @@ if (process.env.VERCEL !== '1') {
 
   const DAILY_MS = 24 * 60 * 60 * 1000;
   runDailyCreditRefillSweep().catch((err) =>
-    console.error("[CREDIT-SWEEP] initial run failed:", err)
+    console.error("[CREDIT-SWEEP] initial run failed:", err),
   );
   setInterval(() => {
     runDailyCreditRefillSweep().catch((err) =>
-      console.error("[CREDIT-SWEEP] scheduled run failed:", err)
+      console.error("[CREDIT-SWEEP] scheduled run failed:", err),
     );
   }, DAILY_MS);
 
   const REMINDER_MS = 15 * 60 * 1000;
   runReservationReminderSweep().catch((err) =>
-    console.error("[RESERVATION-REMINDER] initial run failed:", err)
+    console.error("[RESERVATION-REMINDER] initial run failed:", err),
   );
   setInterval(() => {
     runReservationReminderSweep().catch((err) =>
-      console.error("[RESERVATION-REMINDER] scheduled run failed:", err)
+      console.error("[RESERVATION-REMINDER] scheduled run failed:", err),
     );
   }, REMINDER_MS);
 
   const CAMPAIGN_SWEEP_MS = 60 * 1000;
   setInterval(() => {
     runDueCampaignsSweep().catch((err) =>
-      console.error("[CAMPAIGN-SWEEP] scheduled run failed:", err)
+      console.error("[CAMPAIGN-SWEEP] scheduled run failed:", err),
     );
   }, CAMPAIGN_SWEEP_MS);
 }

@@ -56,7 +56,9 @@ async function seedTemplate() {
 
 async function createCampaign(businessId: string, locationId: string) {
   const template = await seedTemplate();
-  const res = await (await api())
+  const res = await (
+    await api()
+  )
     .post("/api/campaigns")
     .set("Cookie", businessCookie(businessId))
     .send({
@@ -76,7 +78,9 @@ describe("sending a campaign", () => {
     await seedGuest(business.id, business.username, location.id);
     const campaign = await createCampaign(business.id, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "NOW" });
@@ -114,7 +118,9 @@ describe("sending a campaign", () => {
     const campaign = await createCampaign(business.id, location.id);
     const cookie = businessCookie(business.id);
 
-    const first = await (await api())
+    const first = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", cookie)
       .send({ sendMode: "NOW" });
@@ -125,15 +131,17 @@ describe("sending a campaign", () => {
     });
     const emailsAfterFirst = sinks().email.length;
 
-    const second = await (await api())
+    const second = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", cookie)
       .send({ sendMode: "NOW" });
 
     expect(second.status).toBeGreaterThanOrEqual(400);
-    expect(
-      await db.campaignRecipient.count({ where: { campaignId: campaign.id } }),
-    ).toBe(recipientsAfterFirst);
+    expect(await db.campaignRecipient.count({ where: { campaignId: campaign.id } })).toBe(
+      recipientsAfterFirst,
+    );
     expect(sinks().email.length).toBe(emailsAfterFirst);
   });
 
@@ -145,7 +153,9 @@ describe("sending a campaign", () => {
     });
     const campaign = await createCampaign(business.id, location.id);
 
-    await (await api())
+    await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "NOW" });
@@ -161,7 +171,9 @@ describe("sending a campaign", () => {
     await seedGuest(business.id, business.username, location.id);
     const campaign = await createCampaign(business.id, location.id);
 
-    await (await api())
+    await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "NOW" });
@@ -181,15 +193,15 @@ describe("sending a campaign", () => {
     await seedGuest(business.id, business.username, location.id);
     const campaign = await createCampaign(business.id, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send-test`)
       .set("Cookie", businessCookie(business.id))
       .send({ testEmail: "tester@test.invalid" });
 
     expect(res.status).toBeLessThan(500);
-    expect(
-      await db.campaignRecipient.count({ where: { campaignId: campaign.id } }),
-    ).toBe(0);
+    expect(await db.campaignRecipient.count({ where: { campaignId: campaign.id } })).toBe(0);
   });
 });
 
@@ -199,7 +211,9 @@ describe("scheduling a campaign", () => {
     await seedGuest(business.id, business.username, location.id);
     const campaign = await createCampaign(business.id, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "SCHEDULED", scheduledLocal: "2020-01-01T10:00" });
@@ -212,7 +226,9 @@ describe("scheduling a campaign", () => {
     await seedGuest(business.id, business.username, location.id);
     const campaign = await createCampaign(business.id, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "SCHEDULED", scheduledLocal: "not-a-time" });
@@ -225,11 +241,11 @@ describe("scheduling a campaign", () => {
     await seedGuest(business.id, business.username, location.id);
     const campaign = await createCampaign(business.id, location.id);
 
-    const future = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .slice(0, 16);
+    const future = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "SCHEDULED", scheduledLocal: future });
@@ -245,16 +261,18 @@ describe("scheduling a campaign", () => {
     await seedGuest(business.id, business.username, location.id);
     const campaign = await createCampaign(business.id, location.id);
     const cookie = businessCookie(business.id);
-    const future = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .slice(0, 16);
+    const future = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
 
-    await (await api())
+    await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", cookie)
       .send({ sendMode: "SCHEDULED", scheduledLocal: future });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/cancel`)
       .set("Cookie", cookie);
 
@@ -277,7 +295,9 @@ describe("due campaign sweep", () => {
     await seedGuest(business.id, business.username, location.id);
     const campaign = await createCampaign(business.id, location.id);
 
-    await (await api())
+    await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "NOW" });

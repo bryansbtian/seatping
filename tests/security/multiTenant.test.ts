@@ -29,9 +29,9 @@ describe("unauthenticated access", () => {
   for (const [method, path] of protectedEndpoints) {
     it(`rejects an anonymous ${method.toUpperCase()} ${path}`, async () => {
       const agent = await api();
-      const res = await (agent as never as Record<string, (p: string) => Promise<{ status: number }>>)[
-        method
-      ](path);
+      const res = await (
+        agent as never as Record<string, (p: string) => Promise<{ status: number }>>
+      )[method](path);
 
       expect(res.status).toBe(401);
     });
@@ -42,7 +42,9 @@ describe("wrong account type", () => {
   it("refuses customer credentials on a business-only endpoint", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/api/guests/meta")
       .set("Cookie", customerCookie(customer.id));
 
@@ -52,7 +54,9 @@ describe("wrong account type", () => {
   it("refuses business credentials on an admin-only endpoint", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/admin/campaign-templates")
       .set("Cookie", businessCookie(business.id));
 
@@ -60,9 +64,7 @@ describe("wrong account type", () => {
   });
 
   it("refuses an admin cookie on a business-only endpoint", async () => {
-    const res = await (await api())
-      .get("/api/campaigns")
-      .set("Cookie", adminCookie());
+    const res = await (await api()).get("/api/campaigns").set("Cookie", adminCookie());
 
     expect(res.status).toBe(401);
   });
@@ -86,7 +88,9 @@ describe("cross-business isolation", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/guests/${guestOfA.id}`)
       .set("Cookie", businessCookie(tenantB.business.id));
 
@@ -114,7 +118,9 @@ describe("cross-business isolation", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/guests/${guestOfA.id}/tags`)
       .set("Cookie", businessCookie(tenantB.business.id))
       .send({ tag: "vip" });
@@ -130,7 +136,9 @@ describe("cross-business isolation", () => {
     const tenantB = await seedBusinessWithLocation();
     const entry = await seedQueueEntry(tenantA.location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/auth/business/${tenantA.business.username}/queue/${entry.legacyKey}/admit`)
       .set("Cookie", businessCookie(tenantB.business.id));
 
@@ -146,7 +154,9 @@ describe("cross-business isolation", () => {
     const tenantB = await seedBusinessWithLocation();
     const originalAddress = tenantA.location.address;
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put(`/auth/business/locations/${tenantA.location.id}`)
       .set("Cookie", businessCookie(tenantB.business.id))
       .send({ address: "Hijacked Address" });
@@ -177,7 +187,9 @@ describe("cross-business isolation", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/guests?locationId=${tenantA.location.id}`)
       .set("Cookie", businessCookie(tenantB.business.id));
 

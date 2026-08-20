@@ -91,9 +91,7 @@ const Header = ({
 
   let authArea: React.ReactNode;
   if (isCustomerLoggedIn) {
-    authArea = (
-      <CustomerProfile name={session?.customer?.name} onLogout={handleLogout} />
-    );
+    authArea = <CustomerProfile name={session?.customer?.name} onLogout={handleLogout} />;
   } else if (variant === "business") {
     authArea = (
       <>
@@ -157,7 +155,6 @@ const Header = ({
           SeatPing
         </Link>
 
-        {}
         {showSearch && (
           <form
             onSubmit={submitSearch}
@@ -184,7 +181,6 @@ const Header = ({
           </form>
         )}
 
-        {}
         {authArea}
       </div>
     </header>
@@ -222,7 +218,6 @@ function CustomerProfile({
         }}
         className="flex items-center gap-2 rounded-full bg-background transition-colors hover:bg-slate-50 sm:border sm:border-border sm:px-2 sm:py-1.5 sm:pr-3"
       >
-        {}
         <span className="grid h-9 w-9 place-items-center rounded-full bg-slate-900 text-sm font-semibold text-white sm:h-8 sm:w-8">
           {initial}
         </span>

@@ -202,11 +202,7 @@ describe("requireAccountType", () => {
     const { res, sent } = fakeResponse();
     const next = vi.fn();
 
-    guard("customer")(
-      requestWithCookies({ sp_auth_customer: "not-a-jwt" }),
-      res,
-      next,
-    );
+    guard("customer")(requestWithCookies({ sp_auth_customer: "not-a-jwt" }), res, next);
 
     expect(sent[0].status).toBe(401);
   });
@@ -228,11 +224,7 @@ describe("requireAccountType", () => {
     const { res, sent } = fakeResponse();
     const next = vi.fn();
 
-    guard("customer")(
-      requestWithCookies({ sp_auth_business: businessToken }),
-      res,
-      next,
-    );
+    guard("customer")(requestWithCookies({ sp_auth_business: businessToken }), res, next);
 
     expect(next).not.toHaveBeenCalled();
     expect(sent[0].status).toBe(401);
@@ -259,10 +251,7 @@ describe("readSession", () => {
   it("reads another session type on request", () => {
     const token = signJwt({ sub: "biz-1", accountType: "business" });
 
-    const session = readSession(
-      requestWithCookies({ sp_auth_business: token }),
-      "business",
-    );
+    const session = readSession(requestWithCookies({ sp_auth_business: token }), "business");
 
     expect(session?.sub).toBe("biz-1");
     expect(session?.name).toBeNull();
@@ -275,22 +264,16 @@ describe("readSession", () => {
   it("returns nothing for a token of the wrong type", () => {
     const token = signJwt({ sub: "biz-1", accountType: "business" });
 
-    expect(
-      readSession(requestWithCookies({ sp_auth_customer: token })),
-    ).toBeNull();
+    expect(readSession(requestWithCookies({ sp_auth_customer: token }))).toBeNull();
   });
 
   it("returns nothing when the token carries no subject", () => {
     const token = signJwt({ accountType: "customer" });
 
-    expect(
-      readSession(requestWithCookies({ sp_auth_customer: token })),
-    ).toBeNull();
+    expect(readSession(requestWithCookies({ sp_auth_customer: token }))).toBeNull();
   });
 
   it("returns nothing for a malformed token", () => {
-    expect(
-      readSession(requestWithCookies({ sp_auth_customer: "not-a-jwt" })),
-    ).toBeNull();
+    expect(readSession(requestWithCookies({ sp_auth_customer: "not-a-jwt" }))).toBeNull();
   });
 });

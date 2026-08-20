@@ -1,9 +1,15 @@
-
 const MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
 
 function isEnabled(): boolean {
-  return Boolean(MEASUREMENT_ID) && typeof window !== "undefined" &&
-    typeof window.gtag === "function";
+  return (
+    Boolean(MEASUREMENT_ID) && typeof window !== "undefined" && typeof window.gtag === "function"
+  );
+}
+
+export function redactAnalyticsPath(path: string): string {
+  return String(path ?? "")
+    .replace(/^\/reservations\/manage\/[^/]+/i, "/reservations/manage/[token]")
+    .replace(/[0-9a-f]{32,}/gi, "[redacted]");
 }
 
 export function trackPageView(path: string): void {
@@ -12,10 +18,9 @@ export function trackPageView(path: string): void {
   }
   try {
     window.gtag("event", "page_view", {
-      page_path: path,
+      page_path: redactAnalyticsPath(path),
     });
-  } catch {
-  }
+  } catch {}
 }
 
 export function trackEvent(
@@ -27,8 +32,7 @@ export function trackEvent(
   }
   try {
     window.gtag("event", eventName, params);
-  } catch {
-  }
+  } catch {}
 }
 
 export const analytics = {

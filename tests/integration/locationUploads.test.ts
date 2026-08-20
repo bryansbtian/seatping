@@ -1,11 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { api } from "../helpers/app.js";
 import { businessCookie } from "../helpers/auth.js";
-import {
-  clearTestDatabase,
-  disconnectTestPrisma,
-  getTestPrisma,
-} from "../helpers/db.js";
+import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
 import { seedBusinessWithLocation } from "../helpers/seed.js";
 import { sinks } from "../setup/externalMocks.js";
 
@@ -35,7 +31,9 @@ describe("banner upload", () => {
   it("stores the uploaded banner on the location", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/banner/upload`)
       .set("Cookie", businessCookie(business.id))
       .attach("file", jpeg(), ATTACH_OPTS);
@@ -45,9 +43,7 @@ describe("banner upload", () => {
     expect(res.body.user).toBeDefined();
     const stored = await db.location.findUnique({ where: { id: location.id } });
     expect(stored?.bannerImagePublicId).toBe(res.body.banner.publicId);
-    expect(sinks().cloudinary[0].folder).toBe(
-      `seatping/locations/${location.id}/banner`,
-    );
+    expect(sinks().cloudinary[0].folder).toBe(`seatping/locations/${location.id}/banner`);
   });
 
   it("replaces an existing banner", async () => {
@@ -60,7 +56,9 @@ describe("banner upload", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/banner/upload`)
       .set("Cookie", businessCookie(business.id))
       .attach("file", jpeg(), ATTACH_OPTS);
@@ -73,7 +71,9 @@ describe("banner upload", () => {
   it("rejects an upload with no file", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/banner/upload`)
       .set("Cookie", businessCookie(business.id))
       .field("nothing", "here");
@@ -85,7 +85,9 @@ describe("banner upload", () => {
   it("rejects a file type that is not an image", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/banner/upload`)
       .set("Cookie", businessCookie(business.id))
       .attach("file", Buffer.from("not an image"), {
@@ -100,7 +102,9 @@ describe("banner upload", () => {
   it("rejects a file larger than the size limit", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/banner/upload`)
       .set("Cookie", businessCookie(business.id))
       .attach("file", Buffer.alloc(6 * 1024 * 1024, 1), ATTACH_OPTS);
@@ -112,7 +116,9 @@ describe("banner upload", () => {
   it("rejects a malformed location id", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/locations/not-an-object-id/banner/upload")
       .set("Cookie", businessCookie(business.id))
       .attach("file", jpeg(), ATTACH_OPTS);
@@ -125,15 +131,15 @@ describe("banner signing", () => {
   it("returns the fields a browser upload needs", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/banner/sign`)
       .set("Cookie", businessCookie(business.id));
 
     expect(res.status).toBe(200);
     expect(res.body.upload.cloudName).toBe("test-cloud");
-    expect(res.body.upload.folder).toBe(
-      `seatping/locations/${location.id}/banner`,
-    );
+    expect(res.body.upload.folder).toBe(`seatping/locations/${location.id}/banner`);
     expect(res.body.upload.signature).toEqual(expect.any(String));
   });
 
@@ -148,7 +154,9 @@ describe("banner signing", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/banner/commit`)
       .set("Cookie", businessCookie(business.id))
       .send({ url: "https://test.invalid/same-v2.jpg", publicId });
@@ -163,7 +171,9 @@ describe("photo upload", () => {
   it("stores several uploaded photos in the gallery", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/photos/upload`)
       .set("Cookie", businessCookie(business.id))
       .attach("files", jpeg(), ATTACH_OPTS)
@@ -178,7 +188,9 @@ describe("photo upload", () => {
   it("rejects an upload with no files", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/photos/upload`)
       .set("Cookie", businessCookie(business.id))
       .field("nothing", "here");
@@ -199,7 +211,9 @@ describe("photo upload", () => {
       });
     }
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/photos/upload`)
       .set("Cookie", businessCookie(business.id))
       .attach("files", jpeg(), ATTACH_OPTS)
@@ -221,7 +235,9 @@ describe("photo upload", () => {
       });
     }
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/photos/upload`)
       .set("Cookie", businessCookie(business.id))
       .attach("files", jpeg(), ATTACH_OPTS);
@@ -242,15 +258,15 @@ describe("photo signing", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/photos/sign`)
       .set("Cookie", businessCookie(business.id));
 
     expect(res.status).toBe(200);
     expect(res.body.remaining).toBe(9);
-    expect(res.body.upload.folder).toBe(
-      `seatping/locations/${location.id}/photo`,
-    );
+    expect(res.body.upload.folder).toBe(`seatping/locations/${location.id}/photo`);
   });
 
   it("refuses to sign once the gallery is full", async () => {
@@ -265,7 +281,9 @@ describe("photo signing", () => {
       });
     }
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/photos/sign`)
       .set("Cookie", businessCookie(business.id));
 
@@ -290,7 +308,9 @@ describe("review replies", () => {
   it("rejects a malformed review id", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/locations/${location.id}/reviews/not-an-id/reply`)
       .set("Cookie", businessCookie(business.id))
       .send({ reply: "Thank you" });
@@ -302,7 +322,9 @@ describe("review replies", () => {
     const { business, location } = await seedBusinessWithLocation();
     const review = await seedReview(location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/locations/${location.id}/reviews/${review.id}/reply`)
       .set("Cookie", businessCookie(business.id))
       .send({ reply: 7 });
@@ -315,7 +337,9 @@ describe("review replies", () => {
     const { business, location } = await seedBusinessWithLocation();
     const review = await seedReview(location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/locations/${location.id}/reviews/${review.id}/reply`)
       .set("Cookie", businessCookie(business.id))
       .send({ reply: "   " });
@@ -328,7 +352,9 @@ describe("review replies", () => {
     const { business, location } = await seedBusinessWithLocation();
     const review = await seedReview(location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/locations/${location.id}/reviews/${review.id}/reply`)
       .set("Cookie", businessCookie(business.id))
       .send({ reply: "x".repeat(501) });
@@ -342,11 +368,15 @@ describe("review replies", () => {
     const review = await seedReview(location.id);
     const cookie = businessCookie(business.id);
 
-    const first = await (await api())
+    const first = await (
+      await api()
+    )
       .patch(`/api/locations/${location.id}/reviews/${review.id}/reply`)
       .set("Cookie", cookie)
       .send({ reply: "Thank you for visiting." });
-    const second = await (await api())
+    const second = await (
+      await api()
+    )
       .patch(`/api/locations/${location.id}/reviews/${review.id}/reply`)
       .set("Cookie", cookie)
       .send({ reply: "Thank you, see you soon." });
@@ -362,12 +392,16 @@ describe("review replies", () => {
     const { business, location } = await seedBusinessWithLocation();
     const review = await seedReview(location.id);
     const cookie = businessCookie(business.id);
-    await (await api())
+    await (
+      await api()
+    )
       .patch(`/api/locations/${location.id}/reviews/${review.id}/reply`)
       .set("Cookie", cookie)
       .send({ reply: "Thank you for visiting." });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/api/locations/${location.id}/reviews/${review.id}/reply`)
       .set("Cookie", cookie);
 
@@ -379,7 +413,9 @@ describe("review replies", () => {
   it("rejects removing a reply from a malformed review id", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/api/locations/${location.id}/reviews/not-an-id/reply`)
       .set("Cookie", businessCookie(business.id));
 
@@ -389,10 +425,10 @@ describe("review replies", () => {
   it("rejects removing a reply from an unknown review", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
-      .delete(
-        `/api/locations/${location.id}/reviews/000000000000000000000000/reply`,
-      )
+    const res = await (
+      await api()
+    )
+      .delete(`/api/locations/${location.id}/reviews/000000000000000000000000/reply`)
       .set("Cookie", businessCookie(business.id));
 
     expect(res.status).toBe(404);

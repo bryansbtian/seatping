@@ -1,4 +1,3 @@
-
 export type EtaConfidence = "low" | "medium" | "high";
 
 export type QueueEta = {
@@ -101,12 +100,9 @@ function historicalMinutesPerParty(
     return { value: DEFAULT_MINUTES_PER_PARTY, hadData: false };
   }
 
-  const avg = (arr: Sample[]) =>
-    arr.reduce((s, x) => s + x.wait, 0) / arr.length;
+  const avg = (arr: Sample[]) => arr.reduce((s, x) => s + x.wait, 0) / arr.length;
 
-  const dowHour = samples.filter(
-    (s) => s.dow === now.getDay() && s.hour === now.getHours(),
-  );
+  const dowHour = samples.filter((s) => s.dow === now.getDay() && s.hour === now.getHours());
   if (dowHour.length) {
     return { value: avg(dowHour), hadData: true };
   }
@@ -224,8 +220,7 @@ export function computeQueueEta(input: ComputeQueueEtaInput): QueueEta {
   let confidence: EtaConfidence = "low";
   if (recent != null && historical.hadData) {
     confidence = "high";
-  }
-  else if (recent != null || historical.hadData) {
+  } else if (recent != null || historical.hadData) {
     confidence = "medium";
   }
 
@@ -269,15 +264,9 @@ function locationData(location: any) {
   };
 }
 
-export function etaForToken(
-  location: any,
-  queueToken: string,
-  now?: Date,
-): QueueEta | null {
+export function etaForToken(location: any, queueToken: string, now?: Date): QueueEta | null {
   const data = locationData(location);
-  const ticketIndex = data.queue.findIndex(
-    (c: any) => c?.queueToken === queueToken,
-  );
+  const ticketIndex = data.queue.findIndex((c: any) => c?.queueToken === queueToken);
   if (ticketIndex === -1) {
     return null;
   }

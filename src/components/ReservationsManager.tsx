@@ -7,13 +7,7 @@ import {
   getTodayKeyInTimezone,
   getNowWallClockInTimezone,
 } from "@/lib/timezones";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { GuestStatusBadge } from "@/components/GuestBadge";
@@ -127,32 +121,23 @@ export default function ReservationsManager({
 
     const today = list
       .filter(
-        (r) =>
-          splitDateTime(r.reservationDateTime).date === todayStr &&
-          ACTIVE.includes(r.status),
+        (r) => splitDateTime(r.reservationDateTime).date === todayStr && ACTIVE.includes(r.status),
       )
       .sort(sortByTime);
     const upcoming = list
       .filter(
-        (r) =>
-          splitDateTime(r.reservationDateTime).date > todayStr &&
-          ACTIVE.includes(r.status),
+        (r) => splitDateTime(r.reservationDateTime).date > todayStr && ACTIVE.includes(r.status),
       )
       .sort(sortByTime);
     const past = list
       .filter(
         (r) =>
           r.status === "completed" ||
-          (splitDateTime(r.reservationDateTime).date < todayStr &&
-            ACTIVE.includes(r.status)),
+          (splitDateTime(r.reservationDateTime).date < todayStr && ACTIVE.includes(r.status)),
       )
       .sort((a, b) => sortByTime(b, a));
-    const cancelled = list
-      .filter((r) => r.status === "cancelled")
-      .sort((a, b) => sortByTime(b, a));
-    const no_shows = list
-      .filter((r) => r.status === "no_show")
-      .sort((a, b) => sortByTime(b, a));
+    const cancelled = list.filter((r) => r.status === "cancelled").sort((a, b) => sortByTime(b, a));
+    const no_shows = list.filter((r) => r.status === "no_show").sort((a, b) => sortByTime(b, a));
 
     return { today, upcoming, past, cancelled, no_shows };
   }, [reservations, todayStr]);
@@ -182,10 +167,10 @@ export default function ReservationsManager({
   const changeStatus = async (r: Reservation, status: string) => {
     setBusyId(r.id);
     try {
-      const res = await api(
-        `/auth/business/locations/${locationId}/reservations/${r.id}`,
-        { method: "PATCH", body: JSON.stringify({ status }) },
-      );
+      const res = await api(`/auth/business/locations/${locationId}/reservations/${r.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
       onUpdated(res.user);
       toast({
         title: t("res.toast.updated.title"),
@@ -243,7 +228,6 @@ export default function ReservationsManager({
           </div>
         </div>
 
-        {}
         <div className="!mt-4 flex flex-wrap gap-2">
           {tabs.map((t) => {
             let tabToneClass: string;
@@ -274,12 +258,7 @@ export default function ReservationsManager({
               >
                 {t.label}
                 {t.count > 0 && (
-                  <span
-                    className={cn(
-                      "ml-1.5 rounded-full px-1.5 text-[10px]",
-                      countToneClass,
-                    )}
-                  >
+                  <span className={cn("ml-1.5 rounded-full px-1.5 text-[10px]", countToneClass)}>
                     {t.count}
                   </span>
                 )}
@@ -331,12 +310,7 @@ export default function ReservationsManager({
         </div>
 
         {visible.length > 2 && (
-          <div
-            className={cn(
-              "mt-3 flex justify-center",
-              expandToggleWrapperClass,
-            )}
-          >
+          <div className={cn("mt-3 flex justify-center", expandToggleWrapperClass)}>
             <Button
               variant="ghost"
               size="sm"
@@ -386,9 +360,7 @@ function ContactLine({ r }: { r: Reservation }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
       <Icon className="h-3.5 w-3.5" />
-      <span className="capitalize">
-        {contactMethodLabel}
-      </span>
+      <span className="capitalize">{contactMethodLabel}</span>
       <span className="text-slate-400">·</span>
       <span className="truncate">{value}</span>
     </span>
@@ -412,11 +384,9 @@ function ReservationCard({
 }) {
   const { date, time } = splitDateTime(r.reservationDateTime);
 
-  const canMarkOutcome =
-    r.reservationDateTime.slice(0, 10) <= nowLocal.slice(0, 10);
+  const canMarkOutcome = r.reservationDateTime.slice(0, 10) <= nowLocal.slice(0, 10);
 
-  const actions: { labelKey: TKey; status: string; variant?: "destructive" }[] =
-    [];
+  const actions: { labelKey: TKey; status: string; variant?: "destructive" }[] = [];
   if (r.status === "confirmed") {
     if (canMarkOutcome) {
       actions.push({ labelKey: "res.action.markArrived", status: "arrived" });
@@ -445,9 +415,7 @@ function ReservationCard({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold text-gray-800 text-sm md:text-base">
-              {r.name}
-            </p>
+            <p className="font-semibold text-gray-800 text-sm md:text-base">{r.name}</p>
             <StatusBadge status={r.status} label={tStatus(r.status)} />
             {r.isReturning && <GuestStatusBadge returning />}
           </div>
@@ -466,9 +434,7 @@ function ReservationCard({
             <ContactLine r={r} />
           </div>
           {r.notes && (
-            <p className="mt-2 rounded-md bg-slate-50 p-2 text-xs text-slate-600">
-              {r.notes}
-            </p>
+            <p className="mt-2 rounded-md bg-slate-50 p-2 text-xs text-slate-600">{r.notes}</p>
           )}
         </div>
       </div>

@@ -21,13 +21,7 @@ export type EditableReview = {
   restaurantName?: string;
 };
 
-function StarRatingInput({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (n: number) => void;
-}) {
+function StarRatingInput({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   const [hover, setHover] = useState(0);
   const shown = hover || value;
   let ratingText: string;
@@ -150,17 +144,10 @@ export function EditReviewDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button
-            onClick={save}
-            disabled={saving}
-          >
+          <Button onClick={save} disabled={saving}>
             {saveButtonLabel}
           </Button>
         </DialogFooter>

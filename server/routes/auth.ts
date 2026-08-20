@@ -10,13 +10,7 @@ import {
   requireAdmin,
   readSession,
 } from "../lib/auth.js";
-import {
-  rateLimit,
-  limitGuard,
-  clientIp,
-  MINUTES,
-  HOURS,
-} from "../lib/rateLimit.js";
+import { rateLimit, limitGuard, clientIp, MINUTES, HOURS } from "../lib/rateLimit.js";
 import {
   CustomerSignUpSchema,
   BusinessSignUpSchema,
@@ -65,7 +59,6 @@ import crypto from "crypto";
 
 const router = Router();
 
-
 function serializeCustomer(user: any) {
   return {
     id: user.id,
@@ -85,7 +78,6 @@ async function getOwnedBusiness(businessId: string, username: string) {
   return business;
 }
 
-
 router.get("/session", (req, res) => {
   const customer = readSession(req, "customer");
   const business = readSession(req, "business");
@@ -103,23 +95,19 @@ router.get("/session", (req, res) => {
   });
 });
 
-
 router.post("/signup", async (req, res) => {
   try {
     if (
       await limitGuard(req, res, [
         { name: "signup-ip", key: clientIp(req), windowMs: HOURS(1), max: 5 },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
 
     const parsed = CustomerSignUpSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res
-        .status(400)
-        .json({ error: "Invalid input", issues: parsed.error.flatten() });
+      return res.status(400).json({ error: "Invalid input", issues: parsed.error.flatten() });
     }
 
     const { name, username, email, phone, password } = parsed.data;
@@ -129,9 +117,7 @@ router.post("/signup", async (req, res) => {
       select: { id: true },
     });
     if (existing) {
-      return res
-        .status(409)
-        .json({ error: "Email or username already in use" });
+      return res.status(409).json({ error: "Email or username already in use" });
     }
 
     const hash = await bcrypt.hash(password, 12);
@@ -155,7 +141,7 @@ router.post("/signup", async (req, res) => {
     });
 
     sendCustomerWelcomeEmail(user.email, user.name).catch((err) =>
-      console.error("[auth] customer welcome email error:", err)
+      console.error("[auth] customer welcome email error:", err),
     );
 
     const token = signJwt({
@@ -174,22 +160,21 @@ router.post("/signup", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   try {
-    const loginId = String(req.body?.emailOrUsername || "").toLowerCase().trim();
+    const loginId = String(req.body?.emailOrUsername || "")
+      .toLowerCase()
+      .trim();
     if (
       await limitGuard(req, res, [
         { name: "login-ip", key: clientIp(req), windowMs: MINUTES(15), max: 10 },
         { name: "login-id", key: loginId, windowMs: MINUTES(15), max: 5 },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
 
     const parsed = LoginSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res
-        .status(400)
-        .json({ error: "Invalid input", issues: parsed.error.flatten() });
+      return res.status(400).json({ error: "Invalid input", issues: parsed.error.flatten() });
     }
 
     const { emailOrUsername, password } = parsed.data;
@@ -232,9 +217,7 @@ router.post("/logout", (_req, res) => {
 
 type ActivityDisplay = { imageUrl: string | null; name: string | null };
 
-async function attachActivityDetails<T extends Record<string, any>>(
-  user: T,
-): Promise<T> {
+async function attachActivityDetails<T extends Record<string, any>>(user: T): Promise<T> {
   const asArray = (v: unknown): any[] => {
     if (Array.isArray(v)) {
       return v as any[];
@@ -254,26 +237,17 @@ async function attachActivityDetails<T extends Record<string, any>>(
   for (const e of all) {
     if (e?.locationId) {
       locationIds.add(String(e.locationId));
-    }
-    else if (e?.businessUsername) {
+    } else if (e?.businessUsername) {
       usernames.add(String(e.businessUsername));
     }
   }
 
   const imgOf = (loc: any) =>
-    loc?.bannerImageUrl ||
-    (Array.isArray(loc?.photos) && loc.photos[0]?.url) ||
-    null;
+    loc?.bannerImageUrl || (Array.isArray(loc?.photos) && loc.photos[0]?.url) || null;
 
   const nameOf = (loc: any, businessName?: string | null) => {
     const rp = (loc?.restaurantProfile || {}) as any;
-    return (
-      rp.displayName ||
-      businessName ||
-      loc?.displayName ||
-      loc?.name ||
-      null
-    );
+    return rp.displayName || businessName || loc?.displayName || loc?.name || null;
   };
 
   const byLocation = new Map<string, ActivityDisplay>();
@@ -388,9 +362,7 @@ router.put("/me", requireCustomer, async (req, res) => {
     const userId = (req as any).auth.sub as string;
     const parsed = CustomerUpdateSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res
-        .status(400)
-        .json({ error: "Invalid input", issues: parsed.error.flatten() });
+      return res.status(400).json({ error: "Invalid input", issues: parsed.error.flatten() });
     }
     const { name, username, email, phone } = parsed.data;
 
@@ -444,9 +416,7 @@ router.post("/me/change-password", requireCustomer, async (req, res) => {
     const userId = (req as any).auth.sub as string;
     const parsed = ChangePasswordSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res
-        .status(400)
-        .json({ error: "Invalid input", issues: parsed.error.flatten() });
+      return res.status(400).json({ error: "Invalid input", issues: parsed.error.flatten() });
     }
     const { currentPassword, newPassword } = parsed.data;
 
@@ -470,7 +440,7 @@ router.post("/me/change-password", requireCustomer, async (req, res) => {
     });
 
     sendPasswordChangeConfirmationEmail(user.email, user.name).catch((e) =>
-      console.error("[auth] pw change email failed:", e)
+      console.error("[auth] pw change email failed:", e),
     );
 
     return res.json({ success: true, message: "Password updated" });
@@ -479,7 +449,6 @@ router.post("/me/change-password", requireCustomer, async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 });
-
 
 const CUSTOMER_ME_SELECT = {
   id: true,
@@ -497,13 +466,8 @@ const CUSTOMER_ME_SELECT = {
 router.post("/me/saved-restaurants", requireCustomer, async (req, res) => {
   try {
     const userId = (req as any).auth.sub as string;
-    const { businessUsername, businessName, locationName, area, city } =
-      req.body || {};
-    if (
-      !businessUsername ||
-      typeof businessUsername !== "string" ||
-      !businessUsername.trim()
-    ) {
+    const { businessUsername, businessName, locationName, area, city } = req.body || {};
+    if (!businessUsername || typeof businessUsername !== "string" || !businessUsername.trim()) {
       return res.status(400).json({ error: "businessUsername is required" });
     }
     const uname = businessUsername.trim();
@@ -551,43 +515,47 @@ router.post("/me/saved-restaurants", requireCustomer, async (req, res) => {
   }
 });
 
-router.delete(
-  "/me/saved-restaurants/:businessUsername",
-  requireCustomer,
-  async (req, res) => {
-    try {
-      const userId = (req as any).auth.sub as string;
-      const uname = String(req.params.businessUsername || "").trim();
-      if (!uname) {
-        return res.status(400).json({ error: "businessUsername is required" });
-      }
-
-      const current = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { savedRestaurants: true },
-      });
-      if (!current) {
-        return res.status(404).json({ error: "Not found" });
-      }
-
-      let list: any[] = [];
-      if (Array.isArray(current.savedRestaurants)) {
-        list = current.savedRestaurants as any[];
-      }
-      const next = list.filter((s) => s?.businessUsername !== uname);
-
-      const user = await prisma.user.update({
-        where: { id: userId },
-        data: { savedRestaurants: next },
-        select: CUSTOMER_ME_SELECT,
-      });
-      return res.json({ user: await attachActivityDetails(user) });
-    } catch (err: any) {
-      console.error("[auth] remove saved restaurant error:", err?.message || err);
-      return res.status(500).json({ error: "Server error" });
+router.delete("/me/saved-restaurants/:businessUsername", requireCustomer, async (req, res) => {
+  try {
+    const userId = (req as any).auth.sub as string;
+    if (
+      await limitGuard(req, res, [
+        { name: "saved-restaurant-remove", key: userId, windowMs: MINUTES(1), max: 60 },
+      ])
+    ) {
+      return;
     }
+
+    const uname = String(req.params.businessUsername || "").trim();
+    if (!uname) {
+      return res.status(400).json({ error: "businessUsername is required" });
+    }
+
+    const current = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { savedRestaurants: true },
+    });
+    if (!current) {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    let list: any[] = [];
+    if (Array.isArray(current.savedRestaurants)) {
+      list = current.savedRestaurants as any[];
+    }
+    const next = list.filter((s) => s?.businessUsername !== uname);
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { savedRestaurants: next },
+      select: CUSTOMER_ME_SELECT,
+    });
+    return res.json({ user: await attachActivityDetails(user) });
+  } catch (err: any) {
+    console.error("[auth] remove saved restaurant error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
   }
-);
+});
 
 const SAVED_OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 
@@ -640,28 +608,32 @@ function savedMatches(s: any, key: string): boolean {
   return s?.locationId === key || s?.id === key;
 }
 
-router.get(
-  "/me/saved-locations/:locationId",
-  requireCustomer,
-  async (req, res) => {
-    try {
-      const userId = (req as any).auth.sub as string;
-      const locationId = String(req.params.locationId || "").trim();
-      const current = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { savedRestaurants: true },
-      });
-      let list: any[] = [];
-      if (Array.isArray(current?.savedRestaurants)) {
-        list = current!.savedRestaurants as any[];
-      }
-      return res.json({ saved: list.some((s) => savedMatches(s, locationId)) });
-    } catch (err: any) {
-      console.error("[auth] saved-location status error:", err?.message || err);
-      return res.status(500).json({ error: "Server error" });
+router.get("/me/saved-locations/:locationId", requireCustomer, async (req, res) => {
+  try {
+    const userId = (req as any).auth.sub as string;
+    if (
+      await limitGuard(req, res, [
+        { name: "saved-location-status", key: userId, windowMs: MINUTES(1), max: 120 },
+      ])
+    ) {
+      return;
     }
-  },
-);
+
+    const locationId = String(req.params.locationId || "").trim();
+    const current = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { savedRestaurants: true },
+    });
+    let list: any[] = [];
+    if (Array.isArray(current?.savedRestaurants)) {
+      list = current!.savedRestaurants as any[];
+    }
+    return res.json({ saved: list.some((s) => savedMatches(s, locationId)) });
+  } catch (err: any) {
+    console.error("[auth] saved-location status error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
 
 router.post("/me/saved-locations", requireCustomer, async (req, res) => {
   try {
@@ -704,40 +676,43 @@ router.post("/me/saved-locations", requireCustomer, async (req, res) => {
   }
 });
 
-router.delete(
-  "/me/saved-locations/:locationId",
-  requireCustomer,
-  async (req, res) => {
-    try {
-      const userId = (req as any).auth.sub as string;
-      const locationId = String(req.params.locationId || "").trim();
-      const current = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { savedRestaurants: true },
-      });
-      if (!current) {
-        return res.status(404).json({ error: "Not found" });
-      }
-
-      let list: any[] = [];
-      if (Array.isArray(current.savedRestaurants)) {
-        list = current.savedRestaurants as any[];
-      }
-      const next = list.filter((s) => !savedMatches(s, locationId));
-
-      const user = await prisma.user.update({
-        where: { id: userId },
-        data: { savedRestaurants: next },
-        select: CUSTOMER_ME_SELECT,
-      });
-      return res.json({ user: await attachActivityDetails(user) });
-    } catch (err: any) {
-      console.error("[auth] remove saved location error:", err?.message || err);
-      return res.status(500).json({ error: "Server error" });
+router.delete("/me/saved-locations/:locationId", requireCustomer, async (req, res) => {
+  try {
+    const userId = (req as any).auth.sub as string;
+    if (
+      await limitGuard(req, res, [
+        { name: "saved-location-remove", key: userId, windowMs: MINUTES(1), max: 60 },
+      ])
+    ) {
+      return;
     }
-  },
-);
 
+    const locationId = String(req.params.locationId || "").trim();
+    const current = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { savedRestaurants: true },
+    });
+    if (!current) {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    let list: any[] = [];
+    if (Array.isArray(current.savedRestaurants)) {
+      list = current.savedRestaurants as any[];
+    }
+    const next = list.filter((s) => !savedMatches(s, locationId));
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { savedRestaurants: next },
+      select: CUSTOMER_ME_SELECT,
+    });
+    return res.json({ user: await attachActivityDetails(user) });
+  } catch (err: any) {
+    console.error("[auth] remove saved location error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
 
 async function buildCustomerReviewEntry(review: any) {
   const loc = await prisma.location.findUnique({
@@ -776,8 +751,7 @@ async function buildCustomerReviewEntry(review: any) {
     businessReply: review.businessReply ?? null,
     businessReplyCreatedAt: review.businessReplyCreatedAt ?? null,
     businessReplyUpdatedAt: review.businessReplyUpdatedAt ?? null,
-    restaurantName:
-      rp.displayName || biz?.name || loc?.displayName || loc?.name || "Restaurant",
+    restaurantName: rp.displayName || biz?.name || loc?.displayName || loc?.name || "Restaurant",
     locationName:
       rp.shortAddress || loc?.displayName || loc?.area || loc?.city || loc?.address || null,
   };
@@ -883,7 +857,6 @@ router.delete("/me/reviews/:reviewId", requireCustomer, async (req, res) => {
   }
 });
 
-
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email, type } = req.body || {};
@@ -897,10 +870,9 @@ router.post("/forgot-password", async (req, res) => {
         { name: "forgot-email", key: normalized, windowMs: HOURS(1), max: 3 },
         { name: "forgot-ip", key: clientIp(req), windowMs: HOURS(1), max: 10 },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
     let accountType: string;
     if (type === "business") {
       accountType = "business";
@@ -925,8 +897,7 @@ router.post("/forgot-password", async (req, res) => {
 
     const genericOk = {
       success: true,
-      message:
-        "If an account with that email exists, a password reset link has been sent.",
+      message: "If an account with that email exists, a password reset link has been sent.",
     };
     if (!business && !user) {
       return res.json(genericOk);
@@ -993,21 +964,16 @@ router.post("/reset-password", async (req, res) => {
       await limitGuard(req, res, [
         { name: "reset-ip", key: clientIp(req), windowMs: MINUTES(15), max: 10 },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
 
     const { token, newPassword } = req.body || {};
     if (!token || !newPassword) {
-      return res
-        .status(400)
-        .json({ error: "token and newPassword are required" });
+      return res.status(400).json({ error: "token and newPassword are required" });
     }
     if (typeof newPassword !== "string" || newPassword.length < 8) {
-      return res
-        .status(400)
-        .json({ error: "Password must be at least 8 characters" });
+      return res.status(400).json({ error: "Password must be at least 8 characters" });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -1021,8 +987,8 @@ router.post("/reset-password", async (req, res) => {
         where: { id: business.id },
         data: { password: hashedPassword, resetToken: null, resetTokenExpiry: null },
       });
-      sendPasswordChangeConfirmationEmail(business.email, business.name).catch(
-        (e) => console.error("[auth] pw change email failed:", e)
+      sendPasswordChangeConfirmationEmail(business.email, business.name).catch((e) =>
+        console.error("[auth] pw change email failed:", e),
       );
       return res.json({ success: true, message: "Password has been reset successfully" });
     }
@@ -1037,7 +1003,7 @@ router.post("/reset-password", async (req, res) => {
         data: { password: hashedPassword, resetToken: null, resetTokenExpiry: null },
       });
       sendPasswordChangeConfirmationEmail(user.email, user.name).catch((e) =>
-        console.error("[auth] pw change email failed:", e)
+        console.error("[auth] pw change email failed:", e),
       );
       return res.json({ success: true, message: "Password has been reset successfully" });
     }
@@ -1049,23 +1015,20 @@ router.post("/reset-password", async (req, res) => {
   }
 });
 
-
 router.get("/exists", async (req, res) => {
   try {
     if (
       await limitGuard(req, res, [
         { name: "exists-ip", key: clientIp(req), windowMs: MINUTES(10), max: 30 },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
 
     const username = String(req.query.username || "").trim();
-    if (!username)
-      {
-        return res.status(400).json({ error: "username is required" });
-      }
+    if (!username) {
+      return res.status(400).json({ error: "username is required" });
+    }
     const business = await prisma.business.findUnique({ where: { username } });
     return res.json({ exists: Boolean(business) });
   } catch (err: any) {
@@ -1080,16 +1043,13 @@ router.post("/business/signup", async (req, res) => {
       await limitGuard(req, res, [
         { name: "biz-signup-ip", key: clientIp(req), windowMs: HOURS(1), max: 5 },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
 
     const parsed = BusinessSignUpSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res
-        .status(400)
-        .json({ error: "Invalid input", issues: parsed.error.flatten() });
+      return res.status(400).json({ error: "Invalid input", issues: parsed.error.flatten() });
     }
 
     const { name, username, email, phone, password } = parsed.data;
@@ -1099,9 +1059,7 @@ router.post("/business/signup", async (req, res) => {
       select: { id: true },
     });
     if (existing) {
-      return res
-        .status(409)
-        .json({ error: "Email or username already in use" });
+      return res.status(409).json({ error: "Email or username already in use" });
     }
 
     const hash = await bcrypt.hash(password, 12);
@@ -1135,10 +1093,8 @@ router.post("/business/signup", async (req, res) => {
       business.email,
       business.name,
       business.username,
-      onboardingTrialDays
-    ).catch((err) =>
-      console.error("[auth] business onboarding email error:", err)
-    );
+      onboardingTrialDays,
+    ).catch((err) => console.error("[auth] business onboarding email error:", err));
 
     const token = signJwt({
       sub: business.id,
@@ -1157,22 +1113,21 @@ router.post("/business/signup", async (req, res) => {
 
 router.post("/business/login", async (req, res) => {
   try {
-    const loginId = String(req.body?.emailOrUsername || "").toLowerCase().trim();
+    const loginId = String(req.body?.emailOrUsername || "")
+      .toLowerCase()
+      .trim();
     if (
       await limitGuard(req, res, [
         { name: "biz-login-ip", key: clientIp(req), windowMs: MINUTES(15), max: 10 },
         { name: "biz-login-id", key: loginId, windowMs: MINUTES(15), max: 5 },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
 
     const parsed = LoginSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res
-        .status(400)
-        .json({ error: "Invalid input", issues: parsed.error.flatten() });
+      return res.status(400).json({ error: "Invalid input", issues: parsed.error.flatten() });
     }
 
     const { emailOrUsername, password } = parsed.data;
@@ -1215,7 +1170,6 @@ router.post("/business/logout", (_req, res) => {
   clearAuthCookie(res, "business");
   res.json({ ok: true });
 });
-
 
 const adminLoginLimiter = rateLimit({
   name: "admin-login",
@@ -1296,7 +1250,7 @@ router.put("/business/me", requireBusiness, async (req, res) => {
           }
           return null;
         })
-        .filter(Boolean)
+        .filter(Boolean),
     );
 
     const existing = await prisma.location.findMany({
@@ -1358,9 +1312,7 @@ router.put("/business/language", requireBusiness, async (req, res) => {
     const businessId = (req as any).auth.sub as string;
     const language = String(req.body?.language || "");
     if (!BUSINESS_LANGUAGES.includes(language as BusinessLanguage)) {
-      return res
-        .status(400)
-        .json({ error: "language must be one of: en, id" });
+      return res.status(400).json({ error: "language must be one of: en, id" });
     }
     await prisma.business.update({
       where: { id: businessId },
@@ -1405,9 +1357,7 @@ router.post("/business/locations", requireBusiness, async (req, res) => {
     const count = await prisma.location.count({ where: { businessId } });
     const maxLocations = (business as any).maxLocations ?? 1;
     if (count >= maxLocations) {
-      return res
-        .status(400)
-        .json({ error: `Max locations reached (${maxLocations})` });
+      return res.status(400).json({ error: `Max locations reached (${maxLocations})` });
     }
 
     let displayNameValue: string | undefined;
@@ -1478,18 +1428,11 @@ router.put("/business/locations/:locationId", requireBusiness, async (req, res) 
       select: { id: true },
     });
     if (!owned) {
-      return res
-        .status(404)
-        .json({ error: "Location not found or access denied" });
+      return res.status(404).json({ error: "Location not found or access denied" });
     }
 
-    const {
-      restaurantProfile,
-      address,
-      queueEnabled,
-      reservationsEnabled,
-      reservationSettings,
-    } = req.body || {};
+    const { restaurantProfile, address, queueEnabled, reservationsEnabled, reservationSettings } =
+      req.body || {};
     const data: Record<string, unknown> = {};
 
     if (restaurantProfile !== undefined) {
@@ -1498,9 +1441,7 @@ router.put("/business/locations/:locationId", requireBusiness, async (req, res) 
         restaurantProfile === null ||
         Array.isArray(restaurantProfile)
       ) {
-        return res
-          .status(400)
-          .json({ error: "restaurantProfile must be an object" });
+        return res.status(400).json({ error: "restaurantProfile must be an object" });
       }
       data.restaurantProfile = restaurantProfile;
       data.isPublished = (restaurantProfile as any).isPublished === true;
@@ -1519,9 +1460,7 @@ router.put("/business/locations/:locationId", requireBusiness, async (req, res) 
     }
     if (reservationsEnabled !== undefined) {
       if (typeof reservationsEnabled !== "boolean") {
-        return res
-          .status(400)
-          .json({ error: "reservationsEnabled must be a boolean" });
+        return res.status(400).json({ error: "reservationsEnabled must be a boolean" });
       }
       data.reservationsEnabled = reservationsEnabled;
     }
@@ -1531,9 +1470,7 @@ router.put("/business/locations/:locationId", requireBusiness, async (req, res) 
         reservationSettings === null ||
         Array.isArray(reservationSettings)
       ) {
-        return res
-          .status(400)
-          .json({ error: "reservationSettings must be an object" });
+        return res.status(400).json({ error: "reservationSettings must be an object" });
       }
       data.reservationSettings = normalizeSettings(reservationSettings);
     }
@@ -1562,13 +1499,7 @@ router.patch(
       const reservationId = String(req.params.reservationId || "").trim();
       const status = String(req.body?.status || "").trim();
 
-      const ALLOWED = [
-        "confirmed",
-        "arrived",
-        "completed",
-        "cancelled",
-        "no_show",
-      ];
+      const ALLOWED = ["confirmed", "arrived", "completed", "cancelled", "no_show"];
       if (!ALLOWED.includes(status)) {
         return res.status(400).json({ error: "Invalid reservation status" });
       }
@@ -1577,9 +1508,7 @@ router.patch(
         where: { id: locationId, businessId },
       });
       if (!location) {
-        return res
-          .status(404)
-          .json({ error: "Location not found or access denied" });
+        return res.status(404).json({ error: "Location not found or access denied" });
       }
 
       const existing = await prisma.reservation.findFirst({
@@ -1590,13 +1519,8 @@ router.patch(
       }
 
       if (status === "arrived" || status === "no_show") {
-        const nowLocal = getNowWallClockInTimezone(
-          getLocationTimezone(location),
-        );
-        const bookedDate = String(existing.reservationDateTime || "").slice(
-          0,
-          10,
-        );
+        const nowLocal = getNowWallClockInTimezone(getLocationTimezone(location));
+        const bookedDate = String(existing.reservationDateTime || "").slice(0, 10);
         if (bookedDate && bookedDate > nowLocal.slice(0, 10)) {
           return res.status(400).json({
             error:
@@ -1607,7 +1531,10 @@ router.patch(
 
       const now = new Date();
       const newEnum = reservationStatusToEnum(status);
-      const timestampField: Record<string, "cancelledAt" | "arrivedAt" | "completedAt" | "noShowAt"> = {
+      const timestampField: Record<
+        string,
+        "cancelledAt" | "arrivedAt" | "completedAt" | "noShowAt"
+      > = {
         cancelled: "cancelledAt",
         arrived: "arrivedAt",
         completed: "completedAt",
@@ -1672,14 +1599,12 @@ router.patch(
   },
 );
 
-
 router.get("/business/:username/addresses", async (req, res) => {
   try {
     const username = String(req.params.username || "").trim();
-    if (!username)
-      {
-        return res.status(400).json({ error: "username is required" });
-      }
+    if (!username) {
+      return res.status(400).json({ error: "username is required" });
+    }
 
     const business = await prisma.business.findUnique({
       where: { username },
@@ -1714,8 +1639,7 @@ router.get("/business/:username/addresses", async (req, res) => {
         id: location.id,
         address: location.address,
         displayName: location.displayName || location.name || null,
-        restaurantName:
-          rp.displayName || location.displayName || location.name || null,
+        restaurantName: rp.displayName || location.displayName || location.name || null,
         area: location.area,
         city: location.city,
         country: location.country,
@@ -1745,10 +1669,9 @@ router.get("/business/:username/addresses", async (req, res) => {
 router.post("/business/:username/queue", async (req, res) => {
   try {
     const username = String(req.params.username || "").trim();
-    if (!username)
-      {
-        return res.status(400).json({ error: "username is required" });
-      }
+    if (!username) {
+      return res.status(400).json({ error: "username is required" });
+    }
 
     const {
       locationId,
@@ -1778,15 +1701,11 @@ router.post("/business/:username/queue", async (req, res) => {
           .json({ error: "Phone number is required for SMS/WhatsApp notifications" });
       }
       if (notificationMethod === "sms" && !smsConsent) {
-        return res
-          .status(400)
-          .json({ error: "SMS consent is required for SMS notifications" });
+        return res.status(400).json({ error: "SMS consent is required for SMS notifications" });
       }
     } else if (notificationMethod === "email") {
       if (!email) {
-        return res
-          .status(400)
-          .json({ error: "Email is required for email notifications" });
+        return res.status(400).json({ error: "Email is required for email notifications" });
       }
     } else {
       return res.status(400).json({ error: "Invalid notification method" });
@@ -1810,10 +1729,9 @@ router.post("/business/:username/queue", async (req, res) => {
           max: 3,
         },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
 
     const business = await prisma.business.findUnique({
       where: { username },
@@ -1888,10 +1806,7 @@ router.post("/business/:username/queue", async (req, res) => {
     } else {
       capRecipient = phoneNumber;
     }
-    const withinDailyCap = await canNotifyRecipient(
-      notificationMethod,
-      capRecipient,
-    );
+    const withinDailyCap = await canNotifyRecipient(notificationMethod, capRecipient);
     if (!withinDailyCap) {
       return res.status(429).json({
         error:
@@ -1986,10 +1901,7 @@ router.post("/business/:username/queue", async (req, res) => {
     const businessName = business.name || "the business";
     const rpJoin = (location.restaurantProfile || {}) as any;
     const restaurantName =
-      rpJoin.displayName ||
-      location.displayName ||
-      location.name ||
-      businessName;
+      rpJoin.displayName || location.displayName || location.name || businessName;
 
     if (
       notificationMethod === "sms" ||
@@ -2162,50 +2074,45 @@ router.get("/business/:username/queue/token/:queueToken/status", async (req, res
   }
 });
 
-router.get(
-  "/business/:username/queue/token/:queueToken/eta",
-  async (req, res) => {
-    try {
-      const username = String(req.params.username || "").trim();
-      const queueToken = String(req.params.queueToken || "").trim();
-      if (!username || !queueToken) {
-        return res
-          .status(400)
-          .json({ error: "username and queueToken are required" });
-      }
+router.get("/business/:username/queue/token/:queueToken/eta", async (req, res) => {
+  try {
+    const username = String(req.params.username || "").trim();
+    const queueToken = String(req.params.queueToken || "").trim();
+    if (!username || !queueToken) {
+      return res.status(400).json({ error: "username and queueToken are required" });
+    }
 
-      const business = await prisma.business.findUnique({
-        where: { username },
-        select: { id: true },
-      });
-      if (!business) {
-        return res.status(404).json({ error: "Business not found" });
-      }
+    const business = await prisma.business.findUnique({
+      where: { username },
+      select: { id: true },
+    });
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
 
-      const entry = await prisma.queueEntry.findUnique({
-        where: { queueToken },
-        select: { locationId: true, businessId: true, status: true },
+    const entry = await prisma.queueEntry.findUnique({
+      where: { queueToken },
+      select: { locationId: true, businessId: true, status: true },
+    });
+    if (entry && entry.businessId === business.id && entry.status === "WAITING") {
+      const locationRow = await prisma.location.findUnique({
+        where: { id: entry.locationId },
       });
-      if (entry && entry.businessId === business.id && entry.status === "WAITING") {
-        const locationRow = await prisma.location.findUnique({
-          where: { id: entry.locationId },
-        });
-        if (locationRow) {
-          const location = await augmentLocationWithLiveLists(locationRow);
-          const eta = etaForToken(location, queueToken);
-          if (eta) {
-            return res.json({ eta });
-          }
+      if (locationRow) {
+        const location = await augmentLocationWithLiveLists(locationRow);
+        const eta = etaForToken(location, queueToken);
+        if (eta) {
+          return res.json({ eta });
         }
       }
-
-      return res.status(404).json({ error: "Queue ticket not found or no longer waiting" });
-    } catch (err: any) {
-      console.error("[auth] queue eta error:", err?.message || err);
-      return res.status(500).json({ error: "Server error" });
     }
-  },
-);
+
+    return res.status(404).json({ error: "Queue ticket not found or no longer waiting" });
+  } catch (err: any) {
+    console.error("[auth] queue eta error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
 
 router.get(
   "/business/:username/locations/:locationId/queue-etas",
@@ -2218,9 +2125,7 @@ router.get(
         where: { id: locationId, businessId },
       });
       if (!locationRow) {
-        return res
-          .status(404)
-          .json({ error: "Location not found or access denied" });
+        return res.status(404).json({ error: "Location not found or access denied" });
       }
       const location = await augmentLocationWithLiveLists(locationRow);
       return res.json({ etas: etaForAllQueueCustomers(location) });
@@ -2336,95 +2241,96 @@ router.get("/business/:username/queue/:customerId/status", async (req, res) => {
   }
 });
 
-router.post(
-  "/business/:username/queue/:customerId/admit",
-  requireBusiness,
-  async (req, res) => {
-    try {
-      const businessId = (req as any).auth.sub as string;
-      const username = String(req.params.username || "").trim();
-      const customerId = String(req.params.customerId || "").trim();
-      if (!username || !customerId) {
-        return res.status(400).json({ error: "username and customerId are required" });
-      }
-
-      const business = await getOwnedBusiness(businessId, username);
-      if (!business) {
-        return res.status(404).json({ error: "Business not found or access denied" });
-      }
-
-      const entry = await prisma.queueEntry.findFirst({
-        where: { businessId: business.id, legacyKey: customerId, status: "WAITING" },
-      });
-      if (!entry) {
-        return res.status(404).json({ error: "Customer not found in queue" });
-      }
-
-      const admittedAt = new Date();
-      const result = await withWriteRetry(() =>
-        prisma.queueEntry.updateMany({
-          where: { id: entry.id, status: "WAITING" },
-          data: { status: "ADMITTED", admittedAt, finalStatus: "pending" },
-        }),
-      );
-      if (result.count === 0) {
-        return res.status(409).json({ error: "Customer is no longer waiting" });
-      }
-
-      const location = await prisma.location.findUnique({
-        where: { id: entry.locationId },
-      });
-      const businessName = business.name || "The business";
-      const rpAdmit = (location?.restaurantProfile || {}) as any;
-      const restaurantName =
-        rpAdmit.displayName ||
-        location?.displayName ||
-        location?.name ||
-        businessName;
-
-      const admittedEntry = {
-        ...entry,
-        status: "ADMITTED" as const,
-        admittedAt,
-        finalStatus: "pending",
-      };
-      const customer = queueEntryToLegacy(admittedEntry, { businessUsername: username });
-
-      await syncCustomerQueue(customer, {
-        status: "admitted",
-        businessUsername: username,
-        businessName: business.name,
-        locationName: location?.displayName || location?.name || business.name,
-        locationId: entry.locationId,
-      });
-
-      if (
-        entry.notificationMethod === "sms" ||
-        entry.notificationMethod === "whatsapp" ||
-        entry.notificationMethod === "email"
-      ) {
-        await enqueueNotification({
-          type: "queue_admitted",
-          channel: entry.notificationMethod,
-          firstName: entry.firstName,
-          countryCode: entry.countryCode || "+1",
-          phoneNumber: entry.phone || "",
-          email: entry.email || "",
-          restaurantName,
-        });
-      }
-
-      return res.json({
-        success: true,
-        customer,
-        message: "Customer has been admitted",
-      });
-    } catch (err: any) {
-      console.error("[auth] admit customer error:", err?.message || err);
-      return res.status(500).json({ error: "Server error" });
+router.post("/business/:username/queue/:customerId/admit", requireBusiness, async (req, res) => {
+  try {
+    const businessId = (req as any).auth.sub as string;
+    if (
+      await limitGuard(req, res, [
+        { name: "queue-admit", key: businessId, windowMs: MINUTES(1), max: 120 },
+      ])
+    ) {
+      return;
     }
+
+    const username = String(req.params.username || "").trim();
+    const customerId = String(req.params.customerId || "").trim();
+    if (!username || !customerId) {
+      return res.status(400).json({ error: "username and customerId are required" });
+    }
+
+    const business = await getOwnedBusiness(businessId, username);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found or access denied" });
+    }
+
+    const entry = await prisma.queueEntry.findFirst({
+      where: { businessId: business.id, legacyKey: customerId, status: "WAITING" },
+    });
+    if (!entry) {
+      return res.status(404).json({ error: "Customer not found in queue" });
+    }
+
+    const admittedAt = new Date();
+    const result = await withWriteRetry(() =>
+      prisma.queueEntry.updateMany({
+        where: { id: entry.id, status: "WAITING" },
+        data: { status: "ADMITTED", admittedAt, finalStatus: "pending" },
+      }),
+    );
+    if (result.count === 0) {
+      return res.status(409).json({ error: "Customer is no longer waiting" });
+    }
+
+    const location = await prisma.location.findUnique({
+      where: { id: entry.locationId },
+    });
+    const businessName = business.name || "The business";
+    const rpAdmit = (location?.restaurantProfile || {}) as any;
+    const restaurantName =
+      rpAdmit.displayName || location?.displayName || location?.name || businessName;
+
+    const admittedEntry = {
+      ...entry,
+      status: "ADMITTED" as const,
+      admittedAt,
+      finalStatus: "pending",
+    };
+    const customer = queueEntryToLegacy(admittedEntry, { businessUsername: username });
+
+    await syncCustomerQueue(customer, {
+      status: "admitted",
+      businessUsername: username,
+      businessName: business.name,
+      locationName: location?.displayName || location?.name || business.name,
+      locationId: entry.locationId,
+    });
+
+    if (
+      entry.notificationMethod === "sms" ||
+      entry.notificationMethod === "whatsapp" ||
+      entry.notificationMethod === "email"
+    ) {
+      await enqueueNotification({
+        type: "queue_admitted",
+        channel: entry.notificationMethod,
+        firstName: entry.firstName,
+        countryCode: entry.countryCode || "+1",
+        phoneNumber: entry.phone || "",
+        email: entry.email || "",
+        restaurantName,
+      });
+    }
+
+    return res.json({
+      success: true,
+      customer,
+      message: "Customer has been admitted",
+    });
+  } catch (err: any) {
+    console.error("[auth] admit customer error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
   }
-);
+});
 
 router.post(
   "/business/:username/admitted/:customerId/confirm-arrival",
@@ -2481,7 +2387,7 @@ router.post(
       console.error("[auth] confirm arrival error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
     }
-  }
+  },
 );
 
 router.post(
@@ -2539,71 +2445,75 @@ router.post(
       console.error("[auth] mark no-show error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
     }
-  }
+  },
 );
 
-router.delete(
-  "/business/:username/queue/:customerId",
-  requireBusiness,
-  async (req, res) => {
-    try {
-      const businessId = (req as any).auth.sub as string;
-      const username = String(req.params.username || "").trim();
-      const customerId = String(req.params.customerId || "").trim();
-      if (!username || !customerId) {
-        return res.status(400).json({ error: "username and customerId are required" });
-      }
-
-      const business = await getOwnedBusiness(businessId, username);
-      if (!business) {
-        return res.status(404).json({ error: "Business not found or access denied" });
-      }
-
-      const entry = await prisma.queueEntry.findFirst({
-        where: {
-          businessId: business.id,
-          legacyKey: customerId,
-          status: { in: ["WAITING", "ADMITTED"] },
-        },
-      });
-      if (!entry) {
-        return res.status(404).json({ error: "Customer not found in queue" });
-      }
-
-      const removedAt = new Date();
-      const result = await withWriteRetry(() =>
-        prisma.queueEntry.updateMany({
-          where: { id: entry.id, status: { in: ["WAITING", "ADMITTED"] } },
-          data: { status: "REMOVED", removedAt },
-        }),
-      );
-      if (result.count === 0) {
-        return res.status(409).json({ error: "Customer is no longer in the queue" });
-      }
-
-      const location = await prisma.location.findUnique({ where: { id: entry.locationId } });
-      const removedEntry = { ...entry, status: "REMOVED" as const, removedAt };
-      const removedCustomer = queueEntryToLegacy(removedEntry, { businessUsername: username });
-
-      await syncCustomerQueue(removedCustomer, {
-        status: "removed",
-        businessUsername: username,
-        businessName: business.name,
-        locationName: location?.displayName || location?.name || business.name,
-        locationId: entry.locationId,
-      });
-
-      return res.json({
-        success: true,
-        customer: removedCustomer,
-        message: "Customer has been removed from queue",
-      });
-    } catch (err: any) {
-      console.error("[auth] remove customer error:", err?.message || err);
-      return res.status(500).json({ error: "Server error" });
+router.delete("/business/:username/queue/:customerId", requireBusiness, async (req, res) => {
+  try {
+    const businessId = (req as any).auth.sub as string;
+    if (
+      await limitGuard(req, res, [
+        { name: "queue-remove", key: businessId, windowMs: MINUTES(1), max: 120 },
+      ])
+    ) {
+      return;
     }
+
+    const username = String(req.params.username || "").trim();
+    const customerId = String(req.params.customerId || "").trim();
+    if (!username || !customerId) {
+      return res.status(400).json({ error: "username and customerId are required" });
+    }
+
+    const business = await getOwnedBusiness(businessId, username);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found or access denied" });
+    }
+
+    const entry = await prisma.queueEntry.findFirst({
+      where: {
+        businessId: business.id,
+        legacyKey: customerId,
+        status: { in: ["WAITING", "ADMITTED"] },
+      },
+    });
+    if (!entry) {
+      return res.status(404).json({ error: "Customer not found in queue" });
+    }
+
+    const removedAt = new Date();
+    const result = await withWriteRetry(() =>
+      prisma.queueEntry.updateMany({
+        where: { id: entry.id, status: { in: ["WAITING", "ADMITTED"] } },
+        data: { status: "REMOVED", removedAt },
+      }),
+    );
+    if (result.count === 0) {
+      return res.status(409).json({ error: "Customer is no longer in the queue" });
+    }
+
+    const location = await prisma.location.findUnique({ where: { id: entry.locationId } });
+    const removedEntry = { ...entry, status: "REMOVED" as const, removedAt };
+    const removedCustomer = queueEntryToLegacy(removedEntry, { businessUsername: username });
+
+    await syncCustomerQueue(removedCustomer, {
+      status: "removed",
+      businessUsername: username,
+      businessName: business.name,
+      locationName: location?.displayName || location?.name || business.name,
+      locationId: entry.locationId,
+    });
+
+    return res.json({
+      success: true,
+      customer: removedCustomer,
+      message: "Customer has been removed from queue",
+    });
+  } catch (err: any) {
+    console.error("[auth] remove customer error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
   }
-);
+});
 
 router.post("/business/:username/queue/:customerId/leave", async (req, res) => {
   try {
@@ -2662,7 +2572,6 @@ router.post("/business/:username/queue/:customerId/leave", async (req, res) => {
   }
 });
 
-
 router.post("/test-email", requireAdmin, async (req, res) => {
   try {
     const { email } = req.body || {};
@@ -2676,7 +2585,11 @@ router.post("/test-email", requireAdmin, async (req, res) => {
         <p>Time: ${new Date().toISOString()}</p>
       </div>
     `;
-    const emailSent = await sendEmail({ to: email, subject: "SeatPing Email Test", html: testHtml });
+    const emailSent = await sendEmail({
+      to: email,
+      subject: "SeatPing Email Test",
+      html: testHtml,
+    });
     if (emailSent) {
       return res.json({ success: true, message: "Test email sent successfully" });
     }

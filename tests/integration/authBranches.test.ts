@@ -2,11 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { api } from "../helpers/app.js";
 import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
 import { businessCookie, customerCookie } from "../helpers/auth.js";
-import {
-  seedBusinessWithLocation,
-  seedCustomer,
-  seedReservation,
-} from "../helpers/seed.js";
+import { seedBusinessWithLocation, seedCustomer, seedReservation } from "../helpers/seed.js";
 
 const db = getTestPrisma();
 
@@ -38,7 +34,9 @@ describe("business reservation status transitions", () => {
       reservationDateTime: `${todayInLocationZone()}T12:00`,
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(path(location.id, reservation.id))
       .set("Cookie", businessCookie(business.id))
       .send({ status: "arrived" });
@@ -55,15 +53,17 @@ describe("business reservation status transitions", () => {
     const { business, location } = await seedBusinessWithLocation();
     const reservation = await seedReservation(location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(path(location.id, reservation.id))
       .set("Cookie", businessCookie(business.id))
       .send({ status: "completed" });
 
     expect(res.status).toBe(200);
-    expect(
-      (await db.reservation.findUnique({ where: { id: reservation.id } }))?.status,
-    ).toBe("COMPLETED");
+    expect((await db.reservation.findUnique({ where: { id: reservation.id } }))?.status).toBe(
+      "COMPLETED",
+    );
   });
 
   it("marks a reservation as a no-show and frees its capacity", async () => {
@@ -77,7 +77,9 @@ describe("business reservation status transitions", () => {
       data: { locationId: location.id, dateKey: date, hour: 12, reservedGuests: 4 },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(path(location.id, reservation.id))
       .set("Cookie", businessCookie(business.id))
       .send({ status: "no_show" });
@@ -93,37 +95,43 @@ describe("business reservation status transitions", () => {
     const { business, location } = await seedBusinessWithLocation();
     const reservation = await seedReservation(location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(path(location.id, reservation.id))
       .set("Cookie", businessCookie(business.id))
       .send({ status: "cancelled" });
 
     expect(res.status).toBe(200);
-    expect(
-      (await db.reservation.findUnique({ where: { id: reservation.id } }))?.status,
-    ).toBe("CANCELLED");
+    expect((await db.reservation.findUnique({ where: { id: reservation.id } }))?.status).toBe(
+      "CANCELLED",
+    );
   });
 
   it("rejects an unknown status value", async () => {
     const { business, location } = await seedBusinessWithLocation();
     const reservation = await seedReservation(location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(path(location.id, reservation.id))
       .set("Cookie", businessCookie(business.id))
       .send({ status: "teleported" });
 
     expect(res.status).toBe(400);
-    expect(
-      (await db.reservation.findUnique({ where: { id: reservation.id } }))?.status,
-    ).toBe("CONFIRMED");
+    expect((await db.reservation.findUnique({ where: { id: reservation.id } }))?.status).toBe(
+      "CONFIRMED",
+    );
   });
 
   it("rejects an anonymous status change", async () => {
     const { location } = await seedBusinessWithLocation();
     const reservation = await seedReservation(location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(path(location.id, reservation.id))
       .send({ status: "cancelled" });
 
@@ -135,21 +143,25 @@ describe("business reservation status transitions", () => {
     const tenantB = await seedBusinessWithLocation();
     const reservation = await seedReservation(tenantA.location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(path(tenantA.location.id, reservation.id))
       .set("Cookie", businessCookie(tenantB.business.id))
       .send({ status: "cancelled" });
 
     expect(res.status).toBeGreaterThanOrEqual(400);
-    expect(
-      (await db.reservation.findUnique({ where: { id: reservation.id } }))?.status,
-    ).toBe("CONFIRMED");
+    expect((await db.reservation.findUnique({ where: { id: reservation.id } }))?.status).toBe(
+      "CONFIRMED",
+    );
   });
 
   it("returns a client error for an unknown reservation", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(path(location.id, "000000000000000000000000"))
       .set("Cookie", businessCookie(business.id))
       .send({ status: "cancelled" });
@@ -162,7 +174,9 @@ describe("business address list update", () => {
   it("requires a locations array", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put("/auth/business/me")
       .set("Cookie", businessCookie(business.id))
       .send({ locations: "not-an-array" });
@@ -173,7 +187,9 @@ describe("business address list update", () => {
   it("accepts an array of location updates", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put("/auth/business/me")
       .set("Cookie", businessCookie(business.id))
       .send({ locations: [{ id: location.id, address: "42 Updated Way" }] });
@@ -182,9 +198,7 @@ describe("business address list update", () => {
   });
 
   it("rejects an anonymous update", async () => {
-    const res = await (await api())
-      .put("/auth/business/me")
-      .send({ locations: [] });
+    const res = await (await api()).put("/auth/business/me").send({ locations: [] });
 
     expect(res.status).toBe(401);
   });
@@ -196,12 +210,16 @@ describe("customer saved item removal", () => {
     const { business } = await seedBusinessWithLocation();
     const cookie = customerCookie(customer.id);
 
-    await (await api())
+    await (
+      await api()
+    )
       .post("/auth/me/saved-restaurants")
       .set("Cookie", cookie)
       .send({ businessUsername: business.username, businessName: business.name });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/auth/me/saved-restaurants/${business.username}`)
       .set("Cookie", cookie);
 
@@ -213,12 +231,16 @@ describe("customer saved item removal", () => {
     const { location } = await seedBusinessWithLocation();
     const cookie = customerCookie(customer.id);
 
-    await (await api())
+    await (
+      await api()
+    )
       .post("/auth/me/saved-locations")
       .set("Cookie", cookie)
       .send({ locationId: location.id });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/auth/me/saved-locations/${location.id}`)
       .set("Cookie", cookie);
 
@@ -236,7 +258,9 @@ describe("business password recovery", () => {
   it("issues a reset token for a business account", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/forgot-password")
       .send({ email: business.email, type: "business" });
 
@@ -246,7 +270,9 @@ describe("business password recovery", () => {
   });
 
   it("treats an unknown business email the same as a known one", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/forgot-password")
       .send({ email: "no-such-business@test.invalid", type: "business" });
 

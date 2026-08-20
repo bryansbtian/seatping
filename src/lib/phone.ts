@@ -1,4 +1,3 @@
-
 type CountryFormat = {
   code: string;
   groups: number[];

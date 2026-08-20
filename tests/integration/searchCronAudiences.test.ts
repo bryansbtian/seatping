@@ -1,11 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { api } from "../helpers/app.js";
 import { businessCookie } from "../helpers/auth.js";
-import {
-  clearTestDatabase,
-  disconnectTestPrisma,
-  getTestPrisma,
-} from "../helpers/db.js";
+import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
 import {
   seedBusiness,
   seedBusinessWithLocation,
@@ -29,9 +25,7 @@ function cronSecret(): string {
 
 function weekdayName(offsetDays = 0): string {
   const d = new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000);
-  return d
-    .toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })
-    .toLowerCase();
+  return d.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" }).toLowerCase();
 }
 
 async function search(query: string, extra = "") {
@@ -147,9 +141,7 @@ describe("restaurant search", () => {
 
     const res = await search("gallery");
 
-    expect(res.body.results[0].bannerImageUrl).toBe(
-      "https://test.invalid/gallery.jpg",
-    );
+    expect(res.body.results[0].bannerImageUrl).toBe("https://test.invalid/gallery.jpg");
   });
 
   it("paginates when a limit is given", async () => {
@@ -281,15 +273,15 @@ describe("cron endpoints", () => {
 
   it("refuses a wrong secret", async () => {
     for (const path of paths) {
-      const res = await (await api())
-        .post(path)
-        .set("Authorization", "Bearer not-the-secret");
+      const res = await (await api()).post(path).set("Authorization", "Bearer not-the-secret");
       expect(res.status).toBe(401);
     }
   });
 
   it("runs the reservation reminder sweep", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/cron/reservation-reminders")
       .set("Authorization", `Bearer ${cronSecret()}`);
 
@@ -298,7 +290,9 @@ describe("cron endpoints", () => {
   });
 
   it("runs the credit refill sweep", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/cron/credit-refill")
       .set("Authorization", `Bearer ${cronSecret()}`);
 
@@ -307,7 +301,9 @@ describe("cron endpoints", () => {
   });
 
   it("runs the campaign sweep and reports what fired", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/api/cron/campaigns")
       .set("Authorization", `Bearer ${cronSecret()}`);
 
@@ -336,7 +332,9 @@ describe("saved audiences", () => {
   it("requires a location when listing", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/api/audiences")
       .set("Cookie", businessCookie(business.id));
 
@@ -348,11 +346,15 @@ describe("saved audiences", () => {
     const { business, location } = await seedBusinessWithLocation();
     const cookie = businessCookie(business.id);
 
-    const noLocation = await (await api())
+    const noLocation = await (
+      await api()
+    )
       .post("/api/audiences")
       .set("Cookie", cookie)
       .send({ name: "Regulars" });
-    const noName = await (await api())
+    const noName = await (
+      await api()
+    )
       .post("/api/audiences")
       .set("Cookie", cookie)
       .send({ locationId: location.id, name: "   " });
@@ -364,7 +366,9 @@ describe("saved audiences", () => {
   it("stores an audience without a description", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/audiences")
       .set("Cookie", businessCookie(business.id))
       .send({ locationId: location.id, name: "  Regulars  " });
@@ -378,7 +382,9 @@ describe("saved audiences", () => {
   it("requires a location when previewing", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/audiences/preview")
       .set("Cookie", businessCookie(business.id))
       .send({ filters: {} });
@@ -401,7 +407,9 @@ describe("saved audiences", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/audiences/preview")
       .set("Cookie", businessCookie(business.id))
       .send({ locationId: location.id, filters: {}, timezone: "UTC" });
@@ -416,7 +424,9 @@ describe("saved audiences", () => {
     const { business, location } = await seedBusinessWithLocation();
     const audience = await seedAudience(business.id, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/audiences/${audience.id}`)
       .set("Cookie", businessCookie(business.id))
       .send({ name: "  Renamed  " });
@@ -431,7 +441,9 @@ describe("saved audiences", () => {
     const { business, location } = await seedBusinessWithLocation();
     const audience = await seedAudience(business.id, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/audiences/${audience.id}`)
       .set("Cookie", businessCookie(business.id))
       .send({ description: "" });
@@ -443,7 +455,9 @@ describe("saved audiences", () => {
     const { business, location } = await seedBusinessWithLocation();
     const audience = await seedAudience(business.id, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/audiences/${audience.id}`)
       .set("Cookie", businessCookie(business.id))
       .send({ filters: { minVisits: 5 } });
@@ -455,7 +469,9 @@ describe("saved audiences", () => {
     const { business, location } = await seedBusinessWithLocation();
     const audience = await seedAudience(business.id, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/audiences/${audience.id}`)
       .set("Cookie", businessCookie(business.id))
       .send({ name: "   " });
@@ -468,13 +484,13 @@ describe("saved audiences", () => {
     const cookie = businessCookie(business.id);
     const missing = "000000000000000000000000";
 
-    const update = await (await api())
+    const update = await (
+      await api()
+    )
       .patch(`/api/audiences/${missing}`)
       .set("Cookie", cookie)
       .send({ name: "Renamed" });
-    const remove = await (await api())
-      .delete(`/api/audiences/${missing}`)
-      .set("Cookie", cookie);
+    const remove = await (await api()).delete(`/api/audiences/${missing}`).set("Cookie", cookie);
 
     expect(update.status).toBe(404);
     expect(remove.status).toBe(404);
@@ -484,13 +500,13 @@ describe("saved audiences", () => {
     const { business, location } = await seedBusinessWithLocation();
     const audience = await seedAudience(business.id, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/api/audiences/${audience.id}`)
       .set("Cookie", businessCookie(business.id));
 
     expect(res.status).toBe(200);
-    expect(
-      await db.savedAudience.findUnique({ where: { id: audience.id } }),
-    ).toBeNull();
+    expect(await db.savedAudience.findUnique({ where: { id: audience.id } })).toBeNull();
   });
 });

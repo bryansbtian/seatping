@@ -35,9 +35,7 @@ describe("customer signup", () => {
     const res = await (await api()).post("/auth/signup").send(body);
 
     expect(res.status).toBe(201);
-    expect((res.headers["set-cookie"] ?? []).join(";")).toContain(
-      "sp_auth_customer",
-    );
+    expect((res.headers["set-cookie"] ?? []).join(";")).toContain("sp_auth_customer");
 
     const stored = await db.user.findUnique({ where: { email: body.email } });
     expect(stored).not.toBeNull();
@@ -47,7 +45,9 @@ describe("customer signup", () => {
   it("rejects a duplicate email", async () => {
     const existing = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/signup")
       .send(signupBody({ email: existing.email }));
 
@@ -55,16 +55,16 @@ describe("customer signup", () => {
   });
 
   it("rejects a weak password", async () => {
-    const res = await (await api())
-      .post("/auth/signup")
-      .send(signupBody({ password: "short" }));
+    const res = await (await api()).post("/auth/signup").send(signupBody({ password: "short" }));
 
     expect(res.status).toBe(400);
     expect(res.body.issues).toBeDefined();
   });
 
   it("rejects a malformed email", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/signup")
       .send(signupBody({ email: "not-an-email" }));
 
@@ -87,7 +87,9 @@ describe("business signup", () => {
   it("rejects a duplicate business username", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/business/signup")
       .send(signupBody({ username: business.username }));
 
@@ -99,7 +101,9 @@ describe("password recovery", () => {
   it("accepts a forgot-password request for a known customer", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/forgot-password")
       .send({ email: customer.email, type: "customer" });
 
@@ -112,7 +116,9 @@ describe("password recovery", () => {
   });
 
   it("does not reveal whether an unknown email exists", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/forgot-password")
       .send({ email: "nobody-here@test.invalid", type: "customer" });
 
@@ -138,7 +144,9 @@ describe("password recovery", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/reset-password")
       .send({ token: rawToken, newPassword: "AnotherStrongPass1!" });
 
@@ -151,7 +159,9 @@ describe("password recovery", () => {
   });
 
   it("rejects an unknown reset token", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/reset-password")
       .send({ token: "not-a-real-token", newPassword: "AnotherStrongPass1!" });
 
@@ -159,9 +169,7 @@ describe("password recovery", () => {
   });
 
   it("requires both a token and a new password", async () => {
-    const res = await (await api())
-      .post("/auth/reset-password")
-      .send({ token: "abc" });
+    const res = await (await api()).post("/auth/reset-password").send({ token: "abc" });
 
     expect(res.status).toBe(400);
   });
@@ -179,7 +187,9 @@ describe("password recovery", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/reset-password")
       .send({ token: rawToken, newPassword: "AnotherStrongPass1!" });
 
@@ -194,7 +204,9 @@ describe("saved restaurants", () => {
     const customer = await seedCustomer();
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/saved-restaurants")
       .set("Cookie", customerCookie(customer.id))
       .send({
@@ -209,7 +221,9 @@ describe("saved restaurants", () => {
   it("requires a business username", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/saved-restaurants")
       .set("Cookie", customerCookie(customer.id))
       .send({});
@@ -218,7 +232,9 @@ describe("saved restaurants", () => {
   });
 
   it("rejects an anonymous save", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/saved-restaurants")
       .send({ businessUsername: "someone" });
 

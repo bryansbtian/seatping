@@ -1,10 +1,5 @@
 import jwt, { SignOptions, JwtPayload, Secret } from "jsonwebtoken";
-import type {
-  Response,
-  Request,
-  NextFunction,
-  CookieOptions,
-} from "express";
+import type { Response, Request, NextFunction, CookieOptions } from "express";
 
 export type AccountType = "customer" | "business" | "admin";
 
@@ -70,8 +65,7 @@ function getJwtSecret(): Secret {
 
 export function signJwt(payload: string | Buffer | object) {
   const secret = getJwtSecret();
-  const expiresIn: SignOptions["expiresIn"] =
-    process.env.JWT_EXPIRES_IN ?? "7d";
+  const expiresIn: SignOptions["expiresIn"] = process.env.JWT_EXPIRES_IN ?? "7d";
   const options: SignOptions = { expiresIn, algorithm: "HS256" };
   return jwt.sign(payload, secret, options);
 }
@@ -81,11 +75,7 @@ export function verifyJwt<T extends JwtPayload = JwtPayload>(token: string): T {
   return jwt.verify(token, secret) as T;
 }
 
-export function setAuthCookie(
-  res: Response,
-  token: string,
-  accountType: AccountType,
-) {
+export function setAuthCookie(res: Response, token: string, accountType: AccountType) {
   const isProd = process.env.NODE_ENV === "production";
   const expiresInEnv = process.env.JWT_EXPIRES_IN ?? "7d";
   const maxAge = parseExpiresInToMs(expiresInEnv) ?? parseExpiresInToMs("7d");

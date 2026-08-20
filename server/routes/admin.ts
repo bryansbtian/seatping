@@ -7,7 +7,6 @@ const router = express.Router();
 
 router.use(requireAdmin);
 
-
 router.post("/update-credits", async (req, res) => {
   try {
     const { username, baseCredits } = req.body;
@@ -223,10 +222,14 @@ router.patch("/customer/:username", async (req, res) => {
         const credits = patch.credits;
         const addr = patch.address;
         if (credits !== undefined && (typeof credits !== "number" || credits < 0)) {
-          return res.status(400).json({ error: `locations[${idx}].credits must be a non-negative number` });
+          return res
+            .status(400)
+            .json({ error: `locations[${idx}].credits must be a non-negative number` });
         }
         if (addr !== undefined && (typeof addr !== "string" || !addr.trim())) {
-          return res.status(400).json({ error: `locations[${idx}].address must be a non-empty string` });
+          return res
+            .status(400)
+            .json({ error: `locations[${idx}].address must be a non-empty string` });
         }
         const locationData: { address?: string; credits?: number } = {};
         if (addr !== undefined) {
@@ -316,7 +319,6 @@ router.patch("/customer/:username", async (req, res) => {
     res.status(500).json({ error: error?.message || "Internal server error" });
   }
 });
-
 
 const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 
@@ -455,9 +457,7 @@ router.post("/featured-restaurants", async (req, res) => {
       select: { id: true },
     });
     if (existing) {
-      return res
-        .status(409)
-        .json({ error: "This location is already a featured restaurant" });
+      return res.status(409).json({ error: "This location is already a featured restaurant" });
     }
 
     let order = 0;
@@ -551,7 +551,6 @@ router.delete("/featured-restaurants/:id", async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
-
 
 const CT_STATUSES = ["DRAFT", "PENDING_SEATPING_REVIEW", "APPROVED", "REJECTED"] as const;
 
@@ -781,9 +780,7 @@ router.post("/campaign-templates/:id/approve", async (req, res) => {
       ).slice(0, 500);
     }
     if (req.body?.whatsappMetaStatus !== undefined) {
-      approvalData.whatsappMetaStatus = String(
-        req.body.whatsappMetaStatus,
-      ).slice(0, 200);
+      approvalData.whatsappMetaStatus = String(req.body.whatsappMetaStatus).slice(0, 200);
     }
     const updated = await prisma.campaignTemplate.update({
       where: { id },

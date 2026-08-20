@@ -1,9 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  compressImage,
-  uploadBanner,
-  uploadPhoto,
-} from "../../src/lib/imageUpload.js";
+import { compressImage, uploadBanner, uploadPhoto } from "../../src/lib/imageUpload.js";
 
 const SIGN_RESPONSE = {
   upload: {
@@ -37,9 +33,7 @@ function largeFile(): File {
 
 type FetchCall = [string, RequestInit];
 
-function stubFetch(
-  overrides: Record<string, () => Response> = {},
-): { calls: FetchCall[] } {
+function stubFetch(overrides: Record<string, () => Response> = {}): { calls: FetchCall[] } {
   const calls: FetchCall[] = [];
   const fetchMock = vi.fn(async (url: string, init: RequestInit) => {
     calls.push([url, init]);
@@ -75,10 +69,10 @@ type Canvas = {
   toBlob: (cb: (blob: Blob | null) => void) => void;
 };
 
-function stubCanvas(options: {
-  context?: unknown;
-  blob?: Blob | null;
-}): { canvas: Canvas; drawn: unknown[][] } {
+function stubCanvas(options: { context?: unknown; blob?: Blob | null }): {
+  canvas: Canvas;
+  drawn: unknown[][];
+} {
   const drawn: unknown[][] = [];
   let context: unknown = {
     drawImage: (...args: unknown[]) => {
@@ -289,9 +283,7 @@ describe("uploadBanner", () => {
       },
     });
 
-    await expect(uploadBanner("loc-1", smallFile())).rejects.toThrow(
-      "File too large",
-    );
+    await expect(uploadBanner("loc-1", smallFile())).rejects.toThrow("File too large");
   });
 
   it("falls back to the status code when the provider sends no JSON", async () => {
@@ -317,9 +309,7 @@ describe("uploadBanner", () => {
       },
     });
 
-    await expect(uploadBanner("loc-1", smallFile())).rejects.toThrow(
-      "Not your location",
-    );
+    await expect(uploadBanner("loc-1", smallFile())).rejects.toThrow("Not your location");
     expect(calls).toHaveLength(1);
   });
 });
@@ -344,8 +334,6 @@ describe("uploadPhoto", () => {
       },
     });
 
-    await expect(uploadPhoto("loc-9", smallFile())).rejects.toThrow(
-      "Photo limit reached",
-    );
+    await expect(uploadPhoto("loc-9", smallFile())).rejects.toThrow("Photo limit reached");
   });
 });

@@ -31,7 +31,9 @@ describe("queue join", () => {
   it("creates a real WAITING queue entry and returns a token", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue`)
       .send(joinPayload(location.id));
 
@@ -52,7 +54,9 @@ describe("queue join", () => {
   it("rejects a join that is missing required fields", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue`)
       .send({ locationId: location.id, firstName: "Ada" });
 
@@ -63,7 +67,9 @@ describe("queue join", () => {
   it("rejects an unknown notification method", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue`)
       .send(joinPayload(location.id, { notificationMethod: "carrier-pigeon" }));
 
@@ -74,7 +80,9 @@ describe("queue join", () => {
   it("requires an email when the notification method is email", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue`)
       .send(joinPayload(location.id, { email: undefined }));
 
@@ -85,17 +93,15 @@ describe("queue join", () => {
   it("requires SMS consent before joining by SMS", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
-      .post(`/auth/business/${business.username}/queue`)
-      .send(
-        joinPayload(location.id, {
-          notificationMethod: "sms",
-          phoneNumber: "5551234567",
-          countryCode: "+1",
-          email: undefined,
-          smsConsent: false,
-        }),
-      );
+    const res = await (await api()).post(`/auth/business/${business.username}/queue`).send(
+      joinPayload(location.id, {
+        notificationMethod: "sms",
+        phoneNumber: "5551234567",
+        countryCode: "+1",
+        email: undefined,
+        smsConsent: false,
+      }),
+    );
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/consent/i);
@@ -104,7 +110,9 @@ describe("queue join", () => {
   it("rejects a join for an unknown business", async () => {
     const { location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/business/no-such-business/queue")
       .send(joinPayload(location.id));
 
@@ -118,7 +126,9 @@ describe("queue transitions", () => {
     const entry = await seedQueueEntry(location);
     const cookie = businessCookie(business.id);
 
-    const first = await (await api())
+    const first = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue/${entry.legacyKey}/admit`)
       .set("Cookie", cookie);
 
@@ -128,7 +138,9 @@ describe("queue transitions", () => {
     expect(afterAdmit?.status).toBe("ADMITTED");
     expect(afterAdmit?.admittedAt).toBeInstanceOf(Date);
 
-    const second = await (await api())
+    const second = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue/${entry.legacyKey}/admit`)
       .set("Cookie", cookie);
 
@@ -142,7 +154,9 @@ describe("queue transitions", () => {
   it("returns 404 for a queue entry that does not exist", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue/missing-key/admit`)
       .set("Cookie", businessCookie(business.id));
 
@@ -153,9 +167,9 @@ describe("queue transitions", () => {
     const { business, location } = await seedBusinessWithLocation();
     const entry = await seedQueueEntry(location);
 
-    const res = await (await api()).post(
-      `/auth/business/${business.username}/queue/${entry.legacyKey}/admit`,
-    );
+    const res = await (
+      await api()
+    ).post(`/auth/business/${business.username}/queue/${entry.legacyKey}/admit`);
 
     expect(res.status).toBe(401);
 
@@ -169,9 +183,9 @@ describe("queue status lookup", () => {
     const { business, location } = await seedBusinessWithLocation();
     const entry = await seedQueueEntry(location);
 
-    const res = await (await api()).get(
-      `/auth/business/${business.username}/queue/token/${entry.queueToken}/status`,
-    );
+    const res = await (
+      await api()
+    ).get(`/auth/business/${business.username}/queue/token/${entry.queueToken}/status`);
 
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toMatch(/application\/json/);
@@ -180,9 +194,9 @@ describe("queue status lookup", () => {
   it("reports an unknown token as an expired session without leaking existence", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
-      `/auth/business/${business.username}/queue/token/not-a-real-token/status`,
-    );
+    const res = await (
+      await api()
+    ).get(`/auth/business/${business.username}/queue/token/not-a-real-token/status`);
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ admitted: false, removed: false });
@@ -190,9 +204,9 @@ describe("queue status lookup", () => {
   });
 
   it("rejects a status lookup for an unknown business", async () => {
-    const res = await (await api()).get(
-      "/auth/business/no-such-business/queue/token/whatever/status",
-    );
+    const res = await (
+      await api()
+    ).get("/auth/business/no-such-business/queue/token/whatever/status");
 
     expect(res.status).toBe(404);
   });

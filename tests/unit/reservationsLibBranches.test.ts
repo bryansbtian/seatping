@@ -99,21 +99,15 @@ describe("normalizeSettings", () => {
   });
 
   it("keeps the manual confirmation mode", () => {
-    expect(normalizeSettings({ confirmationMode: "manual" }).confirmationMode).toBe(
-      "manual",
-    );
-    expect(normalizeSettings({ confirmationMode: "other" }).confirmationMode).toBe(
-      "auto",
-    );
+    expect(normalizeSettings({ confirmationMode: "manual" }).confirmationMode).toBe("manual");
+    expect(normalizeSettings({ confirmationMode: "other" }).confirmationMode).toBe("auto");
   });
 
   it("truncates a very long cancellation policy", () => {
     const long = normalizeSettings({ cancellationPolicy: "x".repeat(1500) });
 
     expect(long.cancellationPolicy).toHaveLength(1000);
-    expect(normalizeSettings({ cancellationPolicy: 7 }).cancellationPolicy).toBe(
-      "",
-    );
+    expect(normalizeSettings({ cancellationPolicy: 7 }).cancellationPolicy).toBe("");
   });
 
   it("clamps the numeric settings into range", () => {
@@ -142,12 +136,8 @@ describe("normalizeSettings", () => {
       reservationEndTime: "25:00",
     });
 
-    expect(out.reservationStartTime).toBe(
-      DEFAULT_RESERVATION_SETTINGS.reservationStartTime,
-    );
-    expect(out.reservationEndTime).toBe(
-      DEFAULT_RESERVATION_SETTINGS.reservationEndTime,
-    );
+    expect(out.reservationStartTime).toBe(DEFAULT_RESERVATION_SETTINGS.reservationStartTime);
+    expect(out.reservationEndTime).toBe(DEFAULT_RESERVATION_SETTINGS.reservationEndTime);
   });
 });
 
@@ -159,9 +149,7 @@ describe("zoned time helpers", () => {
   });
 
   it("reads a wall clock in the given timezone", () => {
-    expect(zonedWallTimeToMs("2026-08-12", "19:00", "UTC")).toBe(
-      Date.UTC(2026, 7, 12, 19, 0),
-    );
+    expect(zonedWallTimeToMs("2026-08-12", "19:00", "UTC")).toBe(Date.UTC(2026, 7, 12, 19, 0));
     expect(zonedWallTimeToMs("2026-08-12", "19:00", "Asia/Jakarta")).toBe(
       Date.UTC(2026, 7, 12, 12, 0),
     );
@@ -248,10 +236,7 @@ describe("computeAvailability", () => {
 
   it("marks an hour full once its capacity is taken", () => {
     const { slots } = availability({
-      reservations: [
-        booking({ partySize: 19 }),
-        booking({ id: "res-2", partySize: 1 }),
-      ],
+      reservations: [booking({ partySize: 19 }), booking({ id: "res-2", partySize: 1 })],
       partySize: 2,
     });
 
@@ -314,12 +299,8 @@ describe("validateReservationRequest", () => {
   });
 
   it("rejects a party size that is not a whole number of guests", () => {
-    expect(validate({ partySize: 0 })).toBe(
-      "Number of guests must be at least 1.",
-    );
-    expect(validate({ partySize: 2.5 })).toBe(
-      "Number of guests must be at least 1.",
-    );
+    expect(validate({ partySize: 0 })).toBe("Number of guests must be at least 1.");
+    expect(validate({ partySize: 2.5 })).toBe("Number of guests must be at least 1.");
   });
 
   it("rejects a party larger than the restaurant accepts", () => {
@@ -342,9 +323,7 @@ describe("validateReservationRequest", () => {
       wednesday: { enabled: true, open: "11:00", close: "14:00" },
     };
 
-    expect(validate({ time: "20:00", openingHours: lunchOnly })).toContain(
-      "operating hours",
-    );
+    expect(validate({ time: "20:00", openingHours: lunchOnly })).toContain("operating hours");
   });
 
   it("explains a time outside reservation hours when no hours are configured", () => {
@@ -393,9 +372,9 @@ describe("serializeReservation", () => {
   });
 
   it("builds a name from the parts when there is none stored", () => {
-    expect(
-      serializeReservation({ firstName: "Ada", lastName: "Lovelace" }).name,
-    ).toBe("Ada Lovelace");
+    expect(serializeReservation({ firstName: "Ada", lastName: "Lovelace" }).name).toBe(
+      "Ada Lovelace",
+    );
   });
 
   it("keeps the stored values", () => {
@@ -423,15 +402,10 @@ describe("serializeReservation", () => {
   });
 
   it("includes the manage token only when asked", () => {
-    const out = serializeReservation(
-      { id: "res-1", manageToken: "mt-1" },
-      { includeToken: true },
-    );
+    const out = serializeReservation({ id: "res-1", manageToken: "mt-1" }, { includeToken: true });
 
     expect(out.manageToken).toBe("mt-1");
-    expect(
-      serializeReservation({ id: "res-1" }, { includeToken: true }).manageToken,
-    ).toBeNull();
+    expect(serializeReservation({ id: "res-1" }, { includeToken: true }).manageToken).toBeNull();
   });
 });
 
@@ -520,13 +494,8 @@ describe("syncCustomerReservation", () => {
 
     await syncCustomerReservation(reservation());
 
-    expect(saved().upcomingReservations.map((r: any) => r.id)).toEqual([
-      "res-1",
-      "res-keep",
-    ]);
-    expect(saved().pastReservations.map((r: any) => r.id)).toEqual([
-      "past-keep",
-    ]);
+    expect(saved().upcomingReservations.map((r: any) => r.id)).toEqual(["res-1", "res-keep"]);
+    expect(saved().pastReservations.map((r: any) => r.id)).toEqual(["past-keep"]);
   });
 
   it("tolerates stored lists of the wrong shape", async () => {

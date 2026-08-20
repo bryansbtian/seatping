@@ -41,12 +41,7 @@ async function guest(
   });
 }
 
-async function preview(
-  businessId: string,
-  locationId: string,
-  audienceType: string,
-  extra = "",
-) {
+async function preview(businessId: string, locationId: string, audienceType: string, extra = "") {
   return (await api())
     .get(
       `/api/campaigns/audiences/preview?locationId=${locationId}` +
@@ -105,12 +100,8 @@ describe("audience type resolution", () => {
     expect(d30.status).toBe(200);
     expect(d60.status).toBe(200);
 
-    expect(d15.body.recipientCount).toBeGreaterThanOrEqual(
-      d30.body.recipientCount,
-    );
-    expect(d30.body.recipientCount).toBeGreaterThanOrEqual(
-      d60.body.recipientCount,
-    );
+    expect(d15.body.recipientCount).toBeGreaterThanOrEqual(d30.body.recipientCount);
+    expect(d30.body.recipientCount).toBeGreaterThanOrEqual(d60.body.recipientCount);
   });
 
   it("selects guests with upcoming reservations", async () => {
@@ -144,12 +135,7 @@ describe("audience type resolution", () => {
     const picked = await guest(business.id, business.username, location.id);
     await guest(business.id, business.username, location.id);
 
-    const res = await preview(
-      business.id,
-      location.id,
-      "manual",
-      `&guestIds=${picked.id}`,
-    );
+    const res = await preview(business.id, location.id, "manual", `&guestIds=${picked.id}`);
 
     expect(res.status).toBe(200);
     expect(res.body.recipientCount).toBeLessThanOrEqual(1);
@@ -192,7 +178,9 @@ describe("audience type resolution", () => {
   it("rejects an unsupported channel", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(
         `/api/campaigns/audiences/preview?locationId=${location.id}` +
           "&audienceType=all_guests&channel=CARRIER_PIGEON",
@@ -231,7 +219,9 @@ describe("audience type resolution", () => {
       normalizedPhone: null,
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(
         `/api/campaigns/audiences/preview?locationId=${location.id}` +
           "&audienceType=all_guests&channel=SMS",

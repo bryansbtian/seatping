@@ -11,10 +11,7 @@ import {
   syncCustomerReservation,
   type ReservationSettings,
 } from "../lib/reservations.js";
-import {
-  getLocationOpeningHours,
-  getLocationTimezone,
-} from "../lib/operatingHours.js";
+import { getLocationOpeningHours, getLocationTimezone } from "../lib/operatingHours.js";
 import { readSession } from "../lib/auth.js";
 import { reservationRowToLegacy } from "../lib/liveData.js";
 import {
@@ -25,10 +22,7 @@ import {
 } from "../lib/reservationCapacity.js";
 import { enqueueNotification } from "../lib/notifications.js";
 import { limitGuard, clientIp, MINUTES, HOURS } from "../lib/rateLimit.js";
-import {
-  syncGuestFromReservation,
-  touchGuestByReservationId,
-} from "../lib/guests.js";
+import { syncGuestFromReservation, touchGuestByReservationId } from "../lib/guests.js";
 import { withWriteRetry } from "../lib/dbRetry.js";
 import type { Reservation } from "@prisma/client";
 
@@ -100,8 +94,7 @@ async function notifyReservation(
     cancellationPolicy: settings.cancellationPolicy,
     businessEmail: business.email || undefined,
     locationName: location.displayName || location.name || location.address,
-    customerName:
-      reservation.name || `${reservation.firstName} ${reservation.lastName}`.trim(),
+    customerName: reservation.name || `${reservation.firstName} ${reservation.lastName}`.trim(),
     customerPhone: reservation.phone || undefined,
     notes: reservation.notes || undefined,
     dashboardUrl: `${process.env.FRONTEND_URL || "https://www.seatping.biz"}/business`,
@@ -160,15 +153,14 @@ router.get("/:businessUsername/:locationId/availability", async (req, res) => {
     const settings = normalizeSettings(location.reservationSettings);
     const reservations = await activeReservationsForValidation(location.id);
 
-    const { slots, partyTooLarge, outsideWindow, operatingStatus } =
-      computeAvailability({
-        settings,
-        reservations,
-        date,
-        partySize,
-        timeZone: getLocationTimezone(location),
-        openingHours: getLocationOpeningHours(location),
-      });
+    const { slots, partyTooLarge, outsideWindow, operatingStatus } = computeAvailability({
+      settings,
+      reservations,
+      date,
+      partySize,
+      timeZone: getLocationTimezone(location),
+      openingHours: getLocationOpeningHours(location),
+    });
 
     let availability: {
       status: string;
@@ -185,11 +177,7 @@ router.get("/:businessUsername/:locationId/availability", async (req, res) => {
         message: `This restaurant is closed on ${operatingStatus.dayName || "this date"}.`,
         helper: "Choose another date to view available reservation times.",
       };
-    } else if (
-      operatingStatus.configured &&
-      slots.length === 0 &&
-      !outsideWindow
-    ) {
+    } else if (operatingStatus.configured && slots.length === 0 && !outsideWindow) {
       availability = {
         status: "outside_operating_hours",
         dayName: operatingStatus.dayName,
@@ -237,8 +225,7 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
       return res.status(400).json({ error: "Reservations are not available at this location." });
     }
 
-    const { firstName, lastName, email, partySize, date, time, notes } =
-      req.body || {};
+    const { firstName, lastName, email, partySize, date, time, notes } = req.body || {};
 
     if (!firstName || !lastName) {
       return res.status(400).json({ error: "First and last name are required." });
@@ -268,10 +255,9 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
           max: 150,
         },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
 
     const settings = normalizeSettings(location.reservationSettings);
     const reservations = await activeReservationsForValidation(location.id);
@@ -317,9 +303,9 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
       settings.maxReservedGuestsPerHour,
     );
     if (!reserved) {
-      return res
-        .status(400)
-        .json({ error: `${formatTimeLabel(String(time))} is fully booked. Please choose another time.` });
+      return res.status(400).json({
+        error: `${formatTimeLabel(String(time))} is fully booked. Please choose another time.`,
+      });
     }
 
     const session = readSession(req);
@@ -420,11 +406,7 @@ router.get("/manage/:manageToken", async (req, res) => {
 
     const rp = (location.restaurantProfile || {}) as any;
     const restaurantName =
-      rp.displayName ||
-      business?.name ||
-      location.displayName ||
-      location.name ||
-      "Restaurant";
+      rp.displayName || business?.name || location.displayName || location.name || "Restaurant";
     const locationLabel =
       rp.shortAddress ||
       location.displayName ||
@@ -459,10 +441,9 @@ router.put("/manage/:manageToken", async (req, res) => {
         { name: "reservation-manage-ip", key: clientIp(req), windowMs: MINUTES(10), max: 20 },
         { name: "reservation-manage-token", key: manageToken, windowMs: MINUTES(10), max: 10 },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
 
     const found = await findByManageToken(manageToken);
     if (!found) {
@@ -553,10 +534,9 @@ router.post("/manage/:manageToken/cancel", async (req, res) => {
         { name: "reservation-manage-ip", key: clientIp(req), windowMs: MINUTES(10), max: 20 },
         { name: "reservation-manage-token", key: manageToken, windowMs: MINUTES(10), max: 10 },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
 
     const found = await findByManageToken(manageToken);
     if (!found) {

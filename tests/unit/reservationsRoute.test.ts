@@ -54,8 +54,7 @@ vi.mock("../../server/lib/guests.js", async () => {
   return { ...actual, syncGuestFromReservation, touchGuestByReservationId };
 });
 
-const reservationsRouter = (await import("../../server/routes/reservations.js"))
-  .default;
+const reservationsRouter = (await import("../../server/routes/reservations.js")).default;
 
 const ORIGINAL_ENV = { ...process.env };
 const LOC = "0123456789abcdef01234567";
@@ -139,9 +138,7 @@ function createdRow(overrides: Record<string, unknown> = {}) {
 
 async function book(body: Record<string, unknown> = {}, headers: Record<string, string> = {}) {
   const { date, time } = futureParts();
-  const request = app()
-    .post(`/api/reservations/bistro/${LOC}`)
-    .set("X-Forwarded-For", freshIp());
+  const request = app().post(`/api/reservations/bistro/${LOC}`).set("X-Forwarded-For", freshIp());
   for (const [k, v] of Object.entries(headers)) {
     request.set(k, v);
   }
@@ -170,9 +167,9 @@ beforeEach(() => {
   reservationFindMany.mockReset().mockResolvedValue([]);
   reservationFindFirst.mockReset().mockResolvedValue(null);
   reservationFindUnique.mockReset().mockResolvedValue(createdRow());
-  reservationFindUniqueOrThrow.mockReset().mockResolvedValue(
-    createdRow({ status: "CANCELLED", cancelledAt: new Date() }),
-  );
+  reservationFindUniqueOrThrow
+    .mockReset()
+    .mockResolvedValue(createdRow({ status: "CANCELLED", cancelledAt: new Date() }));
   reservationCreate.mockReset().mockResolvedValue(createdRow());
   reservationUpdate.mockReset().mockImplementation(async ({ data }) => {
     return createdRow(data);
@@ -225,18 +222,14 @@ describe("resolving a restaurant", () => {
   it("reports a server error on the availability route", async () => {
     businessFindUnique.mockRejectedValue(new Error("db down"));
 
-    const res = await app().get(
-      `/api/reservations/bistro/${LOC}/availability?date=2026-08-12`,
-    );
+    const res = await app().get(`/api/reservations/bistro/${LOC}/availability?date=2026-08-12`);
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: "Failed to load availability." });
   });
 
   it("treats a location with no explicit flag as reservable", async () => {
-    locationFindFirst.mockResolvedValue(
-      locationRow({ reservationsEnabled: null }),
-    );
+    locationFindFirst.mockResolvedValue(locationRow({ reservationsEnabled: null }));
 
     const res = await app().get(`/api/reservations/bistro/${LOC}/settings`);
 
@@ -265,9 +258,7 @@ describe("creating a reservation", () => {
   it("builds the manage link from the forwarded protocol and host", async () => {
     const res = await book({}, { "X-Forwarded-Proto": "https" });
 
-    expect(res.body.manageUrl).toMatch(
-      /^https:\/\/.+\/reservations\/manage\/[0-9a-f]{48}$/,
-    );
+    expect(res.body.manageUrl).toMatch(/^https:\/\/.+\/reservations\/manage\/[0-9a-f]{48}$/);
   });
 
   it("falls back to a generic business name in the notification", async () => {
@@ -286,15 +277,11 @@ describe("creating a reservation", () => {
   });
 
   it("falls back through the location label in the notification", async () => {
-    locationFindFirst.mockResolvedValue(
-      locationRow({ displayName: null, name: null }),
-    );
+    locationFindFirst.mockResolvedValue(locationRow({ displayName: null, name: null }));
 
     await book();
 
-    expect(enqueueNotification.mock.calls[0][0].locationName).toBe(
-      "1 Test Street",
-    );
+    expect(enqueueNotification.mock.calls[0][0].locationName).toBe("1 Test Street");
   });
 
   it("keeps the reservation when the notification cannot be queued", async () => {
@@ -427,9 +414,7 @@ describe("managing a reservation", () => {
   });
 
   it("keeps the customer profile in step when the reservation has an owner", async () => {
-    reservationFindUnique.mockResolvedValue(
-      createdRow({ customerId: "cust-1" }),
-    );
+    reservationFindUnique.mockResolvedValue(createdRow({ customerId: "cust-1" }));
     reservationUpdate.mockResolvedValue(createdRow({ customerId: "cust-1" }));
 
     const res = await app()

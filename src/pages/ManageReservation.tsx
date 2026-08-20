@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import NotFound from "@/pages/NotFound";
@@ -21,13 +21,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { DateField, PartyField } from "@/components/ReservationBooking";
-import {
-  CalendarDays,
-  Clock,
-  Loader2,
-  MapPin,
-  Users,
-} from "lucide-react";
+import { CalendarDays, Clock, Loader2, MapPin, Users } from "lucide-react";
 
 type Slot = {
   time: string;
@@ -100,28 +94,28 @@ export default function ManageReservation() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  const load = () => {
+  const timeRef = useRef(time);
+  timeRef.current = time;
+
+  const load = useCallback(() => {
     setLoading(true);
     api(`/api/reservations/manage/${token}`)
       .then((d) => {
         setReservation(d.reservation);
         setSettings(d.settings);
         setRestaurant(d.restaurant);
-        const { date: rd, time: rt } = splitDateTime(
-          d.reservation.reservationDateTime,
-        );
+        const { date: rd, time: rt } = splitDateTime(d.reservation.reservationDateTime);
         setDate(rd);
         setTime(rt);
         setPartySize(d.reservation.partySize);
       })
       .catch((e: any) => setError(e?.message || "Reservation not found"))
       .finally(() => setLoading(false));
-  };
+  }, [token]);
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [load]);
 
   useEffect(() => {
     if (!editing || !restaurant || !date || partySize === "larger") {
@@ -146,7 +140,7 @@ export default function ManageReservation() {
           next = [];
         }
         setSlots(next);
-        if (!next.find((s) => s.time === time && s.available)) {
+        if (!next.find((s) => s.time === timeRef.current && s.available)) {
           setTime("");
         }
       })
@@ -155,7 +149,6 @@ export default function ManageReservation() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing, date, partySize, restaurant]);
 
   const todayStr = localDateStr(new Date());
@@ -166,8 +159,7 @@ export default function ManageReservation() {
   }, [settings?.bookingWindowDays]);
 
   const isLocked =
-    reservation &&
-    ["cancelled", "completed", "no_show"].includes(reservation.status);
+    reservation && ["cancelled", "completed", "no_show"].includes(reservation.status);
 
   const saveChanges = async () => {
     if (!date || !time || partySize === "larger") {
@@ -224,7 +216,6 @@ export default function ManageReservation() {
     return <NotFound />;
   }
 
-
   let timePickerContent: React.ReactNode;
   if (partySize === "larger") {
     timePickerContent = (
@@ -247,8 +238,7 @@ export default function ManageReservation() {
           if (s.time === time) {
             slotClass = "border-slate-900 bg-slate-900 text-white";
           } else if (s.available) {
-            slotClass =
-              "border-slate-200 bg-white text-slate-700 hover:border-slate-400";
+            slotClass = "border-slate-200 bg-white text-slate-700 hover:border-slate-400";
           }
           return (
             <button
@@ -282,11 +272,7 @@ export default function ManageReservation() {
         <Button className="flex-1" onClick={() => setEditing(true)}>
           Change
         </Button>
-        <Button
-          variant="destructiveOutline"
-          className="flex-1"
-          onClick={() => setCancelOpen(true)}
-        >
+        <Button variant="destructiveOutline" className="flex-1" onClick={() => setCancelOpen(true)}>
           Cancel Reservation
         </Button>
       </div>
@@ -304,10 +290,7 @@ export default function ManageReservation() {
   }
 
   let restaurantSubtitle: string | undefined;
-  if (
-    restaurant?.locationName &&
-    restaurant.locationName !== restaurant?.name
-  ) {
+  if (restaurant?.locationName && restaurant.locationName !== restaurant?.name) {
     restaurantSubtitle = `${restaurant.name} · ${restaurant.locationName}`;
   } else {
     restaurantSubtitle = restaurant?.name || restaurant?.locationName;
@@ -326,94 +309,77 @@ export default function ManageReservation() {
   } else if (!editing) {
     detailsOrEditor = (
       <div className="space-y-2">
-      <DetailRow
-        icon={CalendarDays}
-        label="Date"
-        value={readableDate(current!.date)}
-      />
-      <DetailRow
-        icon={Clock}
-        label="Time"
-        value={formatTimeLabel(current!.time)}
-      />
-      <DetailRow
-        icon={Users}
-        label="Number of Guests"
-        value={`${reservation.partySize} ${reservationGuestWord}`}
-      />
-      {restaurant?.address && (
+        <DetailRow icon={CalendarDays} label="Date" value={readableDate(current!.date)} />
+        <DetailRow icon={Clock} label="Time" value={formatTimeLabel(current!.time)} />
         <DetailRow
-          icon={MapPin}
-          label="Location"
-          value={restaurant.address}
-          stacked
+          icon={Users}
+          label="Number of Guests"
+          value={`${reservation.partySize} ${reservationGuestWord}`}
         />
-      )}
-      {reservation.notes && (
-        <p className="rounded-md bg-slate-50 p-2.5 text-xs text-slate-600">
-          <span className="font-medium">Notes: </span>
-          {reservation.notes}
-        </p>
-      )}
+        {restaurant?.address && (
+          <DetailRow icon={MapPin} label="Location" value={restaurant.address} stacked />
+        )}
+        {reservation.notes && (
+          <p className="rounded-md bg-slate-50 p-2.5 text-xs text-slate-600">
+            <span className="font-medium">Notes: </span>
+            {reservation.notes}
+          </p>
+        )}
 
-      {lockedActions}
-    </div>
+        {lockedActions}
+      </div>
     );
   } else {
     detailsOrEditor = (
       <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
-          <Label className="text-xs text-slate-500">
-            Number of Guests
-          </Label>
-          <PartyField
-            value={partySize}
-            onChange={setPartySize}
-            max={settings?.maxPartySize ?? 8}
-          />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label className="text-xs text-slate-500">Number of Guests</Label>
+            <PartyField
+              value={partySize}
+              onChange={setPartySize}
+              max={settings?.maxPartySize ?? 8}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-slate-500">Date</Label>
+            <DateField
+              value={date}
+              onChange={setDate}
+              todayStr={todayStr}
+              maxDateStr={maxDateStr}
+            />
+          </div>
         </div>
+
         <div className="space-y-1">
-          <Label className="text-xs text-slate-500">Date</Label>
-          <DateField
-            value={date}
-            onChange={setDate}
-            todayStr={todayStr}
-            maxDateStr={maxDateStr}
-          />
+          <Label className="text-xs text-slate-500">Time</Label>
+          {timePickerContent}
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            className="flex-1"
+            disabled={!date || !time || partySize === "larger" || saving}
+            onClick={saveChanges}
+          >
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            Save Changes
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              setEditing(false);
+              setDate(current!.date);
+              setTime(current!.time);
+              setPartySize(reservation.partySize);
+            }}
+          >
+            Back
+          </Button>
         </div>
       </div>
-
-      <div className="space-y-1">
-        <Label className="text-xs text-slate-500">Time</Label>
-        {timePickerContent}
-      </div>
-
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Button
-          className="flex-1"
-          disabled={!date || !time || partySize === "larger" || saving}
-          onClick={saveChanges}
-        >
-          {saving && (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          )}
-          Save Changes
-        </Button>
-        <Button
-          variant="outline"
-          className="flex-1"
-          onClick={() => {
-            setEditing(false);
-            setDate(current!.date);
-            setTime(current!.time);
-            setPartySize(reservation.partySize);
-          }}
-        >
-          Back
-        </Button>
-      </div>
-    </div>
     );
   }
 
@@ -421,45 +387,38 @@ export default function ManageReservation() {
   if (loading) {
     pageContent = (
       <div className="flex items-center justify-center py-24 text-slate-500">
-      <Loader2 className="h-6 w-6 animate-spin" />
-    </div>
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
     );
   } else {
     pageContent = (
       <>
-      <div className="text-center">
-        <h1 className="text-2xl font-semibold text-slate-900">
-          {pageTitle}
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {restaurantSubtitle}
-        </p>
-      </div>
+        <div className="text-center">
+          <h1 className="text-2xl font-semibold text-slate-900">{pageTitle}</h1>
+          <p className="mt-1 text-sm text-slate-500">{restaurantSubtitle}</p>
+        </div>
 
-      <Card className="mt-6 border border-slate-200 shadow-sm">
-        <CardContent className="space-y-4 p-6 lg:p-8">
-          <div className="flex items-center justify-between gap-3">
-            <StatusBadge status={reservation.status} />
-            <span className="min-w-0 flex-1 text-right text-xs font-medium text-slate-700 sm:text-sm">
-              {reservation.name}
-            </span>
-          </div>
+        <Card className="mt-6 border border-slate-200 shadow-sm">
+          <CardContent className="space-y-4 p-6 lg:p-8">
+            <div className="flex items-center justify-between gap-3">
+              <StatusBadge status={reservation.status} />
+              <span className="min-w-0 flex-1 text-right text-xs font-medium text-slate-700 sm:text-sm">
+                {reservation.name}
+              </span>
+            </div>
 
-          {detailsOrEditor}
-        </CardContent>
-      </Card>
-    </>
+            {detailsOrEditor}
+          </CardContent>
+        </Card>
+      </>
     );
   }
 
-return (
+  return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <Header />
-      {}
       <main className="flex flex-1 flex-col px-4 pb-10 pt-24 sm:pb-14 sm:pt-28">
-        <div className="m-auto w-full max-w-lg lg:max-w-2xl">
-          {pageContent}
-        </div>
+        <div className="m-auto w-full max-w-lg lg:max-w-2xl">{pageContent}</div>
       </main>
       <Footer />
 
@@ -468,8 +427,7 @@ return (
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel This Reservation?</AlertDialogTitle>
             <AlertDialogDescription>
-              This frees up your table and can't be undone. You'd need to book
-              again.
+              This frees up your table and can't be undone. You'd need to book again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -508,9 +466,7 @@ function DetailRow({
         <span className="inline-flex items-center gap-2 text-xs text-slate-500 sm:text-sm">
           <Icon className="h-4 w-4" /> {label}
         </span>
-        <p className="mt-1 text-xs font-medium leading-snug text-slate-700 sm:text-sm">
-          {value}
-        </p>
+        <p className="mt-1 text-xs font-medium leading-snug text-slate-700 sm:text-sm">{value}</p>
       </div>
     );
   }
@@ -519,9 +475,7 @@ function DetailRow({
       <span className="inline-flex items-center gap-2 text-xs text-slate-500 sm:text-sm">
         <Icon className="h-4 w-4" /> {label}
       </span>
-      <span className="text-right text-xs font-medium text-slate-700 sm:text-sm">
-        {value}
-      </span>
+      <span className="text-right text-xs font-medium text-slate-700 sm:text-sm">{value}</span>
     </div>
   );
 }

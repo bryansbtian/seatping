@@ -2,11 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireBusiness } from "../lib/auth.js";
 import { rateLimit } from "../lib/rateLimit.js";
-import {
-  isReturning,
-  recomputeGuestStats,
-  SUGGESTED_GUEST_TAGS,
-} from "../lib/guests.js";
+import { isReturning, recomputeGuestStats, SUGGESTED_GUEST_TAGS } from "../lib/guests.js";
 import { reservationStatusToLegacy } from "../lib/liveData.js";
 import { getLocationTimezone } from "../lib/operatingHours.js";
 import type { GuestProfile, QueueEntry, Reservation } from "@prisma/client";
@@ -100,11 +96,16 @@ router.get("/", async (req, res) => {
     }
 
     const search = String(req.query.search || "").trim();
-    const type = String(req.query.type || "").trim().toLowerCase();
+    const type = String(req.query.type || "")
+      .trim()
+      .toLowerCase();
     const tagsParam = String(req.query.tags || "").trim();
     let tags: string[];
     if (tagsParam) {
-      tags = tagsParam.split(",").map((t) => t.trim()).filter(Boolean);
+      tags = tagsParam
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
     } else {
       tags = [];
     }
@@ -116,7 +117,12 @@ router.get("/", async (req, res) => {
 
     const idsParam = String(req.query.ids || "").trim();
     if (idsParam) {
-      where.id = { in: idsParam.split(",").map((i) => i.trim()).filter(Boolean) };
+      where.id = {
+        in: idsParam
+          .split(",")
+          .map((i) => i.trim())
+          .filter(Boolean),
+      };
     }
 
     if (search) {
@@ -151,8 +157,7 @@ router.get("/", async (req, res) => {
     }
     if (type === "returning") {
       where.totalVisits = { gte: 2 };
-    }
-    else if (type === "new") {
+    } else if (type === "new") {
       where.totalVisits = { lt: 2 };
     }
     if (hasUpcoming) {
@@ -162,11 +167,7 @@ router.get("/", async (req, res) => {
       where.noShowCount = { gt: 0 };
     }
     if (hasNotes) {
-      where.AND = [
-        ...(where.AND || []),
-        { notes: { not: null } },
-        { notes: { not: "" } },
-      ];
+      where.AND = [...(where.AND || []), { notes: { not: null } }, { notes: { not: "" } }];
     }
 
     const guests = await prisma.guestProfile.findMany({
@@ -216,17 +217,13 @@ router.get("/:guestId", async (req, res) => {
     }
     const locTz = getLocationTimezone(location);
 
-    let queueRowsPromise: Promise<QueueEntry[]> = Promise.resolve(
-      [] as QueueEntry[],
-    );
+    let queueRowsPromise: Promise<QueueEntry[]> = Promise.resolve([] as QueueEntry[]);
     if (guest.sourceQueueEntryIds.length) {
       queueRowsPromise = prisma.queueEntry.findMany({
         where: { id: { in: guest.sourceQueueEntryIds }, businessId },
       });
     }
-    let reservationRowsPromise: Promise<Reservation[]> = Promise.resolve(
-      [] as Reservation[],
-    );
+    let reservationRowsPromise: Promise<Reservation[]> = Promise.resolve([] as Reservation[]);
     if (guest.sourceReservationIds.length) {
       reservationRowsPromise = prisma.reservation.findMany({
         where: { id: { in: guest.sourceReservationIds }, businessId },
@@ -371,7 +368,9 @@ router.post("/:guestId/tags", async (req, res) => {
   try {
     const businessId = bizId(req);
     const guestId = String(req.params.guestId || "").trim();
-    const tag = String(req.body?.tag || "").trim().slice(0, 40);
+    const tag = String(req.body?.tag || "")
+      .trim()
+      .slice(0, 40);
     if (!tag) {
       return res.status(400).json({ error: "tag is required" });
     }
@@ -421,9 +420,7 @@ router.delete("/:guestId/tags/:tag", async (req, res) => {
       return res.status(404).json({ error: "Guest not found" });
     }
 
-    const tags = guest.tags.filter(
-      (t) => t.toLowerCase() !== tag.toLowerCase(),
-    );
+    const tags = guest.tags.filter((t) => t.toLowerCase() !== tag.toLowerCase());
     const updated = await prisma.guestProfile.update({
       where: { id: guest.id },
       data: { tags },
@@ -458,7 +455,6 @@ router.post("/:guestId/recompute", async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 });
-
 
 function sanitizeTags(input: unknown): string[] | null {
   if (!Array.isArray(input)) {

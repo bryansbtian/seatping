@@ -32,7 +32,9 @@ describe("session endpoint", () => {
   it("reports the customer identity when a customer cookie is present", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/auth/session")
       .set("Cookie", customerCookie(customer.id, customer.name));
 
@@ -44,7 +46,9 @@ describe("session endpoint", () => {
   it("keeps customer and business sessions independent", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/auth/session")
       .set("Cookie", businessCookie(business.id, business.name));
 
@@ -53,7 +57,9 @@ describe("session endpoint", () => {
   });
 
   it("ignores a malformed token", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/auth/session")
       .set("Cookie", "sp_auth_customer=not-a-jwt");
 
@@ -66,7 +72,9 @@ describe("customer login", () => {
   it("signs in with the correct password and sets a cookie", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/login")
       .send({ emailOrUsername: customer.email, password: TEST_PASSWORD });
 
@@ -78,7 +86,9 @@ describe("customer login", () => {
   it("also accepts the username", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/login")
       .send({ emailOrUsername: customer.username, password: TEST_PASSWORD });
 
@@ -88,7 +98,9 @@ describe("customer login", () => {
   it("rejects a wrong password without revealing which field failed", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/login")
       .send({ emailOrUsername: customer.email, password: "WrongPassw0rd!" });
 
@@ -97,7 +109,9 @@ describe("customer login", () => {
   });
 
   it("rejects an unknown account", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/login")
       .send({ emailOrUsername: "nobody@test.invalid", password: TEST_PASSWORD });
 
@@ -105,9 +119,7 @@ describe("customer login", () => {
   });
 
   it("rejects a payload that fails schema validation", async () => {
-    const res = await (await api())
-      .post("/auth/login")
-      .send({ emailOrUsername: "x" });
+    const res = await (await api()).post("/auth/login").send({ emailOrUsername: "x" });
 
     expect(res.status).toBe(400);
   });
@@ -123,20 +135,22 @@ describe("business login", () => {
   it("signs in a business and sets the business cookie", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/business/login")
       .send({ emailOrUsername: business.email, password: TEST_PASSWORD });
 
     expect(res.status).toBe(200);
-    expect((res.headers["set-cookie"] ?? []).join(";")).toContain(
-      "sp_auth_business",
-    );
+    expect((res.headers["set-cookie"] ?? []).join(";")).toContain("sp_auth_business");
   });
 
   it("rejects a wrong business password", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/business/login")
       .send({ emailOrUsername: business.email, password: "Nope12345!" });
 
@@ -152,7 +166,9 @@ describe("business login", () => {
 
 describe("admin login", () => {
   it("signs in with the configured admin credentials", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/admin/login")
       .send({ username: TEST_ADMIN_USERNAME, password: TEST_ADMIN_PASSWORD });
 
@@ -161,7 +177,9 @@ describe("admin login", () => {
   });
 
   it("rejects a wrong admin password", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/admin/login")
       .send({ username: TEST_ADMIN_USERNAME, password: "wrong-password" });
 
@@ -169,7 +187,9 @@ describe("admin login", () => {
   });
 
   it("rejects an unknown admin username", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/admin/login")
       .send({ username: "not-the-admin", password: TEST_ADMIN_PASSWORD });
 
@@ -188,9 +208,7 @@ describe("customer profile", () => {
   it("returns the authenticated customer", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
-      .get("/auth/me")
-      .set("Cookie", customerCookie(customer.id));
+    const res = await (await api()).get("/auth/me").set("Cookie", customerCookie(customer.id));
 
     expect(res.status).toBe(200);
     expect(res.body.user?.email ?? res.body.email).toBe(customer.email);
@@ -206,7 +224,9 @@ describe("customer profile", () => {
     const customer = await seedCustomer();
     const newName = `Renamed ${uniqueSuffix()}`;
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put("/auth/me")
       .set("Cookie", customerCookie(customer.id))
       .send({
@@ -224,7 +244,9 @@ describe("customer profile", () => {
   it("rejects a profile update that fails validation", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put("/auth/me")
       .set("Cookie", customerCookie(customer.id))
       .send({ name: "", username: "x", email: "not-an-email" });
@@ -235,7 +257,9 @@ describe("customer profile", () => {
   it("changes the password when the current one is correct", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/change-password")
       .set("Cookie", customerCookie(customer.id))
       .send({ currentPassword: TEST_PASSWORD, newPassword: "BrandNewPass1!" });
@@ -248,7 +272,9 @@ describe("customer profile", () => {
   it("refuses a password change with the wrong current password", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/me/change-password")
       .set("Cookie", customerCookie(customer.id))
       .send({ currentPassword: "NotThePassword1!", newPassword: "BrandNewPass1!" });
@@ -263,18 +289,16 @@ describe("business username availability probe", () => {
   it("reports a taken username as existing", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
-      `/auth/exists?username=${encodeURIComponent(business.username)}`,
-    );
+    const res = await (
+      await api()
+    ).get(`/auth/exists?username=${encodeURIComponent(business.username)}`);
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ exists: true });
   });
 
   it("reports a free username as available", async () => {
-    const res = await (await api()).get(
-      `/auth/exists?username=definitely-free-${uniqueSuffix()}`,
-    );
+    const res = await (await api()).get(`/auth/exists?username=definitely-free-${uniqueSuffix()}`);
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ exists: false });
@@ -291,7 +315,9 @@ describe("business profile", () => {
   it("returns the authenticated business with its locations", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/auth/business/me")
       .set("Cookie", businessCookie(business.id));
 
@@ -303,12 +329,12 @@ describe("business profile", () => {
     const { business } = await seedBusinessWithLocation();
     const cookie = businessCookie(business.id);
 
-    const initial = await (await api())
-      .get("/auth/business/language")
-      .set("Cookie", cookie);
+    const initial = await (await api()).get("/auth/business/language").set("Cookie", cookie);
     expect(initial.status).toBe(200);
 
-    const updated = await (await api())
+    const updated = await (
+      await api()
+    )
       .put("/auth/business/language")
       .set("Cookie", cookie)
       .send({ language: "id" });
@@ -321,7 +347,9 @@ describe("business profile", () => {
   it("rejects an unsupported language", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put("/auth/business/language")
       .set("Cookie", businessCookie(business.id))
       .send({ language: "klingon" });
@@ -332,9 +360,7 @@ describe("business profile", () => {
   it("lists public addresses for a business", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
-      `/auth/business/${business.username}/addresses`,
-    );
+    const res = await (await api()).get(`/auth/business/${business.username}/addresses`);
 
     expect(res.status).toBe(200);
     expect(JSON.stringify(res.body)).toContain(location.address);

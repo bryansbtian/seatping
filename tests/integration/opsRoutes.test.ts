@@ -32,7 +32,9 @@ describe("location reviews", () => {
     const customer = await seedCustomer();
     const review = await seedReview(location.id, customer.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/locations/${location.id}/reviews`)
       .set("Cookie", businessCookie(business.id));
 
@@ -46,7 +48,9 @@ describe("location reviews", () => {
     const customer = await seedCustomer();
     await seedReview(tenantA.location.id, customer.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/locations/${tenantA.location.id}/reviews`)
       .set("Cookie", businessCookie(tenantB.business.id));
 
@@ -67,7 +71,9 @@ describe("location reviews", () => {
     const review = await seedReview(location.id, customer.id);
     const cookie = businessCookie(business.id);
 
-    const replied = await (await api())
+    const replied = await (
+      await api()
+    )
       .patch(`/api/locations/${location.id}/reviews/${review.id}/reply`)
       .set("Cookie", cookie)
       .send({ reply: "Thank you for visiting." });
@@ -77,7 +83,9 @@ describe("location reviews", () => {
     expect(stored?.businessReply).toBe("Thank you for visiting.");
     expect(stored?.businessReplyCreatedAt).toBeInstanceOf(Date);
 
-    const removed = await (await api())
+    const removed = await (
+      await api()
+    )
       .delete(`/api/locations/${location.id}/reviews/${review.id}/reply`)
       .set("Cookie", cookie);
 
@@ -91,7 +99,9 @@ describe("location reviews", () => {
     const customer = await seedCustomer();
     const review = await seedReview(location.id, customer.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/locations/${location.id}/reviews/${review.id}/reply`)
       .set("Cookie", businessCookie(business.id))
       .send({ reply: "   " });
@@ -102,10 +112,10 @@ describe("location reviews", () => {
   it("returns a client error replying to an unknown review", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
-      .patch(
-        `/api/locations/${location.id}/reviews/000000000000000000000000/reply`,
-      )
+    const res = await (
+      await api()
+    )
+      .patch(`/api/locations/${location.id}/reviews/000000000000000000000000/reply`)
       .set("Cookie", businessCookie(business.id))
       .send({ reply: "Hello" });
 
@@ -150,9 +160,7 @@ describe("support tickets", () => {
     await seedTicket({ status: "open" });
     await seedTicket({ status: "closed" });
 
-    const res = await (await api())
-      .get("/tickets/stats")
-      .set("Cookie", adminCookie());
+    const res = await (await api()).get("/tickets/stats").set("Cookie", adminCookie());
 
     expect(res.status).toBe(200);
     expect(res.body.stats).toHaveProperty("total");
@@ -162,7 +170,9 @@ describe("support tickets", () => {
   it("reads a single ticket by number", async () => {
     const ticket = await seedTicket();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/tickets/${ticket.ticketNumber}`)
       .set("Cookie", adminCookie());
 
@@ -170,9 +180,7 @@ describe("support tickets", () => {
   });
 
   it("returns 404 for an unknown ticket", async () => {
-    const res = await (await api())
-      .get("/tickets/T-does-not-exist")
-      .set("Cookie", adminCookie());
+    const res = await (await api()).get("/tickets/T-does-not-exist").set("Cookie", adminCookie());
 
     expect(res.status).toBe(404);
   });
@@ -181,19 +189,25 @@ describe("support tickets", () => {
     const ticket = await seedTicket();
     const cookie = adminCookie();
 
-    const status = await (await api())
+    const status = await (
+      await api()
+    )
       .patch(`/tickets/${ticket.ticketNumber}/status`)
       .set("Cookie", cookie)
       .send({ status: "in_progress" });
     expect(status.status).toBe(200);
 
-    const assigned = await (await api())
+    const assigned = await (
+      await api()
+    )
       .patch(`/tickets/${ticket.ticketNumber}/assign`)
       .set("Cookie", cookie)
       .send({ assignedTo: "support-agent" });
     expect(assigned.status).toBe(200);
 
-    const priority = await (await api())
+    const priority = await (
+      await api()
+    )
       .patch(`/tickets/${ticket.ticketNumber}/priority`)
       .set("Cookie", cookie)
       .send({ priority: "high" });
@@ -208,7 +222,9 @@ describe("support tickets", () => {
   it("appends a team response to a ticket", async () => {
     const ticket = await seedTicket();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/tickets/${ticket.ticketNumber}/respond`)
       .set("Cookie", adminCookie())
       .send({ message: "We are looking into it.", responderName: "Support" });
@@ -225,7 +241,9 @@ describe("cron endpoints", () => {
   });
 
   it("runs the reminder sweep with the cron secret", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/cron/reservation-reminders")
       .set("Authorization", `Bearer ${process.env.CRON_SECRET}`);
 
@@ -233,7 +251,9 @@ describe("cron endpoints", () => {
   });
 
   it("runs the credit refill sweep with the cron secret", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/cron/credit-refill")
       .set("Authorization", `Bearer ${process.env.CRON_SECRET}`);
 
@@ -241,7 +261,9 @@ describe("cron endpoints", () => {
   });
 
   it("runs the campaign sweep with the cron secret", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/cron/campaigns")
       .set("Authorization", `Bearer ${process.env.CRON_SECRET}`);
 
@@ -249,7 +271,9 @@ describe("cron endpoints", () => {
   });
 
   it("refuses a wrong cron secret", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/cron/credit-refill")
       .set("Authorization", "Bearer definitely-wrong");
 
@@ -259,7 +283,9 @@ describe("cron endpoints", () => {
 
 describe("qstash job worker", () => {
   it("rejects a job with no valid signature", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/jobs/notification")
       .set("Content-Type", "application/json")
       .send(JSON.stringify({ type: "queue_join" }));

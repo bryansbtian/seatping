@@ -1,6 +1,5 @@
 import { PrismaClient } from "@prisma/client";
 
-
 function buildDatasourceUrl(): string | undefined {
   const raw = process.env.DATABASE_URL;
   if (!raw) {

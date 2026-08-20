@@ -31,8 +31,7 @@ vi.mock("../../server/lib/campaigns.js", () => {
   return { resolveAudienceGuests };
 });
 
-const audiencesRouter = (await import("../../server/routes/audiences.js"))
-  .default;
+const audiencesRouter = (await import("../../server/routes/audiences.js")).default;
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -72,9 +71,7 @@ beforeEach(() => {
     return { id: "aud-1", ...data };
   });
   savedAudienceDelete.mockReset().mockResolvedValue({});
-  businessFindUnique
-    .mockReset()
-    .mockResolvedValue({ id: "biz-1", username: "bistro" });
+  businessFindUnique.mockReset().mockResolvedValue({ id: "biz-1", username: "bistro" });
   resolveAudienceGuests.mockReset().mockResolvedValue([]);
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -103,9 +100,7 @@ describe("audience listing", () => {
   it("reports a server error without leaking the cause", async () => {
     savedAudienceFindMany.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .get("/api/audiences?locationId=loc-1")
-      .set("Cookie", cookie());
+    const res = await app().get("/api/audiences?locationId=loc-1").set("Cookie", cookie());
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: "Server error" });
@@ -114,9 +109,7 @@ describe("audience listing", () => {
   it("survives a rejection that carries no message", async () => {
     savedAudienceFindMany.mockRejectedValue("db exploded");
 
-    const res = await app()
-      .get("/api/audiences?locationId=loc-1")
-      .set("Cookie", cookie());
+    const res = await app().get("/api/audiences?locationId=loc-1").set("Cookie", cookie());
 
     expect(res.status).toBe(500);
     expect((console.error as any).mock.calls[0][1]).toBe("db exploded");
@@ -254,10 +247,7 @@ describe("previewing an audience", () => {
 
 describe("updating an audience", () => {
   it("keeps every field when the body is empty", async () => {
-    const res = await app()
-      .patch("/api/audiences/aud-1")
-      .set("Cookie", cookie())
-      .send({});
+    const res = await app().patch("/api/audiences/aud-1").set("Cookie", cookie()).send({});
 
     expect(res.status).toBe(200);
     expect(savedAudienceUpdate.mock.calls[0][0].data).toEqual({
@@ -268,10 +258,7 @@ describe("updating an audience", () => {
   });
 
   it("ignores a name that is not a string", async () => {
-    await app()
-      .patch("/api/audiences/aud-1")
-      .set("Cookie", cookie())
-      .send({ name: 7 });
+    await app().patch("/api/audiences/aud-1").set("Cookie", cookie()).send({ name: 7 });
 
     expect(savedAudienceUpdate.mock.calls[0][0].data.name).toBe("Regulars");
   });
@@ -281,15 +268,10 @@ describe("updating an audience", () => {
       .patch("/api/audiences/aud-1")
       .set("Cookie", cookie())
       .send({ description: "  Weekend guests  " });
-    expect(savedAudienceUpdate.mock.calls[0][0].data.description).toBe(
-      "Weekend guests",
-    );
+    expect(savedAudienceUpdate.mock.calls[0][0].data.description).toBe("Weekend guests");
 
     savedAudienceUpdate.mockClear();
-    await app()
-      .patch("/api/audiences/aud-1")
-      .set("Cookie", cookie())
-      .send({ description: null });
+    await app().patch("/api/audiences/aud-1").set("Cookie", cookie()).send({ description: null });
     expect(savedAudienceUpdate.mock.calls[0][0].data.description).toBeNull();
   });
 

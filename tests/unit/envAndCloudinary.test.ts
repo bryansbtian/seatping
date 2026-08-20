@@ -147,38 +147,22 @@ describe("cloudinary configuration", () => {
   it("scopes a folder to the location and the image kind", async () => {
     const { locationFolder } = await loadCloudinary();
 
-    expect(locationFolder("loc-1", "banner")).toBe(
-      "seatping/locations/loc-1/banner",
-    );
-    expect(locationFolder("loc-1", "photo")).toBe(
-      "seatping/locations/loc-1/photo",
-    );
+    expect(locationFolder("loc-1", "banner")).toBe("seatping/locations/loc-1/banner");
+    expect(locationFolder("loc-1", "photo")).toBe("seatping/locations/loc-1/photo");
   });
 
   it("only accepts a public id inside the matching location folder", async () => {
     const { publicIdInLocationFolder } = await loadCloudinary();
 
-    expect(
-      publicIdInLocationFolder(
-        "seatping/locations/loc-1/banner/abc",
-        "loc-1",
-        "banner",
-      ),
-    ).toBe(true);
-    expect(
-      publicIdInLocationFolder(
-        "seatping/locations/loc-2/banner/abc",
-        "loc-1",
-        "banner",
-      ),
-    ).toBe(false);
-    expect(
-      publicIdInLocationFolder(
-        "seatping/locations/loc-1/photo/abc",
-        "loc-1",
-        "banner",
-      ),
-    ).toBe(false);
+    expect(publicIdInLocationFolder("seatping/locations/loc-1/banner/abc", "loc-1", "banner")).toBe(
+      true,
+    );
+    expect(publicIdInLocationFolder("seatping/locations/loc-2/banner/abc", "loc-1", "banner")).toBe(
+      false,
+    );
+    expect(publicIdInLocationFolder("seatping/locations/loc-1/photo/abc", "loc-1", "banner")).toBe(
+      false,
+    );
     expect(publicIdInLocationFolder(null, "loc-1", "banner")).toBe(false);
     expect(publicIdInLocationFolder(undefined, "loc-1", "banner")).toBe(false);
   });
@@ -202,9 +186,7 @@ describe("signLocationUpload", () => {
     delete process.env.CLOUDINARY_API_SECRET;
     const { signLocationUpload } = await loadCloudinary();
 
-    expect(() => signLocationUpload("loc-1", "photo")).toThrow(
-      /CLOUDINARY_API_SECRET/,
-    );
+    expect(() => signLocationUpload("loc-1", "photo")).toThrow(/CLOUDINARY_API_SECRET/);
   });
 });
 
@@ -213,11 +195,7 @@ describe("uploadImageBuffer", () => {
     setCloudinaryEnv();
     const { uploadImageBuffer } = await loadCloudinary();
 
-    const uploaded = await uploadImageBuffer(
-      Buffer.from("image-bytes"),
-      "loc-1",
-      "banner",
-    );
+    const uploaded = await uploadImageBuffer(Buffer.from("image-bytes"), "loc-1", "banner");
 
     expect(uploaded.url).toBe("https://test.invalid/image.jpg");
     expect(uploaded.publicId).toEqual(expect.any(String));
@@ -229,18 +207,18 @@ describe("uploadImageBuffer", () => {
     const { uploadImageBuffer } = await loadCloudinary();
     behavior().cloudinaryUploadError = "invalid image file";
 
-    await expect(
-      uploadImageBuffer(Buffer.from("bad"), "loc-1", "banner"),
-    ).rejects.toThrow("invalid image file");
+    await expect(uploadImageBuffer(Buffer.from("bad"), "loc-1", "banner")).rejects.toThrow(
+      "invalid image file",
+    );
   });
 
   it("refuses to upload when the credentials are absent", async () => {
     delete process.env.CLOUDINARY_API_KEY;
     const { uploadImageBuffer } = await loadCloudinary();
 
-    expect(() =>
-      uploadImageBuffer(Buffer.from("x"), "loc-1", "banner"),
-    ).toThrow(/CLOUDINARY_API_KEY/);
+    expect(() => uploadImageBuffer(Buffer.from("x"), "loc-1", "banner")).toThrow(
+      /CLOUDINARY_API_KEY/,
+    );
     expect(sinks().cloudinary).toHaveLength(0);
   });
 });

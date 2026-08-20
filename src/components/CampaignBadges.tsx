@@ -2,7 +2,6 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PILL_BASE_CLASS } from "@/lib/statusStyles";
 
-
 const CAMPAIGN_STATUS: Record<string, { label: string; cls: string }> = {
   DRAFT: { label: "Draft", cls: "border-slate-200 bg-slate-100 text-slate-600" },
   READY: { label: "Ready", cls: "border-blue-200 bg-blue-100 text-blue-700" },
@@ -26,13 +25,27 @@ const TEMPLATE_STATUS: Record<string, { label: string; cls: string }> = {
 };
 
 export function CampaignStatusBadge({ status, className }: { status: string; className?: string }) {
-  const s = CAMPAIGN_STATUS[status] || { label: status, cls: "border-slate-200 bg-slate-100 text-slate-600" };
-  return <Badge variant="outline" className={cn(PILL_BASE_CLASS, s.cls, className)}>{s.label}</Badge>;
+  const s = CAMPAIGN_STATUS[status] || {
+    label: status,
+    cls: "border-slate-200 bg-slate-100 text-slate-600",
+  };
+  return (
+    <Badge variant="outline" className={cn(PILL_BASE_CLASS, s.cls, className)}>
+      {s.label}
+    </Badge>
+  );
 }
 
 export function TemplateStatusBadge({ status, className }: { status: string; className?: string }) {
-  const s = TEMPLATE_STATUS[status] || { label: status, cls: "border-slate-200 bg-slate-100 text-slate-600" };
-  return <Badge variant="outline" className={cn(PILL_BASE_CLASS, s.cls, className)}>{s.label}</Badge>;
+  const s = TEMPLATE_STATUS[status] || {
+    label: status,
+    cls: "border-slate-200 bg-slate-100 text-slate-600",
+  };
+  return (
+    <Badge variant="outline" className={cn(PILL_BASE_CLASS, s.cls, className)}>
+      {s.label}
+    </Badge>
+  );
 }
 
 export function SeatPingPill({ className }: { className?: string }) {

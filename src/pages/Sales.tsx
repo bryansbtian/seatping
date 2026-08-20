@@ -57,29 +57,22 @@ const Sales = () => {
 
   const validate = () => {
     const next: Record<string, string> = {};
-    if (!formData.businessName.trim())
-      {
-        next.businessName = "Business name is required";
-      }
-    if (!formData.businessEmail.trim())
-      {
-        next.businessEmail = "Business email is required";
-      }
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.businessEmail.trim()))
-      {
-        next.businessEmail = "Enter a valid email";
-      }
-    if (!formData.contactName.trim())
-      {
-        next.contactName = "Contact name is required";
-      }
+    if (!formData.businessName.trim()) {
+      next.businessName = "Business name is required";
+    }
+    if (!formData.businessEmail.trim()) {
+      next.businessEmail = "Business email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.businessEmail.trim())) {
+      next.businessEmail = "Enter a valid email";
+    }
+    if (!formData.contactName.trim()) {
+      next.contactName = "Contact name is required";
+    }
     if (!formData.phone.trim()) {
       next.phone = "Phone number is required";
+    } else if (formData.phone.replace(/\D/g, "").length < 6) {
+      next.phone = "Phone must be at least 6 digits";
     }
-    else if (formData.phone.replace(/\D/g, "").length < 6)
-      {
-        next.phone = "Phone must be at least 6 digits";
-      }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -113,8 +106,7 @@ const Sales = () => {
       } else {
         toast({
           title: "Error",
-          description:
-            data.error || "Failed to submit your request. Please try again.",
+          description: data.error || "Failed to submit your request. Please try again.",
           variant: "destructive",
         });
       }
@@ -167,9 +159,7 @@ const Sales = () => {
 
       <main className="bg-gradient-to-br from-slate-50 via-white to-indigo-50/70 px-4 pb-12 pt-24 sm:pb-16 sm:pt-28">
         <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-2 lg:items-stretch lg:gap-14">
-          {}
           <div className="mx-auto w-full max-w-xl lg:mx-0">
-            {}
             <h1
               className="text-4xl sm:text-5xl font-semibold leading-tight text-slate-900"
               aria-label="Manage Guest Flow In Seconds"
@@ -195,8 +185,8 @@ const Sales = () => {
               <span className="text-indigo-600">Seconds</span>
             </h1>
             <p className="mt-4 text-base sm:text-lg text-slate-600">
-              Tell us about your business and we'll get back to you with the
-              best SeatPing setup for your locations.
+              Tell us about your business and we'll get back to you with the best SeatPing setup for
+              your locations.
             </p>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-4">
@@ -214,9 +204,7 @@ const Sales = () => {
                   required
                 />
                 {errors.businessName && (
-                  <p className="text-sm text-destructive">
-                    {errors.businessName}
-                  </p>
+                  <p className="text-sm text-destructive">{errors.businessName}</p>
                 )}
               </div>
 
@@ -235,9 +223,7 @@ const Sales = () => {
                   required
                 />
                 {errors.businessEmail && (
-                  <p className="text-sm text-destructive">
-                    {errors.businessEmail}
-                  </p>
+                  <p className="text-sm text-destructive">{errors.businessEmail}</p>
                 )}
               </div>
 
@@ -255,9 +241,7 @@ const Sales = () => {
                   required
                 />
                 {errors.contactName && (
-                  <p className="text-sm text-destructive">
-                    {errors.contactName}
-                  </p>
+                  <p className="text-sm text-destructive">{errors.contactName}</p>
                 )}
               </div>
 
@@ -267,9 +251,7 @@ const Sales = () => {
                   <CountryCodeSelect
                     className="h-11"
                     value={formData.countryCode}
-                    onChange={(dial) =>
-                      setFormData((p) => ({ ...p, countryCode: dial }))
-                    }
+                    onChange={(dial) => setFormData((p) => ({ ...p, countryCode: dial }))}
                   />
                   <Input
                     id="phone"
@@ -284,25 +266,17 @@ const Sales = () => {
                     required
                   />
                 </div>
-                {errors.phone && (
-                  <p className="text-sm text-destructive">{errors.phone}</p>
-                )}
+                {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
               </div>
 
-              <Button
-                type="submit"
-                className="h-11 w-full text-base"
-                disabled={submitting}
-              >
+              <Button type="submit" className="h-11 w-full text-base" disabled={submitting}>
                 {submitLabel}
               </Button>
             </form>
           </div>
 
-          {}
           <div className="hidden lg:block">
             <div className="relative flex h-full min-h-[480px] flex-col justify-between overflow-hidden rounded-3xl bg-slate-900 p-8 text-white shadow-2xl">
-              {}
               <img
                 src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1100&q=80"
                 alt=""
@@ -310,10 +284,8 @@ const Sales = () => {
                 loading="lazy"
                 className="pointer-events-none absolute inset-0 h-full w-full object-cover"
               />
-              {}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-950/90 via-slate-900/80 to-primary/60" />
 
-              {}
               <div className="relative z-10 mb-8 space-y-3">
                 <FloatingStat
                   icon={<Users className="h-5 w-5" />}
@@ -335,11 +307,10 @@ const Sales = () => {
                 />
               </div>
 
-              {}
               <div className="relative z-10">
                 <p className="text-xl font-medium leading-snug sm:text-2xl">
-                  SeatPing helps restaurants manage queues, reservations, and
-                  guest communication from one simple dashboard.
+                  SeatPing helps restaurants manage queues, reservations, and guest communication
+                  from one simple dashboard.
                 </p>
                 <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-white/60">
                   Built for restaurants, cafes, and service businesses

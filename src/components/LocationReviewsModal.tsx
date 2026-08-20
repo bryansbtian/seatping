@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import {
   Dialog,
@@ -29,14 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/lib/i18n";
-import {
-  Loader2,
-  MessageSquare,
-  Pencil,
-  Reply,
-  Star,
-  Trash2,
-} from "lucide-react";
+import { Loader2, MessageSquare, Pencil, Reply, Star, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Review = {
@@ -62,12 +55,7 @@ type ReviewLocation = {
 
 type RatingFilter = "all" | "5" | "4" | "3" | "2" | "1";
 type ReplyFilter = "all" | "replied" | "unreplied";
-type SortOption =
-  | "newest"
-  | "oldest"
-  | "highest"
-  | "lowest"
-  | "unreplied-first";
+type SortOption = "newest" | "oldest" | "highest" | "lowest" | "unreplied-first";
 
 const MAX_REPLY_LENGTH = 500;
 const REVIEWS_PAGE_SIZE = 10;
@@ -132,8 +120,13 @@ export default function LocationReviewsModal({
 
   const [visibleCount, setVisibleCount] = useState(REVIEWS_PAGE_SIZE);
 
+  const tRef = useRef(t);
+  tRef.current = t;
+
+  const locationId = location?.id;
+
   useEffect(() => {
-    if (!open || !location) {
+    if (!open || !locationId) {
       return;
     }
     let cancelled = false;
@@ -146,22 +139,21 @@ export default function LocationReviewsModal({
     setEditingReplies(new Set());
     setReplyDrafts({});
     setVisibleCount(REVIEWS_PAGE_SIZE);
-    api(`/api/locations/${location.id}/reviews`)
+    api(`/api/locations/${locationId}/reviews`)
       .then((res) => {
-        if (!cancelled)
-          {
-            let nextReviews: Review[];
-            if (Array.isArray(res.reviews)) {
-              nextReviews = res.reviews;
-            } else {
-              nextReviews = [];
-            }
-            setReviews(nextReviews);
+        if (!cancelled) {
+          let nextReviews: Review[];
+          if (Array.isArray(res.reviews)) {
+            nextReviews = res.reviews;
+          } else {
+            nextReviews = [];
           }
+          setReviews(nextReviews);
+        }
       })
       .catch((e: any) => {
         if (!cancelled) {
-          setError(e?.message || t("rev.failedLoad"));
+          setError(e?.message || tRef.current("rev.failedLoad"));
         }
       })
       .finally(() => {
@@ -172,13 +164,10 @@ export default function LocationReviewsModal({
     return () => {
       cancelled = true;
     };
-  }, [open, location?.id]);
+  }, [open, locationId]);
 
   const locationName =
-    location?.displayName ||
-    location?.name ||
-    location?.address ||
-    t("rev.thisLocation");
+    location?.displayName || location?.name || location?.address || t("rev.thisLocation");
 
   const total = reviews?.length ?? 0;
   let average = 0;
@@ -191,13 +180,9 @@ export default function LocationReviewsModal({
       return [];
     }
     const filtered = reviews.filter((r) => {
-      if (
-        ratingFilter !== "all" &&
-        Math.round(r.rating) !== Number(ratingFilter)
-      )
-        {
-          return false;
-        }
+      if (ratingFilter !== "all" && Math.round(r.rating) !== Number(ratingFilter)) {
+        return false;
+      }
       if (replyFilter === "replied" && !r.businessReply) {
         return false;
       }
@@ -209,10 +194,7 @@ export default function LocationReviewsModal({
     const sorted = [...filtered];
     switch (sort) {
       case "oldest":
-        sorted.sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-        );
+        sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
         break;
       case "highest":
         sorted.sort((a, b) => b.rating - a.rating);
@@ -233,17 +215,12 @@ export default function LocationReviewsModal({
           if (ar !== br) {
             return ar - br;
           }
-          return (
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
         break;
       case "newest":
       default:
-        sorted.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
+        sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
     return sorted;
   }, [reviews, ratingFilter, replyFilter, sort]);
@@ -297,13 +274,10 @@ export default function LocationReviewsModal({
     }
     setSubmitting((s) => new Set(s).add(review.id));
     try {
-      const res = await api(
-        `/api/locations/${location.id}/reviews/${review.id}/reply`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ reply: draft }),
-        },
-      );
+      const res = await api(`/api/locations/${location.id}/reviews/${review.id}/reply`, {
+        method: "PATCH",
+        body: JSON.stringify({ reply: draft }),
+      });
       replaceReview(res.review);
       cancelReply(review.id);
       let replySavedTitle: string;
@@ -336,10 +310,9 @@ export default function LocationReviewsModal({
     }
     setSubmitting((s) => new Set(s).add(review.id));
     try {
-      const res = await api(
-        `/api/locations/${location.id}/reviews/${review.id}/reply`,
-        { method: "DELETE" },
-      );
+      const res = await api(`/api/locations/${location.id}/reviews/${review.id}/reply`, {
+        method: "DELETE",
+      });
       replaceReview(res.review);
       toast({ title: t("rev.toast.replyRemoved") });
     } catch (e: any) {
@@ -357,8 +330,7 @@ export default function LocationReviewsModal({
     }
   };
 
-  const filtersActive =
-    ratingFilter !== "all" || replyFilter !== "all" || sort !== "newest";
+  const filtersActive = ratingFilter !== "all" || replyFilter !== "all" || sort !== "newest";
 
   let reviewCountLabel: string;
   if (total === 1) {
@@ -372,290 +344,250 @@ export default function LocationReviewsModal({
     filteredFromLabel = t("rev.filteredFrom", { total });
   }
 
-    let reviewsContent: React.ReactNode;
+  let reviewsContent: React.ReactNode;
   if (loading) {
     reviewsContent = (
       <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
-      <Loader2 className="h-5 w-5 animate-spin" /> {t("rev.loading")}
-    </div>
+        <Loader2 className="h-5 w-5 animate-spin" /> {t("rev.loading")}
+      </div>
     );
   } else if (error) {
     reviewsContent = (
       <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-      {error}
-    </div>
+        {error}
+      </div>
     );
   } else if (total === 0) {
     reviewsContent = (
       <div className="flex flex-col items-center justify-center gap-1 py-10 text-center">
-      <MessageSquare className="mb-1 h-8 w-8 text-slate-300" />
-      <p className="font-medium text-gray-700">{t("rev.empty.title")}</p>
-      <p className="text-sm text-muted-foreground">
-        {t("rev.empty.body")}
-      </p>
-    </div>
+        <MessageSquare className="mb-1 h-8 w-8 text-slate-300" />
+        <p className="font-medium text-gray-700">{t("rev.empty.title")}</p>
+        <p className="text-sm text-muted-foreground">{t("rev.empty.body")}</p>
+      </div>
     );
   } else if (visibleReviews.length === 0) {
     reviewsContent = (
       <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center text-sm text-slate-600">
-      {t("rev.noMatch")}
-    </div>
+        {t("rev.noMatch")}
+      </div>
     );
   } else {
     reviewsContent = (
       <div className="space-y-3">
-      {pagedReviews.map((r) => {
-        const isEditing = editingReplies.has(r.id);
-        const draft = replyDrafts[r.id] ?? "";
-        const draftTrimmed = draft.trim();
-        const overLimit = draft.length > MAX_REPLY_LENGTH;
-        const isSubmitting = submitting.has(r.id);
-        const wasEdited =
-          r.businessReplyCreatedAt &&
-          r.businessReplyUpdatedAt &&
-          r.businessReplyUpdatedAt !== r.businessReplyCreatedAt;
+        {pagedReviews.map((r) => {
+          const isEditing = editingReplies.has(r.id);
+          const draft = replyDrafts[r.id] ?? "";
+          const draftTrimmed = draft.trim();
+          const overLimit = draft.length > MAX_REPLY_LENGTH;
+          const isSubmitting = submitting.has(r.id);
+          const wasEdited =
+            r.businessReplyCreatedAt &&
+            r.businessReplyUpdatedAt &&
+            r.businessReplyUpdatedAt !== r.businessReplyCreatedAt;
 
-        let serviceTypeLabel: string | null | undefined;
-        if (r.serviceType === "queue") {
-          serviceTypeLabel = t("rev.walkIn");
-        } else if (r.serviceType === "reservation") {
-          serviceTypeLabel = t("rev.reservation");
-        } else {
-          serviceTypeLabel = r.serviceType;
-        }
-
-        let charCountToneClass: string;
-        if (overLimit) {
-          charCountToneClass = "text-red-600";
-        } else {
-          charCountToneClass = "text-muted-foreground";
-        }
-
-        let replyEditorHeading: string | null = null;
-        let submitReplyLabel: JSX.Element | string | null = null;
-        if (isEditing) {
-          if (r.businessReply) {
-            replyEditorHeading = t("rev.editYourReply");
+          let serviceTypeLabel: string | null | undefined;
+          if (r.serviceType === "queue") {
+            serviceTypeLabel = t("rev.walkIn");
+          } else if (r.serviceType === "reservation") {
+            serviceTypeLabel = t("rev.reservation");
           } else {
-            replyEditorHeading = t("rev.replyToThis");
+            serviceTypeLabel = r.serviceType;
           }
-          if (isSubmitting) {
-            submitReplyLabel = (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />{" "}
-                {t("rev.saving")}
-              </>
-            );
-          } else if (r.businessReply) {
-            submitReplyLabel = t("rev.saveReply");
-          } else {
-            submitReplyLabel = t("rev.postReply");
-          }
-        }
 
-        return (
-          <div
-            key={r.id}
-            className="rounded-lg border border-slate-200 p-3"
-          >
-            {}
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-medium text-gray-900 break-words">
-                  {r.customerName ||
-                    r.customerUsername ||
-                    t("rev.anonymous")}
-                </p>
-                {r.customerName && r.customerUsername && (
-                  <p className="text-xs text-muted-foreground break-words">
-                    @{r.customerUsername}
+          let charCountToneClass: string;
+          if (overLimit) {
+            charCountToneClass = "text-red-600";
+          } else {
+            charCountToneClass = "text-muted-foreground";
+          }
+
+          let replyEditorHeading: string | null = null;
+          let submitReplyLabel: JSX.Element | string | null = null;
+          if (isEditing) {
+            if (r.businessReply) {
+              replyEditorHeading = t("rev.editYourReply");
+            } else {
+              replyEditorHeading = t("rev.replyToThis");
+            }
+            if (isSubmitting) {
+              submitReplyLabel = (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("rev.saving")}
+                </>
+              );
+            } else if (r.businessReply) {
+              submitReplyLabel = t("rev.saveReply");
+            } else {
+              submitReplyLabel = t("rev.postReply");
+            }
+          }
+
+          return (
+            <div key={r.id} className="rounded-lg border border-slate-200 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 break-words">
+                    {r.customerName || r.customerUsername || t("rev.anonymous")}
                   </p>
+                  {r.customerName && r.customerUsername && (
+                    <p className="text-xs text-muted-foreground break-words">
+                      @{r.customerUsername}
+                    </p>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <Stars rating={r.rating} />
+                  <span className="text-sm font-medium text-gray-700">{r.rating.toFixed(1)}</span>
+                </div>
+              </div>
+
+              {r.description && (
+                <p className="mt-2 text-sm text-gray-700 break-words">{r.description}</p>
+              )}
+
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                <span>{formatDate(r.createdAt)}</span>
+                {typeof r.partySize === "number" && (
+                  <span>· {t("rev.partyOf", { n: r.partySize })}</span>
                 )}
+                {r.serviceType && <span>· {serviceTypeLabel}</span>}
               </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <Stars rating={r.rating} />
-                <span className="text-sm font-medium text-gray-700">
-                  {r.rating.toFixed(1)}
-                </span>
-              </div>
-            </div>
 
-            {r.description && (
-              <p className="mt-2 text-sm text-gray-700 break-words">
-                {r.description}
-              </p>
-            )}
-
-            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-              <span>{formatDate(r.createdAt)}</span>
-              {typeof r.partySize === "number" && (
-                <span>· {t("rev.partyOf", { n: r.partySize })}</span>
-              )}
-              {r.serviceType && (
-                <span>
-                  ·{" "}
-                  {serviceTypeLabel}
-                </span>
-              )}
-            </div>
-
-            {}
-            {r.businessReply && !isEditing && (
-              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {t("rev.yourReply")}
-                    </p>
-                    <p className="mt-1 whitespace-pre-line text-sm text-slate-800 break-words">
-                      {r.businessReply}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {t("rev.repliedOn", {
-                        date: formatDate(r.businessReplyCreatedAt),
-                      })}
-                      {wasEdited && (
-                        <>
-                          {" "}
-                          ·{" "}
-                          {t("rev.edited", {
-                            date: formatDate(r.businessReplyUpdatedAt),
-                          })}
-                        </>
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => startReply(r.id, r.businessReply)}
-                      disabled={isSubmitting}
-                      className="w-9 p-0 justify-center sm:w-auto sm:px-3"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">
-                        {t("rev.editReply")}
-                      </span>
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="destructiveOutline"
-                          disabled={isSubmitting}
-                          className="w-9 p-0 justify-center sm:w-auto sm:px-3"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">
-                            {t("rev.delete")}
-                          </span>
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent className="max-w-sm">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            {t("rev.deleteTitle")}
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {t("rev.deleteDesc")}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>
-                            {t("common.cancel")}
-                          </AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteReply(r)}
-                            variant="destructive"
+              {r.businessReply && !isEditing && (
+                <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {t("rev.yourReply")}
+                      </p>
+                      <p className="mt-1 whitespace-pre-line text-sm text-slate-800 break-words">
+                        {r.businessReply}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t("rev.repliedOn", {
+                          date: formatDate(r.businessReplyCreatedAt),
+                        })}
+                        {wasEdited && (
+                          <>
+                            {" "}
+                            ·{" "}
+                            {t("rev.edited", {
+                              date: formatDate(r.businessReplyUpdatedAt),
+                            })}
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => startReply(r.id, r.businessReply)}
+                        disabled={isSubmitting}
+                        className="w-9 p-0 justify-center sm:w-auto sm:px-3"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">{t("rev.editReply")}</span>
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructiveOutline"
+                            disabled={isSubmitting}
+                            className="w-9 p-0 justify-center sm:w-auto sm:px-3"
                           >
-                            {t("rev.deleteReply")}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">{t("rev.delete")}</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="max-w-sm">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{t("rev.deleteTitle")}</AlertDialogTitle>
+                            <AlertDialogDescription>{t("rev.deleteDesc")}</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteReply(r)} variant="destructive">
+                              {t("rev.deleteReply")}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {}
-            {isEditing && (
-              <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4 sm:p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {replyEditorHeading}
-                </p>
-                <Textarea
-                  value={draft}
-                  onChange={(e) =>
-                    setReplyDrafts((d) => ({
-                      ...d,
-                      [r.id]: e.target.value,
-                    }))
-                  }
-                  placeholder={t("rev.replyPlaceholder")}
-                  rows={3}
-                  className="mt-3"
-                />
-                {}
-                <div className="mt-5 space-y-3 sm:flex sm:items-center sm:justify-between sm:space-y-0">
-                  <p
-                    className={cn("text-xs", charCountToneClass)}
-                  >
-                    {draft.length}/{MAX_REPLY_LENGTH}
+              {isEditing && (
+                <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4 sm:p-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {replyEditorHeading}
                   </p>
-                  <div className="flex w-full gap-3 sm:w-auto sm:items-center">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => cancelReply(r.id)}
-                      disabled={isSubmitting}
-                      className="flex-1 sm:flex-none"
-                    >
-                      {t("common.cancel")}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => submitReply(r)}
-                      disabled={
-                        isSubmitting || !draftTrimmed || overLimit
-                      }
-                      className="flex-1 sm:flex-none"
-                    >
-                      {submitReplyLabel}
-                    </Button>
+                  <Textarea
+                    value={draft}
+                    onChange={(e) =>
+                      setReplyDrafts((d) => ({
+                        ...d,
+                        [r.id]: e.target.value,
+                      }))
+                    }
+                    placeholder={t("rev.replyPlaceholder")}
+                    rows={3}
+                    className="mt-3"
+                  />
+                  <div className="mt-5 space-y-3 sm:flex sm:items-center sm:justify-between sm:space-y-0">
+                    <p className={cn("text-xs", charCountToneClass)}>
+                      {draft.length}/{MAX_REPLY_LENGTH}
+                    </p>
+                    <div className="flex w-full gap-3 sm:w-auto sm:items-center">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => cancelReply(r.id)}
+                        disabled={isSubmitting}
+                        className="flex-1 sm:flex-none"
+                      >
+                        {t("common.cancel")}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => submitReply(r)}
+                        disabled={isSubmitting || !draftTrimmed || overLimit}
+                        className="flex-1 sm:flex-none"
+                      >
+                        {submitReplyLabel}
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {}
-            {!r.businessReply && !isEditing && (
-              <div className="mt-3">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => startReply(r.id)}
-                >
-                  <Reply className="h-4 w-4" /> {t("rev.reply")}
-                </Button>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
+              {!r.businessReply && !isEditing && (
+                <div className="mt-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => startReply(r.id)}
+                  >
+                    <Reply className="h-4 w-4" /> {t("rev.reply")}
+                  </Button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     );
   }
 
-return (
+  return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {}
       <DialogContent className="max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-2xl sm:max-w-3xl">
         <DialogHeader className="text-left">
           <DialogTitle>{t("rev.title")}</DialogTitle>
@@ -664,28 +596,19 @@ return (
           </DialogDescription>
         </DialogHeader>
 
-        {}
         {!loading && !error && total > 0 && (
           <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
             <div className="flex items-center gap-1.5">
-              <span className="text-2xl font-semibold text-gray-900">
-                {average.toFixed(1)}
-              </span>
+              <span className="text-2xl font-semibold text-gray-900">{average.toFixed(1)}</span>
               <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
             </div>
-            <span className="text-sm text-muted-foreground">
-              {reviewCountLabel}
-            </span>
+            <span className="text-sm text-muted-foreground">{reviewCountLabel}</span>
           </div>
         )}
 
-        {}
         {!loading && !error && total > 0 && (
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <Select
-              value={ratingFilter}
-              onValueChange={(v) => setRatingFilter(v as RatingFilter)}
-            >
+            <Select value={ratingFilter} onValueChange={(v) => setRatingFilter(v as RatingFilter)}>
               <SelectTrigger aria-label={t("rev.filter.ratingAria")}>
                 <SelectValue placeholder={t("rev.filter.allRatings")} />
               </SelectTrigger>
@@ -698,25 +621,17 @@ return (
                 <SelectItem value="1">{t("rev.filter.star1")}</SelectItem>
               </SelectContent>
             </Select>
-            <Select
-              value={replyFilter}
-              onValueChange={(v) => setReplyFilter(v as ReplyFilter)}
-            >
+            <Select value={replyFilter} onValueChange={(v) => setReplyFilter(v as ReplyFilter)}>
               <SelectTrigger aria-label={t("rev.filter.replyAria")}>
                 <SelectValue placeholder={t("rev.filter.allReplies")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("rev.filter.allReplies")}</SelectItem>
                 <SelectItem value="replied">{t("rev.filter.replied")}</SelectItem>
-                <SelectItem value="unreplied">
-                  {t("rev.filter.unreplied")}
-                </SelectItem>
+                <SelectItem value="unreplied">{t("rev.filter.unreplied")}</SelectItem>
               </SelectContent>
             </Select>
-            <Select
-              value={sort}
-              onValueChange={(v) => setSort(v as SortOption)}
-            >
+            <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
               <SelectTrigger aria-label={t("rev.sort.aria")}>
                 <SelectValue />
               </SelectTrigger>
@@ -725,9 +640,7 @@ return (
                 <SelectItem value="oldest">{t("rev.sort.oldest")}</SelectItem>
                 <SelectItem value="highest">{t("rev.sort.highest")}</SelectItem>
                 <SelectItem value="lowest">{t("rev.sort.lowest")}</SelectItem>
-                <SelectItem value="unreplied-first">
-                  {t("rev.sort.unrepliedFirst")}
-                </SelectItem>
+                <SelectItem value="unreplied-first">{t("rev.sort.unrepliedFirst")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -735,7 +648,6 @@ return (
 
         {reviewsContent}
 
-        {}
         {!loading && !error && total > 0 && visibleReviews.length > 0 && (
           <div className="flex flex-col items-center gap-2">
             {hasMore && (
@@ -744,9 +656,7 @@ return (
                 variant="outline"
                 className="w-full sm:w-auto"
                 onClick={() =>
-                  setVisibleCount((n) =>
-                    Math.min(n + REVIEWS_PAGE_SIZE, visibleReviews.length),
-                  )
+                  setVisibleCount((n) => Math.min(n + REVIEWS_PAGE_SIZE, visibleReviews.length))
                 }
               >
                 {t("rev.loadMore")}
