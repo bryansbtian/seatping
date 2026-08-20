@@ -1,0 +1,5 @@
+name: SeatPing CodeQL
+
+paths-ignore:
+  - tests
+  - e2e
