@@ -17,7 +17,6 @@ export const SUGGESTED_GUEST_TAGS = [
   "Needs Follow-Up",
 ];
 
-
 export function normalizeEmail(email: unknown): string | null {
   if (typeof email !== "string") {
     return null;
@@ -32,10 +31,7 @@ export function normalizeEmail(email: unknown): string | null {
 const MIN_PHONE_DIGITS = 6;
 const MIN_NATIONAL_DIGITS = 5;
 
-export function normalizePhone(
-  phone: unknown,
-  countryCode?: unknown,
-): string | null {
+export function normalizePhone(phone: unknown, countryCode?: unknown): string | null {
   let countryCodeDigits = "";
   if (typeof countryCode === "string") {
     countryCodeDigits = countryCode.replace(/\D+/g, "");
@@ -61,7 +57,6 @@ export function normalizePhone(
   return digits;
 }
 
-
 function tzOffsetMs(instant: Date, timeZone: string): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -74,9 +69,11 @@ function tzOffsetMs(instant: Date, timeZone: string): number {
     hourCycle: "h23",
   }).formatToParts(instant);
   const m: Record<string, string> = {};
-  for (const p of parts) {if (p.type !== "literal") {
-    m[p.type] = p.value;
-  }}
+  for (const p of parts) {
+    if (p.type !== "literal") {
+      m[p.type] = p.value;
+    }
+  }
   let hour: number;
   if (m.hour === "24") {
     hour = 0;
@@ -94,10 +91,7 @@ function tzOffsetMs(instant: Date, timeZone: string): number {
   return asUtc - instant.getTime();
 }
 
-function zonedWallClockToUtc(
-  wallClock: string | null | undefined,
-  timeZone: string,
-): Date | null {
+function zonedWallClockToUtc(wallClock: string | null | undefined, timeZone: string): Date | null {
   if (!wallClock) {
     return null;
   }
@@ -204,8 +198,7 @@ export function computeStats(
       partySizes.push(r.guestCount);
     }
     const alreadyHappened =
-      !!r.reservationDateTime &&
-      r.reservationDateTime.slice(0, 16) <= nowLocal;
+      !!r.reservationDateTime && r.reservationDateTime.slice(0, 16) <= nowLocal;
     switch (r.status) {
       case "CANCELLED":
         cancelled += 1;
@@ -225,8 +218,7 @@ export function computeStats(
       default: {
         if (!alreadyHappened) {
           upcoming += 1;
-        }
-        else {
+        } else {
           past += 1;
         }
       }
@@ -279,9 +271,7 @@ export function buildSummary(stats: GuestStats, timeZone?: string): string {
     if (stats.upcomingReservationCount === 1) {
       reservationSuffix = "";
     }
-    parts.push(
-      `Has ${stats.upcomingReservationCount} upcoming reservation${reservationSuffix}.`,
-    );
+    parts.push(`Has ${stats.upcomingReservationCount} upcoming reservation${reservationSuffix}.`);
   }
   if (stats.noShowCount > 0) {
     let noShowSuffix = "s";
@@ -303,17 +293,13 @@ export async function recomputeGuestStats(guestId: string): Promise<void> {
     return;
   }
 
-  let queueRowsPromise: Promise<QueueEntry[]> = Promise.resolve(
-    [] as QueueEntry[],
-  );
+  let queueRowsPromise: Promise<QueueEntry[]> = Promise.resolve([] as QueueEntry[]);
   if (guest.sourceQueueEntryIds.length) {
     queueRowsPromise = prisma.queueEntry.findMany({
       where: { id: { in: guest.sourceQueueEntryIds } },
     });
   }
-  let reservationRowsPromise: Promise<Reservation[]> = Promise.resolve(
-    [] as Reservation[],
-  );
+  let reservationRowsPromise: Promise<Reservation[]> = Promise.resolve([] as Reservation[]);
   if (guest.sourceReservationIds.length) {
     reservationRowsPromise = prisma.reservation.findMany({
       where: { id: { in: guest.sourceReservationIds } },
@@ -347,7 +333,6 @@ export async function recomputeGuestStats(guestId: string): Promise<void> {
   });
 }
 
-
 type VisitInput = {
   businessId: string;
   businessUsername?: string | null;
@@ -361,9 +346,7 @@ type VisitInput = {
   reservationId?: string | null;
 };
 
-export async function upsertGuestForVisit(
-  input: VisitInput,
-): Promise<string | null> {
+export async function upsertGuestForVisit(input: VisitInput): Promise<string | null> {
   const normalizedPhone = normalizePhone(input.phone, input.countryCode);
   const normalizedEmail = normalizeEmail(input.email);
   if (!normalizedPhone && !normalizedEmail) {
@@ -385,8 +368,7 @@ export async function upsertGuestForVisit(
 
   const firstName = input.firstName?.trim() || null;
   const lastName = input.lastName?.trim() || null;
-  const fullName =
-    [firstName, lastName].filter(Boolean).join(" ").trim() || null;
+  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim() || null;
 
   let guestId: string;
   if (!existing) {
@@ -416,14 +398,8 @@ export async function upsertGuestForVisit(
     });
     guestId = created.id;
   } else {
-    const sourceQueueEntryIds = mergeId(
-      existing.sourceQueueEntryIds,
-      input.queueEntryId,
-    );
-    const sourceReservationIds = mergeId(
-      existing.sourceReservationIds,
-      input.reservationId,
-    );
+    const sourceQueueEntryIds = mergeId(existing.sourceQueueEntryIds, input.queueEntryId);
+    const sourceReservationIds = mergeId(existing.sourceReservationIds, input.reservationId);
     await prisma.guestProfile.update({
       where: { id: existing.id },
       data: {
@@ -434,8 +410,7 @@ export async function upsertGuestForVisit(
         email: existing.email ?? input.email ?? null,
         normalizedPhone: existing.normalizedPhone ?? normalizedPhone,
         normalizedEmail: existing.normalizedEmail ?? normalizedEmail,
-        businessUsername:
-          existing.businessUsername ?? input.businessUsername ?? null,
+        businessUsername: existing.businessUsername ?? input.businessUsername ?? null,
         sourceQueueEntryIds,
         sourceReservationIds,
       },
@@ -456,7 +431,6 @@ function mergeId(list: string[], id?: string | null): string[] {
   }
   return [...list, id];
 }
-
 
 export async function syncGuestFromQueueEntry(
   entry: QueueEntry,
@@ -514,9 +488,7 @@ export async function touchGuestByQueueEntryId(entryId: string): Promise<void> {
   }
 }
 
-export async function touchGuestByReservationId(
-  reservationId: string,
-): Promise<void> {
+export async function touchGuestByReservationId(reservationId: string): Promise<void> {
   try {
     const guest = await prisma.guestProfile.findFirst({
       where: { sourceReservationIds: { has: reservationId } },
@@ -530,12 +502,9 @@ export async function touchGuestByReservationId(
   }
 }
 
-
 export type GuestBadge = { totalVisits: number; returning: boolean };
 
-export async function loadGuestBadgeMap(
-  businessId: string,
-): Promise<Map<string, GuestBadge>> {
+export async function loadGuestBadgeMap(businessId: string): Promise<Map<string, GuestBadge>> {
   const guests = await prisma.guestProfile.findMany({
     where: { businessId },
     select: {

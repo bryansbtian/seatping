@@ -1,10 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { api } from "../helpers/app.js";
-import {
-  clearTestDatabase,
-  disconnectTestPrisma,
-  getTestPrisma,
-} from "../helpers/db.js";
+import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
 import { seedBusiness, seedLocation, uniqueSuffix } from "../helpers/seed.js";
 
 const db = getTestPrisma();
@@ -131,9 +127,7 @@ describe("search suggestion payload", () => {
 
     const res = await suggest("photo bistro");
 
-    expect(res.body.suggestions[0].imageUrl).toBe(
-      "https://test.invalid/gallery.jpg",
-    );
+    expect(res.body.suggestions[0].imageUrl).toBe("https://test.invalid/gallery.jpg");
   });
 
   it("falls back to the location fields when there is no profile", async () => {
@@ -247,11 +241,10 @@ describe("search suggestion matching", () => {
 describe("search suggestion ranking", () => {
   it("ranks an exact restaurant name above a mere address match", async () => {
     const nameMatch = await seedBusiness({ name: "Sate Khas" });
-    const nameLocation = await seedLocation(
-      nameMatch.id,
-      nameMatch.username,
-      { isPublished: true, address: "1 Elsewhere Road" },
-    );
+    const nameLocation = await seedLocation(nameMatch.id, nameMatch.username, {
+      isPublished: true,
+      address: "1 Elsewhere Road",
+    });
     const addressMatch = await seedBusiness({ name: "Other Place" });
     await seedLocation(addressMatch.id, addressMatch.username, {
       isPublished: true,
@@ -298,7 +291,9 @@ describe("search suggestion ranking", () => {
       });
     }
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/api/locations/search-suggestions?query=bakmi&limit=abc")
       .set("X-Forwarded-For", freshIp());
 

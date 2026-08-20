@@ -1,8 +1,6 @@
 import { prisma } from "./prisma.js";
 
-export async function generateTicketNumber(
-  type: "SALES" | "FEEDBACK",
-): Promise<string> {
+export async function generateTicketNumber(type: "SALES" | "FEEDBACK"): Promise<string> {
   const date = new Date();
   const dateStr = date.toISOString().split("T")[0].replace(/-/g, "");
 

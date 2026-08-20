@@ -4,7 +4,6 @@ import { PILL_BASE_CLASS } from "@/lib/statusStyles";
 import { useLang } from "@/lib/i18n";
 import { X } from "lucide-react";
 
-
 const TAG_STYLES: Record<string, string> = {
   vip: "border-amber-200 bg-amber-100 text-amber-800",
   regular: "border-blue-200 bg-blue-100 text-blue-700",
@@ -17,10 +16,7 @@ const TAG_STYLES: Record<string, string> = {
 };
 
 function tagClass(tag: string): string {
-  return (
-    TAG_STYLES[tag.trim().toLowerCase()] ||
-    "border-slate-200 bg-slate-100 text-slate-700"
-  );
+  return TAG_STYLES[tag.trim().toLowerCase()] || "border-slate-200 bg-slate-100 text-slate-700";
 }
 
 export function GuestStatusBadge({
@@ -41,10 +37,7 @@ export function GuestStatusBadge({
     label = t("badge.new");
   }
   return (
-    <Badge
-      variant="outline"
-      className={cn(PILL_BASE_CLASS, toneClass, className)}
-    >
+    <Badge variant="outline" className={cn(PILL_BASE_CLASS, toneClass, className)}>
       {label}
     </Badge>
   );
@@ -60,10 +53,7 @@ export function GuestTagBadge({
   className?: string;
 }) {
   return (
-    <Badge
-      variant="outline"
-      className={cn(PILL_BASE_CLASS, "gap-1", tagClass(tag), className)}
-    >
+    <Badge variant="outline" className={cn(PILL_BASE_CLASS, "gap-1", tagClass(tag), className)}>
       {tag}
       {onRemove && (
         <button

@@ -21,7 +21,7 @@ function fitWithin(w: number, h: number, max: number) {
 }
 
 async function loadImage(
-  file: File
+  file: File,
 ): Promise<{ source: CanvasImageSource; width: number; height: number; close: () => void }> {
   if (typeof createImageBitmap === "function") {
     const bitmap = await createImageBitmap(file);
@@ -69,7 +69,7 @@ export async function compressImage(file: File): Promise<Blob> {
       }
       ctx.drawImage(img.source, 0, 0, width, height);
       const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, "image/jpeg", TARGET_QUALITY)
+        canvas.toBlob(resolve, "image/jpeg", TARGET_QUALITY),
       );
       if (blob && blob.size < file.size) {
         return blob;
@@ -85,7 +85,7 @@ export async function compressImage(file: File): Promise<Blob> {
 
 async function uploadToCloudinary(
   blob: Blob,
-  sign: SignData
+  sign: SignData,
 ): Promise<{ url: string; publicId: string }> {
   const fd = new FormData();
   fd.append("file", blob);
@@ -94,26 +94,23 @@ async function uploadToCloudinary(
   fd.append("folder", sign.folder);
   fd.append("signature", sign.signature);
 
-  const resp = await fetch(
-    `https://api.cloudinary.com/v1_1/${sign.cloudName}/image/upload`,
-    { method: "POST", body: fd }
-  );
+  const resp = await fetch(`https://api.cloudinary.com/v1_1/${sign.cloudName}/image/upload`, {
+    method: "POST",
+    body: fd,
+  });
   let json: any = null;
   try {
     json = await resp.json();
-  } catch {
-  }
+  } catch {}
   if (!resp.ok) {
-    throw new Error(
-      json?.error?.message || `Cloudinary upload failed (${resp.status})`
-    );
+    throw new Error(json?.error?.message || `Cloudinary upload failed (${resp.status})`);
   }
   return { url: json.secure_url, publicId: json.public_id };
 }
 
 export async function uploadBanner(
   locationId: string,
-  file: File
+  file: File,
 ): Promise<{ banner: { url: string; publicId: string }; user: any }> {
   const blob = await compressImage(file);
   const { upload } = await api(`/api/locations/${locationId}/banner/sign`, {
@@ -128,7 +125,7 @@ export async function uploadBanner(
 
 export async function uploadPhoto(
   locationId: string,
-  file: File
+  file: File,
 ): Promise<{ photo: any; user: any }> {
   const blob = await compressImage(file);
   const { upload } = await api(`/api/locations/${locationId}/photos/sign`, {

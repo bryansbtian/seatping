@@ -1,8 +1,5 @@
 import { prisma } from "./prisma.js";
-import {
-  reconstructQueueArrays,
-  reservationRowToLegacy,
-} from "./liveData.js";
+import { reconstructQueueArrays, reservationRowToLegacy } from "./liveData.js";
 import { loadGuestBadgeMap, badgeForContact, type GuestBadge } from "./guests.js";
 
 export type LocationLiveLists = {
@@ -35,15 +32,13 @@ export async function loadLocationLiveLists(
     queue,
     admittedCustomers,
     removedCustomers,
-    reservations: reservationRows.map((r) =>
-      reservationRowToLegacy(r, { includeToken: true }),
-    ),
+    reservations: reservationRows.map((r) => reservationRowToLegacy(r, { includeToken: true })),
   };
 }
 
-export async function augmentLocationWithLiveLists<T extends { id: string; businessUsername?: string | null }>(
-  location: T,
-): Promise<T & LocationLiveLists> {
+export async function augmentLocationWithLiveLists<
+  T extends { id: string; businessUsername?: string | null },
+>(location: T): Promise<T & LocationLiveLists> {
   const live = await loadLocationLiveLists(location.id, location.businessUsername);
   return { ...location, ...live };
 }
@@ -165,13 +160,9 @@ export async function assembleBusinessMe(businessId: string) {
     );
     return serializeLocation(loc, {
       queue: queue.map((c) => stampGuestBadge(c, guestBadgeMap, "queue")),
-      admittedCustomers: admittedCustomers.map((c) =>
-        stampGuestBadge(c, guestBadgeMap, "queue"),
-      ),
+      admittedCustomers: admittedCustomers.map((c) => stampGuestBadge(c, guestBadgeMap, "queue")),
       removedCustomers,
-      reservations: reservations.map((r) =>
-        stampGuestBadge(r, guestBadgeMap, "reservation"),
-      ),
+      reservations: reservations.map((r) => stampGuestBadge(r, guestBadgeMap, "reservation")),
     });
   });
 

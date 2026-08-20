@@ -113,9 +113,7 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
     let rating: number | null = null;
     if (reviewCount > 0) {
       rating =
-        Math.round(
-          (reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviewCount) * 10
-        ) / 10;
+        Math.round((reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviewCount) * 10) / 10;
     }
 
     const profile = publicProfile(location.restaurantProfile);
@@ -187,86 +185,82 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
   }
 });
 
-router.post(
-  "/:businessUsername/:locationId/reviews",
-  requireCustomer,
-  async (req, res) => {
-    try {
-      const businessUsername = String(req.params.businessUsername || "").trim();
-      const locationId = String(req.params.locationId || "").trim();
-      if (!businessUsername || !OBJECT_ID_RE.test(locationId)) {
-        return res.status(404).json({ error: "Restaurant not found" });
-      }
-
-      const business = await prisma.business.findUnique({
-        where: { username: businessUsername },
-        select: { id: true },
-      });
-      if (!business) {
-        return res.status(404).json({ error: "Restaurant not found" });
-      }
-
-      const location = await prisma.location.findFirst({
-        where: { id: locationId, businessId: business.id },
-        select: { id: true },
-      });
-      if (!location) {
-        return res.status(404).json({ error: "Restaurant not found" });
-      }
-
-      const customerId = (req as any).auth.sub as string;
-      const { rating, description } = req.body || {};
-      if (typeof rating !== "number" || !Number.isFinite(rating)) {
-        return res.status(400).json({ error: "rating must be a number" });
-      }
-      const ratingInt = Math.round(rating);
-      if (ratingInt < 1 || ratingInt > 5) {
-        return res.status(400).json({ error: "rating must be between 1 and 5" });
-      }
-      if (description !== undefined && typeof description !== "string") {
-        return res.status(400).json({ error: "description must be a string" });
-      }
-      let trimmedDescription: string | null = null;
-      if (typeof description === "string" && description.trim()) {
-        trimmedDescription = description.trim();
-      }
-
-      const user = await prisma.user.findUnique({
-        where: { id: customerId },
-        select: { id: true, name: true, username: true },
-      });
-      if (!user) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      const existing = await prisma.review.findFirst({
-        where: { customerId, locationId: location.id },
-        select: { id: true },
-      });
-      const data = {
-        rating: ratingInt,
-        description: trimmedDescription,
-        customerName: user.name,
-        customerUsername: user.username,
-      };
-      let saved;
-      if (existing) {
-        saved = await prisma.review.update({
-          where: { id: existing.id },
-          data,
-        });
-      } else {
-        saved = await prisma.review.create({
-          data: { ...data, locationId: location.id, customerId },
-        });
-      }
-
-      return res.json({ review: serializeReview(saved) });
-    } catch (err: any) {
-      console.error("[restaurants] review create error:", err?.message || err);
-      return res.status(500).json({ error: "Failed to save review." });
+router.post("/:businessUsername/:locationId/reviews", requireCustomer, async (req, res) => {
+  try {
+    const businessUsername = String(req.params.businessUsername || "").trim();
+    const locationId = String(req.params.locationId || "").trim();
+    if (!businessUsername || !OBJECT_ID_RE.test(locationId)) {
+      return res.status(404).json({ error: "Restaurant not found" });
     }
+
+    const business = await prisma.business.findUnique({
+      where: { username: businessUsername },
+      select: { id: true },
+    });
+    if (!business) {
+      return res.status(404).json({ error: "Restaurant not found" });
+    }
+
+    const location = await prisma.location.findFirst({
+      where: { id: locationId, businessId: business.id },
+      select: { id: true },
+    });
+    if (!location) {
+      return res.status(404).json({ error: "Restaurant not found" });
+    }
+
+    const customerId = (req as any).auth.sub as string;
+    const { rating, description } = req.body || {};
+    if (typeof rating !== "number" || !Number.isFinite(rating)) {
+      return res.status(400).json({ error: "rating must be a number" });
+    }
+    const ratingInt = Math.round(rating);
+    if (ratingInt < 1 || ratingInt > 5) {
+      return res.status(400).json({ error: "rating must be between 1 and 5" });
+    }
+    if (description !== undefined && typeof description !== "string") {
+      return res.status(400).json({ error: "description must be a string" });
+    }
+    let trimmedDescription: string | null = null;
+    if (typeof description === "string" && description.trim()) {
+      trimmedDescription = description.trim();
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: customerId },
+      select: { id: true, name: true, username: true },
+    });
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const existing = await prisma.review.findFirst({
+      where: { customerId, locationId: location.id },
+      select: { id: true },
+    });
+    const data = {
+      rating: ratingInt,
+      description: trimmedDescription,
+      customerName: user.name,
+      customerUsername: user.username,
+    };
+    let saved;
+    if (existing) {
+      saved = await prisma.review.update({
+        where: { id: existing.id },
+        data,
+      });
+    } else {
+      saved = await prisma.review.create({
+        data: { ...data, locationId: location.id, customerId },
+      });
+    }
+
+    return res.json({ review: serializeReview(saved) });
+  } catch (err: any) {
+    console.error("[restaurants] review create error:", err?.message || err);
+    return res.status(500).json({ error: "Failed to save review." });
   }
-);
+});
 
 export default router;

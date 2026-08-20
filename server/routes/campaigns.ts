@@ -1,4 +1,3 @@
-
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireBusiness } from "../lib/auth.js";
@@ -29,15 +28,8 @@ import {
   smsSegments,
   type Channel,
 } from "../lib/campaigns.js";
-import {
-  executeCampaignRun,
-  reconcileCampaign,
-} from "../lib/campaignRunner.js";
-import type {
-  Campaign,
-  CampaignTemplate,
-  CampaignChannel,
-} from "@prisma/client";
+import { executeCampaignRun, reconcileCampaign } from "../lib/campaignRunner.js";
+import type { Campaign, CampaignTemplate, CampaignChannel } from "@prisma/client";
 
 const router = Router();
 
@@ -123,10 +115,7 @@ function serializeTemplate(t: CampaignTemplate) {
   };
 }
 
-async function audienceLabelFor(
-  c: Campaign,
-  nameCache?: Map<string, string>,
-): Promise<string> {
+async function audienceLabelFor(c: Campaign, nameCache?: Map<string, string>): Promise<string> {
   if (c.audienceType === MANUAL_AUDIENCE) {
     return "Manually Selected Guests";
   }
@@ -146,9 +135,7 @@ async function audienceLabelFor(
     nameCache?.set(sid, name);
     return name;
   }
-  return (
-    AUDIENCE_GROUPS.find((g) => g.key === c.audienceType)?.label || c.audienceType
-  );
+  return AUDIENCE_GROUPS.find((g) => g.key === c.audienceType)?.label || c.audienceType;
 }
 
 async function serializeCampaign(
@@ -209,7 +196,6 @@ async function serializeCampaign(
   };
 }
 
-
 router.get("/meta", async (req, res) => {
   try {
     const businessId = bizId(req);
@@ -255,7 +241,6 @@ router.get("/meta", async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 });
-
 
 router.get("/templates", async (req, res) => {
   try {
@@ -459,8 +444,7 @@ router.patch("/templates/:id", async (req, res) => {
     if (req.body?.locationId !== undefined) {
       if (!req.body.locationId) {
         locationId = null;
-      }
-      else {
+      } else {
         const loc = await ownedLocation(businessId, String(req.body.locationId));
         if (!loc) {
           return res.status(404).json({ error: "Location not found or access denied" });
@@ -571,8 +555,7 @@ router.get("/audiences/preview", async (req, res) => {
     } else if (audienceType === MANUAL_AUDIENCE) {
       groupLabel = "Manually Selected Guests";
     } else {
-      groupLabel =
-        AUDIENCE_GROUPS.find((g) => g.key === audienceType)?.label || audienceType;
+      groupLabel = AUDIENCE_GROUPS.find((g) => g.key === audienceType)?.label || audienceType;
     }
 
     const guests = await resolveAudienceGuests({
@@ -597,7 +580,6 @@ router.get("/audiences/preview", async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 });
-
 
 router.get("/", async (req, res) => {
   try {
@@ -691,9 +673,7 @@ async function validateCampaignInput(
   if (audienceType === MANUAL_AUDIENCE) {
     let ids: string[] = [];
     if (Array.isArray(body?.audienceConfig?.guestIds)) {
-      ids = body.audienceConfig.guestIds
-        .map((x: any) => String(x))
-        .filter(Boolean);
+      ids = body.audienceConfig.guestIds.map((x: any) => String(x)).filter(Boolean);
     }
     if (!ids.length) {
       return { error: "Select at least one guest", status: 400 };
@@ -863,7 +843,11 @@ router.patch("/:id", async (req, res) => {
     if (!existing) {
       return res.status(404).json({ error: "Campaign not found" });
     }
-    if (existing.status !== "DRAFT" && existing.status !== "READY" && existing.status !== "CANCELLED") {
+    if (
+      existing.status !== "DRAFT" &&
+      existing.status !== "READY" &&
+      existing.status !== "CANCELLED"
+    ) {
       return res.status(400).json({ error: "Only draft and cancelled campaigns can be edited" });
     }
 
@@ -916,8 +900,7 @@ async function prepareSend(businessId: string, campaign: Campaign) {
   if (!isTemplateUsable(template)) {
     let templateError = "This template is not available for sending.";
     if (template.approvalStatus === "PENDING_SEATPING_REVIEW") {
-      templateError =
-        "This template is still pending SeatPing review and cannot be used yet.";
+      templateError = "This template is still pending SeatPing review and cannot be used yet.";
     } else if (template.approvalStatus === "REJECTED") {
       templateError = "This template was rejected and cannot be used.";
     }
@@ -937,10 +920,9 @@ router.post("/:id/send-test", async (req, res) => {
       await limitGuard(req, res, [
         { name: "campaign-test", key: businessId, windowMs: HOURS(1), max: 30 },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
 
     const campaign = await prisma.campaign.findFirst({ where: { id, businessId } });
     if (!campaign) {
@@ -1033,7 +1015,8 @@ router.post("/debug/email-test", async (req, res) => {
     }
     const subject = String(req.body?.subject || "SeatPing email delivery test");
     const bodyText = String(
-      req.body?.body || "This is a SeatPing email delivery test. If you received it, delivery is working for this address.",
+      req.body?.body ||
+        "This is a SeatPing email delivery test. If you received it, delivery is working for this address.",
     );
     const html = renderEmail({
       heading: "Email Delivery Test",
@@ -1070,10 +1053,9 @@ router.post("/:id/send", async (req, res) => {
       await limitGuard(req, res, [
         { name: "campaign-send", key: businessId, windowMs: HOURS(1), max: 20 },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
 
     const campaign = await prisma.campaign.findFirst({ where: { id, businessId } });
     if (!campaign) {

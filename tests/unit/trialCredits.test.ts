@@ -279,9 +279,7 @@ describe("checkAndRefillMonthlyCredits", () => {
     await checkAndRefillMonthlyCredits("biz-1");
 
     expect(businessUpdate).toHaveBeenCalledTimes(1);
-    expect(businessUpdate.mock.calls[0][0].data.nextCreditRefillAt).toBeInstanceOf(
-      Date,
-    );
+    expect(businessUpdate.mock.calls[0][0].data.nextCreditRefillAt).toBeInstanceOf(Date);
     expect(locationUpdateMany).not.toHaveBeenCalled();
   });
 
@@ -322,16 +320,14 @@ describe("runDailyCreditRefillSweep", () => {
   });
 
   it("refills every due business and backfills every legacy one", async () => {
-    businessFindMany
-      .mockResolvedValueOnce([{ id: "due-1" }])
-      .mockResolvedValueOnce([
-        {
-          id: "legacy-1",
-          trial: false,
-          creditsStartedAt: daysAgo(10),
-          nextCreditRefillAt: null,
-        },
-      ]);
+    businessFindMany.mockResolvedValueOnce([{ id: "due-1" }]).mockResolvedValueOnce([
+      {
+        id: "legacy-1",
+        trial: false,
+        creditsStartedAt: daysAgo(10),
+        nextCreditRefillAt: null,
+      },
+    ]);
     businessFindUnique.mockResolvedValue({
       baseCredits: 300,
       creditsStartedAt: daysAgo(60),

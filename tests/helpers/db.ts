@@ -1,12 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { appDatabaseUrlForSafetyCheck } from "./loadTestEnv.js";
 
-const PRODUCTION_HOST_MARKERS = [
-  "mongodb.net",
-  "mongodb+srv",
-  "prod",
-  "production",
-];
+const PRODUCTION_HOST_MARKERS = ["mongodb.net", "mongodb+srv", "prod", "production"];
 
 const REQUIRED_TEST_MARKERS = ["test"];
 
@@ -52,9 +47,7 @@ export function assertSafeTestDatabaseUrl(rawUrl: string | undefined): string {
 
   const dbName = databaseNameFromUrl(url);
   if (!dbName) {
-    throw new UnsafeTestDatabaseError(
-      "TEST_DATABASE_URL must include an explicit database name.",
-    );
+    throw new UnsafeTestDatabaseError("TEST_DATABASE_URL must include an explicit database name.");
   }
 
   const hasTestMarker = REQUIRED_TEST_MARKERS.some((marker) => {

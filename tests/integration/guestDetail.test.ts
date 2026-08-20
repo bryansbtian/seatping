@@ -90,9 +90,7 @@ describe("guest detail timeline", () => {
       }),
     });
 
-    const res = await (await api())
-      .get(`/api/guests/${guest.id}`)
-      .set("Cookie", cookie);
+    const res = await (await api()).get(`/api/guests/${guest.id}`).set("Cookie", cookie);
 
     expect(res.status).toBe(200);
     expect(res.body.waitlistHistory).toHaveLength(6);
@@ -129,13 +127,9 @@ describe("guest detail timeline", () => {
       sourceReservationIds: [upcoming.id, completed.id, cancelledButFuture.id],
     });
 
-    const res = await (await api())
-      .get(`/api/guests/${guest.id}`)
-      .set("Cookie", cookie);
+    const res = await (await api()).get(`/api/guests/${guest.id}`).set("Cookie", cookie);
 
-    expect(res.body.upcomingReservations.map((r: any) => r.id)).toEqual([
-      upcoming.id,
-    ]);
+    expect(res.body.upcomingReservations.map((r: any) => r.id)).toEqual([upcoming.id]);
     expect(res.body.upcomingReservations[0].notes).toBe("Window table please");
     expect(res.body.pastReservations.map((r: any) => r.id).sort()).toEqual(
       [completed.id, cancelledButFuture.id].sort(),
@@ -156,9 +150,7 @@ describe("guest detail timeline", () => {
       sourceReservationIds: [reservation.id],
     });
 
-    const res = await (await api())
-      .get(`/api/guests/${guest.id}`)
-      .set("Cookie", cookie);
+    const res = await (await api()).get(`/api/guests/${guest.id}`).set("Cookie", cookie);
 
     expect(res.body.timeline).toHaveLength(2);
     const sources = res.body.timeline.map((t: any) => {
@@ -174,9 +166,7 @@ describe("guest detail timeline", () => {
   it("returns an empty history for a guest with no linked visits", async () => {
     const guest = await seedGuest();
 
-    const res = await (await api())
-      .get(`/api/guests/${guest.id}`)
-      .set("Cookie", cookie);
+    const res = await (await api()).get(`/api/guests/${guest.id}`).set("Cookie", cookie);
 
     expect(res.body.timeline).toEqual([]);
     expect(res.body.waitlistHistory).toEqual([]);
@@ -191,9 +181,7 @@ describe("guest detail timeline", () => {
     });
     const guest = await seedGuest({ sourceReservationIds: [reservation.id] });
 
-    const res = await (await api())
-      .get(`/api/guests/${guest.id}`)
-      .set("Cookie", cookie);
+    const res = await (await api()).get(`/api/guests/${guest.id}`).set("Cookie", cookie);
 
     expect(res.status).toBe(200);
     expect(res.body.pastReservations).toHaveLength(1);
@@ -208,9 +196,7 @@ describe("guest detail timeline", () => {
     });
     const guest = await seedGuest({ sourceReservationIds: [reservation.id] });
 
-    const res = await (await api())
-      .get(`/api/guests/${guest.id}`)
-      .set("Cookie", cookie);
+    const res = await (await api()).get(`/api/guests/${guest.id}`).set("Cookie", cookie);
 
     expect(res.status).toBe(200);
     expect(res.body.pastReservations[0].at).toBeNull();
@@ -223,9 +209,7 @@ describe("guest detail timeline", () => {
       summary: "Regular Friday guest",
     });
 
-    const res = await (await api())
-      .get(`/api/guests/${guest.id}`)
-      .set("Cookie", cookie);
+    const res = await (await api()).get(`/api/guests/${guest.id}`).set("Cookie", cookie);
 
     expect(res.body.guest.notes).toBe("Allergic to peanuts");
     expect(res.body.guest.summary).toBe("Regular Friday guest");
@@ -255,9 +239,7 @@ describe("guest detail timeline", () => {
     });
     await db.location.delete({ where: { id: orphanLocation.id } });
 
-    const res = await (await api())
-      .get(`/api/guests/${guest.id}`)
-      .set("Cookie", cookie);
+    const res = await (await api()).get(`/api/guests/${guest.id}`).set("Cookie", cookie);
 
     expect(res.status).toBe(200);
     expect(res.body.guest.location.label).toBe("Location");
@@ -268,7 +250,9 @@ describe("guest tag editing", () => {
   it("accepts a clean tag list and drops blanks and duplicates", async () => {
     const guest = await seedGuest();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/guests/${guest.id}`)
       .set("Cookie", cookie)
       .send({ tags: ["VIP", "  ", "vip", " Regular "] });
@@ -280,7 +264,9 @@ describe("guest tag editing", () => {
   it("truncates a very long tag", async () => {
     const guest = await seedGuest();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/guests/${guest.id}`)
       .set("Cookie", cookie)
       .send({ tags: ["t".repeat(60)] });
@@ -294,7 +280,9 @@ describe("guest tag editing", () => {
       return `tag-${i}`;
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/guests/${guest.id}`)
       .set("Cookie", cookie)
       .send({ tags });
@@ -305,7 +293,9 @@ describe("guest tag editing", () => {
   it("rejects a tag list that is not an array", async () => {
     const guest = await seedGuest();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/guests/${guest.id}`)
       .set("Cookie", cookie)
       .send({ tags: "vip" });
@@ -317,7 +307,9 @@ describe("guest tag editing", () => {
   it("rejects a tag list containing a non-string", async () => {
     const guest = await seedGuest();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/guests/${guest.id}`)
       .set("Cookie", cookie)
       .send({ tags: ["vip", 7] });
@@ -328,7 +320,9 @@ describe("guest tag editing", () => {
   it("rejects notes that are not a string", async () => {
     const guest = await seedGuest();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/guests/${guest.id}`)
       .set("Cookie", cookie)
       .send({ notes: 7 });
@@ -340,7 +334,9 @@ describe("guest tag editing", () => {
   it("truncates very long notes", async () => {
     const guest = await seedGuest();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/guests/${guest.id}`)
       .set("Cookie", cookie)
       .send({ notes: "n".repeat(6000) });
@@ -353,10 +349,7 @@ describe("guest tag editing", () => {
   it("rejects a patch with nothing to change", async () => {
     const guest = await seedGuest();
 
-    const res = await (await api())
-      .patch(`/api/guests/${guest.id}`)
-      .set("Cookie", cookie)
-      .send({});
+    const res = await (await api()).patch(`/api/guests/${guest.id}`).set("Cookie", cookie).send({});
 
     expect(res.status).toBe(400);
     expect(res.body.error).toBe("Nothing to update");
@@ -365,7 +358,9 @@ describe("guest tag editing", () => {
   it("does not add a tag that is already present under another casing", async () => {
     const guest = await seedGuest({ tags: ["VIP"] });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/guests/${guest.id}/tags`)
       .set("Cookie", cookie)
       .send({ tag: "vip" });
@@ -380,7 +375,9 @@ describe("guest tag editing", () => {
       }),
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/guests/${guest.id}/tags`)
       .set("Cookie", cookie)
       .send({ tag: "one-too-many" });
@@ -392,7 +389,9 @@ describe("guest tag editing", () => {
   it("rejects an empty tag", async () => {
     const guest = await seedGuest();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/guests/${guest.id}/tags`)
       .set("Cookie", cookie)
       .send({ tag: "   " });
@@ -403,7 +402,9 @@ describe("guest tag editing", () => {
   it("removes a tag regardless of casing", async () => {
     const guest = await seedGuest({ tags: ["VIP", "Regular"] });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/api/guests/${guest.id}/tags/${encodeURIComponent("vip")}`)
       .set("Cookie", cookie);
 
@@ -413,7 +414,9 @@ describe("guest tag editing", () => {
   it("rejects removing a blank tag", async () => {
     const guest = await seedGuest({ tags: ["VIP"] });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/api/guests/${guest.id}/tags/${encodeURIComponent("  ")}`)
       .set("Cookie", cookie);
 
@@ -423,18 +426,26 @@ describe("guest tag editing", () => {
   it("reports an unknown guest on every tag route", async () => {
     const missing = "000000000000000000000000";
 
-    const add = await (await api())
+    const add = await (
+      await api()
+    )
       .post(`/api/guests/${missing}/tags`)
       .set("Cookie", cookie)
       .send({ tag: "vip" });
-    const remove = await (await api())
+    const remove = await (
+      await api()
+    )
       .delete(`/api/guests/${missing}/tags/vip`)
       .set("Cookie", cookie);
-    const patch = await (await api())
+    const patch = await (
+      await api()
+    )
       .patch(`/api/guests/${missing}`)
       .set("Cookie", cookie)
       .send({ notes: "x" });
-    const recompute = await (await api())
+    const recompute = await (
+      await api()
+    )
       .post(`/api/guests/${missing}/recompute`)
       .set("Cookie", cookie);
 
@@ -447,9 +458,7 @@ describe("guest tag editing", () => {
 
 describe("guest list metadata", () => {
   it("lists every location of the business with a label", async () => {
-    const res = await (await api())
-      .get("/api/guests/meta")
-      .set("Cookie", cookie);
+    const res = await (await api()).get("/api/guests/meta").set("Cookie", cookie);
 
     expect(res.status).toBe(200);
     expect(res.body.locations.length).toBeGreaterThan(0);
@@ -461,7 +470,9 @@ describe("guest list metadata", () => {
   });
 
   it("reports the location timezone alongside the guest list", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/guests?locationId=${location.id}`)
       .set("Cookie", cookie);
 

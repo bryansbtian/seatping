@@ -1,14 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  MapPin,
-  Star,
-  Users,
-  Utensils,
-  Sparkles,
-  Loader2,
-  Compass,
-} from "lucide-react";
+import { MapPin, Star, Users, Utensils, Sparkles, Loader2, Compass } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,16 +49,15 @@ const CustomerLanding = () => {
     let cancelled = false;
     api("/api/featured-restaurants")
       .then((res) => {
-        if (!cancelled)
-          {
-            let nextFeatured: FeaturedRestaurant[];
-            if (Array.isArray(res.featured)) {
-              nextFeatured = res.featured;
-            } else {
-              nextFeatured = [];
-            }
-            setFeatured(nextFeatured);
+        if (!cancelled) {
+          let nextFeatured: FeaturedRestaurant[];
+          if (Array.isArray(res.featured)) {
+            nextFeatured = res.featured;
+          } else {
+            nextFeatured = [];
           }
+          setFeatured(nextFeatured);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -104,17 +95,14 @@ const CustomerLanding = () => {
   }, []);
 
   const scrollToFeatured = () => {
-    document
-      .getElementById("featured")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("featured")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   let featuredContent;
   if (loadingFeatured) {
     featuredContent = (
       <div className="flex items-center gap-2 py-12 text-slate-500">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading featured
-        restaurants...
+        <Loader2 className="h-5 w-5 animate-spin" /> Loading featured restaurants...
       </div>
     );
   } else if (featured.length === 0) {
@@ -125,20 +113,16 @@ const CustomerLanding = () => {
           <p className="text-lg font-semibold text-slate-900">
             Couldn't load featured restaurants.
           </p>
-          <p className="mt-2 text-sm text-slate-500">
-            Please refresh the page to try again.
-          </p>
+          <p className="mt-2 text-sm text-slate-500">Please refresh the page to try again.</p>
         </>
       );
     } else {
       emptyStateMessage = (
         <>
-          <p className="text-lg font-semibold text-slate-900">
-            No featured restaurants yet.
-          </p>
+          <p className="text-lg font-semibold text-slate-900">No featured restaurants yet.</p>
           <p className="mt-2 text-sm text-slate-500">
-            New dining spots are coming soon. Check back later to discover
-            places to book, queue, and enjoy.
+            New dining spots are coming soon. Check back later to discover places to book, queue,
+            and enjoy.
           </p>
         </>
       );
@@ -166,8 +150,7 @@ const CustomerLanding = () => {
           } else {
             queueHref = detailsHref ?? "/";
           }
-          const locationText =
-            r.shortAddress || r.city || r.area || r.address || "";
+          const locationText = r.shortAddress || r.city || r.area || r.address || "";
 
           let cardCursorClass: string;
           let cardClickHandler: (() => void) | undefined;
@@ -221,9 +204,7 @@ const CustomerLanding = () => {
               <span className="inline-flex items-center gap-1 font-medium text-slate-700">
                 <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
                 {r.rating.toFixed(1)}
-                <span className="font-normal text-slate-500">
-                  {reviewCountLabel}
-                </span>
+                <span className="font-normal text-slate-500">{reviewCountLabel}</span>
               </span>
             );
           } else {
@@ -269,17 +250,11 @@ const CustomerLanding = () => {
                 role={cardRole}
                 aria-label={cardAriaLabel}
               >
-                <div className="relative aspect-[4/3] bg-slate-100">
-                  {bannerContent}
-                </div>
+                <div className="relative aspect-[4/3] bg-slate-100">{bannerContent}</div>
 
                 <CardContent className="flex flex-1 flex-col p-4">
-                  {}
-                  <h3 className="font-semibold text-slate-900 truncate">
-                    {r.name}
-                  </h3>
+                  <h3 className="font-semibold text-slate-900 truncate">{r.name}</h3>
 
-                  {}
                   <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-slate-500">
                     {ratingContent}
                     {r.cuisine && (
@@ -300,7 +275,6 @@ const CustomerLanding = () => {
                     )}
                   </div>
 
-                  {}
                   {locationText && (
                     <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
                       <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
@@ -308,7 +282,6 @@ const CustomerLanding = () => {
                     </p>
                   )}
 
-                  {}
                   <div className="mt-auto grid grid-cols-1 gap-3 pt-4 sm:grid-cols-2">
                     {reservationAction}
                     <Button
@@ -341,9 +314,7 @@ const CustomerLanding = () => {
       />
       <Header />
 
-      {}
       <section className="relative">
-        {}
         <div className="absolute inset-0 bg-slate-900">
           <img
             src={HERO_IMAGE}
@@ -364,8 +335,8 @@ const CustomerLanding = () => {
               Discover Restaurants and Join the Wait Effortlessly
             </h1>
             <p className="text-base sm:text-lg md:text-xl text-slate-200 leading-relaxed max-w-2xl mx-auto">
-              Find great restaurants, check availability, join the queue, and
-              reserve your spot in one simple place.
+              Find great restaurants, check availability, join the queue, and reserve your spot in
+              one simple place.
             </p>
           </div>
 
@@ -392,21 +363,16 @@ const CustomerLanding = () => {
         </div>
       </section>
 
-      {}
       <div className="relative z-20 -mt-24 sm:-mt-28 md:-mt-32 px-4">
         <div className="container mx-auto max-w-5xl">
           <ReservationSearchBar />
         </div>
       </div>
 
-      {}
-      {}
       <section id="featured" className="py-16 md:py-24 px-4">
         <div className="container mx-auto max-w-7xl">
-          {}
           <Carousel opts={{ align: "start" }} className="w-full">
             <div className="mb-8 flex items-end justify-between gap-4">
-              {}
               <div className="text-left">
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-slate-900">
                   Featured Restaurants
@@ -415,7 +381,6 @@ const CustomerLanding = () => {
                   Discover great places to book, queue, and enjoy with SeatPing.
                 </p>
               </div>
-              {}
               {!loadingFeatured && featured.length > 0 && (
                 <div className="hidden shrink-0 items-center gap-2 self-end sm:flex">
                   <CarouselPrevious className="static h-9 w-9 translate-x-0 translate-y-0 sm:h-10 sm:w-10" />

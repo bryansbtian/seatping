@@ -121,9 +121,7 @@ describe("serializePhoto", () => {
   });
 
   it("keeps alt text when it is set", () => {
-    expect(serializePhoto({ altText: "Dining room" }).altText).toBe(
-      "Dining room",
-    );
+    expect(serializePhoto({ altText: "Dining room" }).altText).toBe("Dining room");
   });
 });
 
@@ -307,9 +305,7 @@ describe("assembleBusinessMe", () => {
       queueRow({ locationId: "loc-1" }),
       queueRow({ locationId: "loc-2" }),
     ]);
-    reservationFindMany.mockResolvedValue([
-      reservationRow({ locationId: "loc-2" }),
-    ]);
+    reservationFindMany.mockResolvedValue([reservationRow({ locationId: "loc-2" })]);
 
     const me = await assembleBusinessMe("biz-1");
 
@@ -320,9 +316,7 @@ describe("assembleBusinessMe", () => {
   });
 
   it("leaves a location with no rows with empty lists", async () => {
-    locationFindMany.mockResolvedValue([
-      { id: "loc-1", name: "Downtown", photos: [] },
-    ]);
+    locationFindMany.mockResolvedValue([{ id: "loc-1", name: "Downtown", photos: [] }]);
     queueEntryFindMany.mockResolvedValue([queueRow({ locationId: "loc-other" })]);
 
     const me = await assembleBusinessMe("biz-1");
@@ -332,12 +326,8 @@ describe("assembleBusinessMe", () => {
   });
 
   it("stamps a returning guest badge onto queue entries by email", async () => {
-    locationFindMany.mockResolvedValue([
-      { id: "loc-1", name: "Downtown", photos: [] },
-    ]);
-    queueEntryFindMany.mockResolvedValue([
-      queueRow({ email: "ada@test.invalid" }),
-    ]);
+    locationFindMany.mockResolvedValue([{ id: "loc-1", name: "Downtown", photos: [] }]);
+    queueEntryFindMany.mockResolvedValue([queueRow({ email: "ada@test.invalid" })]);
     guestProfileFindMany.mockResolvedValue([
       {
         normalizedPhone: null,
@@ -353,9 +343,7 @@ describe("assembleBusinessMe", () => {
   });
 
   it("stamps a badge onto an admitted entry by phone number", async () => {
-    locationFindMany.mockResolvedValue([
-      { id: "loc-1", name: "Downtown", photos: [] },
-    ]);
+    locationFindMany.mockResolvedValue([{ id: "loc-1", name: "Downtown", photos: [] }]);
     queueEntryFindMany.mockResolvedValue([
       queueRow({
         status: "ADMITTED",
@@ -380,12 +368,8 @@ describe("assembleBusinessMe", () => {
   });
 
   it("stamps a badge onto reservations using the reservation phone field", async () => {
-    locationFindMany.mockResolvedValue([
-      { id: "loc-1", name: "Downtown", photos: [] },
-    ]);
-    reservationFindMany.mockResolvedValue([
-      reservationRow({ email: "grace@test.invalid" }),
-    ]);
+    locationFindMany.mockResolvedValue([{ id: "loc-1", name: "Downtown", photos: [] }]);
+    reservationFindMany.mockResolvedValue([reservationRow({ email: "grace@test.invalid" })]);
     guestProfileFindMany.mockResolvedValue([
       {
         normalizedPhone: null,
@@ -401,9 +385,7 @@ describe("assembleBusinessMe", () => {
   });
 
   it("reports no visits for a guest it has never seen", async () => {
-    locationFindMany.mockResolvedValue([
-      { id: "loc-1", name: "Downtown", photos: [] },
-    ]);
+    locationFindMany.mockResolvedValue([{ id: "loc-1", name: "Downtown", photos: [] }]);
     queueEntryFindMany.mockResolvedValue([queueRow()]);
     reservationFindMany.mockResolvedValue([reservationRow()]);
 
@@ -415,12 +397,8 @@ describe("assembleBusinessMe", () => {
   });
 
   it("leaves removed customers unbadged", async () => {
-    locationFindMany.mockResolvedValue([
-      { id: "loc-1", name: "Downtown", photos: [] },
-    ]);
-    queueEntryFindMany.mockResolvedValue([
-      queueRow({ status: "REMOVED", removedAt: new Date() }),
-    ]);
+    locationFindMany.mockResolvedValue([{ id: "loc-1", name: "Downtown", photos: [] }]);
+    queueEntryFindMany.mockResolvedValue([queueRow({ status: "REMOVED", removedAt: new Date() })]);
 
     const me = await assembleBusinessMe("biz-1");
 

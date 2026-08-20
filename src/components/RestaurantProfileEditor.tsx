@@ -9,13 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -23,21 +17,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ImageIcon,
-  ImagePlus,
-  Loader2,
-  Pencil,
-  Plus,
-  Trash2,
-  Upload,
-} from "lucide-react";
+import { ImageIcon, ImagePlus, Loader2, Pencil, Plus, Trash2, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TimeSelect, ALL_DAY_TIME_OPTIONS } from "@/components/TimeSelect";
+import { TimeSelect } from "@/components/TimeSelect";
+import { ALL_DAY_TIME_OPTIONS } from "@/components/timeOptions";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
 import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 import { useLang, type TKey } from "@/lib/i18n";
-
 
 const CUISINE_OPTIONS = [
   "Indonesian",
@@ -108,10 +94,7 @@ type ReservationSettings = {
 
 type ReservationSettingsForm = Omit<
   ReservationSettings,
-  | "maxPartySize"
-  | "maxReservedGuestsPerHour"
-  | "bookingWindowDays"
-  | "minNoticeMinutes"
+  "maxPartySize" | "maxReservedGuestsPerHour" | "bookingWindowDays" | "minNoticeMinutes"
 > & {
   maxPartySize: number | "";
   maxReservedGuestsPerHour: number | "";
@@ -143,12 +126,7 @@ const DEFAULT_RESERVATION_SETTINGS: ReservationSettings = {
 
 const MAX_PHOTOS = 10;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
-const ACCEPTED_IMAGE_TYPES = [
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-];
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
 function validateImageFile(file: File): TKey | null {
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
@@ -188,20 +166,14 @@ export default function RestaurantProfileEditor({
   const [priceRange, setPriceRange] = useState<string>(rp.priceRange || "$$");
   const [currency, setCurrency] = useState<string>(rp.currency || "IDR");
 
-  const [address, setAddress] = useState<string>(
-    details.address || location.address || "",
-  );
+  const [address, setAddress] = useState<string>(details.address || location.address || "");
   const [area, setArea] = useState<string>(details.area || "");
   const [city, setCity] = useState<string>(details.city || "Jakarta");
-  const [country, setCountry] = useState<string>(
-    details.country || "Indonesia",
-  );
+  const [country, setCountry] = useState<string>(details.country || "Indonesia");
   const [phone, setPhone] = useState<string>(details.phone || "");
   const [website, setWebsite] = useState<string>(details.website || "");
   const [instagram, setInstagram] = useState<string>(details.instagram || "");
-  const [googleMapsUrl, setGoogleMapsUrl] = useState<string>(
-    details.googleMapsUrl || "",
-  );
+  const [googleMapsUrl, setGoogleMapsUrl] = useState<string>(details.googleMapsUrl || "");
 
   let initialBanner: Banner = null;
   if (location.bannerImageUrl) {
@@ -236,47 +208,39 @@ export default function RestaurantProfileEditor({
     initialTimezone = initialHours.timezone;
   }
   const [timezone, setTimezone] = useState<string>(initialTimezone);
-  const [openingHours, setOpeningHours] = useState<Record<string, DayHours>>(
-    () => {
-      const base: Record<string, DayHours> = {};
-      for (const d of DAYS) {
-        const v = initialHours[d] || {};
-        let dayEnabled: boolean = true;
-        if (typeof v.enabled === "boolean") {
-          dayEnabled = v.enabled;
-        }
-        base[d] = {
-          enabled: dayEnabled,
-          open: v.open || "11:00",
-          close: v.close || "22:00",
-        };
+  const [openingHours, setOpeningHours] = useState<Record<string, DayHours>>(() => {
+    const base: Record<string, DayHours> = {};
+    for (const d of DAYS) {
+      const v = initialHours[d] || {};
+      let dayEnabled: boolean = true;
+      if (typeof v.enabled === "boolean") {
+        dayEnabled = v.enabled;
       }
-      return base;
-    },
-  );
+      base[d] = {
+        enabled: dayEnabled,
+        open: v.open || "11:00",
+        close: v.close || "22:00",
+      };
+    }
+    return base;
+  });
 
   const [reservationsEnabled, setReservationsEnabled] = useState<boolean>(
     location.reservationsEnabled ?? true,
   );
-  const [reservationSettings, setReservationSettings] =
-    useState<ReservationSettingsForm>(() => {
-      let storedReservationSettings: Partial<ReservationSettingsForm> = {};
-      if (
-        location.reservationSettings &&
-        typeof location.reservationSettings === "object"
-      ) {
-        storedReservationSettings = location.reservationSettings;
-      }
-      return {
-        ...DEFAULT_RESERVATION_SETTINGS,
-        ...storedReservationSettings,
-      };
-    });
+  const [reservationSettings, setReservationSettings] = useState<ReservationSettingsForm>(() => {
+    let storedReservationSettings: Partial<ReservationSettingsForm> = {};
+    if (location.reservationSettings && typeof location.reservationSettings === "object") {
+      storedReservationSettings = location.reservationSettings;
+    }
+    return {
+      ...DEFAULT_RESERVATION_SETTINGS,
+      ...storedReservationSettings,
+    };
+  });
   const setRS = (patch: Partial<ReservationSettingsForm>) =>
     setReservationSettings((s) => ({ ...s, ...patch }));
-  const [isPublished, setIsPublished] = useState<boolean>(
-    Boolean(rp.isPublished),
-  );
+  const [isPublished, setIsPublished] = useState<boolean>(Boolean(rp.isPublished));
 
   const [saving, setSaving] = useState(false);
 
@@ -541,23 +505,19 @@ export default function RestaurantProfileEditor({
     }
     let normalizedMaxReservedGuestsPerHour: number;
     if (reservationSettings.maxReservedGuestsPerHour === "") {
-      normalizedMaxReservedGuestsPerHour =
-        DEFAULT_RESERVATION_SETTINGS.maxReservedGuestsPerHour;
+      normalizedMaxReservedGuestsPerHour = DEFAULT_RESERVATION_SETTINGS.maxReservedGuestsPerHour;
     } else {
-      normalizedMaxReservedGuestsPerHour =
-        reservationSettings.maxReservedGuestsPerHour;
+      normalizedMaxReservedGuestsPerHour = reservationSettings.maxReservedGuestsPerHour;
     }
     let normalizedBookingWindowDays: number;
     if (reservationSettings.bookingWindowDays === "") {
-      normalizedBookingWindowDays =
-        DEFAULT_RESERVATION_SETTINGS.bookingWindowDays;
+      normalizedBookingWindowDays = DEFAULT_RESERVATION_SETTINGS.bookingWindowDays;
     } else {
       normalizedBookingWindowDays = reservationSettings.bookingWindowDays;
     }
     let normalizedMinNoticeMinutes: number;
     if (reservationSettings.minNoticeMinutes === "") {
-      normalizedMinNoticeMinutes =
-        DEFAULT_RESERVATION_SETTINGS.minNoticeMinutes;
+      normalizedMinNoticeMinutes = DEFAULT_RESERVATION_SETTINGS.minNoticeMinutes;
     } else {
       normalizedMinNoticeMinutes = reservationSettings.minNoticeMinutes;
     }
@@ -605,21 +565,15 @@ export default function RestaurantProfileEditor({
     bannerUploadButtonContent = (
       <>
         <Loader2 className="h-7 w-7 animate-spin" />
-        <span className="text-sm font-medium">
-          {t("rpe.banner.uploading")}
-        </span>
+        <span className="text-sm font-medium">{t("rpe.banner.uploading")}</span>
       </>
     );
   } else {
     bannerUploadButtonContent = (
       <>
         <ImagePlus className="h-7 w-7" />
-        <span className="text-sm font-medium">
-          {t("rpe.banner.upload")}
-        </span>
-        <span className="text-xs text-slate-400">
-          {t("rpe.banner.recommend")}
-        </span>
+        <span className="text-sm font-medium">{t("rpe.banner.upload")}</span>
+        <span className="text-xs text-slate-400">{t("rpe.banner.recommend")}</span>
       </>
     );
   }
@@ -630,16 +584,11 @@ export default function RestaurantProfileEditor({
       <div className="space-y-3">
         <div className="relative overflow-hidden rounded-xl border bg-gray-50">
           <div className="aspect-video w-full">
-            <img
-              src={banner.url}
-              alt="Location banner"
-              className="h-full w-full object-cover"
-            />
+            <img src={banner.url} alt="Location banner" className="h-full w-full object-cover" />
           </div>
           {bannerUploading && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />{" "}
-              {t("rpe.banner.uploading")}
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t("rpe.banner.uploading")}
             </div>
           )}
         </div>
@@ -689,8 +638,7 @@ export default function RestaurantProfileEditor({
   if (photosUploading) {
     photosUploadButtonContent = (
       <>
-        <Loader2 size={16} className="mr-2 animate-spin" />{" "}
-        {t("rpe.photos.uploading")}
+        <Loader2 size={16} className="mr-2 animate-spin" /> {t("rpe.photos.uploading")}
       </>
     );
   } else {
@@ -703,9 +651,7 @@ export default function RestaurantProfileEditor({
 
   let photosContent: React.ReactNode;
   if (photos.length === 0) {
-    photosContent = (
-      <p className="text-sm text-muted-foreground">{t("rpe.photos.none")}</p>
-    );
+    photosContent = <p className="text-sm text-muted-foreground">{t("rpe.photos.none")}</p>;
   } else {
     photosContent = (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -792,19 +738,14 @@ export default function RestaurantProfileEditor({
 
   return (
     <div className="space-y-5 md:space-y-6">
-      {}
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
             {t("rpe.overview.title")}
           </CardTitle>
-          <CardDescription className={sectionDesc}>
-            {t("rpe.overview.desc")}
-          </CardDescription>
+          <CardDescription className={sectionDesc}>{t("rpe.overview.desc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
-          {}
-          {}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="displayName">{t("rpe.field.restaurantName")}</Label>
@@ -814,9 +755,7 @@ export default function RestaurantProfileEditor({
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder={t("rpe.field.restaurantName.ph")}
               />
-              <p className="text-xs text-muted-foreground">
-                {t("rpe.field.restaurantName.help")}
-              </p>
+              <p className="text-xs text-muted-foreground">{t("rpe.field.restaurantName.help")}</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="shortAddress">{t("rpe.field.shortAddress")}</Label>
@@ -826,9 +765,7 @@ export default function RestaurantProfileEditor({
                 onChange={(e) => setShortAddress(e.target.value)}
                 placeholder={t("rpe.field.shortAddress.ph")}
               />
-              <p className="text-xs text-muted-foreground">
-                {t("rpe.field.shortAddress.help")}
-              </p>
+              <p className="text-xs text-muted-foreground">{t("rpe.field.shortAddress.help")}</p>
             </div>
           </div>
 
@@ -900,40 +837,23 @@ export default function RestaurantProfileEditor({
               </Select>
             </div>
           </div>
-          {}
         </CardContent>
       </Card>
 
-      {}
-      {}
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-gray-800">
-            {t("rpe.hours.title")}
-          </CardTitle>
-          <CardDescription className={sectionDesc}>
-            {t("rpe.hours.desc")}
-          </CardDescription>
+          <CardTitle className="text-lg md:text-xl text-gray-800">{t("rpe.hours.title")}</CardTitle>
+          <CardDescription className={sectionDesc}>{t("rpe.hours.desc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 p-4 md:p-6 pt-0">
-          {}
           <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="font-medium text-slate-800">
-                {t("rpe.hours.timezone")}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {t("rpe.hours.timezoneHelp")}
-              </p>
+              <p className="font-medium text-slate-800">{t("rpe.hours.timezone")}</p>
+              <p className="text-xs text-muted-foreground">{t("rpe.hours.timezoneHelp")}</p>
             </div>
-            <TimezoneSelect
-              value={timezone}
-              onChange={setTimezone}
-              className="w-full sm:w-72"
-            />
+            <TimezoneSelect value={timezone} onChange={setTimezone} className="w-full sm:w-72" />
           </div>
 
-          {}
           <div className="space-y-2">
             {DAYS.map((d) => {
               const day = openingHours[d];
@@ -957,7 +877,6 @@ export default function RestaurantProfileEditor({
                       aria-label={`${d} open`}
                     />
                   </div>
-                  {}
                   <div
                     className={cn(
                       "col-span-2 flex flex-col gap-2 sm:col-span-1 sm:flex-row sm:items-center sm:order-2",
@@ -997,35 +916,23 @@ export default function RestaurantProfileEditor({
         </CardContent>
       </Card>
 
-      {}
-      {}
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-gray-800">
-            {t("rpe.res.title")}
-          </CardTitle>
-          <CardDescription className={sectionDesc}>
-            {t("rpe.res.desc")}
-          </CardDescription>
+          <CardTitle className="text-lg md:text-xl text-gray-800">{t("rpe.res.title")}</CardTitle>
+          <CardDescription className={sectionDesc}>{t("rpe.res.desc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
           <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-4">
             <div>
               <p className="font-medium text-gray-800">{t("rpe.res.enable")}</p>
-              <p className="text-xs text-muted-foreground">
-                {t("rpe.res.enableHelp")}
-              </p>
+              <p className="text-xs text-muted-foreground">{t("rpe.res.enableHelp")}</p>
             </div>
-            <Switch
-              checked={reservationsEnabled}
-              onCheckedChange={setReservationsEnabled}
-            />
+            <Switch checked={reservationsEnabled} onCheckedChange={setReservationsEnabled} />
           </div>
 
           {reservationsEnabled && (
             <div className="space-y-4 border-t border-slate-200 pt-4">
               <p className={sectionDesc}>{t("rpe.res.controlHelp")}</p>
-              {}
               <div className="space-y-2">
                 <Label>{t("rpe.res.hours")}</Label>
                 <div className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3 sm:flex-row sm:items-center">
@@ -1049,9 +956,7 @@ export default function RestaurantProfileEditor({
                     className="w-full min-w-0 sm:flex-1"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {t("rpe.res.hoursHelp")}
-                </p>
+                <p className="text-xs text-muted-foreground">{t("rpe.res.hoursHelp")}</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1062,13 +967,9 @@ export default function RestaurantProfileEditor({
                     type="number"
                     min={1}
                     value={reservationSettings.maxPartySize}
-                    onChange={(e) =>
-                      setRS({ maxPartySize: toNumberOrBlank(e.target.value) })
-                    }
+                    onChange={(e) => setRS({ maxPartySize: toNumberOrBlank(e.target.value) })}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {t("rpe.res.maxGuestsHelp")}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{t("rpe.res.maxGuestsHelp")}</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="maxPerHour">{t("rpe.res.maxPerHour")}</Label>
@@ -1079,20 +980,14 @@ export default function RestaurantProfileEditor({
                     value={reservationSettings.maxReservedGuestsPerHour}
                     onChange={(e) =>
                       setRS({
-                        maxReservedGuestsPerHour: toNumberOrBlank(
-                          e.target.value,
-                        ),
+                        maxReservedGuestsPerHour: toNumberOrBlank(e.target.value),
                       })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {t("rpe.res.maxPerHourHelp")}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{t("rpe.res.maxPerHourHelp")}</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="bookingWindow">
-                    {t("rpe.res.bookingWindow")}
-                  </Label>
+                  <Label htmlFor="bookingWindow">{t("rpe.res.bookingWindow")}</Label>
                   <Input
                     id="bookingWindow"
                     type="number"
@@ -1104,9 +999,7 @@ export default function RestaurantProfileEditor({
                       })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {t("rpe.res.bookingWindowHelp")}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{t("rpe.res.bookingWindowHelp")}</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="minNotice">{t("rpe.res.minNotice")}</Label>
@@ -1121,46 +1014,34 @@ export default function RestaurantProfileEditor({
                       })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {t("rpe.res.minNoticeHelp")}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{t("rpe.res.minNoticeHelp")}</p>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cancellationPolicy">
-                  {t("rpe.res.cancellation")}
-                </Label>
+                <Label htmlFor="cancellationPolicy">{t("rpe.res.cancellation")}</Label>
                 <Textarea
                   id="cancellationPolicy"
                   value={reservationSettings.cancellationPolicy}
-                  onChange={(e) =>
-                    setRS({ cancellationPolicy: e.target.value })
-                  }
+                  onChange={(e) => setRS({ cancellationPolicy: e.target.value })}
                   rows={3}
                   placeholder={t("rpe.res.cancellation.ph")}
                 />
-                <p className="text-xs text-muted-foreground">
-                  {t("rpe.res.cancellationHelp")}
-                </p>
+                <p className="text-xs text-muted-foreground">{t("rpe.res.cancellationHelp")}</p>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {}
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
             {t("rpe.banner.title")}
           </CardTitle>
-          <CardDescription className={sectionDesc}>
-            {t("rpe.banner.desc")}
-          </CardDescription>
+          <CardDescription className={sectionDesc}>{t("rpe.banner.desc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
-          {}
           <input
             ref={bannerInputRef}
             type="file"
@@ -1173,7 +1054,6 @@ export default function RestaurantProfileEditor({
         </CardContent>
       </Card>
 
-      {}
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
@@ -1184,7 +1064,6 @@ export default function RestaurantProfileEditor({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
-          {}
           <input
             ref={photosInputRef}
             type="file"
@@ -1194,9 +1073,7 @@ export default function RestaurantProfileEditor({
             onChange={onPhotosSelected}
           />
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              {remainingSlotsText}
-            </p>
+            <p className="text-sm text-muted-foreground">{remainingSlotsText}</p>
             <Button
               type="button"
               variant="outline"
@@ -1212,7 +1089,6 @@ export default function RestaurantProfileEditor({
         </CardContent>
       </Card>
 
-      {}
       <MenuSection
         menu={menu}
         setMenu={setMenu}
@@ -1223,15 +1099,12 @@ export default function RestaurantProfileEditor({
         sectionDesc={sectionDesc}
       />
 
-      {}
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
             {t("rpe.details.title")}
           </CardTitle>
-          <CardDescription className={sectionDesc}>
-            {t("rpe.details.desc")}
-          </CardDescription>
+          <CardDescription className={sectionDesc}>{t("rpe.details.desc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
           <div className="space-y-2">
@@ -1242,7 +1115,6 @@ export default function RestaurantProfileEditor({
               onChange={(e) => setAddress(e.target.value)}
               placeholder={t("rpe.details.address.ph")}
             />
-            {}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
@@ -1256,19 +1128,11 @@ export default function RestaurantProfileEditor({
             </div>
             <div className="space-y-2">
               <Label htmlFor="city">{t("rpe.details.city")}</Label>
-              <Input
-                id="city"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              />
+              <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="country">{t("rpe.details.country")}</Label>
-              <Input
-                id="country"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-              />
+              <Input id="country" value={country} onChange={(e) => setCountry(e.target.value)} />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1312,19 +1176,15 @@ export default function RestaurantProfileEditor({
         </CardContent>
       </Card>
 
-      {}
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-lg md:text-xl text-gray-800">
             {t("rpe.preview.title")}
           </CardTitle>
-          <CardDescription className={sectionDesc}>
-            {t("rpe.preview.desc")}
-          </CardDescription>
+          <CardDescription className={sectionDesc}>{t("rpe.preview.desc")}</CardDescription>
         </CardHeader>
         <CardContent className="p-4 md:p-6 pt-0">
           <div className="overflow-hidden rounded-xl border">
-            {}
             {previewCoverContent}
             <div className="space-y-2 p-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -1339,26 +1199,19 @@ export default function RestaurantProfileEditor({
                   .join(" · ") || t("rpe.preview.placeholder")}
               </p>
               {address && <p className="text-sm text-gray-600">{address}</p>}
-              {description && (
-                <p className="text-sm text-gray-700">{description}</p>
-              )}
+              {description && <p className="text-sm text-gray-700">{description}</p>}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {}
       <Card className={cardCls}>
         <CardContent className="flex flex-col gap-4 p-4 md:p-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <Switch checked={isPublished} onCheckedChange={setIsPublished} />
             <div>
-              <p className="font-medium text-gray-800">
-                {t("rpe.publish.title")}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {t("rpe.publish.help")}
-              </p>
+              <p className="font-medium text-gray-800">{t("rpe.publish.title")}</p>
+              <p className="text-xs text-muted-foreground">{t("rpe.publish.help")}</p>
             </div>
           </div>
           <Button onClick={save} disabled={saving} className="w-full sm:w-auto">
@@ -1369,7 +1222,6 @@ export default function RestaurantProfileEditor({
     </div>
   );
 }
-
 
 const UNCATEGORIZED = "Other";
 
@@ -1491,10 +1343,9 @@ function MenuSection({
         if (skipped > 0) {
           notes.push(t("rpe.csv.skippedNote", { n: skipped }));
         }
-        if (pricelessRows > 0)
-          {
-            notes.push(t("rpe.csv.pricelessNote", { n: pricelessRows }));
-          }
+        if (pricelessRows > 0) {
+          notes.push(t("rpe.csv.pricelessNote", { n: pricelessRows }));
+        }
         let importedCountKey: TKey;
         if (imported.length === 1) {
           importedCountKey = "rpe.csv.importedOne";
@@ -1609,18 +1460,11 @@ function MenuSection({
   return (
     <Card className={cardCls}>
       <CardHeader className="p-4 md:p-6">
-        <CardTitle className="text-lg md:text-xl text-gray-800">
-          {t("rpe.menu.title")}
-        </CardTitle>
-        <CardDescription className={sectionDesc}>
-          {t("rpe.menu.desc")}
-        </CardDescription>
-        <p className="text-xs text-muted-foreground md:text-sm">
-          {t("rpe.menu.subdesc")}
-        </p>
+        <CardTitle className="text-lg md:text-xl text-gray-800">{t("rpe.menu.title")}</CardTitle>
+        <CardDescription className={sectionDesc}>{t("rpe.menu.desc")}</CardDescription>
+        <p className="text-xs text-muted-foreground md:text-sm">{t("rpe.menu.subdesc")}</p>
       </CardHeader>
       <CardContent className="space-y-4 p-4 md:p-6 pt-0">
-        {}
         <div className="space-y-1.5">
           <Label htmlFor="menu-url">{t("rpe.menu.link")}</Label>
           <Input
@@ -1631,12 +1475,9 @@ function MenuSection({
             value={menuUrl}
             onChange={(e) => setMenuUrl(e.target.value)}
           />
-          <p className="text-xs text-muted-foreground">
-            {t("rpe.menu.linkHelp")}
-          </p>
+          <p className="text-xs text-muted-foreground">{t("rpe.menu.linkHelp")}</p>
         </div>
 
-        {}
         <div className="flex items-center gap-3 py-1">
           <span className="h-px flex-1 bg-slate-200" />
           <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
@@ -1645,16 +1486,13 @@ function MenuSection({
           <span className="h-px flex-1 bg-slate-200" />
         </div>
 
-        {}
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
                 <Upload size={15} /> {t("rpe.menu.uploadCsv")}
               </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {t("rpe.menu.csvInclude")}
-              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{t("rpe.menu.csvInclude")}</p>
             </div>
             <input
               ref={csvInputRef}
@@ -1675,20 +1513,13 @@ function MenuSection({
           </div>
           {csvError && (
             <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
-              <p className="text-sm font-semibold text-red-600">
-                {csvError.title}
-              </p>
+              <p className="text-sm font-semibold text-red-600">{csvError.title}</p>
               <p className="mt-0.5 text-xs text-red-600">{csvError.detail}</p>
             </div>
           )}
-          {csvSuccess && (
-            <p className="mt-3 text-sm font-medium text-emerald-600">
-              {csvSuccess}
-            </p>
-          )}
+          {csvSuccess && <p className="mt-3 text-sm font-medium text-emerald-600">{csvSuccess}</p>}
         </div>
 
-        {}
         <div className="flex items-center gap-3 py-1">
           <span className="h-px flex-1 bg-slate-200" />
           <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
@@ -1697,12 +1528,9 @@ function MenuSection({
           <span className="h-px flex-1 bg-slate-200" />
         </div>
 
-        {}
         {form && (
           <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 shadow-sm">
-            <p className="text-sm font-semibold text-gray-800">
-              {menuFormTitle}
-            </p>
+            <p className="text-sm font-semibold text-gray-800">{menuFormTitle}</p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="menu-name">{t("rpe.menu.itemName")}</Label>
@@ -1724,9 +1552,7 @@ function MenuSection({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="menu-price">
-                  {t("rpe.menu.price", { currency })}
-                </Label>
+                <Label htmlFor="menu-price">{t("rpe.menu.price", { currency })}</Label>
                 <Input
                   id="menu-price"
                   type="number"
@@ -1746,9 +1572,7 @@ function MenuSection({
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="menu-description">
-                {t("rpe.menu.description")}
-              </Label>
+              <Label htmlFor="menu-description">{t("rpe.menu.description")}</Label>
               <Textarea
                 id="menu-description"
                 placeholder={t("rpe.menu.description.ph")}
@@ -1758,12 +1582,7 @@ function MenuSection({
               />
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={cancel}
-                className="w-full sm:w-auto"
-              >
+              <Button type="button" variant="outline" onClick={cancel} className="w-full sm:w-auto">
                 {t("common.cancel")}
               </Button>
               <Button
@@ -1778,16 +1597,12 @@ function MenuSection({
           </div>
         )}
 
-        {}
         {menu.length === 0 && !form && (
           <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              {t("rpe.menu.empty")}
-            </p>
+            <p className="text-sm text-muted-foreground">{t("rpe.menu.empty")}</p>
           </div>
         )}
 
-        {}
         {groups.map((group) => (
           <div key={group.category} className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -1802,18 +1617,10 @@ function MenuSection({
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <p className="font-semibold text-gray-800 break-words">
-                          {item.name}
-                        </p>
-                        {formatMenuPrice(
-                          item.price,
-                          item.currency || currency,
-                        ) && (
+                        <p className="font-semibold text-gray-800 break-words">{item.name}</p>
+                        {formatMenuPrice(item.price, item.currency || currency) && (
                           <span className="text-sm font-medium text-slate-600">
-                            {formatMenuPrice(
-                              item.price,
-                              item.currency || currency,
-                            )}
+                            {formatMenuPrice(item.price, item.currency || currency)}
                           </span>
                         )}
                       </div>
@@ -1823,7 +1630,6 @@ function MenuSection({
                         </p>
                       )}
                     </div>
-                    {}
                     <div className="flex gap-2 sm:shrink-0">
                       <Button
                         type="button"
@@ -1853,12 +1659,7 @@ function MenuSection({
 
         {!form && (
           <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={openAdd}
-              className="w-full sm:w-auto"
-            >
+            <Button type="button" variant="outline" onClick={openAdd} className="w-full sm:w-auto">
               <Plus size={16} className="mr-2" /> {t("rpe.menu.addItem")}
             </Button>
             {menu.length > 0 && (

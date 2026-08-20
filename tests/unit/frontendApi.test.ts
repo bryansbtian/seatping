@@ -39,9 +39,7 @@ describe("api client", () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(init.credentials).toBe("include");
-    expect((init.headers as Record<string, string>)["Content-Type"]).toBe(
-      "application/json",
-    );
+    expect((init.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
     expect(init.method).toBe("POST");
   });
 
@@ -138,9 +136,7 @@ describe("api client", () => {
       }),
     );
 
-    await expect(apiUpload("/api/upload", new FormData())).rejects.toThrow(
-      "File too large",
-    );
+    await expect(apiUpload("/api/upload", new FormData())).rejects.toThrow("File too large");
   });
 });
 
@@ -189,19 +185,25 @@ describe("toast reducer", () => {
   });
 
   it("updates an existing toast by id", () => {
-    const state = reducer({ toasts: [baseToast] } as never, {
-      type: "UPDATE_TOAST",
-      toast: { id: "1", title: "Updated" },
-    } as never);
+    const state = reducer(
+      { toasts: [baseToast] } as never,
+      {
+        type: "UPDATE_TOAST",
+        toast: { id: "1", title: "Updated" },
+      } as never,
+    );
 
     expect(state.toasts[0].title).toBe("Updated");
   });
 
   it("marks a toast closed when dismissed", () => {
-    const state = reducer({ toasts: [baseToast] } as never, {
-      type: "DISMISS_TOAST",
-      toastId: "1",
-    } as never);
+    const state = reducer(
+      { toasts: [baseToast] } as never,
+      {
+        type: "DISMISS_TOAST",
+        toastId: "1",
+      } as never,
+    );
 
     expect(state.toasts[0].open).toBe(false);
   });
@@ -218,10 +220,13 @@ describe("toast reducer", () => {
   });
 
   it("removes a toast by id", () => {
-    const state = reducer({ toasts: [baseToast] } as never, {
-      type: "REMOVE_TOAST",
-      toastId: "1",
-    } as never);
+    const state = reducer(
+      { toasts: [baseToast] } as never,
+      {
+        type: "REMOVE_TOAST",
+        toastId: "1",
+      } as never,
+    );
 
     expect(state.toasts).toHaveLength(0);
   });

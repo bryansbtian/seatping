@@ -11,16 +11,13 @@ export const DISPLAY_HEADING =
 export const SECTION_HEADING =
   "text-2xl font-semibold leading-[1.12] tracking-tight text-slate-900 min-[361px]:text-3xl sm:text-4xl md:text-5xl";
 
-export const SECTION_SUBTITLE =
-  "text-sm leading-relaxed text-slate-600 sm:text-base";
+export const SECTION_SUBTITLE = "text-sm leading-relaxed text-slate-600 sm:text-base";
 
-export const CARD_TITLE =
-  "text-base font-semibold leading-snug text-slate-900 sm:text-lg";
+export const CARD_TITLE = "text-base font-semibold leading-snug text-slate-900 sm:text-lg";
 
 export const CARD_DESCRIPTION = "text-sm leading-relaxed text-slate-500";
 
-export const CARD_CONTAINER =
-  "rounded-2xl border border-slate-200/80 bg-white shadow-sm";
+export const CARD_CONTAINER = "rounded-2xl border border-slate-200/80 bg-white shadow-sm";
 
 export function SectionPill({
   icon: Icon,

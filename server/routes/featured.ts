@@ -54,8 +54,7 @@ router.get("/", async (_req, res) => {
         rating: null,
         reviewCount: 0,
       };
-      const bannerImageUrl =
-        loc.bannerImageUrl || (loc.photos?.[0]?.url ?? null);
+      const bannerImageUrl = loc.bannerImageUrl || (loc.photos?.[0]?.url ?? null);
       let cuisine = null;
       if (Array.isArray(rp.cuisineTypes) && rp.cuisineTypes.length) {
         cuisine = rp.cuisineTypes[0];
@@ -67,8 +66,7 @@ router.get("/", async (_req, res) => {
         sortOrder: r.sortOrder,
         businessUsername: r.business?.username ?? null,
         businessName: r.business?.name ?? null,
-        name:
-          rp.displayName || r.business?.name || loc.displayName || loc.name || "Restaurant",
+        name: rp.displayName || r.business?.name || loc.displayName || loc.name || "Restaurant",
         shortAddress: rp.shortAddress || loc.displayName || loc.area || loc.city || null,
         address: loc.address ?? "",
         area: loc.area ?? null,

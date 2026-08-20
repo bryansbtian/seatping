@@ -60,7 +60,9 @@ describe("qstash notification worker", () => {
     delete process.env.QSTASH_CURRENT_SIGNING_KEY;
     delete process.env.QSTASH_NEXT_SIGNING_KEY;
 
-    const res = await (await jobsApp())
+    const res = await (
+      await jobsApp()
+    )
       .post("/api/jobs/notify")
       .set("Content-Type", "application/json")
       .send(JSON.stringify(job()));
@@ -72,7 +74,9 @@ describe("qstash notification worker", () => {
   it("verifies the raw body against the Upstash signature", async () => {
     const payload = JSON.stringify(job());
 
-    const res = await (await jobsApp())
+    const res = await (
+      await jobsApp()
+    )
       .post("/api/jobs/notify")
       .set("Content-Type", "application/json")
       .set("Upstash-Signature", "test-signature")
@@ -90,7 +94,9 @@ describe("qstash notification worker", () => {
   it("rejects an unsigned request", async () => {
     verify.mockResolvedValue(false);
 
-    const res = await (await jobsApp())
+    const res = await (
+      await jobsApp()
+    )
       .post("/api/jobs/notify")
       .set("Content-Type", "application/json")
       .send(JSON.stringify(job()));
@@ -102,7 +108,9 @@ describe("qstash notification worker", () => {
   it("rejects a request whose signature check throws", async () => {
     verify.mockRejectedValue(new Error("bad signature"));
 
-    const res = await (await jobsApp())
+    const res = await (
+      await jobsApp()
+    )
       .post("/api/jobs/notify")
       .set("Content-Type", "application/json")
       .set("Upstash-Signature", "nonsense")
@@ -113,7 +121,9 @@ describe("qstash notification worker", () => {
   });
 
   it("rejects a signed body that is not valid json", async () => {
-    const res = await (await jobsApp())
+    const res = await (
+      await jobsApp()
+    )
       .post("/api/jobs/notify")
       .set("Content-Type", "application/json")
       .set("Upstash-Signature", "test-signature")
@@ -126,7 +136,9 @@ describe("qstash notification worker", () => {
   it("reports a send failure without leaking the provider error", async () => {
     processNotification.mockRejectedValue(new Error("smtp refused"));
 
-    const res = await (await jobsApp())
+    const res = await (
+      await jobsApp()
+    )
       .post("/api/jobs/notify")
       .set("Content-Type", "application/json")
       .set("Upstash-Signature", "test-signature")
@@ -137,7 +149,9 @@ describe("qstash notification worker", () => {
   });
 
   it("accepts a body sent with any content type", async () => {
-    const res = await (await jobsApp())
+    const res = await (
+      await jobsApp()
+    )
       .post("/api/jobs/notify")
       .set("Content-Type", "text/plain")
       .set("Upstash-Signature", "test-signature")
@@ -150,7 +164,9 @@ describe("qstash notification worker", () => {
   it("survives a send failure that carries no message", async () => {
     processNotification.mockRejectedValue("worker exploded");
 
-    const res = await (await jobsApp())
+    const res = await (
+      await jobsApp()
+    )
       .post("/api/jobs/notify")
       .set("Content-Type", "application/json")
       .set("Upstash-Signature", "test-signature")

@@ -27,18 +27,15 @@ export function assertCloudinaryConfigured() {
   if (missing.length > 0) {
     throw new Error(
       `Cloudinary is not configured. Missing env var(s): ${missing.join(
-        ", "
-      )}. Add them to your .env (copy from console.cloudinary.com) and restart the server.`
+        ", ",
+      )}. Add them to your .env (copy from console.cloudinary.com) and restart the server.`,
     );
   }
 }
 
 export type UploadedImage = { url: string; publicId: string };
 
-export function locationFolder(
-  locationId: string,
-  kind: "banner" | "photo"
-): string {
+export function locationFolder(locationId: string, kind: "banner" | "photo"): string {
   return `${BASE_FOLDER}/${locationId}/${kind}`;
 }
 
@@ -50,17 +47,11 @@ export type UploadSignature = {
   signature: string;
 };
 
-export function signLocationUpload(
-  locationId: string,
-  kind: "banner" | "photo"
-): UploadSignature {
+export function signLocationUpload(locationId: string, kind: "banner" | "photo"): UploadSignature {
   assertCloudinaryConfigured();
   const timestamp = Math.round(Date.now() / 1000);
   const folder = locationFolder(locationId, kind);
-  const signature = cloudinary.utils.api_sign_request(
-    { folder, timestamp },
-    API_SECRET as string
-  );
+  const signature = cloudinary.utils.api_sign_request({ folder, timestamp }, API_SECRET as string);
   return {
     cloudName: CLOUD_NAME as string,
     apiKey: API_KEY as string,
@@ -73,7 +64,7 @@ export function signLocationUpload(
 export function publicIdInLocationFolder(
   publicId: string | null | undefined,
   locationId: string,
-  kind: "banner" | "photo"
+  kind: "banner" | "photo",
 ): boolean {
   if (!publicId) {
     return false;
@@ -84,7 +75,7 @@ export function publicIdInLocationFolder(
 export function uploadImageBuffer(
   buffer: Buffer,
   locationId: string,
-  kind: "banner" | "photo"
+  kind: "banner" | "photo",
 ): Promise<UploadedImage> {
   assertCloudinaryConfigured();
   return new Promise<UploadedImage>((resolve, reject) => {
@@ -105,15 +96,13 @@ export function uploadImageBuffer(
           return reject(uploadError);
         }
         resolve({ url: result.secure_url, publicId: result.public_id });
-      }
+      },
     );
     stream.end(buffer);
   });
 }
 
-export async function deleteImageByPublicId(
-  publicId: string | null | undefined
-): Promise<void> {
+export async function deleteImageByPublicId(publicId: string | null | undefined): Promise<void> {
   if (!publicId) {
     return;
   }
@@ -121,9 +110,6 @@ export async function deleteImageByPublicId(
     assertCloudinaryConfigured();
     await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
   } catch (err: any) {
-    console.warn(
-      `[cloudinary] failed to delete asset ${publicId}:`,
-      err?.message || err
-    );
+    console.warn(`[cloudinary] failed to delete asset ${publicId}:`, err?.message || err);
   }
 }

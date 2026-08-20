@@ -58,7 +58,9 @@ describe("reservation creation branches", () => {
       countryCode: "+1",
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(body);
 
@@ -76,7 +78,9 @@ describe("reservation creation branches", () => {
     const customer = await seedCustomer();
     const body = booking();
 
-    await (await api())
+    await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .set("Cookie", customerCookie(customer.id))
       .send(body);
@@ -90,7 +94,9 @@ describe("reservation creation branches", () => {
   it("requires both a first and last name", async () => {
     const { business, location } = await bookableLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(booking({ lastName: undefined }));
 
@@ -101,7 +107,9 @@ describe("reservation creation branches", () => {
   it("requires a usable email address", async () => {
     const { business, location } = await bookableLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(booking({ email: "not-an-email" }));
 
@@ -113,25 +121,29 @@ describe("reservation creation branches", () => {
     const { business, location } = await bookableLocation();
     const body = booking();
 
-    const first = await (await api())
+    const first = await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(body);
     expect(first.status).toBe(200);
 
-    const second = await (await api())
+    const second = await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(body);
 
     expect(second.status).toBe(409);
-    expect(
-      await db.reservation.count({ where: { locationId: location.id } }),
-    ).toBe(1);
+    expect(await db.reservation.count({ where: { locationId: location.id } })).toBe(1);
   });
 
   it("returns 404 for an unknown business", async () => {
     const { location } = await bookableLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/reservations/nobody-here/${location.id}`)
       .send(booking());
 
@@ -141,7 +153,9 @@ describe("reservation creation branches", () => {
   it("sends the confirmation through the mocked transport only", async () => {
     const { business, location } = await bookableLocation();
 
-    await (await api())
+    await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(booking());
 
@@ -153,9 +167,7 @@ describe("reservation creation branches", () => {
 describe("reservation management branches", () => {
   async function createOne(businessUsername: string, locationId: string) {
     const body = booking();
-    await (await api())
-      .post(`/api/reservations/${businessUsername}/${locationId}`)
-      .send(body);
+    await (await api()).post(`/api/reservations/${businessUsername}/${locationId}`).send(body);
     const stored = await db.reservation.findFirst({
       where: { locationId, email: body.email },
     });
@@ -166,7 +178,9 @@ describe("reservation management branches", () => {
     const { business, location } = await bookableLocation();
     const { body, stored } = await createOne(business.username, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put(`/api/reservations/manage/${stored?.manageToken}`)
       .send({ date: body.date, time: body.time, partySize: 0 });
 
@@ -177,7 +191,9 @@ describe("reservation management branches", () => {
     const { business, location } = await bookableLocation();
     const { body, stored } = await createOne(business.username, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put(`/api/reservations/manage/${stored?.manageToken}`)
       .send({ date: body.date, time: "03:00", partySize: 2 });
 
@@ -188,7 +204,9 @@ describe("reservation management branches", () => {
     const { business, location } = await bookableLocation();
     const { body, stored } = await createOne(business.username, location.id);
 
-    await (await api())
+    await (
+      await api()
+    )
       .put(`/api/reservations/manage/${stored?.manageToken}`)
       .send({ date: body.date, time: "20:00", partySize: 2 });
 
@@ -204,9 +222,7 @@ describe("reservation management branches", () => {
   });
 
   it("refuses to cancel an unknown reservation", async () => {
-    const res = await (await api()).post(
-      "/api/reservations/manage/no-such-token/cancel",
-    );
+    const res = await (await api()).post("/api/reservations/manage/no-such-token/cancel");
 
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
@@ -215,14 +231,14 @@ describe("reservation management branches", () => {
     const { business, location } = await bookableLocation();
     const { body, stored } = await createOne(business.username, location.id);
 
-    const first = await (await api()).post(
-      `/api/reservations/manage/${stored?.manageToken}/cancel`,
-    );
+    const first = await (
+      await api()
+    ).post(`/api/reservations/manage/${stored?.manageToken}/cancel`);
     expect(first.status).toBe(200);
 
-    const second = await (await api()).post(
-      `/api/reservations/manage/${stored?.manageToken}/cancel`,
-    );
+    const second = await (
+      await api()
+    ).post(`/api/reservations/manage/${stored?.manageToken}/cancel`);
 
     expect(second.status).toBeLessThan(500);
     const counter = await db.slotCounter.findFirst({

@@ -56,7 +56,9 @@ describe("campaign metadata and templates", () => {
   it("returns campaign metadata for the business", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/api/campaigns/meta")
       .set("Cookie", businessCookie(business.id));
 
@@ -67,7 +69,9 @@ describe("campaign metadata and templates", () => {
   it("seeds and lists the built-in SeatPing templates", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/api/campaigns/templates")
       .set("Cookie", businessCookie(business.id));
 
@@ -83,7 +87,9 @@ describe("campaign metadata and templates", () => {
     const { business } = await seedBusinessWithLocation();
     const template = await seedSeatpingTemplate();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/campaigns/templates/${template.id}`)
       .set("Cookie", businessCookie(business.id));
 
@@ -93,7 +99,9 @@ describe("campaign metadata and templates", () => {
   it("returns a client error for an unknown template", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/api/campaigns/templates/000000000000000000000000")
       .set("Cookie", businessCookie(business.id));
 
@@ -103,7 +111,9 @@ describe("campaign metadata and templates", () => {
   it("creates a custom template owned by the business", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns/templates")
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -124,7 +134,9 @@ describe("campaign metadata and templates", () => {
   it("rejects a custom template with no body", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns/templates")
       .set("Cookie", businessCookie(business.id))
       .send({ name: "Empty", channel: "EMAIL" });
@@ -139,7 +151,9 @@ describe("audience selection", () => {
     await seedGuest(business.id, business.username, location.id);
     await seedGuest(business.id, business.username, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(
         `/api/campaigns/audiences/preview?locationId=${location.id}&audienceType=all_guests&channel=EMAIL`,
       )
@@ -156,7 +170,9 @@ describe("audience selection", () => {
       marketingOptOutAt: new Date(),
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(
         `/api/campaigns/audiences/preview?locationId=${location.id}&audienceType=all_guests&channel=EMAIL`,
       )
@@ -171,7 +187,9 @@ describe("audience selection", () => {
     await seedGuest(business.id, business.username, location.id, { tags: ["vip"] });
     await seedGuest(business.id, business.username, location.id, { tags: [] });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(
         `/api/campaigns/audiences/preview?locationId=${location.id}&audienceType=with_tag&tag=vip&channel=EMAIL`,
       )
@@ -185,7 +203,9 @@ describe("audience selection", () => {
     const tenantA = await seedBusinessWithLocation();
     const tenantB = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(
         `/api/campaigns/audiences/preview?locationId=${tenantA.location.id}&audienceType=all_guests&channel=EMAIL`,
       )
@@ -200,7 +220,9 @@ describe("saved audiences", () => {
     const { business, location } = await seedBusinessWithLocation();
     const cookie = businessCookie(business.id);
 
-    const created = await (await api())
+    const created = await (
+      await api()
+    )
       .post("/api/audiences")
       .set("Cookie", cookie)
       .send({
@@ -213,22 +235,28 @@ describe("saved audiences", () => {
     expect(created.status).toBe(200);
     const audienceId = created.body.audience.id;
 
-    const listed = await (await api())
+    const listed = await (
+      await api()
+    )
       .get(`/api/audiences?locationId=${location.id}`)
       .set("Cookie", cookie);
     expect(listed.status).toBe(200);
     expect(JSON.stringify(listed.body)).toContain(audienceId);
 
-    const updated = await (await api())
+    const updated = await (
+      await api()
+    )
       .patch(`/api/audiences/${audienceId}`)
       .set("Cookie", cookie)
       .send({ name: "Renamed group" });
     expect(updated.status).toBe(200);
-    expect(
-      (await db.savedAudience.findUnique({ where: { id: audienceId } }))?.name,
-    ).toBe("Renamed group");
+    expect((await db.savedAudience.findUnique({ where: { id: audienceId } }))?.name).toBe(
+      "Renamed group",
+    );
 
-    const removed = await (await api())
+    const removed = await (
+      await api()
+    )
       .delete(`/api/audiences/${audienceId}`)
       .set("Cookie", cookie);
     expect(removed.status).toBe(200);
@@ -238,7 +266,9 @@ describe("saved audiences", () => {
   it("requires a name when creating a saved audience", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/audiences")
       .set("Cookie", businessCookie(business.id))
       .send({ locationId: location.id });
@@ -251,7 +281,9 @@ describe("saved audiences", () => {
     await seedGuest(business.id, business.username, location.id, { totalVisits: 5 });
     await seedGuest(business.id, business.username, location.id, { totalVisits: 1 });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/audiences/preview")
       .set("Cookie", businessCookie(business.id))
       .send({ locationId: location.id, filters: { totalVisitsMin: 3 } });
@@ -275,22 +307,26 @@ describe("saved audiences", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/audiences/${created.id}`)
       .set("Cookie", businessCookie(tenantB.business.id))
       .send({ name: "Hijacked" });
 
     expect(res.status).toBeGreaterThanOrEqual(400);
-    expect(
-      (await db.savedAudience.findUnique({ where: { id: created.id } }))?.name,
-    ).toBe("Tenant A group");
+    expect((await db.savedAudience.findUnique({ where: { id: created.id } }))?.name).toBe(
+      "Tenant A group",
+    );
   });
 });
 
 describe("campaign lifecycle", () => {
   async function createDraft(businessId: string, locationId: string) {
     const template = await seedSeatpingTemplate();
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns")
       .set("Cookie", businessCookie(businessId))
       .send({
@@ -319,7 +355,9 @@ describe("campaign lifecycle", () => {
   it("rejects a campaign with an unknown template", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns")
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -338,7 +376,9 @@ describe("campaign lifecycle", () => {
     const tenantB = await seedBusinessWithLocation();
     const template = await seedSeatpingTemplate();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns")
       .set("Cookie", businessCookie(tenantB.business.id))
       .send({
@@ -357,7 +397,9 @@ describe("campaign lifecycle", () => {
     const { business, location } = await seedBusinessWithLocation();
     const template = await seedSeatpingTemplate();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns")
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -386,15 +428,15 @@ describe("campaign lifecycle", () => {
     const read = await (await api()).get(`/api/campaigns/${id}`).set("Cookie", cookie);
     expect(read.status).toBe(200);
 
-    const patched = await (await api())
+    const patched = await (
+      await api()
+    )
       .patch(`/api/campaigns/${id}`)
       .set("Cookie", cookie)
       .send({ name: "Renamed campaign" });
     expect(patched.status).toBeLessThan(500);
 
-    const removed = await (await api())
-      .delete(`/api/campaigns/${id}`)
-      .set("Cookie", cookie);
+    const removed = await (await api()).delete(`/api/campaigns/${id}`).set("Cookie", cookie);
     expect(removed.status).toBeLessThan(500);
   });
 
@@ -405,7 +447,9 @@ describe("campaign lifecycle", () => {
     const { res: created } = await createDraft(tenantA.business.id, tenantA.location.id);
     const id = created.body.campaign.id;
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/campaigns/${id}`)
       .set("Cookie", businessCookie(tenantB.business.id));
 
@@ -416,7 +460,9 @@ describe("campaign lifecycle", () => {
     const { business, location } = await seedBusinessWithLocation();
     const template = await seedSeatpingTemplate();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns/preview-message")
       .set("Cookie", businessCookie(business.id))
       .send({

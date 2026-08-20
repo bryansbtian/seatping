@@ -45,7 +45,9 @@ describe("ticket access control", () => {
   it("refuses an anonymous status change", async () => {
     const ticket = await seedTicket();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/tickets/${ticket.ticketNumber}/status`)
       .send({ status: "closed" });
 
@@ -64,7 +66,9 @@ describe("listing tickets", () => {
   });
 
   it("filters by status, type and priority", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/tickets?status=closed&type=sales&priority=high")
       .set("Cookie", adminCookie());
 
@@ -77,17 +81,13 @@ describe("listing tickets", () => {
   });
 
   it("honours the requested limit", async () => {
-    const res = await (await api())
-      .get("/tickets?limit=1")
-      .set("Cookie", adminCookie());
+    const res = await (await api()).get("/tickets?limit=1").set("Cookie", adminCookie());
 
     expect(res.body.tickets).toHaveLength(1);
   });
 
   it("reports counts by status and type", async () => {
-    const res = await (await api())
-      .get("/tickets/stats")
-      .set("Cookie", adminCookie());
+    const res = await (await api()).get("/tickets/stats").set("Cookie", adminCookie());
 
     expect(res.status).toBe(200);
     expect(res.body.stats.total).toBeGreaterThan(0);
@@ -103,7 +103,9 @@ describe("reading one ticket", () => {
   it("returns the ticket by its number", async () => {
     const ticket = await seedTicket();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/tickets/${ticket.ticketNumber}`)
       .set("Cookie", adminCookie());
 
@@ -112,9 +114,7 @@ describe("reading one ticket", () => {
   });
 
   it("reports an unknown ticket number", async () => {
-    const res = await (await api())
-      .get("/tickets/FEEDBACK-NOPE-0001")
-      .set("Cookie", adminCookie());
+    const res = await (await api()).get("/tickets/FEEDBACK-NOPE-0001").set("Cookie", adminCookie());
 
     expect(res.status).toBe(404);
   });
@@ -124,7 +124,9 @@ describe("updating a ticket", () => {
   it("changes the status", async () => {
     const ticket = await seedTicket();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/tickets/${ticket.ticketNumber}/status`)
       .set("Cookie", adminCookie())
       .send({ status: "in_progress" });
@@ -136,7 +138,9 @@ describe("updating a ticket", () => {
   it("rejects an unknown status", async () => {
     const ticket = await seedTicket();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/tickets/${ticket.ticketNumber}/status`)
       .set("Cookie", adminCookie())
       .send({ status: "archived" });
@@ -145,7 +149,9 @@ describe("updating a ticket", () => {
   });
 
   it("reports an unknown ticket on a status change", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch("/tickets/FEEDBACK-NOPE-0001/status")
       .set("Cookie", adminCookie())
       .send({ status: "closed" });
@@ -156,7 +162,9 @@ describe("updating a ticket", () => {
   it("assigns an owner", async () => {
     const ticket = await seedTicket();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/tickets/${ticket.ticketNumber}/assign`)
       .set("Cookie", adminCookie())
       .send({ assignedTo: "support-lead" });
@@ -168,7 +176,9 @@ describe("updating a ticket", () => {
   it("rejects an empty assignee", async () => {
     const ticket = await seedTicket();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/tickets/${ticket.ticketNumber}/assign`)
       .set("Cookie", adminCookie())
       .send({ assignedTo: "" });
@@ -177,7 +187,9 @@ describe("updating a ticket", () => {
   });
 
   it("reports an unknown ticket on an assignment", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch("/tickets/FEEDBACK-NOPE-0001/assign")
       .set("Cookie", adminCookie())
       .send({ assignedTo: "support-lead" });
@@ -188,7 +200,9 @@ describe("updating a ticket", () => {
   it("changes the priority", async () => {
     const ticket = await seedTicket();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/tickets/${ticket.ticketNumber}/priority`)
       .set("Cookie", adminCookie())
       .send({ priority: "high" });
@@ -200,7 +214,9 @@ describe("updating a ticket", () => {
   it("rejects an unknown priority", async () => {
     const ticket = await seedTicket();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/tickets/${ticket.ticketNumber}/priority`)
       .set("Cookie", adminCookie())
       .send({ priority: "urgent" });
@@ -209,7 +225,9 @@ describe("updating a ticket", () => {
   });
 
   it("reports an unknown ticket on a priority change", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch("/tickets/FEEDBACK-NOPE-0001/priority")
       .set("Cookie", adminCookie())
       .send({ priority: "high" });
@@ -222,7 +240,9 @@ describe("responding to a ticket", () => {
   it("emails the sender and appends the reply to the thread", async () => {
     const ticket = await seedTicket();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/tickets/${ticket.ticketNumber}/respond`)
       .set("Cookie", adminCookie())
       .send({ message: "We have shipped a fix.", responderName: "Bryan" });
@@ -240,7 +260,9 @@ describe("responding to a ticket", () => {
   it("titles the reply after a sales inquiry", async () => {
     const ticket = await seedTicket({ type: "sales" });
 
-    await (await api())
+    await (
+      await api()
+    )
       .post(`/tickets/${ticket.ticketNumber}/respond`)
       .set("Cookie", adminCookie())
       .send({ message: "Happy to set up a demo.", responderName: "Bryan" });
@@ -251,7 +273,9 @@ describe("responding to a ticket", () => {
   it("rejects a reply with no message", async () => {
     const ticket = await seedTicket();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/tickets/${ticket.ticketNumber}/respond`)
       .set("Cookie", adminCookie())
       .send({ responderName: "Bryan" });
@@ -263,7 +287,9 @@ describe("responding to a ticket", () => {
   it("rejects a reply with no responder name", async () => {
     const ticket = await seedTicket();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/tickets/${ticket.ticketNumber}/respond`)
       .set("Cookie", adminCookie())
       .send({ message: "We have shipped a fix." });
@@ -273,7 +299,9 @@ describe("responding to a ticket", () => {
   });
 
   it("reports an unknown ticket", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/tickets/FEEDBACK-NOPE-0001/respond")
       .set("Cookie", adminCookie())
       .send({ message: "Hello", responderName: "Bryan" });
@@ -286,7 +314,9 @@ describe("deleting a ticket", () => {
   it("removes the ticket", async () => {
     const ticket = await seedTicket();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/tickets/${ticket.ticketNumber}`)
       .set("Cookie", adminCookie());
 
@@ -298,7 +328,9 @@ describe("deleting a ticket", () => {
   });
 
   it("reports an unknown ticket", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete("/tickets/FEEDBACK-NOPE-0001")
       .set("Cookie", adminCookie());
 

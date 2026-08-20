@@ -55,10 +55,14 @@ describe("guest list filters", () => {
     });
     const cookie = businessCookie(business.id);
 
-    const returning = await (await api())
+    const returning = await (
+      await api()
+    )
       .get(`/api/guests?locationId=${location.id}&type=returning`)
       .set("Cookie", cookie);
-    const fresh = await (await api())
+    const fresh = await (
+      await api()
+    )
       .get(`/api/guests?locationId=${location.id}&type=new`)
       .set("Cookie", cookie);
 
@@ -77,7 +81,9 @@ describe("guest list filters", () => {
     });
     await guest(business.id, business.username, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/guests?locationId=${location.id}&search=Findme`)
       .set("Cookie", businessCookie(business.id));
 
@@ -92,7 +98,9 @@ describe("guest list filters", () => {
       normalizedPhone: "15559998888",
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/guests?locationId=${location.id}&search=9998888`)
       .set("Cookie", businessCookie(business.id));
 
@@ -105,7 +113,9 @@ describe("guest list filters", () => {
     await guest(business.id, business.username, location.id, { tags: ["vip"] });
     await guest(business.id, business.username, location.id, { tags: ["other"] });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/guests?locationId=${location.id}&tags=vip`)
       .set("Cookie", businessCookie(business.id));
 
@@ -120,7 +130,9 @@ describe("guest list filters", () => {
     });
     await guest(business.id, business.username, location.id, { notes: "" });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/guests?locationId=${location.id}&hasNotes=true`)
       .set("Cookie", businessCookie(business.id));
 
@@ -136,7 +148,9 @@ describe("guest list filters", () => {
     await guest(business.id, business.username, location.id, { noShowCount: 2 });
     await guest(business.id, business.username, location.id, { noShowCount: 0 });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/guests?locationId=${location.id}&hasNoShow=true`)
       .set("Cookie", businessCookie(business.id));
 
@@ -153,7 +167,9 @@ describe("guest list filters", () => {
       upcomingReservationCount: 0,
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/guests?locationId=${location.id}&hasUpcoming=true`)
       .set("Cookie", businessCookie(business.id));
 
@@ -166,7 +182,9 @@ describe("guest list filters", () => {
     const a = await guest(business.id, business.username, location.id);
     await guest(business.id, business.username, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/guests?locationId=${location.id}&ids=${a.id}`)
       .set("Cookie", businessCookie(business.id));
 
@@ -180,7 +198,9 @@ describe("guest list filters", () => {
     await guest(business.id, business.username, location.id);
     await guest(business.id, business.username, location.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/guests?locationId=${location.id}`)
       .set("Cookie", businessCookie(business.id));
 
@@ -243,9 +263,7 @@ describe("public restaurant payload", () => {
       },
     });
 
-    const res = await (await api()).get(
-      `/api/restaurants/${business.username}/${location.id}`,
-    );
+    const res = await (await api()).get(`/api/restaurants/${business.username}/${location.id}`);
 
     expect(res.status).toBe(200);
     expect(JSON.stringify(res.body)).toContain("Excellent");
@@ -256,9 +274,7 @@ describe("public restaurant payload", () => {
       isPublished: false,
     });
 
-    const res = await (await api()).get(
-      `/api/restaurants/${business.username}/${location.id}`,
-    );
+    const res = await (await api()).get(`/api/restaurants/${business.username}/${location.id}`);
 
     expect(res.status).toBe(200);
   });
@@ -266,9 +282,7 @@ describe("public restaurant payload", () => {
   it("rejects a malformed location id", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
-      `/api/restaurants/${business.username}/not-an-object-id`,
-    );
+    const res = await (await api()).get(`/api/restaurants/${business.username}/not-an-object-id`);
 
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
@@ -278,9 +292,9 @@ describe("reservation availability edge cases", () => {
   it("returns no slots when the date parameter is missing", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
-      `/api/reservations/${business.username}/${location.id}/availability`,
-    );
+    const res = await (
+      await api()
+    ).get(`/api/reservations/${business.username}/${location.id}/availability`);
 
     expect(res.status).toBe(200);
     expect(res.body.slots).toEqual([]);
@@ -289,7 +303,9 @@ describe("reservation availability edge cases", () => {
   it("reports no slots for a past date", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
+    const res = await (
+      await api()
+    ).get(
       `/api/reservations/${business.username}/${location.id}/availability?date=2020-01-01&partySize=2`,
     );
 
@@ -311,16 +327,16 @@ describe("reservation availability edge cases", () => {
       },
     });
 
-    const dt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .slice(0, 10);
+    const dt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     await seedReservation(location, {
       reservationDateTime: `${dt}T19:00`,
       guestCount: 4,
       status: "CONFIRMED",
     });
 
-    const res = await (await api()).get(
+    const res = await (
+      await api()
+    ).get(
       `/api/reservations/${business.username}/${location.id}/availability?date=${dt}&partySize=2`,
     );
 

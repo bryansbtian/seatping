@@ -6,13 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -37,16 +31,9 @@ import {
   SeatPingPill,
 } from "@/components/CampaignBadges";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  FieldTrigger,
-  TimeSelect,
-  ALL_DAY_TIME_OPTIONS,
-} from "@/components/TimeSelect";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { FieldTrigger, TimeSelect } from "@/components/TimeSelect";
+import { ALL_DAY_TIME_OPTIONS } from "@/components/timeOptions";
 import { format } from "date-fns";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -73,10 +60,7 @@ import {
   Trash2,
   Settings,
 } from "lucide-react";
-import {
-  CustomAudienceBuilder,
-  SavedAudience,
-} from "@/components/CustomAudienceBuilder";
+import { CustomAudienceBuilder, SavedAudience } from "@/components/CustomAudienceBuilder";
 
 type LocationOption = {
   id: string;
@@ -217,9 +201,7 @@ function DateField({
   if (selected) {
     triggerLabel = format(selected, "MMM d, yyyy");
   } else {
-    triggerLabel = (
-      <span className="text-slate-400 font-normal">{placeholder}</span>
-    );
+    triggerLabel = <span className="text-slate-400 font-normal">{placeholder}</span>;
   }
   let disabledMatcher: { before: Date } | undefined;
   if (minDate) {
@@ -268,9 +250,11 @@ function nowWallClockInTz(tz?: string): string {
       hourCycle: "h23",
     }).formatToParts(d);
     const m: Record<string, string> = {};
-    for (const p of parts) {if (p.type !== "literal") {
-      m[p.type] = p.value;
-    }}
+    for (const p of parts) {
+      if (p.type !== "literal") {
+        m[p.type] = p.value;
+      }
+    }
     let hour: string;
     if (m.hour === "24") {
       hour = "00";
@@ -279,9 +263,7 @@ function nowWallClockInTz(tz?: string): string {
     }
     return `${m.year}-${m.month}-${m.day}T${hour}:${m.minute}`;
   } catch {
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   }
 }
 
@@ -306,16 +288,12 @@ const BusinessCampaigns = () => {
 
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
-  const [preselectTemplateId, setPreselectTemplateId] = useState<string | null>(
-    null,
-  );
+  const [preselectTemplateId, setPreselectTemplateId] = useState<string | null>(null);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
 
   const [customAudienceOpen, setCustomAudienceOpen] = useState(false);
-  const [editingAudience, setEditingAudience] = useState<SavedAudience | null>(
-    null,
-  );
+  const [editingAudience, setEditingAudience] = useState<SavedAudience | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -408,8 +386,7 @@ const BusinessCampaigns = () => {
     fetchTemplates();
   }, [fetchTemplates]);
 
-  const locationLabel =
-    meta?.locations.find((l) => l.id === locationId)?.label || "";
+  const locationLabel = meta?.locations.find((l) => l.id === locationId)?.label || "";
 
   const openNewCampaign = () => {
     setEditingCampaign(null);
@@ -463,16 +440,12 @@ const BusinessCampaigns = () => {
   };
 
   const sentCampaigns = useMemo(
-    () =>
-      campaigns.filter((c) => ["SENDING", "SENT", "FAILED"].includes(c.status)),
+    () => campaigns.filter((c) => ["SENDING", "SENT", "FAILED"].includes(c.status)),
     [campaigns],
   );
 
   const activeCampaigns = useMemo(
-    () =>
-      campaigns.filter(
-        (c) => !["SENDING", "SENT", "FAILED"].includes(c.status),
-      ),
+    () => campaigns.filter((c) => !["SENDING", "SENT", "FAILED"].includes(c.status)),
     [campaigns],
   );
 
@@ -489,25 +462,15 @@ const BusinessCampaigns = () => {
 
   return (
     <>
-      <SEO
-        title="Campaigns | SeatPing"
-        description={BUSINESS_DESCRIPTION}
-        image={BUSINESS_IMAGE}
-      />
+      <SEO title="Campaigns | SeatPing" description={BUSINESS_DESCRIPTION} image={BUSINESS_IMAGE} />
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100 flex flex-col">
         <div className="container mx-auto px-4 py-8 flex-1 w-full">
-          {}
           <div className="mb-6">
-            <h1 className="text-xl md:text-2xl font-semibold text-gray-800">
-              {t("camp.title")}
-            </h1>
-            <p className="text-gray-600 text-sm md:text-base">
-              {t("camp.subtitle")}
-            </p>
+            <h1 className="text-xl md:text-2xl font-semibold text-gray-800">{t("camp.title")}</h1>
+            <p className="text-gray-600 text-sm md:text-base">{t("camp.subtitle")}</p>
           </div>
 
-          {}
           <div className="flex flex-col md:flex-row md:items-stretch gap-3 mb-6">
             <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 flex-1 overflow-x-auto">
               {(
@@ -535,7 +498,6 @@ const BusinessCampaigns = () => {
                 );
               })}
             </div>
-            {}
             <div className="relative md:w-56 shrink-0">
               <select
                 className="w-full h-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -595,10 +557,9 @@ const BusinessCampaigns = () => {
                 setCustomAudienceOpen(true);
               }}
               onDeleteCustom={async (a) => {
-                if (!confirm(`Are you sure you want to delete "${a.name}"?`))
-                  {
-                    return;
-                  }
+                if (!confirm(`Are you sure you want to delete "${a.name}"?`)) {
+                  return;
+                }
                 try {
                   await api(`/api/audiences/${a.id}`, { method: "DELETE" });
                   toast({ title: "Custom Group deleted" });
@@ -755,10 +716,7 @@ function CampaignsTab({
   onNew: () => void;
   onRefresh: () => void;
   onOpen: (c: Campaign) => void;
-  onAction: (
-    c: Campaign,
-    action: "cancel" | "pause" | "resume" | "delete",
-  ) => void;
+  onAction: (c: Campaign, action: "cancel" | "pause" | "resume" | "delete") => void;
 }) {
   const { t } = useLang();
   let countLabel: string;
@@ -793,54 +751,32 @@ function CampaignsTab({
   } else {
     campaignsBody = (
       <>
-        {}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
+                <th className="px-6 py-3 font-medium">{t("camp.col.name")}</th>
+                <th className="px-6 py-3 font-medium text-center">{t("camp.col.channel")}</th>
+                <th className="px-6 py-3 font-medium">{t("camp.col.audience")}</th>
                 <th className="px-6 py-3 font-medium">
-                  {t("camp.col.name")}
+                  <div className="flex justify-center">{t("camp.col.status")}</div>
                 </th>
-                <th className="px-6 py-3 font-medium text-center">
-                  {t("camp.col.channel")}
-                </th>
-                <th className="px-6 py-3 font-medium">
-                  {t("camp.col.audience")}
-                </th>
-                <th className="px-6 py-3 font-medium">
-                  <div className="flex justify-center">
-                    {t("camp.col.status")}
-                  </div>
-                </th>
-                <th className="px-6 py-3 font-medium text-center">
-                  {t("camp.col.recipients")}
-                </th>
+                <th className="px-6 py-3 font-medium text-center">{t("camp.col.recipients")}</th>
                 <th className="px-6 py-3 font-medium">Activity</th>
-                <th className="px-6 py-3 font-medium text-center">
-                  {t("camp.col.actions")}
-                </th>
+                <th className="px-6 py-3 font-medium text-center">{t("camp.col.actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {campaigns.map((c) => (
-                <tr
-                  key={c.id}
-                  className="hover:bg-slate-50 transition-colors"
-                >
+                <tr key={c.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-3">
-                    <div className="font-medium text-slate-800">
-                      {c.name}
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      {c.templateName}
-                    </div>
+                    <div className="font-medium text-slate-800">{c.name}</div>
+                    <div className="text-xs text-slate-400">{c.templateName}</div>
                   </td>
                   <td className="px-6 py-3 text-center">
                     <ChannelBadge channel={c.channel} />
                   </td>
-                  <td className="px-6 py-3 text-slate-600">
-                    {c.audienceLabel}
-                  </td>
+                  <td className="px-6 py-3 text-slate-600">{c.audienceLabel}</td>
                   <td className="px-6 py-3">
                     <div className="flex justify-center">
                       <CampaignStatusBadge status={c.status} />
@@ -853,11 +789,7 @@ function CampaignsTab({
                     {timingSummary(c)}
                   </td>
                   <td className="px-6 py-3 text-center">
-                    <CampaignActions
-                      c={c}
-                      onOpen={onOpen}
-                      onAction={onAction}
-                    />
+                    <CampaignActions c={c} onOpen={onOpen} onAction={onAction} />
                   </td>
                 </tr>
               ))}
@@ -890,9 +822,7 @@ function CampaignsTab({
                 className={`w-full text-left p-4 transition-colors ${editableClass}`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-slate-800 truncate">
-                    {c.name}
-                  </span>
+                  <span className="font-medium text-slate-800 truncate">{c.name}</span>
                   <CampaignStatusBadge status={c.status} />
                 </div>
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -900,9 +830,7 @@ function CampaignsTab({
                   <span className="text-xs text-slate-500">
                     {c.recipientCount} {recipientNoun}
                   </span>
-                  <span className="text-xs text-slate-400">
-                    · {timingSummary(c)}
-                  </span>
+                  <span className="text-xs text-slate-400">· {timingSummary(c)}</span>
                 </div>
               </div>
             );
@@ -922,12 +850,7 @@ function CampaignsTab({
           <CardDescription className="text-sm">{countLabel}</CardDescription>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRefresh}
-            disabled={loading}
-          >
+          <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${refreshIconClass}`} />
           </Button>
           <Button
@@ -937,32 +860,25 @@ function CampaignsTab({
             className="shrink-0 w-9 p-0 justify-center sm:w-auto sm:px-3"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline sm:ml-1.5">
-              {t("camp.newCampaign")}
-            </span>
+            <span className="hidden sm:inline sm:ml-1.5">{t("camp.newCampaign")}</span>
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="p-0">
-        {campaignsBody}
-      </CardContent>
+      <CardContent className="p-0">{campaignsBody}</CardContent>
     </Card>
   );
 }
 
 function timingSummary(c: Campaign): string {
-  if (c.status === "SCHEDULED")
-    {
-      return `Scheduled · ${c.scheduledAtLabel || "--"}`;
-    }
-  if (c.status === "RECURRING")
-    {
-      return `${(c.recurrenceFrequency || "").toLowerCase()} · next ${c.nextRunAtLabel || "--"}`;
-    }
-  if (c.status === "PAUSED")
-    {
-      return `Paused · ${(c.recurrenceFrequency || "").toLowerCase()}`;
-    }
+  if (c.status === "SCHEDULED") {
+    return `Scheduled · ${c.scheduledAtLabel || "--"}`;
+  }
+  if (c.status === "RECURRING") {
+    return `${(c.recurrenceFrequency || "").toLowerCase()} · next ${c.nextRunAtLabel || "--"}`;
+  }
+  if (c.status === "PAUSED") {
+    return `Paused · ${(c.recurrenceFrequency || "").toLowerCase()}`;
+  }
   if (c.sentAt) {
     return `Sent on ${fmtDate(c.sentAt)}`;
   }
@@ -976,39 +892,21 @@ function CampaignActions({
 }: {
   c: Campaign;
   onOpen: (c: Campaign) => void;
-  onAction: (
-    c: Campaign,
-    action: "cancel" | "pause" | "resume" | "delete",
-  ) => void;
+  onAction: (c: Campaign, action: "cancel" | "pause" | "resume" | "delete") => void;
 }) {
   const btn = "h-7 text-xs px-2.5";
   return (
     <div className="flex items-center justify-center gap-1.5">
-      <Button
-        variant="outline"
-        size="sm"
-        className={btn}
-        onClick={() => onOpen(c)}
-      >
+      <Button variant="outline" size="sm" className={btn} onClick={() => onOpen(c)}>
         Edit
       </Button>
       {c.status === "RECURRING" && (
-        <Button
-          variant="outline"
-          size="sm"
-          className={btn}
-          onClick={() => onAction(c, "pause")}
-        >
+        <Button variant="outline" size="sm" className={btn} onClick={() => onAction(c, "pause")}>
           Pause
         </Button>
       )}
       {c.status === "PAUSED" && (
-        <Button
-          variant="outline"
-          size="sm"
-          className={btn}
-          onClick={() => onAction(c, "resume")}
-        >
+        <Button variant="outline" size="sm" className={btn} onClick={() => onAction(c, "resume")}>
           Resume
         </Button>
       )}
@@ -1089,36 +987,24 @@ function TemplatesTab({
     <div className="space-y-6">
       <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
         <CardHeader className="border-b border-slate-200 p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-slate-800">
-            SeatPing Templates
-          </CardTitle>
+          <CardTitle className="text-lg md:text-xl text-slate-800">SeatPing Templates</CardTitle>
           <CardDescription className="text-sm">
             Ready to use immediately for SMS, WhatsApp, and Email.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-4 md:p-6">
-          {seatpingBody}
-        </CardContent>
+        <CardContent className="p-4 md:p-6">{seatpingBody}</CardContent>
       </Card>
 
       <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
         <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between gap-3 space-y-0">
           <div className="space-y-1.5">
-            <CardTitle className="text-lg md:text-xl text-slate-800">
-              Custom Templates
-            </CardTitle>
+            <CardTitle className="text-lg md:text-xl text-slate-800">Custom Templates</CardTitle>
             <CardDescription className="text-sm">
-              Request one template, and SeatPing will prepare it for SMS,
-              WhatsApp, and Email.
+              Request one template, and SeatPing will prepare it for SMS, WhatsApp, and Email.
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRefresh}
-              disabled={loading}
-            >
+            <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading}>
               <RefreshCw className={`w-4 h-4 ${refreshIconClass}`} />
             </Button>
             <Button
@@ -1127,15 +1013,11 @@ function TemplatesTab({
               className="shrink-0 w-9 p-0 justify-center sm:w-auto sm:px-3"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline sm:ml-1.5">
-                {t("camp.newTemplate")}
-              </span>
+              <span className="hidden sm:inline sm:ml-1.5">{t("camp.newTemplate")}</span>
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="p-4 md:p-6">
-          {customBody}
-        </CardContent>
+        <CardContent className="p-4 md:p-6">{customBody}</CardContent>
       </Card>
     </div>
   );
@@ -1160,29 +1042,22 @@ function TemplateCard({
   return (
     <div className="border border-slate-200 rounded-xl p-4 flex flex-col h-full bg-slate-50/50">
       <div className="flex items-start justify-between gap-2">
-        <h4 className="font-semibold text-slate-800 text-sm">
-          {template.name}
-        </h4>
+        <h4 className="font-semibold text-slate-800 text-sm">{template.name}</h4>
         {templateBadge}
       </div>
       {template.purpose && (
-        <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-          {template.purpose}
-        </p>
+        <p className="text-xs text-slate-500 mt-1 line-clamp-2">{template.purpose}</p>
       )}
       <p className="text-xs text-slate-600 mt-2 line-clamp-3 min-h-[4.75rem] bg-white border border-slate-200 rounded-lg p-2">
         {template.body}
       </p>
       {template.approvalStatus === "REJECTED" && template.rejectionReason && (
         <p className="text-xs text-red-600 mt-2">
-          <span className="font-medium">Rejection Reason:</span>{" "}
-          {template.rejectionReason}
+          <span className="font-medium">Rejection Reason:</span> {template.rejectionReason}
         </p>
       )}
       <div className="mt-auto pt-3 flex items-center justify-between gap-2 min-h-[2.75rem]">
-        <span className="text-[11px] text-slate-400">
-          Updated {fmtDate(template.updatedAt)}
-        </span>
+        <span className="text-[11px] text-slate-400">Updated {fmtDate(template.updatedAt)}</span>
         <div className="flex items-center gap-1.5">
           {isCustom &&
             (template.approvalStatus === "DRAFT" ||
@@ -1190,12 +1065,7 @@ function TemplateCard({
               template.approvalStatus === "PENDING_SEATPING_REVIEW" ||
               template.approvalStatus === "APPROVED") &&
             onEdit && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={onEdit}
-              >
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onEdit}>
                 Edit
               </Button>
             )}
@@ -1239,9 +1109,7 @@ function AudiencesTab({
       <div className="text-center py-8 text-slate-500">
         <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
         <p>No custom groups yet.</p>
-        <p className="text-sm">
-          Create one to target specific segments of your guests.
-        </p>
+        <p className="text-sm">Create one to target specific segments of your guests.</p>
       </div>
     );
   } else {
@@ -1256,9 +1124,7 @@ function AudiencesTab({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-emerald-500" />
-                  <h4 className="font-semibold text-slate-800 text-sm">
-                    {a.name}
-                  </h4>
+                  <h4 className="font-semibold text-slate-800 text-sm">{a.name}</h4>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button
@@ -1279,9 +1145,7 @@ function AudiencesTab({
                   </Button>
                 </div>
               </div>
-              {a.description && (
-                <p className="text-xs text-slate-500 mt-1.5">{a.description}</p>
-              )}
+              {a.description && <p className="text-xs text-slate-500 mt-1.5">{a.description}</p>}
             </div>
           </div>
         ))}
@@ -1292,9 +1156,7 @@ function AudiencesTab({
     <div className="flex flex-col gap-6">
       <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
         <CardHeader className="border-b border-slate-200 p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-slate-800">
-            Smart Audiences
-          </CardTitle>
+          <CardTitle className="text-lg md:text-xl text-slate-800">Smart Audiences</CardTitle>
           <CardDescription className="text-sm">
             Built-in audiences that automatically segment your guests.
           </CardDescription>
@@ -1302,15 +1164,10 @@ function AudiencesTab({
         <CardContent className="p-4 md:p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {audiences.map((a) => (
-              <div
-                key={a.key}
-                className="border border-slate-200 rounded-xl p-4 bg-slate-50/50"
-              >
+              <div key={a.key} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-indigo-500" />
-                  <h4 className="font-semibold text-slate-800 text-sm">
-                    {a.label}
-                  </h4>
+                  <h4 className="font-semibold text-slate-800 text-sm">{a.label}</h4>
                 </div>
                 <p className="text-xs text-slate-500 mt-1.5">{a.description}</p>
               </div>
@@ -1323,20 +1180,13 @@ function AudiencesTab({
         <CardHeader className="border-b border-slate-200 p-4 md:p-6">
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-1.5">
-              <CardTitle className="text-lg md:text-xl text-slate-800">
-                Custom Groups
-              </CardTitle>
+              <CardTitle className="text-lg md:text-xl text-slate-800">Custom Groups</CardTitle>
               <CardDescription className="text-sm">
                 Build and save your own guest group using filters and tags.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onRefresh}
-                disabled={loading}
-              >
+              <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading}>
                 <RefreshCw className={`w-4 h-4 ${refreshIconClass}`} />
               </Button>
               <Button
@@ -1350,9 +1200,7 @@ function AudiencesTab({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-4 md:p-6">
-          {savedAudiencesBody}
-        </CardContent>
+        <CardContent className="p-4 md:p-6">{savedAudiencesBody}</CardContent>
       </Card>
     </div>
   );
@@ -1400,9 +1248,7 @@ function HistoryTab({
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-slate-800 truncate">
-                      {c.name}
-                    </span>
+                    <span className="font-medium text-slate-800 truncate">{c.name}</span>
                     <ChannelBadge channel={c.channel} />
                     <CampaignStatusBadge status={c.status} />
                   </div>
@@ -1417,9 +1263,7 @@ function HistoryTab({
                   <span className="flex items-center gap-1 text-red-600">
                     <XCircle className="w-3.5 h-3.5" /> {c.failedCount} Failed
                   </span>
-                  <span className="text-slate-500">
-                    {c.skippedCount} Skipped
-                  </span>
+                  <span className="text-slate-500">{c.skippedCount} Skipped</span>
                 </div>
               </div>
             </div>
@@ -1439,18 +1283,11 @@ function HistoryTab({
             Delivery results for campaigns you have sent.
           </CardDescription>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onRefresh}
-          disabled={loading}
-        >
+        <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading}>
           <RefreshCw className={`w-4 h-4 ${refreshIconClass}`} />
         </Button>
       </CardHeader>
-      <CardContent className="p-0">
-        {historyBody}
-      </CardContent>
+      <CardContent className="p-0">{historyBody}</CardContent>
     </Card>
   );
 }
@@ -1474,9 +1311,11 @@ function splitWallClock(utcStr: string | null | undefined, tz: string) {
       hourCycle: "h23",
     }).formatToParts(d);
     const m: Record<string, string> = {};
-    for (const p of parts) {if (p.type !== "literal") {
-      m[p.type] = p.value;
-    }}
+    for (const p of parts) {
+      if (p.type !== "literal") {
+        m[p.type] = p.value;
+      }
+    }
     const yyyy = m.year;
     const mm = m.month;
     const dd = m.day;
@@ -1537,9 +1376,7 @@ function CampaignBuilderDialog({
 }) {
   const { toast } = useToast();
 
-  const [campaignId, setCampaignId] = useState<string | null>(
-    existing?.id ?? null,
-  );
+  const [campaignId, setCampaignId] = useState<string | null>(existing?.id ?? null);
   const [name, setName] = useState(existing?.name ?? "");
   const [channel, setChannel] = useState<Channel>(existing?.channel ?? "EMAIL");
   let initialAudienceType: string;
@@ -1566,9 +1403,7 @@ function CampaignBuilderDialog({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [sending, setSending] = useState(false);
 
-  const timezone =
-    meta?.locations.find((l) => l.id === locationId)?.timezone ||
-    "Asia/Jakarta";
+  const timezone = meta?.locations.find((l) => l.id === locationId)?.timezone || "Asia/Jakarta";
 
   const tz = existing?.timezone || timezone;
   const schedParts = splitWallClock(existing?.scheduledAt, tz);
@@ -1583,12 +1418,8 @@ function CampaignBuilderDialog({
   const [recurFreq, setRecurFreq] = useState<"DAILY" | "WEEKLY" | "MONTHLY">(
     (existing?.recurrenceFrequency as any) ?? "WEEKLY",
   );
-  const [recurStartDate, setRecurStartDate] = useState(
-    recurStartParts?.date ?? "",
-  );
-  const [recurStartTime, setRecurStartTime] = useState(
-    recurStartParts?.time ?? "09:00",
-  );
+  const [recurStartDate, setRecurStartDate] = useState(recurStartParts?.date ?? "");
+  const [recurStartTime, setRecurStartTime] = useState(recurStartParts?.time ?? "09:00");
   const [recurEndDate, setRecurEndDate] = useState(recurEndParts?.date ?? "");
   const [recurWindow, setRecurWindow] = useState(
     existing?.maxSendsPerGuestWindowDays?.toString() ?? "30",
@@ -1600,30 +1431,25 @@ function CampaignBuilderDialog({
   const manualGuestIds = manualGuests.map((g) => g.id);
 
   useEffect(() => {
-    if (
-      existing?.audienceType === "manual" &&
-      existing.audienceConfig?.guestIds?.length
-    ) {
+    if (existing?.audienceType === "manual" && existing.audienceConfig?.guestIds?.length) {
       const ids = existing.audienceConfig.guestIds.join(",");
       api(`/api/guests?locationId=${locationId}&ids=${ids}`)
         .then((d) => {
           const rows = (d?.guests ?? []).map((g: any) => ({
             id: g.id,
-            name:
-              g.fullName ||
-              formatPhone(g.normalizedPhone, g.phone) ||
-              g.email ||
-              "Guest",
+            name: g.fullName || formatPhone(g.normalizedPhone, g.phone) || g.email || "Guest",
             contact:
-              [g.email, formatPhone(g.normalizedPhone, g.phone)]
-                .filter(Boolean)
-                .join(" · ") || "",
+              [g.email, formatPhone(g.normalizedPhone, g.phone)].filter(Boolean).join(" · ") || "",
           }));
           setManualGuests(rows);
         })
         .catch(() => {});
     }
   }, [existing, locationId]);
+
+  const templateValuesRef = useRef(templateValues);
+  templateValuesRef.current = templateValues;
+  const templateValuesKey = JSON.stringify(templateValues);
 
   useEffect(() => {
     if (!templateId || !locationId) {
@@ -1638,7 +1464,7 @@ function CampaignBuilderDialog({
           channel,
           templateId,
           locationId,
-          templateValues,
+          templateValues: templateValuesRef.current,
         }),
       })
         .then((d) => setPreview(d))
@@ -1646,7 +1472,9 @@ function CampaignBuilderDialog({
         .finally(() => setPreviewLoading(false));
     }, 350);
     return () => clearTimeout(handle);
-  }, [channel, templateId, locationId, JSON.stringify(templateValues)]);
+  }, [channel, templateId, locationId, templateValuesKey]);
+
+  const manualGuestIdsKey = manualGuestIds.join(",");
 
   useEffect(() => {
     if (!locationId) {
@@ -1656,7 +1484,7 @@ function CampaignBuilderDialog({
       setAudiencePreview(null);
       return;
     }
-    if (audienceType === "manual" && manualGuestIds.length === 0) {
+    if (audienceType === "manual" && manualGuestIdsKey.length === 0) {
       setAudiencePreview(null);
       return;
     }
@@ -1681,14 +1509,14 @@ function CampaignBuilderDialog({
         }
       }
       if (at === "manual") {
-        params.set("guestIds", manualGuestIds.join(","));
+        params.set("guestIds", manualGuestIdsKey);
       }
       api(`/api/campaigns/audiences/preview?${params.toString()}`)
         .then((d) => setAudiencePreview(d))
         .catch(() => setAudiencePreview(null));
     }, 350);
     return () => clearTimeout(handle);
-  }, [locationId, channel, audienceType, tag, JSON.stringify(manualGuestIds)]);
+  }, [locationId, channel, audienceType, tag, manualGuestIdsKey]);
 
   function buildBody() {
     let at = audienceType;
@@ -1729,10 +1557,9 @@ function CampaignBuilderDialog({
     if (at === "with_tag" && !tag) {
       return "Please enter a tag.";
     }
-    if (at === "manual" && manualGuestIds.length === 0)
-      {
-        return "Select at least one guest.";
-      }
+    if (at === "manual" && manualGuestIds.length === 0) {
+      return "Select at least one guest.";
+    }
     return null;
   }
 
@@ -1897,23 +1724,17 @@ function CampaignBuilderDialog({
   const nowLocal = nowWallClockInTz(timezone);
   let timingError: string | null = null;
   if (sendMode === "SCHEDULED") {
-    if (!schedDate || !schedTime)
-      {
-        timingError = "Pick a date and time to schedule.";
-      }
-    else if (`${schedDate}T${schedTime}` <= nowLocal)
-      {
-        timingError = "The scheduled time must be in the future.";
-      }
+    if (!schedDate || !schedTime) {
+      timingError = "Pick a date and time to schedule.";
+    } else if (`${schedDate}T${schedTime}` <= nowLocal) {
+      timingError = "The scheduled time must be in the future.";
+    }
   } else if (sendMode === "RECURRING") {
-    if (!recurStartDate || !recurStartTime)
-      {
-        timingError = "Pick a start date and time.";
-      }
-    else if (recurEndDate && recurEndDate < recurStartDate)
-      {
-        timingError = "The end date must be after the start date.";
-      }
+    if (!recurStartDate || !recurStartTime) {
+      timingError = "Pick a start date and time.";
+    } else if (recurEndDate && recurEndDate < recurStartDate) {
+      timingError = "The end date must be after the start date.";
+    }
   }
 
   let sendLabel: string;
@@ -1927,8 +1748,7 @@ function CampaignBuilderDialog({
   const canLaunch =
     !!templateId &&
     !timingError &&
-    (sendMode !== "NOW" ||
-      (!!audiencePreview && audiencePreview.recipientCount > 0));
+    (sendMode !== "NOW" || (!!audiencePreview && audiencePreview.recipientCount > 0));
 
   let dialogTitle: string;
   if (existing) {
@@ -1941,8 +1761,7 @@ function CampaignBuilderDialog({
   if (channel === "EMAIL") {
     channelHint = "Requires guests with an email address.";
   } else if (channel === "SMS") {
-    channelHint =
-      "SMS is only available for US and Canada (+1) phone numbers right now.";
+    channelHint = "SMS is only available for US and Canada (+1) phone numbers right now.";
   } else {
     channelHint = "Requires guests with a phone number.";
   }
@@ -1989,9 +1808,7 @@ function CampaignBuilderDialog({
               className={`text-left rounded-xl border p-3 flex flex-col h-full transition-colors ${cardClass}`}
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="font-medium text-slate-800 text-sm line-clamp-2">
-                  {tpl.name}
-                </span>
+                <span className="font-medium text-slate-800 text-sm line-clamp-2">{tpl.name}</span>
                 {templateBadge}
               </div>
               <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-[2rem]">
@@ -2029,9 +1846,7 @@ function CampaignBuilderDialog({
         {channel === "EMAIL" && preview.subject && (
           <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 text-xs">
             <span className="text-slate-500">Subject:</span>{" "}
-            <span className="font-medium text-slate-800">
-              {preview.subject}
-            </span>
+            <span className="font-medium text-slate-800">{preview.subject}</span>
           </div>
         )}
         <div className="p-4 text-sm text-slate-700 whitespace-pre-wrap bg-white">
@@ -2039,18 +1854,13 @@ function CampaignBuilderDialog({
         </div>
         <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex items-center gap-3 flex-wrap">
           <span className="flex items-center gap-1">
-            <ChannelIcon className="w-3.5 h-3.5" /> SeatPing on behalf of your
-            restaurant
+            <ChannelIcon className="w-3.5 h-3.5" /> SeatPing on behalf of your restaurant
           </span>
         </div>
       </div>
     );
   } else {
-    previewContent = (
-      <p className="text-sm text-slate-400">
-        Choose a template to see a preview.
-      </p>
-    );
+    previewContent = <p className="text-sm text-slate-400">Choose a template to see a preview.</p>;
   }
 
   let saveDraftLabel: string;
@@ -2086,15 +1896,13 @@ function CampaignBuilderDialog({
           </DialogHeader>
 
           <div className="space-y-5">
-            {}
             <Section step={1} title="Channel">
               <div className="flex gap-1.5 sm:gap-2">
                 {(["SMS", "WHATSAPP", "EMAIL"] as Channel[]).map((ch) => {
                   const Icon = CHANNEL_META[ch].icon;
                   let channelButtonClass: string;
                   if (channel === ch) {
-                    channelButtonClass =
-                      "border-indigo-300 bg-indigo-100 text-indigo-700";
+                    channelButtonClass = "border-indigo-300 bg-indigo-100 text-indigo-700";
                   } else {
                     channelButtonClass =
                       "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
@@ -2114,7 +1922,6 @@ function CampaignBuilderDialog({
               <p className="text-xs text-slate-500 mt-1.5">{channelHint}</p>
             </Section>
 
-            {}
             <Section step={2} title="Audience">
               <div className="relative">
                 <select
@@ -2170,7 +1977,6 @@ function CampaignBuilderDialog({
                 />
               )}
 
-              {}
               {audiencePreview && (
                 <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
                   <div className="flex items-center justify-between">
@@ -2182,8 +1988,7 @@ function CampaignBuilderDialog({
                     </span>
                   </div>
                   <div className="text-xs text-slate-500 mt-1">
-                    {audiencePreview.total} Matched ·{" "}
-                    {audiencePreview.excludedCount} Excluded
+                    {audiencePreview.total} Matched · {audiencePreview.excludedCount} Excluded
                     {audiencePreview.excludedCount > 0 && (
                       <span>
                         {" "}
@@ -2198,12 +2003,10 @@ function CampaignBuilderDialog({
               )}
             </Section>
 
-            {}
             <Section step={3} title="Template">
               {templateSection}
             </Section>
 
-            {}
             {selectedTemplate && editableVars.length > 0 && (
               <Section step={4} title="Fill Template Variables">
                 <div className="space-y-2">
@@ -2220,9 +2023,7 @@ function CampaignBuilderDialog({
                             [v]: e.target.value,
                           }))
                         }
-                        placeholder={
-                          selectedTemplate.exampleValues[v] || `Enter ${v}`
-                        }
+                        placeholder={selectedTemplate.exampleValues[v] || `Enter ${v}`}
                         className="bg-slate-50 border-slate-200 mt-1"
                       />
                     </div>
@@ -2231,16 +2032,12 @@ function CampaignBuilderDialog({
               </Section>
             )}
 
-            {}
             <Section step={previewStep} title="Message Preview">
               {previewContent}
             </Section>
 
-            {}
             <div>
-              <label className="text-xs font-medium text-slate-600">
-                Campaign Name
-              </label>
+              <label className="text-xs font-medium text-slate-600">Campaign Name</label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -2249,7 +2046,6 @@ function CampaignBuilderDialog({
               />
             </div>
 
-            {}
             <Section step={timingStep} title="Timing">
               <div className="flex gap-2">
                 {(
@@ -2261,11 +2057,9 @@ function CampaignBuilderDialog({
                 ).map(([mode, label]) => {
                   let modeButtonClass: string;
                   if (sendMode === mode) {
-                    modeButtonClass =
-                      "border-indigo-300 bg-indigo-100 text-indigo-700";
+                    modeButtonClass = "border-indigo-300 bg-indigo-100 text-indigo-700";
                   } else {
-                    modeButtonClass =
-                      "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+                    modeButtonClass = "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
                   }
                   return (
                     <button
@@ -2318,8 +2112,7 @@ function CampaignBuilderDialog({
                     {(["DAILY", "WEEKLY", "MONTHLY"] as const).map((f) => {
                       let freqButtonClass: string;
                       if (recurFreq === f) {
-                        freqButtonClass =
-                          "border-indigo-300 bg-indigo-100 text-indigo-700";
+                        freqButtonClass = "border-indigo-300 bg-indigo-100 text-indigo-700";
                       } else {
                         freqButtonClass =
                           "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
@@ -2337,9 +2130,7 @@ function CampaignBuilderDialog({
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-xs text-slate-500">
-                        Start Date
-                      </label>
+                      <label className="text-xs text-slate-500">Start Date</label>
                       <div className="mt-1">
                         <DateField
                           value={recurStartDate}
@@ -2349,9 +2140,7 @@ function CampaignBuilderDialog({
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs text-slate-500">
-                        Send Time
-                      </label>
+                      <label className="text-xs text-slate-500">Send Time</label>
                       <div className="mt-1">
                         <TimeSelect
                           value={recurStartTime || "09:00"}
@@ -2363,23 +2152,17 @@ function CampaignBuilderDialog({
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs text-slate-500">
-                        End Date (Optional)
-                      </label>
+                      <label className="text-xs text-slate-500">End Date (Optional)</label>
                       <div className="mt-1">
                         <DateField
                           value={recurEndDate}
                           onChange={setRecurEndDate}
-                          minDate={parseLocalDate(
-                            recurStartDate || nowLocal.slice(0, 10),
-                          )}
+                          minDate={parseLocalDate(recurStartDate || nowLocal.slice(0, 10))}
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs text-slate-500">
-                        Guest Send Cooldown (Days)
-                      </label>
+                      <label className="text-xs text-slate-500">Guest Send Cooldown (Days)</label>
                       <Input
                         type="number"
                         min={1}
@@ -2390,28 +2173,19 @@ function CampaignBuilderDialog({
                     </div>
                   </div>
                   <p className="text-xs text-slate-400">
-                    The audience is recalculated on every run, opt-outs are
-                    always respected, and a guest won't be re-sent within the
-                    window above.
+                    The audience is recalculated on every run, opt-outs are always respected, and a
+                    guest won't be re-sent within the window above.
                   </p>
                 </div>
               )}
 
-              {timingError && (
-                <p className="text-xs text-red-600 mt-2">{timingError}</p>
-              )}
+              {timingError && <p className="text-xs text-red-600 mt-2">{timingError}</p>}
             </Section>
           </div>
 
-          {}
           <div className="flex flex-col sm:flex-row gap-2 pt-1 items-center">
             <div className="flex flex-1 gap-2 w-full">
-              <Button
-                variant="outline"
-                onClick={saveDraft}
-                disabled={saving}
-                className="flex-1"
-              >
+              <Button variant="outline" onClick={saveDraft} disabled={saving} className="flex-1">
                 <Save className="w-4 h-4 mr-1.5" />
                 {saveDraftLabel}
               </Button>
@@ -2494,14 +2268,13 @@ function CampaignBuilderDialog({
                     skipText = `${exc} ${excludedGuestWord} will be skipped.`;
                   }
                   const restName =
-                    meta?.locations.find((l) => l.id === locationId)
-                      ?.restaurantName || locationLabel;
+                    meta?.locations.find((l) => l.id === locationId)?.restaurantName ||
+                    locationLabel;
 
                   return (
                     <>
-                      This will send {msgType} to{" "}
-                      <span className="font-semibold">{rc}</span> {guestWord}{" "}
-                      for {restName}, {skipText} This cannot be undone.
+                      This will send {msgType} to <span className="font-semibold">{rc}</span>{" "}
+                      {guestWord} for {restName}, {skipText} This cannot be undone.
                     </>
                   );
                 })()}
@@ -2522,8 +2295,7 @@ function CampaignBuilderDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Campaign?</AlertDialogTitle>
             <AlertDialogDescription>
-              This campaign will be permanently removed. This action cannot be
-              undone.
+              This campaign will be permanently removed. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -2590,15 +2362,9 @@ function ManualGuestPicker({
         .then((d) => {
           const rows = (d?.guests ?? []).map((g: any) => ({
             id: g.id,
-            name:
-              g.fullName ||
-              formatPhone(g.normalizedPhone, g.phone) ||
-              g.email ||
-              "Guest",
+            name: g.fullName || formatPhone(g.normalizedPhone, g.phone) || g.email || "Guest",
             contact:
-              [g.email, formatPhone(g.normalizedPhone, g.phone)]
-                .filter(Boolean)
-                .join(" · ") || "",
+              [g.email, formatPhone(g.normalizedPhone, g.phone)].filter(Boolean).join(" · ") || "",
           }));
           setResults(rows);
         })
@@ -2612,21 +2378,16 @@ function ManualGuestPicker({
   const toggle = (g: ManualGuest) => {
     if (selectedIds.has(g.id)) {
       onChange(selected.filter((x) => x.id !== g.id));
-    }
-    else {
+    } else {
       onChange([...selected, g]);
     }
   };
 
   let guestListContent: React.ReactNode;
   if (loading) {
-    guestListContent = (
-      <div className="p-3 text-sm text-slate-400">Searching...</div>
-    );
+    guestListContent = <div className="p-3 text-sm text-slate-400">Searching...</div>;
   } else if (results.length === 0) {
-    guestListContent = (
-      <div className="p-3 text-sm text-slate-400">No guests found.</div>
-    );
+    guestListContent = <div className="p-3 text-sm text-slate-400">No guests found.</div>;
   } else {
     guestListContent = results.map((g) => {
       let rowClass: string;
@@ -2642,14 +2403,10 @@ function ManualGuestPicker({
           className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-slate-50 ${rowClass}`}
         >
           <div className="min-w-0">
-            <div className="text-sm font-medium text-slate-700 truncate">
-              {g.name}
-            </div>
+            <div className="text-sm font-medium text-slate-700 truncate">{g.name}</div>
             <div className="text-xs text-slate-400 truncate">{g.contact}</div>
           </div>
-          {selectedIds.has(g.id) && (
-            <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-          )}
+          {selectedIds.has(g.id) && <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />}
         </button>
       );
     });
@@ -2681,10 +2438,7 @@ function ManualGuestPicker({
               className="inline-flex items-center gap-1 rounded-full bg-indigo-100 text-indigo-700 text-xs px-2.5 py-1"
             >
               {g.name}
-              <button
-                onClick={() => toggle(g)}
-                className="hover:text-indigo-900"
-              >
+              <button onClick={() => toggle(g)} className="hover:text-indigo-900">
                 <X className="w-3 h-3" />
               </button>
             </span>
@@ -2716,15 +2470,11 @@ function TemplateBuilderDialog({
   const [name, setName] = useState(existing?.name ?? "");
   const [purpose, setPurpose] = useState(existing?.purpose ?? "");
   const [body, setBody] = useState(existing?.body ?? "");
-  const [variablesText, setVariablesText] = useState(
-    (existing?.variables ?? []).join(", "),
-  );
+  const [variablesText, setVariablesText] = useState((existing?.variables ?? []).join(", "));
   const [exampleValues, setExampleValues] = useState<Record<string, string>>(
     existing?.exampleValues ?? {},
   );
-  const [templateId, setTemplateId] = useState<string | null>(
-    existing?.id ?? null,
-  );
+  const [templateId, setTemplateId] = useState<string | null>(existing?.id ?? null);
   const [busy, setBusy] = useState(false);
 
   const variables = variablesText
@@ -2735,10 +2485,7 @@ function TemplateBuilderDialog({
 
   const bodyError = bodyParamPositionError(body);
   let exampleError: string | null = null;
-  if (
-    variables.length > 0 &&
-    variables.some((v) => !(exampleValues[v] ?? "").trim())
-  ) {
+  if (variables.length > 0 && variables.some((v) => !(exampleValues[v] ?? "").trim())) {
     exampleError = "Add an example value for every variable.";
   }
 
@@ -2921,28 +2668,25 @@ function TemplateBuilderDialog({
         <DialogHeader>
           <DialogTitle>{builderTitle}</DialogTitle>
           <DialogDescription>
-            Submit one general template request. SeatPing prepares it for SMS,
-            WhatsApp, and Email.
+            Submit one general template request. SeatPing prepares it for SMS, WhatsApp, and Email.
           </DialogDescription>
         </DialogHeader>
 
-        {existing?.approvalStatus === "REJECTED" &&
-          existing.rejectionReason && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              <span className="font-medium">Rejection Reason:</span>{" "}
-              {existing.rejectionReason}
-            </div>
-          )}
+        {existing?.approvalStatus === "REJECTED" && existing.rejectionReason && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <span className="font-medium">Rejection Reason:</span> {existing.rejectionReason}
+          </div>
+        )}
         {existing?.approvalStatus === "APPROVED" && (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-            This template is approved. Editing it sends it back to SeatPing for
-            review before it can be used again.
+            This template is approved. Editing it sends it back to SeatPing for review before it can
+            be used again.
           </div>
         )}
         {existing?.approvalStatus === "PENDING_SEATPING_REVIEW" && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-            This template is pending SeatPing review. You can edit it and
-            resubmit to update your request.
+            This template is pending SeatPing review. You can edit it and resubmit to update your
+            request.
           </div>
         )}
 
@@ -2956,10 +2700,7 @@ function TemplateBuilderDialog({
             />
             {existing?.slug && (
               <p className="text-[11px] text-slate-400 mt-1">
-                Template ID:{" "}
-                <span className="font-mono text-slate-500">
-                  {existing.slug}
-                </span>
+                Template ID: <span className="font-mono text-slate-500">{existing.slug}</span>
               </p>
             )}
           </Field>
@@ -2978,9 +2719,7 @@ function TemplateBuilderDialog({
               placeholder="Hi {{First Name}}, ... Use {{Variable Name}} for personalization."
               className={`bg-slate-50 min-h-[100px] ${bodyFieldClass}`}
             />
-            {bodyError && (
-              <p className="text-xs text-red-600 mt-1">{bodyError}</p>
-            )}
+            {bodyError && <p className="text-xs text-red-600 mt-1">{bodyError}</p>}
           </Field>
           <Field label="Variables (Optional, Comma-Separated)">
             <Input
@@ -2990,8 +2729,8 @@ function TemplateBuilderDialog({
               className="bg-slate-50 border-slate-200"
             />
             <p className="text-xs text-slate-400 mt-1">
-              Use lowercase names with underscores (e.g. order_id). first_name
-              and your restaurant name are filled automatically.
+              Use lowercase names with underscores (e.g. order_id). first_name and your restaurant
+              name are filled automatically.
             </p>
           </Field>
           {variables.length > 0 && (
@@ -3024,21 +2763,16 @@ function TemplateBuilderDialog({
                   );
                 })}
               </div>
-              {exampleError && (
-                <p className="text-xs text-red-600 mt-1.5">{exampleError}</p>
-              )}
+              {exampleError && <p className="text-xs text-red-600 mt-1.5">{exampleError}</p>}
             </Field>
           )}
         </div>
 
         <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3 text-xs text-indigo-700">
-          SeatPing will review this template and prepare it for SMS, WhatsApp,
-          and Email.
+          SeatPing will review this template and prepare it for SMS, WhatsApp, and Email.
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 pt-1">
-          {actionButtons}
-        </div>
+        <div className="flex flex-col sm:flex-row gap-2 pt-1">{actionButtons}</div>
       </DialogContent>
     </Dialog>
   );

@@ -1,10 +1,6 @@
 import { useMemo, useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -14,11 +10,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import {
-  COUNTRY_CODES,
-  DEFAULT_COUNTRY_ISO,
-  type CountryCode,
-} from "@/lib/countryCodes";
+import { COUNTRY_CODES, DEFAULT_COUNTRY_ISO, type CountryCode } from "@/lib/countryCodes";
 
 export function CountryCodeSelect({
   value,
@@ -45,7 +37,7 @@ export function CountryCodeSelect({
     () =>
       COUNTRY_CODES.find((c) => c.iso === selectedIso) ??
       COUNTRY_CODES.find((c) => c.iso === DEFAULT_COUNTRY_ISO)!,
-    [selectedIso]
+    [selectedIso],
   );
 
   return (
@@ -58,7 +50,7 @@ export function CountryCodeSelect({
           aria-label={ariaLabel}
           className={cn(
             "flex h-10 w-28 shrink-0 items-center justify-between rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring",
-            className
+            className,
           )}
         >
           <span className="truncate">

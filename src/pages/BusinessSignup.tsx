@@ -3,13 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -47,10 +41,9 @@ const BusinessSignup = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name as keyof typeof errors])
-      {
-        setErrors((p) => ({ ...p, [name]: "" }));
-      }
+    if (errors[name as keyof typeof errors]) {
+      setErrors((p) => ({ ...p, [name]: "" }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,39 +57,30 @@ const BusinessSignup = () => {
       confirmPassword: "",
     };
 
-    if (!formData.businessName)
-      {
-        newErrors.businessName = "Business name is required";
-      }
-    if (!formData.businessUsername)
-      {
-        newErrors.businessUsername = "Business username is required";
-      }
-    else if (formData.businessUsername.length < 3)
-      {
-        newErrors.businessUsername = "Username must be at least 3 characters";
-      }
+    if (!formData.businessName) {
+      newErrors.businessName = "Business name is required";
+    }
+    if (!formData.businessUsername) {
+      newErrors.businessUsername = "Business username is required";
+    } else if (formData.businessUsername.length < 3) {
+      newErrors.businessUsername = "Username must be at least 3 characters";
+    }
     if (!formData.email) {
       newErrors.email = "Email is required";
     }
     if (!formData.phone) {
       newErrors.phone = "Phone number is required";
+    } else if (formData.phone.replace(/\D/g, "").length < 6) {
+      newErrors.phone = "Phone must be at least 6 digits";
     }
-    else if (formData.phone.replace(/\D/g, "").length < 6)
-      {
-        newErrors.phone = "Phone must be at least 6 digits";
-      }
     if (!formData.password) {
       newErrors.password = "Password is required";
+    } else if (formData.password.length < 8) {
+      newErrors.password = "Password must be at least 8 chars";
     }
-    else if (formData.password.length < 8)
-      {
-        newErrors.password = "Password must be at least 8 chars";
-      }
-    if (!formData.confirmPassword)
-      {
-        newErrors.confirmPassword = "Please confirm your password";
-      }
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password";
+    }
     if (
       formData.password &&
       formData.confirmPassword &&
@@ -160,16 +144,13 @@ const BusinessSignup = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 py-8 pt-24">
         <Card className="w-full max-w-md lg:max-w-2xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
           <CardHeader className="space-y-2 px-6 pb-6 pt-8 text-center sm:px-10 sm:pt-10">
-            <CardTitle className="text-3xl text-primary">
-              Create Your Business Account
-            </CardTitle>
+            <CardTitle className="text-3xl text-primary">Create Your Business Account</CardTitle>
             <CardDescription className="text-sm sm:text-base">
               Join SeatPing and transform your business
             </CardDescription>
           </CardHeader>
           <CardContent className="px-6 pb-8 sm:px-10 sm:pb-10">
             <form onSubmit={handleSubmit} className="space-y-5">
-              {}
               <div className="space-y-2">
                 <Label htmlFor="businessName">Business Name</Label>
                 <Input
@@ -181,13 +162,10 @@ const BusinessSignup = () => {
                   required
                 />
                 {errors.businessName && (
-                  <p className="text-sm text-destructive">
-                    {errors.businessName}
-                  </p>
+                  <p className="text-sm text-destructive">{errors.businessName}</p>
                 )}
               </div>
 
-              {}
               <div className="space-y-2">
                 <Label htmlFor="businessUsername">Business Username</Label>
                 <Input
@@ -199,13 +177,10 @@ const BusinessSignup = () => {
                   required
                 />
                 {errors.businessUsername && (
-                  <p className="text-sm text-destructive">
-                    {errors.businessUsername}
-                  </p>
+                  <p className="text-sm text-destructive">{errors.businessUsername}</p>
                 )}
               </div>
 
-              {}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -217,21 +192,16 @@ const BusinessSignup = () => {
                   onChange={handleChange}
                   required
                 />
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
-                )}
+                {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
               </div>
 
-              {}
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
                 <div className="flex gap-2">
                   <CountryCodeSelect
                     className="h-11"
                     value={formData.countryCode}
-                    onChange={(dial) =>
-                      setFormData((p) => ({ ...p, countryCode: dial }))
-                    }
+                    onChange={(dial) => setFormData((p) => ({ ...p, countryCode: dial }))}
                   />
                   <Input
                     id="phone"
@@ -244,12 +214,9 @@ const BusinessSignup = () => {
                     className="h-11 flex-1 placeholder:text-sm sm:placeholder:text-base"
                   />
                 </div>
-                {errors.phone && (
-                  <p className="text-sm text-destructive">{errors.phone}</p>
-                )}
+                {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
               </div>
 
-              {}
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -261,12 +228,9 @@ const BusinessSignup = () => {
                   onChange={handleChange}
                   required
                 />
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
+                {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
               </div>
 
-              {}
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input
@@ -279,17 +243,11 @@ const BusinessSignup = () => {
                   required
                 />
                 {errors.confirmPassword && (
-                  <p className="text-sm text-destructive">
-                    {errors.confirmPassword}
-                  </p>
+                  <p className="text-sm text-destructive">{errors.confirmPassword}</p>
                 )}
               </div>
 
-              <Button
-                type="submit"
-                className="h-11 w-full text-base"
-                disabled={loading}
-              >
+              <Button type="submit" className="h-11 w-full text-base" disabled={loading}>
                 {submitLabel}
               </Button>
             </form>

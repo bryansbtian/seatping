@@ -20,30 +20,24 @@ test("a business builds a template, audience and scheduled SMS campaign, and pai
   const marker = uniqueId();
   const { business, location } = await db.createBusinessWithLocation({
     credits: 2,
-    restaurantProfile: publishedProfile(
-      `Campaign Bistro ${marker}`,
-      openAllDayEveryDay(),
-    ),
+    restaurantProfile: publishedProfile(`Campaign Bistro ${marker}`, openAllDayEveryDay()),
   });
 
   await signInBusiness(page, business);
 
-  const smsJoin = await page.request.post(
-    `/auth/business/${business.username}/queue`,
-    {
-      data: {
-        locationId: location.id,
-        firstName: "Sam",
-        lastName: `Sms${marker}`,
-        numGuests: 2,
-        phoneNumber: SMS_GUEST_PHONE,
-        countryCode: "+1",
-        notificationMethod: "sms",
-        smsConsent: true,
-        smsMarketingConsent: true,
-      },
+  const smsJoin = await page.request.post(`/auth/business/${business.username}/queue`, {
+    data: {
+      locationId: location.id,
+      firstName: "Sam",
+      lastName: `Sms${marker}`,
+      numGuests: 2,
+      phoneNumber: SMS_GUEST_PHONE,
+      countryCode: "+1",
+      notificationMethod: "sms",
+      smsConsent: true,
+      smsMarketingConsent: true,
     },
-  );
+  });
   expect(smsJoin.status()).toBe(200);
 
   await expect
@@ -65,19 +59,13 @@ test("a business builds a template, audience and scheduled SMS campaign, and pai
   expect(customTemplate.approvalStatus).toBe("DRAFT");
   expect(customTemplate.usable).toBe(false);
 
-  const submitted = await page.request.post(
-    `/api/campaigns/templates/${customTemplate.id}/submit`,
-  );
+  const submitted = await page.request.post(`/api/campaigns/templates/${customTemplate.id}/submit`);
   expect(submitted.status()).toBe(200);
-  expect((await submitted.json()).template.approvalStatus).toBe(
-    "PENDING_SEATPING_REVIEW",
-  );
+  expect((await submitted.json()).template.approvalStatus).toBe("PENDING_SEATPING_REVIEW");
 
   const templatesResponse = await page.request.get("/api/campaigns/templates");
   expect(templatesResponse.status()).toBe(200);
-  const templates = (await templatesResponse.json()).templates as Array<
-    Record<string, any>
-  >;
+  const templates = (await templatesResponse.json()).templates as Array<Record<string, any>>;
   const listedCustom = templates.find((t) => {
     return t.id === customTemplate.id;
   });
@@ -118,15 +106,12 @@ test("a business builds a template, audience and scheduled SMS campaign, and pai
   expect(campaign.channel).toBe("SMS");
   expect(campaign.recipientCount).toBe(1);
 
-  const scheduled = await page.request.post(
-    `/api/campaigns/${campaign.id}/send`,
-    {
-      data: {
-        sendMode: "SCHEDULED",
-        scheduledLocal: scheduledLocalWallClock(2),
-      },
+  const scheduled = await page.request.post(`/api/campaigns/${campaign.id}/send`, {
+    data: {
+      sendMode: "SCHEDULED",
+      scheduledLocal: scheduledLocalWallClock(2),
     },
-  );
+  });
   expect(scheduled.status()).toBe(200);
 
   const storedCampaign = await db.prisma.campaign.findUniqueOrThrow({
@@ -139,14 +124,10 @@ test("a business builds a template, audience and scheduled SMS campaign, and pai
   expect(storedCampaign.templateId).toBe(seatpingTemplate!.id);
   expect(storedCampaign.timezone).toBe("UTC");
   expect(storedCampaign.scheduledAt).not.toBeNull();
-  expect(storedCampaign.nextRunAt?.toISOString()).toBe(
-    storedCampaign.scheduledAt?.toISOString(),
-  );
+  expect(storedCampaign.nextRunAt?.toISOString()).toBe(storedCampaign.scheduledAt?.toISOString());
   expect(storedCampaign.isPaused).toBe(false);
 
-  expect(
-    await db.prisma.campaignRun.count({ where: { campaignId: campaign.id } }),
-  ).toBe(0);
+  expect(await db.prisma.campaignRun.count({ where: { campaignId: campaign.id } })).toBe(0);
 
   await page.goto("/business/campaigns");
   await expect(page.getByText(campaignName).first()).toBeVisible();
@@ -158,19 +139,16 @@ test("a business builds a template, audience and scheduled SMS campaign, and pai
   });
   expect(afterFirstJoin.credits).toBe(1);
 
-  const secondJoin = await page.request.post(
-    `/auth/business/${business.username}/queue`,
-    {
-      data: {
-        locationId: location.id,
-        firstName: "Cleo",
-        lastName: `Credit${marker}`,
-        numGuests: 2,
-        email: `e2e-credit-${marker}@test.invalid`,
-        notificationMethod: "email",
-      },
+  const secondJoin = await page.request.post(`/auth/business/${business.username}/queue`, {
+    data: {
+      locationId: location.id,
+      firstName: "Cleo",
+      lastName: `Credit${marker}`,
+      numGuests: 2,
+      email: `e2e-credit-${marker}@test.invalid`,
+      notificationMethod: "email",
     },
-  );
+  });
   expect(secondJoin.status()).toBe(200);
 
   const afterSecondJoin = await db.prisma.location.findUniqueOrThrow({
@@ -178,19 +156,16 @@ test("a business builds a template, audience and scheduled SMS campaign, and pai
   });
   expect(afterSecondJoin.credits).toBe(0);
 
-  const blockedJoin = await page.request.post(
-    `/auth/business/${business.username}/queue`,
-    {
-      data: {
-        locationId: location.id,
-        firstName: "Nolan",
-        lastName: `NoCredit${marker}`,
-        numGuests: 2,
-        email: `e2e-nocredit-${marker}@test.invalid`,
-        notificationMethod: "email",
-      },
+  const blockedJoin = await page.request.post(`/auth/business/${business.username}/queue`, {
+    data: {
+      locationId: location.id,
+      firstName: "Nolan",
+      lastName: `NoCredit${marker}`,
+      numGuests: 2,
+      email: `e2e-nocredit-${marker}@test.invalid`,
+      notificationMethod: "email",
     },
-  );
+  });
   expect(blockedJoin.status()).toBe(400);
   expect((await blockedJoin.json()).error).toContain("no credits remaining");
 
@@ -203,7 +178,5 @@ test("a business builds a template, audience and scheduled SMS campaign, and pai
       where: { locationId: location.id, lastName: `NoCredit${marker}` },
     }),
   ).toBe(0);
-  expect(
-    await db.prisma.queueEntry.count({ where: { locationId: location.id } }),
-  ).toBe(2);
+  expect(await db.prisma.queueEntry.count({ where: { locationId: location.id } })).toBe(2);
 });

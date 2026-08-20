@@ -1,9 +1,9 @@
-
 const MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
 
 function isEnabled(): boolean {
-  return Boolean(MEASUREMENT_ID) && typeof window !== "undefined" &&
-    typeof window.gtag === "function";
+  return (
+    Boolean(MEASUREMENT_ID) && typeof window !== "undefined" && typeof window.gtag === "function"
+  );
 }
 
 export function trackPageView(path: string): void {
@@ -14,8 +14,7 @@ export function trackPageView(path: string): void {
     window.gtag("event", "page_view", {
       page_path: path,
     });
-  } catch {
-  }
+  } catch {}
 }
 
 export function trackEvent(
@@ -27,8 +26,7 @@ export function trackEvent(
   }
   try {
     window.gtag("event", eventName, params);
-  } catch {
-  }
+  } catch {}
 }
 
 export const analytics = {

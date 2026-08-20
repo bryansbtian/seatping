@@ -112,17 +112,15 @@ describe("queue notifications", () => {
   it("raises when the queue_joined WhatsApp template cannot be sent", async () => {
     const { processNotification } = await loadNotifications();
 
-    await expect(
-      processNotification(queueJoin({ channel: "whatsapp" })),
-    ).rejects.toThrow("WhatsApp queue_join send failed");
+    await expect(processNotification(queueJoin({ channel: "whatsapp" }))).rejects.toThrow(
+      "WhatsApp queue_join send failed",
+    );
   });
 
   it("emails a joining guest their confirmation", async () => {
     const { processNotification } = await loadNotifications();
 
-    await processNotification(
-      queueJoin({ channel: "email", email: "guest@test.invalid" }),
-    );
+    await processNotification(queueJoin({ channel: "email", email: "guest@test.invalid" }));
 
     expect(sinks().email).toHaveLength(1);
     expect(sinks().telnyx).toHaveLength(0);
@@ -426,9 +424,7 @@ describe("campaign delivery", () => {
     ).rejects.toThrow("No phone number for recipient");
 
     expect(recipientUpdate.mock.calls[0][0].data.status).toBe("FAILED");
-    expect(recipientUpdate.mock.calls[0][0].data.errorMessage).toContain(
-      "No phone number",
-    );
+    expect(recipientUpdate.mock.calls[0][0].data.errorMessage).toContain("No phone number");
     expect(deliveryLogCreate.mock.calls[0][0].data.eventType).toBe("failed");
   });
 
@@ -447,9 +443,7 @@ describe("enqueueNotification", () => {
   it("sends inline when QStash is not configured", async () => {
     const { enqueueNotification } = await loadNotifications();
 
-    await enqueueNotification(
-      queueJoin({ channel: "email", email: "guest@test.invalid" }),
-    );
+    await enqueueNotification(queueJoin({ channel: "email", email: "guest@test.invalid" }));
     await new Promise((resolve) => {
       setTimeout(resolve, 0);
     });
@@ -465,14 +459,10 @@ describe("enqueueNotification", () => {
     process.env.PUBLIC_BASE_URL = "https://app.test.invalid/";
     const { enqueueNotification } = await loadNotifications();
 
-    await enqueueNotification(
-      queueJoin({ channel: "email", email: "guest@test.invalid" }),
-    );
+    await enqueueNotification(queueJoin({ channel: "email", email: "guest@test.invalid" }));
 
     expect(sinks().qstash).toHaveLength(1);
-    expect(sinks().qstash[0].url).toBe(
-      "https://app.test.invalid/api/jobs/notify",
-    );
+    expect(sinks().qstash[0].url).toBe("https://app.test.invalid/api/jobs/notify");
     expect(sinks().email).toHaveLength(0);
   });
 
@@ -482,9 +472,7 @@ describe("enqueueNotification", () => {
     const { enqueueNotification } = await loadNotifications();
     behavior().qstashPublishError = "queue unavailable";
 
-    await enqueueNotification(
-      queueJoin({ channel: "email", email: "guest@test.invalid" }),
-    );
+    await enqueueNotification(queueJoin({ channel: "email", email: "guest@test.invalid" }));
     await new Promise((resolve) => {
       setTimeout(resolve, 0);
     });
@@ -495,9 +483,7 @@ describe("enqueueNotification", () => {
   it("swallows an inline send failure", async () => {
     const { enqueueNotification } = await loadNotifications();
 
-    await expect(
-      enqueueNotification(queueJoin({ channel: "whatsapp" })),
-    ).resolves.toBeUndefined();
+    await expect(enqueueNotification(queueJoin({ channel: "whatsapp" }))).resolves.toBeUndefined();
     await new Promise((resolve) => {
       setTimeout(resolve, 0);
     });
@@ -559,16 +545,10 @@ describe("daily per-recipient cap", () => {
     process.env.NOTIFY_DAILY_MAX_PER_RECIPIENT = "1";
     const { canNotifyRecipient, enqueueNotification } = await loadNotifications();
 
-    await expect(canNotifyRecipient("email", "peek@test.invalid")).resolves.toBe(
-      true,
-    );
-    await enqueueNotification(
-      queueJoin({ channel: "email", email: "peek@test.invalid" }),
-    );
+    await expect(canNotifyRecipient("email", "peek@test.invalid")).resolves.toBe(true);
+    await enqueueNotification(queueJoin({ channel: "email", email: "peek@test.invalid" }));
 
-    await expect(canNotifyRecipient("email", "peek@test.invalid")).resolves.toBe(
-      false,
-    );
+    await expect(canNotifyRecipient("email", "peek@test.invalid")).resolves.toBe(false);
   });
 
   it("never caps a job with no recipient", async () => {

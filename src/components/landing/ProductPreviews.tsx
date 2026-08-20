@@ -1,11 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
@@ -40,19 +34,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-
-function Preview({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+function Preview({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div
-      aria-hidden
-      className={cn("pointer-events-none select-none", className)}
-    >
+    <div aria-hidden className={cn("pointer-events-none select-none", className)}>
       {children}
     </div>
   );
@@ -86,7 +70,6 @@ function Pill({
     </span>
   );
 }
-
 
 const QUEUE = [
   {
@@ -174,22 +157,16 @@ const STATS = [
   },
 ];
 
-
 export function StatCardsPreview({ className }: { className?: string }) {
   return (
     <Preview className={className}>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {STATS.map((s) => (
-          <Card
-            key={s.label}
-            className="bg-white rounded-xl shadow-sm border-0 p-3 md:p-4"
-          >
+          <Card key={s.label} className="bg-white rounded-xl shadow-sm border-0 p-3 md:p-4">
             <div className="flex flex-col gap-2">
               <p className="text-slate-600 text-xs md:text-sm">{s.label}</p>
               <div className="flex items-center justify-between">
-                <p className="text-2xl md:text-3xl font-semibold text-slate-800">
-                  {s.value}
-                </p>
+                <p className="text-2xl md:text-3xl font-semibold text-slate-800">{s.value}</p>
                 <div className={cn("p-2 rounded-full", s.tint)}>
                   <s.icon className={cn("w-5 h-5 md:w-6 md:h-6", s.fg)} />
                 </div>
@@ -201,7 +178,6 @@ export function StatCardsPreview({ className }: { className?: string }) {
     </Preview>
   );
 }
-
 
 export function QueueCardPreview({
   className,
@@ -220,7 +196,6 @@ export function QueueCardPreview({
     <Preview className={className}>
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardHeader className="border-b border-gray-100 p-4 md:p-6">
-          {}
           <div className="md:hidden">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-lg text-gray-800">
@@ -243,7 +218,6 @@ export function QueueCardPreview({
             </span>
           </div>
 
-          {}
           <div className="hidden md:flex md:items-center md:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
@@ -284,13 +258,9 @@ export function QueueCardPreview({
                       #{index + 1}
                     </span>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-800 text-sm md:text-base">
-                        {c.name}
-                      </h3>
+                      <h3 className="font-semibold text-gray-800 text-sm md:text-base">{c.name}</h3>
                       <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
-                        <span className="whitespace-nowrap">
-                          Joined: {c.joined}
-                        </span>
+                        <span className="whitespace-nowrap">Joined: {c.joined}</span>
                         <span className="text-gray-400">•</span>
                         <span className="whitespace-nowrap">
                           {c.guests} {guestNoun}
@@ -321,7 +291,6 @@ export function QueueCardPreview({
   );
 }
 
-
 export function AwaitingArrivalPreview({ className }: { className?: string }) {
   return (
     <Preview className={className}>
@@ -341,9 +310,7 @@ export function AwaitingArrivalPreview({ className }: { className?: string }) {
                 </span>
               </div>
               <div className="min-w-0">
-                <h3 className="font-semibold text-gray-800 text-sm md:text-base">
-                  Marcus Lee
-                </h3>
+                <h3 className="font-semibold text-gray-800 text-sm md:text-base">Marcus Lee</h3>
                 <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
                   <span>Admitted: 1 min ago</span>
                   <span className="text-gray-400">•</span>
@@ -363,7 +330,6 @@ export function AwaitingArrivalPreview({ className }: { className?: string }) {
     </Preview>
   );
 }
-
 
 export function ReservationsCardPreview({
   className,
@@ -408,19 +374,11 @@ export function ReservationsCardPreview({
               return (
                 <span
                   key={t.label}
-                  className={cn(
-                    "rounded-full px-3 py-1.5 text-xs font-medium",
-                    tabClass,
-                  )}
+                  className={cn("rounded-full px-3 py-1.5 text-xs font-medium", tabClass)}
                 >
                   {t.label}
                   {t.count > 0 && (
-                    <span
-                      className={cn(
-                        "ml-1.5 rounded-full px-1.5 text-[10px]",
-                        tabCountClass,
-                      )}
-                    >
+                    <span className={cn("ml-1.5 rounded-full px-1.5 text-[10px]", tabCountClass)}>
                       {t.count}
                     </span>
                   )}
@@ -447,15 +405,10 @@ export function ReservationsCardPreview({
                 contactLabel = r.contact;
               }
               return (
-                <div
-                  key={r.name}
-                  className="rounded-xl border border-slate-200 p-4"
-                >
+                <div key={r.name} className="rounded-xl border border-slate-200 p-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-800 text-sm md:text-base">
-                        {r.name}
-                      </p>
+                      <p className="font-semibold text-gray-800 text-sm md:text-base">{r.name}</p>
                       <StatusBadge status={r.status} className="text-[10px]" />
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
@@ -490,18 +443,13 @@ export function ReservationsCardPreview({
   );
 }
 
-
 function DashboardChrome() {
   return (
     <div className="bg-white rounded-xl shadow-sm p-4 md:p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-xl md:text-2xl font-semibold text-slate-800">
-            Hello Cafe Milano!
-          </h2>
-          <p className="text-slate-600 text-sm md:text-base">
-            Here is your daily statistic
-          </p>
+          <h2 className="text-xl md:text-2xl font-semibold text-slate-800">Hello Cafe Milano!</h2>
+          <p className="text-slate-600 text-sm md:text-base">Here is your daily statistic</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
               Credits: 285
@@ -551,7 +499,6 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
   ];
   return (
     <Preview className={cn("space-y-3", className)}>
-      {}
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardHeader className="border-b border-gray-100 p-4">
           <div className="flex items-start justify-between gap-3">
@@ -568,10 +515,7 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
               <Pill variant="outline">
                 <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Refresh
               </Pill>
-              <Badge
-                variant="secondary"
-                className="bg-indigo-100 text-indigo-700 text-[10px]"
-              >
+              <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 text-[10px]">
                 2 customers
               </Badge>
             </div>
@@ -589,18 +533,10 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
                     #{c.pos}
                   </span>
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-gray-800 text-sm">
-                      {c.name}
-                    </h3>
+                    <h3 className="font-semibold text-gray-800 text-sm">{c.name}</h3>
                     <p className="text-xs text-gray-600">{c.meta}</p>
-                    {c.phone && (
-                      <p className="text-xs text-gray-500 mt-1">{c.phone}</p>
-                    )}
-                    {c.email && (
-                      <p className="text-xs text-gray-500 mt-1 break-all">
-                        {c.email}
-                      </p>
-                    )}
+                    {c.phone && <p className="text-xs text-gray-500 mt-1">{c.phone}</p>}
+                    {c.email && <p className="text-xs text-gray-500 mt-1 break-all">{c.email}</p>}
                     <p className="text-xs font-medium text-indigo-600 mt-1">
                       Estimated wait: Less Than 5 Minutes
                     </p>
@@ -616,7 +552,6 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
         </CardContent>
       </Card>
 
-      {}
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardHeader className="border-b border-gray-100 p-4">
           <CardTitle className="flex items-center gap-2 text-base text-gray-800">
@@ -640,19 +575,11 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
               return (
                 <span
                   key={t.label}
-                  className={cn(
-                    "rounded-full px-3 py-1.5 text-xs font-medium",
-                    tabClass,
-                  )}
+                  className={cn("rounded-full px-3 py-1.5 text-xs font-medium", tabClass)}
                 >
                   {t.label}
                   {t.count > 0 && (
-                    <span
-                      className={cn(
-                        "ml-1.5 rounded-full px-1.5 text-[10px]",
-                        tabCountClass,
-                      )}
-                    >
+                    <span className={cn("ml-1.5 rounded-full px-1.5 text-[10px]", tabCountClass)}>
                       {t.count}
                     </span>
                   )}
@@ -664,9 +591,7 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
         <CardContent className="p-4">
           <div className="rounded-xl border border-slate-200 p-4">
             <div className="flex items-center gap-2">
-              <p className="font-semibold text-gray-800 text-sm">
-                Sofia Almeida
-              </p>
+              <p className="font-semibold text-gray-800 text-sm">Sofia Almeida</p>
               <StatusBadge status="confirmed" className="text-[10px]" />
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
@@ -682,9 +607,7 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
             </div>
             <span className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
               <Mail className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">
-                Email · sofia.almeida@example.com
-              </span>
+              <span className="truncate">Email · sofia.almeida@example.com</span>
             </span>
             <div className="mt-3 flex flex-wrap gap-2">
               <Pill variant="dark">Mark Arrived</Pill>
@@ -697,7 +620,6 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
     </Preview>
   );
 }
-
 
 const HERO_QUEUE = [
   {
@@ -723,7 +645,6 @@ const HERO_RES_TABS = [
 function HeroDashboardWindow() {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-400/20">
-      {}
       <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/80 px-5 py-3">
         <div className="flex flex-1 items-center gap-3">
           <div className="flex items-center gap-2">
@@ -746,18 +667,12 @@ function HeroDashboardWindow() {
         </div>
       </div>
 
-      {}
       <div className="space-y-5 bg-slate-50 p-6">
-        {}
         <div className="rounded-xl bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-semibold text-slate-800">
-                Hello Cafe Milano!
-              </h2>
-              <p className="text-base text-slate-600">
-                Here is your daily statistic
-              </p>
+              <h2 className="text-2xl font-semibold text-slate-800">Hello Cafe Milano!</h2>
+              <p className="text-base text-slate-600">Here is your daily statistic</p>
               <div className="mt-2 flex gap-2">
                 <span className="rounded bg-indigo-100 px-2 py-1 text-xs text-indigo-700">
                   Credits: 285
@@ -779,7 +694,6 @@ function HeroDashboardWindow() {
           </div>
         </div>
 
-        {}
         <Card className="rounded-xl border-0 bg-white shadow-sm">
           <CardHeader className="border-b border-gray-100 p-6">
             <div className="flex items-center justify-between">
@@ -797,10 +711,7 @@ function HeroDashboardWindow() {
                   <RefreshCw className="h-4 w-4" />
                   Refresh
                 </span>
-                <Badge
-                  variant="secondary"
-                  className="bg-indigo-100 text-indigo-700"
-                >
+                <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
                   {HERO_QUEUE.length} customers
                 </Badge>
               </div>
@@ -818,9 +729,7 @@ function HeroDashboardWindow() {
                       #{c.pos}
                     </span>
                     <div>
-                      <h3 className="text-base font-semibold text-gray-800">
-                        {c.name}
-                      </h3>
+                      <h3 className="text-base font-semibold text-gray-800">{c.name}</h3>
                       <p className="text-sm text-gray-600">{c.meta}</p>
                       <p className="mt-1 text-sm font-medium text-indigo-600">
                         Estimated Wait: {c.wait}
@@ -837,7 +746,6 @@ function HeroDashboardWindow() {
           </CardContent>
         </Card>
 
-        {}
         <Card className="rounded-xl border-0 bg-white shadow-sm">
           <CardHeader className="border-b border-gray-100 p-6">
             <CardTitle className="flex items-center gap-2 text-xl text-gray-800">
@@ -861,19 +769,11 @@ function HeroDashboardWindow() {
                 return (
                   <span
                     key={t.label}
-                    className={cn(
-                      "rounded-full px-3 py-1.5 text-xs font-medium",
-                      tabClass,
-                    )}
+                    className={cn("rounded-full px-3 py-1.5 text-xs font-medium", tabClass)}
                   >
                     {t.label}
                     {t.count > 0 && (
-                      <span
-                        className={cn(
-                          "ml-1.5 rounded-full px-1.5 text-[10px]",
-                          tabCountClass,
-                        )}
-                      >
+                      <span className={cn("ml-1.5 rounded-full px-1.5 text-[10px]", tabCountClass)}>
                         {t.count}
                       </span>
                     )}
@@ -885,9 +785,7 @@ function HeroDashboardWindow() {
           <CardContent className="p-6">
             <div className="rounded-xl border border-slate-200 p-4">
               <div className="flex items-center gap-2">
-                <p className="text-base font-semibold text-gray-800">
-                  Olivia Bennett
-                </p>
+                <p className="text-base font-semibold text-gray-800">Olivia Bennett</p>
                 <StatusBadge status="confirmed" className="text-[10px]" />
               </div>
               <div className="mt-1.5 flex items-center gap-x-3 text-xs text-slate-600">
@@ -954,10 +852,7 @@ export function HeroDashboardPreview({ className }: { className?: string }) {
     <div
       ref={wrapRef}
       aria-hidden
-      className={cn(
-        "pointer-events-none relative w-full select-none overflow-hidden",
-        className,
-      )}
+      className={cn("pointer-events-none relative w-full select-none overflow-hidden", className)}
       style={{ height: height || undefined }}
     >
       <div
@@ -970,7 +865,6 @@ export function HeroDashboardPreview({ className }: { className?: string }) {
     </div>
   );
 }
-
 
 function MiniPill({
   children,
@@ -999,7 +893,6 @@ function MiniPill({
 function PhoneScreenContent() {
   return (
     <div className="flex h-full w-full flex-col bg-slate-50 font-sans">
-      {}
       <div className="flex items-center justify-between px-4 pt-2.5 pb-1 text-[10px] font-medium text-slate-500">
         <span className="tabular-nums">9:41</span>
         <span className="flex items-center gap-1">
@@ -1009,12 +902,9 @@ function PhoneScreenContent() {
         </span>
       </div>
 
-      {}
       <div className="flex items-center justify-between px-4 pb-2">
         <div className="min-w-0">
-          <p className="text-sm font-semibold leading-tight text-slate-900">
-            SeatPing
-          </p>
+          <p className="text-sm font-semibold leading-tight text-slate-900">SeatPing</p>
           <p className="flex items-center gap-1 text-[10px] text-slate-500">
             <MapPin className="h-2.5 w-2.5" /> Marina Bay
           </p>
@@ -1024,9 +914,7 @@ function PhoneScreenContent() {
         </span>
       </div>
 
-      {}
       <div className="flex-1 space-y-2.5 overflow-hidden px-3 pb-3">
-        {}
         <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-800">
@@ -1037,7 +925,6 @@ function PhoneScreenContent() {
             </span>
           </div>
 
-          {}
           <div className="mt-2 rounded-lg bg-gray-50 p-2">
             <div className="flex items-start gap-2">
               <span className="inline-flex shrink-0 items-center justify-center rounded border border-gray-200 bg-white px-1 py-0.5 text-[9px] font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
@@ -1045,16 +932,12 @@ function PhoneScreenContent() {
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-1">
-                  <p className="truncate text-[11px] font-semibold text-gray-800">
-                    Olivia Reyes
-                  </p>
+                  <p className="truncate text-[11px] font-semibold text-gray-800">Olivia Reyes</p>
                   <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[8px] font-medium text-amber-700">
                     Waiting
                   </span>
                 </div>
-                <p className="truncate text-[9px] text-gray-500">
-                  Just now · 1 Guest · SMS
-                </p>
+                <p className="truncate text-[9px] text-gray-500">Just now · 1 Guest · SMS</p>
               </div>
             </div>
             <div className="mt-2 flex gap-1.5">
@@ -1063,18 +946,13 @@ function PhoneScreenContent() {
             </div>
           </div>
 
-          {}
           <div className="mt-1.5 flex items-center gap-2 rounded-lg bg-gray-50 p-2">
             <span className="inline-flex shrink-0 items-center justify-center rounded border border-gray-200 bg-white px-1 py-0.5 text-[9px] font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
               #2
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[11px] font-semibold text-gray-800">
-                Marcus Bennett
-              </p>
-              <p className="truncate text-[9px] text-gray-500">
-                2m ago · 3 Guests
-              </p>
+              <p className="truncate text-[11px] font-semibold text-gray-800">Marcus Bennett</p>
+              <p className="truncate text-[9px] text-gray-500">2m ago · 3 Guests</p>
             </div>
             <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[8px] font-medium text-emerald-700">
               Admitted
@@ -1082,7 +960,6 @@ function PhoneScreenContent() {
           </div>
         </div>
 
-        {}
         <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
           <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-800">
             <CalendarDays className="h-3.5 w-3.5" /> Reservations Management
@@ -1097,13 +974,8 @@ function PhoneScreenContent() {
           </div>
           <div className="mt-2 rounded-lg border border-slate-200 p-2">
             <div className="flex items-center justify-between gap-1">
-              <p className="truncate text-[11px] font-semibold text-gray-800">
-                Sofia Almeida
-              </p>
-              <StatusBadge
-                status="confirmed"
-                className="px-1.5 py-0.5 text-[8px]"
-              />
+              <p className="truncate text-[11px] font-semibold text-gray-800">Sofia Almeida</p>
+              <StatusBadge status="confirmed" className="px-1.5 py-0.5 text-[8px]" />
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] text-slate-600">
               <span className="inline-flex items-center gap-0.5">
@@ -1129,15 +1001,8 @@ export function PhoneInHand({ className }: { className?: string }) {
   const skinLine = "#c08a5e";
 
   return (
-    <div
-      aria-hidden
-      className={cn("pointer-events-none select-none", className)}
-    >
-      <svg
-        viewBox="0 0 600 740"
-        className="h-auto w-full overflow-visible"
-        role="presentation"
-      >
+    <div aria-hidden className={cn("pointer-events-none select-none", className)}>
+      <svg viewBox="0 0 600 740" className="h-auto w-full overflow-visible" role="presentation">
         <defs>
           <linearGradient id="sp-skin" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#f0c6a0" />
@@ -1155,7 +1020,6 @@ export function PhoneInHand({ className }: { className?: string }) {
           </filter>
         </defs>
 
-        {}
         <ellipse
           cx="320"
           cy="700"
@@ -1166,39 +1030,19 @@ export function PhoneInHand({ className }: { className?: string }) {
           filter="url(#sp-soft)"
         />
 
-        {}
         <g transform="rotate(-6 300 360)">
-          {}
-          {}
           <path
             d="M250 545 C 232 600, 232 670, 252 740 L 470 740 C 488 665, 480 595, 458 545 C 420 470, 286 470, 250 545 Z"
             fill="url(#sp-skin-shade)"
           />
-          {}
           <path
             d="M236 250 C 198 250, 184 282, 188 332 L 198 470 C 202 522, 256 522, 262 470 L 262 282 C 262 260, 254 250, 236 250 Z"
             fill={skinShade}
           />
 
-          {}
-          <ellipse
-            cx="322"
-            cy="560"
-            rx="120"
-            ry="60"
-            fill="#0f172a"
-            opacity="0.10"
-          />
+          <ellipse cx="322" cy="560" rx="120" ry="60" fill="#0f172a" opacity="0.10" />
 
-          {}
-          <rect
-            x="205"
-            y="70"
-            width="235"
-            height="515"
-            rx="40"
-            fill="#0f172a"
-          />
+          <rect x="205" y="70" width="235" height="515" rx="40" fill="#0f172a" />
           <rect
             x="205"
             y="70"
@@ -1209,29 +1053,13 @@ export function PhoneInHand({ className }: { className?: string }) {
             stroke="#1e293b"
             strokeWidth="2"
           />
-          <rect
-            x="216"
-            y="81"
-            width="213"
-            height="493"
-            rx="30"
-            fill="#f8fafc"
-          />
-          {}
+          <rect x="216" y="81" width="213" height="493" rx="30" fill="#f8fafc" />
           <rect x="298" y="92" width="49" height="7" rx="3.5" fill="#1e293b" />
 
-          {}
-          <foreignObject
-            x="216"
-            y="81"
-            width="213"
-            height="493"
-            clipPath="url(#sp-screen)"
-          >
+          <foreignObject x="216" y="81" width="213" height="493" clipPath="url(#sp-screen)">
             <PhoneScreenContent />
           </foreignObject>
 
-          {}
           {[
             { x: 180, y: 236, w: 60, h: 38 },
             { x: 177, y: 300, w: 63, h: 38 },
@@ -1239,15 +1067,7 @@ export function PhoneInHand({ className }: { className?: string }) {
             { x: 186, y: 426, w: 52, h: 34 },
           ].map((f, i) => (
             <g key={i}>
-              <rect
-                x={f.x}
-                y={f.y}
-                width={f.w}
-                height={f.h}
-                rx={f.h / 2}
-                fill="url(#sp-skin)"
-              />
-              {}
+              <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={f.h / 2} fill="url(#sp-skin)" />
               <path
                 d={`M${f.x + 16} ${f.y + 7} L ${f.x + 16} ${f.y + f.h - 7}`}
                 stroke={skinLine}
@@ -1258,7 +1078,6 @@ export function PhoneInHand({ className }: { className?: string }) {
             </g>
           ))}
 
-          {}
           <path
             d="M384 484 C 420 466, 458 484, 464 520 C 469 554, 448 582, 412 582 C 384 582, 366 556, 370 524 C 372 502, 370 494, 384 484 Z"
             fill="url(#sp-skin)"
@@ -1267,15 +1086,7 @@ export function PhoneInHand({ className }: { className?: string }) {
             d="M452 524 C 478 540, 482 600, 462 642 L 430 660 C 408 618, 410 566, 432 540 Z"
             fill={skin}
           />
-          {}
-          <ellipse
-            cx="416"
-            cy="520"
-            rx="16"
-            ry="20"
-            fill="#f3d0ac"
-            opacity="0.6"
-          />
+          <ellipse cx="416" cy="520" rx="16" ry="20" fill="#f3d0ac" opacity="0.6" />
         </g>
       </svg>
     </div>
@@ -1299,36 +1110,18 @@ export function LiveQueuePreview({ className }: { className?: string }) {
   return (
     <Preview className={className}>
       <div className="space-y-4">
-        <QueueCardPreview
-          rows={QUEUE.slice(0, 2)}
-          className="pointer-events-auto"
-        />
+        <QueueCardPreview rows={QUEUE.slice(0, 2)} className="pointer-events-auto" />
         <AwaitingArrivalPreview className="pointer-events-auto" />
       </div>
     </Preview>
   );
 }
 
-
-function Field({
-  label,
-  value,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  type?: string;
-}) {
+function Field({ label, value, type = "text" }: { label: string; value: string; type?: string }) {
   return (
     <div className="space-y-2">
       <Label className="text-sm">{label}</Label>
-      <Input
-        className="h-11"
-        type={type}
-        value={value}
-        readOnly
-        tabIndex={-1}
-      />
+      <Input className="h-11" type={type} value={value} readOnly tabIndex={-1} />
     </div>
   );
 }
@@ -1338,9 +1131,7 @@ export function SignupPreview({ className }: { className?: string }) {
     <Preview className={className}>
       <Card className="border-0 bg-white shadow-sm">
         <CardHeader className="space-y-1 p-5 text-center">
-          <CardTitle className="text-xl text-primary">
-            Create Your Business Account
-          </CardTitle>
+          <CardTitle className="text-xl text-primary">Create Your Business Account</CardTitle>
           <CardDescription className="text-sm">
             Join SeatPing and transform your business
           </CardDescription>
@@ -1356,12 +1147,7 @@ export function SignupPreview({ className }: { className?: string }) {
                 🇺🇸 +1
                 <ChevronDown className="h-4 w-4 text-slate-400" />
               </span>
-              <Input
-                className="h-11 flex-1"
-                value="(555) 123-4567"
-                readOnly
-                tabIndex={-1}
-              />
+              <Input className="h-11 flex-1" value="(555) 123-4567" readOnly tabIndex={-1} />
             </div>
           </div>
           <Field label="Password" value="••••••••" type="password" />
@@ -1373,7 +1159,6 @@ export function SignupPreview({ className }: { className?: string }) {
     </Preview>
   );
 }
-
 
 function HoursRow({
   day,
@@ -1397,9 +1182,7 @@ function HoursRow({
   }
   return (
     <div className="grid grid-cols-[5rem_1fr_auto] items-center gap-x-3 py-1.5">
-      <span className="font-medium capitalize text-slate-800 text-sm">
-        {day}
-      </span>
+      <span className="font-medium capitalize text-slate-800 text-sm">{day}</span>
       <div className={cn("flex items-center gap-2", closed && "opacity-50")}>
         <span className="flex-1 truncate rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600">
           {openLabel}
@@ -1422,10 +1205,7 @@ function Switch({ on }: { on: boolean }) {
   }
   return (
     <span
-      className={cn(
-        "flex h-5 w-9 items-center rounded-full p-0.5 transition-colors",
-        stateClass,
-      )}
+      className={cn("flex h-5 w-9 items-center rounded-full p-0.5 transition-colors", stateClass)}
     >
       <span className="h-4 w-4 rounded-full bg-white shadow-sm" />
     </span>
@@ -1435,12 +1215,9 @@ function Switch({ on }: { on: boolean }) {
 export function SettingsPreview({ className }: { className?: string }) {
   return (
     <Preview className={cn("space-y-4", className)}>
-      {}
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardHeader className="p-4 md:p-5">
-          <CardTitle className="text-base md:text-lg text-gray-800">
-            Opening Hours
-          </CardTitle>
+          <CardTitle className="text-base md:text-lg text-gray-800">Opening Hours</CardTitle>
           <CardDescription className="text-gray-600 text-sm">
             Set the days and times your location is open.
           </CardDescription>
@@ -1452,12 +1229,9 @@ export function SettingsPreview({ className }: { className?: string }) {
         </CardContent>
       </Card>
 
-      {}
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardHeader className="p-4 md:p-5">
-          <CardTitle className="text-base md:text-lg text-gray-800">
-            Reservations
-          </CardTitle>
+          <CardTitle className="text-base md:text-lg text-gray-800">Reservations</CardTitle>
           <CardDescription className="text-gray-600 text-sm">
             Allow customers to book a table in advance.
           </CardDescription>
@@ -1465,9 +1239,7 @@ export function SettingsPreview({ className }: { className?: string }) {
         <CardContent className="space-y-4 p-4 md:p-5 pt-0">
           <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-3.5">
             <div>
-              <p className="font-medium text-gray-800 text-sm">
-                Enable Reservations
-              </p>
+              <p className="font-medium text-gray-800 text-sm">Enable Reservations</p>
               <p className="text-xs text-muted-foreground">
                 Waitlist is always on; reservations are optional.
               </p>
@@ -1487,16 +1259,13 @@ export function SettingsPreview({ className }: { className?: string }) {
         </CardContent>
       </Card>
 
-      {}
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardContent className="flex items-center gap-4 p-4 md:p-5">
           <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white">
             <QrCode className="h-14 w-14 text-slate-900" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-gray-800 text-sm">
-              Queue QR · Downtown
-            </p>
+            <p className="font-medium text-gray-800 text-sm">Queue QR · Downtown</p>
             <p className="truncate text-xs text-slate-500">
               seatping.app/queue/cafemilano/downtown
             </p>
@@ -1515,7 +1284,6 @@ export function SettingsPreview({ className }: { className?: string }) {
   );
 }
 
-
 const miniCard =
   "w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-xl shadow-slate-300/30";
 
@@ -1527,10 +1295,7 @@ export function QueueMiniCard({ className }: { className?: string }) {
           <ListOrdered className="h-4 w-4 text-slate-500" />
           Queue
         </span>
-        <Badge
-          variant="secondary"
-          className="bg-indigo-100 text-indigo-700 text-[10px]"
-        >
+        <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 text-[10px]">
           1 waiting
         </Badge>
       </div>
@@ -1539,9 +1304,7 @@ export function QueueMiniCard({ className }: { className?: string }) {
           #1
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-gray-800">
-            Marcus Bennett
-          </p>
+          <p className="truncate text-sm font-semibold text-gray-800">Marcus Bennett</p>
           <p className="truncate text-xs text-gray-600">Just now · 1 Guest</p>
         </div>
         <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
@@ -1565,9 +1328,7 @@ export function ReservationMiniCard({ className }: { className?: string }) {
     <div className={cn(miniCard, className)}>
       <div className="mb-3 flex items-center gap-1.5">
         <CalendarDays className="h-4 w-4 text-slate-500" />
-        <span className="text-sm font-semibold text-gray-800">
-          Reservations
-        </span>
+        <span className="text-sm font-semibold text-gray-800">Reservations</span>
         <span className="ml-auto text-xs text-slate-400">Marina Bay</span>
       </div>
       <div className="rounded-xl border border-slate-200 p-3">
@@ -1610,16 +1371,7 @@ export function PerformanceMiniCard({ className }: { className?: string }) {
       <p className="text-xs text-slate-500">Served, wait time &amp; no-shows</p>
 
       <svg viewBox="0 0 240 68" className="mt-2 h-16 w-full" aria-hidden>
-        {}
-        <line
-          x1="0"
-          y1="64"
-          x2="240"
-          y2="64"
-          stroke="#f1f5f9"
-          strokeWidth="1"
-        />
-        {}
+        <line x1="0" y1="64" x2="240" y2="64" stroke="#f1f5f9" strokeWidth="1" />
         <polyline
           points="0,52 40,48 80,50 120,42 160,36 200,26 240,12"
           fill="none"
@@ -1628,7 +1380,6 @@ export function PerformanceMiniCard({ className }: { className?: string }) {
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        {}
         <polyline
           points="0,60 40,60 80,58 120,60 160,55 200,57 240,54"
           fill="none"
@@ -1667,9 +1418,7 @@ export function LocationMiniCard({ className }: { className?: string }) {
               Credits: 992
             </span>
           </div>
-          <p className="mt-0.5 truncate text-xs text-slate-500">
-            12 Harbourfront Walk, Marina Bay
-          </p>
+          <p className="mt-0.5 truncate text-xs text-slate-500">12 Harbourfront Walk, Marina Bay</p>
         </div>
       </div>
       <div className="mt-3 flex gap-2">
@@ -1705,12 +1454,7 @@ export function NotifyToastMiniCard({
         className,
       )}
     >
-      <span
-        className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-          tint,
-        )}
-      >
+      <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", tint)}>
         <MessageSquare className="h-4 w-4" />
       </span>
       <div className="min-w-0">
@@ -1746,12 +1490,7 @@ export function StatChipMiniCard({
       <p className="text-xs text-slate-500">{label}</p>
       <div className="mt-1 flex items-center justify-between">
         <p className="text-2xl font-semibold text-slate-800">{value}</p>
-        <span
-          className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-full",
-            tint,
-          )}
-        >
+        <span className={cn("flex h-8 w-8 items-center justify-center rounded-full", tint)}>
           <Icon className={cn("h-4 w-4", fg)} />
         </span>
       </div>
@@ -1791,9 +1530,7 @@ export function AwaitingMiniCard({ className }: { className?: string }) {
           4:12
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-gray-800">
-            Daniel Cho
-          </p>
+          <p className="truncate text-sm font-semibold text-gray-800">Daniel Cho</p>
           <p className="truncate text-xs text-gray-600">Admitted · 2 Guests</p>
         </div>
       </div>
@@ -1809,13 +1546,10 @@ export function AwaitingMiniCard({ className }: { className?: string }) {
   );
 }
 
-
 export function HeroCollage() {
   return (
     <Preview>
-      {}
       <div className="relative mx-auto hidden h-[520px] max-w-5xl lg:block">
-        {}
         <div className="absolute left-0 top-0 z-50 w-44">
           <StatChipMiniCard
             label="In queue"
@@ -1841,7 +1575,6 @@ export function HeroCollage() {
           <PerformanceMiniCard />
         </div>
 
-        {}
         <div className="absolute left-1 top-24 z-20 w-72">
           <QueueMiniCard />
         </div>
@@ -1874,7 +1607,6 @@ export function HeroCollage() {
           />
         </div>
 
-        {}
         <div className="absolute bottom-2 left-0 z-30 w-60">
           <QrMiniCard />
         </div>
@@ -1886,7 +1618,6 @@ export function HeroCollage() {
         </div>
       </div>
 
-      {}
       <div className="mx-auto grid max-w-md grid-cols-1 gap-4 sm:max-w-2xl sm:grid-cols-2 lg:hidden">
         <NotifyToastMiniCard className="sm:col-span-2" />
         <ReservationMiniCard />

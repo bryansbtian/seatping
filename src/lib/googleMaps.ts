@@ -1,4 +1,3 @@
-
 let loadPromise: Promise<any> | null = null;
 let authFailed = false;
 const authFailureListeners = new Set<() => void>();
@@ -47,7 +46,7 @@ export function loadGoogleMaps(): Promise<any> {
     w[callbackName] = () => resolve(w.google);
     const script = document.createElement("script");
     script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
-      key
+      key,
     )}&libraries=places&callback=${callbackName}`;
     script.async = true;
     script.defer = true;
@@ -74,19 +73,13 @@ export interface PlaceDetails {
 export function parsePlace(place: any): PlaceDetails {
   const comps: any[] = place?.address_components || [];
   const get = (type: string) =>
-    comps.find((c) => (c.types || []).includes(type))?.long_name as
-      | string
-      | undefined;
+    comps.find((c) => (c.types || []).includes(type))?.long_name as string | undefined;
 
   const lat = place?.geometry?.location?.lat?.();
   const lng = place?.geometry?.location?.lng?.();
   const placeId = place?.place_id as string | undefined;
 
-  const area =
-    get("sublocality_level_1") ||
-    get("sublocality") ||
-    get("neighborhood") ||
-    undefined;
+  const area = get("sublocality_level_1") || get("sublocality") || get("neighborhood") || undefined;
   const city =
     get("locality") ||
     get("administrative_area_level_2") ||
@@ -96,7 +89,7 @@ export function parsePlace(place: any): PlaceDetails {
   let derivedMapsUrl: string | undefined;
   if (placeId) {
     derivedMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      place?.formatted_address || ""
+      place?.formatted_address || "",
     )}&query_place_id=${placeId}`;
   } else if (typeof lat === "number" && typeof lng === "number") {
     derivedMapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;

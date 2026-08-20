@@ -18,8 +18,7 @@ import {
   SECTION_SUBTITLE,
 } from "@/components/landing/section";
 
-const TESTIMONIAL_W =
-  "min-w-[82%] snap-start sm:min-w-[46%] lg:min-w-[calc((100%-2.5rem)/3)]";
+const TESTIMONIAL_W = "min-w-[82%] snap-start sm:min-w-[46%] lg:min-w-[calc((100%-2.5rem)/3)]";
 
 const TESTIMONIALS = [
   {
@@ -93,7 +92,6 @@ function TestimonialCard({
         TESTIMONIAL_W,
       )}
     >
-      {}
       <div
         aria-hidden
         className="pointer-events-none absolute -left-12 -top-12 h-44 w-44 rounded-full bg-slate-300/45 blur-3xl"
@@ -120,9 +118,7 @@ function TestimonialCard({
             <p className="text-sm text-slate-500">{role}</p>
           </div>
         </div>
-        <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-600">
-          “{quote}”
-        </p>
+        <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-600">“{quote}”</p>
         <div className="mt-5 flex flex-col items-start gap-2 min-[321px]:flex-row min-[321px]:items-center min-[321px]:justify-between min-[321px]:gap-0">
           <div className="flex items-center gap-0.5">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -135,7 +131,6 @@ function TestimonialCard({
     </div>
   );
 }
-
 
 const LandingPage = () => {
   const testimonialsRef = useRef<HTMLDivElement>(null);
@@ -192,12 +187,7 @@ const LandingPage = () => {
       />
       <Header variant="business" />
 
-      {}
-      {}
-      {}
-      {}
       <section className="relative overflow-hidden px-4 pt-24 pb-10 md:pt-32 md:pb-14">
-        {}
         <div
           aria-hidden
           className="pointer-events-none absolute -left-32 top-1/3 hidden h-[42rem] w-[42rem] -translate-y-1/2 rounded-full border border-slate-200/60 md:block"
@@ -212,13 +202,10 @@ const LandingPage = () => {
         />
 
         <div className="container relative mx-auto max-w-6xl">
-          {}
           <div className="mx-auto max-w-3xl text-center animate-fade-in-up">
             <h1 className={DISPLAY_HEADING}>
               One Dashboard for{" "}
-              <span className="sm:whitespace-nowrap">
-                Queues and Reservations
-              </span>
+              <span className="sm:whitespace-nowrap">Queues and Reservations</span>
             </h1>
             <p className={cn("mx-auto mt-4 max-w-xl", SECTION_SUBTITLE)}>
               Manage walk-ins, bookings, and guest updates in one place.
@@ -246,12 +233,10 @@ const LandingPage = () => {
             </div>
           </div>
 
-          {}
           <div className="relative mx-auto mt-8 max-w-5xl animate-fade-in-up animation-delay-200 sm:mt-10 md:mt-12">
             <div className="max-h-[300px] overflow-hidden sm:max-h-[420px] md:max-h-[500px]">
               <HeroDashboardPreview />
             </div>
-            {}
             <div
               aria-hidden
               className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/85 to-transparent sm:h-28"
@@ -260,31 +245,19 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {}
-      {}
-      {}
       <AnimatedBentoFeatureGrid />
 
-      {}
-      {}
-      {}
       <SeatPingFeatureGrid />
 
-      {}
-      {}
-      {}
       <section className={cn("border-t border-slate-200 bg-slate-50", SECTION_PADDING)}>
         <div className="container mx-auto max-w-6xl scroll-animate">
-          {}
           <div className="flex items-end justify-between gap-6">
             <div className="max-w-2xl">
               <h2 className={SECTION_HEADING}>
-                Built for Teams That Manage{" "}
-                <span className="text-slate-400">Guests Every Day</span>
+                Built for Teams That Manage <span className="text-slate-400">Guests Every Day</span>
               </h2>
               <p className={cn("mt-4", SECTION_SUBTITLE)}>
-                Designed for growing restaurants, cafés, salons, and service
-                teams.
+                Designed for growing restaurants, cafés, salons, and service teams.
               </p>
             </div>
             <button
@@ -297,7 +270,6 @@ const LandingPage = () => {
             </button>
           </div>
 
-          {}
           <div
             ref={testimonialsRef}
             className={cn(
@@ -312,11 +284,12 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {}
-      {}
-      {}
-      <section className={cn("relative overflow-hidden border-y border-slate-200 bg-slate-50", SECTION_PADDING)}>
-        {}
+      <section
+        className={cn(
+          "relative overflow-hidden border-y border-slate-200 bg-slate-50",
+          SECTION_PADDING,
+        )}
+      >
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-indigo-50/60 via-slate-50 to-slate-50"
@@ -327,16 +300,11 @@ const LandingPage = () => {
         />
 
         <div className="container mx-auto max-w-4xl text-center scroll-animate">
-          {}
-          <h2
-            className={DISPLAY_HEADING}
-            aria-label="Turn Every Arrival Into Smooth Service"
-          >
+          <h2 className={DISPLAY_HEADING} aria-label="Turn Every Arrival Into Smooth Service">
             <span aria-hidden className="block">
               Turn Every Arrival Into
             </span>
             <span aria-hidden className="mt-1.5 block">
-              {}
               <span className="relative inline-block whitespace-nowrap text-slate-400">
                 Front-Door Chaos
                 <svg
@@ -355,24 +323,18 @@ const LandingPage = () => {
                 </svg>
               </span>
             </span>
-            {}
             <span className="mt-1.5 block font-hand text-[1.12em] font-bold leading-none text-indigo-600">
               Smooth Service
             </span>
           </h2>
 
           <p className={cn("mx-auto mt-4 max-w-2xl", SECTION_SUBTITLE)}>
-            Set up queues, reservations, notifications, and location settings
-            with no extra hardware and no complicated onboarding.
+            Set up queues, reservations, notifications, and location settings with no extra hardware
+            and no complicated onboarding.
           </p>
 
-          {}
           <div className="mt-6 flex justify-center sm:mt-7">
-            <Button
-              size="lg"
-              asChild
-              className="rounded-xl px-8 shadow-sm"
-            >
+            <Button size="lg" asChild className="rounded-xl px-8 shadow-sm">
               <Link to="/sales">
                 <span className="font-medium">Book a Demo</span>
               </Link>

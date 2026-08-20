@@ -1,16 +1,8 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { api } from "@/lib/api";
+import { createContext, useContext } from "react";
 
 export type Lang = "en" | "id";
 
-const STORAGE_KEY = "seatping.business.lang";
+export const STORAGE_KEY = "seatping.business.lang";
 
 const en = {
   "nav.dashboard": "Dashboard",
@@ -21,8 +13,7 @@ const en = {
   "nav.openMenu": "Open menu",
 
   "camp.title": "Campaigns",
-  "camp.subtitle":
-    "Send SeatPing-branded SMS, WhatsApp, and Email campaigns to your guests.",
+  "camp.subtitle": "Send SeatPing-branded SMS, WhatsApp, and Email campaigns to your guests.",
   "camp.tab.campaigns": "Campaigns",
   "camp.tab.templates": "Templates",
   "camp.tab.audiences": "Audiences",
@@ -35,8 +26,7 @@ const en = {
   "camp.empty.campaigns.body":
     "Create your first campaign to reach your guests by SMS, WhatsApp, or Email.",
   "camp.empty.history.title": "No Sent Campaigns Yet",
-  "camp.empty.history.body":
-    "Once you send a campaign, its delivery history shows up here.",
+  "camp.empty.history.body": "Once you send a campaign, its delivery history shows up here.",
   "camp.empty.templates.title": "No Templates Yet",
   "camp.empty.templates.body": "SeatPing templates load automatically.",
   "camp.col.name": "Name",
@@ -67,10 +57,8 @@ const en = {
   "banner.trialExpired.body":
     "Your free trial has ended. Please contact SeatPing to continue using your business dashboard.",
   "banner.trialActive.title": "You're on a Free Trial!",
-  "banner.trialActive.body":
-    "Contact SeatPing when you're ready to activate your account.",
-  "banner.trialActive.countdown":
-    "Trial expires in: {days}d {hours}h {minutes}m",
+  "banner.trialActive.body": "Contact SeatPing when you're ready to activate your account.",
+  "banner.trialActive.countdown": "Trial expires in: {days}d {hours}h {minutes}m",
   "banner.trialExpiredShort.title": "Your trial has expired",
   "banner.trialExpiredShort.body":
     "Please contact SeatPing to continue using your business dashboard.",
@@ -81,22 +69,19 @@ const en = {
   "settings.title": "Settings",
   "settings.subtitle": "Manage your business information and locations.",
   "settings.businessInfo.title": "Business Information",
-  "settings.businessInfo.desc":
-    "Your business details and account information",
+  "settings.businessInfo.desc": "Your business details and account information",
   "settings.field.businessName": "Business Name",
   "settings.field.username": "Username",
   "settings.field.email": "Email",
   "settings.field.phone": "Phone Number",
   "settings.prefs.title": "Preferences",
-  "settings.prefs.desc":
-    "Customize how the operator dashboard works for you",
+  "settings.prefs.desc": "Customize how the operator dashboard works for you",
   "settings.language.label": "Language",
   "settings.language.saved": "Language updated",
   "settings.language.saveError": "Could not update language",
 
   "loc.title": "Location Management",
-  "loc.desc":
-    "Add and manage your business locations ({count}/{max} {locWord} used)",
+  "loc.desc": "Add and manage your business locations ({count}/{max} {locWord} used)",
   "loc.location": "location",
   "loc.locations": "locations",
   "loc.addNew": "Add New Location",
@@ -107,14 +92,12 @@ const en = {
     "This is the short location name customers will see when joining a queue or booking a table.",
   "loc.searchAddress": "Search Address",
   "loc.searchAddress.placeholder": "Search for your business address",
-  "loc.atMax":
-    "You have reached the maximum number of locations for your account.",
+  "loc.atMax": "You have reached the maximum number of locations for your account.",
   "loc.current": "Current Locations",
   "loc.none": "No locations added yet.",
   "loc.none.help": "Add your first location above to get started.",
   "loc.credits": "Credits: {n}",
-  "loc.addDisplayNameHint":
-    "Add a Location Display Name so customers see a friendly name.",
+  "loc.addDisplayNameHint": "Add a Location Display Name so customers see a friendly name.",
   "loc.unnamed": "Unnamed location",
   "loc.hideFullAddress": "Hide Full Address",
   "loc.viewFullAddress": "View Full Address",
@@ -133,14 +116,11 @@ const en = {
   "loc.qrModal.copyLink": "Copy Link",
   "loc.qrModal.downloadQr": "Download QR Code",
   "loc.toast.displayNameRequired.title": "Location Display Name required",
-  "loc.toast.displayNameRequired.desc":
-    "Enter the short name customers will see.",
+  "loc.toast.displayNameRequired.desc": "Enter the short name customers will see.",
   "loc.toast.addressRequired.title": "Address required",
-  "loc.toast.addressRequired.desc":
-    "Search for or type your location address.",
+  "loc.toast.addressRequired.desc": "Search for or type your location address.",
   "loc.toast.limitReached.title": "Limit reached",
-  "loc.toast.limitReached.desc":
-    "You have reached the maximum locations ({max}).",
+  "loc.toast.limitReached.desc": "You have reached the maximum locations ({max}).",
   "loc.toast.savedNoMap.title": "Saved without map data",
   "loc.toast.savedNoMap.desc":
     "We couldn't capture coordinates for this address. Re-search it later to enable maps features.",
@@ -153,8 +133,7 @@ const en = {
   "loc.toast.qrError.title": "Error",
   "loc.toast.qrError.desc": "Failed to generate QR code. Please try again.",
   "loc.toast.linkCopied.title": "Link copied",
-  "loc.toast.linkCopied.desc":
-    "The queue link has been copied to your clipboard.",
+  "loc.toast.linkCopied.desc": "The queue link has been copied to your clipboard.",
   "loc.toast.copyFailed.title": "Couldn't copy link",
   "loc.toast.copyFailed.desc": "Copy the link manually from the box above.",
 
@@ -212,13 +191,11 @@ const en = {
   "guests.stat.noShows": "No-Shows",
   "guests.stat.cancelled": "Cancelled",
   "guests.summary": "Summary",
-  "guests.summary.empty":
-    "New guest. More history will appear after future visits.",
+  "guests.summary.empty": "New guest. More history will appear after future visits.",
   "guests.noTags": "No Tags Yet",
   "guests.addTag.placeholder": "Add A Tag",
   "guests.internalNotes": "Internal Notes",
-  "guests.notes.placeholder":
-    "Private notes about this guest (only your team can see these).",
+  "guests.notes.placeholder": "Private notes about this guest (only your team can see these).",
   "guests.saveNotes": "Save Notes",
   "guests.saving": "Saving...",
   "guests.upcomingReservations": "Upcoming Reservations",
@@ -264,8 +241,7 @@ const en = {
   "dash.minAgo": "{n}m ago",
   "dash.hourMinAgo": "{h}h {m}m ago",
   "dash.awaiting.title": "Awaiting Arrival Confirmation",
-  "dash.awaiting.desc":
-    "Confirm arrivals for customers admitted in the last 5 minutes",
+  "dash.awaiting.desc": "Confirm arrivals for customers admitted in the last 5 minutes",
   "dash.admitted": "Admitted: {time}",
   "dash.timeExpired": "Time Expired",
   "dash.arrived": "Arrived",
@@ -285,8 +261,7 @@ const en = {
   "dash.legend.served": "Customers Served",
   "dash.legend.avgWait": "Avg Wait Time (min)",
   "dash.legend.noShows": "No-Shows",
-  "dash.noData":
-    "No data available yet. Start serving customers to see analytics!",
+  "dash.noData": "No data available yet. Start serving customers to see analytics!",
   "dash.peak.title": "Peak Hours",
   "dash.peak.desc": "When does your business get the most traffic?",
   "dash.peak.legend": "Customers",
@@ -304,8 +279,7 @@ const en = {
   "dash.toast.queueRefreshed.desc": "Queue data has been updated.",
   "dash.toast.refreshFailed.title": "Failed to refresh",
   "dash.toast.admitted.title": "Customer admitted",
-  "dash.toast.admitted.desc":
-    "{name} has been admitted and will proceed to their turn.",
+  "dash.toast.admitted.desc": "{name} has been admitted and will proceed to their turn.",
   "dash.toast.admitFailed.title": "Failed to admit customer",
   "dash.toast.removed.title": "Customer removed",
   "dash.toast.removed.desc": "{name} has been removed from the queue.",
@@ -326,8 +300,7 @@ const en = {
   "res.tab.past": "Past",
   "res.tab.cancelled": "Cancelled",
   "res.tab.noShows": "No-Shows",
-  "res.enableHint":
-    "Enable reservations in Settings to start accepting bookings.",
+  "res.enableHint": "Enable reservations in Settings to start accepting bookings.",
   "res.empty": "No reservations here.",
   "res.viewLess": "View Less",
   "res.viewAll": "View All ({n})",
@@ -366,10 +339,8 @@ const en = {
   "rpe.toast.bannerRemoved.title": "Banner removed",
   "rpe.toast.bannerRemoveFailed.title": "Failed to remove banner",
   "rpe.toast.tooManyPhotos.title": "Too many photos",
-  "rpe.toast.tooManyPhotos.full":
-    "This location already has the maximum of {max} photos.",
-  "rpe.toast.tooManyPhotos.some":
-    "You can add {n} more photo(s) (max {max} per location).",
+  "rpe.toast.tooManyPhotos.full": "This location already has the maximum of {max} photos.",
+  "rpe.toast.tooManyPhotos.some": "You can add {n} more photo(s) (max {max} per location).",
   "rpe.toast.photosUploaded.title": "Photos uploaded",
   "rpe.toast.photosUploaded.desc": "{n} photo(s) added.",
   "rpe.toast.photoFailed.title": "Photo upload failed",
@@ -384,12 +355,10 @@ const en = {
   "rpe.toast.profileSaved.desc": "Your restaurant profile was updated.",
   "rpe.toast.saveFailed.title": "Save failed",
   "rpe.overview.title": "Public Restaurant Profile",
-  "rpe.overview.desc":
-    "This information powers your customer-facing restaurant page.",
+  "rpe.overview.desc": "This information powers your customer-facing restaurant page.",
   "rpe.field.restaurantName": "Restaurant Name",
   "rpe.field.restaurantName.ph": "Chinese Restaurant",
-  "rpe.field.restaurantName.help":
-    "The main name shown on cards and your public page.",
+  "rpe.field.restaurantName.help": "The main name shown on cards and your public page.",
   "rpe.field.shortAddress": "Short Address",
   "rpe.field.shortAddress.ph": "Plaza Indonesia",
   "rpe.field.shortAddress.help":
@@ -397,8 +366,7 @@ const en = {
   "rpe.field.tagline": "Short Tagline",
   "rpe.field.tagline.ph": "Modern Japanese dining in Jakarta",
   "rpe.field.description": "About / Description",
-  "rpe.field.description.ph":
-    "A warm dining experience for reservations, queues, and group meals.",
+  "rpe.field.description.ph": "A warm dining experience for reservations, queues, and group meals.",
   "rpe.field.cuisine": "Cuisine Type",
   "rpe.field.cuisine.ph": "Select Cuisine",
   "rpe.field.priceRange": "Price Range",
@@ -406,8 +374,7 @@ const en = {
   "rpe.field.currency": "Currency",
   "rpe.field.currency.ph": "Currency",
   "rpe.hours.title": "Opening Hours",
-  "rpe.hours.desc":
-    "Set your timezone and the days/times your restaurant is open.",
+  "rpe.hours.desc": "Set your timezone and the days/times your restaurant is open.",
   "rpe.hours.timezone": "Timezone",
   "rpe.hours.timezoneHelp": "Set your timezone",
   "rpe.hours.from": "From",
@@ -423,8 +390,7 @@ const en = {
   "rpe.res.title": "Reservations",
   "rpe.res.desc": "Allow customers to book a table in advance.",
   "rpe.res.enable": "Enable Reservations",
-  "rpe.res.enableHelp":
-    "Customers can always join the waitlist; reservations are optional.",
+  "rpe.res.enableHelp": "Customers can always join the waitlist; reservations are optional.",
   "rpe.res.controlHelp":
     "Control when and how many guests you accept. Availability is calculated from max number of guests and max reserved guests per hour.",
   "rpe.res.hours": "Reservation Hours",
@@ -434,19 +400,15 @@ const en = {
   "rpe.res.maxGuests": "Max Number of Guests",
   "rpe.res.maxGuestsHelp": "Largest group accepted per reservation (e.g. 8).",
   "rpe.res.maxPerHour": "Max Reserved Guests Per Hour",
-  "rpe.res.maxPerHourHelp":
-    "Total reserved guests allowed in any hour (e.g. 40).",
+  "rpe.res.maxPerHourHelp": "Total reserved guests allowed in any hour (e.g. 40).",
   "rpe.res.bookingWindow": "Booking Window (Days)",
-  "rpe.res.bookingWindowHelp":
-    "How far in advance customers can book (e.g. 30).",
+  "rpe.res.bookingWindowHelp": "How far in advance customers can book (e.g. 30).",
   "rpe.res.minNotice": "Minimum Notice (Minutes)",
-  "rpe.res.minNoticeHelp":
-    "Customers can't book closer than this to the reservation time.",
+  "rpe.res.minNoticeHelp": "Customers can't book closer than this to the reservation time.",
   "rpe.res.cancellation": "Cancellation Policy / Notes (Optional)",
   "rpe.res.cancellation.ph":
     "e.g. Please cancel at least 2 hours in advance. Tables are held for 15 minutes.",
-  "rpe.res.cancellationHelp":
-    "Shown to customers before they confirm a booking.",
+  "rpe.res.cancellationHelp": "Shown to customers before they confirm a booking.",
   "rpe.banner.title": "Banner Image",
   "rpe.banner.desc":
     "The main hero image at the top of your public page. Use a wide image (around 16:9). JPG, PNG, or WEBP, up to 25MB.",
@@ -468,8 +430,7 @@ const en = {
   "rpe.menu.desc": "Add a few highlight items customers should know about.",
   "rpe.menu.subdesc": "These items will appear on your public restaurant page.",
   "rpe.menu.link": "Menu Link",
-  "rpe.menu.linkHelp":
-    "Add a full menu link so customers can view it from your page.",
+  "rpe.menu.linkHelp": "Add a full menu link so customers can view it from your page.",
   "rpe.menu.orHighlight": "or add highlight items",
   "rpe.menu.uploadCsv": "Upload Menu CSV",
   "rpe.menu.csvInclude": "CSV Must Include: Name, Category, Description, Price",
@@ -492,8 +453,7 @@ const en = {
   "rpe.menu.clearTitle": "Clear Menu?",
   "rpe.menu.clearDesc":
     "This will remove {n} menu item(s) from this location. This action cannot be undone.",
-  "rpe.menu.clearHelper":
-    "You can upload a new CSV or add menu items again after clearing.",
+  "rpe.menu.clearHelper": "You can upload a new CSV or add menu items again after clearing.",
   "rpe.menu.clear": "Clear Menu",
   "rpe.menu.clearing": "Clearing...",
   "rpe.menu.clearSuccess": "Menu cleared successfully.",
@@ -503,8 +463,7 @@ const en = {
   "rpe.csv.missingCols":
     "Missing required column(s): {cols}. The CSV must include: name, category, description, price.",
   "rpe.csv.noItems.title": "No Menu Items Found",
-  "rpe.csv.noItems.skipped":
-    "{n} row(s) were skipped because they have no name.",
+  "rpe.csv.noItems.skipped": "{n} row(s) were skipped because they have no name.",
   "rpe.csv.noItems.empty": "The CSV did not contain any menu items.",
   "rpe.csv.couldNotRead": "Could Not Read CSV",
   "rpe.csv.skippedNote": "{n} Skipped (No Name)",
@@ -512,8 +471,7 @@ const en = {
   "rpe.csv.importedOne": "{n} Menu Item Imported",
   "rpe.csv.importedMany": "{n} Menu Items Imported",
   "rpe.details.title": "Details",
-  "rpe.details.desc":
-    "Address and contact information shown on your public page.",
+  "rpe.details.desc": "Address and contact information shown on your public page.",
   "rpe.details.address": "Address",
   "rpe.details.address.ph": "12 Senopati St, Jakarta",
   "rpe.details.area": "Area / Neighborhood",
@@ -558,8 +516,7 @@ const en = {
   "rev.loading": "Loading reviews...",
   "rev.failedLoad": "Failed to load reviews.",
   "rev.empty.title": "No Reviews Yet.",
-  "rev.empty.body":
-    "Customer reviews will appear here once customers submit feedback.",
+  "rev.empty.body": "Customer reviews will appear here once customers submit feedback.",
   "rev.noMatch": "No reviews match these filters.",
   "rev.anonymous": "Anonymous",
   "rev.partyOf": "Party of {n}",
@@ -569,8 +526,7 @@ const en = {
   "rev.editReply": "Edit Reply",
   "rev.delete": "Delete",
   "rev.deleteTitle": "Delete this reply?",
-  "rev.deleteDesc":
-    "The customer's review will stay — only your response is removed.",
+  "rev.deleteDesc": "The customer's review will stay, only your response is removed.",
   "rev.deleteReply": "Delete reply",
   "rev.repliedOn": "Replied {date}",
   "rev.edited": "Edited {date}",
@@ -602,8 +558,7 @@ const id: Partial<Record<TKey, string>> = {
   "nav.openMenu": "Buka menu",
 
   "camp.title": "Kampanye",
-  "camp.subtitle":
-    "Kirim kampanye SMS, WhatsApp, dan Email berlabel SeatPing ke tamu Anda.",
+  "camp.subtitle": "Kirim kampanye SMS, WhatsApp, dan Email berlabel SeatPing ke tamu Anda.",
   "camp.tab.campaigns": "Kampanye",
   "camp.tab.templates": "Templat",
   "camp.tab.audiences": "Audiens",
@@ -626,10 +581,8 @@ const id: Partial<Record<TKey, string>> = {
   "banner.trialExpired.body":
     "Masa uji coba gratis Anda telah berakhir. Silakan hubungi SeatPing untuk terus menggunakan dasbor bisnis Anda.",
   "banner.trialActive.title": "Anda Sedang Dalam Uji Coba Gratis!",
-  "banner.trialActive.body":
-    "Hubungi SeatPing saat Anda siap mengaktifkan akun Anda.",
-  "banner.trialActive.countdown":
-    "Uji coba berakhir dalam: {days}h {hours}j {minutes}m",
+  "banner.trialActive.body": "Hubungi SeatPing saat Anda siap mengaktifkan akun Anda.",
+  "banner.trialActive.countdown": "Uji coba berakhir dalam: {days}h {hours}j {minutes}m",
   "banner.trialExpiredShort.title": "Masa uji coba Anda telah berakhir",
   "banner.trialExpiredShort.body":
     "Silakan hubungi SeatPing untuk terus menggunakan dasbor bisnis Anda.",
@@ -652,8 +605,7 @@ const id: Partial<Record<TKey, string>> = {
   "settings.language.saveError": "Gagal memperbarui bahasa",
 
   "loc.title": "Manajemen Lokasi",
-  "loc.desc":
-    "Tambah dan kelola lokasi bisnis Anda ({count}/{max} {locWord} digunakan)",
+  "loc.desc": "Tambah dan kelola lokasi bisnis Anda ({count}/{max} {locWord} digunakan)",
   "loc.location": "lokasi",
   "loc.locations": "lokasi",
   "loc.addNew": "Tambah Lokasi Baru",
@@ -684,18 +636,15 @@ const id: Partial<Record<TKey, string>> = {
   "loc.qrModal.title": "Kode QR Lokasi",
   "loc.qrModal.generating": "Membuat…",
   "loc.qrModal.queueLink": "Tautan Antrean",
-  "loc.qrModal.help":
-    "Pelanggan yang memindai kode ini otomatis bergabung ke antrean lokasi ini.",
+  "loc.qrModal.help": "Pelanggan yang memindai kode ini otomatis bergabung ke antrean lokasi ini.",
   "loc.qrModal.copyLink": "Salin Tautan",
   "loc.qrModal.downloadQr": "Unduh Kode QR",
   "loc.toast.displayNameRequired.title": "Nama Tampilan Lokasi wajib diisi",
-  "loc.toast.displayNameRequired.desc":
-    "Masukkan nama singkat yang akan dilihat pelanggan.",
+  "loc.toast.displayNameRequired.desc": "Masukkan nama singkat yang akan dilihat pelanggan.",
   "loc.toast.addressRequired.title": "Alamat wajib diisi",
   "loc.toast.addressRequired.desc": "Cari atau ketik alamat lokasi Anda.",
   "loc.toast.limitReached.title": "Batas tercapai",
-  "loc.toast.limitReached.desc":
-    "Anda telah mencapai jumlah maksimum lokasi ({max}).",
+  "loc.toast.limitReached.desc": "Anda telah mencapai jumlah maksimum lokasi ({max}).",
   "loc.toast.savedNoMap.title": "Disimpan tanpa data peta",
   "loc.toast.savedNoMap.desc":
     "Kami tidak dapat menangkap koordinat untuk alamat ini. Cari ulang nanti untuk mengaktifkan fitur peta.",
@@ -818,8 +767,7 @@ const id: Partial<Record<TKey, string>> = {
   "dash.minAgo": "{n}m lalu",
   "dash.hourMinAgo": "{h}j {m}m lalu",
   "dash.awaiting.title": "Menunggu Konfirmasi Kedatangan",
-  "dash.awaiting.desc":
-    "Konfirmasi kedatangan pelanggan yang diterima dalam 5 menit terakhir",
+  "dash.awaiting.desc": "Konfirmasi kedatangan pelanggan yang diterima dalam 5 menit terakhir",
   "dash.admitted": "Diterima: {time}",
   "dash.timeExpired": "Waktu Habis",
   "dash.arrived": "Tiba",
@@ -839,8 +787,7 @@ const id: Partial<Record<TKey, string>> = {
   "dash.legend.served": "Pelanggan Dilayani",
   "dash.legend.avgWait": "Rata-rata Waktu Tunggu (mnt)",
   "dash.legend.noShows": "Tidak Hadir",
-  "dash.noData":
-    "Belum ada data. Mulai layani pelanggan untuk melihat analitik!",
+  "dash.noData": "Belum ada data. Mulai layani pelanggan untuk melihat analitik!",
   "dash.peak.title": "Jam Sibuk",
   "dash.peak.desc": "Kapan bisnis Anda paling ramai?",
   "dash.peak.legend": "Pelanggan",
@@ -858,8 +805,7 @@ const id: Partial<Record<TKey, string>> = {
   "dash.toast.queueRefreshed.desc": "Data antrean telah diperbarui.",
   "dash.toast.refreshFailed.title": "Gagal menyegarkan",
   "dash.toast.admitted.title": "Pelanggan diterima",
-  "dash.toast.admitted.desc":
-    "{name} telah diterima dan akan melanjutkan ke gilirannya.",
+  "dash.toast.admitted.desc": "{name} telah diterima dan akan melanjutkan ke gilirannya.",
   "dash.toast.admitFailed.title": "Gagal menerima pelanggan",
   "dash.toast.removed.title": "Pelanggan dihapus",
   "dash.toast.removed.desc": "{name} telah dihapus dari antrean.",
@@ -880,8 +826,7 @@ const id: Partial<Record<TKey, string>> = {
   "res.tab.past": "Lalu",
   "res.tab.cancelled": "Dibatalkan",
   "res.tab.noShows": "Tidak Hadir",
-  "res.enableHint":
-    "Aktifkan reservasi di Pengaturan untuk mulai menerima pemesanan.",
+  "res.enableHint": "Aktifkan reservasi di Pengaturan untuk mulai menerima pemesanan.",
   "res.empty": "Tidak ada reservasi di sini.",
   "res.viewLess": "Tampilkan Lebih Sedikit",
   "res.viewAll": "Tampilkan Semua ({n})",
@@ -920,10 +865,8 @@ const id: Partial<Record<TKey, string>> = {
   "rpe.toast.bannerRemoved.title": "Banner dihapus",
   "rpe.toast.bannerRemoveFailed.title": "Gagal menghapus banner",
   "rpe.toast.tooManyPhotos.title": "Terlalu banyak foto",
-  "rpe.toast.tooManyPhotos.full":
-    "Lokasi ini sudah memiliki maksimum {max} foto.",
-  "rpe.toast.tooManyPhotos.some":
-    "Anda dapat menambahkan {n} foto lagi (maks {max} per lokasi).",
+  "rpe.toast.tooManyPhotos.full": "Lokasi ini sudah memiliki maksimum {max} foto.",
+  "rpe.toast.tooManyPhotos.some": "Anda dapat menambahkan {n} foto lagi (maks {max} per lokasi).",
   "rpe.toast.photosUploaded.title": "Foto diunggah",
   "rpe.toast.photosUploaded.desc": "{n} foto ditambahkan.",
   "rpe.toast.photoFailed.title": "Unggah foto gagal",
@@ -938,8 +881,7 @@ const id: Partial<Record<TKey, string>> = {
   "rpe.toast.profileSaved.desc": "Profil restoran Anda telah diperbarui.",
   "rpe.toast.saveFailed.title": "Penyimpanan gagal",
   "rpe.overview.title": "Profil Restoran Publik",
-  "rpe.overview.desc":
-    "Informasi ini menggerakkan halaman restoran yang dilihat pelanggan.",
+  "rpe.overview.desc": "Informasi ini menggerakkan halaman restoran yang dilihat pelanggan.",
   "rpe.field.restaurantName": "Nama Restoran",
   "rpe.field.restaurantName.ph": "Restoran Tionghoa",
   "rpe.field.restaurantName.help":
@@ -960,8 +902,7 @@ const id: Partial<Record<TKey, string>> = {
   "rpe.field.currency": "Mata Uang",
   "rpe.field.currency.ph": "Mata Uang",
   "rpe.hours.title": "Jam Buka",
-  "rpe.hours.desc":
-    "Atur zona waktu dan hari/jam restoran Anda buka.",
+  "rpe.hours.desc": "Atur zona waktu dan hari/jam restoran Anda buka.",
   "rpe.hours.timezone": "Zona Waktu",
   "rpe.hours.timezoneHelp": "Atur zona waktu Anda",
   "rpe.hours.from": "Dari",
@@ -988,14 +929,11 @@ const id: Partial<Record<TKey, string>> = {
   "rpe.res.maxGuests": "Jumlah Tamu Maksimum",
   "rpe.res.maxGuestsHelp": "Kelompok terbesar yang diterima per reservasi (mis. 8).",
   "rpe.res.maxPerHour": "Tamu Reservasi Maksimum Per Jam",
-  "rpe.res.maxPerHourHelp":
-    "Total tamu reservasi yang diizinkan dalam satu jam (mis. 40).",
+  "rpe.res.maxPerHourHelp": "Total tamu reservasi yang diizinkan dalam satu jam (mis. 40).",
   "rpe.res.bookingWindow": "Rentang Pemesanan (Hari)",
-  "rpe.res.bookingWindowHelp":
-    "Seberapa jauh ke depan pelanggan dapat memesan (mis. 30).",
+  "rpe.res.bookingWindowHelp": "Seberapa jauh ke depan pelanggan dapat memesan (mis. 30).",
   "rpe.res.minNotice": "Pemberitahuan Minimum (Menit)",
-  "rpe.res.minNoticeHelp":
-    "Pelanggan tidak dapat memesan lebih dekat dari ini ke waktu reservasi.",
+  "rpe.res.minNoticeHelp": "Pelanggan tidak dapat memesan lebih dekat dari ini ke waktu reservasi.",
   "rpe.res.cancellation": "Kebijakan Pembatalan / Catatan (Opsional)",
   "rpe.res.cancellation.ph":
     "mis. Harap batalkan setidaknya 2 jam sebelumnya. Meja ditahan selama 15 menit.",
@@ -1026,8 +964,7 @@ const id: Partial<Record<TKey, string>> = {
     "Tambahkan tautan menu lengkap agar pelanggan dapat melihatnya dari halaman Anda.",
   "rpe.menu.orHighlight": "atau tambahkan item unggulan",
   "rpe.menu.uploadCsv": "Unggah CSV Menu",
-  "rpe.menu.csvInclude":
-    "CSV Harus Memuat: name, category, description, price",
+  "rpe.menu.csvInclude": "CSV Harus Memuat: name, category, description, price",
   "rpe.menu.chooseCsv": "Pilih CSV",
   "rpe.menu.orOneAtATime": "atau tambahkan satu per satu",
   "rpe.menu.addItem": "Tambah Item Menu",
@@ -1058,8 +995,7 @@ const id: Partial<Record<TKey, string>> = {
   "rpe.csv.missingCols":
     "Kolom wajib tidak ada: {cols}. CSV harus memuat: name, category, description, price.",
   "rpe.csv.noItems.title": "Tidak Ada Item Menu Ditemukan",
-  "rpe.csv.noItems.skipped":
-    "{n} baris dilewati karena tidak memiliki nama.",
+  "rpe.csv.noItems.skipped": "{n} baris dilewati karena tidak memiliki nama.",
   "rpe.csv.noItems.empty": "CSV tidak memuat item menu apa pun.",
   "rpe.csv.couldNotRead": "Tidak Dapat Membaca CSV",
   "rpe.csv.skippedNote": "{n} Dilewati (Tanpa Nama)",
@@ -1067,8 +1003,7 @@ const id: Partial<Record<TKey, string>> = {
   "rpe.csv.importedOne": "{n} Item Menu Diimpor",
   "rpe.csv.importedMany": "{n} Item Menu Diimpor",
   "rpe.details.title": "Detail",
-  "rpe.details.desc":
-    "Informasi alamat dan kontak yang ditampilkan di halaman publik Anda.",
+  "rpe.details.desc": "Informasi alamat dan kontak yang ditampilkan di halaman publik Anda.",
   "rpe.details.address": "Alamat",
   "rpe.details.address.ph": "Jl. Senopati 12, Jakarta",
   "rpe.details.area": "Area / Lingkungan",
@@ -1113,8 +1048,7 @@ const id: Partial<Record<TKey, string>> = {
   "rev.loading": "Memuat ulasan...",
   "rev.failedLoad": "Gagal memuat ulasan.",
   "rev.empty.title": "Belum Ada Ulasan.",
-  "rev.empty.body":
-    "Ulasan pelanggan akan muncul di sini setelah pelanggan mengirimkan masukan.",
+  "rev.empty.body": "Ulasan pelanggan akan muncul di sini setelah pelanggan mengirimkan masukan.",
   "rev.noMatch": "Tidak ada ulasan yang cocok dengan filter ini.",
   "rev.anonymous": "Anonim",
   "rev.partyOf": "Rombongan {n}",
@@ -1124,8 +1058,7 @@ const id: Partial<Record<TKey, string>> = {
   "rev.editReply": "Edit Balasan",
   "rev.delete": "Hapus",
   "rev.deleteTitle": "Hapus balasan ini?",
-  "rev.deleteDesc":
-    "Ulasan pelanggan akan tetap ada, hanya respons Anda yang dihapus.",
+  "rev.deleteDesc": "Ulasan pelanggan akan tetap ada, hanya respons Anda yang dihapus.",
   "rev.deleteReply": "Hapus balasan",
   "rev.repliedOn": "Dibalas {date}",
   "rev.edited": "Diedit {date}",
@@ -1196,30 +1129,12 @@ export function translateStatus(lang: Lang, status: string): string {
     .join(" ");
 }
 
-interface LangContextValue {
+export interface LangContextValue {
   lang: Lang;
   ready: boolean;
   t: (key: TKey, params?: Params) => string;
   tStatus: (status: string) => string;
   setLang: (lang: Lang) => Promise<void>;
-}
-
-function readStoredLang(): Lang {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "en" || v === "id") {
-      return v;
-    }
-  } catch {
-  }
-  return "en";
-}
-
-function persistLang(lang: Lang) {
-  try {
-    localStorage.setItem(STORAGE_KEY, lang);
-  } catch {
-  }
 }
 
 const DEFAULT_VALUE: LangContextValue = {
@@ -1230,67 +1145,7 @@ const DEFAULT_VALUE: LangContextValue = {
   setLang: async () => {},
 };
 
-const LangContext = createContext<LangContextValue>(DEFAULT_VALUE);
-
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(() => readStoredLang());
-  const [ready, setReady] = useState(false);
-  const langRef = useRef(lang);
-  langRef.current = lang;
-
-  useEffect(() => {
-    let cancelled = false;
-    api("/auth/business/language")
-      .then((d) => {
-        if (cancelled) {
-          return;
-        }
-        if (d?.language === "en" || d?.language === "id") {
-          setLangState(d.language);
-          persistLang(d.language);
-        }
-      })
-      .catch(() => {
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setReady(true);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const setLang = useCallback(async (next: Lang) => {
-    const prev = langRef.current;
-    if (next === prev) {
-      return;
-    }
-    setLangState(next);
-    persistLang(next);
-    try {
-      await api("/auth/business/language", {
-        method: "PUT",
-        body: JSON.stringify({ language: next }),
-      });
-    } catch (e) {
-      setLangState(prev);
-      persistLang(prev);
-      throw e;
-    }
-  }, []);
-
-  const value: LangContextValue = {
-    lang,
-    ready,
-    t: (key, params) => translate(lang, key, params),
-    tStatus: (status) => translateStatus(lang, status),
-    setLang,
-  };
-
-  return <LangContext.Provider value={value}>{children}</LangContext.Provider>;
-}
+export const LangContext = createContext<LangContextValue>(DEFAULT_VALUE);
 
 export function useLang(): LangContextValue {
   return useContext(LangContext);

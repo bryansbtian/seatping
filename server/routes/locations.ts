@@ -58,12 +58,13 @@ router.get("/search-suggestions", async (req, res) => {
       await limitGuard(req, res, [
         { name: "suggestions-ip", key: clientIp(req), windowMs: MINUTES(1), max: 120 },
       ])
-    )
-      {
-        return;
-      }
+    ) {
+      return;
+    }
 
-    const q = String(req.query.query || "").trim().toLowerCase();
+    const q = String(req.query.query || "")
+      .trim()
+      .toLowerCase();
     const rawLimit = parseInt(String(req.query.limit || "3"), 10);
     let boundedLimit = 3;
     if (Number.isFinite(rawLimit)) {
@@ -78,9 +79,7 @@ router.get("/search-suggestions", async (req, res) => {
       where: { isPublished: true },
       include: { photos: { orderBy: { createdAt: "asc" }, take: 1 } },
     });
-    const businessIds = Array.from(
-      new Set(locations.map((l) => l.businessId).filter(Boolean)),
-    );
+    const businessIds = Array.from(new Set(locations.map((l) => l.businessId).filter(Boolean)));
     const businesses = await prisma.business.findMany({
       where: { id: { in: businessIds } },
       select: { id: true, name: true, username: true },
@@ -96,10 +95,7 @@ router.get("/search-suggestions", async (req, res) => {
         const details = (rp.details || {}) as any;
         const biz = businessById.get(loc.businessId);
 
-        const nameScore = Math.max(
-          fieldScore(rp.displayName, q),
-          fieldScore(biz?.name, q),
-        );
+        const nameScore = Math.max(fieldScore(rp.displayName, q), fieldScore(biz?.name, q));
         const labelScore = Math.max(
           fieldScore(loc.displayName, q),
           fieldScore(rp.shortAddress, q),
@@ -119,10 +115,7 @@ router.get("/search-suggestions", async (req, res) => {
           (m: number, c: any) => Math.max(m, fieldScore(c, q)),
           0,
         );
-        const addressScore = Math.max(
-          fieldScore(loc.address, q),
-          fieldScore(details.address, q),
-        );
+        const addressScore = Math.max(fieldScore(loc.address, q), fieldScore(details.address, q));
         const textScore = Math.max(
           fieldScore(rp.tagline, q),
           fieldScore(rp.description, q),
@@ -193,21 +186,15 @@ router.use(async (req, res, next) => {
         max: 120,
       },
     ])
-  )
-    {
-      return;
-    }
+  ) {
+    return;
+  }
   next();
 });
 
 const MAX_PHOTOS_PER_LOCATION = 10;
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
-const ACCEPTED_MIME = new Set([
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-]);
+const ACCEPTED_MIME = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -223,7 +210,7 @@ const upload = multer({
 function runMulter(
   req: Request,
   res: Response,
-  mw: (req: Request, res: Response, cb: (err?: unknown) => void) => void
+  mw: (req: Request, res: Response, cb: (err?: unknown) => void) => void,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     mw(req, res, (err?: unknown) => {
@@ -240,10 +227,9 @@ function uploadErrorMessage(err: any): string {
   if (err?.code === "LIMIT_FILE_SIZE") {
     return "Each image must be 5MB or smaller.";
   }
-  if (err?.code === "LIMIT_FILE_COUNT")
-    {
-      return `You can upload at most ${MAX_PHOTOS_PER_LOCATION} images at once.`;
-    }
+  if (err?.code === "LIMIT_FILE_COUNT") {
+    return `You can upload at most ${MAX_PHOTOS_PER_LOCATION} images at once.`;
+  }
   return err?.message || "Upload failed. Please try again.";
 }
 
@@ -251,11 +237,7 @@ const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 
 type OwnedLocation = { id: string; bannerImagePublicId: string | null };
 
-async function loadOwnedLocation(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
+async function loadOwnedLocation(req: Request, res: Response, next: NextFunction) {
   try {
     const businessId = (req as any).auth.sub as string;
     const locationId = String(req.params.locationId || "").trim();
@@ -280,7 +262,6 @@ async function loadOwnedLocation(
 async function refreshedUser(req: Request) {
   return assembleBusinessMe((req as any).auth.sub as string);
 }
-
 
 router.post(
   "/:locationId/banner/upload",
@@ -320,28 +301,20 @@ router.post(
       });
     } catch (err: any) {
       console.error("[locations] banner upload error:", err?.message || err);
-      return res
-        .status(500)
-        .json({ error: err?.message || "Failed to upload banner." });
+      return res.status(500).json({ error: err?.message || "Failed to upload banner." });
     }
-  }
+  },
 );
 
-router.post(
-  "/:locationId/banner/sign",
-  loadOwnedLocation,
-  async (_req: Request, res: Response) => {
-    try {
-      const location = res.locals.location as OwnedLocation;
-      return res.json({ upload: signLocationUpload(location.id, "banner") });
-    } catch (err: any) {
-      console.error("[locations] banner sign error:", err?.message || err);
-      return res
-        .status(500)
-        .json({ error: err?.message || "Failed to prepare upload." });
-    }
+router.post("/:locationId/banner/sign", loadOwnedLocation, async (_req: Request, res: Response) => {
+  try {
+    const location = res.locals.location as OwnedLocation;
+    return res.json({ upload: signLocationUpload(location.id, "banner") });
+  } catch (err: any) {
+    console.error("[locations] banner sign error:", err?.message || err);
+    return res.status(500).json({ error: err?.message || "Failed to prepare upload." });
   }
-);
+});
 
 router.post(
   "/:locationId/banner/commit",
@@ -353,12 +326,7 @@ router.post(
         url?: unknown;
         publicId?: unknown;
       };
-      if (
-        typeof url !== "string" ||
-        !url ||
-        typeof publicId !== "string" ||
-        !publicId
-      ) {
+      if (typeof url !== "string" || !url || typeof publicId !== "string" || !publicId) {
         return res.status(400).json({ error: "Missing uploaded image data." });
       }
       if (!publicIdInLocationFolder(publicId, location.id, "banner")) {
@@ -370,10 +338,7 @@ router.post(
         data: { bannerImageUrl: url, bannerImagePublicId: publicId },
       });
 
-      if (
-        location.bannerImagePublicId &&
-        location.bannerImagePublicId !== publicId
-      ) {
+      if (location.bannerImagePublicId && location.bannerImagePublicId !== publicId) {
         await deleteImageByPublicId(location.bannerImagePublicId);
       }
 
@@ -381,34 +346,27 @@ router.post(
       return res.json({ banner: { url, publicId }, user });
     } catch (err: any) {
       console.error("[locations] banner commit error:", err?.message || err);
-      return res
-        .status(500)
-        .json({ error: err?.message || "Failed to save banner." });
+      return res.status(500).json({ error: err?.message || "Failed to save banner." });
     }
-  }
+  },
 );
 
-router.delete(
-  "/:locationId/banner",
-  loadOwnedLocation,
-  async (req: Request, res: Response) => {
-    try {
-      const location = res.locals.location as OwnedLocation;
-      await prisma.location.update({
-        where: { id: location.id },
-        data: { bannerImageUrl: null, bannerImagePublicId: null },
-      });
-      await deleteImageByPublicId(location.bannerImagePublicId);
+router.delete("/:locationId/banner", loadOwnedLocation, async (req: Request, res: Response) => {
+  try {
+    const location = res.locals.location as OwnedLocation;
+    await prisma.location.update({
+      where: { id: location.id },
+      data: { bannerImageUrl: null, bannerImagePublicId: null },
+    });
+    await deleteImageByPublicId(location.bannerImagePublicId);
 
-      const user = await refreshedUser(req);
-      return res.json({ banner: null, user });
-    } catch (err: any) {
-      console.error("[locations] banner delete error:", err?.message || err);
-      return res.status(500).json({ error: "Failed to remove banner." });
-    }
+    const user = await refreshedUser(req);
+    return res.json({ banner: null, user });
+  } catch (err: any) {
+    console.error("[locations] banner delete error:", err?.message || err);
+    return res.status(500).json({ error: "Failed to remove banner." });
   }
-);
-
+});
 
 router.post(
   "/:locationId/photos/upload",
@@ -444,7 +402,7 @@ router.post(
       }
 
       const uploaded = await Promise.all(
-        files.map((f) => uploadImageBuffer(f.buffer, location.id, "photo"))
+        files.map((f) => uploadImageBuffer(f.buffer, location.id, "photo")),
       );
       const created = [];
       for (const u of uploaded) {
@@ -458,40 +416,32 @@ router.post(
       return res.json({ photos: created, user });
     } catch (err: any) {
       console.error("[locations] photos upload error:", err?.message || err);
-      return res
-        .status(500)
-        .json({ error: err?.message || "Failed to upload photos." });
+      return res.status(500).json({ error: err?.message || "Failed to upload photos." });
     }
-  }
+  },
 );
 
-router.post(
-  "/:locationId/photos/sign",
-  loadOwnedLocation,
-  async (_req: Request, res: Response) => {
-    try {
-      const location = res.locals.location as OwnedLocation;
-      const existingCount = await prisma.photo.count({
-        where: { locationId: location.id },
+router.post("/:locationId/photos/sign", loadOwnedLocation, async (_req: Request, res: Response) => {
+  try {
+    const location = res.locals.location as OwnedLocation;
+    const existingCount = await prisma.photo.count({
+      where: { locationId: location.id },
+    });
+    const remaining = MAX_PHOTOS_PER_LOCATION - existingCount;
+    if (remaining <= 0) {
+      return res.status(400).json({
+        error: `This location already has the maximum of ${MAX_PHOTOS_PER_LOCATION} photos.`,
       });
-      const remaining = MAX_PHOTOS_PER_LOCATION - existingCount;
-      if (remaining <= 0) {
-        return res.status(400).json({
-          error: `This location already has the maximum of ${MAX_PHOTOS_PER_LOCATION} photos.`,
-        });
-      }
-      return res.json({
-        upload: signLocationUpload(location.id, "photo"),
-        remaining,
-      });
-    } catch (err: any) {
-      console.error("[locations] photos sign error:", err?.message || err);
-      return res
-        .status(500)
-        .json({ error: err?.message || "Failed to prepare upload." });
     }
+    return res.json({
+      upload: signLocationUpload(location.id, "photo"),
+      remaining,
+    });
+  } catch (err: any) {
+    console.error("[locations] photos sign error:", err?.message || err);
+    return res.status(500).json({ error: err?.message || "Failed to prepare upload." });
   }
-);
+});
 
 router.post(
   "/:locationId/photos/commit",
@@ -503,12 +453,7 @@ router.post(
         url?: unknown;
         publicId?: unknown;
       };
-      if (
-        typeof url !== "string" ||
-        !url ||
-        typeof publicId !== "string" ||
-        !publicId
-      ) {
+      if (typeof url !== "string" || !url || typeof publicId !== "string" || !publicId) {
         return res.status(400).json({ error: "Missing uploaded image data." });
       }
       if (!publicIdInLocationFolder(publicId, location.id, "photo")) {
@@ -533,11 +478,9 @@ router.post(
       return res.json({ photo: serializePhoto(photo), user });
     } catch (err: any) {
       console.error("[locations] photos commit error:", err?.message || err);
-      return res
-        .status(500)
-        .json({ error: err?.message || "Failed to save photo." });
+      return res.status(500).json({ error: err?.message || "Failed to save photo." });
     }
-  }
+  },
 );
 
 router.patch(
@@ -579,7 +522,7 @@ router.patch(
       console.error("[locations] photo patch error:", err?.message || err);
       return res.status(500).json({ error: "Failed to update photo." });
     }
-  }
+  },
 );
 
 router.delete(
@@ -610,9 +553,8 @@ router.delete(
       console.error("[locations] photo delete error:", err?.message || err);
       return res.status(500).json({ error: "Failed to delete photo." });
     }
-  }
+  },
 );
-
 
 function serializeReview(r: any) {
   let rating = 0;
@@ -642,23 +584,19 @@ function serializeReview(r: any) {
 
 const MAX_REPLY_LENGTH = 500;
 
-router.get(
-  "/:locationId/reviews",
-  loadOwnedLocation,
-  async (_req: Request, res: Response) => {
-    try {
-      const location = res.locals.location as OwnedLocation;
-      const reviews = await prisma.review.findMany({
-        where: { locationId: location.id },
-        orderBy: { createdAt: "desc" },
-      });
-      return res.json({ reviews: reviews.map(serializeReview) });
-    } catch (err: any) {
-      console.error("[locations] list reviews error:", err?.message || err);
-      return res.status(500).json({ error: "Failed to load reviews." });
-    }
+router.get("/:locationId/reviews", loadOwnedLocation, async (_req: Request, res: Response) => {
+  try {
+    const location = res.locals.location as OwnedLocation;
+    const reviews = await prisma.review.findMany({
+      where: { locationId: location.id },
+      orderBy: { createdAt: "desc" },
+    });
+    return res.json({ reviews: reviews.map(serializeReview) });
+  } catch (err: any) {
+    console.error("[locations] list reviews error:", err?.message || err);
+    return res.status(500).json({ error: "Failed to load reviews." });
   }
-);
+});
 
 router.patch(
   "/:locationId/reviews/:reviewId/reply",
@@ -707,7 +645,7 @@ router.patch(
       console.error("[locations] review reply error:", err?.message || err);
       return res.status(500).json({ error: "Failed to save reply." });
     }
-  }
+  },
 );
 
 router.delete(
@@ -741,7 +679,7 @@ router.delete(
       console.error("[locations] review reply delete error:", err?.message || err);
       return res.status(500).json({ error: "Failed to delete reply." });
     }
-  }
+  },
 );
 
 export default router;

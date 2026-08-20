@@ -36,7 +36,9 @@ describe("banner media", () => {
     const tenantA = await seedBusinessWithLocation();
     const tenantB = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${tenantA.location.id}/banner/sign`)
       .set("Cookie", businessCookie(tenantB.business.id));
 
@@ -47,7 +49,9 @@ describe("banner media", () => {
     const { business, location } = await seedBusinessWithLocation();
     const banner = asset(location.id, "banner");
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/banner/commit`)
       .set("Cookie", businessCookie(business.id))
       .send(banner);
@@ -61,7 +65,9 @@ describe("banner media", () => {
   it("rejects a commit with missing image data", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/banner/commit`)
       .set("Cookie", businessCookie(business.id))
       .send({});
@@ -72,7 +78,9 @@ describe("banner media", () => {
   it("rejects a commit pointing outside the location's folder", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/banner/commit`)
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -90,12 +98,16 @@ describe("banner media", () => {
     const banner = asset(location.id, "banner");
     const cookie = businessCookie(business.id);
 
-    await (await api())
+    await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/banner/commit`)
       .set("Cookie", cookie)
       .send(banner);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/api/locations/${location.id}/banner`)
       .set("Cookie", cookie);
 
@@ -111,7 +123,9 @@ describe("photo media", () => {
     locationId: string,
   ): Promise<{ status: number; body: Record<string, never> }> {
     const photo = asset(locationId, "photo");
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${locationId}/photos/commit`)
       .set("Cookie", businessCookie(businessId))
       .send(photo);
@@ -130,7 +144,9 @@ describe("photo media", () => {
   it("rejects a photo outside the location's folder", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/locations/${location.id}/photos/commit`)
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -162,7 +178,9 @@ describe("photo media", () => {
     await commitPhoto(business.id, location.id);
     const photo = await db.photo.findFirst({ where: { locationId: location.id } });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/locations/${location.id}/photos/${photo!.id}`)
       .set("Cookie", cookie)
       .send({ altText: "Dining room at sunset" });
@@ -178,7 +196,9 @@ describe("photo media", () => {
     await commitPhoto(business.id, location.id);
     const photo = await db.photo.findFirst({ where: { locationId: location.id } });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/api/locations/${location.id}/photos/${photo!.id}`)
       .set("Cookie", cookie);
 
@@ -189,7 +209,9 @@ describe("photo media", () => {
   it("returns a client error for an unknown photo", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/api/locations/${location.id}/photos/000000000000000000000000`)
       .set("Cookie", businessCookie(business.id));
 
@@ -204,7 +226,9 @@ describe("photo media", () => {
       where: { locationId: tenantA.location.id },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/api/locations/${tenantA.location.id}/photos/${photo!.id}`)
       .set("Cookie", businessCookie(tenantB.business.id));
 

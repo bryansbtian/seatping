@@ -5,13 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -60,7 +54,7 @@ type Featured = {
 function locationLabel(loc: Location) {
   const name = loc.displayName || loc.name || "Unnamed location";
   if (loc.address) {
-    return `${name} — ${loc.address}`;
+    return `${name}, ${loc.address}`;
   }
   return name;
 }
@@ -130,9 +124,7 @@ export default function FeaturedRestaurantsManager() {
     setLocations(null);
     setSelectedLocationId("");
     try {
-      const res = await api(
-        `/admin/businesses/search?username=${encodeURIComponent(q)}`,
-      );
+      const res = await api(`/admin/businesses/search?username=${encodeURIComponent(q)}`);
       let nextResults: Business[];
       if (Array.isArray(res.businesses)) {
         nextResults = res.businesses;
@@ -326,9 +318,7 @@ export default function FeaturedRestaurantsManager() {
   if (searchResults !== null) {
     if (searchResults.length === 0) {
       searchResultsContent = (
-        <p className="text-sm text-red-600">
-          No businesses found for "{usernameQuery.trim()}".
-        </p>
+        <p className="text-sm text-red-600">No businesses found for "{usernameQuery.trim()}".</p>
       );
     } else {
       searchResultsContent = (
@@ -361,19 +351,14 @@ export default function FeaturedRestaurantsManager() {
     );
   } else if (locations && locations.length === 0) {
     locationsSection = (
-      <p className="text-sm text-amber-600">
-        This business has no locations yet.
-      </p>
+      <p className="text-sm text-amber-600">This business has no locations yet.</p>
     );
   } else {
     locationsSection = (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
           <Label>Location</Label>
-          <Select
-            value={selectedLocationId}
-            onValueChange={setSelectedLocationId}
-          >
+          <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
             <SelectTrigger>
               <SelectValue placeholder="Select a location" />
             </SelectTrigger>
@@ -465,13 +450,9 @@ export default function FeaturedRestaurantsManager() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-medium text-slate-900 break-words">
-                {f.location?.displayName ||
-                  f.location?.name ||
-                  "Unnamed location"}
+                {f.location?.displayName || f.location?.name || "Unnamed location"}
               </p>
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass}`}
-              >
+              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass}`}>
                 {statusLabel}
               </span>
             </div>
@@ -480,17 +461,12 @@ export default function FeaturedRestaurantsManager() {
               {businessEmailSuffix}
             </p>
             {f.location?.address && (
-              <p className="text-sm text-slate-500 break-words">
-                {f.location.address}
-              </p>
+              <p className="text-sm text-slate-500 break-words">{f.location.address}</p>
             )}
-            <p className="mt-1 text-xs text-muted-foreground">
-              Added {formatDate(f.createdAt)}
-            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Added {formatDate(f.createdAt)}</p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center md:shrink-0">
-            {}
             <div className="flex items-center gap-2">
               <Label htmlFor={`order-${f.id}`} className="text-xs">
                 Order
@@ -500,9 +476,7 @@ export default function FeaturedRestaurantsManager() {
                 type="number"
                 className="h-9 w-20"
                 value={orderEdits[f.id] ?? String(f.sortOrder)}
-                onChange={(e) =>
-                  setOrderEdits((o) => ({ ...o, [f.id]: e.target.value }))
-                }
+                onChange={(e) => setOrderEdits((o) => ({ ...o, [f.id]: e.target.value }))}
                 onBlur={() => saveSortOrder(f)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -512,11 +486,8 @@ export default function FeaturedRestaurantsManager() {
               />
             </div>
 
-            {}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground sm:hidden">
-                Active
-              </span>
+              <span className="text-xs text-muted-foreground sm:hidden">Active</span>
               <Switch
                 checked={f.isActive}
                 onCheckedChange={(v) => toggleActive(f, v)}
@@ -524,7 +495,6 @@ export default function FeaturedRestaurantsManager() {
               />
             </div>
 
-            {}
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructiveOutline" size="sm">
@@ -536,20 +506,13 @@ export default function FeaturedRestaurantsManager() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Remove featured restaurant?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This removes "
-                    {f.location?.displayName ||
-                      f.location?.name ||
-                      "this location"}
-                    " from the homepage Featured Restaurants. The location itself
-                    is not deleted.
+                    This removes "{f.location?.displayName || f.location?.name || "this location"}"
+                    from the homepage Featured Restaurants. The location itself is not deleted.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => removeFeatured(f)}
-                    variant="destructive"
-                  >
+                  <AlertDialogAction onClick={() => removeFeatured(f)} variant="destructive">
                     Remove
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -563,17 +526,15 @@ export default function FeaturedRestaurantsManager() {
 
   return (
     <div className="space-y-6">
-      {}
       <Card>
         <CardHeader>
           <CardTitle>Add Featured Restaurant</CardTitle>
           <CardDescription>
-            Search a business by username, pick one of its locations, and feature
-            it on the homepage.
+            Search a business by username, pick one of its locations, and feature it on the
+            homepage.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {}
           <div className="space-y-2">
             <Label htmlFor="fr-username">Business Username</Label>
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -603,31 +564,18 @@ export default function FeaturedRestaurantsManager() {
             </div>
           </div>
 
-          {}
-          {searchResults !== null && (
-            <div className="space-y-2">{searchResultsContent}</div>
-          )}
+          {searchResults !== null && <div className="space-y-2">{searchResultsContent}</div>}
 
-          {}
           {selectedBusiness && (
             <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-medium text-slate-900">
-                    @{selectedBusiness.username}
-                  </p>
+                  <p className="font-medium text-slate-900">@{selectedBusiness.username}</p>
                   {selectedBusiness.email && (
-                    <p className="text-xs text-slate-500">
-                      {selectedBusiness.email}
-                    </p>
+                    <p className="text-xs text-slate-500">{selectedBusiness.email}</p>
                   )}
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={resetForm}
-                >
+                <Button type="button" variant="ghost" size="sm" onClick={resetForm}>
                   Change
                 </Button>
               </div>
@@ -648,18 +596,14 @@ export default function FeaturedRestaurantsManager() {
         </CardContent>
       </Card>
 
-      {}
       <Card>
         <CardHeader>
           <CardTitle>Current Featured Restaurants</CardTitle>
           <CardDescription>
-            Sorted by sort order, then newest. Inactive entries are hidden from
-            the homepage.
+            Sorted by sort order, then newest. Inactive entries are hidden from the homepage.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {featuredListContent}
-        </CardContent>
+        <CardContent className="space-y-3">{featuredListContent}</CardContent>
       </Card>
     </div>
   );

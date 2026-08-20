@@ -89,9 +89,7 @@ function guest(overrides: Record<string, unknown> = {}) {
 function futureIso(daysAhead: number): string {
   const d = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(
-    d.getUTCDate(),
-  )}T19:00`;
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T19:00`;
 }
 
 beforeEach(() => {
@@ -166,9 +164,7 @@ describe("guest list", () => {
       guest({ id: "g2", fullName: null, firstName: null, lastName: null }),
     ]);
 
-    const res = await app()
-      .get("/api/guests?locationId=loc-1")
-      .set("Cookie", cookie());
+    const res = await app().get("/api/guests?locationId=loc-1").set("Cookie", cookie());
 
     expect(res.body.guests[0].fullName).toBe("Ada Lovelace");
     expect(res.body.guests[1].fullName).toBeNull();
@@ -181,23 +177,15 @@ describe("guest list", () => {
       guest({ id: "g3", notes: null }),
     ]);
 
-    const res = await app()
-      .get("/api/guests?locationId=loc-1")
-      .set("Cookie", cookie());
+    const res = await app().get("/api/guests?locationId=loc-1").set("Cookie", cookie());
 
-    expect(res.body.guests.map((g: any) => g.hasNotes)).toEqual([
-      true,
-      false,
-      false,
-    ]);
+    expect(res.body.guests.map((g: any) => g.hasNotes)).toEqual([true, false, false]);
   });
 
   it("skips the tag search when nothing matches the term", async () => {
     guestFindRaw.mockResolvedValue([]);
 
-    const res = await app()
-      .get("/api/guests?locationId=loc-1&search=vip")
-      .set("Cookie", cookie());
+    const res = await app().get("/api/guests?locationId=loc-1&search=vip").set("Cookie", cookie());
 
     expect(res.status).toBe(200);
     const where = guestFindMany.mock.calls[0][0].where;
@@ -208,18 +196,14 @@ describe("guest list", () => {
   it("adds the matching tag ids when the tag search finds some", async () => {
     guestFindRaw.mockResolvedValue([{ _id: { $oid: "guest-9" } }]);
 
-    await app()
-      .get("/api/guests?locationId=loc-1&search=vip")
-      .set("Cookie", cookie());
+    await app().get("/api/guests?locationId=loc-1&search=vip").set("Cookie", cookie());
 
     const orClause = guestFindMany.mock.calls[0][0].where.AND[0].OR;
     expect(orClause.some((c: any) => c.id?.in?.includes("guest-9"))).toBe(true);
   });
 
   it("omits the phone clause for a short search term", async () => {
-    await app()
-      .get("/api/guests?locationId=loc-1&search=ab")
-      .set("Cookie", cookie());
+    await app().get("/api/guests?locationId=loc-1&search=ab").set("Cookie", cookie());
 
     const orClause = guestFindMany.mock.calls[0][0].where.AND[0].OR;
     expect(orClause.some((c: any) => c.normalizedPhone)).toBe(false);
@@ -228,9 +212,7 @@ describe("guest list", () => {
   it("reports a server error", async () => {
     guestFindMany.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .get("/api/guests?locationId=loc-1")
-      .set("Cookie", cookie());
+    const res = await app().get("/api/guests?locationId=loc-1").set("Cookie", cookie());
 
     expect(res.status).toBe(500);
   });
@@ -238,9 +220,7 @@ describe("guest list", () => {
 
 describe("guest detail", () => {
   it("sorts several upcoming reservations soonest first", async () => {
-    guestFindFirst.mockResolvedValue(
-      guest({ sourceReservationIds: ["res-1", "res-2"] }),
-    );
+    guestFindFirst.mockResolvedValue(guest({ sourceReservationIds: ["res-1", "res-2"] }));
     reservationFindMany.mockResolvedValue([
       {
         id: "res-2",
@@ -258,22 +238,15 @@ describe("guest detail", () => {
       },
     ]);
 
-    const res = await app()
-      .get("/api/guests/guest-1")
-      .set("Cookie", cookie());
+    const res = await app().get("/api/guests/guest-1").set("Cookie", cookie());
 
-    expect(res.body.upcomingReservations.map((r: any) => r.id)).toEqual([
-      "res-1",
-      "res-2",
-    ]);
+    expect(res.body.upcomingReservations.map((r: any) => r.id)).toEqual(["res-1", "res-2"]);
   });
 
   it("reports a server error", async () => {
     guestFindFirst.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .get("/api/guests/guest-1")
-      .set("Cookie", cookie());
+    const res = await app().get("/api/guests/guest-1").set("Cookie", cookie());
 
     expect(res.status).toBe(500);
   });
@@ -281,9 +254,7 @@ describe("guest detail", () => {
   it("falls back to an empty summary and notes", async () => {
     guestFindFirst.mockResolvedValue(guest({ notes: null, summary: null }));
 
-    const res = await app()
-      .get("/api/guests/guest-1")
-      .set("Cookie", cookie());
+    const res = await app().get("/api/guests/guest-1").set("Cookie", cookie());
 
     expect(res.body.guest.notes).toBe("");
     expect(res.body.guest.summary).toBe("");
@@ -316,9 +287,7 @@ describe("guest editing failures", () => {
   it("reports a failed tag removal", async () => {
     guestUpdate.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .delete("/api/guests/guest-1/tags/VIP")
-      .set("Cookie", cookie());
+    const res = await app().delete("/api/guests/guest-1/tags/VIP").set("Cookie", cookie());
 
     expect(res.status).toBe(500);
   });
@@ -337,9 +306,7 @@ describe("guest editing failures", () => {
   it("reports a failed recompute", async () => {
     recomputeGuestStats.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .post("/api/guests/guest-1/recompute")
-      .set("Cookie", cookie());
+    const res = await app().post("/api/guests/guest-1/recompute").set("Cookie", cookie());
 
     expect(res.status).toBe(500);
   });
@@ -348,9 +315,7 @@ describe("guest editing failures", () => {
     guestFindFirst.mockResolvedValue({ id: "guest-1" });
     guestFindUnique.mockResolvedValue(null);
 
-    const res = await app()
-      .post("/api/guests/guest-1/recompute")
-      .set("Cookie", cookie());
+    const res = await app().post("/api/guests/guest-1/recompute").set("Cookie", cookie());
 
     expect(res.status).toBe(200);
     expect(res.body.guest).toBeNull();

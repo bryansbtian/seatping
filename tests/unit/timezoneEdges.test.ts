@@ -28,47 +28,33 @@ describe("getHourInTimezone", () => {
   it("defaults to the SeatPing timezone", () => {
     const instant = new Date("2026-06-08T05:00:00.000Z");
 
-    expect(getHourInTimezone(instant)).toBe(
-      getHourInTimezone(instant, DEFAULT_TIMEZONE),
-    );
+    expect(getHourInTimezone(instant)).toBe(getHourInTimezone(instant, DEFAULT_TIMEZONE));
   });
 });
 
 describe("getNowWallClockInTimezone", () => {
   it("falls back to the local wall clock for an invalid timezone", () => {
-    expect(getNowWallClockInTimezone("Not/AZone")).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/,
-    );
+    expect(getNowWallClockInTimezone("Not/AZone")).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
   });
 
   it("defaults to the SeatPing timezone", () => {
-    expect(getNowWallClockInTimezone()).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/,
-    );
+    expect(getNowWallClockInTimezone()).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
   });
 });
 
 describe("formatDateLabelInTimezone", () => {
   it("reads a plain date key without shifting it", () => {
-    expect(formatDateLabelInTimezone("2026-06-08", "Pacific/Auckland")).toBe(
-      "Jun 8",
-    );
+    expect(formatDateLabelInTimezone("2026-06-08", "Pacific/Auckland")).toBe("Jun 8");
   });
 
   it("formats a Date in the requested zone", () => {
-    const label = formatDateLabelInTimezone(
-      new Date("2026-06-08T20:00:00.000Z"),
-      "UTC",
-    );
+    const label = formatDateLabelInTimezone(new Date("2026-06-08T20:00:00.000Z"), "UTC");
 
     expect(label).toBe("Jun 8");
   });
 
   it("formats a timestamp", () => {
-    const label = formatDateLabelInTimezone(
-      new Date("2026-06-08T20:00:00.000Z").getTime(),
-      "UTC",
-    );
+    const label = formatDateLabelInTimezone(new Date("2026-06-08T20:00:00.000Z").getTime(), "UTC");
 
     expect(label).toBe("Jun 8");
   });
@@ -78,10 +64,7 @@ describe("formatDateLabelInTimezone", () => {
   });
 
   it("falls back to the local zone for an invalid timezone", () => {
-    const label = formatDateLabelInTimezone(
-      new Date("2026-06-08T12:00:00.000Z"),
-      "Not/AZone",
-    );
+    const label = formatDateLabelInTimezone(new Date("2026-06-08T12:00:00.000Z"), "Not/AZone");
 
     expect(label).toMatch(/^[A-Z][a-z]{2} \d{1,2}$/);
   });
@@ -105,8 +88,7 @@ describe("TIMEZONE_OPTIONS", () => {
 
   it("sorts the zones from the westmost offset eastwards", () => {
     const offsets = TIMEZONE_OPTIONS.map((o) => {
-      const [, sign, h, m] = o.label.match(/^\(UTC([+-])(\d{2}):(\d{2})\)/) as
-        RegExpMatchArray;
+      const [, sign, h, m] = o.label.match(/^\(UTC([+-])(\d{2}):(\d{2})\)/) as RegExpMatchArray;
       const minutes = Number(h) * 60 + Number(m);
       if (sign === "-") {
         return -minutes;

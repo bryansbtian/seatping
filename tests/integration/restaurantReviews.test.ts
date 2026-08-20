@@ -10,10 +10,7 @@ let location: Location;
 let customer: User;
 let cookie: string;
 
-function reviewsPath(
-  usernameOverride?: string,
-  locationOverride?: string,
-): string {
+function reviewsPath(usernameOverride?: string, locationOverride?: string): string {
   const username = usernameOverride ?? business.username;
   const id = locationOverride ?? location.id;
   return `/api/restaurants/${username}/${id}/reviews`;
@@ -35,7 +32,9 @@ describe("posting a restaurant review", () => {
   });
 
   it("stores a review for a signed-in customer", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(reviewsPath())
       .set("Cookie", cookie)
       .send({ rating: 5, description: "  Excellent service.  " });
@@ -47,7 +46,9 @@ describe("posting a restaurant review", () => {
   });
 
   it("replaces the customer's earlier review rather than adding a second", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(reviewsPath())
       .set("Cookie", cookie)
       .send({ rating: 3, description: "Second visit was quieter." });
@@ -64,7 +65,9 @@ describe("posting a restaurant review", () => {
   it("stores no description when the text is only whitespace", async () => {
     const other = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(reviewsPath())
       .set("Cookie", customerCookie(other.id))
       .send({ rating: 4, description: "   " });
@@ -76,7 +79,9 @@ describe("posting a restaurant review", () => {
   it("rounds a fractional rating", async () => {
     const other = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(reviewsPath())
       .set("Cookie", customerCookie(other.id))
       .send({ rating: 4.4 });
@@ -85,7 +90,9 @@ describe("posting a restaurant review", () => {
   });
 
   it("rejects a non-numeric rating", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(reviewsPath())
       .set("Cookie", cookie)
       .send({ rating: "five" });
@@ -95,14 +102,8 @@ describe("posting a restaurant review", () => {
   });
 
   it("rejects a rating outside one to five", async () => {
-    const low = await (await api())
-      .post(reviewsPath())
-      .set("Cookie", cookie)
-      .send({ rating: 0 });
-    const high = await (await api())
-      .post(reviewsPath())
-      .set("Cookie", cookie)
-      .send({ rating: 6 });
+    const low = await (await api()).post(reviewsPath()).set("Cookie", cookie).send({ rating: 0 });
+    const high = await (await api()).post(reviewsPath()).set("Cookie", cookie).send({ rating: 6 });
 
     expect(low.status).toBe(400);
     expect(high.status).toBe(400);
@@ -110,7 +111,9 @@ describe("posting a restaurant review", () => {
   });
 
   it("rejects a non-string description", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(reviewsPath())
       .set("Cookie", cookie)
       .send({ rating: 4, description: 12 });
@@ -120,7 +123,9 @@ describe("posting a restaurant review", () => {
   });
 
   it("rejects a malformed location id", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(reviewsPath(undefined, "not-an-object-id"))
       .set("Cookie", cookie)
       .send({ rating: 4 });
@@ -129,7 +134,9 @@ describe("posting a restaurant review", () => {
   });
 
   it("rejects an unknown business", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(reviewsPath("no-such-business"))
       .set("Cookie", cookie)
       .send({ rating: 4 });
@@ -140,7 +147,9 @@ describe("posting a restaurant review", () => {
   it("rejects a location that belongs to another business", async () => {
     const other = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(reviewsPath(business.username, other.location.id))
       .set("Cookie", cookie)
       .send({ rating: 4 });
@@ -153,7 +162,9 @@ describe("posting a restaurant review", () => {
     const ghostCookie = customerCookie(ghost.id);
     await getTestPrisma().user.delete({ where: { id: ghost.id } });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(reviewsPath())
       .set("Cookie", ghostCookie)
       .send({ rating: 4 });
@@ -164,24 +175,20 @@ describe("posting a restaurant review", () => {
 
 describe("reading a restaurant profile with reviews", () => {
   it("reports the rounded average rating and every review", async () => {
-    const res = await (await api()).get(
-      `/api/restaurants/${business.username}/${location.id}`,
-    );
+    const res = await (await api()).get(`/api/restaurants/${business.username}/${location.id}`);
 
     expect(res.status).toBe(200);
     expect(res.body.restaurant.reviewCount).toBeGreaterThan(0);
     expect(res.body.restaurant.rating).toBeGreaterThan(0);
-    expect(res.body.restaurant.reviews.length).toBe(
-      res.body.restaurant.reviewCount,
-    );
+    expect(res.body.restaurant.reviews.length).toBe(res.body.restaurant.reviewCount);
   });
 
   it("reports no rating for a restaurant with no reviews", async () => {
     const fresh = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
-      `/api/restaurants/${fresh.business.username}/${fresh.location.id}`,
-    );
+    const res = await (
+      await api()
+    ).get(`/api/restaurants/${fresh.business.username}/${fresh.location.id}`);
 
     expect(res.body.restaurant.rating).toBeNull();
     expect(res.body.restaurant.reviewCount).toBe(0);
@@ -206,9 +213,9 @@ describe("reading a restaurant profile with reviews", () => {
       },
     });
 
-    const res = await (await api()).get(
-      `/api/restaurants/${fresh.business.username}/${fresh.location.id}`,
-    );
+    const res = await (
+      await api()
+    ).get(`/api/restaurants/${fresh.business.username}/${fresh.location.id}`);
 
     expect(res.body.restaurant.name).toBe("Profile Name");
     expect(res.body.restaurant.shortAddress).toBe("Profile Address");
@@ -225,9 +232,9 @@ describe("reading a restaurant profile with reviews", () => {
       data: { restaurantProfile: undefined },
     });
 
-    const res = await (await api()).get(
-      `/api/restaurants/${fresh.business.username}/${fresh.location.id}`,
-    );
+    const res = await (
+      await api()
+    ).get(`/api/restaurants/${fresh.business.username}/${fresh.location.id}`);
 
     expect(res.status).toBe(200);
     expect(res.body.restaurant.cuisineTypes).toEqual([]);
@@ -236,17 +243,13 @@ describe("reading a restaurant profile with reviews", () => {
   });
 
   it("rejects a malformed location id", async () => {
-    const res = await (await api()).get(
-      `/api/restaurants/${business.username}/not-an-object-id`,
-    );
+    const res = await (await api()).get(`/api/restaurants/${business.username}/not-an-object-id`);
 
     expect(res.status).toBe(404);
   });
 
   it("rejects an unknown business", async () => {
-    const res = await (await api()).get(
-      `/api/restaurants/no-such-business/${location.id}`,
-    );
+    const res = await (await api()).get(`/api/restaurants/no-such-business/${location.id}`);
 
     expect(res.status).toBe(404);
   });
@@ -254,9 +257,9 @@ describe("reading a restaurant profile with reviews", () => {
   it("rejects a location that belongs to another business", async () => {
     const other = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
-      `/api/restaurants/${business.username}/${other.location.id}`,
-    );
+    const res = await (
+      await api()
+    ).get(`/api/restaurants/${business.username}/${other.location.id}`);
 
     expect(res.status).toBe(404);
   });

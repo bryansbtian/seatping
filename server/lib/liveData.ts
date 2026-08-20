@@ -1,20 +1,8 @@
-
 import type { QueueEntry, Reservation } from "@prisma/client";
 
+export type LegacyQueueStatus = "waiting" | "admitted" | "arrived" | "no_show" | "removed" | "left";
 
-export type LegacyQueueStatus =
-  | "waiting"
-  | "admitted"
-  | "arrived"
-  | "no_show"
-  | "removed"
-  | "left";
-
-export function legacyKeyOf(
-  firstName: any,
-  lastName: any,
-  joinedAt: any,
-): string {
+export function legacyKeyOf(firstName: any, lastName: any, joinedAt: any): string {
   return `${firstName ?? ""}${lastName ?? ""}${joinedAt ?? ""}`;
 }
 
@@ -31,7 +19,6 @@ function iso(v: any): string | null {
   }
   return d.toISOString();
 }
-
 
 function queueBase(e: QueueEntry) {
   const joinedAt = iso(e.joinedAt);
@@ -104,17 +91,8 @@ export function reconstructQueueArrays(
     .filter((r) => r.status === "WAITING")
     .sort((a, b) => +new Date(a.joinedAt) - +new Date(b.joinedAt));
   const admittedRows = rows
-    .filter(
-      (r) =>
-        r.status === "ADMITTED" ||
-        r.status === "ARRIVED" ||
-        r.status === "NO_SHOW",
-    )
-    .sort(
-      (a, b) =>
-        +new Date(a.admittedAt ?? a.joinedAt) -
-        +new Date(b.admittedAt ?? b.joinedAt),
-    );
+    .filter((r) => r.status === "ADMITTED" || r.status === "ARRIVED" || r.status === "NO_SHOW")
+    .sort((a, b) => +new Date(a.admittedAt ?? a.joinedAt) - +new Date(b.admittedAt ?? b.joinedAt));
   const removedRows = rows
     .filter((r) => r.status === "REMOVED" || r.status === "LEFT")
     .sort(
@@ -130,9 +108,7 @@ export function reconstructQueueArrays(
     return o;
   };
 
-  const queue = waiting.map((e, i) =>
-    stamp({ ...queueBase(e), position: i + 1 }),
-  );
+  const queue = waiting.map((e, i) => stamp({ ...queueBase(e), position: i + 1 }));
 
   const admittedCustomers = admittedRows.map((e) => {
     let finalStatus: string;
@@ -173,7 +149,6 @@ export function reconstructQueueArrays(
   return { queue, admittedCustomers, removedCustomers };
 }
 
-
 const RES_ENUM_TO_LEGACY: Record<string, string> = {
   CONFIRMED: "confirmed",
   ARRIVED: "arrived",
@@ -198,10 +173,7 @@ export function reservationStatusToEnum(status: string): any {
   return RES_LEGACY_TO_ENUM[String(status || "").toLowerCase()] ?? "CONFIRMED";
 }
 
-export function reservationRowToLegacy(
-  r: Reservation,
-  opts: { includeToken?: boolean } = {},
-): any {
+export function reservationRowToLegacy(r: Reservation, opts: { includeToken?: boolean } = {}): any {
   const base = {
     id: r.id,
     locationId: r.locationId,

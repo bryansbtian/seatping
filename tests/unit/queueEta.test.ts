@@ -52,12 +52,7 @@ describe("computeQueueEta", () => {
     const eta = computeQueueEta(
       baseInput({
         ticketIndex: 3,
-        queue: [
-          { partySize: 2 },
-          { partySize: 2 },
-          { partySize: 2 },
-          { partySize: 2 },
-        ],
+        queue: [{ partySize: 2 }, { partySize: 2 }, { partySize: 2 }, { partySize: 2 }],
       }),
     );
 
@@ -89,9 +84,7 @@ describe("computeQueueEta", () => {
     expect(largeParties.basis.weightedQueueAhead).toBeGreaterThan(
       smallParties.basis.weightedQueueAhead,
     );
-    expect(largeParties.estimatedWaitMax).toBeGreaterThan(
-      smallParties.estimatedWaitMax,
-    );
+    expect(largeParties.estimatedWaitMax).toBeGreaterThan(smallParties.estimatedWaitMax);
   });
 
   it("produces a min estimate no greater than the max estimate", () => {
@@ -128,9 +121,7 @@ describe("computeQueueEta", () => {
     const withHistory = computeQueueEta(
       baseInput({ ticketIndex: 2, queue: [{}, {}], admittedCustomers: admitted }),
     );
-    const withoutHistory = computeQueueEta(
-      baseInput({ ticketIndex: 2, queue: [{}, {}] }),
-    );
+    const withoutHistory = computeQueueEta(baseInput({ ticketIndex: 2, queue: [{}, {}] }));
 
     expect(withHistory.basis.usedRecentServiceRate).toBe(true);
     expect(withoutHistory.basis.usedRecentServiceRate).toBe(false);

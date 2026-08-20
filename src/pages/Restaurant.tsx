@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Link,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import NotFound from "@/pages/NotFound";
 import Header from "@/components/Header";
@@ -21,11 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import {
-  EditReviewDialog,
-  type EditableReview,
-} from "@/components/EditReviewDialog";
-import { formatTimeLabel } from "@/components/TimeSelect";
+import { EditReviewDialog, type EditableReview } from "@/components/EditReviewDialog";
+import { formatTimeLabel } from "@/components/timeOptions";
 import ReservationBooking from "@/components/ReservationBooking";
 import {
   Clock,
@@ -41,7 +33,6 @@ import {
   Pencil,
   CircleDollarSign,
 } from "lucide-react";
-
 
 type Photo = { id: string; url: string; altText?: string | null };
 type MenuItem = {
@@ -158,30 +149,32 @@ function normalizeUrl(url: string): string {
   return `https://${trimmed}`;
 }
 
-function getRestaurantStatus(openingHours: OpeningHours | null): { isOpen: boolean; text: string; color: string } | null {
+function getRestaurantStatus(
+  openingHours: OpeningHours | null,
+): { isOpen: boolean; text: string; color: string } | null {
   if (!openingHours) {
     return null;
   }
   const timezone = openingHours.timezone || "Asia/Jakarta";
   let currentHourMinute: string;
   let currentDayName: string;
-  
+
   try {
     const dtfTime = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
       hour12: false,
       hour: "2-digit",
-      minute: "2-digit"
+      minute: "2-digit",
     });
     let timeStr = dtfTime.format(new Date());
     if (timeStr.startsWith("24:")) {
       timeStr = "00" + timeStr.slice(2);
     }
     currentHourMinute = timeStr;
-    
+
     const dtfDay = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
-      weekday: "long"
+      weekday: "long",
     });
     currentDayName = dtfDay.format(new Date()).toLowerCase();
   } catch {
@@ -196,14 +189,14 @@ function getRestaurantStatus(openingHours: OpeningHours | null): { isOpen: boole
       return {
         isOpen: true,
         text: "Open 24 Hours",
-        color: "text-green-600 font-medium"
+        color: "text-green-600 font-medium",
       };
     }
     if (currentHourMinute >= today.open && currentHourMinute < today.close) {
       return {
         isOpen: true,
         text: `Open · Closes at ${formatTimeLabel(today.close)}`,
-        color: "text-green-600 font-medium"
+        color: "text-green-600 font-medium",
       };
     }
   }
@@ -213,13 +206,13 @@ function getRestaurantStatus(openingHours: OpeningHours | null): { isOpen: boole
       return {
         isOpen: false,
         text: "Closed",
-        color: "text-red-600 font-medium"
+        color: "text-red-600 font-medium",
       };
     }
     return {
       isOpen: false,
       text: `Closed · Opens at ${formatTimeLabel(today.open)}`,
-      color: "text-red-600 font-medium"
+      color: "text-red-600 font-medium",
     };
   }
 
@@ -239,13 +232,13 @@ function getRestaurantStatus(openingHours: OpeningHours | null): { isOpen: boole
         return {
           isOpen: false,
           text: `Closed · Opens ${dayLabel} at 12:00 AM`,
-          color: "text-red-600 font-medium"
+          color: "text-red-600 font-medium",
         };
       }
       return {
         isOpen: false,
         text: `Closed · Opens ${dayLabel} at ${formatTimeLabel(hours.open)}`,
-        color: "text-red-600 font-medium"
+        color: "text-red-600 font-medium",
       };
     }
   }
@@ -272,12 +265,9 @@ function Stars({ rating }: { rating: number }) {
 
 const REVIEWS_PAGE_SIZE = 10;
 
-
 function useIsLgUp() {
   const [isLgUp, setIsLgUp] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(min-width: 1024px)").matches,
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
   );
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 1024px)");
@@ -321,22 +311,19 @@ export default function RestaurantPage() {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [accountType, setAccountType] = useState<
-    "customer" | "business" | null | undefined
-  >(undefined);
+  const [accountType, setAccountType] = useState<"customer" | "business" | null | undefined>(
+    undefined,
+  );
   const [refreshKey, setRefreshKey] = useState(0);
   const [myReviewId, setMyReviewId] = useState<string | null>(null);
-  const [editingReview, setEditingReview] = useState<EditableReview | null>(
-    null,
-  );
+  const [editingReview, setEditingReview] = useState<EditableReview | null>(null);
   const { toast } = useToast();
   const [saved, setSaved] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
   const SAVE_INTENT_KEY = "seatping:pendingSaveLocationId";
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [photosOpen, setPhotosOpen] = useState(false);
-  const [visibleReviewCount, setVisibleReviewCount] =
-    useState(REVIEWS_PAGE_SIZE);
+  const [visibleReviewCount, setVisibleReviewCount] = useState(REVIEWS_PAGE_SIZE);
   const [navTakeover, setNavTakeover] = useState(false);
   const navSentinelRef = useRef<HTMLDivElement>(null);
 
@@ -347,9 +334,7 @@ export default function RestaurantPage() {
     }
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setNavTakeover(
-          !entry.isIntersecting && entry.boundingClientRect.top < 0,
-        );
+        setNavTakeover(!entry.isIntersecting && entry.boundingClientRect.top < 0);
       },
       { rootMargin: "0px", threshold: 0 },
     );
@@ -398,9 +383,7 @@ export default function RestaurantPage() {
         if (cancelled) {
           return;
         }
-        const mine = (d.reviews || []).find(
-          (rv: any) => rv.locationId === locationId,
-        );
+        const mine = (d.reviews || []).find((rv: any) => rv.locationId === locationId);
         setMyReviewId(mine?.id ?? null);
       })
       .catch(() => {
@@ -457,9 +440,7 @@ export default function RestaurantPage() {
   const toggleSave = async () => {
     if (accountType !== "customer") {
       localStorage.setItem(SAVE_INTENT_KEY, locationId);
-      const next = encodeURIComponent(
-        window.location.pathname + window.location.search,
-      );
+      const next = encodeURIComponent(window.location.pathname + window.location.search);
       navigate(`/login?next=${next}`);
       return;
     }
@@ -497,9 +478,7 @@ export default function RestaurantPage() {
     setError(null);
     setRestaurant(null);
     api(
-      `/api/restaurants/${encodeURIComponent(businessUsername)}/${encodeURIComponent(
-        locationId,
-      )}`,
+      `/api/restaurants/${encodeURIComponent(businessUsername)}/${encodeURIComponent(locationId)}`,
     )
       .then((res) => {
         if (cancelled) {
@@ -531,17 +510,13 @@ export default function RestaurantPage() {
     if (!restaurant) {
       return [] as Array<{ id: string; label: string }>;
     }
-    const list: Array<{ id: string; label: string }> = [
-      { id: "overview", label: "Overview" },
-    ];
-    if (restaurant.photos.length > 0)
-      {
-        list.push({ id: "photos", label: "Photos" });
-      }
-    if (restaurant.menu.length > 0 || Boolean(restaurant.menuUrl))
-      {
-        list.push({ id: "menu", label: "Menu" });
-      }
+    const list: Array<{ id: string; label: string }> = [{ id: "overview", label: "Overview" }];
+    if (restaurant.photos.length > 0) {
+      list.push({ id: "photos", label: "Photos" });
+    }
+    if (restaurant.menu.length > 0 || Boolean(restaurant.menuUrl)) {
+      list.push({ id: "menu", label: "Menu" });
+    }
     list.push({ id: "reviews", label: "Reviews" });
     const hasDetails =
       Boolean(restaurant.address) ||
@@ -576,8 +551,7 @@ export default function RestaurantPage() {
         for (const e of entries) {
           if (e.isIntersecting) {
             seen.add(e.target.id);
-          }
-          else {
+          } else {
             seen.delete(e.target.id);
           }
         }
@@ -642,9 +616,7 @@ export default function RestaurantPage() {
 
   let heroContent: React.ReactNode;
   if (heroImage) {
-    heroContent = (
-      <img src={heroImage} alt={r.name} className="h-full w-full object-cover" />
-    );
+    heroContent = <img src={heroImage} alt={r.name} className="h-full w-full object-cover" />;
   } else {
     heroContent = (
       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
@@ -683,9 +655,7 @@ export default function RestaurantPage() {
 
   let aboutParagraph: React.ReactNode;
   if (r.description) {
-    aboutParagraph = (
-      <p className="mt-3 whitespace-pre-line text-slate-700">{r.description}</p>
-    );
+    aboutParagraph = <p className="mt-3 whitespace-pre-line text-slate-700">{r.description}</p>;
   } else {
     aboutParagraph = <p className="mt-3 text-slate-600">{r.tagline}</p>;
   }
@@ -712,9 +682,7 @@ export default function RestaurantPage() {
 
   let reviewsSummaryBlock: React.ReactNode;
   if (r.reviewCount > 0) {
-    reviewsSummaryBlock = (
-      <ReviewsSummary rating={r.rating ?? 0} count={r.reviewCount} />
-    );
+    reviewsSummaryBlock = <ReviewsSummary rating={r.rating ?? 0} count={r.reviewCount} />;
   } else {
     reviewsSummaryBlock = (
       <p className="text-sm text-slate-500">
@@ -756,7 +724,6 @@ export default function RestaurantPage() {
         description={`Book a table or join the queue at ${r.name}${locationSuffix} with SeatPing.`}
         canonical={`/${r.businessUsername}/${r.locationId}`}
       />
-      {}
       <div className="relative h-56 w-full overflow-hidden bg-slate-100 sm:h-72 md:h-96">
         {heroContent}
         {r.photos.length > 0 && (
@@ -772,23 +739,12 @@ export default function RestaurantPage() {
         )}
       </div>
 
-      {}
       <div className="container mx-auto max-w-7xl px-4 py-8 md:py-10">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {}
           <div className="lg:col-span-2">
-            {}
             <div className="flex items-start justify-between gap-3">
-              <h1 className="text-xl sm:text-4xl font-semibold text-slate-900">
-                {r.name}
-              </h1>
-              {}
-              <SaveButton
-                saved={saved}
-                busy={saveBusy}
-                onClick={toggleSave}
-                className="shrink-0"
-              />
+              <h1 className="text-xl sm:text-4xl font-semibold text-slate-900">{r.name}</h1>
+              <SaveButton saved={saved} busy={saveBusy} onClick={toggleSave} className="shrink-0" />
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
               {ratingSummary}
@@ -823,19 +779,12 @@ export default function RestaurantPage() {
                 </div>
               );
             })()}
-            {r.tagline && (
-              <p className="mt-3 text-sm sm:text-base text-slate-600">
-                {r.tagline}
-              </p>
-            )}
+            {r.tagline && <p className="mt-3 text-sm sm:text-base text-slate-600">{r.tagline}</p>}
 
-            {}
             {!isLgUp && <div className="mt-6">{actionCard}</div>}
 
-            {}
             <div ref={navSentinelRef} aria-hidden className="h-px" />
 
-            {}
             {visibleSections.length > 1 && (
               <nav
                 className={cn(
@@ -875,9 +824,7 @@ export default function RestaurantPage() {
               </nav>
             )}
 
-            {}
             <div className="mt-8 space-y-12">
-              {}
               <section id="overview" className="scroll-mt-32 space-y-6">
                 {(r.description || r.tagline) && (
                   <div>
@@ -896,18 +843,10 @@ export default function RestaurantPage() {
                     />
                   )}
                   {r.priceRange && (
-                    <OverviewRow
-                      icon={CircleDollarSign}
-                      label="Price range"
-                      value={r.priceRange}
-                    />
+                    <OverviewRow icon={CircleDollarSign} label="Price range" value={r.priceRange} />
                   )}
                   {locationText && (
-                    <OverviewRow
-                      icon={MapPin}
-                      label="Location"
-                      value={locationText}
-                    />
+                    <OverviewRow icon={MapPin} label="Location" value={locationText} />
                   )}
                   {todayHours && (
                     <OverviewRow
@@ -919,31 +858,21 @@ export default function RestaurantPage() {
                 </div>
               </section>
 
-              {}
               {r.photos.length > 0 && (
                 <section id="photos" className="scroll-mt-32">
                   <h2 className="mb-4 text-lg sm:text-xl font-semibold text-slate-900">
                     {r.photos.length} {photoWordLabel}
                   </h2>
-                  <PhotosGrid
-                    photos={r.photos}
-                    onShowAll={() => setPhotosOpen(true)}
-                  />
+                  <PhotosGrid photos={r.photos} onShowAll={() => setPhotosOpen(true)} />
                 </section>
               )}
 
-              {}
               {(r.menu.length > 0 || r.menuUrl) && (
                 <section id="menu" className="scroll-mt-32 space-y-4">
                   <div className="space-y-1">
-                    <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
-                      Menu
-                    </h2>
-                    <p className="text-sm text-slate-600">
-                      Menu from {r.name}.
-                    </p>
+                    <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Menu</h2>
+                    <p className="text-sm text-slate-600">Menu from {r.name}.</p>
                   </div>
-                  {}
                   {r.menuUrl && (
                     <a
                       href={normalizeUrl(r.menuUrl)}
@@ -954,13 +883,10 @@ export default function RestaurantPage() {
                       View Full Menu
                     </a>
                   )}
-                  {r.menu.length > 0 && (
-                    <MenuList items={r.menu} fallbackCurrency={r.currency} />
-                  )}
+                  {r.menu.length > 0 && <MenuList items={r.menu} fallbackCurrency={r.currency} />}
                 </section>
               )}
 
-              {}
               <section id="reviews" className="scroll-mt-32 space-y-4">
                 <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
                   {reviewsHeading}
@@ -968,7 +894,6 @@ export default function RestaurantPage() {
 
                 {reviewsSummaryBlock}
 
-                {}
                 {!myReviewId && (
                   <WriteReviewBlock
                     accountType={accountType}
@@ -981,24 +906,22 @@ export default function RestaurantPage() {
                 {r.reviews.length > 0 && (
                   <>
                     <div className="space-y-3">
-                      {orderedReviews
-                        .slice(0, visibleReviewCount)
-                        .map((rv) => (
-                          <ReviewCard
-                            key={rv.id}
-                            review={rv}
-                            restaurantName={r.name}
-                            isOwn={rv.id === myReviewId}
-                            onEdit={() =>
-                              setEditingReview({
-                                id: rv.id,
-                                rating: rv.rating,
-                                description: rv.description,
-                                restaurantName: r.name,
-                              })
-                            }
-                          />
-                        ))}
+                      {orderedReviews.slice(0, visibleReviewCount).map((rv) => (
+                        <ReviewCard
+                          key={rv.id}
+                          review={rv}
+                          restaurantName={r.name}
+                          isOwn={rv.id === myReviewId}
+                          onEdit={() =>
+                            setEditingReview({
+                              id: rv.id,
+                              rating: rv.rating,
+                              description: rv.description,
+                              restaurantName: r.name,
+                            })
+                          }
+                        />
+                      ))}
                     </div>
                     {visibleReviewCount < r.reviews.length && (
                       <div className="flex flex-col items-center gap-2">
@@ -1023,19 +946,10 @@ export default function RestaurantPage() {
                 )}
               </section>
 
-              {}
               <section id="details" className="scroll-mt-32 space-y-6">
-                <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
-                  Details
-                </h2>
+                <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Details</h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {r.address && (
-                    <DetailRow
-                      icon={MapPin}
-                      label="Location"
-                      value={addressValue}
-                    />
-                  )}
+                  {r.address && <DetailRow icon={MapPin} label="Location" value={addressValue} />}
                   {r.phone && (
                     <DetailRow
                       icon={Phone}
@@ -1051,18 +965,10 @@ export default function RestaurantPage() {
                     />
                   )}
                   {r.cuisineTypes.length > 0 && (
-                    <DetailRow
-                      icon={Utensils}
-                      label="Cuisines"
-                      value={r.cuisineTypes.join(", ")}
-                    />
+                    <DetailRow icon={Utensils} label="Cuisines" value={r.cuisineTypes.join(", ")} />
                   )}
                   {r.priceRange && (
-                    <DetailRow
-                      icon={CircleDollarSign}
-                      label="Price"
-                      value={r.priceRange}
-                    />
+                    <DetailRow icon={CircleDollarSign} label="Price" value={r.priceRange} />
                   )}
                   {r.website && (
                     <DetailRow
@@ -1081,33 +987,20 @@ export default function RestaurantPage() {
                     />
                   )}
                   {r.instagram && (
-                    <DetailRow
-                      icon={Instagram}
-                      label="Instagram"
-                      value={r.instagram}
-                    />
+                    <DetailRow icon={Instagram} label="Instagram" value={r.instagram} />
                   )}
                 </div>
 
                 {r.openingHours && (
                   <div>
-                    <h3 className="text-base font-semibold text-slate-900">
-                      Hours of Operation
-                    </h3>
+                    <h3 className="text-base font-semibold text-slate-900">Hours of Operation</h3>
                     <div className="mt-3 divide-y divide-slate-100">
                       {DAYS.map((d) => {
                         const day = r.openingHours?.[d] as DayHours | undefined;
                         return (
-                          <div
-                            key={d}
-                            className="flex items-center justify-between py-2 text-sm"
-                          >
-                            <span className="font-medium text-slate-700">
-                              {formatDayLabel(d)}
-                            </span>
-                            <span className="text-slate-500">
-                              {formatHoursForDay(day)}
-                            </span>
+                          <div key={d} className="flex items-center justify-between py-2 text-sm">
+                            <span className="font-medium text-slate-700">{formatDayLabel(d)}</span>
+                            <span className="text-slate-500">{formatHoursForDay(day)}</span>
                           </div>
                         );
                       })}
@@ -1123,10 +1016,8 @@ export default function RestaurantPage() {
             </div>
           </div>
 
-          {}
           {isLgUp && (
             <aside>
-              {}
               <div className="premium-scroll sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto overflow-x-hidden pr-1 pb-4">
                 {actionCard}
               </div>
@@ -1135,7 +1026,6 @@ export default function RestaurantPage() {
         </div>
       </div>
 
-      {}
       <PhotosModal
         open={photosOpen}
         onOpenChange={setPhotosOpen}
@@ -1143,7 +1033,6 @@ export default function RestaurantPage() {
         photos={r.photos}
       />
 
-      {}
       <EditReviewDialog
         review={editingReview}
         onOpenChange={(open) => !open && setEditingReview(null)}
@@ -1155,7 +1044,6 @@ export default function RestaurantPage() {
     </PageShell>
   );
 }
-
 
 function PageShell({
   children,
@@ -1207,9 +1095,7 @@ function SaveButton({
         className,
       )}
     >
-      <Heart
-        className={cn("h-4 w-4", saved && "fill-rose-500 text-rose-500")}
-      />
+      <Heart className={cn("h-4 w-4", saved && "fill-rose-500 text-rose-500")} />
       <span className="hidden sm:inline">{label}</span>
     </button>
   );
@@ -1228,12 +1114,8 @@ function OverviewRow({
     <div className="flex items-start gap-3 rounded-lg border border-slate-200 p-3">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
       <div className="min-w-0">
-        <p className="text-xs uppercase tracking-wide text-slate-400">
-          {label}
-        </p>
-        <p className="mt-0.5 text-sm font-medium text-slate-800 break-words">
-          {value}
-        </p>
+        <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
+        <p className="mt-0.5 text-sm font-medium text-slate-800 break-words">{value}</p>
       </div>
     </div>
   );
@@ -1259,13 +1141,7 @@ function DetailRow({
   );
 }
 
-function PhotosGrid({
-  photos,
-  onShowAll,
-}: {
-  photos: Photo[];
-  onShowAll: () => void;
-}) {
+function PhotosGrid({ photos, onShowAll }: { photos: Photo[]; onShowAll: () => void }) {
   if (photos.length === 0) {
     return null;
   }
@@ -1275,11 +1151,7 @@ function PhotosGrid({
 
   if (photos.length === 1) {
     return (
-      <button
-        type="button"
-        onClick={onShowAll}
-        className={cn(tileBase, "block w-full")}
-      >
+      <button type="button" onClick={onShowAll} className={cn(tileBase, "block w-full")}>
         <img
           src={photos[0].url}
           alt={photos[0].altText || "Restaurant photo"}
@@ -1316,7 +1188,6 @@ function PhotosGrid({
 
   return (
     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-      {}
       <button
         type="button"
         onClick={onShowAll}
@@ -1329,7 +1200,6 @@ function PhotosGrid({
         />
       </button>
 
-      {}
       <div className="grid grid-cols-2 grid-rows-2 gap-2">
         {small.map((p, i) => {
           const isLast = i === small.length - 1;
@@ -1355,9 +1225,7 @@ function PhotosGrid({
               />
               {showOverlay && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/55 text-white transition group-hover:bg-black/65">
-                  <span className="text-lg font-semibold sm:text-xl">
-                    +{hidden} More
-                  </span>
+                  <span className="text-lg font-semibold sm:text-xl">+{hidden} More</span>
                 </div>
               )}
             </button>
@@ -1381,9 +1249,7 @@ function PhotosModal({
 }) {
   let photosContent: React.ReactNode;
   if (photos.length === 0) {
-    photosContent = (
-      <p className="py-6 text-sm text-slate-500">No photos yet.</p>
-    );
+    photosContent = <p className="py-6 text-sm text-slate-500">No photos yet.</p>;
   } else {
     photosContent = (
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
@@ -1405,13 +1271,10 @@ function PhotosModal({
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {}
       <DialogContent className="flex max-h-[85vh] w-full max-w-[94vw] flex-col gap-0 overflow-hidden rounded-xl p-0 max-sm:overflow-hidden max-sm:p-0 sm:max-w-[88vw] lg:max-w-[960px]">
         <DialogHeader className="shrink-0 px-4 pb-3 pt-4 sm:px-6 sm:pr-12 sm:pt-6">
           <DialogTitle>Photos</DialogTitle>
-          <DialogDescription className="break-words">
-            {restaurantName}
-          </DialogDescription>
+          <DialogDescription className="break-words">{restaurantName}</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 sm:px-6 sm:pb-6">
           {photosContent}
@@ -1478,24 +1341,17 @@ function MenuList({
 
   return (
     <div className="space-y-6">
-      {}
       <div className="border-b border-slate-200">
         {visibleGroups.map(([cat, list]) => (
           <section key={cat} className="border-t border-slate-200 py-6">
             <h3 className="text-lg font-semibold text-slate-900">{cat}</h3>
-            {}
             <div className="mt-4 grid grid-cols-1 gap-x-12 gap-y-5 sm:grid-cols-2">
               {list.map((it, i) => (
-                <div
-                  key={`${it.name}-${i}`}
-                  className="flex items-baseline justify-between gap-4"
-                >
+                <div key={`${it.name}-${i}`} className="flex items-baseline justify-between gap-4">
                   <div className="min-w-0">
                     <p className="font-medium text-slate-900">{it.name}</p>
                     {it.description && (
-                      <p className="mt-0.5 text-sm text-slate-500">
-                        {it.description}
-                      </p>
+                      <p className="mt-0.5 text-sm text-slate-500">{it.description}</p>
                     )}
                   </div>
                   {priceLabel(it) && (
@@ -1536,9 +1392,7 @@ function ReviewsSummary({ rating, count }: { rating: number; count: number }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center gap-1.5">
-        <span className="text-2xl font-semibold text-slate-900">
-          {rating.toFixed(1)}
-        </span>
+        <span className="text-2xl font-semibold text-slate-900">{rating.toFixed(1)}</span>
         <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
       </div>
       <span className="text-sm text-slate-500">
@@ -1639,15 +1493,9 @@ function WriteReviewBlock({
   }
 
   return (
-    <form
-      onSubmit={submit}
-      className="space-y-3 rounded-xl border border-slate-200 bg-white p-4"
-    >
+    <form onSubmit={submit} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
       <p className="text-sm font-semibold text-slate-900">Write a Review</p>
-      <div
-        className="flex items-center gap-1"
-        onMouseLeave={() => setHoverRating(0)}
-      >
+      <div className="flex items-center gap-1" onMouseLeave={() => setHoverRating(0)}>
         {[1, 2, 3, 4, 5].map((n) => {
           let starPlural: string;
           if (n === 1) {
@@ -1683,10 +1531,7 @@ function WriteReviewBlock({
         rows={3}
       />
       <div className="flex justify-end">
-        <Button
-          type="submit"
-          disabled={submitting}
-        >
+        <Button type="submit" disabled={submitting}>
           {submitLabel}
         </Button>
       </div>
@@ -1723,9 +1568,7 @@ function ReviewCard({
     headerTrailing = (
       <div className="flex shrink-0 items-center gap-1.5">
         <Stars rating={review.rating} />
-        <span className="text-sm font-medium text-slate-700">
-          {review.rating.toFixed(1)}
-        </span>
+        <span className="text-sm font-medium text-slate-700">{review.rating.toFixed(1)}</span>
       </div>
     );
   }
@@ -1741,28 +1584,22 @@ function ReviewCard({
 
   return (
     <div className={cn("rounded-lg border p-3", ownCardClass)}>
-      {}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="font-medium text-slate-900 line-clamp-1">
             {review.customerName || review.customerUsername || "Anonymous"}
           </p>
           {review.customerName && review.customerUsername && (
-            <p className="truncate text-xs text-slate-500">
-              @{review.customerUsername}
-            </p>
+            <p className="truncate text-xs text-slate-500">@{review.customerUsername}</p>
           )}
         </div>
         {headerTrailing}
       </div>
 
-      {}
       {isOwn && (
         <div className="mt-2 flex items-center gap-1.5">
           <Stars rating={review.rating} />
-          <span className="text-sm font-medium text-slate-700">
-            {review.rating.toFixed(1)}
-          </span>
+          <span className="text-sm font-medium text-slate-700">{review.rating.toFixed(1)}</span>
           {onEdit && (
             <Button
               type="button"
@@ -1778,24 +1615,14 @@ function ReviewCard({
         </div>
       )}
       {review.description && (
-        <p className="mt-2 text-sm text-slate-700 break-words">
-          {review.description}
-        </p>
+        <p className="mt-2 text-sm text-slate-700 break-words">{review.description}</p>
       )}
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
         <span>{formatDate(review.createdAt)}</span>
-        {typeof review.partySize === "number" && (
-          <span>· Party of {review.partySize}</span>
-        )}
-        {review.serviceType && (
-          <span>
-            ·{" "}
-            {serviceTypeLabel}
-          </span>
-        )}
+        {typeof review.partySize === "number" && <span>· Party of {review.partySize}</span>}
+        {review.serviceType && <span>· {serviceTypeLabel}</span>}
       </div>
 
-      {}
       {review.businessReply && (
         <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">

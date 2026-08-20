@@ -270,10 +270,7 @@ describe("session probe", () => {
     const anon = await app().get("/auth/admin/session");
     const signedIn = await app()
       .get("/auth/admin/session")
-      .set(
-        "Cookie",
-        `sp_auth_admin=${signJwt({ sub: "admin", accountType: "admin" })}`,
-      );
+      .set("Cookie", `sp_auth_admin=${signJwt({ sub: "admin", accountType: "admin" })}`);
 
     expect(anon.body.authenticated).toBe(false);
     expect(signedIn.body.authenticated).toBe(true);
@@ -292,10 +289,7 @@ describe("customer signup and login", () => {
   it("refuses an email or username already in use", async () => {
     userFindFirst.mockResolvedValue({ id: "cust-existing" });
 
-    const res = await app()
-      .post("/auth/signup")
-      .set("X-Forwarded-For", freshIp())
-      .send(signup);
+    const res = await app().post("/auth/signup").set("X-Forwarded-For", freshIp()).send(signup);
 
     expect(res.status).toBe(409);
   });
@@ -303,10 +297,7 @@ describe("customer signup and login", () => {
   it("keeps the signup when the welcome email fails", async () => {
     sendCustomerWelcomeEmail.mockRejectedValue(new Error("smtp down"));
 
-    const res = await app()
-      .post("/auth/signup")
-      .set("X-Forwarded-For", freshIp())
-      .send(signup);
+    const res = await app().post("/auth/signup").set("X-Forwarded-For", freshIp()).send(signup);
 
     expect(res.status).toBe(201);
   });
@@ -314,10 +305,7 @@ describe("customer signup and login", () => {
   it("reports a server error on signup", async () => {
     userCreate.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .post("/auth/signup")
-      .set("X-Forwarded-For", freshIp())
-      .send(signup);
+    const res = await app().post("/auth/signup").set("X-Forwarded-For", freshIp()).send(signup);
 
     expect(res.status).toBe(500);
   });
@@ -417,9 +405,7 @@ describe("activity enrichment", () => {
     userFindUnique.mockResolvedValue(
       customerRow({ queueingActivity: [{ id: "q1", locationId: LOC }] }),
     );
-    locationFindMany.mockResolvedValue([
-      locationRow({ bannerImageUrl: null, photos: [] }),
-    ]);
+    locationFindMany.mockResolvedValue([locationRow({ bannerImageUrl: null, photos: [] })]);
     businessFindMany.mockResolvedValue([]);
 
     const res = await app().get("/auth/me").set("Cookie", customerCookie());
@@ -434,9 +420,7 @@ describe("activity enrichment", () => {
         queueingActivity: [{ id: "q1", businessUsername: "bistro" }],
       }),
     );
-    businessFindMany.mockResolvedValue([
-      { id: "biz-1", username: "bistro", name: "Bistro" },
-    ]);
+    businessFindMany.mockResolvedValue([{ id: "biz-1", username: "bistro", name: "Bistro" }]);
     locationFindMany.mockResolvedValue([
       locationRow({ bannerImageUrl: "https://test.invalid/b.jpg" }),
       locationRow({ id: "loc-2", bannerImageUrl: "https://test.invalid/second.jpg" }),
@@ -455,9 +439,7 @@ describe("activity enrichment", () => {
         queueingActivity: [{ id: "q1", businessUsername: "bistro" }],
       }),
     );
-    businessFindMany.mockResolvedValue([
-      { id: "biz-1", username: "bistro", name: "Bistro" },
-    ]);
+    businessFindMany.mockResolvedValue([{ id: "biz-1", username: "bistro", name: "Bistro" }]);
     locationFindMany.mockResolvedValue([]);
 
     const res = await app().get("/auth/me").set("Cookie", customerCookie());
@@ -574,9 +556,7 @@ describe("password recovery", () => {
       .set("X-Forwarded-For", freshIp())
       .set("Origin", "https://app.test.invalid")
       .send({ email: freshEmail() });
-    expect(sendPasswordResetEmail.mock.calls[0][3]).toBe(
-      "https://app.test.invalid",
-    );
+    expect(sendPasswordResetEmail.mock.calls[0][3]).toBe("https://app.test.invalid");
 
     sendPasswordResetEmail.mockClear();
     await app()
@@ -699,21 +679,15 @@ describe("completing a password reset", () => {
 
 describe("username availability", () => {
   it("requires a username", async () => {
-    const res = await app()
-      .get("/auth/exists")
-      .set("X-Forwarded-For", freshIp());
+    const res = await app().get("/auth/exists").set("X-Forwarded-For", freshIp());
 
     expect(res.status).toBe(400);
   });
 
   it("reports whether a business username is taken", async () => {
-    const taken = await app()
-      .get("/auth/exists?username=bistro")
-      .set("X-Forwarded-For", freshIp());
+    const taken = await app().get("/auth/exists?username=bistro").set("X-Forwarded-For", freshIp());
     businessFindUnique.mockResolvedValue(null);
-    const free = await app()
-      .get("/auth/exists?username=free")
-      .set("X-Forwarded-For", freshIp());
+    const free = await app().get("/auth/exists?username=free").set("X-Forwarded-For", freshIp());
 
     expect(taken.body.exists).toBe(true);
     expect(free.body.exists).toBe(false);
@@ -722,9 +696,7 @@ describe("username availability", () => {
   it("reports a server error", async () => {
     businessFindUnique.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .get("/auth/exists?username=bistro")
-      .set("X-Forwarded-For", freshIp());
+    const res = await app().get("/auth/exists?username=bistro").set("X-Forwarded-For", freshIp());
 
     expect(res.status).toBe(500);
   });
@@ -806,9 +778,7 @@ describe("business signup and login", () => {
   it("reports a missing business profile", async () => {
     assembleBusinessMe.mockResolvedValue(null);
 
-    const res = await app()
-      .get("/auth/business/me")
-      .set("Cookie", businessCookie());
+    const res = await app().get("/auth/business/me").set("Cookie", businessCookie());
 
     expect(res.status).toBe(404);
   });
@@ -816,9 +786,7 @@ describe("business signup and login", () => {
   it("reports a server error on the business profile", async () => {
     enforceTrialExpiration.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .get("/auth/business/me")
-      .set("Cookie", businessCookie());
+    const res = await app().get("/auth/business/me").set("Cookie", businessCookie());
 
     expect(res.status).toBe(500);
   });
@@ -990,9 +958,7 @@ describe("joining a queue", () => {
       .send(joinPayload({ locationId: undefined, address: "1 Test Street" }));
 
     expect(res.status).toBe(200);
-    expect(locationFindFirst.mock.calls[0][0].where.address).toBe(
-      "1 Test Street",
-    );
+    expect(locationFindFirst.mock.calls[0][0].where.address).toBe("1 Test Street");
   });
 
   it("reports an unknown business and an unknown location", async () => {
@@ -1125,9 +1091,7 @@ describe("joining a queue", () => {
   });
 
   it("falls back through the restaurant name for the notification", async () => {
-    locationFindFirst.mockResolvedValue(
-      locationRow({ displayName: null, name: null }),
-    );
+    locationFindFirst.mockResolvedValue(locationRow({ displayName: null, name: null }));
     businessFindUnique.mockResolvedValue({ id: "biz-1", name: null });
 
     await app()
@@ -1135,17 +1099,13 @@ describe("joining a queue", () => {
       .set("X-Forwarded-For", freshIp())
       .send(joinPayload());
 
-    expect(enqueueNotification.mock.calls[0][0].restaurantName).toBe(
-      "the business",
-    );
+    expect(enqueueNotification.mock.calls[0][0].restaurantName).toBe("the business");
   });
 });
 
 describe("queue hold window", () => {
   it("does not reveal whether an unknown token ever existed", async () => {
-    const res = await app().get(
-      "/auth/business/bistro/queue/token/qt-1/status",
-    );
+    const res = await app().get("/auth/business/bistro/queue/token/qt-1/status");
 
     expect(res.status).toBeLessThan(500);
     expect(JSON.stringify(res.body)).not.toContain("qt-1");
@@ -1154,9 +1114,7 @@ describe("queue hold window", () => {
   it("reports a server error on the token status route", async () => {
     businessFindUnique.mockRejectedValue(new Error("db down"));
 
-    const res = await app().get(
-      "/auth/business/bistro/queue/token/qt-1/status",
-    );
+    const res = await app().get("/auth/business/bistro/queue/token/qt-1/status");
 
     expect(res.status).toBe(500);
   });
@@ -1172,9 +1130,7 @@ describe("queue hold window", () => {
   it("reports a server error on the eta route", async () => {
     businessFindUnique.mockRejectedValue(new Error("db down"));
 
-    const res = await app().get(
-      "/auth/business/bistro/queue/token/qt-1/eta",
-    );
+    const res = await app().get("/auth/business/bistro/queue/token/qt-1/eta");
 
     expect(res.status).toBe(500);
   });

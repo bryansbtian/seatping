@@ -111,9 +111,7 @@ describe("useSearchSuggestions while fetching", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe(
-      "/api/locations/search-suggestions?query=bistro%20%26%20co&limit=3",
-    );
+    expect(url).toBe("/api/locations/search-suggestions?query=bistro%20%26%20co&limit=3");
     expect(init.credentials).toBe("include");
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
@@ -173,11 +171,7 @@ describe("useSearchSuggestions results", () => {
     await flushDebounce();
 
     expect(result.current.suggestions).toHaveLength(3);
-    expect(result.current.suggestions.map((s) => s.locationId)).toEqual([
-      "a",
-      "b",
-      "c",
-    ]);
+    expect(result.current.suggestions.map((s) => s.locationId)).toEqual(["a", "b", "c"]);
   });
 
   it("falls back to an empty list when the payload has no suggestions", async () => {

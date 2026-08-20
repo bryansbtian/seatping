@@ -10,14 +10,19 @@ Whether users are planning ahead or looking for a table nearby, SeatPing makes t
 
 Follow the steps below to run SeatPing locally for development.
 
-Prerequisites: Node.js 18+ and a reachable MongoDB (Atlas, or a local replica set).
+Prerequisites: Node.js 24 (the version CI and Vercel build on, pinned in `.nvmrc` and
+`package.json` engines) and a reachable MongoDB (Atlas, or a local replica set).
 
 ```bash
 cp .env.example .env
-npm install
+npm ci
 npx prisma generate
 npx prisma db push
 ```
+
+`npm ci` installs exactly what `package-lock.json` records, so every machine and CI get the
+same tree. Use `npm install` only to add, remove, or upgrade a dependency, and commit the
+updated lockfile.
 
 ### Test Database (First Time Only)
 
@@ -95,13 +100,14 @@ npm run start
 
 ## CI/CD
 
-- Lint and build CI is handled by GitHub Actions (`.github/workflows/ci.yml`), running on pull requests targeting `main` and pushes to `main`.
-- CI runs three jobs. `Lint and Build` runs install (`npm ci`), Prisma client generation, lint, and build. `Tests and Coverage` starts a disposable single node MongoDB replica set container (`docker run ... mongod --replSet rs0`, since a service container cannot override the image command), pushes the Prisma schema to it, and runs `npm run test:coverage`. `End to End` starts the same kind of container and runs `npm run test:e2e`.
+- CI is handled by GitHub Actions (`.github/workflows/ci.yml`), running on every pull request and on pushes to `main`. Both jobs build on Node.js 24.
+- CI runs two jobs. `Lint, Typecheck, Test, and Build` installs (`npm ci`), generates the Prisma client, starts a disposable single node MongoDB replica set container (`docker run ... mongod --replSet rs0`, since a service container cannot override the image command), pushes the Prisma schema to it, then runs lint, `format:check`, typecheck, `npm run test:coverage`, and build. `End to End` starts the same kind of container and runs `npm run test:e2e`.
 - The coverage gate is enforced by Vitest (70% lines, statements, functions, branches). CI fails on a shortfall; the coverage report is uploaded as an artifact.
 - The end to end job is pass/fail only. Playwright is not part of the coverage percentage.
-- CI never uses production infrastructure for tests: `TEST_DATABASE_URL` points at the ephemeral container, not `secrets.DATABASE_URL`.
+- CI never uses production infrastructure. Both `DATABASE_URL` and `TEST_DATABASE_URL` point at the ephemeral container, so no repository secret is needed to run CI.
 - CD is handled by Vercel automatically after merging to `main`. GitHub Actions does not deploy.
-- Add `DATABASE_URL` as a GitHub Actions repository secret (Settings > Secrets and variables > Actions). Other CI env vars are safe placeholders defined in the workflow.
+- Every CI env var is a safe placeholder defined in the workflow.
+- The workflow keeps repository-specific setup together in one run of steps, `Generate Prisma Client` through `Push Prisma Schema to the Test Database` (plus `Install Playwright Chromium` in the end to end job). Everything outside that run is shared across repositories and should be updated from the shared workflow rather than edited here. That setup runs before lint, format check, and typecheck because `prisma generate` has to write the client types before `tsc` can resolve the `@prisma/client` model imports.
 - Pull requests should pass CI before merging.
 
 ## Testing
@@ -143,16 +149,19 @@ Only external providers are replaced.
 
 ## Common Commands
 
-| Command               | What it does                                            |
-| --------------------- | ------------------------------------------------------- |
-| `npm run dev`         | Run Vite + API together                                 |
-| `npm run dev:vite`    | Frontend only (port 8080)                               |
-| `npm run dev:server`  | API only (port 4000)                                    |
-| `npm run build`       | Build SPA (`dist/`) and compile server (`dist-server/`) |
-| `npm run start`       | Run the built server in production mode                 |
-| `npm run lint`        | ESLint over `.ts`/`.tsx`                                |
-| `npx prisma generate` | Regenerate the Prisma client                            |
-| `npx prisma db push`  | Sync the schema to MongoDB                              |
+| Command                 | What it does                                            |
+| ----------------------- | ------------------------------------------------------- |
+| `npm run dev`           | Run Vite + API together                                 |
+| `npm run dev:vite`      | Frontend only (port 8080)                               |
+| `npm run dev:server`    | API only (port 4000)                                    |
+| `npm run build`         | Build SPA (`dist/`) and compile server (`dist-server/`) |
+| `npm run start`         | Run the built server in production mode                 |
+| `npm run lint`          | ESLint over `.ts`/`.tsx`                                |
+| `npm run format:check`  | Prettier, verification only                             |
+| `npm run typecheck`     | `tsc --noEmit` over app and server                      |
+| `npm run test:coverage` | Tests with the coverage gate                            |
+| `npx prisma generate`   | Regenerate the Prisma client                            |
+| `npx prisma db push`    | Sync the schema to MongoDB                              |
 
 ## Development Notes
 

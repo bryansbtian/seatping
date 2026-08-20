@@ -5,18 +5,9 @@ import { Calendar as CalendarIcon, Users, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  FieldTrigger,
-  FLAT_FIELD,
-  OptionRow,
-  TimeSelect,
-  formatTimeLabel,
-} from "@/components/TimeSelect";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { FieldTrigger, FLAT_FIELD, OptionRow, TimeSelect } from "@/components/TimeSelect";
+import { formatTimeLabel } from "@/components/timeOptions";
 import { SearchSuggestInput } from "@/components/SearchSuggestInput";
 import { cn } from "@/lib/utils";
 
@@ -37,16 +28,14 @@ function getNextTimeSlot(): string {
   }
   now.setSeconds(0);
   now.setMilliseconds(0);
-  const target = `${String(now.getHours()).padStart(2, "0")}:${String(
-    now.getMinutes(),
-  ).padStart(2, "0")}`;
+  const target = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(
+    2,
+    "0",
+  )}`;
   return TIME_OPTIONS.find((t) => t >= target) ?? TIME_OPTIONS[0];
 }
 
-const PEOPLE_OPTIONS: string[] = [
-  ...Array.from({ length: 20 }, (_, i) => String(i + 1)),
-  "large",
-];
+const PEOPLE_OPTIONS: string[] = [...Array.from({ length: 20 }, (_, i) => String(i + 1)), "large"];
 
 function peopleLabel(value: string) {
   if (value === "large") {
@@ -117,11 +106,8 @@ const ReservationSearchBar = () => {
       onSubmit={handleSearch}
       className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3 max-[360px]:p-2 sm:p-6 md:shadow-2xl animate-fade-in-up animation-delay-400"
     >
-      {}
       <div className="flex flex-col md:grid md:grid-cols-[auto_auto_auto_minmax(0,1fr)] md:items-center md:gap-3 xl:grid-cols-[auto_auto_auto_minmax(0,1fr)_auto]">
-        {}
         <div className="flex items-stretch md:contents">
-          {}
           <div className="flex-1 min-w-0 md:contents">
             <Popover open={dateOpen} onOpenChange={setDateOpen}>
               <PopoverTrigger asChild>
@@ -150,7 +136,6 @@ const ReservationSearchBar = () => {
             </Popover>
           </div>
 
-          {}
           <div className="flex-1 min-w-0 border-l border-slate-200 md:border-l-0 md:contents">
             <TimeSelect
               value={time}
@@ -162,7 +147,6 @@ const ReservationSearchBar = () => {
           </div>
         </div>
 
-        {}
         <div className="border-t border-slate-200 md:border-t-0 md:contents">
           <Popover open={peopleOpen} onOpenChange={setPeopleOpen}>
             <PopoverTrigger asChild>
@@ -174,10 +158,7 @@ const ReservationSearchBar = () => {
                 {peopleLabel(people)}
               </FieldTrigger>
             </PopoverTrigger>
-            <PopoverContent
-              className="w-48 max-h-72 overflow-y-auto p-1"
-              align="start"
-            >
+            <PopoverContent className="w-48 max-h-72 overflow-y-auto p-1" align="start">
               {PEOPLE_OPTIONS.map((value) => (
                 <OptionRow
                   key={value}
@@ -194,7 +175,6 @@ const ReservationSearchBar = () => {
           </Popover>
         </div>
 
-        {}
         <SearchSuggestInput
           value={query}
           onChange={setQuery}
@@ -205,7 +185,6 @@ const ReservationSearchBar = () => {
           inputClassName="rounded-none border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-slate-50 md:rounded-xl md:border md:border-slate-200 md:bg-transparent md:focus-visible:ring-2 md:focus-visible:ring-offset-2 md:focus-visible:bg-transparent placeholder:text-sm max-[360px]:placeholder:text-xs sm:placeholder:text-base"
         />
 
-        {}
         <div className="border-t border-slate-200 pt-3 md:border-t-0 md:pt-0 md:contents">
           <Button
             type="submit"

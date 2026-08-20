@@ -93,10 +93,7 @@ router.post("/preview", async (req, res) => {
 
     const preview = guests.slice(0, PREVIEW_GUEST_LIMIT).map((g) => ({
       id: g.id,
-      fullName:
-        g.fullName ||
-        [g.firstName, g.lastName].filter(Boolean).join(" ") ||
-        null,
+      fullName: g.fullName || [g.firstName, g.lastName].filter(Boolean).join(" ") || null,
       phone: g.phone,
       normalizedPhone: g.normalizedPhone,
       email: g.email,

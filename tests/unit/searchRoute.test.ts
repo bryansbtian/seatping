@@ -60,9 +60,7 @@ function location(overrides: Record<string, unknown> = {}) {
 
 function today(offsetDays = 0): string {
   const d = new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000);
-  return d
-    .toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })
-    .toLowerCase();
+  return d.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" }).toLowerCase();
 }
 
 function hourLabel(hour: number): string {
@@ -70,9 +68,7 @@ function hourLabel(hour: number): string {
 }
 
 async function openNowFor(openingHours: unknown) {
-  locationFindMany.mockResolvedValue([
-    location({ restaurantProfile: { openingHours } }),
-  ]);
+  locationFindMany.mockResolvedValue([location({ restaurantProfile: { openingHours } })]);
   const res = await search("");
   return res.body.results[0].openNow;
 }
@@ -164,12 +160,8 @@ describe("search result fallbacks", () => {
   });
 
   it("falls back to the location name when the business has none", async () => {
-    businessFindMany.mockResolvedValue([
-      { id: "biz-1", name: null, username: "bistro" },
-    ]);
-    locationFindMany.mockResolvedValue([
-      location({ displayName: null, name: "Bistro Downtown" }),
-    ]);
+    businessFindMany.mockResolvedValue([{ id: "biz-1", name: null, username: "bistro" }]);
+    locationFindMany.mockResolvedValue([location({ displayName: null, name: "Bistro Downtown" })]);
 
     const res = await search("");
 
@@ -177,14 +169,10 @@ describe("search result fallbacks", () => {
   });
 
   it("reports no cuisine for an empty or missing list", async () => {
-    locationFindMany.mockResolvedValue([
-      location({ restaurantProfile: { cuisineTypes: [] } }),
-    ]);
+    locationFindMany.mockResolvedValue([location({ restaurantProfile: { cuisineTypes: [] } })]);
     expect((await search("")).body.results[0].cuisine).toBeNull();
 
-    locationFindMany.mockResolvedValue([
-      location({ restaurantProfile: null }),
-    ]);
+    locationFindMany.mockResolvedValue([location({ restaurantProfile: null })]);
     expect((await search("")).body.results[0].cuisine).toBeNull();
   });
 
@@ -402,9 +390,7 @@ describe("search failures and limits", () => {
     let limited = 0;
 
     for (let i = 0; i < 65; i++) {
-      const res = await app
-        .get("/api/search/restaurants?query=")
-        .set("X-Forwarded-For", ip);
+      const res = await app.get("/api/search/restaurants?query=").set("X-Forwarded-For", ip);
       if (res.status === 429) {
         limited += 1;
       }

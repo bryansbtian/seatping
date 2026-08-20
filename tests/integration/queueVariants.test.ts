@@ -38,18 +38,16 @@ describe("queue join notification channels", () => {
     const { business, location } = await seedBusinessWithLocation();
     const suffix = uniqueSuffix();
 
-    const res = await (await api())
-      .post(`/auth/business/${business.username}/queue`)
-      .send({
-        locationId: location.id,
-        firstName: "Sms",
-        lastName: suffix,
-        numGuests: 3,
-        notificationMethod: "sms",
-        phoneNumber: "5551234567",
-        countryCode: "+1",
-        smsConsent: true,
-      });
+    const res = await (await api()).post(`/auth/business/${business.username}/queue`).send({
+      locationId: location.id,
+      firstName: "Sms",
+      lastName: suffix,
+      numGuests: 3,
+      notificationMethod: "sms",
+      phoneNumber: "5551234567",
+      countryCode: "+1",
+      smsConsent: true,
+    });
 
     expect(res.status).toBe(200);
     const stored = await db.queueEntry.findFirst({
@@ -64,19 +62,17 @@ describe("queue join notification channels", () => {
     const { business, location } = await seedBusinessWithLocation();
     const suffix = uniqueSuffix();
 
-    await (await api())
-      .post(`/auth/business/${business.username}/queue`)
-      .send({
-        locationId: location.id,
-        firstName: "Marketing",
-        lastName: suffix,
-        numGuests: 2,
-        notificationMethod: "sms",
-        phoneNumber: "5551234567",
-        countryCode: "+1",
-        smsConsent: true,
-        smsMarketingConsent: true,
-      });
+    await (await api()).post(`/auth/business/${business.username}/queue`).send({
+      locationId: location.id,
+      firstName: "Marketing",
+      lastName: suffix,
+      numGuests: 2,
+      notificationMethod: "sms",
+      phoneNumber: "5551234567",
+      countryCode: "+1",
+      smsConsent: true,
+      smsMarketingConsent: true,
+    });
 
     const stored = await db.queueEntry.findFirst({
       where: { locationId: location.id, lastName: suffix },
@@ -88,17 +84,15 @@ describe("queue join notification channels", () => {
     const { business, location } = await seedBusinessWithLocation();
     const suffix = uniqueSuffix();
 
-    const res = await (await api())
-      .post(`/auth/business/${business.username}/queue`)
-      .send({
-        locationId: location.id,
-        firstName: "Whats",
-        lastName: suffix,
-        numGuests: 2,
-        notificationMethod: "whatsapp",
-        phoneNumber: "81234567890",
-        countryCode: "+62",
-      });
+    const res = await (await api()).post(`/auth/business/${business.username}/queue`).send({
+      locationId: location.id,
+      firstName: "Whats",
+      lastName: suffix,
+      numGuests: 2,
+      notificationMethod: "whatsapp",
+      phoneNumber: "81234567890",
+      countryCode: "+62",
+    });
 
     expect(res.status).toBe(200);
     expect(sinks().whatsapp).toHaveLength(0);
@@ -107,14 +101,12 @@ describe("queue join notification channels", () => {
   it("requires a phone number for WhatsApp", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
-      .post(`/auth/business/${business.username}/queue`)
-      .send(
-        emailJoin(location.id, {
-          notificationMethod: "whatsapp",
-          email: undefined,
-        }),
-      );
+    const res = await (await api()).post(`/auth/business/${business.username}/queue`).send(
+      emailJoin(location.id, {
+        notificationMethod: "whatsapp",
+        email: undefined,
+      }),
+    );
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/phone/i);
@@ -124,16 +116,14 @@ describe("queue join notification channels", () => {
     const { business, location } = await seedBusinessWithLocation();
     const suffix = uniqueSuffix();
 
-    const res = await (await api())
-      .post(`/auth/business/${business.username}/queue`)
-      .send({
-        address: location.address,
-        firstName: "ByAddress",
-        lastName: suffix,
-        numGuests: 2,
-        notificationMethod: "email",
-        email: `addr-${suffix}@test.invalid`,
-      });
+    const res = await (await api()).post(`/auth/business/${business.username}/queue`).send({
+      address: location.address,
+      firstName: "ByAddress",
+      lastName: suffix,
+      numGuests: 2,
+      notificationMethod: "email",
+      email: `addr-${suffix}@test.invalid`,
+    });
 
     expect(res.status).toBe(200);
     const stored = await db.queueEntry.findFirst({
@@ -146,15 +136,13 @@ describe("queue join notification channels", () => {
     const { business } = await seedBusinessWithLocation();
     const suffix = uniqueSuffix();
 
-    const res = await (await api())
-      .post(`/auth/business/${business.username}/queue`)
-      .send({
-        firstName: "NoLocation",
-        lastName: suffix,
-        numGuests: 2,
-        notificationMethod: "email",
-        email: `noloc-${suffix}@test.invalid`,
-      });
+    const res = await (await api()).post(`/auth/business/${business.username}/queue`).send({
+      firstName: "NoLocation",
+      lastName: suffix,
+      numGuests: 2,
+      notificationMethod: "email",
+      email: `noloc-${suffix}@test.invalid`,
+    });
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/location/i);
@@ -165,7 +153,9 @@ describe("queue join notification channels", () => {
     const customer = await seedCustomer();
     const suffix = uniqueSuffix();
 
-    await (await api())
+    await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue`)
       .set("Cookie", customerCookie(customer.id))
       .send(emailJoin(location.id, { lastName: suffix }));
@@ -183,7 +173,9 @@ describe("queue join guards", () => {
       queueEnabled: false,
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue`)
       .send(emailJoin(location.id));
 
@@ -195,19 +187,21 @@ describe("queue join guards", () => {
     const { business, location } = await seedBusinessWithLocation();
     const sharedEmail = `dupe-${uniqueSuffix()}@test.invalid`;
 
-    const first = await (await api())
+    const first = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue`)
       .send(emailJoin(location.id, { email: sharedEmail }));
     expect(first.status).toBe(200);
 
-    const second = await (await api())
+    const second = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue`)
       .send(emailJoin(location.id, { email: sharedEmail }));
 
     expect(second.status).toBe(409);
-    expect(await db.queueEntry.count({ where: { locationId: location.id } })).toBe(
-      1,
-    );
+    expect(await db.queueEntry.count({ where: { locationId: location.id } })).toBe(1);
   });
 
   it("allows rejoining once the earlier entry is no longer waiting", async () => {
@@ -215,7 +209,9 @@ describe("queue join guards", () => {
     const sharedEmail = `rejoin-${uniqueSuffix()}@test.invalid`;
     await seedQueueEntry(location, { email: sharedEmail, status: "LEFT" });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue`)
       .send(emailJoin(location.id, { email: sharedEmail }));
 
@@ -225,7 +221,9 @@ describe("queue join guards", () => {
   it("refuses a join for an unknown location id", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue`)
       .send(emailJoin("000000000000000000000000"));
 
@@ -235,7 +233,9 @@ describe("queue join guards", () => {
   it("rejects a join with no guest count", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue`)
       .send(emailJoin(location.id, { numGuests: undefined }));
 
@@ -252,7 +252,9 @@ describe("queue removal paths", () => {
       finalStatus: "pending",
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/admitted/${entry.legacyKey}/no-show`)
       .set("Cookie", (await import("../helpers/auth.js")).businessCookie(business.id));
 
@@ -264,7 +266,9 @@ describe("queue removal paths", () => {
     const entry = await seedQueueEntry(location);
     const { businessCookie } = await import("../helpers/auth.js");
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/auth/business/${business.username}/queue/${entry.legacyKey}/remove`)
       .set("Cookie", businessCookie(business.id));
 

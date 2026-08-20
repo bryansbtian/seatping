@@ -1,17 +1,8 @@
 import { expect, type Page } from "@playwright/test";
 import { test } from "./fixtures/seatping.js";
 import { signInBusiness } from "./helpers/auth.js";
-import {
-  buildGuest,
-  fullNameOf,
-  joinQueueThroughUi,
-  type QueueGuest,
-} from "./helpers/queue.js";
-import {
-  futureDateKey,
-  openAllDayEveryDay,
-  publishedProfile,
-} from "./helpers/time.js";
+import { buildGuest, fullNameOf, joinQueueThroughUi, type QueueGuest } from "./helpers/queue.js";
+import { futureDateKey, openAllDayEveryDay, publishedProfile } from "./helpers/time.js";
 
 async function completeQueueVisit(
   businessPage: Page,
@@ -35,19 +26,16 @@ async function joinQueueThroughApi(
   guest: QueueGuest,
   email: string,
 ): Promise<void> {
-  const response = await page.request.post(
-    `/auth/business/${businessUsername}/queue`,
-    {
-      data: {
-        locationId,
-        firstName: guest.firstName,
-        lastName: guest.lastName,
-        numGuests: guest.guestCount,
-        email,
-        notificationMethod: "email",
-      },
+  const response = await page.request.post(`/auth/business/${businessUsername}/queue`, {
+    data: {
+      locationId,
+      firstName: guest.firstName,
+      lastName: guest.lastName,
+      numGuests: guest.guestCount,
+      email,
+      notificationMethod: "email",
     },
-  );
+  });
   expect(response.status()).toBe(200);
 }
 
@@ -89,15 +77,11 @@ test("a completed queue visit creates a guest profile the business can see in th
   expect(profile.lastVisitAt).not.toBeNull();
 
   await extraPage.goto("/business/guests");
-  await expect(
-    extraPage.getByRole("heading", { name: "Guests" }).first(),
-  ).toBeVisible();
+  await expect(extraPage.getByRole("heading", { name: "Guests" }).first()).toBeVisible();
   await expect(extraPage.getByText(fullNameOf(guest)).first()).toBeVisible();
   await expect(extraPage.getByText(guest.email).first()).toBeVisible();
 
-  const listed = await extraPage.request.get(
-    `/api/guests?locationId=${location.id}`,
-  );
+  const listed = await extraPage.request.get(`/api/guests?locationId=${location.id}`);
   const rows = (await listed.json()).guests as Array<Record<string, unknown>>;
   expect(rows).toHaveLength(1);
   expect(rows[0].totalVisits).toBe(1);
@@ -175,9 +159,7 @@ test("repeat visits under the same normalized contact update one guest profile i
   expect(profile.upcomingReservationCount).toBe(1);
   expect(profile.totalVisits).toBe(2);
 
-  const listed = await extraPage.request.get(
-    `/api/guests?locationId=${location.id}`,
-  );
+  const listed = await extraPage.request.get(`/api/guests?locationId=${location.id}`);
   const rows = (await listed.json()).guests as Array<Record<string, unknown>>;
   expect(rows).toHaveLength(1);
   expect(rows[0].returning).toBe(true);

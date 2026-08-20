@@ -48,8 +48,7 @@ describe("prisma datasource url", () => {
   });
 
   it("joins onto an existing query string", async () => {
-    process.env.DATABASE_URL =
-      "mongodb://127.0.0.1:27017/seatping-test?replicaSet=rs0";
+    process.env.DATABASE_URL = "mongodb://127.0.0.1:27017/seatping-test?replicaSet=rs0";
 
     await loadPrisma();
 
@@ -67,8 +66,7 @@ describe("prisma datasource url", () => {
   });
 
   it("leaves a url that already sets the pool size alone", async () => {
-    process.env.DATABASE_URL =
-      "mongodb://127.0.0.1:27017/seatping-test?maxPoolSize=5";
+    process.env.DATABASE_URL = "mongodb://127.0.0.1:27017/seatping-test?maxPoolSize=5";
 
     await loadPrisma();
 

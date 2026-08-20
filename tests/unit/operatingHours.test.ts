@@ -26,10 +26,7 @@ test("marks an explicitly disabled date as closed", () => {
 });
 
 test("uses the location timezone for current open status", () => {
-  const status = getCurrentOperatingStatus(
-    hours,
-    new Date("2026-06-08T05:00:00.000Z"),
-  );
+  const status = getCurrentOperatingStatus(hours, new Date("2026-06-08T05:00:00.000Z"));
   assert.equal(status.date, "2026-06-08");
   assert.equal(status.localMinute, 12 * 60);
   assert.equal(status.isOpen, true);
@@ -41,10 +38,7 @@ test("carries an overnight shift into the following date", () => {
   assert.equal(isMinuteWithinOperatingHours(wednesday, 60), true);
   assert.equal(isMinuteWithinOperatingHours(wednesday, 3 * 60), false);
 
-  const duringSpill = getCurrentOperatingStatus(
-    hours,
-    new Date("2026-06-09T18:00:00.000Z"),
-  );
+  const duringSpill = getCurrentOperatingStatus(hours, new Date("2026-06-09T18:00:00.000Z"));
   assert.equal(duringSpill.date, "2026-06-10");
   assert.equal(duringSpill.localMinute, 60);
   assert.equal(duringSpill.isOpen, true);

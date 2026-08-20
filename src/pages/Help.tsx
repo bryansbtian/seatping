@@ -115,18 +115,15 @@ const Help = () => {
 
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 py-12 sm:py-16 md:py-20">
         <div className="max-w-3xl mx-auto space-y-10">
-          {}
           <div className="text-center space-y-4">
             <h1 className="text-3xl md:text-5xl font-semibold text-slate-900 leading-tight pb-3 pt-10 sm:pt-12 md:pt-16">
               Help & FAQ
             </h1>
             <p className="text-muted-foreground text-lg md:text-xl">
-              Quick answers for diners, queues, reservations, and business
-              tools.
+              Quick answers for diners, queues, reservations, and business tools.
             </p>
           </div>
 
-          {}
           <div className="space-y-8">
             <FaqSection
               title="For Customers"
@@ -142,14 +139,10 @@ const Help = () => {
             />
           </div>
 
-          {}
           <div className="text-center pt-6 border-t">
             <p className="text-muted-foreground">
               Still need help? Contact us anytime at{" "}
-              <a
-                href="mailto:help@seatping.biz"
-                className="underline font-medium"
-              >
+              <a href="mailto:help@seatping.biz" className="underline font-medium">
                 help@seatping.biz
               </a>
             </p>

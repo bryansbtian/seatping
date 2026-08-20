@@ -2,11 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { api } from "../helpers/app.js";
 import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
 import { businessCookie } from "../helpers/auth.js";
-import {
-  seedBusinessWithLocation,
-  seedQueueEntry,
-  uniqueSuffix,
-} from "../helpers/seed.js";
+import { seedBusinessWithLocation, seedQueueEntry, uniqueSuffix } from "../helpers/seed.js";
 import { syncGuestFromQueueEntry } from "../../server/lib/guests.js";
 
 const db = getTestPrisma();
@@ -23,7 +19,9 @@ describe("guest CRM", () => {
   it("exposes location metadata and suggested tags", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/api/guests/meta")
       .set("Cookie", businessCookie(business.id));
 
@@ -35,7 +33,9 @@ describe("guest CRM", () => {
   it("requires a location the business owns when listing guests", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/api/guests?locationId=000000000000000000000000")
       .set("Cookie", businessCookie(business.id));
 
@@ -128,33 +128,35 @@ describe("guest CRM", () => {
       where: { businessId: business.id },
     });
 
-    const list = await (await api())
+    const list = await (
+      await api()
+    )
       .get(`/api/guests?locationId=${location.id}`)
       .set("Cookie", cookie);
     expect(list.status).toBe(200);
     expect(JSON.stringify(list.body)).toContain(guest!.id);
 
-    const detail = await (await api())
-      .get(`/api/guests/${guest!.id}`)
-      .set("Cookie", cookie);
+    const detail = await (await api()).get(`/api/guests/${guest!.id}`).set("Cookie", cookie);
     expect(detail.status).toBe(200);
 
-    const tagged = await (await api())
+    const tagged = await (
+      await api()
+    )
       .post(`/api/guests/${guest!.id}/tags`)
       .set("Cookie", cookie)
       .send({ tag: "vip" });
     expect(tagged.status).toBe(200);
-    expect(
-      (await db.guestProfile.findUnique({ where: { id: guest!.id } }))?.tags,
-    ).toContain("vip");
+    expect((await db.guestProfile.findUnique({ where: { id: guest!.id } }))?.tags).toContain("vip");
 
-    const untagged = await (await api())
+    const untagged = await (
+      await api()
+    )
       .delete(`/api/guests/${guest!.id}/tags/vip`)
       .set("Cookie", cookie);
     expect(untagged.status).toBe(200);
-    expect(
-      (await db.guestProfile.findUnique({ where: { id: guest!.id } }))?.tags,
-    ).not.toContain("vip");
+    expect((await db.guestProfile.findUnique({ where: { id: guest!.id } }))?.tags).not.toContain(
+      "vip",
+    );
   });
 
   it("saves guest notes", async () => {
@@ -165,7 +167,9 @@ describe("guest CRM", () => {
       where: { businessId: business.id },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/guests/${guest!.id}`)
       .set("Cookie", businessCookie(business.id))
       .send({ notes: "Allergic to peanuts" });
@@ -183,7 +187,9 @@ describe("guest CRM", () => {
       where: { businessId: business.id },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/guests/${guest!.id}/recompute`)
       .set("Cookie", businessCookie(business.id));
 
@@ -193,7 +199,9 @@ describe("guest CRM", () => {
   it("returns a client error for an unknown guest id", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/api/guests/000000000000000000000000")
       .set("Cookie", businessCookie(business.id));
 
@@ -205,18 +213,14 @@ describe("public discovery routes", () => {
   it("returns a published restaurant profile", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
-      `/api/restaurants/${business.username}/${location.id}`,
-    );
+    const res = await (await api()).get(`/api/restaurants/${business.username}/${location.id}`);
 
     expect(res.status).toBe(200);
     expect(JSON.stringify(res.body)).toContain(location.address);
   });
 
   it("returns 404 for an unknown restaurant", async () => {
-    const res = await (await api()).get(
-      "/api/restaurants/nobody/000000000000000000000000",
-    );
+    const res = await (await api()).get("/api/restaurants/nobody/000000000000000000000000");
 
     expect(res.status).toBe(404);
   });
@@ -224,9 +228,9 @@ describe("public discovery routes", () => {
   it("searches restaurants and returns an array", async () => {
     const { location } = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
-      `/api/search/restaurants?query=${encodeURIComponent(location.address.slice(0, 6))}`,
-    );
+    const res = await (
+      await api()
+    ).get(`/api/search/restaurants?query=${encodeURIComponent(location.address.slice(0, 6))}`);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.results)).toBe(true);
@@ -235,9 +239,7 @@ describe("public discovery routes", () => {
   it("supports paginated search", async () => {
     await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
-      "/api/search/restaurants?query=Test&limit=1&page=1",
-    );
+    const res = await (await api()).get("/api/search/restaurants?query=Test&limit=1&page=1");
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty("total");
@@ -246,7 +248,9 @@ describe("public discovery routes", () => {
   it("returns search suggestions", async () => {
     const { location } = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
+    const res = await (
+      await api()
+    ).get(
       `/api/locations/search-suggestions?query=${encodeURIComponent(location.address.slice(0, 5))}`,
     );
 
@@ -277,20 +281,20 @@ describe("public discovery routes", () => {
 
 describe("public intake forms", () => {
   it("accepts a feedback submission", async () => {
-    const res = await (await api())
-      .post("/api/feedback/submit")
-      .send({
-        name: "Ada",
-        email: `feedback-${uniqueSuffix()}@test.invalid`,
-        message: "The queue flow worked well.",
-        type: "feedback",
-      });
+    const res = await (await api()).post("/api/feedback/submit").send({
+      name: "Ada",
+      email: `feedback-${uniqueSuffix()}@test.invalid`,
+      message: "The queue flow worked well.",
+      type: "feedback",
+    });
 
     expect(res.status).toBeLessThan(500);
   });
 
   it("rejects a feedback submission with no message", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/feedback/submit")
       .send({ name: "Ada", email: "a@test.invalid" });
 
@@ -298,14 +302,12 @@ describe("public intake forms", () => {
   });
 
   it("accepts a sales inquiry", async () => {
-    const res = await (await api())
-      .post("/api/sales/inquiry")
-      .send({
-        name: "Ada",
-        email: `sales-${uniqueSuffix()}@test.invalid`,
-        businessName: "Test Bistro",
-        message: "Interested in SeatPing.",
-      });
+    const res = await (await api()).post("/api/sales/inquiry").send({
+      name: "Ada",
+      email: `sales-${uniqueSuffix()}@test.invalid`,
+      businessName: "Test Bistro",
+      message: "Interested in SeatPing.",
+    });
 
     expect(res.status).toBeLessThan(500);
   });

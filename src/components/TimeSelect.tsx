@@ -4,36 +4,7 @@ import { Clock, ChevronDown, Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
-
-
-export function formatTimeLabel(value: string) {
-  const [h, m] = value.split(":").map(Number);
-  let period: string;
-  if (h >= 12) {
-    period = "PM";
-  } else {
-    period = "AM";
-  }
-  let hour12: number;
-  if (h % 12 === 0) {
-    hour12 = 12;
-  } else {
-    hour12 = h % 12;
-  }
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-}
-
-export function buildTimeOptions(startHour = 0, endHour = 23, stepMin = 30) {
-  const out: string[] = [];
-  for (let h = startHour; h <= endHour; h++) {
-    for (let m = 0; m < 60; m += stepMin) {
-      out.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-    }
-  }
-  return out;
-}
-
-export const ALL_DAY_TIME_OPTIONS = buildTimeOptions(0, 23, 30);
+import { ALL_DAY_TIME_OPTIONS, formatTimeLabel } from "@/components/timeOptions";
 
 export const FLAT_FIELD =
   "border-0 rounded-none shadow-none px-3 text-sm max-[360px]:px-2 max-[360px]:text-xs md:border md:border-slate-200 md:rounded-xl md:px-4 md:text-sm";
@@ -141,8 +112,7 @@ export function TimeSelect({
       align={align}
       sideOffset={4}
       style={{
-        maxHeight:
-          "min(18rem, var(--radix-popover-content-available-height, 18rem))",
+        maxHeight: "min(18rem, var(--radix-popover-content-available-height, 18rem))",
       }}
       className="z-50 w-40 overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2"
     >
@@ -170,9 +140,7 @@ export function TimeSelect({
 
   let popoverContent: React.ReactNode;
   if (portal) {
-    popoverContent = (
-      <PopoverPrimitive.Portal>{content}</PopoverPrimitive.Portal>
-    );
+    popoverContent = <PopoverPrimitive.Portal>{content}</PopoverPrimitive.Portal>;
   } else {
     popoverContent = content;
   }

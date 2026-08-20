@@ -25,9 +25,7 @@ vi.mock("../../server/lib/notifications.js", () => {
   return { enqueueNotification };
 });
 
-const { runReservationReminderSweep } = await import(
-  "../../server/lib/reservationReminders.js"
-);
+const { runReservationReminderSweep } = await import("../../server/lib/reservationReminders.js");
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -112,9 +110,7 @@ describe("reminder sweep shortcuts", () => {
   });
 
   it("skips a reservation that is already in the past", async () => {
-    reservationFindMany.mockResolvedValue([
-      reservation({ reservationDateTime: inMinutes(-30) }),
-    ]);
+    reservationFindMany.mockResolvedValue([reservation({ reservationDateTime: inMinutes(-30) })]);
 
     await runReservationReminderSweep();
 
@@ -122,9 +118,7 @@ describe("reminder sweep shortcuts", () => {
   });
 
   it("skips a reservation beyond the reminder window", async () => {
-    reservationFindMany.mockResolvedValue([
-      reservation({ reservationDateTime: inMinutes(300) }),
-    ]);
+    reservationFindMany.mockResolvedValue([reservation({ reservationDateTime: inMinutes(300) })]);
 
     await runReservationReminderSweep();
 
@@ -132,9 +126,7 @@ describe("reminder sweep shortcuts", () => {
   });
 
   it("skips a reservation whose date cannot be read", async () => {
-    reservationFindMany.mockResolvedValue([
-      reservation({ reservationDateTime: "not a date" }),
-    ]);
+    reservationFindMany.mockResolvedValue([reservation({ reservationDateTime: "not a date" })]);
 
     await runReservationReminderSweep();
 
@@ -154,9 +146,7 @@ describe("reminder sweep delivery", () => {
     expect(job().businessName).toBe("Bistro");
     expect(job().address).toBe("1 Test Street");
     expect(job().partySize).toBe(2);
-    expect(job().manageUrl).toBe(
-      "https://app.test.invalid/reservations/manage/mt-1",
-    );
+    expect(job().manageUrl).toBe("https://app.test.invalid/reservations/manage/mt-1");
     const claim = reservationUpdateMany.mock.calls[0][0];
     expect(claim.where.id).toBe("res-1");
     expect(claim.data.reminderEmailSentAt).toBeInstanceOf(Date);
@@ -177,17 +167,13 @@ describe("reminder sweep delivery", () => {
     expect(job().firstName).toBe("Ada Lovelace");
 
     enqueueNotification.mockClear();
-    reservationFindMany.mockResolvedValue([
-      reservation({ firstName: null, name: null }),
-    ]);
+    reservationFindMany.mockResolvedValue([reservation({ firstName: null, name: null })]);
     await runReservationReminderSweep();
     expect(job().firstName).toBe("there");
   });
 
   it("treats a missing party size as one guest", async () => {
-    reservationFindMany.mockResolvedValue([
-      reservation({ guestCount: "many" }),
-    ]);
+    reservationFindMany.mockResolvedValue([reservation({ guestCount: "many" })]);
 
     await runReservationReminderSweep();
 
@@ -205,9 +191,7 @@ describe("reminder sweep delivery", () => {
 
   it("falls back through the location and business names", async () => {
     reservationFindMany.mockResolvedValue([reservation()]);
-    locationFindMany.mockResolvedValue([
-      location({ address: null, displayName: null }),
-    ]);
+    locationFindMany.mockResolvedValue([location({ address: null, displayName: null })]);
     await runReservationReminderSweep();
     expect(job().address).toBe("Bistro Downtown");
 
@@ -246,9 +230,7 @@ describe("reminder sweep delivery", () => {
 
     await runReservationReminderSweep();
 
-    expect(job().manageUrl).toBe(
-      "https://www.seatping.biz/reservations/manage/mt-1",
-    );
+    expect(job().manageUrl).toBe("https://www.seatping.biz/reservations/manage/mt-1");
   });
 });
 
@@ -327,9 +309,7 @@ describe("reminder sweep claims", () => {
       reservation({ id: "res-1" }),
       reservation({ id: "res-2" }),
     ]);
-    reservationUpdateMany
-      .mockResolvedValueOnce({ count: 0 })
-      .mockResolvedValue({ count: 1 });
+    reservationUpdateMany.mockResolvedValueOnce({ count: 0 }).mockResolvedValue({ count: 1 });
 
     await runReservationReminderSweep();
 
@@ -348,10 +328,7 @@ describe("reminder sweep claims", () => {
       return { count: 1 };
     });
 
-    await Promise.all([
-      runReservationReminderSweep(),
-      runReservationReminderSweep(),
-    ]);
+    await Promise.all([runReservationReminderSweep(), runReservationReminderSweep()]);
 
     expect(reservationUpdateMany).toHaveBeenCalledTimes(2);
     expect(enqueueNotification).toHaveBeenCalledTimes(1);
@@ -364,9 +341,7 @@ describe("reminder sweep failures", () => {
       reservation({ id: "res-1" }),
       reservation({ id: "res-2" }),
     ]);
-    enqueueNotification
-      .mockRejectedValueOnce(new Error("queue down"))
-      .mockResolvedValue(undefined);
+    enqueueNotification.mockRejectedValueOnce(new Error("queue down")).mockResolvedValue(undefined);
 
     await runReservationReminderSweep();
 

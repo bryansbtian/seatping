@@ -100,21 +100,15 @@ describe("variable and slug naming", () => {
   });
 
   it("reports the variables a business may edit", () => {
-    expect(editableVariables({ variables: ["first_name", "offer"] })).toEqual([
-      "offer",
-    ]);
+    expect(editableVariables({ variables: ["first_name", "offer"] })).toEqual(["offer"]);
     expect(editableVariables({ variables: undefined as never })).toEqual([]);
   });
 });
 
 describe("generateUniqueTemplateSlug", () => {
   it("returns the base slug when nothing collides", async () => {
-    await expect(generateUniqueTemplateSlug("We Miss You")).resolves.toBe(
-      "we_miss_you",
-    );
-    expect(templateFindFirst.mock.calls[0][0].where.templateType).toBe(
-      "SEATPING",
-    );
+    await expect(generateUniqueTemplateSlug("We Miss You")).resolves.toBe("we_miss_you");
+    expect(templateFindFirst.mock.calls[0][0].where.templateType).toBe("SEATPING");
   });
 
   it("scopes the collision check to a business when one is given", async () => {
@@ -145,18 +139,14 @@ describe("generateUniqueTemplateSlug", () => {
 
 describe("restaurantNameForLocation", () => {
   it("prefers the profile display name then its name", () => {
-    expect(
-      restaurantNameForLocation({ restaurantProfile: { displayName: " Warung " } }, "F"),
-    ).toBe("Warung");
-    expect(
-      restaurantNameForLocation({ restaurantProfile: { name: " Kopi " } }, "F"),
-    ).toBe("Kopi");
+    expect(restaurantNameForLocation({ restaurantProfile: { displayName: " Warung " } }, "F")).toBe(
+      "Warung",
+    );
+    expect(restaurantNameForLocation({ restaurantProfile: { name: " Kopi " } }, "F")).toBe("Kopi");
   });
 
   it("falls back through the location fields to the given fallback", () => {
-    expect(restaurantNameForLocation({ displayName: "Downtown" }, "F")).toBe(
-      "Downtown",
-    );
+    expect(restaurantNameForLocation({ displayName: "Downtown" }, "F")).toBe("Downtown");
     expect(restaurantNameForLocation({ name: "Bistro" }, "F")).toBe("Bistro");
     expect(restaurantNameForLocation({}, "Fallback")).toBe("Fallback");
     expect(restaurantNameForLocation(null, "Fallback")).toBe("Fallback");
@@ -164,12 +154,8 @@ describe("restaurantNameForLocation", () => {
 
   it("ignores a profile that is not an object or has blank names", () => {
     expect(restaurantNameForLocation({ restaurantProfile: "x" }, "F")).toBe("F");
-    expect(
-      restaurantNameForLocation({ restaurantProfile: { displayName: "   " } }, "F"),
-    ).toBe("F");
-    expect(
-      restaurantNameForLocation({ restaurantProfile: { displayName: 7 } }, "F"),
-    ).toBe("F");
+    expect(restaurantNameForLocation({ restaurantProfile: { displayName: "   " } }, "F")).toBe("F");
+    expect(restaurantNameForLocation({ restaurantProfile: { displayName: 7 } }, "F")).toBe("F");
   });
 });
 
@@ -190,12 +176,10 @@ describe("wall clock conversions", () => {
   });
 
   it("formats an instant in a timezone", () => {
-    expect(
-      formatInstantInTimezone(new Date("2026-08-12T19:00:00.000Z"), "UTC"),
-    ).toEqual(expect.any(String));
-    expect(
-      formatInstantInTimezone("2026-08-12T19:00:00.000Z", "UTC"),
-    ).toEqual(expect.any(String));
+    expect(formatInstantInTimezone(new Date("2026-08-12T19:00:00.000Z"), "UTC")).toEqual(
+      expect.any(String),
+    );
+    expect(formatInstantInTimezone("2026-08-12T19:00:00.000Z", "UTC")).toEqual(expect.any(String));
   });
 
   it("reports nothing for an instant it cannot read", () => {
@@ -204,9 +188,9 @@ describe("wall clock conversions", () => {
   });
 
   it("falls back for an unusable timezone", () => {
-    expect(
-      formatInstantInTimezone(new Date("2026-08-12T19:00:00.000Z"), "Not/AZone"),
-    ).toEqual(expect.any(String));
+    expect(formatInstantInTimezone(new Date("2026-08-12T19:00:00.000Z"), "Not/AZone")).toEqual(
+      expect.any(String),
+    );
   });
 });
 
@@ -224,11 +208,7 @@ describe("advanceRecurrence", () => {
   });
 
   it("rolls a December monthly run into the next year", () => {
-    const next = advanceRecurrence(
-      new Date("2026-12-12T19:00:00.000Z"),
-      "MONTHLY",
-      "UTC",
-    );
+    const next = advanceRecurrence(new Date("2026-12-12T19:00:00.000Z"), "MONTHLY", "UTC");
 
     expect(next.toISOString().slice(0, 7)).toBe("2027-01");
   });
@@ -255,18 +235,13 @@ describe("advanceRecurrence", () => {
   });
 
   it("raises for a timezone the runtime rejects", () => {
-    expect(() => advanceRecurrence(from, "DAILY", "Not/AZone")).toThrow(
-      RangeError,
-    );
+    expect(() => advanceRecurrence(from, "DAILY", "Not/AZone")).toThrow(RangeError);
   });
 });
 
 describe("filterRecipients", () => {
   it("excludes a guest who opted out of all marketing", () => {
-    const result = filterRecipients(
-      [guest({ marketingOptOutAt: new Date() })],
-      "EMAIL",
-    );
+    const result = filterRecipients([guest({ marketingOptOutAt: new Date() })], "EMAIL");
 
     expect(result.exclusions.optedOut).toBe(1);
     expect(result.eligible).toHaveLength(0);
@@ -275,8 +250,7 @@ describe("filterRecipients", () => {
 
   it("excludes a guest who opted out of the specific channel", () => {
     expect(
-      filterRecipients([guest({ emailMarketingOptIn: false })], "EMAIL")
-        .exclusions.optedOut,
+      filterRecipients([guest({ emailMarketingOptIn: false })], "EMAIL").exclusions.optedOut,
     ).toBe(1);
     expect(
       filterRecipients(
@@ -285,10 +259,8 @@ describe("filterRecipients", () => {
       ).exclusions.optedOut,
     ).toBe(1);
     expect(
-      filterRecipients(
-        [guest({ smsMarketingOptIn: false, normalizedPhone: "12125551234" })],
-        "SMS",
-      ).exclusions.optedOut,
+      filterRecipients([guest({ smsMarketingOptIn: false, normalizedPhone: "12125551234" })], "SMS")
+        .exclusions.optedOut,
     ).toBe(1);
   });
 
@@ -303,10 +275,7 @@ describe("filterRecipients", () => {
   });
 
   it("separates a missing phone from an unusable one", () => {
-    const result = filterRecipients(
-      [guest({ phone: null }), guest({ phone: "123" })],
-      "WHATSAPP",
-    );
+    const result = filterRecipients([guest({ phone: null }), guest({ phone: "123" })], "WHATSAPP");
 
     expect(result.exclusions.noPhone).toBe(1);
     expect(result.exclusions.invalid).toBe(1);
@@ -326,10 +295,7 @@ describe("filterRecipients", () => {
     expect(isSmsDeliverable("6281234567890")).toBe(false);
 
     const result = filterRecipients(
-      [
-        guest({ normalizedPhone: "12125551234" }),
-        guest({ normalizedPhone: "6281234567890" }),
-      ],
+      [guest({ normalizedPhone: "12125551234" }), guest({ normalizedPhone: "6281234567890" })],
       "SMS",
     );
 
@@ -367,12 +333,7 @@ describe("buildMessage variants", () => {
   });
 
   it("falls back to a generic template name", () => {
-    const msg = buildMessage(
-      template({ name: "" }),
-      {},
-      ctx,
-      "EMAIL" as never,
-    );
+    const msg = buildMessage(template({ name: "" }), {}, ctx, "EMAIL" as never);
 
     expect(msg.subject).toContain("A message");
   });
@@ -403,11 +364,7 @@ describe("buildMessage variants", () => {
       "WHATSAPP" as never,
     );
 
-    expect(msg.whatsappParams).toEqual([
-      { text: "Ada" },
-      { text: "" },
-      { text: "" },
-    ]);
+    expect(msg.whatsappParams).toEqual([{ text: "Ada" }, { text: "" }, { text: "" }]);
   });
 
   it("carries the offer into the WhatsApp values", () => {
@@ -431,12 +388,7 @@ describe("buildMessage variants", () => {
       ctx,
       "SMS" as never,
     );
-    const partial = buildMessage(
-      template({ ctaText: "Book now" }),
-      {},
-      ctx,
-      "SMS" as never,
-    );
+    const partial = buildMessage(template({ ctaText: "Book now" }), {}, ctx, "SMS" as never);
 
     expect(complete.text).toContain("Book now: https://test.invalid/book");
     expect(partial.text).not.toContain("Book now:");
@@ -445,9 +397,9 @@ describe("buildMessage variants", () => {
 
 describe("resolveAudienceGuests", () => {
   it("returns nothing for an unknown audience type", async () => {
-    await expect(
-      resolveAudienceGuests(audience({ audienceType: "nonsense" })),
-    ).resolves.toEqual([]);
+    await expect(resolveAudienceGuests(audience({ audienceType: "nonsense" }))).resolves.toEqual(
+      [],
+    );
     expect(guestFindMany).not.toHaveBeenCalled();
   });
 
@@ -476,17 +428,13 @@ describe("resolveAudienceGuests", () => {
 
   it("returns nothing for a tag audience with no tag", async () => {
     await expect(
-      resolveAudienceGuests(
-        audience({ audienceType: "with_tag", audienceConfig: { tag: "  " } }),
-      ),
+      resolveAudienceGuests(audience({ audienceType: "with_tag", audienceConfig: { tag: "  " } })),
     ).resolves.toEqual([]);
   });
 
   it("returns nothing when no guest carries the tag", async () => {
     await expect(
-      resolveAudienceGuests(
-        audience({ audienceType: "with_tag", audienceConfig: { tag: "VIP" } }),
-      ),
+      resolveAudienceGuests(audience({ audienceType: "with_tag", audienceConfig: { tag: "VIP" } })),
     ).resolves.toEqual([]);
   });
 
@@ -504,13 +452,9 @@ describe("resolveAudienceGuests", () => {
 
   it("returns nothing for a manual audience with no ids", async () => {
     await expect(
-      resolveAudienceGuests(
-        audience({ audienceType: "manual", audienceConfig: { guestIds: [] } }),
-      ),
+      resolveAudienceGuests(audience({ audienceType: "manual", audienceConfig: { guestIds: [] } })),
     ).resolves.toEqual([]);
-    await expect(
-      resolveAudienceGuests(audience({ audienceType: "manual" })),
-    ).resolves.toEqual([]);
+    await expect(resolveAudienceGuests(audience({ audienceType: "manual" }))).resolves.toEqual([]);
   });
 
   it("looks a manual audience up by id", async () => {
@@ -531,9 +475,7 @@ describe("resolveAudienceGuests", () => {
       filters: { totalVisitsMin: 3 },
     });
 
-    await resolveAudienceGuests(
-      audience({ audienceConfig: { savedAudienceId: "aud-1" } }),
-    );
+    await resolveAudienceGuests(audience({ audienceConfig: { savedAudienceId: "aud-1" } }));
 
     expect(guestFindMany.mock.calls[0][0].where.totalVisits.gte).toBe(3);
   });
@@ -576,9 +518,7 @@ describe("resolveAudienceGuests", () => {
 
   it("returns nothing when a tag filter matches no one", async () => {
     await expect(
-      resolveAudienceGuests(
-        audience({ audienceConfig: { filters: { tags: ["VIP"] } } }),
-      ),
+      resolveAudienceGuests(audience({ audienceConfig: { filters: { tags: ["VIP"] } } })),
     ).resolves.toEqual([]);
     expect(guestFindMany).not.toHaveBeenCalled();
   });
@@ -587,9 +527,7 @@ describe("resolveAudienceGuests", () => {
     guestFindRaw.mockResolvedValue([{ _id: { $oid: "g-tagged" } }]);
     const tagged = guest({ id: "g-tagged", lastVisitAt: new Date("2026-08-01") });
     const manual = guest({ id: "g-manual", lastVisitAt: new Date("2026-08-10") });
-    guestFindMany
-      .mockResolvedValueOnce([tagged])
-      .mockResolvedValueOnce([manual]);
+    guestFindMany.mockResolvedValueOnce([tagged]).mockResolvedValueOnce([manual]);
 
     const out = await resolveAudienceGuests(
       audience({
@@ -602,9 +540,7 @@ describe("resolveAudienceGuests", () => {
 
   it("deduplicates a guest that both queries return", async () => {
     const shared = guest({ id: "g-1" });
-    guestFindMany
-      .mockResolvedValueOnce([shared])
-      .mockResolvedValueOnce([shared]);
+    guestFindMany.mockResolvedValueOnce([shared]).mockResolvedValueOnce([shared]);
 
     const out = await resolveAudienceGuests(
       audience({ audienceConfig: { filters: { guestIds: ["g-1"] } } }),

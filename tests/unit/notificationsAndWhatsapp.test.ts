@@ -44,10 +44,7 @@ describe("whatsapp template contracts", () => {
   });
 
   it("substitutes an empty string for a missing value", () => {
-    const params = resolveContractParams(
-      { mode: "named", names: ["first_name"] },
-      {},
-    );
+    const params = resolveContractParams({ mode: "named", names: ["first_name"] }, {});
 
     expect(params).toEqual([{ name: "first_name", text: "" }]);
   });

@@ -60,9 +60,7 @@ describe("service rate windows", () => {
   });
 
   it("reports no recent rate when only one admission is in the window", () => {
-    const eta = computeQueueEta(
-      baseInput({ admittedCustomers: [admittedAt(10)] }),
-    );
+    const eta = computeQueueEta(baseInput({ admittedCustomers: [admittedAt(10)] }));
 
     expect(eta.basis.usedRecentServiceRate).toBe(false);
     expect(eta.basis.usedHistoricalWaitTime).toBe(true);
@@ -314,9 +312,7 @@ describe("display bands", () => {
     const queue = Array.from({ length: 40 }, () => {
       return ticket({ partySize: 8 });
     });
-    const eta = computeQueueEta(
-      baseInput({ queue, ticketIndex: 39 }),
-    );
+    const eta = computeQueueEta(baseInput({ queue, ticketIndex: 39 }));
 
     expect(eta.displayText).toBe("60+ Minutes");
     expect(eta.estimatedWaitMin).toBe(60);

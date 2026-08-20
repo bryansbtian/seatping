@@ -52,9 +52,9 @@ describe("reservation settings and availability", () => {
   it("exposes normalized settings for a location", async () => {
     const { business, location } = await locationWithCapacity();
 
-    const res = await (await api()).get(
-      `/api/reservations/${business.username}/${location.id}/settings`,
-    );
+    const res = await (
+      await api()
+    ).get(`/api/reservations/${business.username}/${location.id}/settings`);
 
     expect(res.status).toBe(200);
     expect(res.body.reservationsEnabled).toBe(true);
@@ -64,9 +64,9 @@ describe("reservation settings and availability", () => {
   it("returns 404 for an unknown location", async () => {
     const { business } = await locationWithCapacity();
 
-    const res = await (await api()).get(
-      `/api/reservations/${business.username}/000000000000000000000000/settings`,
-    );
+    const res = await (
+      await api()
+    ).get(`/api/reservations/${business.username}/000000000000000000000000/settings`);
 
     expect(res.status).toBe(404);
   });
@@ -76,9 +76,9 @@ describe("reservation settings and availability", () => {
       reservationsEnabled: false,
     });
 
-    const res = await (await api()).get(
-      `/api/reservations/${business.username}/${location.id}/settings`,
-    );
+    const res = await (
+      await api()
+    ).get(`/api/reservations/${business.username}/${location.id}/settings`);
 
     expect(res.status).toBe(200);
     expect(res.body.reservationsEnabled).toBe(false);
@@ -89,7 +89,9 @@ describe("reservation settings and availability", () => {
     const { business, location } = await locationWithCapacity();
     const date = futureReservationDateTime(19).split("T")[0];
 
-    const res = await (await api()).get(
+    const res = await (
+      await api()
+    ).get(
       `/api/reservations/${business.username}/${location.id}/availability?date=${date}&partySize=2`,
     );
 
@@ -102,7 +104,9 @@ describe("reservation settings and availability", () => {
     const { business, location } = await locationWithCapacity();
     const date = futureReservationDateTime(19).split("T")[0];
 
-    const res = await (await api()).get(
+    const res = await (
+      await api()
+    ).get(
       `/api/reservations/${business.username}/${location.id}/availability?date=${date}&partySize=50`,
     );
 
@@ -116,7 +120,9 @@ describe("creating a reservation", () => {
     const { business, location } = await locationWithCapacity();
     const body = bookingBody();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(body);
 
@@ -140,12 +146,16 @@ describe("creating a reservation", () => {
     const { business, location } = await locationWithCapacity(4);
     const first = bookingBody({ partySize: 4 });
 
-    const ok = await (await api())
+    const ok = await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(first);
     expect(ok.status).toBe(200);
 
-    const overflow = await (await api())
+    const overflow = await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(bookingBody({ partySize: 2, date: first.date, time: first.time }));
 
@@ -160,7 +170,9 @@ describe("creating a reservation", () => {
   it("rejects a party larger than the configured maximum", async () => {
     const { business, location } = await locationWithCapacity();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(bookingBody({ partySize: 99 }));
 
@@ -171,7 +183,9 @@ describe("creating a reservation", () => {
   it("rejects a time outside reservation hours", async () => {
     const { business, location } = await locationWithCapacity();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(bookingBody({ time: "03:00" }));
 
@@ -183,7 +197,9 @@ describe("creating a reservation", () => {
     const { business, location } = await locationWithCapacity();
     const farOut = futureReservationDateTime(19, 400).split("T")[0];
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(bookingBody({ date: farOut }));
 
@@ -193,7 +209,9 @@ describe("creating a reservation", () => {
   it("rejects a booking with missing contact details", async () => {
     const { business, location } = await locationWithCapacity();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(bookingBody({ email: undefined, firstName: undefined }));
 
@@ -205,7 +223,9 @@ describe("creating a reservation", () => {
       reservationsEnabled: false,
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(bookingBody());
 
@@ -219,9 +239,7 @@ describe("managing a reservation by token", () => {
     const { location } = await locationWithCapacity();
     const reservation = await seedReservation(location);
 
-    const res = await (await api()).get(
-      `/api/reservations/manage/${reservation.manageToken}`,
-    );
+    const res = await (await api()).get(`/api/reservations/manage/${reservation.manageToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.reservation?.id ?? res.body.id).toBeDefined();
@@ -237,7 +255,9 @@ describe("managing a reservation by token", () => {
     const { business, location } = await locationWithCapacity();
     const body = bookingBody();
 
-    const created = await (await api())
+    const created = await (
+      await api()
+    )
       .post(`/api/reservations/${business.username}/${location.id}`)
       .send(body);
     expect(created.status).toBe(200);
@@ -246,9 +266,9 @@ describe("managing a reservation by token", () => {
       where: { locationId: location.id, email: body.email },
     });
 
-    const cancelled = await (await api()).post(
-      `/api/reservations/manage/${stored?.manageToken}/cancel`,
-    );
+    const cancelled = await (
+      await api()
+    ).post(`/api/reservations/manage/${stored?.manageToken}/cancel`);
 
     expect(cancelled.status).toBe(200);
 
@@ -265,14 +285,14 @@ describe("managing a reservation by token", () => {
     const { business, location } = await locationWithCapacity();
     const body = bookingBody();
 
-    await (await api())
-      .post(`/api/reservations/${business.username}/${location.id}`)
-      .send(body);
+    await (await api()).post(`/api/reservations/${business.username}/${location.id}`).send(body);
     const stored = await db.reservation.findFirst({
       where: { locationId: location.id, email: body.email },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put(`/api/reservations/manage/${stored?.manageToken}`)
       .send({ date: body.date, time: "20:00", partySize: 2 });
 
@@ -285,14 +305,14 @@ describe("managing a reservation by token", () => {
     const { business, location } = await locationWithCapacity(4);
     const body = bookingBody({ partySize: 2 });
 
-    await (await api())
-      .post(`/api/reservations/${business.username}/${location.id}`)
-      .send(body);
+    await (await api()).post(`/api/reservations/${business.username}/${location.id}`).send(body);
     const stored = await db.reservation.findFirst({
       where: { locationId: location.id, email: body.email },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put(`/api/reservations/manage/${stored?.manageToken}`)
       .send({ date: body.date, time: body.time, partySize: 99 });
 

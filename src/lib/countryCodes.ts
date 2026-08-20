@@ -205,14 +205,11 @@ export const COUNTRY_CODES: CountryCode[] = [
 export const DEFAULT_COUNTRY_ISO = "US";
 
 export function splitPhone(phone?: string): { dial: string; number: string } {
-  const defaultDial =
-    COUNTRY_CODES.find((c) => c.iso === DEFAULT_COUNTRY_ISO)?.dial ?? "+1";
+  const defaultDial = COUNTRY_CODES.find((c) => c.iso === DEFAULT_COUNTRY_ISO)?.dial ?? "+1";
   if (!phone) {
     return { dial: defaultDial, number: "" };
   }
-  const dials = [...new Set(COUNTRY_CODES.map((c) => c.dial))].sort(
-    (a, b) => b.length - a.length
-  );
+  const dials = [...new Set(COUNTRY_CODES.map((c) => c.dial))].sort((a, b) => b.length - a.length);
   for (const d of dials) {
     if (phone.startsWith(d)) {
       return { dial: d, number: phone.slice(d.length) };

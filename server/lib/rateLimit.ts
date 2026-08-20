@@ -1,4 +1,3 @@
-
 import type { Request, Response, NextFunction } from "express";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
@@ -29,7 +28,7 @@ export function logRateLimitStatus(): void {
   statusLogged = true;
 
   if (rateLimitBackend === "redis") {
-    console.log("[rate-limit] backend=redis (Upstash) — globally consistent.");
+    console.log("[rate-limit] backend=redis (Upstash), globally consistent.");
     return;
   }
 
@@ -46,7 +45,7 @@ export function logRateLimitStatus(): void {
     );
   } else {
     console.log(
-      "[rate-limit] backend=memory (in-process fallback) — fine for local dev. " +
+      "[rate-limit] backend=memory (in-process fallback), fine for local dev. " +
         "Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN to use Redis.",
     );
   }
@@ -144,7 +143,6 @@ function send429(res: Response, retryAfterSec: number, message?: string): false 
   return false;
 }
 
-
 export function rateLimit(opts: {
   windowMs: number;
   max: number;
@@ -155,11 +153,7 @@ export function rateLimit(opts: {
   const message = opts.message ?? GENERIC_MESSAGE;
   const name = opts.name ?? "ip";
 
-  return function rateLimitMiddleware(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ) {
+  return function rateLimitMiddleware(req: Request, res: Response, next: NextFunction) {
     void checkOne(`${name}:${clientIp(req)}`, windowMs, max)
       .then(({ success, retryAfterSec }) => {
         if (success) {
@@ -184,17 +178,13 @@ export async function limitGuard(
   rules: RateLimitRule[],
   message?: string,
 ): Promise<boolean> {
-  const active = rules.filter(
-    (r) => r.key != null && String(r.key).trim() !== "",
-  );
+  const active = rules.filter((r) => r.key != null && String(r.key).trim() !== "");
   if (active.length === 0) {
     return false;
   }
 
   const results = await Promise.all(
-    active.map((r) =>
-      checkOne(`${r.name}:${String(r.key).trim()}`, r.windowMs, r.max),
-    ),
+    active.map((r) => checkOne(`${r.name}:${String(r.key).trim()}`, r.windowMs, r.max)),
   );
 
   const blockedIdx = results.findIndex((r) => !r.success);
@@ -202,9 +192,7 @@ export async function limitGuard(
     return false;
   }
 
-  const retryAfterSec = Math.max(
-    ...results.filter((r) => !r.success).map((r) => r.retryAfterSec),
-  );
+  const retryAfterSec = Math.max(...results.filter((r) => !r.success).map((r) => r.retryAfterSec));
   send429(res, retryAfterSec, message);
   return true;
 }
@@ -218,11 +206,7 @@ export async function consumeQuota(
   if (key == null || String(key).trim() === "") {
     return true;
   }
-  const { success } = await checkOne(
-    `${name}:${String(key).trim()}`,
-    windowMs,
-    max,
-  );
+  const { success } = await checkOne(`${name}:${String(key).trim()}`, windowMs, max);
   return success;
 }
 
@@ -238,9 +222,7 @@ export async function peekQuota(
   const fullKey = `${name}:${String(key).trim()}`;
   if (redis) {
     try {
-      const { remaining } = await getRedisLimiter(windowMs, max).getRemaining(
-        fullKey,
-      );
+      const { remaining } = await getRedisLimiter(windowMs, max).getRemaining(fullKey);
       return remaining > 0;
     } catch (err) {
       console.error("[rate-limit] redis peek error, allowing:", err);

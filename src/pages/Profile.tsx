@@ -23,7 +23,6 @@ import { api } from "@/lib/api";
 import { EditReviewDialog } from "@/components/EditReviewDialog";
 import { X, Star, Pencil, Trash2 } from "lucide-react";
 
-
 type Reservation = {
   id: string;
   manageToken?: string;
@@ -110,12 +109,8 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
 
   const [reviews, setReviews] = useState<CustomerReview[]>([]);
-  const [editingReview, setEditingReview] = useState<CustomerReview | null>(
-    null,
-  );
-  const [deletingReview, setDeletingReview] = useState<CustomerReview | null>(
-    null,
-  );
+  const [editingReview, setEditingReview] = useState<CustomerReview | null>(null);
+  const [deletingReview, setDeletingReview] = useState<CustomerReview | null>(null);
 
   const applyReviewUpdate = (updated: CustomerReview) => {
     setReviews((list) =>
@@ -140,10 +135,9 @@ const Profile = () => {
           method: "DELETE",
         });
       } else {
-        res = await api(
-          `/auth/me/saved-restaurants/${encodeURIComponent(s.businessUsername)}`,
-          { method: "DELETE" },
-        );
+        res = await api(`/auth/me/saved-restaurants/${encodeURIComponent(s.businessUsername)}`, {
+          method: "DELETE",
+        });
       }
       setProfile(res.user);
       toast({ title: "Restaurant removed from saved" });
@@ -193,9 +187,9 @@ const Profile = () => {
   const activeQueue = queue.filter((q) => q.active || q.status === "waiting");
   const pastQueue = queue.filter((q) => !(q.active || q.status === "waiting"));
 
-  const upcomingReservations = [
-    ...(profile?.upcomingReservations || []),
-  ].sort((a, b) => upcomingReservationTs(a) - upcomingReservationTs(b));
+  const upcomingReservations = [...(profile?.upcomingReservations || [])].sort(
+    (a, b) => upcomingReservationTs(a) - upcomingReservationTs(b),
+  );
 
   const diningHistory: HistoryItem[] = [
     ...(profile?.pastReservations || []).map((r) => ({
@@ -214,11 +208,7 @@ const Profile = () => {
 
   let profileContent: React.ReactNode;
   if (loading) {
-    profileContent = (
-      <p className="text-center text-muted-foreground">
-        Loading your profile…
-      </p>
-    );
+    profileContent = <p className="text-center text-muted-foreground">Loading your profile…</p>;
   } else if (!profile) {
     profileContent = null;
   } else {
@@ -226,15 +216,12 @@ const Profile = () => {
       <>
         <ProfileHeaderCard profile={profile} onUpdated={setProfile} />
 
-        {}
         <ActivitySection
           title="Saved Spots"
           emptyState="Restaurants you save will appear here."
           items={profile.savedRestaurants || []}
           limits={{ mobile: 2, tablet: 2, desktop: 3 }}
-          keyOf={(s, i) =>
-            s.id || s.locationId || s.businessUsername || String(i)
-          }
+          keyOf={(s, i) => s.id || s.locationId || s.businessUsername || String(i)}
           renderItem={(s) => (
             <SavedRestaurantCard
               s={s}
@@ -252,7 +239,6 @@ const Profile = () => {
           )}
         />
 
-        {}
         <ActivitySection
           title="Happening Now"
           emptyState="No active queue activity right now."
@@ -262,7 +248,6 @@ const Profile = () => {
           renderItem={(q) => <QueueCard q={q} />}
         />
 
-        {}
         <ActivitySection
           title="Tables Coming Up"
           emptyState="Your upcoming reservations will appear here."
@@ -272,15 +257,13 @@ const Profile = () => {
           renderItem={(r) => <ReservationCard r={r} />}
         />
 
-        {}
         <ActivitySection
           title="Your Reviews"
           emptyState={
             <>
               <p>Your restaurant reviews will appear here.</p>
               <p className="mt-1 text-xs">
-                After you leave a review, you can edit or delete it from this
-                section.
+                After you leave a review, you can edit or delete it from this section.
               </p>
             </>
           }
@@ -296,7 +279,6 @@ const Profile = () => {
           )}
         />
 
-        {}
         <ActivitySection
           title="Your Dining Rewind"
           emptyState="Your past reservations and queue visits will appear here."
@@ -333,16 +315,10 @@ const Profile = () => {
 
   return (
     <>
-      <SEO
-        title="My Profile | SeatPing"
-        description={CUSTOMER_DESCRIPTION}
-        canonical="/profile"
-      />
+      <SEO title="My Profile | SeatPing" description={CUSTOMER_DESCRIPTION} canonical="/profile" />
       <Header />
       <main className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 pb-12 pt-24 sm:pb-16">
-        <div className="mx-auto w-full max-w-3xl space-y-5 sm:space-y-6">
-          {profileContent}
-        </div>
+        <div className="mx-auto w-full max-w-3xl space-y-5 sm:space-y-6">{profileContent}</div>
       </main>
       <Footer />
     </>
@@ -381,12 +357,7 @@ function reservationTs(r: Reservation): number {
 
 function queueTs(q: QueueActivity): number {
   const s =
-    q.confirmedAt ||
-    q.admittedAt ||
-    q.noShowMarkedAt ||
-    q.removedAt ||
-    q.leftAt ||
-    q.joinedAt;
+    q.confirmedAt || q.admittedAt || q.noShowMarkedAt || q.removedAt || q.leftAt || q.joinedAt;
   let t = NaN;
   if (s) {
     t = Date.parse(s);
@@ -396,7 +367,6 @@ function queueTs(q: QueueActivity): number {
   }
   return t;
 }
-
 
 function initialsOf(name?: string) {
   if (!name?.trim()) {
@@ -431,13 +401,9 @@ function ProfileHeaderCard({
             <h1 className="truncate text-base font-semibold text-slate-900 sm:text-xl">
               {profile.name}
             </h1>
-            <p className="truncate text-xs text-muted-foreground sm:text-sm">
-              {profile.email}
-            </p>
+            <p className="truncate text-xs text-muted-foreground sm:text-sm">{profile.email}</p>
             {profile.phone && (
-              <p className="truncate text-xs text-muted-foreground sm:text-sm">
-                {profile.phone}
-              </p>
+              <p className="truncate text-xs text-muted-foreground sm:text-sm">{profile.phone}</p>
             )}
           </div>
         </div>
@@ -552,18 +518,12 @@ function EditDetailsDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Details</DialogTitle>
-          <DialogDescription>
-            Update your account information.
-          </DialogDescription>
+          <DialogDescription>Update your account information.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="edit-name">Full Name</Label>
-            <Input
-              id="edit-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="edit-username">Username</Label>
@@ -584,16 +544,10 @@ function EditDetailsDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="edit-phone">
-              Phone Number{" "}
-              <span className="font-normal text-muted-foreground">
-                (Optional)
-              </span>
+              Phone Number <span className="font-normal text-muted-foreground">(Optional)</span>
             </Label>
             <div className="flex gap-2">
-              <CountryCodeSelect
-                value={countryCode}
-                onChange={setCountryCode}
-              />
+              <CountryCodeSelect value={countryCode} onChange={setCountryCode} />
               <Input
                 id="edit-phone"
                 type="tel"
@@ -606,11 +560,7 @@ function EditDetailsDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
           <Button onClick={save} disabled={saving}>
@@ -689,9 +639,7 @@ function ChangePasswordDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Change Password</DialogTitle>
-          <DialogDescription>
-            Enter your current password, then your new one.
-          </DialogDescription>
+          <DialogDescription>Enter your current password, then your new one.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -723,11 +671,7 @@ function ChangePasswordDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
           <Button onClick={save} disabled={saving}>
@@ -750,13 +694,7 @@ function BusinessThumb({ name }: { name?: string }) {
   );
 }
 
-function ActivityThumb({
-  imageUrl,
-  name,
-}: {
-  imageUrl?: string | null;
-  name?: string;
-}) {
+function ActivityThumb({ imageUrl, name }: { imageUrl?: string | null; name?: string }) {
   if (imageUrl) {
     return (
       <img
@@ -769,15 +707,8 @@ function ActivityThumb({
   return <BusinessThumb name={name} />;
 }
 
-function ReservationCard({
-  r,
-  typeLabel,
-}: {
-  r: Reservation;
-  typeLabel?: string;
-}) {
-  const displayName =
-    r.restaurantName || r.businessName || r.businessUsername;
+function ReservationCard({ r, typeLabel }: { r: Reservation; typeLabel?: string }) {
+  const displayName = r.restaurantName || r.businessName || r.businessUsername;
   let manageHoverClass = "";
   if (r.manageToken) {
     manageHoverClass = " transition-colors hover:border-slate-300";
@@ -795,9 +726,7 @@ function ReservationCard({
     manageLinkLabel = "View or Manage";
   }
   const inner = (
-    <Card
-      className={"border border-border bg-background" + manageHoverClass}
-    >
+    <Card className={"border border-border bg-background" + manageHoverClass}>
       <CardContent className="flex gap-2.5 p-3 sm:gap-3 sm:p-4">
         <ActivityThumb imageUrl={r.imageUrl} name={displayName} />
         <div className="min-w-0 flex-1">
@@ -806,22 +735,12 @@ function ReservationCard({
               {displayName}
             </p>
             <div className="flex shrink-0 items-center gap-1.5">
-              {typeLabel && (
-                <StatusBadge
-                  status={typeLabel.toLowerCase()}
-                />
-              )}
-              {r.status && (
-                <StatusBadge
-                  status={reservationStatus}
-                />
-              )}
+              {typeLabel && <StatusBadge status={typeLabel.toLowerCase()} />}
+              {r.status && <StatusBadge status={reservationStatus} />}
             </div>
           </div>
           {r.locationName && (
-            <p className="truncate text-xs text-muted-foreground sm:text-sm">
-              {r.locationName}
-            </p>
+            <p className="truncate text-xs text-muted-foreground sm:text-sm">{r.locationName}</p>
           )}
           <p className="mt-1 text-xs text-slate-700 sm:text-sm">
             {[r.date, r.time].filter(Boolean).join(" · ")}
@@ -833,10 +752,7 @@ function ReservationCard({
             )}
           </p>
           {r.manageToken && (
-            <p className="mt-1 text-xs font-medium text-indigo-600">
-              {manageLinkLabel}{" "}
-              →
-            </p>
+            <p className="mt-1 text-xs font-medium text-indigo-600">{manageLinkLabel} →</p>
           )}
         </div>
       </CardContent>
@@ -854,8 +770,7 @@ function ReservationCard({
 }
 
 function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
-  const displayName =
-    q.restaurantName || q.businessName || q.businessUsername;
+  const displayName = q.restaurantName || q.businessName || q.businessUsername;
   const isActive = q.active || q.status === "waiting";
   let liveHref: string | null = null;
   if (isActive && q.businessUsername && q.locationId) {
@@ -866,12 +781,7 @@ function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
     liveHref = `/queue/${q.businessUsername}/${q.locationId}` + tokenQuery;
   }
 
-  const finalTime =
-    q.confirmedAt ||
-    q.admittedAt ||
-    q.noShowMarkedAt ||
-    q.removedAt ||
-    q.leftAt;
+  const finalTime = q.confirmedAt || q.admittedAt || q.noShowMarkedAt || q.removedAt || q.leftAt;
   let finalTimeLabel: string | null = null;
   if (!isActive && finalTime) {
     const finalTimeText = new Date(finalTime).toLocaleString();
@@ -905,22 +815,12 @@ function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
               {displayName}
             </p>
             <div className="flex shrink-0 items-center gap-1.5">
-              {typeLabel && (
-                <StatusBadge
-                  status={typeLabel.toLowerCase()}
-                />
-              )}
-              {q.status && (
-                <StatusBadge
-                  status={queueStatus}
-                />
-              )}
+              {typeLabel && <StatusBadge status={typeLabel.toLowerCase()} />}
+              {q.status && <StatusBadge status={queueStatus} />}
             </div>
           </div>
           {q.locationName && (
-            <p className="truncate text-xs text-muted-foreground sm:text-sm">
-              {q.locationName}
-            </p>
+            <p className="truncate text-xs text-muted-foreground sm:text-sm">{q.locationName}</p>
           )}
           <p className="mt-1 text-xs text-slate-700 sm:text-sm">
             {q.joinedAt && <>Joined {new Date(q.joinedAt).toLocaleString()}</>}
@@ -932,9 +832,7 @@ function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
             )}
           </p>
           {finalTimeLabel && (
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {finalTimeLabel}
-            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{finalTimeLabel}</p>
           )}
           {liveHref && (
             <Link
@@ -960,15 +858,12 @@ function SavedRestaurantCard({
   onRemove: () => void;
 }) {
   const name = s.name || s.businessName || s.businessUsername;
-  const locationLabel =
-    s.locationName || [s.area, s.city].filter(Boolean).join(", ");
+  const locationLabel = s.locationName || [s.area, s.city].filter(Boolean).join(", ");
   let ratingLabel: string | null = null;
   if (typeof s.rating === "number") {
     ratingLabel = `★ ${s.rating.toFixed(1)}`;
   }
-  const meta = [locationLabel || null, ratingLabel, s.cuisine]
-    .filter(Boolean)
-    .join(" · ");
+  const meta = [locationLabel || null, ratingLabel, s.cuisine].filter(Boolean).join(" · ");
   let thumb: React.ReactNode;
   if (s.imageUrl) {
     thumb = (
@@ -998,14 +893,8 @@ function SavedRestaurantCard({
       <CardContent className="flex gap-2.5 p-3 sm:gap-3 sm:p-4">
         {thumb}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-slate-900 sm:text-base">
-            {name}
-          </p>
-          {meta && (
-            <p className="truncate text-xs text-muted-foreground sm:text-sm">
-              {meta}
-            </p>
-          )}
+          <p className="truncate text-sm font-semibold text-slate-900 sm:text-base">{name}</p>
+          {meta && <p className="truncate text-xs text-muted-foreground sm:text-sm">{meta}</p>}
         </div>
         <Button
           variant="destructiveOutline"
@@ -1023,7 +912,6 @@ function SavedRestaurantCard({
     </Card>
   );
 }
-
 
 type Tier = "mobile" | "tablet" | "desktop";
 
@@ -1104,9 +992,7 @@ function ActivitySection<T>({
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-          {title}
-        </h2>
+        <h2 className="text-base font-semibold text-slate-900 sm:text-lg">{title}</h2>
         {hasMore && (
           <Button
             variant="ghost"
@@ -1123,14 +1009,10 @@ function ActivitySection<T>({
   );
 }
 
-
 function StarsDisplay({ rating }: { rating: number }) {
   const filled = Math.round(rating);
   return (
-    <div
-      className="flex items-center gap-0.5"
-      aria-label={`${rating} out of 5`}
-    >
+    <div className="flex items-center gap-0.5" aria-label={`${rating} out of 5`}>
       {[1, 2, 3, 4, 5].map((n) => {
         let starClass = "h-4 w-4 fill-slate-200 text-slate-200";
         if (n <= filled) {
@@ -1215,9 +1097,7 @@ function ProfileReviewCard({
         <StarsDisplay rating={review.rating} />
 
         {review.description && (
-          <p className="text-xs text-slate-700 sm:text-sm">
-            {review.description}
-          </p>
+          <p className="text-xs text-slate-700 sm:text-sm">{review.description}</p>
         )}
 
         {(posted || updated) && (
@@ -1232,9 +1112,7 @@ function ProfileReviewCard({
             <p className="text-[11px] font-semibold text-slate-700 sm:text-xs">
               Response From The Restaurant
             </p>
-            <p className="mt-0.5 text-xs text-slate-600 sm:text-sm">
-              {review.businessReply}
-            </p>
+            <p className="mt-0.5 text-xs text-slate-600 sm:text-sm">{review.businessReply}</p>
           </div>
         )}
       </CardContent>
@@ -1285,17 +1163,13 @@ function DeleteReviewDialog({
     <Dialog open={!!review} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-md rounded-xl">
         <DialogHeader>
-          <DialogTitle>Delete this review?</DialogTitle>
+          <DialogTitle>Delete This Review?</DialogTitle>
           <DialogDescription>
             This will remove your review from the restaurant page.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={deleting}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={deleting}>
             Cancel
           </Button>
           <Button variant="destructive" onClick={confirm} disabled={deleting}>

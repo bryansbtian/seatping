@@ -166,9 +166,7 @@ describe("toast", () => {
     expect(() =>
       toast({ title: "saved changes", description: "your profile is updated" }),
     ).not.toThrow();
-    expect(() =>
-      toast({ title: 42 as never, description: undefined }),
-    ).not.toThrow();
+    expect(() => toast({ title: 42 as never, description: undefined })).not.toThrow();
   });
 
   it("issues a distinct id for every toast", () => {

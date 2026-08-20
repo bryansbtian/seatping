@@ -33,6 +33,11 @@ export function AddressAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
   const [warning, setWarning] = useState<string | null>(null);
 
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const onPlaceSelectedRef = useRef(onPlaceSelected);
+  onPlaceSelectedRef.current = onPlaceSelected;
+
   useEffect(() => {
     if (!getMapsApiKey()) {
       setWarning(NO_KEY_WARNING);
@@ -47,7 +52,7 @@ export function AddressAutocomplete({
         }
         const jakarta = new google.maps.LatLngBounds(
           new google.maps.LatLng(-6.4, 106.6),
-          new google.maps.LatLng(-6.0, 107.0)
+          new google.maps.LatLng(-6.0, 107.0),
         );
         const ac = new google.maps.places.Autocomplete(inputRef.current, {
           componentRestrictions: { country: "id" },
@@ -64,9 +69,9 @@ export function AddressAutocomplete({
         listener = ac.addListener("place_changed", () => {
           const details = parsePlace(ac.getPlace());
           if (details.address) {
-            onChange(details.address);
+            onChangeRef.current(details.address);
           }
-          onPlaceSelected(details);
+          onPlaceSelectedRef.current(details);
         });
       })
       .catch(() => setWarning(LOAD_FAIL_WARNING));
@@ -76,7 +81,6 @@ export function AddressAutocomplete({
       }
       unsubAuth();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

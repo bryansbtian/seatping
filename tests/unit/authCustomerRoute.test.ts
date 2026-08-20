@@ -100,10 +100,7 @@ function reviewRow(overrides: Record<string, unknown> = {}) {
 }
 
 async function saveLocation() {
-  return app()
-    .post("/auth/me/saved-locations")
-    .set("Cookie", cookie())
-    .send({ locationId: LOC });
+  return app().post("/auth/me/saved-locations").set("Cookie", cookie()).send({ locationId: LOC });
 }
 
 function savedEntry(res: any) {
@@ -120,17 +117,13 @@ beforeEach(() => {
   });
   locationFindUnique.mockReset().mockResolvedValue(locationRow());
   locationFindMany.mockReset().mockResolvedValue([]);
-  businessFindUnique
-    .mockReset()
-    .mockResolvedValue({ name: "Bistro", username: "bistro" });
+  businessFindUnique.mockReset().mockResolvedValue({ name: "Bistro", username: "bistro" });
   businessFindMany.mockReset().mockResolvedValue([]);
   reviewFindMany.mockReset().mockResolvedValue([]);
   reviewFindFirst.mockReset().mockResolvedValue({ id: REVIEW });
   reviewUpdate.mockReset().mockResolvedValue(reviewRow());
   reviewDelete.mockReset().mockResolvedValue({});
-  reviewAggregate
-    .mockReset()
-    .mockResolvedValue({ _avg: { rating: null }, _count: { _all: 0 } });
+  reviewAggregate.mockReset().mockResolvedValue({ _avg: { rating: null }, _count: { _all: 0 } });
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
@@ -141,16 +134,13 @@ afterEach(() => {
 
 describe("saved restaurants", () => {
   it("keeps only the optional details that carry text", async () => {
-    const res = await app()
-      .post("/auth/me/saved-restaurants")
-      .set("Cookie", cookie())
-      .send({
-        businessUsername: " bistro ",
-        businessName: "  Bistro  ",
-        locationName: "   ",
-        area: 7,
-        city: "Jakarta",
-      });
+    const res = await app().post("/auth/me/saved-restaurants").set("Cookie", cookie()).send({
+      businessUsername: " bistro ",
+      businessName: "  Bistro  ",
+      locationName: "   ",
+      area: 7,
+      city: "Jakarta",
+    });
 
     const saved = savedEntry(res);
     expect(saved.businessUsername).toBe("bistro");
@@ -172,9 +162,7 @@ describe("saved restaurants", () => {
   });
 
   it("tolerates a saved list of the wrong shape", async () => {
-    userFindUnique.mockResolvedValue(
-      customerRow({ savedRestaurants: "not a list" }),
-    );
+    userFindUnique.mockResolvedValue(customerRow({ savedRestaurants: "not a list" }));
 
     const res = await app()
       .post("/auth/me/saved-restaurants")
@@ -191,18 +179,14 @@ describe("saved restaurants", () => {
       .post("/auth/me/saved-restaurants")
       .set("Cookie", cookie())
       .send({ businessUsername: "bistro" });
-    const remove = await app()
-      .delete("/auth/me/saved-restaurants/bistro")
-      .set("Cookie", cookie());
+    const remove = await app().delete("/auth/me/saved-restaurants/bistro").set("Cookie", cookie());
 
     expect(save.status).toBe(500);
     expect(remove.status).toBe(500);
   });
 
   it("requires a business username to remove", async () => {
-    const res = await app()
-      .delete("/auth/me/saved-restaurants/%20")
-      .set("Cookie", cookie());
+    const res = await app().delete("/auth/me/saved-restaurants/%20").set("Cookie", cookie());
 
     expect(res.status).toBe(400);
   });
@@ -210,21 +194,15 @@ describe("saved restaurants", () => {
   it("reports a missing customer on remove", async () => {
     userFindUnique.mockResolvedValue(null);
 
-    const res = await app()
-      .delete("/auth/me/saved-restaurants/bistro")
-      .set("Cookie", cookie());
+    const res = await app().delete("/auth/me/saved-restaurants/bistro").set("Cookie", cookie());
 
     expect(res.status).toBe(404);
   });
 
   it("tolerates a saved list of the wrong shape on remove", async () => {
-    userFindUnique.mockResolvedValue(
-      customerRow({ savedRestaurants: null }),
-    );
+    userFindUnique.mockResolvedValue(customerRow({ savedRestaurants: null }));
 
-    const res = await app()
-      .delete("/auth/me/saved-restaurants/bistro")
-      .set("Cookie", cookie());
+    const res = await app().delete("/auth/me/saved-restaurants/bistro").set("Cookie", cookie());
 
     expect(res.status).toBe(200);
   });
@@ -285,9 +263,7 @@ describe("saved locations", () => {
     locationFindUnique.mockResolvedValue(locationRow({ displayName: null }));
     expect(savedEntry(await saveLocation()).locationName).toBe("Kemang");
 
-    locationFindUnique.mockResolvedValue(
-      locationRow({ displayName: null, area: null }),
-    );
+    locationFindUnique.mockResolvedValue(locationRow({ displayName: null, area: null }));
     expect(savedEntry(await saveLocation()).locationName).toBe("Jakarta");
   });
 
@@ -299,28 +275,20 @@ describe("saved locations", () => {
       }),
     );
 
-    expect(savedEntry(await saveLocation()).imageUrl).toBe(
-      "https://test.invalid/gallery.jpg",
-    );
+    expect(savedEntry(await saveLocation()).imageUrl).toBe("https://test.invalid/gallery.jpg");
   });
 
   it("reports no image when there is neither a banner nor a photo", async () => {
-    locationFindUnique.mockResolvedValue(
-      locationRow({ bannerImageUrl: null, photos: [] }),
-    );
+    locationFindUnique.mockResolvedValue(locationRow({ bannerImageUrl: null, photos: [] }));
 
     expect(savedEntry(await saveLocation()).imageUrl).toBeNull();
   });
 
   it("reports no cuisine for an empty or missing list", async () => {
-    locationFindUnique.mockResolvedValue(
-      locationRow({ restaurantProfile: { cuisineTypes: [] } }),
-    );
+    locationFindUnique.mockResolvedValue(locationRow({ restaurantProfile: { cuisineTypes: [] } }));
     expect(savedEntry(await saveLocation()).cuisine).toBeNull();
 
-    locationFindUnique.mockResolvedValue(
-      locationRow({ restaurantProfile: null }),
-    );
+    locationFindUnique.mockResolvedValue(locationRow({ restaurantProfile: null }));
     expect(savedEntry(await saveLocation()).cuisine).toBeNull();
   });
 
@@ -342,9 +310,7 @@ describe("saved locations", () => {
   });
 
   it("tolerates a saved list of the wrong shape", async () => {
-    userFindUnique.mockResolvedValue(
-      customerRow({ savedRestaurants: "not a list" }),
-    );
+    userFindUnique.mockResolvedValue(customerRow({ savedRestaurants: "not a list" }));
 
     expect((await saveLocation()).status).toBe(200);
   });
@@ -358,9 +324,7 @@ describe("saved locations", () => {
   it("reports a server error while reading the saved flag", async () => {
     userFindUnique.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .get(`/auth/me/saved-locations/${LOC}`)
-      .set("Cookie", cookie());
+    const res = await app().get(`/auth/me/saved-locations/${LOC}`).set("Cookie", cookie());
 
     expect(res.status).toBe(500);
   });
@@ -368,27 +332,17 @@ describe("saved locations", () => {
   it("reports not saved when the customer is gone", async () => {
     userFindUnique.mockResolvedValue(null);
 
-    const res = await app()
-      .get(`/auth/me/saved-locations/${LOC}`)
-      .set("Cookie", cookie());
+    const res = await app().get(`/auth/me/saved-locations/${LOC}`).set("Cookie", cookie());
 
     expect(res.body.saved).toBe(false);
   });
 
   it("matches a saved entry stored under either key", async () => {
-    userFindUnique.mockResolvedValue(
-      customerRow({ savedRestaurants: [{ id: LOC }] }),
-    );
-    const byId = await app()
-      .get(`/auth/me/saved-locations/${LOC}`)
-      .set("Cookie", cookie());
+    userFindUnique.mockResolvedValue(customerRow({ savedRestaurants: [{ id: LOC }] }));
+    const byId = await app().get(`/auth/me/saved-locations/${LOC}`).set("Cookie", cookie());
 
-    userFindUnique.mockResolvedValue(
-      customerRow({ savedRestaurants: [{ locationId: LOC }] }),
-    );
-    const byLocationId = await app()
-      .get(`/auth/me/saved-locations/${LOC}`)
-      .set("Cookie", cookie());
+    userFindUnique.mockResolvedValue(customerRow({ savedRestaurants: [{ locationId: LOC }] }));
+    const byLocationId = await app().get(`/auth/me/saved-locations/${LOC}`).set("Cookie", cookie());
 
     expect(byId.body.saved).toBe(true);
     expect(byLocationId.body.saved).toBe(true);
@@ -397,9 +351,7 @@ describe("saved locations", () => {
   it("reports a missing customer on remove", async () => {
     userFindUnique.mockResolvedValue(null);
 
-    const res = await app()
-      .delete(`/auth/me/saved-locations/${LOC}`)
-      .set("Cookie", cookie());
+    const res = await app().delete(`/auth/me/saved-locations/${LOC}`).set("Cookie", cookie());
 
     expect(res.status).toBe(404);
   });
@@ -407,9 +359,7 @@ describe("saved locations", () => {
   it("reports a server error on remove", async () => {
     userUpdate.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .delete(`/auth/me/saved-locations/${LOC}`)
-      .set("Cookie", cookie());
+    const res = await app().delete(`/auth/me/saved-locations/${LOC}`).set("Cookie", cookie());
 
     expect(res.status).toBe(500);
   });
@@ -427,9 +377,7 @@ describe("customer reviews", () => {
       }),
     );
 
-    const res = await app()
-      .get("/auth/me/reviews")
-      .set("Cookie", cookie());
+    const res = await app().get("/auth/me/reviews").set("Cookie", cookie());
 
     expect(res.body.reviews[0].restaurantName).toBe("Warung Nusantara");
     expect(res.body.reviews[0].locationName).toBe("Kemang Raya 1");
@@ -443,9 +391,7 @@ describe("customer reviews", () => {
       locationRow({ displayName: null, area: null, city: null }),
     );
 
-    const res = await app()
-      .get("/auth/me/reviews")
-      .set("Cookie", cookie());
+    const res = await app().get("/auth/me/reviews").set("Cookie", cookie());
 
     expect(res.body.reviews[0].restaurantName).toBe("Bistro Downtown");
     expect(res.body.reviews[0].locationName).toBe("1 Test Street");
@@ -456,9 +402,7 @@ describe("customer reviews", () => {
     reviewFindMany.mockResolvedValue([reviewRow()]);
     locationFindUnique.mockResolvedValue(null);
 
-    const res = await app()
-      .get("/auth/me/reviews")
-      .set("Cookie", cookie());
+    const res = await app().get("/auth/me/reviews").set("Cookie", cookie());
 
     expect(res.body.reviews[0].restaurantName).toBe("Restaurant");
     expect(res.body.reviews[0].locationName).toBeNull();
@@ -470,9 +414,7 @@ describe("customer reviews", () => {
       reviewRow({ rating: null, description: null, businessReply: null }),
     ]);
 
-    const res = await app()
-      .get("/auth/me/reviews")
-      .set("Cookie", cookie());
+    const res = await app().get("/auth/me/reviews").set("Cookie", cookie());
 
     expect(res.body.reviews[0].rating).toBe(0);
     expect(res.body.reviews[0].description).toBeNull();
@@ -487,9 +429,7 @@ describe("customer reviews", () => {
       reviewRow({ id: "r3", locationId: "loc-2" }),
     ]);
 
-    const res = await app()
-      .get("/auth/me/reviews")
-      .set("Cookie", cookie());
+    const res = await app().get("/auth/me/reviews").set("Cookie", cookie());
 
     expect(res.body.reviews).toHaveLength(2);
     expect(res.body.reviews[0].id).toBe("r1");
@@ -498,9 +438,7 @@ describe("customer reviews", () => {
   it("reports a server error while listing", async () => {
     reviewFindMany.mockRejectedValue(new Error("db down"));
 
-    const res = await app()
-      .get("/auth/me/reviews")
-      .set("Cookie", cookie());
+    const res = await app().get("/auth/me/reviews").set("Cookie", cookie());
 
     expect(res.status).toBe(500);
   });
@@ -513,9 +451,7 @@ describe("customer reviews", () => {
       .patch(`/auth/me/reviews/${REVIEW}`)
       .set("Cookie", cookie())
       .send({ rating: 3 });
-    const remove = await app()
-      .delete(`/auth/me/reviews/${REVIEW}`)
-      .set("Cookie", cookie());
+    const remove = await app().delete(`/auth/me/reviews/${REVIEW}`).set("Cookie", cookie());
 
     expect(patch.status).toBe(500);
     expect(remove.status).toBe(500);

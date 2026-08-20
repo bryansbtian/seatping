@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatPhone } from "../../src/lib/phone.js";
-import {
-  COUNTRY_CODES,
-  DEFAULT_COUNTRY_ISO,
-  splitPhone,
-} from "../../src/lib/countryCodes.js";
+import { COUNTRY_CODES, DEFAULT_COUNTRY_ISO, splitPhone } from "../../src/lib/countryCodes.js";
 import { statusBadgeClass, statusLabel } from "../../src/lib/statusStyles.js";
 import { cn } from "../../src/lib/utils.js";
 import {
@@ -150,9 +146,7 @@ describe("timezone helpers", () => {
 
   it("accepts a timestamp or a parseable string", () => {
     expect(getDateKeyInTimezone(instant.getTime(), "UTC")).toBe("2026-06-08");
-    expect(getDateKeyInTimezone("2026-06-08T05:00:00.000Z", "UTC")).toBe(
-      "2026-06-08",
-    );
+    expect(getDateKeyInTimezone("2026-06-08T05:00:00.000Z", "UTC")).toBe("2026-06-08");
   });
 
   it("returns an empty key for an unparseable date", () => {
@@ -170,9 +164,7 @@ describe("timezone helpers", () => {
 
   it("produces a today key and a wall clock string", () => {
     expect(getTodayKeyInTimezone("UTC")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(getNowWallClockInTimezone("UTC")).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/,
-    );
+    expect(getNowWallClockInTimezone("UTC")).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
   });
 
   it("adds and subtracts whole days from a date key", () => {
@@ -189,9 +181,7 @@ describe("timezone helpers", () => {
   });
 
   it("formats a human readable label", () => {
-    expect(formatDateLabelInTimezone("2026-06-08", "UTC")).toEqual(
-      expect.any(String),
-    );
+    expect(formatDateLabelInTimezone("2026-06-08", "UTC")).toEqual(expect.any(String));
     expect(formatDateLabelInTimezone("2026-06-08", "UTC").length).toBeGreaterThan(0);
   });
 

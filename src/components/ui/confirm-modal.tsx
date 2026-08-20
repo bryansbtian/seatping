@@ -1,4 +1,4 @@
-import * as React from "react"
+import * as React from "react";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -8,10 +8,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
-import { Loader2, AlertTriangle, Trash2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Loader2, AlertTriangle, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface ConfirmModalProps {
   open?: boolean;
@@ -69,7 +69,7 @@ export function ConfirmModal({
     if (loading) {
       return;
     }
-    
+
     setLoading(true);
     try {
       await onConfirm();
@@ -107,11 +107,7 @@ export function ConfirmModal({
           </div>
           <AlertDialogDescription className="pt-2 text-slate-500">
             {description}
-            {helperText && (
-              <span className="block mt-2 text-sm text-slate-400">
-                {helperText}
-              </span>
-            )}
+            {helperText && <span className="block mt-2 text-sm text-slate-400">{helperText}</span>}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="mt-4">
@@ -128,5 +124,5 @@ export function ConfirmModal({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }

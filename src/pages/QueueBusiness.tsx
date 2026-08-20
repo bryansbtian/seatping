@@ -7,18 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -35,9 +25,7 @@ import { analytics } from "@/lib/analytics";
 
 type CountryOption = { name: string; dial: string; flag: string };
 
-const SMS_COUNTRIES: CountryOption[] = [
-  { name: "United States", dial: "+1", flag: "🇺🇸" },
-];
+const SMS_COUNTRIES: CountryOption[] = [{ name: "United States", dial: "+1", flag: "🇺🇸" }];
 
 const WHATSAPP_COUNTRIES: CountryOption[] = [
   { name: "China", dial: "+86", flag: "🇨🇳" },
@@ -74,9 +62,7 @@ type AddressOption = {
   };
 };
 
-async function fetchAddressesForBusiness(
-  username: string,
-): Promise<AddressOption[]> {
+async function fetchAddressesForBusiness(username: string): Promise<AddressOption[]> {
   if (!username) {
     return [];
   }
@@ -105,11 +91,13 @@ function notificationLabel(method?: string): string {
     case "email":
       return "Email";
     default:
-      return "—";
+      return "-";
   }
 }
 
 type Step = 2 | 4 | 5 | 6;
+
+const HOLD_SECONDS = 5 * 60;
 
 export default function QueueBusiness() {
   const { businessUsername = "", locationId } = useParams();
@@ -126,8 +114,7 @@ export default function QueueBusiness() {
   }, [locationId]);
 
   const [loadingAddresses, setLoadingAddresses] = useState(false);
-  const [selectedLocation, setSelectedLocation] =
-    useState<AddressOption | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<AddressOption | null>(null);
   const [invalidLink, setInvalidLink] = useState(false);
   const [businessName, setBusinessName] = useState("");
   const [joiningQueue, setJoiningQueue] = useState(false);
@@ -167,9 +154,7 @@ export default function QueueBusiness() {
   );
 
   const selectedSmsCountry = useMemo(
-    () =>
-      SMS_COUNTRIES.find((c) => c.dial === form.countryCode) ||
-      SMS_COUNTRIES[0],
+    () => SMS_COUNTRIES.find((c) => c.dial === form.countryCode) || SMS_COUNTRIES[0],
     [form.countryCode],
   );
 
@@ -184,7 +169,6 @@ export default function QueueBusiness() {
   const [etaLoading, setEtaLoading] = useState(false);
   const [etaError, setEtaError] = useState(false);
 
-  const HOLD_SECONDS = 5 * 60;
   const [secondsLeft, setSecondsLeft] = useState(HOLD_SECONDS);
   const [admittedAt, setAdmittedAt] = useState<string | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
@@ -239,9 +223,7 @@ export default function QueueBusiness() {
                   ...prev,
                   firstName: response.customer?.firstName || prev.firstName,
                   lastName: response.customer?.lastName || prev.lastName,
-                  numGuests: String(
-                    response.customer?.numGuests || prev.numGuests,
-                  ),
+                  numGuests: String(response.customer?.numGuests || prev.numGuests),
                 }));
                 setBusinessName(response.businessName || list[0].businessName);
                 setStep(6);
@@ -262,20 +244,16 @@ export default function QueueBusiness() {
                 notificationMethod: response.customer.notificationMethod || "",
                 joinedAt: response.customer.joinedAt || "",
                 smsConsent: response.customer.smsConsent || false,
-                smsMarketingConsent:
-                  response.customer.smsMarketingConsent || false,
+                smsMarketingConsent: response.customer.smsMarketingConsent || false,
               }));
               setBusinessName(response.businessName || list[0].businessName);
 
               if (response.admitted) {
-                setAdmittedAt(
-                  response.admittedAt || response.customer?.admittedAt || null,
-                );
+                setAdmittedAt(response.admittedAt || response.customer?.admittedAt || null);
                 setStep(5);
                 toast({
                   title: "Welcome Back!",
-                  description:
-                    "You've been admitted. Please proceed to your turn.",
+                  description: "You've been admitted. Please proceed to your turn.",
                 });
               } else {
                 setStep(4);
@@ -289,8 +267,7 @@ export default function QueueBusiness() {
               localStorage.removeItem(storageKey);
               toast({
                 title: "Queue Session Ended",
-                description:
-                  response.message || "Your queue session has ended.",
+                description: response.message || "Your queue session has ended.",
                 variant: "destructive",
               });
             }
@@ -382,9 +359,7 @@ export default function QueueBusiness() {
           if (!customerId || !form.joinedAt) {
             return;
           }
-          response = await api(
-            `/auth/business/${businessUsername}/queue/${customerId}/status`,
-          );
+          response = await api(`/auth/business/${businessUsername}/queue/${customerId}/status`);
         }
 
         if (response.checkedIn) {
@@ -392,8 +367,7 @@ export default function QueueBusiness() {
           setStep(6);
           toast({
             title: "Arrival Confirmed",
-            description:
-              "You're all set. Please follow the host's instructions.",
+            description: "You're all set. Please follow the host's instructions.",
           });
         } else if (response.removed) {
           localStorage.removeItem(storageKey);
@@ -411,8 +385,7 @@ export default function QueueBusiness() {
           } else {
             toast({
               title: "Removed from Queue",
-              description:
-                "You have been removed from the queue by the business.",
+              description: "You have been removed from the queue by the business.",
               variant: "destructive",
             });
           }
@@ -420,24 +393,20 @@ export default function QueueBusiness() {
             navigate("/");
           }, 2000);
         } else if (response.admitted) {
-          setAdmittedAt(
-            response.admittedAt || response.customer?.admittedAt || null,
-          );
+          setAdmittedAt(response.admittedAt || response.customer?.admittedAt || null);
           if (step !== 5) {
             setStep(5);
             if (!response.expired) {
               toast({
                 title: "You've Been Admitted!",
-                description:
-                  "The business has called you. Please proceed to your turn.",
+                description: "The business has called you. Please proceed to your turn.",
               });
             }
           }
         } else if (response.position) {
           setPeopleAhead(Math.max(0, response.position - 1));
         }
-      } catch {
-      }
+      } catch {}
     };
 
     const interval = setInterval(checkAdmissionStatus, 2000);
@@ -467,9 +436,7 @@ export default function QueueBusiness() {
     const fetchEta = async () => {
       setEtaLoading(true);
       try {
-        const res = await api(
-          `/auth/business/${businessUsername}/queue/token/${queueToken}/eta`,
-        );
+        const res = await api(`/auth/business/${businessUsername}/queue/token/${queueToken}/eta`);
         if (!cancelled) {
           setEta(res.eta ?? null);
           setEtaError(false);
@@ -507,8 +474,7 @@ export default function QueueBusiness() {
       startMs = Date.now();
     }
     const expiresMs = startMs + HOLD_SECONDS * 1000;
-    const remaining = () =>
-      Math.max(0, Math.ceil((expiresMs - Date.now()) / 1000));
+    const remaining = () => Math.max(0, Math.ceil((expiresMs - Date.now()) / 1000));
 
     setSecondsLeft(remaining());
     if (remaining() <= 0) {
@@ -529,9 +495,7 @@ export default function QueueBusiness() {
     };
   }, [step, admittedAt]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
     if (errors[name]) {
@@ -554,26 +518,22 @@ export default function QueueBusiness() {
       newErrors.lastName = "Last name is required";
     }
     const numGuests = parseInt(form.numGuests);
-    if (isNaN(numGuests) || numGuests < 1)
-      {
-        newErrors.numGuests = "Number of guests must be at least 1";
-      }
+    if (isNaN(numGuests) || numGuests < 1) {
+      newErrors.numGuests = "Number of guests must be at least 1";
+    }
 
     if (!form.notificationMethod) {
       newErrors.notificationMethod = "Please choose how we should notify you";
     } else if (form.notificationMethod === "sms") {
       if (!form.phoneNumber.trim()) {
-        newErrors.phoneNumber =
-          "Phone number is required for SMS notifications";
+        newErrors.phoneNumber = "Phone number is required for SMS notifications";
       }
       if (!form.smsConsent) {
-        newErrors.smsConsent =
-          "You must agree to receive transactional text messages";
+        newErrors.smsConsent = "You must agree to receive transactional text messages";
       }
     } else if (form.notificationMethod === "whatsapp") {
       if (!form.phoneNumber.trim()) {
-        newErrors.phoneNumber =
-          "Phone number is required for WhatsApp notifications";
+        newErrors.phoneNumber = "Phone number is required for WhatsApp notifications";
       }
     } else if (form.notificationMethod === "email") {
       if (!form.email.trim()) {
@@ -616,8 +576,7 @@ export default function QueueBusiness() {
           localStorage.setItem(storageKey, response.queueToken);
         }
 
-        let toastDescription: ReactNode =
-          "We'll let you know when it's your turn.";
+        let toastDescription: ReactNode = "We'll let you know when it's your turn.";
         if (form.notificationMethod === "sms") {
           toastDescription = `We'll text you at ${form.countryCode} ${form.phoneNumber} when it's your turn.`;
         } else if (form.notificationMethod === "whatsapp") {
@@ -626,10 +585,8 @@ export default function QueueBusiness() {
           toastDescription = (
             <>
               We'll email you at{" "}
-              <span className="normal-case lowercase">
-                {form.email.toLowerCase()}
-              </span>{" "}
-              when it's your turn.
+              <span className="normal-case lowercase">{form.email.toLowerCase()}</span> when it's
+              your turn.
             </>
           );
         }
@@ -665,10 +622,7 @@ export default function QueueBusiness() {
 
     try {
       const customerId = `${form.firstName}${form.lastName}${form.joinedAt}`;
-      await api(
-        `/auth/business/${businessUsername}/queue/${customerId}/leave`,
-        { method: "POST" },
-      );
+      await api(`/auth/business/${businessUsername}/queue/${customerId}/leave`, { method: "POST" });
       toast({
         title: "You Left the Queue",
         description: "You have been removed from the queue.",
@@ -689,8 +643,7 @@ export default function QueueBusiness() {
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
   const selectedLabel = locationLabel(selectedLocation);
-  const restaurantName =
-    selectedLocation?.restaurantName || businessName || `@${businessUsername}`;
+  const restaurantName = selectedLocation?.restaurantName || businessName || `@${businessUsername}`;
   const queueUnavailable = selectedLocation?.queueEnabled === false;
   const queueClosed = selectedLocation?.operatingStatus?.isOpen === false;
   const queueBlocked = queueUnavailable || queueClosed;
@@ -741,8 +694,7 @@ export default function QueueBusiness() {
   if (queueUnavailable) {
     blockedHelpText = "Please contact the restaurant for assistance.";
   } else {
-    blockedHelpText =
-      "Queue joining will be available again during operating hours.";
+    blockedHelpText = "Queue joining will be available again during operating hours.";
   }
 
   let firstNameInputClass = "";
@@ -807,11 +759,8 @@ export default function QueueBusiness() {
   if (turnExpired) {
     turnContent = (
       <>
-        <h2 className="text-2xl sm:text-3xl font-bold text-destructive">
-          Time's Up
-        </h2>
+        <h2 className="text-2xl sm:text-3xl font-bold text-destructive">Time's Up</h2>
 
-        {}
         <div className="rounded-2xl border border-destructive/15 bg-destructive/5 px-6 py-6">
           <p className="text-base font-semibold text-foreground">
             Time's up. Your spot has been released.
@@ -825,11 +774,8 @@ export default function QueueBusiness() {
   } else {
     turnContent = (
       <>
-        <h2 className="text-2xl sm:text-3xl font-bold text-primary">
-          It's Your Turn!
-        </h2>
+        <h2 className="text-2xl sm:text-3xl font-bold text-primary">It's Your Turn!</h2>
 
-        {}
         <div className="rounded-2xl border border-primary/10 bg-primary/5 px-6 py-6">
           <p className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Please Arrive Within
@@ -848,14 +794,11 @@ export default function QueueBusiness() {
   return (
     <>
       <Header />
-      {}
       <div className="flex min-h-screen flex-col bg-gradient-to-br from-success/5 via-background to-primary/5">
         <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10">
           <Card className="w-full max-w-xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
             <CardHeader className="text-center">
-              <CardTitle className="text-xl sm:text-2xl text-primary">
-                {cardTitleText}
-              </CardTitle>
+              <CardTitle className="text-xl sm:text-2xl text-primary">{cardTitleText}</CardTitle>
               {step !== 5 && (
                 <CardDescription>
                   {step === 2 && stepTwoDescription}
@@ -873,29 +816,19 @@ export default function QueueBusiness() {
                         <Clock3 className="h-6 w-6" />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-lg text-slate-900">
-                          {restaurantName}
-                        </p>
+                        <p className="font-semibold text-lg text-slate-900">{restaurantName}</p>
                         {selectedLabel && (
-                          <p className="mt-0.5 text-sm text-slate-500">
-                            {selectedLabel}
-                          </p>
+                          <p className="mt-0.5 text-sm text-slate-500">{selectedLabel}</p>
                         )}
                       </div>
                     </div>
                     <div className="mt-5 border-t border-slate-200 pt-5">
-                      <p className="text-sm font-medium text-slate-900">
-                        Today's Hours
-                      </p>
-                      <p className="mt-1 text-base text-slate-500">
-                        {blockedHoursText}
-                      </p>
+                      <p className="text-sm font-medium text-slate-900">Today's Hours</p>
+                      <p className="mt-1 text-base text-slate-500">{blockedHoursText}</p>
                     </div>
                   </div>
                   <div className="space-y-4">
-                    <p className="text-center text-sm text-slate-500">
-                      {blockedHelpText}
-                    </p>
+                    <p className="text-center text-sm text-slate-500">{blockedHelpText}</p>
                     <Button asChild className="w-full h-11 text-base" variant="default">
                       <Link to="/search">Explore Other Restaurants</Link>
                     </Button>
@@ -905,19 +838,13 @@ export default function QueueBusiness() {
 
               {step === 2 && !queueBlocked && (
                 <form onSubmit={joinQueue} className="space-y-4">
-                  {}
                   {selectedLocation && (
                     <div className="min-w-0 rounded-lg border bg-muted/40 p-3">
-                      <p className="font-medium text-foreground break-words">
-                        {restaurantName}
-                      </p>
-                      <p className="text-sm text-muted-foreground break-words">
-                        {selectedLabel}
-                      </p>
+                      <p className="font-medium text-foreground break-words">{restaurantName}</p>
+                      <p className="text-sm text-muted-foreground break-words">{selectedLabel}</p>
                     </div>
                   )}
 
-                  {}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="firstName">First Name</Label>
@@ -930,9 +857,7 @@ export default function QueueBusiness() {
                         className={firstNameInputClass}
                       />
                       {errors.firstName && (
-                        <p className="text-sm text-destructive">
-                          {errors.firstName}
-                        </p>
+                        <p className="text-sm text-destructive">{errors.firstName}</p>
                       )}
                     </div>
                     <div className="space-y-2">
@@ -946,14 +871,11 @@ export default function QueueBusiness() {
                         className={lastNameInputClass}
                       />
                       {errors.lastName && (
-                        <p className="text-sm text-destructive">
-                          {errors.lastName}
-                        </p>
+                        <p className="text-sm text-destructive">{errors.lastName}</p>
                       )}
                     </div>
                   </div>
 
-                  {}
                   <div className="space-y-2">
                     <Label htmlFor="numGuests">Number of Guests</Label>
                     <Input
@@ -962,19 +884,14 @@ export default function QueueBusiness() {
                       type="text"
                       placeholder="1"
                       value={form.numGuests}
-                      onChange={(e) =>
-                        setForm((p) => ({ ...p, numGuests: e.target.value }))
-                      }
+                      onChange={(e) => setForm((p) => ({ ...p, numGuests: e.target.value }))}
                       className={numGuestsInputClass}
                     />
                     {errors.numGuests && (
-                      <p className="text-sm text-destructive">
-                        {errors.numGuests}
-                      </p>
+                      <p className="text-sm text-destructive">{errors.numGuests}</p>
                     )}
                   </div>
 
-                  {}
                   <div className="space-y-2">
                     <Label>How should we notify you?</Label>
                     <div className="grid grid-cols-1 gap-3">
@@ -999,8 +916,7 @@ export default function QueueBusiness() {
                       ).map((opt) => {
                         let optionStateClass = "hover:bg-muted";
                         if (form.notificationMethod === opt.key) {
-                          optionStateClass =
-                            "border-primary ring-2 ring-primary/30";
+                          optionStateClass = "border-primary ring-2 ring-primary/30";
                         }
                         return (
                           <button
@@ -1022,30 +938,22 @@ export default function QueueBusiness() {
                             className={`rounded-lg border px-4 py-3 text-left transition ${optionStateClass}`}
                           >
                             <div className="font-medium">{opt.title}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {opt.desc}
-                            </div>
+                            <div className="text-sm text-muted-foreground">{opt.desc}</div>
                           </button>
                         );
                       })}
                     </div>
                     {errors.notificationMethod && (
-                      <p className="text-sm text-destructive">
-                        {errors.notificationMethod}
-                      </p>
+                      <p className="text-sm text-destructive">{errors.notificationMethod}</p>
                     )}
                   </div>
 
-                  {}
                   {form.notificationMethod === "sms" && (
                     <>
                       <div className="space-y-2">
                         <Label htmlFor="phoneNumber">Phone Number</Label>
                         <div className="flex gap-2">
-                          <Popover
-                            open={smsCountryOpen}
-                            onOpenChange={setSmsCountryOpen}
-                          >
+                          <Popover open={smsCountryOpen} onOpenChange={setSmsCountryOpen}>
                             <PopoverTrigger asChild>
                               <button
                                 type="button"
@@ -1054,8 +962,7 @@ export default function QueueBusiness() {
                                 className="flex h-10 w-32 items-center justify-between rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
                               >
                                 <span className="truncate">
-                                  {selectedSmsCountry.flag}{" "}
-                                  {selectedSmsCountry.dial}
+                                  {selectedSmsCountry.flag} {selectedSmsCountry.dial}
                                 </span>
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </button>
@@ -1063,9 +970,7 @@ export default function QueueBusiness() {
                             <PopoverContent className="w-64 p-0" align="start">
                               <Command
                                 filter={(value, search) => {
-                                  const term = search
-                                    .toLowerCase()
-                                    .replace(/\+/g, "");
+                                  const term = search.toLowerCase().replace(/\+/g, "");
                                   if (value.toLowerCase().includes(term)) {
                                     return 1;
                                   }
@@ -1094,18 +999,11 @@ export default function QueueBusiness() {
                                           }}
                                         >
                                           <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4",
-                                              checkOpacityClass,
-                                            )}
+                                            className={cn("mr-2 h-4 w-4", checkOpacityClass)}
                                           />
                                           <span className="mr-2">{c.flag}</span>
-                                          <span className="flex-1">
-                                            {c.name}
-                                          </span>
-                                          <span className="text-muted-foreground">
-                                            {c.dial}
-                                          </span>
+                                          <span className="flex-1">{c.name}</span>
+                                          <span className="text-muted-foreground">{c.dial}</span>
                                         </CommandItem>
                                       );
                                     })}
@@ -1125,13 +1023,10 @@ export default function QueueBusiness() {
                           />
                         </div>
                         {errors.phoneNumber && (
-                          <p className="text-sm text-destructive">
-                            {errors.phoneNumber}
-                          </p>
+                          <p className="text-sm text-destructive">{errors.phoneNumber}</p>
                         )}
                       </div>
 
-                      {}
                       <div className="space-y-3">
                         <div className="flex items-start gap-2">
                           <Checkbox
@@ -1142,46 +1037,32 @@ export default function QueueBusiness() {
                                 ...p,
                                 smsConsent: checked as boolean,
                               }));
-                              if (errors.smsConsent)
-                                {
-                                  setErrors((p) => ({ ...p, smsConsent: "" }));
-                                }
+                              if (errors.smsConsent) {
+                                setErrors((p) => ({ ...p, smsConsent: "" }));
+                              }
                             }}
-                            className={cn(
-                              smsConsentBorderClass,
-                              "mt-1.5 flex-shrink-0",
-                            )}
+                            className={cn(smsConsentBorderClass, "mt-1.5 flex-shrink-0")}
                           />
                           <div className="flex-1">
                             <label
                               htmlFor="smsConsent"
                               className="text-sm leading-5 cursor-pointer"
                             >
-                              By checking this box and submitting this form, you
-                              consent to receive transactional text messages for
-                              queue notifications from SeatPing. Reply STOP to
-                              opt out. Reply HELP for help. Standard message and
-                              data rates may apply. Message frequency may vary.
-                              View our{" "}
-                              <a
-                                href="/terms"
-                                className="underline text-primary"
-                              >
+                              By checking this box and submitting this form, you consent to receive
+                              transactional text messages for queue notifications from SeatPing.
+                              Reply STOP to opt out. Reply HELP for help. Standard message and data
+                              rates may apply. Message frequency may vary. View our{" "}
+                              <a href="/terms" className="underline text-primary">
                                 Terms and Conditions
                               </a>
                               . View our{" "}
-                              <a
-                                href="/policy"
-                                className="underline text-primary"
-                              >
+                              <a href="/policy" className="underline text-primary">
                                 Privacy Policy
                               </a>
                               .
                             </label>
                             {errors.smsConsent && (
-                              <p className="text-sm text-destructive mt-1">
-                                {errors.smsConsent}
-                              </p>
+                              <p className="text-sm text-destructive mt-1">{errors.smsConsent}</p>
                             )}
                           </div>
                         </div>
@@ -1203,22 +1084,15 @@ export default function QueueBusiness() {
                               htmlFor="smsMarketingConsent"
                               className="text-sm leading-5 cursor-pointer"
                             >
-                              (Optional) By checking this box, you consent to
-                              receive text messages for marketing from SeatPing.
-                              Reply STOP to opt out. Reply HELP for help.
-                              Message and data rates may apply. Message
-                              frequency may vary. View our{" "}
-                              <a
-                                href="/terms"
-                                className="underline text-primary"
-                              >
+                              (Optional) By checking this box, you consent to receive text messages
+                              for marketing from SeatPing. Reply STOP to opt out. Reply HELP for
+                              help. Message and data rates may apply. Message frequency may vary.
+                              View our{" "}
+                              <a href="/terms" className="underline text-primary">
                                 Terms and Conditions
                               </a>
                               . View our{" "}
-                              <a
-                                href="/policy"
-                                className="underline text-primary"
-                              >
+                              <a href="/policy" className="underline text-primary">
                                 Privacy Policy
                               </a>
                               .
@@ -1229,15 +1103,11 @@ export default function QueueBusiness() {
                     </>
                   )}
 
-                  {}
                   {form.notificationMethod === "whatsapp" && (
                     <div className="space-y-2">
                       <Label htmlFor="whatsappPhoneNumber">Phone Number</Label>
                       <div className="flex gap-2">
-                        <Popover
-                          open={whatsappCountryOpen}
-                          onOpenChange={setWhatsappCountryOpen}
-                        >
+                        <Popover open={whatsappCountryOpen} onOpenChange={setWhatsappCountryOpen}>
                           <PopoverTrigger asChild>
                             <button
                               type="button"
@@ -1246,8 +1116,7 @@ export default function QueueBusiness() {
                               className="flex h-10 w-32 items-center justify-between rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
                             >
                               <span className="truncate">
-                                {selectedWhatsappCountry.flag}{" "}
-                                {selectedWhatsappCountry.dial}
+                                {selectedWhatsappCountry.flag} {selectedWhatsappCountry.dial}
                               </span>
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </button>
@@ -1255,9 +1124,7 @@ export default function QueueBusiness() {
                           <PopoverContent className="w-64 p-0" align="start">
                             <Command
                               filter={(value, search) => {
-                                const term = search
-                                  .toLowerCase()
-                                  .replace(/\+/g, "");
+                                const term = search.toLowerCase().replace(/\+/g, "");
                                 if (value.toLowerCase().includes(term)) {
                                   return 1;
                                 }
@@ -1285,17 +1152,10 @@ export default function QueueBusiness() {
                                           setWhatsappCountryOpen(false);
                                         }}
                                       >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            checkOpacityClass,
-                                          )}
-                                        />
+                                        <Check className={cn("mr-2 h-4 w-4", checkOpacityClass)} />
                                         <span className="mr-2">{c.flag}</span>
                                         <span className="flex-1">{c.name}</span>
-                                        <span className="text-muted-foreground">
-                                          {c.dial}
-                                        </span>
+                                        <span className="text-muted-foreground">{c.dial}</span>
                                       </CommandItem>
                                     );
                                   })}
@@ -1315,14 +1175,11 @@ export default function QueueBusiness() {
                         />
                       </div>
                       {errors.phoneNumber && (
-                        <p className="text-sm text-destructive">
-                          {errors.phoneNumber}
-                        </p>
+                        <p className="text-sm text-destructive">{errors.phoneNumber}</p>
                       )}
                     </div>
                   )}
 
-                  {}
                   {form.notificationMethod === "email" && (
                     <div className="space-y-2">
                       <Label htmlFor="email">Email Address</Label>
@@ -1335,11 +1192,7 @@ export default function QueueBusiness() {
                         onChange={handleChange}
                         className={emailInputClass}
                       />
-                      {errors.email && (
-                        <p className="text-sm text-destructive">
-                          {errors.email}
-                        </p>
-                      )}
+                      {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
                     </div>
                   )}
 
@@ -1358,9 +1211,7 @@ export default function QueueBusiness() {
               {step === 4 && (
                 <div className="space-y-5">
                   <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Queue Details
-                    </p>
+                    <p className="text-sm text-muted-foreground mb-2">Queue Details</p>
                     <p>
                       <strong>Restaurant:</strong> {restaurantName}
                     </p>
@@ -1371,34 +1222,24 @@ export default function QueueBusiness() {
                       <strong>Name:</strong> {form.firstName} {form.lastName}
                     </p>
                     <p>
-                      <strong>Number of Guests:</strong>{" "}
-                      {parseInt(form.numGuests)}
+                      <strong>Number of Guests:</strong> {parseInt(form.numGuests)}
                     </p>
                   </div>
 
                   <div className="text-center space-y-1">
-                    <div className="text-xl font-semibold">
-                      You are #{positionInLine} in line
-                    </div>
+                    <div className="text-xl font-semibold">You are #{positionInLine} in line</div>
                     <div className="text-sm text-muted-foreground">
-                      There {peopleAheadVerb} {peopleAhead}{" "}
-                      {peopleAheadNoun} ahead of you
+                      There {peopleAheadVerb} {peopleAhead} {peopleAheadNoun} ahead of you
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="rounded-lg border p-4 text-center">
-                      <div className="text-sm text-muted-foreground">
-                        Estimated Wait
-                      </div>
-                      <div className="text-lg font-semibold">
-                        {estimatedWaitText}
-                      </div>
+                      <div className="text-sm text-muted-foreground">Estimated Wait</div>
+                      <div className="text-lg font-semibold">{estimatedWaitText}</div>
                     </div>
                     <div className="rounded-lg border p-4 text-center">
-                      <div className="text-sm text-muted-foreground">
-                        Notifications
-                      </div>
+                      <div className="text-sm text-muted-foreground">Notifications</div>
                       <div className="text-lg font-medium">
                         {notificationLabel(form.notificationMethod)}
                       </div>
@@ -1406,16 +1247,11 @@ export default function QueueBusiness() {
                   </div>
 
                   <p className="text-center text-xs text-muted-foreground">
-                    Wait time may change based on queue movement and upcoming
-                    reservations.
+                    Wait time may change based on queue movement and upcoming reservations.
                   </p>
 
                   <div className="flex gap-2">
-                    <Button
-                      variant="destructiveOutline"
-                      className="flex-1"
-                      onClick={leaveQueue}
-                    >
+                    <Button variant="destructiveOutline" className="flex-1" onClick={leaveQueue}>
                       Leave Queue
                     </Button>
                   </div>
@@ -1426,7 +1262,6 @@ export default function QueueBusiness() {
                 <div className="space-y-5 text-center">
                   {turnContent}
 
-                  {}
                   <div className="rounded-xl bg-muted px-4 py-3 text-left">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Details
@@ -1434,15 +1269,11 @@ export default function QueueBusiness() {
                     <dl className="space-y-1.5 text-sm">
                       <div className="flex items-start justify-between gap-3">
                         <dt className="text-muted-foreground">Restaurant</dt>
-                        <dd className="text-right font-medium">
-                          {restaurantName}
-                        </dd>
+                        <dd className="text-right font-medium">{restaurantName}</dd>
                       </div>
                       <div className="flex items-start justify-between gap-3">
                         <dt className="text-muted-foreground">Location</dt>
-                        <dd className="text-right font-medium">
-                          {selectedLabel}
-                        </dd>
+                        <dd className="text-right font-medium">{selectedLabel}</dd>
                       </div>
                       <div className="flex items-start justify-between gap-3">
                         <dt className="text-muted-foreground">Name</dt>
@@ -1451,12 +1282,8 @@ export default function QueueBusiness() {
                         </dd>
                       </div>
                       <div className="flex items-start justify-between gap-3">
-                        <dt className="text-muted-foreground">
-                          Number of Guests
-                        </dt>
-                        <dd className="text-right font-medium">
-                          {parseInt(form.numGuests)}
-                        </dd>
+                        <dt className="text-muted-foreground">Number of Guests</dt>
+                        <dd className="text-right font-medium">{parseInt(form.numGuests)}</dd>
                       </div>
                     </dl>
                   </div>
@@ -1474,12 +1301,11 @@ export default function QueueBusiness() {
                       Arrival Confirmed. You're All Set.
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      The restaurant has confirmed your arrival. Please follow
-                      the host's instructions.
+                      The restaurant has confirmed your arrival. Please follow the host's
+                      instructions.
                     </p>
                   </div>
 
-                  {}
                   <div className="rounded-xl bg-muted px-4 py-3 text-left">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Details
@@ -1487,15 +1313,11 @@ export default function QueueBusiness() {
                     <dl className="space-y-1.5 text-sm">
                       <div className="flex items-start justify-between gap-3">
                         <dt className="text-muted-foreground">Restaurant</dt>
-                        <dd className="text-right font-medium">
-                          {restaurantName}
-                        </dd>
+                        <dd className="text-right font-medium">{restaurantName}</dd>
                       </div>
                       <div className="flex items-start justify-between gap-3">
                         <dt className="text-muted-foreground">Location</dt>
-                        <dd className="text-right font-medium">
-                          {selectedLabel}
-                        </dd>
+                        <dd className="text-right font-medium">{selectedLabel}</dd>
                       </div>
                       <div className="flex items-start justify-between gap-3">
                         <dt className="text-muted-foreground">Name</dt>

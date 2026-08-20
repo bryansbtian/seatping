@@ -2,11 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { Business, Location } from "@prisma/client";
 import { api } from "../helpers/app.js";
 import { businessCookie } from "../helpers/auth.js";
-import {
-  clearTestDatabase,
-  disconnectTestPrisma,
-  getTestPrisma,
-} from "../helpers/db.js";
+import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
 import { seedBusinessWithLocation, uniqueSuffix } from "../helpers/seed.js";
 import { sinks } from "../setup/externalMocks.js";
 
@@ -108,7 +104,9 @@ describe("campaign test sends", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send-test`)
       .set("Cookie", businessCookie(business.id))
       .send({});
@@ -124,7 +122,9 @@ describe("campaign test sends", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send-test`)
       .set("Cookie", businessCookie(business.id))
       .send({ testEmail: "  owner@test.invalid  " });
@@ -140,7 +140,9 @@ describe("campaign test sends", () => {
       channel: "WHATSAPP",
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send-test`)
       .set("Cookie", businessCookie(business.id))
       .send({ testPhone: "+62 812-3456-7890" });
@@ -160,7 +162,9 @@ describe("campaign test sends", () => {
       channel: "SMS",
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send-test`)
       .set("Cookie", businessCookie(business.id))
       .send({});
@@ -183,7 +187,9 @@ describe("campaign test sends", () => {
     });
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send-test`)
       .set("Cookie", businessCookie(business.id))
       .send({});
@@ -206,7 +212,9 @@ describe("campaign test sends", () => {
     });
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send-test`)
       .set("Cookie", businessCookie(business.id))
       .send({});
@@ -221,7 +229,9 @@ describe("campaign test sends", () => {
     const campaign = await seedCampaign(business, location, template.id);
     await db.campaignTemplate.delete({ where: { id: template.id } });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send-test`)
       .set("Cookie", businessCookie(business.id))
       .send({});
@@ -233,7 +243,9 @@ describe("campaign test sends", () => {
   it("reports an unknown campaign", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns/000000000000000000000000/send-test")
       .set("Cookie", businessCookie(business.id))
       .send({});
@@ -246,7 +258,9 @@ describe("email delivery diagnostics", () => {
   it("requires at least one address", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns/debug/email-test")
       .set("Cookie", businessCookie(business.id))
       .send({ emails: [] });
@@ -258,7 +272,9 @@ describe("email delivery diagnostics", () => {
   it("reports a per-address delivery result", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns/debug/email-test")
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -281,7 +297,9 @@ describe("email delivery diagnostics", () => {
       return `bulk-${i}@test.invalid`;
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/api/campaigns/debug/email-test")
       .set("Cookie", businessCookie(business.id))
       .send({ emails });
@@ -298,7 +316,9 @@ describe("sending a campaign now", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "NOW" });
@@ -318,7 +338,9 @@ describe("sending a campaign now", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({});
@@ -336,12 +358,11 @@ describe("sending a campaign now", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
     const cookie = businessCookie(business.id);
-    await (await api())
-      .post(`/api/campaigns/${campaign.id}/send`)
-      .set("Cookie", cookie)
-      .send({});
+    await (await api()).post(`/api/campaigns/${campaign.id}/send`).set("Cookie", cookie).send({});
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", cookie)
       .send({});
@@ -356,7 +377,9 @@ describe("scheduling a campaign", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "SCHEDULED", scheduledLocal: "not a date" });
@@ -370,7 +393,9 @@ describe("scheduling a campaign", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "SCHEDULED", scheduledLocal: wallClock(-60) });
@@ -384,7 +409,9 @@ describe("scheduling a campaign", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "SCHEDULED", scheduledLocal: wallClock(120) });
@@ -403,7 +430,9 @@ describe("scheduling a campaign", () => {
       status: "SENDING",
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "SCHEDULED", scheduledLocal: wallClock(120) });
@@ -418,7 +447,9 @@ describe("recurring campaigns", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({ sendMode: "RECURRING", recurrence: { frequency: "WEEKLY" } });
@@ -432,7 +463,9 @@ describe("recurring campaigns", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -453,7 +486,9 @@ describe("recurring campaigns", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -474,7 +509,9 @@ describe("recurring campaigns", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -495,7 +532,9 @@ describe("recurring campaigns", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    await (await api())
+    await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -512,7 +551,9 @@ describe("recurring campaigns", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -532,7 +573,9 @@ describe("recurring campaigns", () => {
       status: "SENDING",
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/send`)
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -556,10 +599,14 @@ describe("pausing and resuming", () => {
     });
     const cookie = businessCookie(business.id);
 
-    const paused = await (await api())
+    const paused = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/pause`)
       .set("Cookie", cookie);
-    const resumed = await (await api())
+    const resumed = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/resume`)
       .set("Cookie", cookie);
 
@@ -581,7 +628,9 @@ describe("pausing and resuming", () => {
       recurrenceEndAt: new Date(Date.now() - 30 * 1000),
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/resume`)
       .set("Cookie", businessCookie(business.id));
 
@@ -599,7 +648,9 @@ describe("pausing and resuming", () => {
       nextRunAt: new Date(Date.now() + 3600_000),
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(`/api/campaigns/${campaign.id}/cancel`)
       .set("Cookie", businessCookie(business.id));
 
@@ -616,7 +667,9 @@ describe("editing a campaign", () => {
       status: "SENDING",
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/campaigns/${campaign.id}`)
       .set("Cookie", businessCookie(business.id))
       .send({ name: "Renamed" });
@@ -630,7 +683,9 @@ describe("editing a campaign", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/campaigns/${campaign.id}`)
       .set("Cookie", businessCookie(business.id))
       .send({ name: "Renamed Campaign" });
@@ -646,7 +701,9 @@ describe("editing a campaign", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/campaigns/${campaign.id}`)
       .set("Cookie", businessCookie(business.id))
       .send({ channel: "PIGEON" });
@@ -663,14 +720,9 @@ describe("campaign detail", () => {
     const template = await seatpingTemplate();
     const campaign = await seedCampaign(business, location, template.id);
     const cookie = businessCookie(business.id);
-    await (await api())
-      .post(`/api/campaigns/${campaign.id}/send`)
-      .set("Cookie", cookie)
-      .send({});
+    await (await api()).post(`/api/campaigns/${campaign.id}/send`).set("Cookie", cookie).send({});
 
-    const res = await (await api())
-      .get(`/api/campaigns/${campaign.id}`)
-      .set("Cookie", cookie);
+    const res = await (await api()).get(`/api/campaigns/${campaign.id}`).set("Cookie", cookie);
 
     expect(res.status).toBe(200);
     expect(res.body.campaign.id).toBe(campaign.id);
@@ -683,7 +735,9 @@ describe("campaign detail", () => {
     const template = await seatpingTemplate();
     await seedCampaign(business, location, template.id);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/campaigns?locationId=${location.id}`)
       .set("Cookie", businessCookie(business.id));
 
@@ -696,7 +750,9 @@ describe("campaign detail", () => {
     const { business } = await seedBusinessWithLocation();
     const other = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/api/campaigns?locationId=${other.location.id}`)
       .set("Cookie", businessCookie(business.id));
 
@@ -705,10 +761,7 @@ describe("campaign detail", () => {
 });
 
 describe("custom template validation", () => {
-  async function createTemplate(
-    businessId: string,
-    body: Record<string, unknown>,
-  ) {
+  async function createTemplate(businessId: string, body: Record<string, unknown>) {
     return (await api())
       .post("/api/campaigns/templates")
       .set("Cookie", businessCookie(businessId))
@@ -802,7 +855,9 @@ describe("custom template validation", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/campaigns/templates/${template.id}`)
       .set("Cookie", businessCookie(business.id))
       .send({ name: template.name, body: "Hi {{first_name}}, we updated our menu." });
@@ -825,7 +880,9 @@ describe("custom template validation", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/campaigns/templates/${template.id}`)
       .set("Cookie", businessCookie(business.id))
       .send({ name: template.name, body: template.body, locationId: "" });
@@ -848,7 +905,9 @@ describe("custom template validation", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/api/campaigns/templates/${template.id}`)
       .set("Cookie", businessCookie(business.id))
       .send({

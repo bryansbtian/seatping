@@ -1,11 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  CalendarDays,
-  Contact,
-  ListOrdered,
-  Send,
-  type LucideIcon,
-} from "lucide-react";
+import { CalendarDays, Contact, ListOrdered, Send, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   SECTION_PADDING,
@@ -22,7 +16,6 @@ import {
   CampaignPreview,
 } from "@/components/landing/BentoProductPreviews";
 
-
 export type BentoSize = "large" | "medium";
 
 export type BentoRevealState = "hidden" | "instant" | "animate";
@@ -32,7 +25,6 @@ export interface BentoCardProps {
   reveal?: BentoRevealState;
   className?: string;
 }
-
 
 export function BentoFeatureCard({
   icon: Icon,
@@ -86,10 +78,7 @@ export function BentoFeatureCard({
         </span>
         <h3 className={CARD_TITLE}>{title}</h3>
       </div>
-      <p className={cn("mt-2.5 max-w-xl", CARD_DESCRIPTION, descriptionClassName)}>
-        {description}
-      </p>
-      {}
+      <p className={cn("mt-2.5 max-w-xl", CARD_DESCRIPTION, descriptionClassName)}>{description}</p>
       <div
         aria-hidden
         className={cn(
@@ -103,7 +92,6 @@ export function BentoFeatureCard({
     </article>
   );
 }
-
 
 export function ReservationFeatureCard(props: BentoCardProps) {
   return (
@@ -161,13 +149,12 @@ export function CampaignsFeatureCard(props: BentoCardProps) {
   );
 }
 
-export const BUSINESS_BENTO_CARDS: React.ComponentType<BentoCardProps>[] = [
+const BUSINESS_BENTO_CARDS: React.ComponentType<BentoCardProps>[] = [
   ReservationFeatureCard,
   GuestCrmFeatureCard,
   LiveQueueFeatureCard,
   CampaignsFeatureCard,
 ];
-
 
 interface AnimatedBentoFeatureGridProps {
   eyebrow?: React.ReactNode;
@@ -243,7 +230,6 @@ export default function AnimatedBentoFeatureGrid({
         className,
       )}
     >
-      {}
       <div
         aria-hidden
         className="pointer-events-none absolute -top-24 right-0 h-72 w-[36rem] max-w-[90vw] rounded-full bg-indigo-100/40 blur-3xl"
@@ -257,9 +243,7 @@ export default function AnimatedBentoFeatureGrid({
             </p>
           )}
           <h2 className={cn(eyebrow && "mt-3", SECTION_HEADING)}>{heading}</h2>
-          {subtitle && (
-            <p className={cn("mt-4 max-w-2xl", SECTION_SUBTITLE)}>{subtitle}</p>
-          )}
+          {subtitle && <p className={cn("mt-4 max-w-2xl", SECTION_SUBTITLE)}>{subtitle}</p>}
         </div>
 
         <div

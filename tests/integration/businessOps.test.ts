@@ -25,7 +25,9 @@ describe("business location management", () => {
     const business = await seedBusiness({ maxLocations: 5 });
     const suffix = uniqueSuffix();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/business/locations")
       .set("Cookie", businessCookie(business.id))
       .send({ displayName: `Branch ${suffix}`, address: `${suffix} Main Street` });
@@ -39,7 +41,9 @@ describe("business location management", () => {
   it("requires an address", async () => {
     const business = await seedBusiness();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/business/locations")
       .set("Cookie", businessCookie(business.id))
       .send({ displayName: "No address" });
@@ -51,7 +55,9 @@ describe("business location management", () => {
   it("requires a display name", async () => {
     const business = await seedBusiness();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/business/locations")
       .set("Cookie", businessCookie(business.id))
       .send({ address: "1 Nameless Road" });
@@ -63,13 +69,17 @@ describe("business location management", () => {
     const business = await seedBusiness({ maxLocations: 1 });
     const cookie = businessCookie(business.id);
 
-    const first = await (await api())
+    const first = await (
+      await api()
+    )
       .post("/auth/business/locations")
       .set("Cookie", cookie)
       .send({ displayName: "One", address: "1 First Street" });
     expect(first.status).toBe(200);
 
-    const second = await (await api())
+    const second = await (
+      await api()
+    )
       .post("/auth/business/locations")
       .set("Cookie", cookie)
       .send({ displayName: "Two", address: "2 Second Street" });
@@ -79,7 +89,9 @@ describe("business location management", () => {
   });
 
   it("rejects an unauthenticated location create", async () => {
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post("/auth/business/locations")
       .send({ displayName: "Anon", address: "1 Anon Street" });
 
@@ -89,7 +101,9 @@ describe("business location management", () => {
   it("updates a location the business owns", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put(`/auth/business/locations/${location.id}`)
       .set("Cookie", businessCookie(business.id))
       .send({ address: "99 Updated Street" });
@@ -102,7 +116,9 @@ describe("business location management", () => {
   it("updates reservation settings on a location", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put(`/auth/business/locations/${location.id}`)
       .set("Cookie", businessCookie(business.id))
       .send({
@@ -128,7 +144,9 @@ describe("business location management", () => {
   it("returns a client error when updating an unknown location", async () => {
     const business = await seedBusiness();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .put("/auth/business/locations/000000000000000000000000")
       .set("Cookie", businessCookie(business.id))
       .send({ address: "Nowhere" });
@@ -146,10 +164,10 @@ describe("business queue management", () => {
       finalStatus: "pending",
     });
 
-    const res = await (await api())
-      .post(
-        `/auth/business/${business.username}/admitted/${entry.legacyKey}/confirm-arrival`,
-      )
+    const res = await (
+      await api()
+    )
+      .post(`/auth/business/${business.username}/admitted/${entry.legacyKey}/confirm-arrival`)
       .set("Cookie", businessCookie(business.id));
 
     expect(res.status).toBe(200);
@@ -162,10 +180,10 @@ describe("business queue management", () => {
     const { business, location } = await seedBusinessWithLocation();
     const entry = await seedQueueEntry(location);
 
-    const res = await (await api())
-      .post(
-        `/auth/business/${business.username}/admitted/${entry.legacyKey}/confirm-arrival`,
-      )
+    const res = await (
+      await api()
+    )
+      .post(`/auth/business/${business.username}/admitted/${entry.legacyKey}/confirm-arrival`)
       .set("Cookie", businessCookie(business.id));
 
     expect(res.status).toBeGreaterThanOrEqual(400);
@@ -177,9 +195,9 @@ describe("business queue management", () => {
     const { business, location } = await seedBusinessWithLocation();
     const entry = await seedQueueEntry(location);
 
-    const res = await (await api()).post(
-      `/auth/business/${business.username}/queue/${entry.legacyKey}/leave`,
-    );
+    const res = await (
+      await api()
+    ).post(`/auth/business/${business.username}/queue/${entry.legacyKey}/leave`);
 
     expect(res.status).toBeLessThan(500);
     const stored = await db.queueEntry.findUnique({ where: { id: entry.id } });
@@ -190,9 +208,9 @@ describe("business queue management", () => {
     const { business, location } = await seedBusinessWithLocation();
     const entry = await seedQueueEntry(location);
 
-    const res = await (await api()).get(
-      `/auth/business/${business.username}/queue/${entry.legacyKey}/status`,
-    );
+    const res = await (
+      await api()
+    ).get(`/auth/business/${business.username}/queue/${entry.legacyKey}/status`);
 
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toMatch(/application\/json/);
@@ -202,9 +220,9 @@ describe("business queue management", () => {
     const { business, location } = await seedBusinessWithLocation();
     const entry = await seedQueueEntry(location);
 
-    const res = await (await api()).get(
-      `/auth/business/${business.username}/queue/token/${entry.queueToken}/eta`,
-    );
+    const res = await (
+      await api()
+    ).get(`/auth/business/${business.username}/queue/token/${entry.queueToken}/eta`);
 
     expect(res.status).toBe(200);
   });
@@ -213,7 +231,9 @@ describe("business queue management", () => {
     const { business, location } = await seedBusinessWithLocation();
     await seedQueueEntry(location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(`/auth/business/${business.username}/locations/${location.id}/queue-etas`)
       .set("Cookie", businessCookie(business.id));
 
@@ -224,7 +244,9 @@ describe("business queue management", () => {
     const tenantA = await seedBusinessWithLocation();
     const tenantB = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(
         `/auth/business/${tenantB.business.username}/locations/${tenantA.location.id}/queue-etas`,
       )
@@ -240,22 +262,24 @@ describe("customer saved restaurants and reviews", () => {
     const { location } = await seedBusinessWithLocation();
     const cookie = customerCookie(customer.id);
 
-    const saved = await (await api())
+    const saved = await (
+      await api()
+    )
       .post("/auth/me/saved-locations")
       .set("Cookie", cookie)
       .send({ locationId: location.id });
     expect(saved.status).toBeLessThan(500);
 
-    const check = await (await api())
+    const check = await (
+      await api()
+    )
       .get(`/auth/me/saved-locations/${location.id}`)
       .set("Cookie", cookie);
     expect(check.status).toBeLessThan(500);
   });
 
   it("rejects saved-location access without a customer session", async () => {
-    const res = await (await api()).get(
-      "/auth/me/saved-locations/000000000000000000000000",
-    );
+    const res = await (await api()).get("/auth/me/saved-locations/000000000000000000000000");
 
     expect(res.status).toBe(401);
   });
@@ -263,7 +287,9 @@ describe("customer saved restaurants and reviews", () => {
   it("lists reviews for the authenticated customer", async () => {
     const customer = await seedCustomer();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get("/auth/me/reviews")
       .set("Cookie", customerCookie(customer.id));
 
@@ -285,7 +311,9 @@ describe("customer saved restaurants and reviews", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .patch(`/auth/me/reviews/${review.id}`)
       .set("Cookie", customerCookie(customer.id))
       .send({ rating: 1, description: "Hijacked" });
@@ -309,7 +337,9 @@ describe("customer saved restaurants and reviews", () => {
       },
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(`/auth/me/reviews/${review.id}`)
       .set("Cookie", customerCookie(customer.id));
 

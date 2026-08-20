@@ -2,16 +2,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { Business, Location } from "@prisma/client";
 import { api } from "../helpers/app.js";
 import { businessCookie } from "../helpers/auth.js";
-import {
-  clearTestDatabase,
-  disconnectTestPrisma,
-  getTestPrisma,
-} from "../helpers/db.js";
-import {
-  seedBusinessWithLocation,
-  seedQueueEntry,
-  uniqueSuffix,
-} from "../helpers/seed.js";
+import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
+import { seedBusinessWithLocation, seedQueueEntry, uniqueSuffix } from "../helpers/seed.js";
 
 const db = getTestPrisma();
 
@@ -49,16 +41,16 @@ describe("admitting a waiting guest", () => {
     const entry = await waiting(location);
     const cookie = businessCookie(business.id);
 
-    const admit = await (await api())
+    const admit = await (
+      await api()
+    )
       .post(queuePath(business, entry.legacyKey, "admit"))
       .set("Cookie", cookie);
 
     expect(admit.status).toBe(200);
     expect(admit.body.success).toBe(true);
 
-    const status = await (await api()).get(
-      queuePath(business, entry.legacyKey, "status"),
-    );
+    const status = await (await api()).get(queuePath(business, entry.legacyKey, "status"));
     expect(status.body.admitted).toBe(true);
     expect(status.body.turnExpiresAt).toEqual(expect.any(String));
     expect(status.body.expired).toBe(false);
@@ -72,9 +64,7 @@ describe("admitting a waiting guest", () => {
       finalStatus: "pending",
     });
 
-    const status = await (await api()).get(
-      queuePath(business, entry.legacyKey, "status"),
-    );
+    const status = await (await api()).get(queuePath(business, entry.legacyKey, "status"));
 
     expect(status.body.admitted).toBe(true);
     expect(status.body.expired).toBe(true);
@@ -84,7 +74,9 @@ describe("admitting a waiting guest", () => {
   it("rejects an admit with a blank customer key", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(queuePath(business, "%20", "admit"))
       .set("Cookie", businessCookie(business.id));
 
@@ -96,7 +88,9 @@ describe("admitting a waiting guest", () => {
     const tenantB = await seedBusinessWithLocation();
     const entry = await waiting(tenantA.location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(queuePath(tenantA.business, entry.legacyKey, "admit"))
       .set("Cookie", businessCookie(tenantB.business.id));
 
@@ -113,7 +107,9 @@ describe("confirming arrival", () => {
       finalStatus: "pending",
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(admittedPath(business, entry.legacyKey, "confirm-arrival"))
       .set("Cookie", businessCookie(business.id));
 
@@ -131,9 +127,7 @@ describe("confirming arrival", () => {
       arrivedAt: new Date(),
     });
 
-    const res = await (await api()).get(
-      queuePath(business, entry.legacyKey, "status"),
-    );
+    const res = await (await api()).get(queuePath(business, entry.legacyKey, "status"));
 
     expect(res.body.checkedIn).toBe(true);
     expect(res.body.status).toBe("arrived");
@@ -143,7 +137,9 @@ describe("confirming arrival", () => {
     const { business, location } = await seedBusinessWithLocation();
     const entry = await waiting(location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(admittedPath(business, entry.legacyKey, "confirm-arrival"))
       .set("Cookie", businessCookie(business.id));
 
@@ -154,7 +150,9 @@ describe("confirming arrival", () => {
   it("rejects a blank customer key", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(admittedPath(business, "%20", "confirm-arrival"))
       .set("Cookie", businessCookie(business.id));
 
@@ -171,7 +169,9 @@ describe("marking an admitted guest as a no-show", () => {
       finalStatus: "pending",
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(admittedPath(business, entry.legacyKey, "mark-no-show"))
       .set("Cookie", businessCookie(business.id));
 
@@ -189,9 +189,7 @@ describe("marking an admitted guest as a no-show", () => {
       noShowAt: new Date(),
     });
 
-    const res = await (await api()).get(
-      queuePath(business, entry.legacyKey, "status"),
-    );
+    const res = await (await api()).get(queuePath(business, entry.legacyKey, "status"));
 
     expect(res.body.removed).toBe(true);
     expect(res.body.status).toBe("no_show");
@@ -201,7 +199,9 @@ describe("marking an admitted guest as a no-show", () => {
     const { business, location } = await seedBusinessWithLocation();
     const entry = await waiting(location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(admittedPath(business, entry.legacyKey, "mark-no-show"))
       .set("Cookie", businessCookie(business.id));
 
@@ -211,7 +211,9 @@ describe("marking an admitted guest as a no-show", () => {
   it("rejects a blank customer key", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .post(admittedPath(business, "%20", "mark-no-show"))
       .set("Cookie", businessCookie(business.id));
 
@@ -224,7 +226,9 @@ describe("removing a guest from the queue", () => {
     const { business, location } = await seedBusinessWithLocation();
     const entry = await waiting(location);
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(queuePath(business, entry.legacyKey))
       .set("Cookie", businessCookie(business.id));
 
@@ -242,7 +246,9 @@ describe("removing a guest from the queue", () => {
       finalStatus: "pending",
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(queuePath(business, entry.legacyKey))
       .set("Cookie", businessCookie(business.id));
 
@@ -256,7 +262,9 @@ describe("removing a guest from the queue", () => {
       leftAt: new Date(),
     });
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(queuePath(business, entry.legacyKey))
       .set("Cookie", businessCookie(business.id));
 
@@ -266,7 +274,9 @@ describe("removing a guest from the queue", () => {
   it("rejects a blank customer key", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .delete(queuePath(business, "%20"))
       .set("Cookie", businessCookie(business.id));
 
@@ -279,9 +289,7 @@ describe("a guest leaving the queue", () => {
     const { business, location } = await seedBusinessWithLocation();
     const entry = await waiting(location);
 
-    const res = await (await api()).post(
-      queuePath(business, entry.legacyKey, "leave"),
-    );
+    const res = await (await api()).post(queuePath(business, entry.legacyKey, "leave"));
 
     expect(res.status).toBe(200);
     expect(res.body.message).toBe("You have left the queue");
@@ -296,9 +304,7 @@ describe("a guest leaving the queue", () => {
       leftAt: new Date(),
     });
 
-    const res = await (await api()).get(
-      queuePath(business, entry.legacyKey, "status"),
-    );
+    const res = await (await api()).get(queuePath(business, entry.legacyKey, "status"));
 
     expect(res.body.removed).toBe(true);
     expect(res.body.status).toBe("left");
@@ -312,9 +318,7 @@ describe("a guest leaving the queue", () => {
       removedAt: new Date(),
     });
 
-    const res = await (await api()).get(
-      queuePath(business, entry.legacyKey, "status"),
-    );
+    const res = await (await api()).get(queuePath(business, entry.legacyKey, "status"));
 
     expect(res.body.status).toBe("removed");
   });
@@ -327,9 +331,7 @@ describe("a guest leaving the queue", () => {
       arrivedAt: new Date(),
     });
 
-    const res = await (await api()).post(
-      queuePath(business, entry.legacyKey, "leave"),
-    );
+    const res = await (await api()).post(queuePath(business, entry.legacyKey, "leave"));
 
     expect(res.status).toBe(404);
   });
@@ -343,9 +345,7 @@ describe("a guest leaving the queue", () => {
   });
 
   it("reports an unknown business", async () => {
-    const res = await (await api()).post(
-      "/auth/business/no-such-business/queue/some-key/leave",
-    );
+    const res = await (await api()).post("/auth/business/no-such-business/queue/some-key/leave");
 
     expect(res.status).toBe(404);
   });
@@ -357,9 +357,7 @@ describe("public queue status", () => {
     await waiting(location, { joinedAt: new Date(Date.now() - 60_000) });
     const second = await waiting(location, { joinedAt: new Date() });
 
-    const res = await (await api()).get(
-      queuePath(business, second.legacyKey, "status"),
-    );
+    const res = await (await api()).get(queuePath(business, second.legacyKey, "status"));
 
     expect(res.body.position).toBe(2);
     expect(res.body.admitted).toBe(false);
@@ -383,9 +381,7 @@ describe("public queue status", () => {
   it("reports a guest it has never seen", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
-      queuePath(business, "never-queued", "status"),
-    );
+    const res = await (await api()).get(queuePath(business, "never-queued", "status"));
 
     expect(res.status).toBe(200);
     expect(res.body.message).toBe("Customer not found");
@@ -400,9 +396,7 @@ describe("public queue status", () => {
   });
 
   it("reports an unknown business", async () => {
-    const res = await (await api()).get(
-      "/auth/business/no-such-business/queue/some-key/status",
-    );
+    const res = await (await api()).get("/auth/business/no-such-business/queue/some-key/status");
 
     expect(res.status).toBe(404);
   });
@@ -413,9 +407,9 @@ describe("queue wait estimates", () => {
     const { business, location } = await seedBusinessWithLocation();
     const entry = await waiting(location);
 
-    const res = await (await api()).get(
-      `/auth/business/${business.username}/queue/token/${entry.queueToken}/eta`,
-    );
+    const res = await (
+      await api()
+    ).get(`/auth/business/${business.username}/queue/token/${entry.queueToken}/eta`);
 
     expect(res.status).toBe(200);
     expect(res.body.eta).toBeDefined();
@@ -428,9 +422,9 @@ describe("queue wait estimates", () => {
       leftAt: new Date(),
     });
 
-    const res = await (await api()).get(
-      `/auth/business/${business.username}/queue/token/${entry.queueToken}/eta`,
-    );
+    const res = await (
+      await api()
+    ).get(`/auth/business/${business.username}/queue/token/${entry.queueToken}/eta`);
 
     expect(res.status).toBe(404);
   });
@@ -438,9 +432,9 @@ describe("queue wait estimates", () => {
   it("reports an unknown token", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
-      `/auth/business/${business.username}/queue/token/not-a-real-token/eta`,
-    );
+    const res = await (
+      await api()
+    ).get(`/auth/business/${business.username}/queue/token/not-a-real-token/eta`);
 
     expect(res.status).toBe(404);
   });
@@ -448,17 +442,13 @@ describe("queue wait estimates", () => {
   it("rejects a blank token", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
-      `/auth/business/${business.username}/queue/token/%20/eta`,
-    );
+    const res = await (await api()).get(`/auth/business/${business.username}/queue/token/%20/eta`);
 
     expect(res.status).toBe(400);
   });
 
   it("reports an unknown business", async () => {
-    const res = await (await api()).get(
-      "/auth/business/no-such-business/queue/token/abc/eta",
-    );
+    const res = await (await api()).get("/auth/business/no-such-business/queue/token/abc/eta");
 
     expect(res.status).toBe(404);
   });
@@ -468,10 +458,10 @@ describe("queue wait estimates", () => {
     await waiting(location);
     await waiting(location);
 
-    const res = await (await api())
-      .get(
-        `/auth/business/${business.username}/locations/${location.id}/queue-etas`,
-      )
+    const res = await (
+      await api()
+    )
+      .get(`/auth/business/${business.username}/locations/${location.id}/queue-etas`)
       .set("Cookie", businessCookie(business.id));
 
     expect(res.status).toBe(200);
@@ -482,7 +472,9 @@ describe("queue wait estimates", () => {
     const tenantA = await seedBusinessWithLocation();
     const tenantB = await seedBusinessWithLocation();
 
-    const res = await (await api())
+    const res = await (
+      await api()
+    )
       .get(
         `/auth/business/${tenantA.business.username}/locations/${tenantA.location.id}/queue-etas`,
       )
@@ -496,18 +488,14 @@ describe("business address directory", () => {
   it("lists the addresses of a business", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
-    const res = await (await api()).get(
-      `/auth/business/${business.username}/addresses`,
-    );
+    const res = await (await api()).get(`/auth/business/${business.username}/addresses`);
 
     expect(res.status).toBe(200);
     expect(JSON.stringify(res.body)).toContain(location.id);
   });
 
   it("reports an unknown business", async () => {
-    const res = await (await api()).get(
-      "/auth/business/no-such-business/addresses",
-    );
+    const res = await (await api()).get("/auth/business/no-such-business/addresses");
 
     expect(res.status).toBe(404);
   });
@@ -515,14 +503,12 @@ describe("business address directory", () => {
 
 describe("provider webhooks and diagnostics", () => {
   it("acknowledges a Telnyx delivery event", async () => {
-    const res = await (await api())
-      .post("/auth/telnyx/webhook")
-      .send({
-        data: {
-          event_type: "message.finalized",
-          payload: { id: "msg-1", to: [{ status: "delivered" }] },
-        },
-      });
+    const res = await (await api()).post("/auth/telnyx/webhook").send({
+      data: {
+        event_type: "message.finalized",
+        payload: { id: "msg-1", to: [{ status: "delivered" }] },
+      },
+    });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ received: true });

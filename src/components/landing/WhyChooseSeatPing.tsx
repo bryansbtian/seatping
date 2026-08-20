@@ -66,8 +66,7 @@ function FeatureAccordion() {
         if (active) {
           buttonStateClass = "border-slate-300 bg-slate-100/80 shadow-sm";
         } else {
-          buttonStateClass =
-            "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50";
+          buttonStateClass = "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50";
         }
         let iconStateClass: string;
         if (active) {
@@ -110,16 +109,8 @@ function FeatureAccordion() {
               <span className={cn("flex-1", CARD_TITLE)}>{item.title}</span>
               <span className="shrink-0 text-slate-400">{toggleIcon}</span>
             </div>
-            {}
-            <div
-              className={cn(
-                "grid transition-all duration-300 ease-out",
-                bodyStateClass,
-              )}
-            >
-              <p className={cn("overflow-hidden pl-12", CARD_DESCRIPTION)}>
-                {item.body}
-              </p>
+            <div className={cn("grid transition-all duration-300 ease-out", bodyStateClass)}>
+              <p className={cn("overflow-hidden pl-12", CARD_DESCRIPTION)}>{item.body}</p>
             </div>
           </button>
         );
@@ -154,31 +145,13 @@ function MiniBarChart({
   return (
     <svg viewBox="0 0 270 116" className="mt-2 w-full" aria-hidden>
       {yTicks.map((t) => (
-        <text
-          key={t}
-          x="18"
-          y={y(t) + 3}
-          textAnchor="end"
-          fontSize="8"
-          fill="#94a3b8"
-        >
+        <text key={t} x="18" y={y(t) + 3} textAnchor="end" fontSize="8" fill="#94a3b8">
           {t}
         </text>
       ))}
-      <line
-        x1={left}
-        y1={base}
-        x2={right}
-        y2={base}
-        stroke="#f1f5f9"
-        strokeWidth="1"
-      />
+      <line x1={left} y1={base} x2={right} y2={base} stroke="#f1f5f9" strokeWidth="1" />
       {data.map((d, i) => (
-        <path
-          key={d.label}
-          d={barPath(left + slot * i + slot / 2, y(d.value))}
-          fill={color}
-        />
+        <path key={d.label} d={barPath(left + slot * i + slot / 2, y(d.value))} fill={color} />
       ))}
       {data.map((d, i) => (
         <text
@@ -220,7 +193,6 @@ function ServiceSnapshot({ className }: { className?: string }) {
       )}
     >
       <div className="mx-auto max-w-sm space-y-3">
-        {}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5">
           <div className="flex items-center gap-1.5">
             <Clock className="h-4 w-4 text-slate-700" />
@@ -229,25 +201,15 @@ function ServiceSnapshot({ className }: { className?: string }) {
           <p className="mt-0.5 text-[11px] text-slate-500">
             When does your business get the most traffic?
           </p>
-          <MiniBarChart
-            data={peakHours}
-            color="#4f46e5"
-            max={24}
-            yTicks={[0, 6, 12, 18, 24]}
-          />
+          <MiniBarChart data={peakHours} color="#4f46e5" max={24} yTicks={[0, 6, 12, 18, 24]} />
         </div>
 
-        {}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5">
           <div className="flex items-center gap-1.5">
             <BarChart3 className="h-4 w-4 text-slate-700" />
-            <p className="text-sm font-semibold text-slate-900">
-              Wait Time Distribution
-            </p>
+            <p className="text-sm font-semibold text-slate-900">Wait Time Distribution</p>
           </div>
-          <p className="mt-0.5 text-[11px] text-slate-500">
-            How efficient is your service?
-          </p>
+          <p className="mt-0.5 text-[11px] text-slate-500">How efficient is your service?</p>
           <MiniBarChart
             data={waitDistribution}
             color="#64748b"
@@ -260,7 +222,6 @@ function ServiceSnapshot({ className }: { className?: string }) {
   );
 }
 
-
 export function SeatPingFeatureGrid() {
   return (
     <section
@@ -269,7 +230,6 @@ export function SeatPingFeatureGrid() {
         SECTION_PADDING,
       )}
     >
-      {}
       <div
         aria-hidden
         className="pointer-events-none absolute -bottom-24 left-0 h-72 w-[36rem] max-w-[90vw] rounded-full bg-indigo-100/40 blur-3xl"
@@ -277,7 +237,6 @@ export function SeatPingFeatureGrid() {
 
       <div className="container relative mx-auto max-w-6xl scroll-animate">
         <div className="grid grid-cols-1 gap-x-12 gap-y-8 lg:grid-cols-2">
-          {}
           <div>
             <SectionPill icon={Check}>Why SeatPing</SectionPill>
             <h2 className={cn("mt-4", SECTION_HEADING)}>
@@ -285,22 +244,19 @@ export function SeatPingFeatureGrid() {
             </h2>
           </div>
 
-          {}
           <div className="lg:flex lg:items-end lg:pb-3">
             <p className={cn("max-w-md", SECTION_SUBTITLE)}>
-              All the tools you need to manage queues, reservations, and guest
-              flow, beautifully designed and easy to use.
+              All the tools you need to manage queues, reservations, and guest flow, beautifully
+              designed and easy to use.
             </p>
           </div>
 
-          {}
           <div className="relative lg:pr-4">
             <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:pr-1">
               <FeatureAccordion />
             </div>
           </div>
 
-          {}
           <div className="flex items-center">
             <ServiceSnapshot className="w-full" />
           </div>

@@ -5,13 +5,7 @@ import { useLang } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,16 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  MapPin,
-  Plus,
-  Trash2,
-  Pencil,
-  Star,
-  QrCode,
-  Copy,
-  Download,
-} from "lucide-react";
+import { MapPin, Plus, Trash2, Pencil, Star, QrCode, Copy, Download } from "lucide-react";
 import QRCode from "qrcode";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import RestaurantProfileEditor from "@/components/RestaurantProfileEditor";
@@ -96,12 +81,11 @@ export default function LocationManagement({
   const [loading, setLoading] = useState(false);
   const [newLocationAddress, setNewLocationAddress] = useState("");
   const [newLocationDisplayName, setNewLocationDisplayName] = useState("");
-  const [newLocationPlace, setNewLocationPlace] = useState<PlaceDetails | null>(
+  const [newLocationPlace, setNewLocationPlace] = useState<PlaceDetails | null>(null);
+  const [editing, setEditing] = useState<Location | null>(null);
+  const [selectedLocationForReviews, setSelectedLocationForReviews] = useState<Location | null>(
     null,
   );
-  const [editing, setEditing] = useState<Location | null>(null);
-  const [selectedLocationForReviews, setSelectedLocationForReviews] =
-    useState<Location | null>(null);
   const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
   const [qrLocation, setQrLocation] = useState<Location | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
@@ -111,8 +95,7 @@ export default function LocationManagement({
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
-      }
-      else {
+      } else {
         next.add(id);
       }
       return next;
@@ -168,8 +151,7 @@ export default function LocationManagement({
     if (!qrDataUrl || !qrLocation) {
       return;
     }
-    const label =
-      qrLocation.displayName || qrLocation.name || qrLocation.id || "location";
+    const label = qrLocation.displayName || qrLocation.name || qrLocation.id || "location";
     const safe = label
       .toString()
       .toLowerCase()
@@ -250,9 +232,7 @@ export default function LocationManagement({
   const removeLocation = async (locationIndex: number) => {
     setLoading(true);
     try {
-      const updatedLocations = locations.filter(
-        (_, index) => index !== locationIndex,
-      );
+      const updatedLocations = locations.filter((_, index) => index !== locationIndex);
       const updated = await api("/auth/business/me", {
         method: "PUT",
         body: JSON.stringify({ locations: updatedLocations }),
@@ -293,21 +273,16 @@ export default function LocationManagement({
       <div className="text-center py-6 md:py-8">
         <MapPin className="w-10 h-10 md:w-12 md:h-12 text-gray-300 mx-auto mb-3 md:mb-4" />
         <p className="text-gray-500 text-sm md:text-base">{t("loc.none")}</p>
-        <p className="text-xs md:text-sm text-gray-400 mt-1">
-          {t("loc.none.help")}
-        </p>
+        <p className="text-xs md:text-sm text-gray-400 mt-1">{t("loc.none.help")}</p>
       </div>
     );
   } else {
     locationsContent = (
       <div className="space-y-3">
         {locations.map((location: Location, index: number) => {
-          const short =
-            location.shortAddress || deriveShortAddress(location.address);
+          const short = location.shortAddress || deriveShortAddress(location.address);
           const isExpanded = expandedIds.has(location.id);
-          const hasFullMore = Boolean(
-            location.address && location.address.trim() !== short.trim(),
-          );
+          const hasFullMore = Boolean(location.address && location.address.trim() !== short.trim());
           let fullAddressToggleLabel: string;
           if (isExpanded) {
             fullAddressToggleLabel = t("loc.hideFullAddress");
@@ -322,9 +297,7 @@ export default function LocationManagement({
               <div className="flex items-start space-x-3 min-w-0 flex-1">
                 <MapPin className="w-4 h-4 md:w-5 md:h-5 text-gray-400 flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1">
-                  {}
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    {}
                     <p className="font-medium text-gray-800 text-sm md:text-base break-words">
                       {location.displayName ||
                         location.name ||
@@ -336,12 +309,9 @@ export default function LocationManagement({
                     </span>
                   </div>
                   {!location.displayName && (
-                    <p className="text-xs text-amber-600">
-                      {t("loc.addDisplayNameHint")}
-                    </p>
+                    <p className="text-xs text-amber-600">{t("loc.addDisplayNameHint")}</p>
                   )}
 
-                  {}
                   {location.address && (
                     <>
                       <p
@@ -372,16 +342,13 @@ export default function LocationManagement({
                         )}
                       </div>
                       {isExpanded && (
-                        <p className="mt-1 text-xs text-gray-500 break-words">
-                          {location.address}
-                        </p>
+                        <p className="mt-1 text-xs text-gray-500 break-words">{location.address}</p>
                       )}
                     </>
                   )}
                 </div>
               </div>
 
-              {}
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end lg:gap-3 lg:shrink-0">
                 <Button
                   size="sm"
@@ -419,16 +386,12 @@ export default function LocationManagement({
                       disabled={loading}
                     >
                       <Trash2 size={16} className="mr-2 lg:mr-0" />
-                      <span className="lg:hidden">
-                        {t("loc.removeLocation")}
-                      </span>
+                      <span className="lg:hidden">{t("loc.removeLocation")}</span>
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="max-w-sm md:max-w-lg">
                     <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        {t("loc.removeLocation")}
-                      </AlertDialogTitle>
+                      <AlertDialogTitle>{t("loc.removeLocation")}</AlertDialogTitle>
                       <AlertDialogDescription>
                         {t("loc.remove.confirmBody", {
                           name: location.displayName || location.address,
@@ -460,11 +423,7 @@ export default function LocationManagement({
   let qrPreviewContent: ReactNode;
   if (qrDataUrl) {
     qrPreviewContent = (
-      <img
-        src={qrDataUrl}
-        alt={t("loc.qrModal.title")}
-        className="mx-auto h-56 w-56"
-      />
+      <img src={qrDataUrl} alt={t("loc.qrModal.title")} className="mx-auto h-56 w-56" />
     );
   } else {
     qrPreviewContent = (
@@ -485,9 +444,7 @@ export default function LocationManagement({
     <>
       <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
         <CardHeader className="p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-gray-800">
-            {t("loc.title")}
-          </CardTitle>
+          <CardTitle className="text-lg md:text-xl text-gray-800">{t("loc.title")}</CardTitle>
           <CardDescription className="text-gray-600 text-sm md:text-base">
             {t("loc.desc", {
               count: locations.length,
@@ -497,9 +454,7 @@ export default function LocationManagement({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 md:space-y-6 p-4 md:p-6 pt-0">
-          {}
           <div className="border border-dashed border-gray-300 rounded-lg p-4 md:p-6">
-            {}
             <div className="flex items-center justify-between gap-3 mb-3 md:mb-4">
               <h3 className="text-base md:text-lg font-semibold text-gray-800">
                 {t("loc.addNew")}
@@ -514,12 +469,8 @@ export default function LocationManagement({
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                {}
                 <div className="space-y-1.5">
-                  <Label
-                    htmlFor="newLocationDisplayName"
-                    className="text-sm md:text-base"
-                  >
+                  <Label htmlFor="newLocationDisplayName" className="text-sm md:text-base">
                     {t("loc.displayName")}
                   </Label>
                   <Input
@@ -530,12 +481,9 @@ export default function LocationManagement({
                     disabled={atMax}
                     className={`text-sm md:text-base ${atMaxFieldClass}`}
                   />
-                  <p className="text-xs text-gray-500">
-                    {t("loc.displayName.help")}
-                  </p>
+                  <p className="text-xs text-gray-500">{t("loc.displayName.help")}</p>
                 </div>
 
-                {}
                 <div className="space-y-1.5">
                   <Label htmlFor="newLocation" className="text-sm md:text-base">
                     {t("loc.searchAddress")}
@@ -562,7 +510,6 @@ export default function LocationManagement({
                   />
                 </div>
               </div>
-              {}
               <Button
                 onClick={addLocation}
                 disabled={loading || atMax}
@@ -571,14 +518,9 @@ export default function LocationManagement({
                 <Plus size={16} className="mr-2" /> {t("loc.addBtn")}
               </Button>
             </div>
-            {atMax && (
-              <p className="text-xs md:text-sm text-red-600 mt-2">
-                {t("loc.atMax")}
-              </p>
-            )}
+            {atMax && <p className="text-xs md:text-sm text-red-600 mt-2">{t("loc.atMax")}</p>}
           </div>
 
-          {}
           <div>
             <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-3 md:mb-4">
               {t("loc.current")}
@@ -588,7 +530,6 @@ export default function LocationManagement({
         </CardContent>
       </Card>
 
-      {}
       <Dialog
         open={!!editing}
         onOpenChange={(open) => {
@@ -597,13 +538,10 @@ export default function LocationManagement({
           }
         }}
       >
-        {}
         <DialogContent className="max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-2xl sm:max-w-2xl">
           <DialogHeader className="text-left">
             <DialogTitle>{t("loc.editProfile")}</DialogTitle>
-            <DialogDescription>
-              {editing?.displayName || editing?.address}
-            </DialogDescription>
+            <DialogDescription>{editing?.displayName || editing?.address}</DialogDescription>
           </DialogHeader>
           {editing && (
             <RestaurantProfileEditor
@@ -619,9 +557,7 @@ export default function LocationManagement({
                   if (!prev) {
                     return prev;
                   }
-                  const match = (u?.locations || []).find(
-                    (l: Location) => l.id === prev.id,
-                  );
+                  const match = (u?.locations || []).find((l: Location) => l.id === prev.id);
                   return match ?? prev;
                 });
               }}
@@ -630,7 +566,6 @@ export default function LocationManagement({
         </DialogContent>
       </Dialog>
 
-      {}
       <LocationReviewsModal
         location={selectedLocationForReviews}
         open={isReviewsModalOpen}
@@ -642,7 +577,6 @@ export default function LocationManagement({
         }}
       />
 
-      {}
       <Dialog
         open={!!qrLocation}
         onOpenChange={(open) => {
@@ -656,21 +590,17 @@ export default function LocationManagement({
           <DialogHeader>
             <DialogTitle>{t("loc.qrModal.title")}</DialogTitle>
             <DialogDescription>
-              {qrLocation?.displayName ||
-                qrLocation?.name ||
-                qrLocation?.address}
+              {qrLocation?.displayName || qrLocation?.name || qrLocation?.address}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {}
             <div className="flex justify-center">
               <div className="inline-block rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm">
                 {qrPreviewContent}
               </div>
             </div>
 
-            {}
             <div className="space-y-1.5">
               <Label className="text-sm">{t("loc.qrModal.queueLink")}</Label>
               <code className="block break-all rounded-md bg-gray-100 px-3 py-2 font-mono text-xs text-indigo-600">
@@ -678,26 +608,14 @@ export default function LocationManagement({
               </code>
             </div>
 
-            <p className="text-center text-xs text-gray-500">
-              {t("loc.qrModal.help")}
-            </p>
+            <p className="text-center text-xs text-gray-500">{t("loc.qrModal.help")}</p>
 
-            {}
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                variant="outline"
-                className="w-full sm:flex-1"
-                onClick={copyQueueLink}
-              >
+              <Button variant="outline" className="w-full sm:flex-1" onClick={copyQueueLink}>
                 <Copy size={16} className="mr-2" /> {t("loc.qrModal.copyLink")}
               </Button>
-              <Button
-                className="w-full sm:flex-1"
-                onClick={downloadQrCode}
-                disabled={!qrDataUrl}
-              >
-                <Download size={16} className="mr-2" />{" "}
-                {t("loc.qrModal.downloadQr")}
+              <Button className="w-full sm:flex-1" onClick={downloadQrCode} disabled={!qrDataUrl}>
+                <Download size={16} className="mr-2" /> {t("loc.qrModal.downloadQr")}
               </Button>
             </div>
           </div>

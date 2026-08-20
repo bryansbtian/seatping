@@ -70,9 +70,7 @@ describe("loadGoogleMaps", () => {
   it("rejects when no api key is configured", async () => {
     const { mod } = await loadMaps();
 
-    await expect(mod.loadGoogleMaps()).rejects.toThrow(
-      "VITE_GOOGLE_MAPS_API_KEY is not set",
-    );
+    await expect(mod.loadGoogleMaps()).rejects.toThrow("VITE_GOOGLE_MAPS_API_KEY is not set");
   });
 
   it("injects a places script that resolves through the jsonp callback", async () => {
@@ -222,18 +220,14 @@ describe("parsePlace", () => {
     expect(
       mod.parsePlace(
         place({
-          address_components: [
-            { long_name: "Regency", types: ["administrative_area_level_2"] },
-          ],
+          address_components: [{ long_name: "Regency", types: ["administrative_area_level_2"] }],
         }),
       ).city,
     ).toBe("Regency");
     expect(
       mod.parsePlace(
         place({
-          address_components: [
-            { long_name: "Province", types: ["administrative_area_level_1"] },
-          ],
+          address_components: [{ long_name: "Province", types: ["administrative_area_level_1"] }],
         }),
       ).city,
     ).toBe("Province");
@@ -265,9 +259,7 @@ describe("parsePlace", () => {
       }),
     );
 
-    expect(parsed.googleMapsUrl).toBe(
-      "https://www.google.com/maps/search/?api=1&query=-6.2,106.8",
-    );
+    expect(parsed.googleMapsUrl).toBe("https://www.google.com/maps/search/?api=1&query=-6.2,106.8");
   });
 
   it("leaves the maps url unset when there is neither a place id nor coordinates", async () => {
@@ -289,9 +281,9 @@ describe("parsePlace", () => {
   it("uses the place name when there is no formatted address", async () => {
     const { mod } = await loadMaps("maps-key");
 
-    expect(
-      mod.parsePlace({ name: "Test Bistro", formatted_address: "" }).address,
-    ).toBe("Test Bistro");
+    expect(mod.parsePlace({ name: "Test Bistro", formatted_address: "" }).address).toBe(
+      "Test Bistro",
+    );
     expect(mod.parsePlace({}).address).toBe("");
   });
 

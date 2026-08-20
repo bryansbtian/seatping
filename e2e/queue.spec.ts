@@ -22,37 +22,27 @@ test("a closed restaurant blocks queue joining in the browser and on the server"
 
   await openQueuePage(page, business.username, location.id);
 
-  await expect(
-    page.getByRole("heading", { name: "Restaurant Closed" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Restaurant Closed" })).toBeVisible();
   await expect(page.getByLabel("First Name")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Join Queue" })).toHaveCount(0);
 
-  const response = await page.request.post(
-    `/auth/business/${business.username}/queue`,
-    {
-      data: {
-        locationId: location.id,
-        firstName: guest.firstName,
-        lastName: guest.lastName,
-        numGuests: 2,
-        email: guest.email,
-        notificationMethod: "email",
-      },
+  const response = await page.request.post(`/auth/business/${business.username}/queue`, {
+    data: {
+      locationId: location.id,
+      firstName: guest.firstName,
+      lastName: guest.lastName,
+      numGuests: 2,
+      email: guest.email,
+      notificationMethod: "email",
     },
-  );
+  });
   expect(response.status()).toBe(400);
   expect((await response.json()).error).toContain("currently closed");
 
-  expect(
-    await db.prisma.queueEntry.count({ where: { locationId: location.id } }),
-  ).toBe(0);
+  expect(await db.prisma.queueEntry.count({ where: { locationId: location.id } })).toBe(0);
 });
 
-test("a customer joins the queue and reaches the live queue status view", async ({
-  page,
-  db,
-}) => {
+test("a customer joins the queue and reaches the live queue status view", async ({ page, db }) => {
   const { business, location } = await db.createBusinessWithLocation({
     restaurantProfile: publishedProfile("Open Diner", openAllDayEveryDay()),
   });
@@ -98,19 +88,16 @@ test("a second join with the same contact is rejected while the first entry is s
 
   await joinQueueThroughUi(page, business.username, location.id, guest);
 
-  const duplicate = await page.request.post(
-    `/auth/business/${business.username}/queue`,
-    {
-      data: {
-        locationId: location.id,
-        firstName: guest.firstName,
-        lastName: `${guest.lastName}Again`,
-        numGuests: 4,
-        email: guest.email,
-        notificationMethod: "email",
-      },
+  const duplicate = await page.request.post(`/auth/business/${business.username}/queue`, {
+    data: {
+      locationId: location.id,
+      firstName: guest.firstName,
+      lastName: `${guest.lastName}Again`,
+      numGuests: 4,
+      email: guest.email,
+      notificationMethod: "email",
     },
-  );
+  });
   expect(duplicate.status()).toBe(409);
   const body = await duplicate.json();
   expect(body.alreadyInQueue).toBe(true);
@@ -211,9 +198,7 @@ test("a business admits a waiting customer and the customer view switches to the
   await joinQueueThroughUi(page, business.username, location.id, guest);
   await openBusinessDashboard(extraPage, business);
 
-  await waitingCardFor(extraPage, guest)
-    .getByRole("button", { name: "Admit" })
-    .click();
+  await waitingCardFor(extraPage, guest).getByRole("button", { name: "Admit" }).click();
 
   await expect
     .poll(async () => {
@@ -249,12 +234,8 @@ test("an admitted customer marked arrived leaves the waiting queue for good", as
   await joinQueueThroughUi(page, business.username, location.id, guest);
   await openBusinessDashboard(extraPage, business);
 
-  await waitingCardFor(extraPage, guest)
-    .getByRole("button", { name: "Admit" })
-    .click();
-  await expect(
-    extraPage.getByRole("button", { name: "Arrived" }),
-  ).toBeVisible();
+  await waitingCardFor(extraPage, guest).getByRole("button", { name: "Admit" }).click();
+  await expect(extraPage.getByRole("button", { name: "Arrived" })).toBeVisible();
   await extraPage.getByRole("button", { name: "Arrived" }).click();
 
   await expect
@@ -278,9 +259,7 @@ test("an admitted customer marked arrived leaves the waiting queue for good", as
     }),
   ).toBe(0);
 
-  await expect(
-    extraPage.getByText("No customers in queue at this location."),
-  ).toBeVisible();
+  await expect(extraPage.getByText("No customers in queue at this location.")).toBeVisible();
   await expect(page.getByText("You're Checked In.")).toBeVisible();
 });
 
@@ -297,12 +276,8 @@ test("an admitted customer can be marked as a no-show and is removed from the ac
   await joinQueueThroughUi(page, business.username, location.id, guest);
   await openBusinessDashboard(extraPage, business);
 
-  await waitingCardFor(extraPage, guest)
-    .getByRole("button", { name: "Admit" })
-    .click();
-  await expect(
-    extraPage.getByRole("button", { name: "No Show" }),
-  ).toBeVisible();
+  await waitingCardFor(extraPage, guest).getByRole("button", { name: "Admit" }).click();
+  await expect(extraPage.getByRole("button", { name: "No Show" })).toBeVisible();
   await extraPage.getByRole("button", { name: "No Show" }).click();
 
   await expect
@@ -329,9 +304,7 @@ test("an admitted customer can be marked as a no-show and is removed from the ac
   await expect(
     extraPage.getByRole("heading", { name: "Awaiting Arrival Confirmation" }),
   ).toHaveCount(0);
-  await expect(
-    extraPage.getByText("No customers in queue at this location."),
-  ).toBeVisible();
+  await expect(extraPage.getByText("No customers in queue at this location.")).toBeVisible();
 
   const status = await page.request.get(
     `/auth/business/${business.username}/queue/token/${entry.queueToken}/status`,
@@ -370,18 +343,14 @@ test("a customer leaves the queue and disappears from the business active queue"
     where: { locationId: location.id, lastName: guest.lastName },
   });
   expect(entry.leftAt).not.toBeNull();
-  expect(entry.legacyKey).toBe(
-    legacyKeyOf(guest.firstName, guest.lastName, entry.joinedAt),
-  );
+  expect(entry.legacyKey).toBe(legacyKeyOf(guest.firstName, guest.lastName, entry.joinedAt));
 
-  await expect(
-    extraPage.getByText("No customers in queue at this location."),
-  ).toBeVisible({ timeout: 30_000 });
+  await expect(extraPage.getByText("No customers in queue at this location.")).toBeVisible({
+    timeout: 30_000,
+  });
   await expect(waitingCardFor(extraPage, guest)).toHaveCount(0);
 
   const recentlyLeft = dashboardCard(extraPage, "Recently Left Customers");
   await expect(recentlyLeft.getByText(fullNameOf(guest))).toBeVisible();
-  await expect(
-    recentlyLeft.getByText("Left Queue").filter({ visible: true }),
-  ).toBeVisible();
+  await expect(recentlyLeft.getByText("Left Queue").filter({ visible: true })).toBeVisible();
 });

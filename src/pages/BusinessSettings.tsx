@@ -1,12 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -41,8 +35,7 @@ const BusinessSettings = () => {
       try {
         const res = await api("/auth/business/me");
         setMe(res.user);
-      } catch {
-      }
+      } catch {}
     })();
   }, []);
 
@@ -53,14 +46,11 @@ const BusinessSettings = () => {
         description={BUSINESS_DESCRIPTION}
         image={BUSINESS_IMAGE}
       />
-      {}
       <BusinessHeader />
       <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100">
         <div className="container mx-auto px-4 py-8">
-          {}
           <BusinessTrialBanner me={me} />
 
-          {}
           {me &&
             !me.trial &&
             locations.length > 0 &&
@@ -89,18 +79,14 @@ const BusinessSettings = () => {
               </div>
             )}
 
-          {}
           <div className="mb-6">
             <h1 className="text-xl md:text-2xl font-semibold text-gray-800">
               {t("settings.title")}
             </h1>
-            <p className="text-gray-600 text-sm md:text-base">
-              {t("settings.subtitle")}
-            </p>
+            <p className="text-gray-600 text-sm md:text-base">{t("settings.subtitle")}</p>
           </div>
 
           <div className="space-y-4 md:space-y-6">
-            {}
             <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
               <CardHeader className="p-4 md:p-6">
                 <CardTitle className="text-lg md:text-xl text-gray-800">
@@ -113,10 +99,7 @@ const BusinessSettings = () => {
               <CardContent className="space-y-4 p-4 md:p-6 pt-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label
-                      htmlFor="businessName"
-                      className="text-sm md:text-base"
-                    >
+                    <Label htmlFor="businessName" className="text-sm md:text-base">
                       {t("settings.field.businessName")}
                     </Label>
                     <Input
@@ -163,7 +146,6 @@ const BusinessSettings = () => {
               </CardContent>
             </Card>
 
-            {}
             <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
               <CardHeader className="p-4 md:p-6">
                 <CardTitle className="text-lg md:text-xl text-gray-800">
@@ -178,7 +160,6 @@ const BusinessSettings = () => {
               </CardContent>
             </Card>
 
-            {}
             <LocationManagement me={me} onChanged={(u) => setMe(u)} />
           </div>
         </div>

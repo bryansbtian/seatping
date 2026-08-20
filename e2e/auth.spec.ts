@@ -17,9 +17,7 @@ test("a business signs in through the login form and reaches an authenticated da
   await expect(page).toHaveURL(/\/business\/dashboard$/);
   await expect(queueManagementHeading(page)).toBeVisible();
   await expect(
-    page
-      .getByText(`Managing queue for: ${location.displayName}`)
-      .filter({ visible: true }),
+    page.getByText(`Managing queue for: ${location.displayName}`).filter({ visible: true }),
   ).toBeVisible();
 
   const cookies = await page.context().cookies();
@@ -66,10 +64,9 @@ test("an unauthenticated visitor cannot use the business dashboard on the client
   const me = await page.request.get("/auth/business/me");
   expect(me.status()).toBe(401);
 
-  const mutation = await page.request.put(
-    `/auth/business/locations/${location.id}`,
-    { data: { queueEnabled: false } },
-  );
+  const mutation = await page.request.put(`/auth/business/locations/${location.id}`, {
+    data: { queueEnabled: false },
+  });
   expect(mutation.status()).toBe(401);
 
   const stored = await db.prisma.location.findUnique({
@@ -84,8 +81,7 @@ test("a signed in business cannot read or mutate another business's location, qu
   db,
 }) => {
   const { business: businessA } = await db.createBusinessWithLocation();
-  const { business: businessB, location: locationB } =
-    await db.createBusinessWithLocation();
+  const { business: businessB, location: locationB } = await db.createBusinessWithLocation();
 
   const entryB = await db.createQueueEntry(locationB, {
     firstName: "Victim",
@@ -95,15 +91,12 @@ test("a signed in business cannot read or mutate another business's location, qu
 
   await signInBusiness(page, businessA);
 
-  const readGuests = await page.request.get(
-    `/api/guests?locationId=${locationB.id}`,
-  );
+  const readGuests = await page.request.get(`/api/guests?locationId=${locationB.id}`);
   expect(readGuests.status()).toBe(404);
 
-  const updateLocation = await page.request.put(
-    `/auth/business/locations/${locationB.id}`,
-    { data: { queueEnabled: false } },
-  );
+  const updateLocation = await page.request.put(`/auth/business/locations/${locationB.id}`, {
+    data: { queueEnabled: false },
+  });
   expect(updateLocation.status()).toBe(404);
 
   const admit = await page.request.post(

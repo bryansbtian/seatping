@@ -8,9 +8,7 @@ export function isTrialExpired(business: any): boolean {
   if (typeof business.trialDurationDays === "number") {
     trialDurationDays = business.trialDurationDays;
   }
-  const trialEndDate = new Date(
-    createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000
-  );
+  const trialEndDate = new Date(createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000);
   const now = new Date();
 
   return now > trialEndDate;
@@ -68,10 +66,7 @@ export interface LocationDetailsInput {
   googleMapsUrl?: string;
 }
 
-export function buildLocationData(
-  business: any,
-  location: string | LocationDetailsInput
-): any {
+export function buildLocationData(business: any, location: string | LocationDetailsInput): any {
   const credits = getCreditsForLocation(business);
   const baseCredits = getBaseCreditsForUser(business);
   let d: LocationDetailsInput;
@@ -125,7 +120,7 @@ export async function enforceTrialExpiration(businessId: string): Promise<void> 
 
   if (isTrialExpired(business) && business.trial === true) {
     console.log(
-      `[TRIAL] Business ${business.id} trial expired and trial = true, enforcing 0 credits on all locations`
+      `[TRIAL] Business ${business.id} trial expired and trial = true, enforcing 0 credits on all locations`,
     );
 
     const result = await prisma.location.updateMany({
@@ -133,12 +128,10 @@ export async function enforceTrialExpiration(businessId: string): Promise<void> 
       data: { credits: 0 },
     });
 
-    console.log(
-      `[TRIAL] Zeroed credits on ${result.count} locations for business ${business.id}`
-    );
+    console.log(`[TRIAL] Zeroed credits on ${result.count} locations for business ${business.id}`);
   } else if (isTrialExpired(business) && business.trial === false) {
     console.log(
-      `[TRIAL] Business ${business.id} manually activated (trial = false), credits managed by monthly refill logic`
+      `[TRIAL] Business ${business.id} manually activated (trial = false), credits managed by monthly refill logic`,
     );
   } else {
     console.log(`[TRIAL] Business ${business.id} trial is still active`);
@@ -176,7 +169,7 @@ export async function refillCreditsForUser(businessId: string): Promise<void> {
   });
 
   console.log(
-    `[CREDITS] Refilled business ${businessId} (credits=${business.baseCredits}); nextCreditRefillAt=${nextRefill.toISOString()}`
+    `[CREDITS] Refilled business ${businessId} (credits=${business.baseCredits}); nextCreditRefillAt=${nextRefill.toISOString()}`,
   );
 }
 
@@ -202,14 +195,12 @@ async function backfillNextCreditRefillAt(business: {
     data: { nextCreditRefillAt: next },
   });
   console.log(
-    `[CREDITS] Backfilled nextCreditRefillAt for business ${business.id} -> ${next.toISOString()}`
+    `[CREDITS] Backfilled nextCreditRefillAt for business ${business.id} -> ${next.toISOString()}`,
   );
   return next;
 }
 
-export async function checkAndRefillMonthlyCredits(
-  businessId: string
-): Promise<void> {
+export async function checkAndRefillMonthlyCredits(businessId: string): Promise<void> {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
     select: {
@@ -277,6 +268,6 @@ export async function runDailyCreditRefillSweep(): Promise<void> {
   }
 
   console.log(
-    `[CREDIT-SWEEP] done — refilled=${dueBusinesses.length}, backfilled=${legacyBusinesses.length}`
+    `[CREDIT-SWEEP] done: refilled=${dueBusinesses.length}, backfilled=${legacyBusinesses.length}`,
   );
 }

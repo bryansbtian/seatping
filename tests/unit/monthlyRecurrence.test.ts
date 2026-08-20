@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  advanceRecurrence,
-  zonedDayOfMonth,
-} from "../../server/lib/campaigns.js";
+import { advanceRecurrence, zonedDayOfMonth } from "../../server/lib/campaigns.js";
 
 function utcDay(date: string, time = "T09:00:00.000Z"): Date {
   return new Date(`${date}${time}`);
@@ -12,11 +9,7 @@ function dayOf(instant: Date): string {
   return instant.toISOString().slice(0, 10);
 }
 
-function monthlySequence(
-  start: string,
-  steps: number,
-  timeZone = "UTC",
-): string[] {
+function monthlySequence(start: string, steps: number, timeZone = "UTC"): string[] {
   const anchorDay = zonedDayOfMonth(utcDay(start), timeZone);
   const out: string[] = [];
   let current = utcDay(start);
@@ -76,11 +69,7 @@ describe("monthly recurrence anchor day", () => {
   });
 
   it("clamps to the last day when no anchor is supplied", () => {
-    const next = advanceRecurrence(
-      utcDay("2027-01-31"),
-      "MONTHLY",
-      "UTC",
-    );
+    const next = advanceRecurrence(utcDay("2027-01-31"), "MONTHLY", "UTC");
 
     expect(dayOf(next)).toBe("2027-02-28");
   });
@@ -88,12 +77,7 @@ describe("monthly recurrence anchor day", () => {
 
 describe("monthly recurrence time and timezone semantics", () => {
   it("keeps the wall clock time of day", () => {
-    const next = advanceRecurrence(
-      new Date("2027-01-31T14:37:00.000Z"),
-      "MONTHLY",
-      "UTC",
-      31,
-    );
+    const next = advanceRecurrence(new Date("2027-01-31T14:37:00.000Z"), "MONTHLY", "UTC", 31);
 
     expect(next.toISOString()).toBe("2027-02-28T14:37:00.000Z");
   });
@@ -115,30 +99,20 @@ describe("monthly recurrence time and timezone semantics", () => {
 
 describe("daily and weekly recurrence", () => {
   it("crosses a month boundary by day", () => {
-    expect(
-      dayOf(advanceRecurrence(utcDay("2027-01-31"), "DAILY", "UTC")),
-    ).toBe("2027-02-01");
+    expect(dayOf(advanceRecurrence(utcDay("2027-01-31"), "DAILY", "UTC"))).toBe("2027-02-01");
   });
 
   it("crosses a month boundary by week", () => {
-    expect(
-      dayOf(advanceRecurrence(utcDay("2027-01-28"), "WEEKLY", "UTC")),
-    ).toBe("2027-02-04");
+    expect(dayOf(advanceRecurrence(utcDay("2027-01-28"), "WEEKLY", "UTC"))).toBe("2027-02-04");
   });
 
   it("ignores the monthly anchor for other frequencies", () => {
-    expect(
-      dayOf(advanceRecurrence(utcDay("2027-01-10"), "DAILY", "UTC", 31)),
-    ).toBe("2027-01-11");
-    expect(
-      dayOf(advanceRecurrence(utcDay("2027-01-10"), "WEEKLY", "UTC", 31)),
-    ).toBe("2027-01-17");
+    expect(dayOf(advanceRecurrence(utcDay("2027-01-10"), "DAILY", "UTC", 31))).toBe("2027-01-11");
+    expect(dayOf(advanceRecurrence(utcDay("2027-01-10"), "WEEKLY", "UTC", 31))).toBe("2027-01-17");
   });
 
   it("crosses a leap day by week", () => {
-    expect(
-      dayOf(advanceRecurrence(utcDay("2028-02-26"), "WEEKLY", "UTC")),
-    ).toBe("2028-03-04");
+    expect(dayOf(advanceRecurrence(utcDay("2028-02-26"), "WEEKLY", "UTC"))).toBe("2028-03-04");
   });
 });
 

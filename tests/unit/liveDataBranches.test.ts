@@ -71,9 +71,7 @@ function reservation(overrides: Record<string, unknown> = {}): Reservation {
 
 describe("legacyKeyOf", () => {
   it("joins the parts into one key", () => {
-    expect(legacyKeyOf("Ada", "Lovelace", "2026-08-12")).toBe(
-      "AdaLovelace2026-08-12",
-    );
+    expect(legacyKeyOf("Ada", "Lovelace", "2026-08-12")).toBe("AdaLovelace2026-08-12");
   });
 
   it("treats missing parts as empty", () => {
@@ -113,27 +111,19 @@ describe("queueEntryToLegacy", () => {
   });
 
   it("derives arrived and no-show final statuses", () => {
-    expect(queueEntryToLegacy(entry({ status: "ARRIVED" })).finalStatus).toBe(
-      "arrived",
-    );
-    expect(queueEntryToLegacy(entry({ status: "NO_SHOW" })).finalStatus).toBe(
-      "no_show",
-    );
+    expect(queueEntryToLegacy(entry({ status: "ARRIVED" })).finalStatus).toBe("arrived");
+    expect(queueEntryToLegacy(entry({ status: "NO_SHOW" })).finalStatus).toBe("no_show");
   });
 
   it("prefers a stored final status", () => {
-    const legacy = queueEntryToLegacy(
-      entry({ status: "ARRIVED", finalStatus: "seated" }),
-    );
+    const legacy = queueEntryToLegacy(entry({ status: "ARRIVED", finalStatus: "seated" }));
 
     expect(legacy.finalStatus).toBe("seated");
   });
 
   it("distinguishes a guest who left from one who was removed", () => {
     expect(queueEntryToLegacy(entry({ status: "LEFT" })).status).toBe("left");
-    expect(queueEntryToLegacy(entry({ status: "REMOVED" })).status).toBe(
-      "removed",
-    );
+    expect(queueEntryToLegacy(entry({ status: "REMOVED" })).status).toBe("removed");
   });
 
   it("nulls timestamps that cannot be read", () => {
@@ -146,9 +136,7 @@ describe("queueEntryToLegacy", () => {
   });
 
   it("accepts a timestamp given as a string", () => {
-    const legacy = queueEntryToLegacy(
-      entry({ joinedAt: "2026-08-12T18:00:00.000Z" }),
-    );
+    const legacy = queueEntryToLegacy(entry({ joinedAt: "2026-08-12T18:00:00.000Z" }));
 
     expect(legacy.joinedAt).toBe("2026-08-12T18:00:00.000Z");
   });
@@ -163,8 +151,7 @@ describe("reconstructQueueArrays", () => {
       entry({ status: "WAITING", joinedAt: new Date("2026-08-12T18:05:00.000Z") }),
     ];
 
-    const { queue, admittedCustomers, removedCustomers } =
-      reconstructQueueArrays(rows);
+    const { queue, admittedCustomers, removedCustomers } = reconstructQueueArrays(rows);
 
     expect(queue).toHaveLength(2);
     expect(queue[0].joinedAt).toBe("2026-08-12T18:05:00.000Z");
@@ -223,11 +210,7 @@ describe("reconstructQueueArrays", () => {
 
     const { removedCustomers } = reconstructQueueArrays(rows);
 
-    expect(removedCustomers.map((c) => c.status)).toEqual([
-      "removed",
-      "removed",
-      "left",
-    ]);
+    expect(removedCustomers.map((c) => c.status)).toEqual(["removed", "removed", "left"]);
   });
 
   it("stamps the business username on every list", () => {
@@ -237,8 +220,7 @@ describe("reconstructQueueArrays", () => {
       entry({ status: "LEFT", leftAt: new Date() }),
     ];
 
-    const { queue, admittedCustomers, removedCustomers } =
-      reconstructQueueArrays(rows, "bistro");
+    const { queue, admittedCustomers, removedCustomers } = reconstructQueueArrays(rows, "bistro");
 
     expect(queue[0].businessUsername).toBe("bistro");
     expect(admittedCustomers[0].businessUsername).toBe("bistro");
@@ -327,9 +309,7 @@ describe("reservationRowToLegacy", () => {
   });
 
   it("treats a non-numeric party size as zero", () => {
-    const legacy = reservationRowToLegacy(
-      reservation({ guestCount: "many" as never }),
-    );
+    const legacy = reservationRowToLegacy(reservation({ guestCount: "many" as never }));
 
     expect(legacy.partySize).toBe(0);
   });

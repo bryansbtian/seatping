@@ -1,4 +1,3 @@
-
 const REQUIRED_IN_PROD = [
   "DATABASE_URL",
   "JWT_SECRET",

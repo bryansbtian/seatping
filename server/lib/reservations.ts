@@ -1,4 +1,3 @@
-
 import { prisma } from "./prisma.js";
 import {
   getDateOperatingStatus,
@@ -8,12 +7,7 @@ import {
 
 export type ConfirmationMode = "auto" | "manual";
 export type ContactMethod = "sms" | "whatsapp" | "email";
-export type ReservationStatus =
-  | "confirmed"
-  | "arrived"
-  | "completed"
-  | "cancelled"
-  | "no_show";
+export type ReservationStatus = "confirmed" | "arrived" | "completed" | "cancelled" | "no_show";
 
 export const ACTIVE_STATUSES: ReservationStatus[] = ["confirmed", "arrived"];
 
@@ -86,8 +80,18 @@ export function normalizeSettings(raw: any): ReservationSettings {
       10000,
       DEFAULT_RESERVATION_SETTINGS.maxReservedGuestsPerHour,
     ),
-    bookingWindowDays: clampInt(s.bookingWindowDays, 0, 365, DEFAULT_RESERVATION_SETTINGS.bookingWindowDays),
-    minNoticeMinutes: clampInt(s.minNoticeMinutes, 0, 7 * 24 * 60, DEFAULT_RESERVATION_SETTINGS.minNoticeMinutes),
+    bookingWindowDays: clampInt(
+      s.bookingWindowDays,
+      0,
+      365,
+      DEFAULT_RESERVATION_SETTINGS.bookingWindowDays,
+    ),
+    minNoticeMinutes: clampInt(
+      s.minNoticeMinutes,
+      0,
+      7 * 24 * 60,
+      DEFAULT_RESERVATION_SETTINGS.minNoticeMinutes,
+    ),
     confirmationMode: mode,
     cancellationPolicy,
   };
@@ -138,11 +142,7 @@ function tzOffsetMinutes(timeZone: string, at: Date): number {
   return Math.round((asUTC - at.getTime()) / 60000);
 }
 
-export function zonedWallTimeToMs(
-  date: string,
-  time: string,
-  timeZone?: string,
-): number {
+export function zonedWallTimeToMs(date: string, time: string, timeZone?: string): number {
   if (!timeZone) {
     return new Date(`${date}T${time}:00`).getTime();
   }
@@ -466,8 +466,7 @@ export async function syncCustomerReservation(
 
   if (active) {
     upcoming.unshift(entry);
-  }
-  else {
+  } else {
     past.unshift(entry);
   }
 

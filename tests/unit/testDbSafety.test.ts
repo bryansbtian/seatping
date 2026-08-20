@@ -19,9 +19,7 @@ describe("test database safety guard", () => {
   });
 
   it("refuses a missing or blank URL", () => {
-    expect(() => assertSafeTestDatabaseUrl(undefined)).toThrow(
-      UnsafeTestDatabaseError,
-    );
+    expect(() => assertSafeTestDatabaseUrl(undefined)).toThrow(UnsafeTestDatabaseError);
     expect(() => assertSafeTestDatabaseUrl("   ")).toThrow(UnsafeTestDatabaseError);
   });
 
@@ -38,15 +36,15 @@ describe("test database safety guard", () => {
   });
 
   it("refuses a production-looking host even when the name says test", () => {
-    expect(() =>
-      assertSafeTestDatabaseUrl("mongodb://prod-cluster:27017/seatping_test"),
-    ).toThrow(/production target/);
+    expect(() => assertSafeTestDatabaseUrl("mongodb://prod-cluster:27017/seatping_test")).toThrow(
+      /production target/,
+    );
   });
 
   it("refuses a database whose name is not marked for testing", () => {
-    expect(() =>
-      assertSafeTestDatabaseUrl("mongodb://localhost:27018/seatping"),
-    ).toThrow(/must contain "test"/);
+    expect(() => assertSafeTestDatabaseUrl("mongodb://localhost:27018/seatping")).toThrow(
+      /must contain "test"/,
+    );
   });
 
   it("refuses a URL with no database name", () => {

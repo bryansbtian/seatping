@@ -1,13 +1,7 @@
-
 import { prisma } from "./prisma.js";
 
 export type CustomerQueueStatus =
-  | "waiting"
-  | "admitted"
-  | "arrived"
-  | "no_show"
-  | "removed"
-  | "left";
+  "waiting" | "admitted" | "arrived" | "no_show" | "removed" | "left";
 
 const ACTIVE_QUEUE_STATUSES: CustomerQueueStatus[] = ["waiting"];
 
@@ -34,8 +28,7 @@ export async function syncCustomerQueue(
   }
 
   const key =
-    entry.queueToken ||
-    `${entry.firstName ?? ""}${entry.lastName ?? ""}${entry.joinedAt ?? ""}`;
+    entry.queueToken || `${entry.firstName ?? ""}${entry.lastName ?? ""}${entry.joinedAt ?? ""}`;
 
   const item = {
     id: key,

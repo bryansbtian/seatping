@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-server
+coverage
+test-results
+playwright-report
+.vercel
+package-lock.json
+bun.lockb
+public
+*.min.js
+*.min.css
