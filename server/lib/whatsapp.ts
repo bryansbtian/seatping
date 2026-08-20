@@ -1,4 +1,5 @@
 import { WhatsAppClient } from "@kapso/whatsapp-cloud-api";
+import { maskPhone } from "./redact.js";
 
 const KAPSO_BASE_URL = "https://api.kapso.ai/meta/whatsapp";
 
@@ -76,7 +77,7 @@ export async function sendQueueJoinedWhatsApp(params: SendQueueJoinedParams): Pr
         ],
       },
     });
-    console.log("[WHATSAPP] queue_joined template sent to", to);
+    console.log("[WHATSAPP] queue_joined template sent to %s", maskPhone(to));
     return true;
   } catch (error: any) {
     console.error("[WHATSAPP] Failed to send queue_joined:", error?.message || error);
@@ -294,7 +295,7 @@ export async function sendCampaignWhatsApp(
       },
     });
     const id = result?.messages?.[0]?.id || result?.data?.id || result?.id || null;
-    console.log("[WHATSAPP] campaign template sent to", to);
+    console.log("[WHATSAPP] campaign template sent to %s", maskPhone(to));
     if (id) {
       return String(id);
     }
@@ -339,7 +340,7 @@ export async function sendQueueAdmittedWhatsApp(params: SendQueueAdmittedParams)
         ],
       },
     });
-    console.log("[WHATSAPP] queue_admitted template sent to", to);
+    console.log("[WHATSAPP] queue_admitted template sent to %s", maskPhone(to));
     return true;
   } catch (error: any) {
     console.error("[WHATSAPP] Failed to send queue_admitted:", error?.message || error);

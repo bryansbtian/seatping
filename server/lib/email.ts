@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { maskEmail, maskEmailList } from "./redact.js";
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || "smtp.porkbun.com",
@@ -51,10 +52,10 @@ export const sendEmailDetailed = async (
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       if (attempt > 0) {
-        console.log("[EMAIL] Retry attempt %d/%d for:", attempt, retries, options.to);
+        console.log("[EMAIL] Retry attempt %d/%d for: %s", attempt, retries, maskEmail(options.to));
         await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
       } else {
-        console.log("[EMAIL] Attempting to send email to:", options.to);
+        console.log("[EMAIL] Attempting to send email to: %s", maskEmail(options.to));
       }
 
       const mailOptions: {
@@ -84,18 +85,18 @@ export const sendEmailDetailed = async (
 
       console.log(
         "[EMAIL] Sent email to %s | messageId=%s | accepted=[%s] | rejected=[%s] | response=%s",
-        options.to,
+        maskEmail(options.to),
         messageId,
-        accepted.join(", "),
-        rejected.join(", "),
+        maskEmailList(accepted),
+        maskEmailList(rejected),
         response,
       );
 
       if (!acceptedTarget || rejectedTarget) {
-        const reason = `Recipient not accepted by mail server (accepted=[${accepted.join(
-          ", ",
-        )}], rejected=[${rejected.join(", ")}], response=${response})`;
-        console.warn("[EMAIL] %s NOT accepted: %s", options.to, reason);
+        const reason = `Recipient not accepted by mail server (accepted=[${maskEmailList(
+          accepted,
+        )}], rejected=[${maskEmailList(rejected)}], response=${response})`;
+        console.warn("[EMAIL] %s NOT accepted: %s", maskEmail(options.to), reason);
         return {
           ok: false,
           recipient: options.to,
@@ -121,7 +122,7 @@ export const sendEmailDetailed = async (
       lastError = error;
       console.error(
         "[EMAIL] Error sending email to %s (attempt %d/%d):",
-        options.to,
+        maskEmail(options.to),
         attempt + 1,
         retries + 1,
         error?.message,

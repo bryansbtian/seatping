@@ -6,13 +6,19 @@ function isEnabled(): boolean {
   );
 }
 
+export function redactAnalyticsPath(path: string): string {
+  return String(path ?? "")
+    .replace(/^\/reservations\/manage\/[^/]+/i, "/reservations/manage/[token]")
+    .replace(/[0-9a-f]{32,}/gi, "[redacted]");
+}
+
 export function trackPageView(path: string): void {
   if (!isEnabled()) {
     return;
   }
   try {
     window.gtag("event", "page_view", {
-      page_path: path,
+      page_path: redactAnalyticsPath(path),
     });
   } catch {}
 }

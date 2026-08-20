@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { serializePhoto } from "../lib/business.js";
 import { requireCustomer } from "../lib/auth.js";
+import { limitGuard, clientIp, MINUTES, HOURS } from "../lib/rateLimit.js";
 
 const router = Router();
 
@@ -210,6 +211,15 @@ router.post("/:businessUsername/:locationId/reviews", requireCustomer, async (re
     }
 
     const customerId = (req as any).auth.sub as string;
+    if (
+      await limitGuard(req, res, [
+        { name: "review-create-user", key: customerId, windowMs: HOURS(1), max: 20 },
+        { name: "review-create-ip", key: clientIp(req), windowMs: HOURS(1), max: 60 },
+      ])
+    ) {
+      return;
+    }
+
     const { rating, description } = req.body || {};
     if (typeof rating !== "number" || !Number.isFinite(rating)) {
       return res.status(400).json({ error: "rating must be a number" });

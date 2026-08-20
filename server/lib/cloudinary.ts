@@ -110,6 +110,6 @@ export async function deleteImageByPublicId(publicId: string | null | undefined)
     assertCloudinaryConfigured();
     await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
   } catch (err: any) {
-    console.warn(`[cloudinary] failed to delete asset ${publicId}:`, err?.message || err);
+    console.warn("[cloudinary] failed to delete asset %s: %s", publicId, err?.message || err);
   }
 }

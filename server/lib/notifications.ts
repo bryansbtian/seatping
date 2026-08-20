@@ -18,6 +18,7 @@ import { prisma } from "./prisma.js";
 import { renderCampaignEmailHtml } from "./campaigns.js";
 import type { CampaignEmailParts } from "./campaigns.js";
 import { consumeQuota, peekQuota, DAYS } from "./rateLimit.js";
+import { maskEmail, maskPhone } from "./redact.js";
 
 export type NotificationChannel = "sms" | "whatsapp" | "email";
 
@@ -203,7 +204,7 @@ async function sendSms(
   const to = (countryCode || "+1") + phoneNumber.trim().replace(/\D/g, "");
   const message = await telnyx.messages.send({ from, to, text });
   const id = (message as any)?.data?.id ?? null;
-  console.log("[NOTIFY] SMS sent:", id, "to", to);
+  console.log("[NOTIFY] SMS sent: %s to %s", id, maskPhone(to));
   if (id) {
     return String(id);
   }
@@ -367,7 +368,11 @@ export async function rawCampaignSend(content: CampaignSendContent): Promise<str
     if (!result.ok) {
       throw new Error(result.error || "Email provider rejected the recipient");
     }
-    console.log(`[EMAIL] Sent campaign email to ${content.email}, messageId=${result.messageId}`);
+    console.log(
+      "[EMAIL] Sent campaign email to %s, messageId=%s",
+      maskEmail(content.email),
+      result.messageId,
+    );
     return result.messageId || "sent";
   }
   if (content.channel === "sms") {

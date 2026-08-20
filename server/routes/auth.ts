@@ -518,6 +518,14 @@ router.post("/me/saved-restaurants", requireCustomer, async (req, res) => {
 router.delete("/me/saved-restaurants/:businessUsername", requireCustomer, async (req, res) => {
   try {
     const userId = (req as any).auth.sub as string;
+    if (
+      await limitGuard(req, res, [
+        { name: "saved-restaurant-remove", key: userId, windowMs: MINUTES(1), max: 60 },
+      ])
+    ) {
+      return;
+    }
+
     const uname = String(req.params.businessUsername || "").trim();
     if (!uname) {
       return res.status(400).json({ error: "businessUsername is required" });
@@ -603,6 +611,14 @@ function savedMatches(s: any, key: string): boolean {
 router.get("/me/saved-locations/:locationId", requireCustomer, async (req, res) => {
   try {
     const userId = (req as any).auth.sub as string;
+    if (
+      await limitGuard(req, res, [
+        { name: "saved-location-status", key: userId, windowMs: MINUTES(1), max: 120 },
+      ])
+    ) {
+      return;
+    }
+
     const locationId = String(req.params.locationId || "").trim();
     const current = await prisma.user.findUnique({
       where: { id: userId },
@@ -663,6 +679,14 @@ router.post("/me/saved-locations", requireCustomer, async (req, res) => {
 router.delete("/me/saved-locations/:locationId", requireCustomer, async (req, res) => {
   try {
     const userId = (req as any).auth.sub as string;
+    if (
+      await limitGuard(req, res, [
+        { name: "saved-location-remove", key: userId, windowMs: MINUTES(1), max: 60 },
+      ])
+    ) {
+      return;
+    }
+
     const locationId = String(req.params.locationId || "").trim();
     const current = await prisma.user.findUnique({
       where: { id: userId },
@@ -2220,6 +2244,14 @@ router.get("/business/:username/queue/:customerId/status", async (req, res) => {
 router.post("/business/:username/queue/:customerId/admit", requireBusiness, async (req, res) => {
   try {
     const businessId = (req as any).auth.sub as string;
+    if (
+      await limitGuard(req, res, [
+        { name: "queue-admit", key: businessId, windowMs: MINUTES(1), max: 120 },
+      ])
+    ) {
+      return;
+    }
+
     const username = String(req.params.username || "").trim();
     const customerId = String(req.params.customerId || "").trim();
     if (!username || !customerId) {
@@ -2419,6 +2451,14 @@ router.post(
 router.delete("/business/:username/queue/:customerId", requireBusiness, async (req, res) => {
   try {
     const businessId = (req as any).auth.sub as string;
+    if (
+      await limitGuard(req, res, [
+        { name: "queue-remove", key: businessId, windowMs: MINUTES(1), max: 120 },
+      ])
+    ) {
+      return;
+    }
+
     const username = String(req.params.username || "").trim();
     const customerId = String(req.params.customerId || "").trim();
     if (!username || !customerId) {
