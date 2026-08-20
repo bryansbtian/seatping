@@ -98,18 +98,6 @@ npm run start
 - Frontend build goes to `dist/`
 - Server build goes to `dist-server/`
 
-## CI/CD
-
-- CI is handled by GitHub Actions (`.github/workflows/ci.yml`), running on every pull request and on pushes to `main`. Both jobs build on Node.js 24.
-- CI runs two jobs. `Lint, Typecheck, Test, and Build` installs (`npm ci`), generates the Prisma client, starts a disposable single node MongoDB replica set container (`docker run ... mongod --replSet rs0`, since a service container cannot override the image command), pushes the Prisma schema to it, then runs lint, `format:check`, typecheck, `npm run test:coverage`, and build. `End to End` starts the same kind of container and runs `npm run test:e2e`.
-- The coverage gate is enforced by Vitest (70% lines, statements, functions, branches). CI fails on a shortfall; the coverage report is uploaded as an artifact.
-- The end to end job is pass/fail only. Playwright is not part of the coverage percentage.
-- CI never uses production infrastructure. Both `DATABASE_URL` and `TEST_DATABASE_URL` point at the ephemeral container, so no repository secret is needed to run CI.
-- CD is handled by Vercel automatically after merging to `main`. GitHub Actions does not deploy.
-- Every CI env var is a safe placeholder defined in the workflow.
-- The workflow keeps repository-specific setup together in one run of steps, `Generate Prisma Client` through `Push Prisma Schema to the Test Database` (plus `Install Playwright Chromium` in the end to end job). Everything outside that run is shared across repositories and should be updated from the shared workflow rather than edited here. That setup runs before lint, format check, and typecheck because `prisma generate` has to write the client types before `tsc` can resolve the `@prisma/client` model imports.
-- Pull requests should pass CI before merging.
-
 ## Testing
 
 Layers use deliberately different amounts of the real application. Unit tests
@@ -132,13 +120,6 @@ Only external providers are replaced.
 | `npm run test:coverage`    | Whole Vitest suite plus coverage gate  | Yes           |
 | `npm run test:e2e`         | Playwright browser flows               | Yes           |
 | `npm run test:e2e:ui`      | Same suite in the Playwright UI        | Yes           |
-
-## Code Scanning and Dependencies
-
-- Code scanning uses CodeQL advanced setup (`.github/workflows/codeql.yml`), running on pull requests targeting `main`, pushes to `main`, and a weekly schedule. It analyzes JavaScript and TypeScript only, and uses no secrets, database, or build step.
-- CodeQL default setup must stay disabled in repository settings, since this repository uses the committed advanced workflow instead.
-- Dependency updates are handled by Dependabot (`.github/dependabot.yml`), which opens weekly npm and GitHub Actions pull requests. npm updates are grouped into development and production dependencies.
-- Report vulnerabilities privately using `.github/SECURITY.md`. Do not open a public issue.
 
 ## Database
 
