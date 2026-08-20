@@ -1,5 +1,10 @@
 name: SeatPing CodeQL
 
 paths-ignore:
+  - test
   - tests
   - e2e
+  - "**/__tests__"
+  - "**/__mocks__"
+  - "**/*.test.*"
+  - "**/*.spec.*"
