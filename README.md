@@ -8,8 +8,6 @@ Whether users are planning ahead or looking for a table nearby, SeatPing makes t
 
 ## Development Setup
 
-Follow the steps below to run SeatPing locally for development.
-
 Prerequisites: Node.js 24 (the version CI and Vercel build on, pinned in `.nvmrc` and
 `package.json` engines) and a reachable MongoDB (Atlas, or a local replica set).
 
@@ -19,10 +17,6 @@ npm ci
 npx prisma generate
 npx prisma db push
 ```
-
-`npm ci` installs exactly what `package-lock.json` records, so every machine and CI get the
-same tree. Use `npm install` only to add, remove, or upgrade a dependency, and commit the
-updated lockfile.
 
 ### Test Database (First Time Only)
 
@@ -100,11 +94,6 @@ npm run start
 
 ## Testing
 
-Layers use deliberately different amounts of the real application. Unit tests
-isolate pure logic, while every database-backed layer runs the real Express
-routes, real middleware and real Prisma against a real MongoDB test database.
-Only external providers are replaced.
-
 | Command                    | What it runs                           | Needs MongoDB |
 | -------------------------- | -------------------------------------- | ------------- |
 | `npm test`                 | Unit project only (fast local/CI loop) | No            |
@@ -121,13 +110,6 @@ Only external providers are replaced.
 | `npm run test:e2e`         | Playwright browser flows               | Yes           |
 | `npm run test:e2e:ui`      | Same suite in the Playwright UI        | Yes           |
 
-## Database
-
-- MongoDB is used through Prisma.
-- Run `npx prisma generate` after schema changes.
-- Run `npx prisma db push` to sync the schema (no SQL migration files).
-- MongoDB must be a replica set for Prisma transactions (Atlas works by default; a bare local `mongod` does not).
-
 ## Common Commands
 
 | Command                 | What it does                                            |
@@ -143,6 +125,13 @@ Only external providers are replaced.
 | `npm run test:coverage` | Tests with the coverage gate                            |
 | `npx prisma generate`   | Regenerate the Prisma client                            |
 | `npx prisma db push`    | Sync the schema to MongoDB                              |
+
+## Database
+
+- MongoDB is used through Prisma.
+- Run `npx prisma generate` after schema changes.
+- Run `npx prisma db push` to sync the schema (no SQL migration files).
+- MongoDB must be a replica set for Prisma transactions (Atlas works by default; a bare local `mongod` does not).
 
 ## Development Notes
 
