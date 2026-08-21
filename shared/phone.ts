@@ -159,10 +159,27 @@ function buildIsoByDial(): Record<string, string> {
 
 function stripTrunkPrefix(national: string): string {
   if (national.startsWith("(0")) {
-    return `(${national.slice(2)}`;
+    const close = national.indexOf(")");
+    if (close > 0) {
+      return `${national.slice(2, close)}${national.slice(close + 1)}`;
+    }
+    return national.slice(2);
   }
   if (national.startsWith("0")) {
     return national.slice(1);
+  }
+  return national;
+}
+
+function stripNationalPrefix(iso: string, digits: string): string {
+  if (!digits.startsWith("0")) {
+    return digits;
+  }
+  const parser = new AsYouType(iso as CountryCode);
+  parser.input(digits);
+  const national = parser.getNationalNumber();
+  if (!national || national.length >= digits.length) {
+    return digits;
   }
   return national;
 }
@@ -172,7 +189,11 @@ function formatKnownNumber(e164: string): string | null {
   if (!parsed || !parsed.isValid()) {
     return null;
   }
-  const national = stripTrunkPrefix(parsed.formatNational()).trim();
+  const formatted = parsed.formatNational();
+  let national = formatted.trim();
+  if (onlyDigits(formatted) !== parsed.nationalNumber) {
+    national = stripTrunkPrefix(formatted).trim();
+  }
   if (!national || !/[ ()-]/.test(national)) {
     return null;
   }
@@ -267,10 +288,12 @@ export function formatNationalPhone(
   const dial = onlyDigits(countryCode);
   const iso = ISO_BY_DIAL[dial];
   if (iso) {
-    const planned = formatWithNumberingPlan(iso, dial, digits);
+    const national = stripNationalPrefix(iso, digits);
+    const planned = formatWithNumberingPlan(iso, dial, national);
     if (planned) {
       return planned;
     }
+    return formatForDial(dial, national);
   }
   return formatForDial(dial, digits);
 }
