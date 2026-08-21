@@ -22,6 +22,8 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { analytics } from "@/lib/analytics";
+import { formatPhoneParts } from "@shared/phone";
+import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 
 type CountryOption = { name: string; dial: string; flag: string };
 
@@ -503,6 +505,13 @@ export default function QueueBusiness() {
     }
   };
 
+  const handlePhoneNumberChange = (phoneNumber: string) => {
+    setForm((p) => ({ ...p, phoneNumber }));
+    if (errors.phoneNumber) {
+      setErrors((p) => ({ ...p, phoneNumber: "" }));
+    }
+  };
+
   const joinQueue = async (e: React.FormEvent) => {
     e.preventDefault();
     analytics.joinQueueClicked(selectedLocation?.id);
@@ -576,11 +585,14 @@ export default function QueueBusiness() {
           localStorage.setItem(storageKey, response.queueToken);
         }
 
+        const formattedPhone =
+          formatPhoneParts(form.countryCode, form.phoneNumber) ??
+          `${form.countryCode} ${form.phoneNumber}`.trim();
         let toastDescription: ReactNode = "We'll let you know when it's your turn.";
         if (form.notificationMethod === "sms") {
-          toastDescription = `We'll text you at ${form.countryCode} ${form.phoneNumber} when it's your turn.`;
+          toastDescription = `We'll text you at ${formattedPhone} when it's your turn.`;
         } else if (form.notificationMethod === "whatsapp") {
-          toastDescription = `We'll message you on WhatsApp at ${form.countryCode} ${form.phoneNumber} when it's your turn.`;
+          toastDescription = `We'll message you on WhatsApp at ${formattedPhone} when it's your turn.`;
         } else if (form.notificationMethod === "email") {
           toastDescription = (
             <>
@@ -1012,13 +1024,12 @@ export default function QueueBusiness() {
                               </Command>
                             </PopoverContent>
                           </Popover>
-                          <Input
+                          <PhoneNumberInput
                             id="phoneNumber"
                             name="phoneNumber"
-                            type="tel"
-                            placeholder="(555) 123-4567"
+                            countryCode={form.countryCode}
                             value={form.phoneNumber}
-                            onChange={handleChange}
+                            onValueChange={handlePhoneNumberChange}
                             className={phoneNumberInputClass}
                           />
                         </div>
@@ -1164,13 +1175,12 @@ export default function QueueBusiness() {
                             </Command>
                           </PopoverContent>
                         </Popover>
-                        <Input
+                        <PhoneNumberInput
                           id="whatsappPhoneNumber"
                           name="phoneNumber"
-                          type="tel"
-                          placeholder="(555) 123-4567"
+                          countryCode={form.countryCode}
                           value={form.phoneNumber}
-                          onChange={handleChange}
+                          onValueChange={handlePhoneNumberChange}
                           className={phoneNumberInputClass}
                         />
                       </div>

@@ -1,4 +1,5 @@
 import { prisma } from "./prisma.js";
+import { restaurantNameForNotification } from "./business.js";
 import { splitDateTime, formatTimeLabel, zonedWallTimeToMs } from "./reservations.js";
 import { enqueueNotification } from "./notifications.js";
 
@@ -90,7 +91,8 @@ export async function runReservationReminderSweep(): Promise<void> {
       businessName = business?.name || "the restaurant";
       businessNameCache.set(location.businessId, businessName);
     }
-    const locationName = location.displayName || location.name || businessName;
+    const restaurantName = restaurantNameForNotification(location, businessName);
+    const locationName = location.displayName || location.name || restaurantName;
     const { date, time } = splitDateTime(r.reservationDateTime);
 
     let manageUrl: string | undefined = undefined;
@@ -121,7 +123,7 @@ export async function runReservationReminderSweep(): Promise<void> {
         type: "reservation_reminder",
         email: r.email,
         firstName: r.firstName || r.name || "there",
-        businessName,
+        businessName: restaurantName,
         address: location.address || locationName,
         dateLabel: readableDate(date),
         timeLabel: formatTimeLabel(time),

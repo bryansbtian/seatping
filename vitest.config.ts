@@ -15,6 +15,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@shared": path.resolve(__dirname, "./shared"),
     },
   },
   test: {
@@ -23,7 +24,11 @@ export default defineConfig({
         resolve: {
           alias: {
             "@": path.resolve(__dirname, "./src"),
-            "../dist-server/index.js": path.resolve(__dirname, "./tests/stubs/distServerApp.ts"),
+            "@shared": path.resolve(__dirname, "./shared"),
+            "../dist-server/server/index.js": path.resolve(
+              __dirname,
+              "./tests/stubs/distServerApp.ts",
+            ),
           },
         },
         test: {
@@ -35,13 +40,16 @@ export default defineConfig({
       },
       {
         resolve: {
-          alias: { "@": path.resolve(__dirname, "./src") },
+          alias: {
+            "@": path.resolve(__dirname, "./src"),
+            "@shared": path.resolve(__dirname, "./shared"),
+          },
         },
         test: {
           name: "hooks",
           environment: "jsdom",
           setupFiles: ["./tests/setup/hooks.ts"],
-          include: ["tests/hooks/**/*.test.ts"],
+          include: ["tests/hooks/**/*.test.{ts,tsx}"],
         },
       },
       {
@@ -77,7 +85,13 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "./coverage",
-      include: ["server/**/*.ts", "api/**/*.ts", "src/lib/**/*.ts", "src/hooks/**/*.ts"],
+      include: [
+        "server/**/*.ts",
+        "api/**/*.ts",
+        "shared/**/*.ts",
+        "src/lib/**/*.ts",
+        "src/hooks/**/*.ts",
+      ],
       exclude: ["**/*.test.ts", "**/*.d.ts", "server/index.ts", "src/lib/i18n.tsx"],
       thresholds: {
         lines: 70,

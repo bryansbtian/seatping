@@ -189,3 +189,15 @@ function stampGuestBadge(
   item.isReturning = badge?.returning ?? false;
   return item;
 }
+
+export function restaurantNameForNotification(loc: any, fallback: string): string {
+  let profile: any = {};
+  if (loc?.restaurantProfile && typeof loc.restaurantProfile === "object") {
+    profile = loc.restaurantProfile;
+  }
+  const profileName =
+    (typeof profile.displayName === "string" && profile.displayName.trim()) ||
+    (typeof profile.name === "string" && profile.name.trim()) ||
+    "";
+  return profileName || fallback;
+}

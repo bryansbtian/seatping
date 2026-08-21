@@ -17,6 +17,10 @@ This is one full-stack app, not a monorepo.
   shadcn/ui, Recharts.
 - `server/`: Express API in TypeScript. Routers in `server/routes/`, shared logic in
   `server/lib/`, mounting and cron wiring in `server/index.ts`.
+- `shared/`: isomorphic modules used by both halves, such as phone formatting and country
+  dial codes. Imported as `@shared/...` from `src/` and by relative path from `server/`.
+  Phone display formatting goes through `libphonenumber-js` so landlines and mobiles are
+  grouped by each country's own numbering plan.
 - `api/server.ts`: the Vercel serverless entry that wraps the Express app.
 - `prisma/`: MongoDB schema through Prisma, using `db push` rather than SQL migration files.
 - `tests/`, `e2e/`: Vitest projects and Playwright browser tests.
@@ -24,7 +28,8 @@ This is one full-stack app, not a monorepo.
 Boundaries that carry weight:
 
 - `src/` must never import from `server/`. The browser bundle must not contain server logic,
-  admin auth logic, or admin credentials.
+  admin auth logic, or admin credentials. Code both halves need goes in `shared/`, which must
+  stay free of browser globals and Node built-ins, and may only use isomorphic dependencies.
 - Authorization lives in `server/`. Frontend route guards are cosmetic and are never the
   only check.
 - MongoDB is the source of truth. Do not reintroduce the deprecated location JSON arrays for
@@ -56,8 +61,8 @@ The project builds on Node.js 24, pinned in `.nvmrc` and `package.json` engines.
 
 `npm run dev` starts Vite on port 8080 and the API on port 4000. Browse through
 `http://localhost:8080` in local dev. `npm run dev:vite` and `npm run dev:server` start each
-half alone. `npm run build` builds the SPA to `dist/` and the server to `dist-server/`, and
-`npm run start` runs the compiled server.
+half alone. `npm run build` builds the SPA to `dist/` and the server to `dist-server/`, where
+the compiled entry is `dist-server/server/index.js`, and `npm run start` runs it.
 
 After changing `prisma/schema.prisma`, always run `npx prisma generate` then
 `npx prisma db push`, and restart the dev server.

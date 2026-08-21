@@ -8,7 +8,7 @@ import { Checkbox } from "./ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { GuestTagBadge, GuestStatusBadge } from "./GuestBadge";
-import { formatPhone } from "@/lib/phone";
+import { formatPhone } from "@shared/phone";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import {
   Command,
@@ -562,7 +562,9 @@ export function CustomAudienceBuilder({
                           </span>
                           {(guest.phone || guest.email) && (
                             <span className="text-xs text-slate-500">
-                              {[guest.phone, guest.email].filter(Boolean).join(" • ")}
+                              {[formatPhone(guest.normalizedPhone, guest.phone), guest.email]
+                                .filter(Boolean)
+                                .join(" • ")}
                             </span>
                           )}
                         </div>
@@ -595,7 +597,9 @@ export function CustomAudienceBuilder({
                           <span className="font-medium">{guest.fullName || "Unnamed Guest"}</span>
                           {(guest.phone || guest.email) && (
                             <span className="text-xs text-slate-500">
-                              {[guest.phone, guest.email].filter(Boolean).join(" • ")}
+                              {[formatPhone(guest.normalizedPhone, guest.phone), guest.email]
+                                .filter(Boolean)
+                                .join(" • ")}
                             </span>
                           )}
                         </div>

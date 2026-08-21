@@ -203,6 +203,37 @@ describe("reminder sweep delivery", () => {
     expect(job().address).toBe("Bistro");
   });
 
+  it("names the restaurant from its profile rather than the business account", async () => {
+    reservationFindMany.mockResolvedValue([reservation()]);
+    locationFindMany.mockResolvedValue([
+      location({
+        restaurantProfile: {
+          openingHours: { timezone: "UTC" },
+          displayName: "Japanese Restaurant",
+        },
+      }),
+    ]);
+    businessFindUnique.mockResolvedValue({ name: "Demo Restaurant" });
+
+    await runReservationReminderSweep();
+
+    expect(job().businessName).toBe("Japanese Restaurant");
+  });
+
+  it("uses the profile name when the profile has no display name", async () => {
+    reservationFindMany.mockResolvedValue([reservation()]);
+    locationFindMany.mockResolvedValue([
+      location({
+        restaurantProfile: { openingHours: { timezone: "UTC" }, name: "Japanese Restaurant" },
+      }),
+    ]);
+    businessFindUnique.mockResolvedValue({ name: "Demo Restaurant" });
+
+    await runReservationReminderSweep();
+
+    expect(job().businessName).toBe("Japanese Restaurant");
+  });
+
   it("falls back to a generic business name", async () => {
     reservationFindMany.mockResolvedValue([reservation()]);
     businessFindUnique.mockResolvedValue(null);

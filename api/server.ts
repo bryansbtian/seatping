@@ -4,7 +4,7 @@ let app: any;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!app) {
-    const module = await import("../dist-server/index.js");
+    const module = await import("../dist-server/server/index.js");
     app = module.default;
   }
 

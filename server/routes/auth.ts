@@ -1,6 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "../lib/prisma.js";
+import { restaurantNameForNotification } from "../lib/business.js";
 import {
   signJwt,
   setAuthCookie,
@@ -1899,9 +1900,10 @@ router.post("/business/:username/queue", async (req, res) => {
     await syncGuestFromQueueEntry(entry, { businessUsername: username });
 
     const businessName = business.name || "the business";
-    const rpJoin = (location.restaurantProfile || {}) as any;
-    const restaurantName =
-      rpJoin.displayName || location.displayName || location.name || businessName;
+    const restaurantName = restaurantNameForNotification(
+      location,
+      location.displayName || location.name || businessName,
+    );
 
     if (
       notificationMethod === "sms" ||
@@ -2285,9 +2287,10 @@ router.post("/business/:username/queue/:customerId/admit", requireBusiness, asyn
       where: { id: entry.locationId },
     });
     const businessName = business.name || "The business";
-    const rpAdmit = (location?.restaurantProfile || {}) as any;
-    const restaurantName =
-      rpAdmit.displayName || location?.displayName || location?.name || businessName;
+    const restaurantName = restaurantNameForNotification(
+      location,
+      location?.displayName || location?.name || businessName,
+    );
 
     const admittedEntry = {
       ...entry,

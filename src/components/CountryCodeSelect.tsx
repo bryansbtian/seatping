@@ -10,7 +10,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { COUNTRY_CODES, DEFAULT_COUNTRY_ISO, type CountryCode } from "@/lib/countryCodes";
+import { COUNTRY_CODES, DEFAULT_COUNTRY_ISO, type CountryCode } from "@shared/countryCodes";
 
 export function CountryCodeSelect({
   value,

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
+import { restaurantNameForNotification } from "../lib/business.js";
 import {
   normalizeSettings,
   computeAvailability,
@@ -75,7 +76,12 @@ function baseUrl(req: any): string {
 async function notifyReservation(
   reservation: any,
   business: { name: string | null; email?: string | null },
-  location: { address: string; displayName?: string | null; name?: string | null },
+  location: {
+    address: string;
+    displayName?: string | null;
+    name?: string | null;
+    restaurantProfile?: unknown;
+  },
   settings: ReservationSettings,
   manageUrl: string,
 ) {
@@ -85,7 +91,7 @@ async function notifyReservation(
     customerEmail: reservation.email || undefined,
     firstName: reservation.firstName,
     lastName: reservation.lastName,
-    businessName: business.name || "the restaurant",
+    businessName: restaurantNameForNotification(location, business.name || "the restaurant"),
     address: location.address,
     dateLabel: readableDate(date),
     timeLabel: formatTimeLabel(time),
@@ -96,6 +102,7 @@ async function notifyReservation(
     locationName: location.displayName || location.name || location.address,
     customerName: reservation.name || `${reservation.firstName} ${reservation.lastName}`.trim(),
     customerPhone: reservation.phone || undefined,
+    customerCountryCode: reservation.countryCode || undefined,
     notes: reservation.notes || undefined,
     dashboardUrl: `${process.env.FRONTEND_URL || "https://www.seatping.biz"}/business`,
   });
@@ -405,8 +412,10 @@ router.get("/manage/:manageToken", async (req, res) => {
     const settings = normalizeSettings(location.reservationSettings);
 
     const rp = (location.restaurantProfile || {}) as any;
-    const restaurantName =
-      rp.displayName || business?.name || location.displayName || location.name || "Restaurant";
+    const restaurantName = restaurantNameForNotification(
+      location,
+      business?.name || location.displayName || location.name || "Restaurant",
+    );
     const locationLabel =
       rp.shortAddress ||
       location.displayName ||

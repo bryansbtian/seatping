@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { GuestStatusBadge } from "@/components/GuestBadge";
-import { formatPhone } from "@/lib/phone";
+import { formatPhoneParts } from "@shared/phone";
 import { useLang, type TKey } from "@/lib/i18n";
 import {
   CalendarDays,
@@ -335,18 +335,11 @@ function ContactLine({ r }: { r: Reservation }) {
   } else {
     Icon = Phone;
   }
-  const codeDigits = String(r.countryCode || "").replace(/\D/g, "");
-  const nationalDigits = String(r.phone || "").replace(/\D/g, "");
   let value: string;
   if (r.contactMethod === "email") {
     value = r.email;
   } else {
-    let formattedPhone: string | null;
-    if (codeDigits) {
-      formattedPhone = formatPhone(`${codeDigits}${nationalDigits}`, null);
-    } else {
-      formattedPhone = formatPhone(null, nationalDigits);
-    }
+    const formattedPhone = formatPhoneParts(r.countryCode, r.phone);
     value = formattedPhone || `${r.countryCode || ""} ${r.phone}`.trim();
   }
 

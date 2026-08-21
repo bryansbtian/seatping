@@ -334,12 +334,19 @@ describe("transactional emails", () => {
       customerPhone: "+15550000000",
       notes: "Window seat",
     });
-    expect(lastEmail().html).toContain("+15550000000");
+    expect(lastEmail().html).toContain("+1 (555) 000-0000");
     expect(lastEmail().html).toContain("Window seat");
     expect(lastEmail().html).toContain("1 Guest");
 
+    await sendNewReservationBusinessEmail({
+      ...base,
+      customerCountryCode: "+62",
+      customerPhone: "08111998669",
+    });
+    expect(lastEmail().html).toContain("+62 811-1998-669");
+
     await sendNewReservationBusinessEmail({ ...base, partySize: 4 });
-    expect(lastEmail().html).not.toContain("+15550000000");
+    expect(lastEmail().html).not.toContain("000-0000");
     expect(lastEmail().html).toContain("4 Guests");
   });
 
@@ -361,7 +368,7 @@ describe("transactional emails", () => {
     expect(lastEmail().subject).toContain("Bug");
     expect(lastEmail().html).toContain("High");
     expect(lastEmail().html).toContain("Bistro");
-    expect(lastEmail().html).toContain("+15550000000");
+    expect(lastEmail().html).toContain("+1 (555) 000-0000");
 
     await sendFeedbackEmail({ ...base, feedbackType: "mystery" });
     expect(lastEmail().subject).toContain("mystery");

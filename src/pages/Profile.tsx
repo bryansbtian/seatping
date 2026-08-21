@@ -18,10 +18,12 @@ import {
 } from "@/components/ui/dialog";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { useToast } from "@/hooks/use-toast";
-import { splitPhone } from "@/lib/countryCodes";
+import { splitPhone } from "@shared/countryCodes";
 import { api } from "@/lib/api";
 import { EditReviewDialog } from "@/components/EditReviewDialog";
 import { X, Star, Pencil, Trash2 } from "lucide-react";
+import { formatEnteredPhone } from "@shared/phone";
+import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 
 type Reservation = {
   id: string;
@@ -389,6 +391,7 @@ function ProfileHeaderCard({
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
+  const formattedProfilePhone = formatEnteredPhone(profile.phone);
 
   return (
     <Card className="border-0 bg-card/80 shadow-xl backdrop-blur-sm">
@@ -402,8 +405,10 @@ function ProfileHeaderCard({
               {profile.name}
             </h1>
             <p className="truncate text-xs text-muted-foreground sm:text-sm">{profile.email}</p>
-            {profile.phone && (
-              <p className="truncate text-xs text-muted-foreground sm:text-sm">{profile.phone}</p>
+            {formattedProfilePhone && (
+              <p className="truncate text-xs text-muted-foreground sm:text-sm">
+                {formattedProfilePhone}
+              </p>
             )}
           </div>
         </div>
@@ -548,12 +553,11 @@ function EditDetailsDialog({
             </Label>
             <div className="flex gap-2">
               <CountryCodeSelect value={countryCode} onChange={setCountryCode} />
-              <Input
+              <PhoneNumberInput
                 id="edit-phone"
-                type="tel"
-                placeholder="(555) 123-4567"
+                countryCode={countryCode}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onValueChange={setPhone}
                 className="flex-1"
               />
             </div>

@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 
 const MAX_MESSAGE = 1200;
 
@@ -346,13 +347,12 @@ const Feedback = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone (Optional)</Label>
-                  <Input
+                  <PhoneNumberInput
                     id="phone"
                     name="phone"
-                    type="tel"
-                    placeholder="(555) 123-4567"
+                    countryCode="+1"
                     value={formData.phone}
-                    onChange={handleChange}
+                    onValueChange={(phone) => setFormData((prev) => ({ ...prev, phone }))}
                     className="h-11 placeholder:text-sm sm:placeholder:text-base"
                   />
                 </div>

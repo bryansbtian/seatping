@@ -90,7 +90,7 @@ npm run start
 ```
 
 - Frontend build goes to `dist/`
-- Server build goes to `dist-server/`
+- Server build goes to `dist-server/`, with the entry point at `dist-server/server/index.js`
 
 ## Testing
 

@@ -11,6 +11,7 @@ import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { api } from "@/lib/api";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { analytics } from "@/lib/analytics";
+import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 
 const BusinessSignup = () => {
   const [formData, setFormData] = useState({
@@ -203,13 +204,17 @@ const BusinessSignup = () => {
                     value={formData.countryCode}
                     onChange={(dial) => setFormData((p) => ({ ...p, countryCode: dial }))}
                   />
-                  <Input
+                  <PhoneNumberInput
                     id="phone"
                     name="phone"
-                    type="tel"
-                    placeholder="(555) 123-4567"
+                    countryCode={formData.countryCode}
                     value={formData.phone}
-                    onChange={handleChange}
+                    onValueChange={(phone) => {
+                      setFormData((prev) => ({ ...prev, phone }));
+                      if (errors.phone) {
+                        setErrors((p) => ({ ...p, phone: "" }));
+                      }
+                    }}
                     required
                     className="h-11 flex-1 placeholder:text-sm sm:placeholder:text-base"
                   />

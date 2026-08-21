@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { maskEmail, maskEmailList } from "./redact.js";
+import { formatEnteredPhone, formatPhoneParts } from "../../shared/phone.js";
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || "smtp.porkbun.com",
@@ -658,6 +659,7 @@ export const sendNewReservationBusinessEmail = async (params: {
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
+  customerCountryCode?: string;
   dateLabel: string;
   timeLabel: string;
   partySize: number;
@@ -670,6 +672,7 @@ export const sendNewReservationBusinessEmail = async (params: {
     customerName,
     customerEmail,
     customerPhone,
+    customerCountryCode,
     dateLabel,
     timeLabel,
     partySize,
@@ -686,7 +689,11 @@ export const sendNewReservationBusinessEmail = async (params: {
     ],
   ];
   if (customerPhone) {
-    rows.push(["Phone", esc(customerPhone)]);
+    let phoneLabel = formatEnteredPhone(customerPhone) ?? customerPhone;
+    if (customerCountryCode) {
+      phoneLabel = formatPhoneParts(customerCountryCode, customerPhone) ?? customerPhone;
+    }
+    rows.push(["Phone", esc(phoneLabel)]);
   }
   rows.push(["Date", esc(dateLabel)]);
   rows.push(["Time", esc(timeLabel)]);
@@ -768,7 +775,7 @@ export const sendFeedbackEmail = async (data: FeedbackData): Promise<boolean> =>
     rows.push(["Business", esc(data.businessName)]);
   }
   if (data.phone) {
-    rows.push(["Phone", esc(data.phone)]);
+    rows.push(["Phone", esc(formatEnteredPhone(data.phone) ?? data.phone)]);
   }
 
   const html = renderEmail({
@@ -795,7 +802,7 @@ export const sendSalesInquiryEmail = async (data: SalesInquiryData): Promise<boo
       `<a href="mailto:${esc(data.businessEmail)}" style="color: ${COLORS.accent};">${esc(data.businessEmail)}</a>`,
     ],
     ["Contact Name", esc(data.contactName)],
-    ["Phone Number", esc(data.phoneNumber)],
+    ["Phone Number", esc(formatEnteredPhone(data.phoneNumber) ?? data.phoneNumber)],
   ];
 
   const html = renderEmail({
