@@ -7,6 +7,7 @@ import {
 import { prisma } from "../lib/prisma.js";
 import { generateTicketNumber } from "../lib/tickets.js";
 import { limitGuard, clientIp, HOURS } from "../lib/rateLimit.js";
+import { formatEnteredPhone } from "../../shared/phone.js";
 
 const router = express.Router();
 
@@ -61,7 +62,7 @@ router.post("/inquiry", express.json(), async (req, res) => {
         messages: [
           {
             sender: data.contactName,
-            message: `Demo request from ${data.businessName} (${data.contactName}, ${data.businessEmail}, ${data.phoneNumber}).`,
+            message: `Demo request from ${data.businessName} (${data.contactName}, ${data.businessEmail}, ${formatEnteredPhone(data.phoneNumber) ?? data.phoneNumber}).`,
             timestamp: new Date().toISOString(),
             isTeamResponse: false,
           },

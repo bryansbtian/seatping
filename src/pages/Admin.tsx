@@ -35,7 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import FeaturedRestaurantsManager from "@/components/FeaturedRestaurantsManager";
 import CampaignTemplatesAdmin from "@/components/CampaignTemplatesAdmin";
-import { formatPhone } from "@/lib/phone";
+import { formatEnteredPhone } from "@shared/phone";
 
 interface Ticket {
   id: string;
@@ -766,7 +766,7 @@ const Admin = () => {
     } else {
       phoneField = (
         <p className="text-sm md:text-base font-medium break-words">
-          {formatPhone(selectedCustomer.phone) || "-"}
+          {formatEnteredPhone(selectedCustomer.phone) || "-"}
         </p>
       );
     }
@@ -1244,7 +1244,7 @@ const Admin = () => {
                           <span className="text-amber-600"> (changed, must be unique)</span>
                         )}
                         <br />
-                        Phone: {editDraft.phone}
+                        Phone: {formatEnteredPhone(editDraft.phone)}
                         <br />
                         <br />
                         Trial: {formatBoolean(editDraft.trial)}
@@ -1356,7 +1356,7 @@ const Admin = () => {
                       </p>
                       {selectedTicket.senderPhone && (
                         <p>
-                          <strong>Phone:</strong> {selectedTicket.senderPhone}
+                          <strong>Phone:</strong> {formatEnteredPhone(selectedTicket.senderPhone)}
                         </p>
                       )}
                       {selectedTicket.businessName && (

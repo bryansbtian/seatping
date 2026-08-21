@@ -11,6 +11,7 @@ import LanguageSelector from "@/components/LanguageSelector";
 import Footer from "@/components/Footer";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { useLang } from "@/lib/i18n";
+import { formatEnteredPhone } from "@shared/phone";
 
 interface BusinessMe {
   name: string;
@@ -137,7 +138,7 @@ const BusinessSettings = () => {
                     </Label>
                     <Input
                       id="phone"
-                      value={me?.phone || ""}
+                      value={formatEnteredPhone(me?.phone) || ""}
                       disabled
                       className="bg-gray-100 text-sm md:text-base"
                     />

@@ -17,7 +17,7 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { GuestStatusBadge, GuestTagBadge } from "@/components/GuestBadge";
 import { api } from "@/lib/api";
-import { formatPhone } from "@/lib/phone";
+import { formatPhone } from "@shared/phone";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/lib/i18n";
 import { analytics } from "@/lib/analytics";
@@ -128,11 +128,12 @@ function guestName(
   g: {
     fullName: string | null;
     phone: string | null;
+    normalizedPhone: string | null;
     email: string | null;
   },
   fallback = "Guest",
 ) {
-  return g.fullName || g.phone || g.email || fallback;
+  return g.fullName || formatPhone(g.normalizedPhone, g.phone) || g.email || fallback;
 }
 
 function errMsg(e: unknown, fallback = "Something went wrong"): string {

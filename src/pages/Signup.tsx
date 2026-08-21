@@ -10,6 +10,7 @@ import Footer from "@/components/Footer";
 import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { api } from "@/lib/api";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
+import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -194,13 +195,17 @@ const Signup = () => {
                     value={formData.countryCode}
                     onChange={(dial) => setFormData((p) => ({ ...p, countryCode: dial }))}
                   />
-                  <Input
+                  <PhoneNumberInput
                     id="phone"
                     name="phone"
-                    type="tel"
-                    placeholder="(555) 123-4567"
+                    countryCode={formData.countryCode}
                     value={formData.phone}
-                    onChange={handleChange}
+                    onValueChange={(phone) => {
+                      setFormData((prev) => ({ ...prev, phone }));
+                      if (errors.phone) {
+                        setErrors((p) => ({ ...p, phone: "" }));
+                      }
+                    }}
                     className="h-11 flex-1 placeholder:text-sm sm:placeholder:text-base"
                   />
                 </div>

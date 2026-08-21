@@ -39,7 +39,7 @@ import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/lib/i18n";
 import { analytics } from "@/lib/analytics";
-import { formatPhone } from "@/lib/phone";
+import { formatPhone } from "@shared/phone";
 import {
   Megaphone,
   Mail,

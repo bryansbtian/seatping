@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { Users, CalendarDays, Bell } from "lucide-react";
+import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 
 const FloatingStat = ({
   icon,
@@ -253,13 +254,17 @@ const Sales = () => {
                     value={formData.countryCode}
                     onChange={(dial) => setFormData((p) => ({ ...p, countryCode: dial }))}
                   />
-                  <Input
+                  <PhoneNumberInput
                     id="phone"
                     name="phone"
-                    type="tel"
-                    placeholder="(555) 123-4567"
+                    countryCode={formData.countryCode}
                     value={formData.phone}
-                    onChange={handleChange}
+                    onValueChange={(phone) => {
+                      setFormData((prev) => ({ ...prev, phone }));
+                      if (errors.phone) {
+                        setErrors((p) => ({ ...p, phone: "" }));
+                      }
+                    }}
                     className={`h-11 flex-1 placeholder:text-sm sm:placeholder:text-base ${
                       phoneErrorClass
                     }`}

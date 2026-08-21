@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatPhone } from "../../src/lib/phone.js";
-import { COUNTRY_CODES, DEFAULT_COUNTRY_ISO, splitPhone } from "../../src/lib/countryCodes.js";
+import {
+  formatEnteredPhone,
+  formatNationalPhone,
+  formatPhone,
+  formatPhoneInput,
+  formatPhoneParts,
+  phonePlaceholder,
+} from "../../shared/phone.js";
+import { COUNTRY_CODES, DEFAULT_COUNTRY_ISO, splitPhone } from "../../shared/countryCodes.js";
 import { statusBadgeClass, statusLabel } from "../../src/lib/statusStyles.js";
 import { cn } from "../../src/lib/utils.js";
 import {
@@ -20,8 +27,16 @@ describe("formatPhone", () => {
     expect(formatPhone("6281234567890")).toBe("+62 812-3456-7890");
   });
 
-  it("groups a US number using its country pattern", () => {
-    expect(formatPhone("15551234567")).toBe("+1 555-123-4567");
+  it("groups a US number using the North American pattern", () => {
+    expect(formatPhone("15551234567")).toBe("+1 (555) 123-4567");
+  });
+
+  it("groups a Canadian number using the North American pattern", () => {
+    expect(formatPhone("12069313369")).toBe("+1 (206) 931-3369");
+  });
+
+  it("keeps the mobile grouping for an Indonesian mobile", () => {
+    expect(formatPhone("6281197300491")).toBe("+62 811-9730-0491");
   });
 
   it("keeps only the dial code when there is no national part", () => {
@@ -47,7 +62,38 @@ describe("formatPhone", () => {
   });
 
   it("ignores punctuation in the input", () => {
-    expect(formatPhone("+1 (555) 123-4567")).toBe("+1 555-123-4567");
+    expect(formatPhone("+1 (555) 123-4567")).toBe("+1 (555) 123-4567");
+  });
+
+  it("falls back to a generic national pattern for a dial without its own format", () => {
+    expect(formatPhone("5051234567")).toBe("+505 123-456-7");
+  });
+});
+
+describe("formatPhoneParts", () => {
+  it("formats a dial code and national number together", () => {
+    expect(formatPhoneParts("+1", "2069313369")).toBe("+1 (206) 931-3369");
+    expect(formatPhoneParts("+62", "08111998669")).toBe("+62 811-1998-669");
+  });
+
+  it("groups the national number when there is no dial code", () => {
+    expect(formatPhoneParts(null, "0812 3456")).toBe("812-3456");
+  });
+
+  it("returns null when there is no national number", () => {
+    expect(formatPhoneParts("+1", "")).toBeNull();
+    expect(formatPhoneParts(null, null)).toBeNull();
+  });
+});
+
+describe("phonePlaceholder", () => {
+  it("matches the display format of the selected country", () => {
+    expect(phonePlaceholder("+1")).toBe("(555) 123-4567");
+    expect(phonePlaceholder("+62")).toBe("812-3456-7890");
+  });
+
+  it("falls back to a generic example for an unlisted dial code", () => {
+    expect(phonePlaceholder("+505")).toBe("555-123-4567");
   });
 });
 
@@ -191,5 +237,110 @@ describe("timezone helpers", () => {
       return o.value;
     });
     expect(values).toContain(DEFAULT_TIMEZONE);
+  });
+});
+
+describe("formatEnteredPhone", () => {
+  it("reformats a value that carries its own country code", () => {
+    expect(formatEnteredPhone("+12069313369")).toBe("+1 (206) 931-3369");
+    expect(formatEnteredPhone("+62 811 1998 669")).toBe("+62 811-1998-669");
+  });
+
+  it("leaves a national number untouched because its country is unknown", () => {
+    expect(formatEnteredPhone("(555) 123-4567")).toBe("(555) 123-4567");
+    expect(formatEnteredPhone("021 1234 5678")).toBe("021 1234 5678");
+  });
+
+  it("groups a landline by its area code rather than the mobile pattern", () => {
+    expect(formatEnteredPhone("+622112345678")).toBe("+62 (21) 12345678");
+    expect(formatEnteredPhone("+442071234567")).toBe("+44 20 7123 4567");
+    expect(formatEnteredPhone("+4930123456")).toBe("+49 30 123456");
+    expect(formatEnteredPhone("+390612345678")).toBe("+39 6 1234 5678");
+  });
+
+  it("leaves a vanity number alone rather than truncating it at the letters", () => {
+    expect(formatEnteredPhone("+1-800-FLOWERS")).toBe("+1-800-FLOWERS");
+  });
+
+  it("keeps an extension that the numbering plan recognises", () => {
+    expect(formatEnteredPhone("+1 206 931 3369 ext 12")).toBe("+1 (206) 931-3369 ext. 12");
+  });
+
+  it("returns null for an empty value", () => {
+    expect(formatEnteredPhone("")).toBeNull();
+    expect(formatEnteredPhone("   ")).toBeNull();
+    expect(formatEnteredPhone(null)).toBeNull();
+  });
+});
+
+describe("formatNationalPhone", () => {
+  it("formats the national part without the dial code", () => {
+    expect(formatNationalPhone("+1", "2069313369")).toBe("(206) 931-3369");
+    expect(formatNationalPhone("+62", "8111998669")).toBe("811-1998-669");
+  });
+
+  it("caps the number of digits it will format", () => {
+    expect(formatNationalPhone("+1", "12345678901234567890")).toBe("(123) 456-7890-1234-5");
+  });
+
+  it("returns an empty string when there are no digits", () => {
+    expect(formatNationalPhone("+1", "")).toBe("");
+    expect(formatNationalPhone("+1", "abc")).toBe("");
+  });
+});
+
+describe("formatPhoneInput", () => {
+  it("formats as digits are typed and keeps the caret after them", () => {
+    expect(formatPhoneInput({ countryCode: "+1", raw: "2", caret: 1, previous: "" })).toEqual({
+      value: "(2",
+      caret: 2,
+    });
+    expect(
+      formatPhoneInput({
+        countryCode: "+1",
+        raw: "(206) 931-336",
+        caret: 13,
+        previous: "(206) 931-33",
+      }),
+    ).toEqual({ value: "(206) 931-336", caret: 13 });
+  });
+
+  it("deletes the preceding digit when only a separator was removed", () => {
+    expect(
+      formatPhoneInput({ countryCode: "+1", raw: "(206 931", caret: 4, previous: "(206) 931" }),
+    ).toEqual({ value: "(209) 31", caret: 3 });
+  });
+
+  it("keeps the caret in place when editing mid-number", () => {
+    const result = formatPhoneInput({
+      countryCode: "+62",
+      raw: "8115-1998-669",
+      caret: 4,
+      previous: "811-1998-669",
+    });
+    expect(result.value).toBe("811-5199-8669");
+    expect(result.caret).toBe(5);
+  });
+
+  it("drops the dial code when a full international number is pasted in", () => {
+    expect(
+      formatPhoneInput({ countryCode: "+1", raw: "+1 206 931 3369", caret: 15, previous: "" }),
+    ).toEqual({ value: "(206) 931-3369", caret: 14 });
+    expect(
+      formatPhoneInput({ countryCode: "+62", raw: "+6281197300491", caret: 14, previous: "" }),
+    ).toEqual({ value: "811-9730-0491", caret: 13 });
+  });
+
+  it("does not strip a leading digit that was merely typed", () => {
+    expect(
+      formatPhoneInput({ countryCode: "+1", raw: "123456", caret: 6, previous: "12345" }),
+    ).toEqual({ value: "(123) 456", caret: 9 });
+  });
+
+  it("clears the value when every digit is removed", () => {
+    expect(formatPhoneInput({ countryCode: "+1", raw: "", caret: 0, previous: "(2" })).toEqual({
+      value: "",
+      caret: 0,
+    });
   });
 });

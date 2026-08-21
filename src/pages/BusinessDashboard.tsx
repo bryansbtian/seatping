@@ -5,7 +5,7 @@ import { GuestStatusBadge } from "@/components/GuestBadge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { api } from "@/lib/api";
-import { formatPhone as formatPhoneIntl } from "@/lib/phone";
+import { formatPhoneParts } from "@shared/phone";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import BusinessHeader from "@/components/BusinessHeader";
@@ -484,24 +484,9 @@ const BusinessDashboard = () => {
     }
   };
 
-  const formatPhone = (countryCode?: string, phoneNumber?: string) => {
-    const national = String(phoneNumber || "").replace(/\D/g, "");
-    if (!national) {
-      return "";
-    }
-    const codeDigits = String(countryCode || "").replace(/\D/g, "");
-    let result: string | null;
-    if (codeDigits) {
-      result = formatPhoneIntl(`${codeDigits}${national}`, null);
-    } else {
-      result = formatPhoneIntl(null, national);
-    }
-    return result ?? "";
-  };
-
   const notificationContact = (c: any): string | null => {
     const method = c?.notificationMethod;
-    const phone = formatPhone(c?.countryCode, c?.phoneNumber);
+    const phone = formatPhoneParts(c?.countryCode, c?.phoneNumber) ?? "";
     if (method === "email") {
       if (c?.email) {
         return `Email: ${c.email}`;

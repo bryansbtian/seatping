@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { EditReviewDialog, type EditableReview } from "@/components/EditReviewDialog";
 import { formatTimeLabel } from "@/components/timeOptions";
 import ReservationBooking from "@/components/ReservationBooking";
+import { formatEnteredPhone } from "@shared/phone";
 import {
   Clock,
   Globe,
@@ -959,7 +960,7 @@ export default function RestaurantPage() {
                           href={`tel:${r.phone}`}
                           className="text-slate-900 underline-offset-4 hover:underline"
                         >
-                          {r.phone}
+                          {formatEnteredPhone(r.phone)}
                         </a>
                       }
                     />

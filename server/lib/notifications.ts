@@ -60,6 +60,7 @@ export type NotificationJob =
       locationName: string;
       customerName: string;
       customerPhone?: string;
+      customerCountryCode?: string;
       notes?: string;
       dashboardUrl: string;
     }
@@ -298,6 +299,7 @@ export async function processNotification(job: NotificationJob): Promise<void> {
             customerName: job.customerName,
             customerEmail: job.customerEmail || "",
             customerPhone: job.customerPhone,
+            customerCountryCode: job.customerCountryCode,
             dateLabel: job.dateLabel,
             timeLabel: job.timeLabel,
             partySize: job.partySize,
