@@ -39,6 +39,14 @@ describe("formatPhone", () => {
     expect(formatPhone("6281197300491")).toBe("+62 811-9730-0491");
   });
 
+  it("formats an Indonesian landline without brackets around the area code", () => {
+    expect(formatPhone("622129921234")).toBe("+62 21 29921234");
+  });
+
+  it("keeps a leading zero that belongs to the national number", () => {
+    expect(formatPhone("390612345678")).toBe("+39 06 1234 5678");
+  });
+
   it("keeps only the dial code when there is no national part", () => {
     expect(formatPhone("62")).toBe("+62");
   });
@@ -74,6 +82,10 @@ describe("formatPhoneParts", () => {
   it("formats a dial code and national number together", () => {
     expect(formatPhoneParts("+1", "2069313369")).toBe("+1 (206) 931-3369");
     expect(formatPhoneParts("+62", "08111998669")).toBe("+62 811-1998-669");
+  });
+
+  it("drops the trunk prefix from an Indonesian landline", () => {
+    expect(formatPhoneParts("+62", "02129921234")).toBe("+62 21 29921234");
   });
 
   it("groups the national number when there is no dial code", () => {
@@ -252,10 +264,10 @@ describe("formatEnteredPhone", () => {
   });
 
   it("groups a landline by its area code rather than the mobile pattern", () => {
-    expect(formatEnteredPhone("+622112345678")).toBe("+62 (21) 12345678");
+    expect(formatEnteredPhone("+622112345678")).toBe("+62 21 12345678");
     expect(formatEnteredPhone("+442071234567")).toBe("+44 20 7123 4567");
     expect(formatEnteredPhone("+4930123456")).toBe("+49 30 123456");
-    expect(formatEnteredPhone("+390612345678")).toBe("+39 6 1234 5678");
+    expect(formatEnteredPhone("+390612345678")).toBe("+39 06 1234 5678");
   });
 
   it("leaves a vanity number alone rather than truncating it at the letters", () => {
@@ -277,6 +289,15 @@ describe("formatNationalPhone", () => {
   it("formats the national part without the dial code", () => {
     expect(formatNationalPhone("+1", "2069313369")).toBe("(206) 931-3369");
     expect(formatNationalPhone("+62", "8111998669")).toBe("811-1998-669");
+  });
+
+  it("drops the trunk prefix when the country dial code is already selected", () => {
+    expect(formatNationalPhone("+62", "08111998669")).toBe("811-1998-669");
+    expect(formatNationalPhone("+62", "02129921234")).toBe("21 29921234");
+  });
+
+  it("keeps a leading zero that is part of the national number", () => {
+    expect(formatNationalPhone("+39", "0612345678")).toBe("06 1234 5678");
   });
 
   it("caps the number of digits it will format", () => {
@@ -329,6 +350,15 @@ describe("formatPhoneInput", () => {
     expect(
       formatPhoneInput({ countryCode: "+62", raw: "+6281197300491", caret: 14, previous: "" }),
     ).toEqual({ value: "811-9730-0491", caret: 13 });
+  });
+
+  it("drops the trunk prefix from a pasted national number", () => {
+    expect(
+      formatPhoneInput({ countryCode: "+62", raw: "08123456789", caret: 11, previous: "" }),
+    ).toEqual({ value: "812-3456-789", caret: 12 });
+    expect(
+      formatPhoneInput({ countryCode: "+62", raw: "08111998669", caret: 11, previous: "" }),
+    ).toEqual({ value: "811-1998-669", caret: 12 });
   });
 
   it("does not strip a leading digit that was merely typed", () => {

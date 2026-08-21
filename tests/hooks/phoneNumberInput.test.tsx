@@ -59,7 +59,7 @@ describe("PhoneNumberInput", () => {
     typeDigits(input, "2069313369");
     expect(input.value).toBe("(206) 931-3369");
     fireEvent.click(screen.getByText("Switch to Indonesia"));
-    expect(input.value).toBe("(206) 9313369");
+    expect(input.value).toBe("206 9313369");
   });
 
   it("removes the preceding digit when a separator is deleted", () => {
@@ -86,7 +86,7 @@ describe("PhoneNumberInput", () => {
     render(<Harness initialCountry="+62" />);
     const input = field();
     typeDigits(input, "2112345678");
-    expect(input.value).toBe("(21) 12345678");
+    expect(input.value).toBe("21 12345678");
   });
 
   it("groups a London landline as it is typed", () => {
