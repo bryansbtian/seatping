@@ -100,6 +100,8 @@ model Location {
 
   featured FeaturedRestaurant[]
 
+  floorPlan FloorPlan?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -609,4 +611,120 @@ model SavedAudience {
   @@index([businessId])
   @@index([businessId, locationId])
   @@map("saved_audiences")
+}
+
+enum TableShape {
+  ROUND
+  SQUARE
+  RECTANGLE
+  COUNTER
+}
+
+enum TableAssignmentSource {
+  SMART
+  MANUAL
+}
+
+enum TableAssignmentStatus {
+  RESERVED
+  SEATED
+  COMPLETED
+  CANCELLED
+}
+
+model FloorPlan {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  businessId String @db.ObjectId
+  locationId String @unique @db.ObjectId
+
+  name   String @default("Main Floor")
+  width  Int    @default(1200)
+  height Int    @default(800)
+
+  tables   DiningTable[]
+  location Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+  @@map("floor_plans")
+}
+
+model DiningTable {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  floorPlanId String @db.ObjectId
+  businessId  String @db.ObjectId
+  locationId  String @db.ObjectId
+
+  name             String
+  capacity         Int
+  minimumPartySize Int    @default(1)
+
+  shape   TableShape @default(RECTANGLE)
+  section String?
+
+  x        Int @default(0)
+  y        Int @default(0)
+  width    Int @default(120)
+  height   Int @default(80)
+  rotation Int @default(0)
+
+  isBlocked     Boolean @default(false)
+  blockedReason String?
+
+  assignmentVersion Int @default(0)
+
+  floorPlan   FloorPlan         @relation(fields: [floorPlanId], references: [id], onDelete: Cascade)
+  assignments TableAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([locationId, name])
+  @@index([floorPlanId])
+  @@index([businessId])
+  @@index([locationId, isBlocked])
+  @@map("dining_tables")
+}
+
+model TableAssignment {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  tableId    String @db.ObjectId
+  businessId String @db.ObjectId
+  locationId String @db.ObjectId
+
+  queueEntryId   String? @db.ObjectId
+  reservationId  String? @db.ObjectId
+  guestProfileId String? @db.ObjectId
+
+  partySize Int
+
+  source TableAssignmentSource
+  status TableAssignmentStatus @default(RESERVED)
+
+  assignedAt      DateTime @default(now())
+  expectedStartAt DateTime
+  expectedEndAt   DateTime
+
+  seatedAt    DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+
+  table DiningTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tableId, status])
+  @@index([locationId, status])
+  @@index([businessId])
+  @@index([reservationId])
+  @@index([queueEntryId])
+  @@index([locationId, expectedStartAt])
+  @@index([expectedEndAt])
+  @@map("table_assignments")
 }
