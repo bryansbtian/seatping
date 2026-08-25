@@ -145,19 +145,15 @@ app.use("/api/cron", cronRouter);
 app.use("/tickets", ticketsRouter);
 
 if (process.env.NODE_ENV === "production") {
-  const distPath = path.join(__dirname, "../dist");
+  const distPath = path.join(__dirname, "../../dist");
   app.use(express.static(distPath));
 
   let indexTemplate: string | null = null;
   app.get("*", (req, res) => {
-    try {
-      if (indexTemplate === null) {
-        indexTemplate = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
-      }
-      res.status(200).type("html").send(injectSeo(indexTemplate, req.path));
-    } catch {
-      res.sendFile(path.join(distPath, "index.html"));
+    if (indexTemplate === null) {
+      indexTemplate = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
     }
+    res.status(200).type("html").send(injectSeo(indexTemplate, req.path));
   });
 }
 
