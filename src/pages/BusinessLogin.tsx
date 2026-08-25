@@ -42,7 +42,7 @@ const BusinessLogin = () => {
         title: "Log In successful!",
         description: `Welcome back, ${res.user.name}`,
       });
-      navigate("/business/dashboard");
+      navigate("/business/overview");
     } catch (err: any) {
       toast({
         title: "Log In failed",

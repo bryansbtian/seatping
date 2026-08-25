@@ -8,9 +8,9 @@ import { api } from "@/lib/api";
 import { formatPhoneParts } from "@shared/phone";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import BusinessHeader from "@/components/BusinessHeader";
 import ReservationsManager from "@/components/ReservationsManager";
 import { useLang } from "@/lib/i18n";
+import { useBusinessSession, locationLabel } from "@/lib/businessSession";
 import { analytics } from "@/lib/analytics";
 import {
   Users,
@@ -19,11 +19,9 @@ import {
   RefreshCw,
   Calendar,
   ListOrdered,
-  ChevronDown,
   BarChart3,
   LogOut,
 } from "lucide-react";
-import Footer from "@/components/Footer";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import {
   LineChart,
@@ -61,15 +59,20 @@ const TOOLTIP_CONTENT_STYLE = {
   padding: "8px 12px",
 };
 
-const BusinessDashboard = () => {
+const BusinessOverview = () => {
   const isMobile = useIsMobile();
   const { t, lang } = useLang();
 
   useEffect(() => {
     analytics.businessDashboardOpened();
   }, []);
-  const [me, setMe] = useState<any | null>(null);
-  const [selectedLocationIndex, setSelectedLocationIndex] = useState(0);
+  const {
+    me,
+    setMe,
+    locations,
+    currentLocation,
+    currentLocationIndex: selectedLocationIndex,
+  } = useBusinessSession();
   const [queueEtas, setQueueEtas] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
   const [analyticsTimeframe, setAnalyticsTimeframe] = useState<"daily" | "weekly">("daily");
@@ -83,13 +86,10 @@ const BusinessDashboard = () => {
   } | null>(null);
   const trialCountdownRef = useRef<NodeJS.Timeout | null>(null);
   const [, forceCountdownTick] = useState(0);
-  const locations = (me?.locations as any[]) || [];
   const { toast } = useToast();
 
-  const currentLocation = locations[selectedLocationIndex];
   const queueData = currentLocation?.queue || [];
-  const locLabel = (loc: any, idx: number) =>
-    loc?.displayName || loc?.name || loc?.address || `Location ${idx + 1}`;
+  const locLabel = locationLabel;
 
   const calculateStats = () => {
     if (!currentLocation) {
@@ -260,27 +260,7 @@ const BusinessDashboard = () => {
         }));
       }
     }
-  }, [me]);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await api("/auth/business/me");
-        setMe(res.user);
-      } catch {}
-    })();
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await api("/auth/business/me");
-        setMe(res.user);
-      } catch {}
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, []);
+  }, [me, setMe]);
 
   useEffect(() => {
     if (!me?.username || !currentLocation?.id) {
@@ -811,17 +791,6 @@ const BusinessDashboard = () => {
   const peakHoursData = getPeakHoursData();
   const waitTimeDistribution = getWaitTimeDistribution();
 
-  let locationOptions: JSX.Element | JSX.Element[];
-  if (locations.length > 0) {
-    locationOptions = locations.map((loc, idx) => (
-      <option key={idx} value={idx}>
-        {locLabel(loc, idx)}
-      </option>
-    ));
-  } else {
-    locationOptions = <option value={0}>{t("dash.noLocations")}</option>;
-  }
-
   let reservationsLocationLabel: string;
   if (currentLocation) {
     reservationsLocationLabel = locLabel(currentLocation, selectedLocationIndex);
@@ -1181,12 +1150,11 @@ const BusinessDashboard = () => {
   return (
     <>
       <SEO
-        title="Business Dashboard | SeatPing"
+        title="Business Overview | SeatPing"
         description={BUSINESS_DESCRIPTION}
         image={BUSINESS_IMAGE}
       />
-      <BusinessHeader />
-      <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100">
+      <div>
         <div className="container mx-auto px-4 py-8 [&_.text-3xl]:max-[374px]:text-2xl [&_.text-2xl]:max-[374px]:text-xl [&_.text-xl]:max-[374px]:text-lg [&_.text-lg]:max-[374px]:text-base [&_.text-base]:max-[374px]:text-sm [&_.text-sm]:max-[374px]:text-xs [&_.text-xs]:max-[374px]:text-[11px]">
           {me && me.trial === true && <>{trialBanner}</>}
 
@@ -1219,6 +1187,11 @@ const BusinessDashboard = () => {
                 {t("dash.hello", { name: me?.name || t("dash.ownerFallback") })}
               </h2>
               <p className="text-slate-600 text-sm md:text-base">{t("dash.dailyStat")}</p>
+              {currentLocation && (
+                <span className="mt-2 inline-block text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">
+                  {locLabel(currentLocation, selectedLocationIndex)}
+                </span>
+              )}
             </div>
 
             {currentLocation && (
@@ -1238,17 +1211,6 @@ const BusinessDashboard = () => {
                 </div>
               </div>
             )}
-
-            <div className="relative">
-              <select
-                className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={selectedLocationIndex}
-                onChange={(e) => setSelectedLocationIndex(Number(e.target.value))}
-              >
-                {locationOptions}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-            </div>
           </div>
 
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 md:p-6 mb-6 hidden lg:block">
@@ -1262,6 +1224,9 @@ const BusinessDashboard = () => {
                 <p className="text-slate-600 text-sm md:text-base">{t("dash.dailyStat")}</p>
                 {currentLocation && (
                   <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <span className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">
+                      {locLabel(currentLocation, selectedLocationIndex)}
+                    </span>
                     <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
                       {t("dash.creditsPill", {
                         n: currentLocation?.credits || 0,
@@ -1275,17 +1240,7 @@ const BusinessDashboard = () => {
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <Calendar className="w-4 h-4" />
                   <span>{getCurrentDate()}</span>
-                </div>
-                <div className="relative">
-                  <select
-                    className="appearance-none bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={selectedLocationIndex}
-                    onChange={(e) => setSelectedLocationIndex(Number(e.target.value))}
-                  >
-                    {locationOptions}
-                  </select>
-                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                </div>
+                </div>{" "}
               </div>
             </div>
           </div>
@@ -1792,9 +1747,8 @@ const BusinessDashboard = () => {
           </div>
         </div>
       </div>
-      <Footer />
     </>
   );
 };
 
-export default BusinessDashboard;
+export default BusinessOverview;

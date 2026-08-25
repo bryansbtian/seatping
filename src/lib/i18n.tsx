@@ -5,12 +5,27 @@ export type Lang = "en" | "id";
 export const STORAGE_KEY = "seatping.business.lang";
 
 const en = {
-  "nav.dashboard": "Dashboard",
+  "nav.group.operations": "Operations",
+  "nav.group.customers": "Customers",
+  "nav.group.insights": "Insights",
+  "nav.group.other": "Other",
+  "nav.overview": "Overview",
+  "nav.queue": "Queue",
+  "nav.reservations": "Reservations",
+  "nav.floor": "Floor",
   "nav.guests": "Guests",
   "nav.campaigns": "Campaigns",
+  "nav.performance": "Performance",
   "nav.settings": "Settings",
+  "nav.noLocations": "No Locations",
+  "nav.switchLocation": "Switch Location",
   "nav.logout": "Log Out",
   "nav.openMenu": "Open menu",
+  "nav.menu": "Business Navigation",
+
+  "page.comingSoon.title": "Coming Soon",
+  "page.comingSoon.body":
+    "This page is part of the upcoming Floor Management release. Its workflow still lives on the Overview page for now.",
 
   "camp.title": "Campaigns",
   "camp.subtitle": "Send SeatPing-branded SMS, WhatsApp, and Email campaigns to your guests.",
@@ -21,7 +36,6 @@ const en = {
   "camp.newCampaign": "New Campaign",
   "camp.newTemplate": "New Custom Template",
   "camp.location": "Location",
-  "camp.noLocations": "No Locations",
   "camp.empty.campaigns.title": "No Campaigns Yet",
   "camp.empty.campaigns.body":
     "Create your first campaign to reach your guests by SMS, WhatsApp, or Email.",
@@ -140,7 +154,6 @@ const en = {
   "guests.title": "Guests",
   "guests.subtitle":
     "Manage guest profiles, visit history, tags, and notes from reservations and waitlists.",
-  "guests.noLocations": "No Locations",
   "guests.search.placeholder": "Search Name, Phone, Email, Or Tag",
   "guests.filters": "Filters",
   "guests.status": "Status",
@@ -217,7 +230,6 @@ const en = {
   "dash.dailyStat": "Here is your daily statistic",
   "dash.credits": "Credits",
   "dash.creditsPill": "Credits: {n}",
-  "dash.noLocations": "No locations",
   "dash.todaysSummary": "Today's Summary",
   "dash.stat.currentQueue": "Current Queue",
   "dash.stat.reservationsToday": "Reservations Today",
@@ -550,12 +562,27 @@ const en = {
 export type TKey = keyof typeof en;
 
 const id: Partial<Record<TKey, string>> = {
-  "nav.dashboard": "Dasbor",
+  "nav.group.operations": "Operasional",
+  "nav.group.customers": "Pelanggan",
+  "nav.group.insights": "Wawasan",
+  "nav.group.other": "Lainnya",
+  "nav.overview": "Ringkasan",
+  "nav.queue": "Antrean",
+  "nav.reservations": "Reservasi",
+  "nav.floor": "Denah",
   "nav.guests": "Tamu",
   "nav.campaigns": "Kampanye",
+  "nav.performance": "Performa",
   "nav.settings": "Pengaturan",
+  "nav.noLocations": "Tidak Ada Lokasi",
+  "nav.switchLocation": "Ganti Lokasi",
   "nav.logout": "Keluar",
   "nav.openMenu": "Buka menu",
+  "nav.menu": "Navigasi Bisnis",
+
+  "page.comingSoon.title": "Segera Hadir",
+  "page.comingSoon.body":
+    "Halaman ini adalah bagian dari rilis Manajemen Denah mendatang. Untuk saat ini alur kerjanya masih berada di halaman Ringkasan.",
 
   "camp.title": "Kampanye",
   "camp.subtitle": "Kirim kampanye SMS, WhatsApp, dan Email berlabel SeatPing ke tamu Anda.",
@@ -566,7 +593,6 @@ const id: Partial<Record<TKey, string>> = {
   "camp.newCampaign": "Kampanye Baru",
   "camp.newTemplate": "Templat Kustom Baru",
   "camp.location": "Lokasi",
-  "camp.noLocations": "Tidak Ada Lokasi",
 
   "common.refresh": "Segarkan",
   "common.tryAgain": "Coba Lagi",
@@ -664,7 +690,6 @@ const id: Partial<Record<TKey, string>> = {
   "guests.title": "Tamu",
   "guests.subtitle":
     "Kelola profil tamu, riwayat kunjungan, tag, dan catatan dari reservasi dan daftar tunggu.",
-  "guests.noLocations": "Tidak Ada Lokasi",
   "guests.search.placeholder": "Cari Nama, Telepon, Email, atau Tag",
   "guests.filters": "Filter",
   "guests.status": "Status",
@@ -743,7 +768,6 @@ const id: Partial<Record<TKey, string>> = {
   "dash.dailyStat": "Berikut statistik harian Anda",
   "dash.credits": "Kredit",
   "dash.creditsPill": "Kredit: {n}",
-  "dash.noLocations": "Tidak ada lokasi",
   "dash.todaysSummary": "Ringkasan Hari Ini",
   "dash.stat.currentQueue": "Antrean Saat Ini",
   "dash.stat.reservationsToday": "Reservasi Hari Ini",

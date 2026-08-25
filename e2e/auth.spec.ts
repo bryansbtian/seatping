@@ -14,7 +14,7 @@ test("a business signs in through the login form and reaches an authenticated da
 
   await signInBusinessThroughForm(page, business);
 
-  await expect(page).toHaveURL(/\/business\/dashboard$/);
+  await expect(page).toHaveURL(/\/business\/overview$/);
   await expect(queueManagementHeading(page)).toBeVisible();
   await expect(
     page.getByText(`Managing queue for: ${location.displayName}`).filter({ visible: true }),

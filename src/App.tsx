@@ -12,10 +12,15 @@ import BusinessSignup from "./pages/BusinessSignup";
 import Profile from "./pages/Profile";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import BusinessDashboard from "./pages/BusinessDashboard";
+import BusinessOverview from "./pages/BusinessOverview";
+import BusinessQueue from "./pages/BusinessQueue";
+import BusinessReservations from "./pages/BusinessReservations";
+import BusinessFloor from "./pages/BusinessFloor";
 import BusinessGuests from "./pages/BusinessGuests";
 import BusinessCampaigns from "./pages/BusinessCampaigns";
+import BusinessPerformance from "./pages/BusinessPerformance";
 import BusinessSettings from "./pages/BusinessSettings";
+import BusinessLayout from "@/components/BusinessLayout";
 import { useEffect, useState } from "react";
 import NotFound from "./pages/NotFound";
 import Policy from "./pages/Policy";
@@ -130,44 +135,26 @@ const App = () => (
 
           <Route
             path="/business/dashboard"
-            element={
-              <RequireBusiness>
-                <LanguageProvider>
-                  <BusinessDashboard />
-                </LanguageProvider>
-              </RequireBusiness>
-            }
+            element={<Navigate to="/business/overview" replace />}
           />
           <Route
-            path="/business/guests"
             element={
               <RequireBusiness>
                 <LanguageProvider>
-                  <BusinessGuests />
+                  <BusinessLayout />
                 </LanguageProvider>
               </RequireBusiness>
             }
-          />
-          <Route
-            path="/business/campaigns"
-            element={
-              <RequireBusiness>
-                <LanguageProvider>
-                  <BusinessCampaigns />
-                </LanguageProvider>
-              </RequireBusiness>
-            }
-          />
-          <Route
-            path="/business/settings"
-            element={
-              <RequireBusiness>
-                <LanguageProvider>
-                  <BusinessSettings />
-                </LanguageProvider>
-              </RequireBusiness>
-            }
-          />
+          >
+            <Route path="/business/overview" element={<BusinessOverview />} />
+            <Route path="/business/queue" element={<BusinessQueue />} />
+            <Route path="/business/reservations" element={<BusinessReservations />} />
+            <Route path="/business/floor" element={<BusinessFloor />} />
+            <Route path="/business/guests" element={<BusinessGuests />} />
+            <Route path="/business/campaigns" element={<BusinessCampaigns />} />
+            <Route path="/business/performance" element={<BusinessPerformance />} />
+            <Route path="/business/settings" element={<BusinessSettings />} />
+          </Route>
           <Route path="/admin" element={<Admin />} />
 
           <Route path="/:businessUsername/:locationId" element={<Restaurant />} />
@@ -195,7 +182,7 @@ function BusinessGuestRoute({ children }: { children: React.ReactNode }) {
     return null;
   }
   if (session.business) {
-    return <Navigate to="/business/dashboard" replace />;
+    return <Navigate to="/business/overview" replace />;
   }
   return <>{children}</>;
 }

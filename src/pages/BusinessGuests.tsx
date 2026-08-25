@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import BusinessHeader from "@/components/BusinessHeader";
-import Footer from "@/components/Footer";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,10 +18,10 @@ import { api } from "@/lib/api";
 import { formatPhone } from "@shared/phone";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/lib/i18n";
+import { useBusinessSession } from "@/lib/businessSession";
 import { analytics } from "@/lib/analytics";
 import {
   Search,
-  ChevronDown,
   SlidersHorizontal,
   Notebook,
   Phone,
@@ -165,9 +163,11 @@ const BusinessGuests = () => {
     analytics.guestCrmOpened();
   }, []);
 
+  const { currentLocation } = useBusinessSession();
+  const locationId = currentLocation?.id ?? "";
+
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
-  const [locationId, setLocationId] = useState<string>("");
   const [metaLoaded, setMetaLoaded] = useState(false);
 
   const [search, setSearch] = useState("");
@@ -201,9 +201,6 @@ const BusinessGuests = () => {
         const locs: LocationOption[] = d?.locations ?? [];
         setLocations(locs);
         setSuggestedTags(d?.suggestedTags ?? []);
-        if (locs.length) {
-          setLocationId((prev) => prev || locs[0].id);
-        }
         setMetaLoaded(true);
       })
       .catch((e) => {
@@ -316,6 +313,10 @@ const BusinessGuests = () => {
 
   const currentLocationLabel = locations.find((l) => l.id === locationId)?.label || "";
 
+  useEffect(() => {
+    setSelectedId(null);
+  }, [locationId]);
+
   const exportCsv = useCallback(() => {
     if (!guests.length) {
       return;
@@ -376,17 +377,6 @@ const BusinessGuests = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, [guests, locationTimezone, currentLocationLabel]);
-
-  let locationOptions: React.ReactNode;
-  if (locations.length) {
-    locationOptions = locations.map((l) => (
-      <option key={l.id} value={l.id}>
-        {l.label}
-      </option>
-    ));
-  } else {
-    locationOptions = <option value="">{t("guests.noLocations")}</option>;
-  }
 
   let filtersVisibilityClass: string;
   if (filtersOpen) {
@@ -456,8 +446,7 @@ const BusinessGuests = () => {
   return (
     <>
       <SEO title="Guests | SeatPing" description={BUSINESS_DESCRIPTION} image={BUSINESS_IMAGE} />
-      <BusinessHeader />
-      <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100 flex flex-col">
+      <div className="flex flex-col">
         <div className="container mx-auto px-4 py-8 flex-1 w-full">
           <div className="mb-6">
             <h1 className="text-xl md:text-2xl font-semibold text-gray-800">{t("guests.title")}</h1>
@@ -467,21 +456,6 @@ const BusinessGuests = () => {
           <Card className="bg-white border border-slate-200 rounded-xl shadow-sm mb-6">
             <CardContent className="p-4 md:p-5 space-y-4">
               <div className="flex flex-col md:flex-row gap-3">
-                <div className="relative md:w-64 shrink-0">
-                  <select
-                    className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={locationId}
-                    onChange={(e) => {
-                      setLocationId(e.target.value);
-                      setSelectedId(null);
-                    }}
-                    disabled={!locations.length}
-                  >
-                    {locationOptions}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-                </div>
-
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   <Input
@@ -632,7 +606,6 @@ const BusinessGuests = () => {
             <CardContent className="p-0">{guestsPanel}</CardContent>
           </Card>
         </div>
-        <Footer />
       </div>
 
       <GuestDetailDrawer

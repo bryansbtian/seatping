@@ -114,7 +114,7 @@ const BusinessSignup = () => {
         title: "Account created!",
         description: `Welcome, ${res.user.name}`,
       });
-      navigate("/business/dashboard");
+      navigate("/business/overview");
     } catch (err: any) {
       toast({
         title: "Sign up failed",

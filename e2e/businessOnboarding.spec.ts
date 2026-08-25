@@ -35,7 +35,7 @@ test("a business creates a location from the settings page and it survives a rel
   expect(created.isPublished).toBe(false);
 
   await page.reload();
-  await expect(page.getByText(displayName)).toBeVisible();
+  await expect(page.getByRole("main").getByText(displayName)).toBeVisible();
 });
 
 test("a business configures opening hours, reservation limits and publishes the restaurant profile", async ({
