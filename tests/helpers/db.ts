@@ -100,6 +100,9 @@ export async function disconnectTestPrisma(): Promise<void> {
 }
 
 const CLEAR_ORDER = [
+  "tableAssignment",
+  "diningTable",
+  "floorPlan",
   "campaignDeliveryLog",
   "campaignRecipient",
   "campaignRun",

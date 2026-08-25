@@ -45,6 +45,10 @@
       "destination": "/api/server"
     },
     {
+      "source": "/api/floor/:path*",
+      "destination": "/api/server"
+    },
+    {
       "source": "/api/search/:path*",
       "destination": "/api/server"
     },
