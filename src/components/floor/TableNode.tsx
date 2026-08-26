@@ -1,0 +1,114 @@
+import { useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { Ban } from "lucide-react";
+import type { DiningTable } from "@/lib/floorApi";
+import { type Rect } from "@/lib/floorGeometry";
+import { cn } from "@/lib/utils";
+
+export type DragKind = "move" | "resize";
+
+type TableNodeProps = {
+  table: DiningTable;
+  scale: number;
+  selected: boolean;
+  onSelect: (tableId: string) => void;
+  onDragStart: (
+    tableId: string,
+    kind: DragKind,
+    origin: Rect,
+    pointer: { x: number; y: number },
+  ) => void;
+};
+
+function shapeClasses(table: DiningTable): string {
+  if (table.shape === "ROUND") {
+    return "rounded-full";
+  }
+  return "rounded-xl";
+}
+
+function surfaceClasses(table: DiningTable, selected: boolean): string {
+  if (table.isBlocked) {
+    return "border-slate-300 bg-slate-100 text-slate-500";
+  }
+  if (selected) {
+    return "border-indigo-500 bg-indigo-50 text-slate-900";
+  }
+  return "border-slate-300 bg-white text-slate-700";
+}
+
+const TableNode = ({ table, scale, selected, onSelect, onDragStart }: TableNodeProps) => {
+  const nodeRef = useRef<HTMLDivElement | null>(null);
+
+  const beginDrag = (event: ReactPointerEvent, kind: DragKind) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onSelect(table.id);
+    onDragStart(
+      table.id,
+      kind,
+      { x: table.x, y: table.y, width: table.width, height: table.height },
+      { x: event.clientX, y: event.clientY },
+    );
+  };
+
+  let ringClass = "";
+  if (selected) {
+    ringClass = "ring-2 ring-indigo-500 ring-offset-1";
+  }
+
+  return (
+    <div
+      ref={nodeRef}
+      role="button"
+      tabIndex={0}
+      aria-label={table.name}
+      aria-pressed={selected}
+      data-testid={`table-node-${table.name}`}
+      onPointerDown={(event) => beginDrag(event, "move")}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(table.id);
+        }
+      }}
+      className={cn(
+        "absolute flex cursor-move select-none flex-col items-center justify-center border-2 shadow-sm transition-colors",
+        shapeClasses(table),
+        surfaceClasses(table, selected),
+        ringClass,
+      )}
+      style={{
+        left: table.x * scale,
+        top: table.y * scale,
+        width: table.width * scale,
+        height: table.height * scale,
+        transform: `rotate(${table.rotation}deg)`,
+      }}
+    >
+      <span className="pointer-events-none max-w-full truncate px-1 text-[11px] font-semibold leading-none max-md:hidden md:text-xs">
+        {table.name}
+      </span>
+      <span className="pointer-events-none mt-1 text-[11px] leading-none max-md:mt-0">
+        {table.capacity}
+      </span>
+      {table.isBlocked && (
+        <span className="pointer-events-none absolute right-1 top-1 text-slate-400">
+          <Ban className="h-3.5 w-3.5" />
+        </span>
+      )}
+
+      {selected && (
+        <span
+          role="button"
+          tabIndex={-1}
+          aria-label={`Resize ${table.name}`}
+          data-testid={`table-resize-${table.name}`}
+          onPointerDown={(event) => beginDrag(event, "resize")}
+          className="absolute -bottom-1.5 -right-1.5 h-3.5 w-3.5 cursor-se-resize rounded-sm border-2 border-indigo-500 bg-white"
+        />
+      )}
+    </div>
+  );
+};
+
+export default TableNode;

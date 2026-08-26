@@ -100,7 +100,7 @@ model Location {
 
   featured FeaturedRestaurant[]
 
-  floorPlan FloorPlan?
+  floorPlans FloorPlan[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -617,7 +617,6 @@ enum TableShape {
   ROUND
   SQUARE
   RECTANGLE
-  COUNTER
 }
 
 enum TableAssignmentSource {
@@ -636,19 +635,23 @@ model FloorPlan {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
   businessId String @db.ObjectId
-  locationId String @unique @db.ObjectId
+  locationId String @db.ObjectId
 
-  name   String @default("Main Floor")
-  width  Int    @default(1200)
-  height Int    @default(800)
+  name      String @default("Main Dining Room")
+  width     Int    @default(1200)
+  height    Int    @default(800)
+  sortOrder Int    @default(0)
 
   tables   DiningTable[]
+  zones    FloorZone[]
   location Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([locationId, name])
   @@index([businessId])
+  @@index([locationId, sortOrder])
   @@map("floor_plans")
 }
 
@@ -663,8 +666,7 @@ model DiningTable {
   capacity         Int
   minimumPartySize Int    @default(1)
 
-  shape   TableShape @default(RECTANGLE)
-  section String?
+  shape TableShape @default(RECTANGLE)
 
   x        Int @default(0)
   y        Int @default(0)
@@ -672,8 +674,7 @@ model DiningTable {
   height   Int @default(80)
   rotation Int @default(0)
 
-  isBlocked     Boolean @default(false)
-  blockedReason String?
+  isBlocked Boolean @default(false)
 
   assignmentVersion Int @default(0)
 
@@ -727,4 +728,29 @@ model TableAssignment {
   @@index([locationId, expectedStartAt])
   @@index([expectedEndAt])
   @@map("table_assignments")
+}
+
+model FloorZone {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  floorPlanId String @db.ObjectId
+  businessId  String @db.ObjectId
+  locationId  String @db.ObjectId
+
+  name String
+
+  x      Int @default(0)
+  y      Int @default(0)
+  width  Int @default(300)
+  height Int @default(200)
+
+  floorPlan FloorPlan @relation(fields: [floorPlanId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([floorPlanId, name])
+  @@index([locationId])
+  @@index([businessId])
+  @@map("floor_zones")
 }

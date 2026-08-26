@@ -55,3 +55,19 @@ export function isActiveNavPath(pathname: string, to: string): boolean {
   }
   return pathname.startsWith(`${to}/`);
 }
+
+export const SIDEBAR_COLLAPSED_KEY = "seatping.business.sidebarCollapsed";
+
+export function readSidebarCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function persistSidebarCollapsed(collapsed: boolean): void {
+  try {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+  } catch {}
+}

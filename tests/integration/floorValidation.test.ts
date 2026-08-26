@@ -25,43 +25,48 @@ async function setup() {
   const cookie = businessCookie(business.id);
   const request = await api();
 
-  await request.post(`/api/floor/${location.id}`).set("Cookie", cookie).send({});
+  const roomResponse = await request
+    .post(`/api/floor/${location.id}/rooms`)
+    .set("Cookie", cookie)
+    .send({});
+  const room = roomResponse.body.room;
+
   const tableResponse = await request
-    .post(`/api/floor/${location.id}/tables`)
+    .post(`/api/floor/${location.id}/rooms/${room.id}/tables`)
     .set("Cookie", cookie)
     .send({ name: "Table 12", capacity: 4, minimumPartySize: 2 });
 
-  return { business, location, cookie, request, table: tableResponse.body.table };
+  return { business, location, cookie, request, room, table: tableResponse.body.table };
 }
 
-describe("floor plan validation", () => {
+describe("room validation", () => {
   it("falls back to sensible defaults when the body is empty", async () => {
     const { business, location } = await seedBusinessWithLocation();
     const response = await (
       await api()
     )
-      .post(`/api/floor/${location.id}`)
+      .post(`/api/floor/${location.id}/rooms`)
       .set("Cookie", businessCookie(business.id))
       .send({});
 
     expect(response.status).toBe(201);
-    expect(response.body.floorPlan.name).toBe("Main Floor");
-    expect(response.body.floorPlan.width).toBe(1200);
-    expect(response.body.floorPlan.height).toBe(800);
+    expect(response.body.room.name).toBe("Main Dining Room");
+    expect(response.body.room.width).toBe(1200);
+    expect(response.body.room.height).toBe(800);
   });
 
-  it("rejects a blank or overlong floor plan name", async () => {
+  it("rejects a blank or overlong room name", async () => {
     const { business, location } = await seedBusinessWithLocation();
     const cookie = businessCookie(business.id);
     const request = await api();
 
-    const blank = await request.post(`/api/floor/${location.id}`).set("Cookie", cookie).send({
+    const blank = await request.post(`/api/floor/${location.id}/rooms`).set("Cookie", cookie).send({
       name: "   ",
     });
     expect(blank.status).toBe(400);
 
     const overlong = await request
-      .post(`/api/floor/${location.id}`)
+      .post(`/api/floor/${location.id}/rooms`)
       .set("Cookie", cookie)
       .send({ name: "a".repeat(61) });
     expect(overlong.status).toBe(400);
@@ -74,7 +79,7 @@ describe("floor plan validation", () => {
     const response = await (
       await api()
     )
-      .post(`/api/floor/${location.id}`)
+      .post(`/api/floor/${location.id}/rooms`)
       .set("Cookie", businessCookie(business.id))
       .send({ height: 99999 });
 
@@ -82,82 +87,83 @@ describe("floor plan validation", () => {
     expect(response.body.error).toContain("height");
   });
 
-  it("returns not found when updating a floor plan that does not exist", async () => {
+  it("returns not found when updating a room that does not exist", async () => {
     const { business, location } = await seedBusinessWithLocation();
     const response = await (
       await api()
     )
-      .patch(`/api/floor/${location.id}`)
+      .patch(`/api/floor/${location.id}/rooms/0123456789abcdef01234567`)
       .set("Cookie", businessCookie(business.id))
       .send({ name: "Nope" });
 
     expect(response.status).toBe(404);
   });
 
-  it("rejects an empty floor plan update and invalid dimensions", async () => {
-    const { location, cookie, request } = await setup();
+  it("rejects an empty room update and invalid dimensions", async () => {
+    const { location, cookie, request, room } = await setup();
 
-    const empty = await request.patch(`/api/floor/${location.id}`).set("Cookie", cookie).send({});
+    const empty = await request
+      .patch(`/api/floor/${location.id}/rooms/${room.id}`)
+      .set("Cookie", cookie)
+      .send({});
     expect(empty.status).toBe(400);
-    expect(empty.body.error).toContain("No floor plan changes");
+    expect(empty.body.error).toContain("No room changes");
 
     const badName = await request
-      .patch(`/api/floor/${location.id}`)
+      .patch(`/api/floor/${location.id}/rooms/${room.id}`)
       .set("Cookie", cookie)
       .send({ name: "" });
     expect(badName.status).toBe(400);
 
     const badWidth = await request
-      .patch(`/api/floor/${location.id}`)
+      .patch(`/api/floor/${location.id}/rooms/${room.id}`)
       .set("Cookie", cookie)
       .send({ width: 1 });
     expect(badWidth.status).toBe(400);
 
     const badHeight = await request
-      .patch(`/api/floor/${location.id}`)
+      .patch(`/api/floor/${location.id}/rooms/${room.id}`)
       .set("Cookie", cookie)
       .send({ height: "tall" });
     expect(badHeight.status).toBe(400);
   });
 
-  it("resizes a floor plan width on its own", async () => {
-    const { location, cookie, request } = await setup();
+  it("resizes a room width on its own", async () => {
+    const { location, cookie, request, room } = await setup();
 
     const response = await request
-      .patch(`/api/floor/${location.id}`)
+      .patch(`/api/floor/${location.id}/rooms/${room.id}`)
       .set("Cookie", cookie)
       .send({ width: 2000 });
 
     expect(response.status).toBe(200);
-    expect(response.body.floorPlan.width).toBe(2000);
-    expect(response.body.floorPlan.height).toBe(800);
+    expect(response.body.room.width).toBe(2000);
+    expect(response.body.room.height).toBe(800);
   });
 });
 
 describe("table creation validation", () => {
   it("rejects a missing name and a missing capacity", async () => {
-    const { location, cookie, request } = await setup();
+    const { location, cookie, request, room } = await setup();
 
     const noName = await request
-      .post(`/api/floor/${location.id}/tables`)
+      .post(`/api/floor/${location.id}/rooms/${room.id}/tables`)
       .set("Cookie", cookie)
       .send({ capacity: 2 });
     expect(noName.status).toBe(400);
 
     const noCapacity = await request
-      .post(`/api/floor/${location.id}/tables`)
+      .post(`/api/floor/${location.id}/rooms/${room.id}/tables`)
       .set("Cookie", cookie)
       .send({ name: "Table 99" });
     expect(noCapacity.status).toBe(400);
   });
 
   it("rejects invalid enum, text, and geometry values", async () => {
-    const { location, cookie, request } = await setup();
+    const { location, cookie, request, room } = await setup();
 
     const cases: [string, Record<string, unknown>][] = [
       ["shape", { shape: "HEXAGON" }],
-      ["section", { section: 12 }],
-      ["section", { section: "a".repeat(61) }],
       ["minimumPartySize", { minimumPartySize: 0 }],
       ["x", { x: -5 }],
       ["y", { y: "far" }],
@@ -168,7 +174,7 @@ describe("table creation validation", () => {
 
     for (const [field, overrides] of cases) {
       const response = await request
-        .post(`/api/floor/${location.id}/tables`)
+        .post(`/api/floor/${location.id}/rooms/${room.id}/tables`)
         .set("Cookie", cookie)
         .send({ name: `Table ${uniqueSuffix()}`, capacity: 4, ...overrides });
       expect(response.status, `${field} should be rejected`).toBe(400);
@@ -178,22 +184,22 @@ describe("table creation validation", () => {
   });
 
   it("accepts a null minimum party size and treats it as one", async () => {
-    const { location, cookie, request } = await setup();
+    const { location, cookie, request, room } = await setup();
 
     const response = await request
-      .post(`/api/floor/${location.id}/tables`)
+      .post(`/api/floor/${location.id}/rooms/${room.id}/tables`)
       .set("Cookie", cookie)
-      .send({ name: "Bar 1", capacity: 2, minimumPartySize: null, shape: "COUNTER" });
+      .send({ name: "Bar 1", capacity: 2, minimumPartySize: null, shape: "SQUARE" });
 
     expect(response.status).toBe(201);
     expect(response.body.table.minimumPartySize).toBe(1);
-    expect(response.body.table.shape).toBe("COUNTER");
+    expect(response.body.table.shape).toBe("SQUARE");
   });
 });
 
 describe("table update validation", () => {
   it("returns not found for a missing or malformed table id", async () => {
-    const { location, cookie, request } = await setup();
+    const { location, cookie, request, room } = await setup();
 
     const missing = await request
       .patch(`/api/floor/${location.id}/tables/${MISSING_ID}`)
@@ -209,7 +215,7 @@ describe("table update validation", () => {
   });
 
   it("rejects an empty update", async () => {
-    const { location, cookie, request, table } = await setup();
+    const { location, cookie, request, table, room } = await setup();
 
     const response = await request
       .patch(`/api/floor/${location.id}/tables/${table.id}`)
@@ -221,14 +227,13 @@ describe("table update validation", () => {
   });
 
   it("rejects invalid values on every editable field", async () => {
-    const { location, cookie, request, table } = await setup();
+    const { location, cookie, request, table, room } = await setup();
 
     const cases: [string, Record<string, unknown>][] = [
       ["name", { name: "" }],
       ["capacity", { capacity: 0 }],
       ["minimumPartySize", { minimumPartySize: 99 }],
       ["shape", { shape: "TRIANGLE" }],
-      ["section", { section: "a".repeat(61) }],
       ["x", { x: -1 }],
       ["y", { y: 99999 }],
       ["width", { width: 0 }],
@@ -250,7 +255,7 @@ describe("table update validation", () => {
   });
 
   it("rejects a minimum party size raised above the existing capacity", async () => {
-    const { location, cookie, request, table } = await setup();
+    const { location, cookie, request, table, room } = await setup();
 
     const response = await request
       .patch(`/api/floor/${location.id}/tables/${table.id}`)
@@ -262,7 +267,7 @@ describe("table update validation", () => {
   });
 
   it("allows lowering capacity and minimum party size together", async () => {
-    const { location, cookie, request, table } = await setup();
+    const { location, cookie, request, table, room } = await setup();
 
     const response = await request
       .patch(`/api/floor/${location.id}/tables/${table.id}`)
@@ -275,10 +280,10 @@ describe("table update validation", () => {
   });
 
   it("refuses a rename onto another table's name but allows renaming to itself", async () => {
-    const { location, cookie, request, table } = await setup();
+    const { location, cookie, request, table, room } = await setup();
 
     await request
-      .post(`/api/floor/${location.id}/tables`)
+      .post(`/api/floor/${location.id}/rooms/${room.id}/tables`)
       .set("Cookie", cookie)
       .send({ name: "Table 13", capacity: 2 });
 
@@ -297,7 +302,7 @@ describe("table update validation", () => {
   });
 
   it("changes only the table shape", async () => {
-    const { location, cookie, request, table } = await setup();
+    const { location, cookie, request, table, room } = await setup();
 
     const response = await request
       .patch(`/api/floor/${location.id}/tables/${table.id}`)
@@ -309,28 +314,22 @@ describe("table update validation", () => {
     expect(response.body.table.name).toBe("Table 12");
   });
 
-  it("clears a section when it is set to null and normalizes rotation", async () => {
+  it("normalizes a negative rotation", async () => {
     const { location, cookie, request, table } = await setup();
 
-    await request
+    const rotated = await request
       .patch(`/api/floor/${location.id}/tables/${table.id}`)
       .set("Cookie", cookie)
-      .send({ section: "Patio" });
+      .send({ rotation: -90 });
 
-    const cleared = await request
-      .patch(`/api/floor/${location.id}/tables/${table.id}`)
-      .set("Cookie", cookie)
-      .send({ section: null, rotation: -90 });
-
-    expect(cleared.status).toBe(200);
-    expect(cleared.body.table.section).toBeNull();
-    expect(cleared.body.table.rotation).toBe(270);
+    expect(rotated.status).toBe(200);
+    expect(rotated.body.table.rotation).toBe(270);
   });
 });
 
 describe("block and delete validation", () => {
   it("returns not found for block, unblock, and delete on a missing table", async () => {
-    const { location, cookie, request } = await setup();
+    const { location, cookie, request, room } = await setup();
 
     const blocked = await request
       .post(`/api/floor/${location.id}/tables/${MISSING_ID}/block`)
@@ -350,14 +349,8 @@ describe("block and delete validation", () => {
     expect(deleted.status).toBe(404);
   });
 
-  it("rejects an overlong block reason and blocks without one", async () => {
+  it("blocks a table", async () => {
     const { location, cookie, request, table } = await setup();
-
-    const overlong = await request
-      .post(`/api/floor/${location.id}/tables/${table.id}/block`)
-      .set("Cookie", cookie)
-      .send({ reason: "a".repeat(201) });
-    expect(overlong.status).toBe(400);
 
     const blocked = await request
       .post(`/api/floor/${location.id}/tables/${table.id}/block`)
@@ -365,13 +358,12 @@ describe("block and delete validation", () => {
       .send({});
     expect(blocked.status).toBe(200);
     expect(blocked.body.table.isBlocked).toBe(true);
-    expect(blocked.body.table.blockedReason).toBeNull();
   });
 });
 
 describe("assignment listing validation", () => {
   it("rejects malformed query filters", async () => {
-    const { location, cookie, request } = await setup();
+    const { location, cookie, request, room } = await setup();
 
     const badTable = await request
       .get(`/api/floor/${location.id}/assignments?tableId=nope`)
@@ -395,7 +387,7 @@ describe("assignment listing validation", () => {
   });
 
   it("filters by an explicit terminal status", async () => {
-    const { location, cookie, request, table } = await setup();
+    const { location, cookie, request, table, room } = await setup();
 
     const created = await request
       .post(`/api/floor/${location.id}/assignments`)
@@ -421,7 +413,7 @@ describe("assignment listing validation", () => {
 
 describe("assignment creation validation", () => {
   it("rejects malformed identifiers and required fields", async () => {
-    const { location, cookie, request, table } = await setup();
+    const { location, cookie, request, table, room } = await setup();
 
     const cases: [string, Record<string, unknown>][] = [
       ["tableId", { tableId: "nope" }],
@@ -460,7 +452,7 @@ describe("assignment creation validation", () => {
   });
 
   it("refuses a terminal status on creation", async () => {
-    const { location, cookie, request, table } = await setup();
+    const { location, cookie, request, table, room } = await setup();
 
     const response = await request
       .post(`/api/floor/${location.id}/assignments`)
@@ -478,7 +470,7 @@ describe("assignment creation validation", () => {
   });
 
   it("returns not found for a table that does not exist", async () => {
-    const { location, cookie, request } = await setup();
+    const { location, cookie, request, room } = await setup();
 
     const response = await request
       .post(`/api/floor/${location.id}/assignments`)
@@ -494,7 +486,7 @@ describe("assignment creation validation", () => {
   });
 
   it("returns not found for references that do not exist", async () => {
-    const { location, cookie, request, table } = await setup();
+    const { location, cookie, request, table, room } = await setup();
 
     const queue = await request
       .post(`/api/floor/${location.id}/assignments`)
@@ -570,7 +562,7 @@ describe("assignment update validation", () => {
   }
 
   it("returns not found for a missing or malformed assignment id", async () => {
-    const { location, cookie, request } = await setup();
+    const { location, cookie, request, room } = await setup();
 
     const missing = await request
       .patch(`/api/floor/${location.id}/assignments/${MISSING_ID}`)

@@ -3,7 +3,7 @@ import { withWriteRetry } from "./dbRetry.js";
 
 export const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 
-export const TABLE_SHAPES = ["ROUND", "SQUARE", "RECTANGLE", "COUNTER"] as const;
+export const TABLE_SHAPES = ["ROUND", "SQUARE", "RECTANGLE"] as const;
 export const ASSIGNMENT_SOURCES = ["SMART", "MANUAL"] as const;
 export const ASSIGNMENT_STATUSES = ["RESERVED", "SEATED", "COMPLETED", "CANCELLED"] as const;
 export const ACTIVE_ASSIGNMENT_STATUSES = ["RESERVED", "SEATED"] as const;
@@ -21,8 +21,11 @@ export const TABLE_MIN_SIZE = 20;
 export const TABLE_MAX_SIZE = 2000;
 export const TABLE_MAX_POSITION = 20000;
 export const TABLE_NAME_MAX_LENGTH = 60;
-export const SECTION_MAX_LENGTH = 60;
-export const BLOCK_REASON_MAX_LENGTH = 200;
+export const ROOM_NAME_MAX_LENGTH = 60;
+export const ZONE_NAME_MAX_LENGTH = 60;
+export const ZONE_MIN_SIZE = 40;
+export const MAX_ROOMS_PER_LOCATION = 20;
+export const MAX_ZONES_PER_ROOM = 20;
 export const DEFAULT_TURN_MINUTES = 90;
 export const MAX_TURN_MINUTES = 12 * 60;
 
@@ -219,16 +222,27 @@ export function serializeTable(table: any) {
     capacity: table.capacity,
     minimumPartySize: table.minimumPartySize,
     shape: table.shape,
-    section: table.section,
     x: table.x,
     y: table.y,
     width: table.width,
     height: table.height,
     rotation: table.rotation,
     isBlocked: table.isBlocked,
-    blockedReason: table.blockedReason,
     createdAt: table.createdAt,
     updatedAt: table.updatedAt,
+  };
+}
+
+export function serializeZone(zone: any) {
+  return {
+    id: zone.id,
+    floorPlanId: zone.floorPlanId,
+    locationId: zone.locationId,
+    name: zone.name,
+    x: zone.x,
+    y: zone.y,
+    width: zone.width,
+    height: zone.height,
   };
 }
 
@@ -237,13 +251,19 @@ export function serializeFloorPlan(plan: any) {
   if (Array.isArray(plan?.tables)) {
     tables = plan.tables.map(serializeTable);
   }
+  let zones: any[] = [];
+  if (Array.isArray(plan?.zones)) {
+    zones = plan.zones.map(serializeZone);
+  }
   return {
     id: plan.id,
     locationId: plan.locationId,
     name: plan.name,
     width: plan.width,
     height: plan.height,
+    sortOrder: plan.sortOrder,
     tables,
+    zones,
     createdAt: plan.createdAt,
     updatedAt: plan.updatedAt,
   };
@@ -269,11 +289,46 @@ export function serializeAssignment(assignment: any) {
   };
 }
 
-export async function findFloorPlan(locationId: string) {
-  return prisma.floorPlan.findUnique({
+export async function listRooms(locationId: string) {
+  return prisma.floorPlan.findMany({
     where: { locationId },
-    include: { tables: { orderBy: { name: "asc" } } },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    include: {
+      tables: { orderBy: { name: "asc" } },
+      zones: { orderBy: { name: "asc" } },
+    },
   });
+}
+
+export async function findRoom(locationId: string, roomId: string) {
+  if (!OBJECT_ID_RE.test(roomId)) {
+    return null;
+  }
+  return prisma.floorPlan.findFirst({
+    where: { id: roomId, locationId },
+    include: {
+      tables: { orderBy: { name: "asc" } },
+      zones: { orderBy: { name: "asc" } },
+    },
+  });
+}
+
+export async function findOwnedZone(locationId: string, zoneId: string) {
+  if (!OBJECT_ID_RE.test(zoneId)) {
+    return null;
+  }
+  return prisma.floorZone.findFirst({ where: { id: zoneId, locationId } });
+}
+
+export function clampZoneToRoom(
+  zone: { x: number; y: number; width: number; height: number },
+  room: { width: number; height: number },
+) {
+  const width = Math.min(Math.max(zone.width, ZONE_MIN_SIZE), room.width);
+  const height = Math.min(Math.max(zone.height, ZONE_MIN_SIZE), room.height);
+  const x = Math.min(Math.max(zone.x, 0), Math.max(0, room.width - width));
+  const y = Math.min(Math.max(zone.y, 0), Math.max(0, room.height - height));
+  return { x, y, width, height };
 }
 
 export async function findOwnedTable(locationId: string, tableId: string) {

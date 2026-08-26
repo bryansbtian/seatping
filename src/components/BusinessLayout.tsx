@@ -6,11 +6,22 @@ import BusinessSessionProvider from "@/components/BusinessSessionProvider";
 import BusinessSidebar from "@/components/BusinessSidebar";
 import Footer from "@/components/Footer";
 import { useLang } from "@/lib/i18n";
+import { persistSidebarCollapsed, readSidebarCollapsed } from "@/lib/businessNav";
+import { cn } from "@/lib/utils";
 
 const BusinessLayout = () => {
   const { t } = useLang();
   const { pathname } = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => readSidebarCollapsed());
+
+  const toggleCollapsed = () => {
+    setCollapsed((previous) => {
+      const next = !previous;
+      persistSidebarCollapsed(next);
+      return next;
+    });
+  };
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -18,14 +29,27 @@ const BusinessLayout = () => {
 
   return (
     <BusinessSessionProvider>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-100">
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-slate-200 bg-white lg:block">
-          <BusinessSidebar />
+      <div className="h-screen overflow-hidden bg-gradient-to-br from-slate-50 to-indigo-100">
+        <aside
+          className={cn(
+            "fixed inset-y-0 left-0 z-40 hidden border-r border-slate-200 bg-white transition-[width] duration-200 lg:block",
+            collapsed && "w-16",
+            !collapsed && "w-64",
+          )}
+        >
+          <BusinessSidebar collapsed={collapsed} onToggleCollapse={toggleCollapsed} />
         </aside>
 
-        <div className="flex min-h-screen flex-col lg:pl-64">
-          <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md lg:hidden">
-            <div className="flex items-center gap-3 px-4 py-4">
+        <div
+          className={cn(
+            "flex h-screen flex-col overflow-hidden transition-[padding] duration-200",
+            collapsed && "lg:pl-16",
+            !collapsed && "lg:pl-64",
+          )}
+        >
+          <header className="z-30 shrink-0 border-b border-border bg-background/80 backdrop-blur-md lg:hidden">
+            <div className="flex items-center justify-between gap-3 px-4 py-4">
+              <span className="text-xl font-semibold text-slate-900">SeatPing</span>
               <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
                 <SheetTrigger asChild>
                   <button
@@ -41,15 +65,15 @@ const BusinessLayout = () => {
                   <BusinessSidebar onNavigate={() => setMobileNavOpen(false)} />
                 </SheetContent>
               </Sheet>
-              <span className="text-xl font-semibold text-slate-900">SeatPing</span>
             </div>
           </header>
 
-          <main className="flex-1">
-            <Outlet />
+          <main className="flex flex-1 flex-col overflow-y-auto">
+            <div className="flex-1">
+              <Outlet />
+            </div>
+            <Footer />
           </main>
-
-          <Footer />
         </div>
       </div>
     </BusinessSessionProvider>

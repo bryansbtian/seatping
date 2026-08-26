@@ -28,30 +28,25 @@ async function setupFloor(tableOverrides: Record<string, unknown> = {}) {
   const cookie = businessCookie(business.id);
   const request = await api();
 
-  const planResponse = await request.post(`/api/floor/${location.id}`).set("Cookie", cookie).send({
-    name: "Main Floor",
-    width: 1400,
-    height: 900,
-  });
+  const planResponse = await request
+    .post(`/api/floor/${location.id}/rooms`)
+    .set("Cookie", cookie)
+    .send({ name: "Main Floor", width: 1400, height: 900 });
   expect(planResponse.status).toBe(201);
 
+  const room = planResponse.body.room;
+
   const tableResponse = await request
-    .post(`/api/floor/${location.id}/tables`)
+    .post(`/api/floor/${location.id}/rooms/${room.id}/tables`)
     .set("Cookie", cookie)
     .send({ name: "Table 12", capacity: 4, minimumPartySize: 2, ...tableOverrides });
   expect(tableResponse.status).toBe(201);
 
-  return {
-    business,
-    location,
-    cookie,
-    floorPlan: planResponse.body.floorPlan,
-    table: tableResponse.body.table,
-  };
+  return { business, location, cookie, room, table: tableResponse.body.table };
 }
 
-describe("floor plan lifecycle", () => {
-  it("reports no floor plan before one is created", async () => {
+describe("room lifecycle", () => {
+  it("reports no rooms before one is created", async () => {
     const { business, location } = await seedBusinessWithLocation();
     const response = await (
       await api()
@@ -60,47 +55,112 @@ describe("floor plan lifecycle", () => {
       .set("Cookie", businessCookie(business.id));
 
     expect(response.status).toBe(200);
-    expect(response.body.floorPlan).toBeNull();
+    expect(response.body.rooms).toEqual([]);
   });
 
-  it("creates, reads back, and updates a floor plan", async () => {
+  it("creates, reads back, and updates a room", async () => {
     const { business, location } = await seedBusinessWithLocation();
     const cookie = businessCookie(business.id);
     const request = await api();
 
     const created = await request
-      .post(`/api/floor/${location.id}`)
+      .post(`/api/floor/${location.id}/rooms`)
       .set("Cookie", cookie)
       .send({ name: "Ground Floor", width: 1400, height: 900 });
     expect(created.status).toBe(201);
-    expect(created.body.floorPlan.name).toBe("Ground Floor");
-    expect(created.body.floorPlan.width).toBe(1400);
+    expect(created.body.room.name).toBe("Ground Floor");
+    expect(created.body.room.width).toBe(1400);
 
     const fetched = await request.get(`/api/floor/${location.id}`).set("Cookie", cookie);
     expect(fetched.status).toBe(200);
-    expect(fetched.body.floorPlan.id).toBe(created.body.floorPlan.id);
-    expect(fetched.body.floorPlan.tables).toEqual([]);
+    expect(fetched.body.rooms).toHaveLength(1);
+    expect(fetched.body.rooms[0].id).toBe(created.body.room.id);
+    expect(fetched.body.rooms[0].tables).toEqual([]);
+    expect(fetched.body.rooms[0].zones).toEqual([]);
 
     const updated = await request
-      .patch(`/api/floor/${location.id}`)
+      .patch(`/api/floor/${location.id}/rooms/${created.body.room.id}`)
       .set("Cookie", cookie)
       .send({ name: "Upstairs", height: 1000 });
     expect(updated.status).toBe(200);
-    expect(updated.body.floorPlan.name).toBe("Upstairs");
-    expect(updated.body.floorPlan.height).toBe(1000);
-    expect(updated.body.floorPlan.width).toBe(1400);
+    expect(updated.body.room.name).toBe("Upstairs");
+    expect(updated.body.room.height).toBe(1000);
+    expect(updated.body.room.width).toBe(1400);
   });
 
-  it("refuses a second floor plan for the same location", async () => {
+  it("keeps several rooms for one location and orders them", async () => {
     const { business, location } = await seedBusinessWithLocation();
     const cookie = businessCookie(business.id);
     const request = await api();
 
-    await request.post(`/api/floor/${location.id}`).set("Cookie", cookie).send({});
-    const second = await request.post(`/api/floor/${location.id}`).set("Cookie", cookie).send({});
+    const main = await request
+      .post(`/api/floor/${location.id}/rooms`)
+      .set("Cookie", cookie)
+      .send({ name: "Main Dining Room" });
+    const patio = await request
+      .post(`/api/floor/${location.id}/rooms`)
+      .set("Cookie", cookie)
+      .send({ name: "Patio" });
+
+    expect(main.status).toBe(201);
+    expect(patio.status).toBe(201);
+    expect(main.body.room.sortOrder).toBe(0);
+    expect(patio.body.room.sortOrder).toBe(1);
+
+    const fetched = await request.get(`/api/floor/${location.id}`).set("Cookie", cookie);
+    expect(fetched.body.rooms.map((room: any) => room.name)).toEqual(["Main Dining Room", "Patio"]);
+  });
+
+  it("refuses two rooms with the same name in one location", async () => {
+    const { business, location } = await seedBusinessWithLocation();
+    const cookie = businessCookie(business.id);
+    const request = await api();
+
+    await request.post(`/api/floor/${location.id}/rooms`).set("Cookie", cookie).send({});
+    const second = await request
+      .post(`/api/floor/${location.id}/rooms`)
+      .set("Cookie", cookie)
+      .send({});
 
     expect(second.status).toBe(409);
     expect(await db.floorPlan.count({ where: { locationId: location.id } })).toBe(1);
+  });
+
+  it("deletes a room together with its tables and zones", async () => {
+    const { location, cookie, room, table } = await setupFloor();
+    const request = await api();
+
+    const zone = await request
+      .post(`/api/floor/${location.id}/rooms/${room.id}/zones`)
+      .set("Cookie", cookie)
+      .send({ name: "Patio zone" });
+    expect(zone.status).toBe(201);
+
+    const deleted = await request
+      .delete(`/api/floor/${location.id}/rooms/${room.id}`)
+      .set("Cookie", cookie);
+    expect(deleted.status).toBe(200);
+
+    expect(await db.floorPlan.count({ where: { id: room.id } })).toBe(0);
+    expect(await db.diningTable.count({ where: { id: table.id } })).toBe(0);
+    expect(await db.floorZone.count({ where: { floorPlanId: room.id } })).toBe(0);
+  });
+
+  it("refuses to delete a room whose table is still assigned", async () => {
+    const { location, cookie, room, table } = await setupFloor();
+    const request = await api();
+
+    await request
+      .post(`/api/floor/${location.id}/assignments`)
+      .set("Cookie", cookie)
+      .send({ tableId: table.id, partySize: 4, source: "MANUAL", expectedStartAt: at(19) });
+
+    const deleted = await request
+      .delete(`/api/floor/${location.id}/rooms/${room.id}`)
+      .set("Cookie", cookie);
+
+    expect(deleted.status).toBe(409);
+    expect(await db.floorPlan.count({ where: { id: room.id } })).toBe(1);
   });
 
   it("keeps each location layout independent", async () => {
@@ -117,24 +177,27 @@ describe("floor plan lifecycle", () => {
       },
     });
 
-    await request.post(`/api/floor/${location.id}`).set("Cookie", cookie).send({ name: "PIK" });
+    const first = await request
+      .post(`/api/floor/${location.id}/rooms`)
+      .set("Cookie", cookie)
+      .send({ name: "PIK" });
     await request
-      .post(`/api/floor/${secondLocation.id}`)
+      .post(`/api/floor/${secondLocation.id}/rooms`)
       .set("Cookie", cookie)
       .send({ name: "SCBD" });
 
     await request
-      .post(`/api/floor/${location.id}/tables`)
+      .post(`/api/floor/${location.id}/rooms/${first.body.room.id}/tables`)
       .set("Cookie", cookie)
       .send({ name: "Table 1", capacity: 2 });
 
-    const first = await request.get(`/api/floor/${location.id}`).set("Cookie", cookie);
-    const second = await request.get(`/api/floor/${secondLocation.id}`).set("Cookie", cookie);
+    const firstRooms = await request.get(`/api/floor/${location.id}`).set("Cookie", cookie);
+    const secondRooms = await request.get(`/api/floor/${secondLocation.id}`).set("Cookie", cookie);
 
-    expect(first.body.floorPlan.name).toBe("PIK");
-    expect(first.body.floorPlan.tables).toHaveLength(1);
-    expect(second.body.floorPlan.name).toBe("SCBD");
-    expect(second.body.floorPlan.tables).toHaveLength(0);
+    expect(firstRooms.body.rooms[0].name).toBe("PIK");
+    expect(firstRooms.body.rooms[0].tables).toHaveLength(1);
+    expect(secondRooms.body.rooms[0].name).toBe("SCBD");
+    expect(secondRooms.body.rooms[0].tables).toHaveLength(0);
   });
 
   it("rejects floor dimensions outside the supported range", async () => {
@@ -142,7 +205,7 @@ describe("floor plan lifecycle", () => {
     const response = await (
       await api()
     )
-      .post(`/api/floor/${location.id}`)
+      .post(`/api/floor/${location.id}/rooms`)
       .set("Cookie", businessCookie(business.id))
       .send({ width: 10 });
 
@@ -153,12 +216,11 @@ describe("floor plan lifecycle", () => {
 
 describe("table management", () => {
   it("persists every configurable table field", async () => {
-    const { location, cookie } = await setupFloor({
+    const { location, cookie, room } = await setupFloor({
       name: "Patio 3",
       capacity: 6,
       minimumPartySize: 3,
       shape: "round",
-      section: "Patio",
       x: 240,
       y: 130,
       width: 150,
@@ -167,20 +229,19 @@ describe("table management", () => {
     });
 
     const fetched = await (await api()).get(`/api/floor/${location.id}`).set("Cookie", cookie);
-    const table = fetched.body.floorPlan.tables[0];
+    const table = fetched.body.rooms[0].tables[0];
 
     expect(table.name).toBe("Patio 3");
     expect(table.capacity).toBe(6);
     expect(table.minimumPartySize).toBe(3);
     expect(table.shape).toBe("ROUND");
-    expect(table.section).toBe("Patio");
     expect(table.x).toBe(240);
     expect(table.y).toBe(130);
     expect(table.rotation).toBe(90);
     expect(table.isBlocked).toBe(false);
   });
 
-  it("moves, resizes, renames, and re-sections a table", async () => {
+  it("moves, resizes, and renames a table", async () => {
     const { location, cookie, table } = await setupFloor();
 
     const response = await (
@@ -188,22 +249,21 @@ describe("table management", () => {
     )
       .patch(`/api/floor/${location.id}/tables/${table.id}`)
       .set("Cookie", cookie)
-      .send({ name: "Table 12A", x: 500, y: 320, width: 200, section: "Bar" });
+      .send({ name: "Table 12A", x: 500, y: 320, width: 200 });
 
     expect(response.status).toBe(200);
     expect(response.body.table.name).toBe("Table 12A");
     expect(response.body.table.x).toBe(500);
     expect(response.body.table.width).toBe(200);
-    expect(response.body.table.section).toBe("Bar");
     expect(response.body.table.capacity).toBe(4);
   });
 
   it("refuses duplicate table names within a location but allows them across locations", async () => {
-    const { business, location, cookie } = await setupFloor();
+    const { business, location, cookie, room } = await setupFloor();
     const request = await api();
 
     const duplicate = await request
-      .post(`/api/floor/${location.id}/tables`)
+      .post(`/api/floor/${location.id}/rooms/${room.id}/tables`)
       .set("Cookie", cookie)
       .send({ name: "Table 12", capacity: 2 });
     expect(duplicate.status).toBe(409);
@@ -216,10 +276,14 @@ describe("table management", () => {
         address: "2 Test Street",
       },
     });
-    await request.post(`/api/floor/${secondLocation.id}`).set("Cookie", cookie).send({});
+    const secondRoomResponse = await request
+      .post(`/api/floor/${secondLocation.id}/rooms`)
+      .set("Cookie", cookie)
+      .send({});
+    const secondRoom = secondRoomResponse.body.room;
 
     const elsewhere = await request
-      .post(`/api/floor/${secondLocation.id}/tables`)
+      .post(`/api/floor/${secondLocation.id}/rooms/${secondRoom.id}/tables`)
       .set("Cookie", cookie)
       .send({ name: "Table 12", capacity: 2 });
     expect(elsewhere.status).toBe(201);
@@ -229,10 +293,14 @@ describe("table management", () => {
     const { business, location } = await seedBusinessWithLocation();
     const cookie = businessCookie(business.id);
     const request = await api();
-    await request.post(`/api/floor/${location.id}`).set("Cookie", cookie).send({});
+    const roomResponse = await request
+      .post(`/api/floor/${location.id}/rooms`)
+      .set("Cookie", cookie)
+      .send({});
+    const room = roomResponse.body.room;
 
     const response = await request
-      .post(`/api/floor/${location.id}/tables`)
+      .post(`/api/floor/${location.id}/rooms/${room.id}/tables`)
       .set("Cookie", cookie)
       .send({ name: "Table 1", capacity: 2, minimumPartySize: 4 });
 
@@ -240,12 +308,12 @@ describe("table management", () => {
     expect(response.body.error).toContain("minimumPartySize");
   });
 
-  it("requires a floor plan before tables can be added", async () => {
+  it("requires a room before tables can be added", async () => {
     const { business, location } = await seedBusinessWithLocation();
     const response = await (
       await api()
     )
-      .post(`/api/floor/${location.id}/tables`)
+      .post(`/api/floor/${location.id}/rooms/0123456789abcdef01234567/tables`)
       .set("Cookie", businessCookie(business.id))
       .send({ name: "Table 1", capacity: 2 });
 
@@ -259,10 +327,9 @@ describe("table management", () => {
     const blocked = await request
       .post(`/api/floor/${location.id}/tables/${table.id}/block`)
       .set("Cookie", cookie)
-      .send({ reason: "Broken leg" });
+      .send({});
     expect(blocked.status).toBe(200);
     expect(blocked.body.table.isBlocked).toBe(true);
-    expect(blocked.body.table.blockedReason).toBe("Broken leg");
 
     const unblocked = await request
       .post(`/api/floor/${location.id}/tables/${table.id}/unblock`)
@@ -270,7 +337,6 @@ describe("table management", () => {
       .send({});
     expect(unblocked.status).toBe(200);
     expect(unblocked.body.table.isBlocked).toBe(false);
-    expect(unblocked.body.table.blockedReason).toBeNull();
   });
 
   it("deletes a table and cascades its historical assignments", async () => {

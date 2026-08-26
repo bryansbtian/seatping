@@ -54,8 +54,8 @@ describe("floor data is isolated per business", () => {
 
     const routes = [
       request.get(`/api/floor/${location.id}`),
-      request.post(`/api/floor/${location.id}`).send({}),
-      request.patch(`/api/floor/${location.id}`).send({ name: "Nope" }),
+      request.post(`/api/floor/${location.id}/rooms`).send({}),
+      request.patch(`/api/floor/${location.id}/rooms`).send({ name: "Nope" }),
       request.post(`/api/floor/${location.id}/tables`).send({ name: "T", capacity: 2 }),
       request.get(`/api/floor/${location.id}/assignments`),
     ];
@@ -101,7 +101,7 @@ describe("floor data is isolated per business", () => {
     const response = await (
       await api()
     )
-      .post(`/api/floor/${owner.location.id}`)
+      .post(`/api/floor/${owner.location.id}/rooms`)
       .set("Cookie", businessCookie(intruder.business.id))
       .send({ name: "Hijacked" });
 
