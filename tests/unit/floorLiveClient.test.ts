@@ -10,12 +10,14 @@ import {
   FLOOR_MODE_KEY,
   LIVE_STATUSES,
   allTables,
+  candidateTablesForParty,
   countByStatus,
   elapsedMinutes,
   findTable,
   formatClock,
   moveTargets,
   partyFitsTable,
+  recommendedTableIdForParty,
   persistFloorMode,
   readFloorMode,
   roomOfTable,
@@ -28,6 +30,7 @@ import {
 } from "../../src/lib/floorLive.js";
 import { statusIcon } from "../../src/lib/floorLiveIcons.js";
 import {
+  assignTable,
   completeVisit,
   fetchLiveFloor,
   markTableAvailable,
@@ -332,5 +335,102 @@ describe("floor mode persistence", () => {
 
   it("uses a key separate from the other business preferences", () => {
     expect(FLOOR_MODE_KEY).toBe("seatping.business.floorMode");
+  });
+});
+
+describe("candidateTablesForParty", () => {
+  const rooms = [
+    makeRoom("Main", [
+      makeTable("small", { name: "T1", capacity: 2, status: "AVAILABLE" }),
+      makeTable("mid", { name: "T2", capacity: 4, status: "AVAILABLE" }),
+      makeTable("busy", { name: "T3", capacity: 4, status: "OCCUPIED" }),
+      makeTable("blocked", { name: "T4", capacity: 4, status: "BLOCKED" }),
+      makeTable("dirty", { name: "T5", capacity: 6, status: "CLEANING" }),
+      makeTable("tiny", { name: "T6", capacity: 1, status: "AVAILABLE" }),
+    ]),
+  ];
+
+  it("puts the recommended table first even when a tighter one exists", () => {
+    const list = candidateTablesForParty(rooms, 2, "mid");
+    expect(list[0].table.id).toBe("mid");
+    expect(list[0].recommended).toBe(true);
+  });
+
+  it("orders the rest by tightest capacity", () => {
+    const list = candidateTablesForParty(rooms, 2, null);
+    expect(list.map((c) => c.table.id)).toEqual(["small", "mid", "dirty"]);
+  });
+
+  it("excludes occupied and blocked tables", () => {
+    const ids = candidateTablesForParty(rooms, 2, null).map((c) => c.table.id);
+    expect(ids).not.toContain("busy");
+    expect(ids).not.toContain("blocked");
+  });
+
+  it("excludes tables that cannot fit the party", () => {
+    const ids = candidateTablesForParty(rooms, 5, null).map((c) => c.table.id);
+    expect(ids).toEqual(["dirty"]);
+  });
+
+  it("excludes the table the party already sits at", () => {
+    const ids = candidateTablesForParty(rooms, 2, null, "small").map((c) => c.table.id);
+    expect(ids).toEqual(["mid", "dirty"]);
+  });
+
+  it("carries the room name for each candidate", () => {
+    expect(candidateTablesForParty(rooms, 2, null)[0].roomName).toBe("Main");
+  });
+
+  it("returns nothing when no table fits", () => {
+    expect(candidateTablesForParty(rooms, 40, null)).toEqual([]);
+  });
+});
+
+describe("recommendedTableIdForParty", () => {
+  it("finds the table that recommends this party", () => {
+    const rooms = [
+      makeRoom("Main", [makeTable("a"), makeTable("b", { recommendedPartyId: "queue-9" })]),
+    ];
+    expect(recommendedTableIdForParty(rooms, "queue-9")).toBe("b");
+  });
+
+  it("returns null when no table recommends the party", () => {
+    expect(recommendedTableIdForParty([makeRoom("Main", [makeTable("a")])], "queue-9")).toBeNull();
+  });
+});
+
+describe("assignTable request", () => {
+  beforeEach(() => {
+    apiMock.mockReset();
+    apiMock.mockResolvedValue({});
+  });
+
+  it("posts a queue assignment to the assign route", async () => {
+    await assignTable(LOCATION, { tableId: "table-1", queueEntryId: "queue-1", partySize: 2 });
+    const call = apiMock.mock.calls[apiMock.mock.calls.length - 1];
+    expect(call[0]).toBe("/api/floor/loc-1/assign");
+    expect(call[1].method).toBe("POST");
+    expect(JSON.parse(call[1].body)).toEqual({
+      tableId: "table-1",
+      queueEntryId: "queue-1",
+      partySize: 2,
+    });
+  });
+
+  it("posts a reservation assignment to the same route", async () => {
+    await assignTable(LOCATION, { tableId: "table-2", reservationId: "res-1", seatNow: false });
+    const call = apiMock.mock.calls[apiMock.mock.calls.length - 1];
+    expect(JSON.parse(call[1].body)).toEqual({
+      tableId: "table-2",
+      reservationId: "res-1",
+      seatNow: false,
+    });
+  });
+
+  it("lets a rejected assignment reject so the caller can report it", async () => {
+    apiMock.mockRejectedValue(new Error("Table already has an assignment during that time"));
+    await expect(assignTable(LOCATION, { tableId: "table-1" })).rejects.toThrow(
+      "Table already has an assignment",
+    );
   });
 });

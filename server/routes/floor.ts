@@ -49,6 +49,7 @@ import {
   type Failure,
 } from "../lib/floor.js";
 import { buildLiveFloor } from "../lib/floorLive.js";
+import { manualAssign, markVisitClosed } from "../lib/floorAssign.js";
 
 const router = Router();
 
@@ -866,24 +867,23 @@ router.post(
         return sendFailure(res, window);
       }
 
-      const outcome = await createAssignment({
+      const outcome = await manualAssign({
         businessId: location.businessId,
         locationId: location.id,
         tableId: String(req.params.tableId || ""),
-        partySize,
-        source: "MANUAL",
-        status: "SEATED",
-        expectedStartAt: window.value.start,
-        expectedEndAt: window.value.end,
         queueEntryId: queueEntryId.value,
         reservationId: reservationId.value,
         guestProfileId: guestProfileId.value,
+        partySize,
+        seatNow: true,
+        expectedStartAt: window.value.start,
+        expectedEndAt: window.value.end,
       });
       if (isFailure(outcome)) {
         return sendFailure(res, outcome);
       }
 
-      return res.status(201).json({ assignment: serializeAssignment(outcome.value) });
+      return res.status(201).json({ assignment: serializeAssignment(outcome.value.assignment) });
     } catch (err: any) {
       console.error("[floor] seat party error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
@@ -918,6 +918,96 @@ router.post(
     }
   },
 );
+
+router.post("/:locationId/assign", loadOwnedLocation, async (req: Request, res: Response) => {
+  try {
+    const location = ownedLocation(res);
+
+    const tableId = parseObjectId(req.body?.tableId, "tableId");
+    if (isFailure(tableId)) {
+      return sendFailure(res, tableId);
+    }
+
+    const queueEntryId = parseOptionalObjectId(req.body?.queueEntryId, "queueEntryId");
+    if (isFailure(queueEntryId)) {
+      return sendFailure(res, queueEntryId);
+    }
+    const reservationId = parseOptionalObjectId(req.body?.reservationId, "reservationId");
+    if (isFailure(reservationId)) {
+      return sendFailure(res, reservationId);
+    }
+    const guestProfileId = parseOptionalObjectId(req.body?.guestProfileId, "guestProfileId");
+    if (isFailure(guestProfileId)) {
+      return sendFailure(res, guestProfileId);
+    }
+
+    const referenceFailure = await assertReferencesOwned({
+      locationId: location.id,
+      queueEntryId: queueEntryId.value,
+      reservationId: reservationId.value,
+      guestProfileId: guestProfileId.value,
+    });
+    if (referenceFailure) {
+      return sendFailure(res, referenceFailure);
+    }
+
+    let partySize: number | null = null;
+    if (req.body?.partySize !== undefined) {
+      const parsed = parseInteger(
+        req.body.partySize,
+        "partySize",
+        TABLE_MIN_CAPACITY,
+        TABLE_MAX_CAPACITY,
+      );
+      if (isFailure(parsed)) {
+        return sendFailure(res, parsed);
+      }
+      partySize = parsed.value;
+    }
+
+    const window = resolveOccupancyWindow({
+      expectedStartAt: req.body?.expectedStartAt ?? new Date().toISOString(),
+      expectedEndAt: req.body?.expectedEndAt,
+      turnMinutes: req.body?.turnMinutes,
+    });
+    if (isFailure(window)) {
+      return sendFailure(res, window);
+    }
+
+    let seatNow = true;
+    if (req.body?.seatNow !== undefined) {
+      seatNow = Boolean(req.body.seatNow);
+    }
+
+    const outcome = await manualAssign({
+      businessId: location.businessId,
+      locationId: location.id,
+      tableId: tableId.value,
+      queueEntryId: queueEntryId.value,
+      reservationId: reservationId.value,
+      guestProfileId: guestProfileId.value,
+      partySize,
+      seatNow,
+      expectedStartAt: window.value.start,
+      expectedEndAt: window.value.end,
+    });
+    if (isFailure(outcome)) {
+      return sendFailure(res, outcome);
+    }
+
+    let status = 201;
+    if (outcome.value.moved) {
+      status = 200;
+    }
+    return res.status(status).json({
+      assignment: serializeAssignment(outcome.value.assignment),
+      moved: outcome.value.moved,
+    });
+  } catch (err: any) {
+    console.error("[floor] manual assign error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
 
 router.get("/:locationId/assignments", loadOwnedLocation, async (req: Request, res: Response) => {
   try {
@@ -1150,6 +1240,10 @@ router.post(
       if (isFailure(outcome)) {
         return sendFailure(res, outcome);
       }
+      await markVisitClosed({
+        queueEntryId: outcome.value.queueEntryId,
+        reservationId: outcome.value.reservationId,
+      });
       return res.json({ assignment: serializeAssignment(outcome.value) });
     } catch (err: any) {
       console.error("[floor] complete assignment error:", err?.message || err);

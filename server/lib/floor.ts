@@ -428,6 +428,40 @@ export async function createAssignment(input: CreateAssignmentInput): Promise<Ou
         return fail(409, "Table already has an assignment during that time");
       }
 
+      if (input.queueEntryId) {
+        const held = await tx.tableAssignment.findFirst({
+          where: {
+            queueEntryId: input.queueEntryId,
+            status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
+          },
+          select: { id: true },
+        });
+        if (held) {
+          return fail(409, "That guest already has a table");
+        }
+        await tx.queueEntry.update({
+          where: { id: input.queueEntryId },
+          data: { updatedAt: new Date() },
+        });
+      }
+
+      if (input.reservationId) {
+        const held = await tx.tableAssignment.findFirst({
+          where: {
+            reservationId: input.reservationId,
+            status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
+          },
+          select: { id: true },
+        });
+        if (held) {
+          return fail(409, "That reservation already has a table");
+        }
+        await tx.reservation.update({
+          where: { id: input.reservationId },
+          data: { updatedAt: new Date() },
+        });
+      }
+
       let seatedAt: Date | null = null;
       const tableData: Record<string, unknown> = { assignmentVersion: { increment: 1 } };
       if (input.status === "SEATED") {

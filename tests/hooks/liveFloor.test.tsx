@@ -19,6 +19,7 @@ const liveApi = vi.hoisted(() => {
     movePartyToTable: vi.fn(),
     markTableCleaning: vi.fn(),
     markTableAvailable: vi.fn(),
+    assignTable: vi.fn(),
   };
 });
 
@@ -108,6 +109,7 @@ function makeReservation(overrides: Partial<UpcomingReservation> = {}): Upcoming
     time: "19:30",
     timeLabel: "7:30 PM",
     status: "CONFIRMED",
+    tableId: null,
     tableName: null,
     ...overrides,
   };
@@ -140,6 +142,7 @@ beforeEach(() => {
   liveApi.movePartyToTable.mockResolvedValue(undefined);
   liveApi.markTableCleaning.mockResolvedValue(undefined);
   liveApi.markTableAvailable.mockResolvedValue(undefined);
+  liveApi.assignTable.mockResolvedValue(undefined);
   floorApi.blockTable.mockResolvedValue(undefined);
   floorApi.unblockTable.mockResolvedValue(undefined);
 });
@@ -200,6 +203,16 @@ describe("live floor overview", () => {
     expect(node.getAttribute("data-status")).toBe("CLEANING");
   });
 
+  it("keeps every status label whole so none of them truncate", async () => {
+    await renderFloor();
+
+    const labels = ["Available", "Reserved", "Occupied", "Cleaning", "Blocked"];
+    for (const label of labels) {
+      const node = await screen.findByText(label);
+      expect(node.className).toContain("whitespace-nowrap");
+    }
+  });
+
   it("counts tables by status in the legend", async () => {
     liveApi.fetchLiveFloor.mockResolvedValue(
       floor({
@@ -248,8 +261,9 @@ describe("live floor overview", () => {
 
     const reservations = await screen.findByTestId("upcoming-reservations");
     expect(within(reservations).getByText("Grace Hopper")).toBeTruthy();
-    expect(within(reservations).getByText("7:30 PM")).toBeTruthy();
     expect(within(reservations).getByText("Alan Turing")).toBeTruthy();
+    expect(reservations.textContent).toContain("7:30 PM");
+    expect(reservations.textContent).toContain("Party Of 2");
   });
 
   it("puts the reservations section after the waiting parties section", async () => {
@@ -278,7 +292,10 @@ describe("live floor overview", () => {
     await renderFloor();
 
     const row = await screen.findByTestId("reservation-res-1");
-    expect(row.textContent).toContain("At T4");
+    expect(row.textContent).toContain("T4");
+    expect(row.textContent).not.toContain("At T4");
+    expect(row.children).toHaveLength(3);
+    expect((row.children[0] as HTMLElement).textContent).toBe("T4");
   });
 
   it("leaves the table badge off a reservation with no table yet", async () => {
@@ -286,7 +303,8 @@ describe("live floor overview", () => {
     await renderFloor();
 
     const row = await screen.findByTestId("reservation-res-1");
-    expect(row.textContent).not.toContain("At ");
+    expect(row.children).toHaveLength(2);
+    expect(row.textContent).not.toContain("T1");
   });
 
   it("hides both lists once a table is selected", async () => {
@@ -704,6 +722,187 @@ describe("table actions", () => {
 
     liveApi.fetchLiveFloor.mockClear();
     fireEvent.click(within(detail).getByRole("button", { name: "Mark Cleaning" }));
+
+    await waitFor(() => {
+      expect(liveApi.fetchLiveFloor).toHaveBeenCalled();
+    });
+  });
+});
+
+describe("manual table assignment", () => {
+  it("opens the assign dialog from a waiting party", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [makeRoom([makeTable({ recommendedPartyId: "queue-1" })])],
+        waitingParties: [makeParty()],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+
+    const options = await screen.findByTestId("assign-table-options");
+    expect(within(options).getByTestId("assign-option-T1")).toBeTruthy();
+    expect(within(options).getByTestId("assign-recommended-badge")).toBeTruthy();
+  });
+
+  it("lists the recommended table before the others", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [
+          makeRoom([
+            makeTable({ id: "table-1", name: "T1", capacity: 2 }),
+            makeTable({ id: "table-2", name: "T2", capacity: 6, recommendedPartyId: "queue-1" }),
+          ]),
+        ],
+        waitingParties: [makeParty()],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+
+    const options = await screen.findByTestId("assign-table-options");
+    const names = within(options)
+      .getAllByRole("button")
+      .map((b) => b.getAttribute("data-testid"));
+    expect(names[0]).toBe("assign-option-T2");
+  });
+
+  it("requires a table choice before confirming", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({ rooms: [makeRoom([makeTable()])], waitingParties: [makeParty()] }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    const confirm = await screen.findByTestId("assign-confirm");
+
+    expect(confirm.hasAttribute("disabled")).toBe(true);
+    expect(liveApi.assignTable).not.toHaveBeenCalled();
+  });
+
+  it("shows a confirmation summary once a table is chosen", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({ rooms: [makeRoom([makeTable()])], waitingParties: [makeParty()] }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    fireEvent.click(await screen.findByTestId("assign-option-T1"));
+
+    expect((await screen.findByRole("status")).textContent).toContain("Ada Lovelace");
+    expect((await screen.findByTestId("assign-confirm")).textContent).toContain("Assign T1");
+  });
+
+  it("assigns the queue guest to the chosen table", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({ rooms: [makeRoom([makeTable()])], waitingParties: [makeParty()] }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    fireEvent.click(await screen.findByTestId("assign-option-T1"));
+    fireEvent.click(await screen.findByTestId("assign-confirm"));
+
+    await waitFor(() => {
+      expect(liveApi.assignTable).toHaveBeenCalledWith("loc-1", {
+        tableId: "table-1",
+        partySize: 2,
+        queueEntryId: "queue-1",
+      });
+    });
+  });
+
+  it("assigns a reservation to the chosen table", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [makeRoom([makeTable()])],
+        upcomingReservations: [makeReservation()],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("reservation-res-1"));
+    fireEvent.click(await screen.findByTestId("assign-option-T1"));
+    fireEvent.click(await screen.findByTestId("assign-confirm"));
+
+    await waitFor(() => {
+      expect(liveApi.assignTable).toHaveBeenCalledWith("loc-1", {
+        tableId: "table-1",
+        partySize: 2,
+        reservationId: "res-1",
+      });
+    });
+  });
+
+  it("leaves out the table a reservation already holds", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [
+          makeRoom([
+            makeTable({ id: "table-1", name: "T1" }),
+            makeTable({ id: "table-2", name: "T2" }),
+          ]),
+        ],
+        upcomingReservations: [makeReservation({ tableId: "table-1", tableName: "T1" })],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("reservation-res-1"));
+
+    const options = await screen.findByTestId("assign-table-options");
+    expect(within(options).queryByTestId("assign-option-T1")).toBeNull();
+    expect(within(options).getByTestId("assign-option-T2")).toBeTruthy();
+  });
+
+  it("says so when no table can take the party", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [makeRoom([makeTable({ capacity: 2 })])],
+        waitingParties: [makeParty({ partySize: 8 })],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+
+    expect(await screen.findByText("No table can take this party right now.")).toBeTruthy();
+    expect((await screen.findByTestId("assign-confirm")).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("reports a rejected assignment without closing the view", async () => {
+    liveApi.assignTable.mockRejectedValue(new Error("That guest already has a table"));
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({ rooms: [makeRoom([makeTable()])], waitingParties: [makeParty()] }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    fireEvent.click(await screen.findByTestId("assign-option-T1"));
+    fireEvent.click(await screen.findByTestId("assign-confirm"));
+
+    await waitFor(() => {
+      expect(toastSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          description: "That guest already has a table",
+        }),
+      );
+    });
+  });
+
+  it("refetches the floor after a successful assignment", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({ rooms: [makeRoom([makeTable()])], waitingParties: [makeParty()] }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    fireEvent.click(await screen.findByTestId("assign-option-T1"));
+    liveApi.fetchLiveFloor.mockClear();
+    fireEvent.click(await screen.findByTestId("assign-confirm"));
 
     await waitFor(() => {
       expect(liveApi.fetchLiveFloor).toHaveBeenCalled();

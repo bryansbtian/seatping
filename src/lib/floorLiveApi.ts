@@ -68,3 +68,19 @@ export async function markTableAvailable(locationId: string, tableId: string): P
     body: JSON.stringify({}),
   });
 }
+
+export type ManualAssignBody = {
+  tableId: string;
+  queueEntryId?: string;
+  reservationId?: string;
+  partySize?: number;
+  seatNow?: boolean;
+  turnMinutes?: number;
+};
+
+export async function assignTable(locationId: string, body: ManualAssignBody): Promise<void> {
+  await api(`${base(locationId)}/assign`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
