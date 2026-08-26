@@ -674,7 +674,8 @@ model DiningTable {
   height   Int @default(80)
   rotation Int @default(0)
 
-  isBlocked Boolean @default(false)
+  isBlocked     Boolean   @default(false)
+  cleaningSince DateTime?
 
   assignmentVersion Int @default(0)
 
@@ -688,6 +689,7 @@ model DiningTable {
   @@index([floorPlanId])
   @@index([businessId])
   @@index([locationId, isBlocked])
+  @@index([locationId, cleaningSince])
   @@map("dining_tables")
 }
 

@@ -1,17 +1,16 @@
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import FloorEditor from "@/components/floor/FloorEditor";
+import LiveFloor from "@/components/floor/LiveFloor";
+import { persistFloorMode, readFloorMode, type FloorMode } from "@/lib/floorLive";
 import { useBusinessSession } from "@/lib/businessSession";
 import { useLang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-type FloorMode = "live" | "edit";
-
 const BusinessFloor = () => {
   const { t } = useLang();
   const { currentLocation } = useBusinessSession();
-  const [mode, setMode] = useState<FloorMode>("edit");
+  const [mode, setMode] = useState<FloorMode>(() => readFloorMode());
 
   const modes: [FloorMode, string][] = [
     ["live", t("floor.mode.live")],
@@ -23,14 +22,7 @@ const BusinessFloor = () => {
     if (mode === "edit") {
       body = <FloorEditor key={currentLocation.id} locationId={currentLocation.id} />;
     } else {
-      body = (
-        <Card className="border border-slate-200 bg-white shadow-sm">
-          <CardContent className="p-6">
-            <p className="text-lg font-semibold text-slate-800">{t("page.comingSoon.title")}</p>
-            <p className="mt-2 text-sm text-slate-600">{t("page.comingSoon.body")}</p>
-          </CardContent>
-        </Card>
-      );
+      body = <LiveFloor key={currentLocation.id} locationId={currentLocation.id} />;
     }
   }
 
@@ -41,7 +33,7 @@ const BusinessFloor = () => {
         description={BUSINESS_DESCRIPTION}
         image={BUSINESS_IMAGE}
       />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 md:flex md:min-h-full md:flex-col">
         <div className="mb-6">
           <h1 className="text-xl md:text-2xl font-semibold text-gray-800">{t("floor.title")}</h1>
           <p className="text-gray-600 text-sm md:text-base">{t("floor.subtitle")}</p>
@@ -55,7 +47,10 @@ const BusinessFloor = () => {
                 key={key}
                 type="button"
                 aria-pressed={active}
-                onClick={() => setMode(key)}
+                onClick={() => {
+                  setMode(key);
+                  persistFloorMode(key);
+                }}
                 className={cn(
                   "flex-1 min-w-[110px] rounded-lg px-4 py-2 text-sm font-medium transition-colors md:flex-none",
                   active && "bg-slate-900 text-white",
@@ -68,7 +63,7 @@ const BusinessFloor = () => {
           })}
         </div>
 
-        {body}
+        <div className="md:flex md:flex-1 md:flex-col">{body}</div>
       </div>
     </>
   );

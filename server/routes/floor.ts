@@ -27,6 +27,7 @@ import {
   findRoom,
   isFailure,
   listRooms,
+  moveAssignment,
   normalizeRotation,
   parseDate,
   parseInteger,
@@ -42,10 +43,12 @@ import {
   serializeFloorPlan,
   serializeTable,
   serializeZone,
+  setTableCleaning,
   updateAssignment,
   type AssignmentStatusValue,
   type Failure,
 } from "../lib/floor.js";
+import { buildLiveFloor } from "../lib/floorLive.js";
 
 const router = Router();
 
@@ -734,6 +737,183 @@ router.post(
       return res.json({ table: serializeTable(updated) });
     } catch (err: any) {
       console.error("[floor] unblock table error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+router.get("/:locationId/live", loadOwnedLocation, async (_req: Request, res: Response) => {
+  try {
+    const location = ownedLocation(res);
+    const live = await buildLiveFloor(location.id);
+    return res.json(live);
+  } catch (err: any) {
+    console.error("[floor] live floor error:", err?.message || err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.post(
+  "/:locationId/tables/:tableId/cleaning",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+      const outcome = await setTableCleaning(location.id, String(req.params.tableId || ""), true);
+      if (isFailure(outcome)) {
+        return sendFailure(res, outcome);
+      }
+      return res.json({ table: serializeTable(outcome.value) });
+    } catch (err: any) {
+      console.error("[floor] mark cleaning error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+router.post(
+  "/:locationId/tables/:tableId/available",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+      const outcome = await setTableCleaning(location.id, String(req.params.tableId || ""), false);
+      if (isFailure(outcome)) {
+        return sendFailure(res, outcome);
+      }
+      return res.json({ table: serializeTable(outcome.value) });
+    } catch (err: any) {
+      console.error("[floor] mark available error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+router.post(
+  "/:locationId/tables/:tableId/seat",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+
+      const queueEntryId = parseOptionalObjectId(req.body?.queueEntryId, "queueEntryId");
+      if (isFailure(queueEntryId)) {
+        return sendFailure(res, queueEntryId);
+      }
+      const reservationId = parseOptionalObjectId(req.body?.reservationId, "reservationId");
+      if (isFailure(reservationId)) {
+        return sendFailure(res, reservationId);
+      }
+      const guestProfileId = parseOptionalObjectId(req.body?.guestProfileId, "guestProfileId");
+      if (isFailure(guestProfileId)) {
+        return sendFailure(res, guestProfileId);
+      }
+
+      if (queueEntryId.value && reservationId.value) {
+        return res
+          .status(400)
+          .json({ error: "An assignment cannot reference both a queue entry and a reservation" });
+      }
+
+      const referenceFailure = await assertReferencesOwned({
+        locationId: location.id,
+        queueEntryId: queueEntryId.value,
+        reservationId: reservationId.value,
+        guestProfileId: guestProfileId.value,
+      });
+      if (referenceFailure) {
+        return sendFailure(res, referenceFailure);
+      }
+
+      let partySize: number | null = null;
+      if (req.body?.partySize !== undefined) {
+        const parsed = parseInteger(
+          req.body.partySize,
+          "partySize",
+          TABLE_MIN_CAPACITY,
+          TABLE_MAX_CAPACITY,
+        );
+        if (isFailure(parsed)) {
+          return sendFailure(res, parsed);
+        }
+        partySize = parsed.value;
+      }
+
+      if (partySize === null && queueEntryId.value) {
+        const entry = await prisma.queueEntry.findUnique({
+          where: { id: queueEntryId.value },
+          select: { guestCount: true },
+        });
+        partySize = entry?.guestCount ?? null;
+      }
+      if (partySize === null && reservationId.value) {
+        const reservation = await prisma.reservation.findUnique({
+          where: { id: reservationId.value },
+          select: { guestCount: true },
+        });
+        partySize = reservation?.guestCount ?? null;
+      }
+      if (partySize === null) {
+        return res.status(400).json({ error: "partySize is required" });
+      }
+
+      const window = resolveOccupancyWindow({
+        expectedStartAt: req.body?.expectedStartAt ?? new Date().toISOString(),
+        expectedEndAt: req.body?.expectedEndAt,
+        turnMinutes: req.body?.turnMinutes,
+      });
+      if (isFailure(window)) {
+        return sendFailure(res, window);
+      }
+
+      const outcome = await createAssignment({
+        businessId: location.businessId,
+        locationId: location.id,
+        tableId: String(req.params.tableId || ""),
+        partySize,
+        source: "MANUAL",
+        status: "SEATED",
+        expectedStartAt: window.value.start,
+        expectedEndAt: window.value.end,
+        queueEntryId: queueEntryId.value,
+        reservationId: reservationId.value,
+        guestProfileId: guestProfileId.value,
+      });
+      if (isFailure(outcome)) {
+        return sendFailure(res, outcome);
+      }
+
+      return res.status(201).json({ assignment: serializeAssignment(outcome.value) });
+    } catch (err: any) {
+      console.error("[floor] seat party error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+router.post(
+  "/:locationId/assignments/:assignmentId/move",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+      const tableId = parseObjectId(req.body?.tableId, "tableId");
+      if (isFailure(tableId)) {
+        return sendFailure(res, tableId);
+      }
+
+      const outcome = await moveAssignment({
+        locationId: location.id,
+        assignmentId: String(req.params.assignmentId || ""),
+        tableId: tableId.value,
+      });
+      if (isFailure(outcome)) {
+        return sendFailure(res, outcome);
+      }
+
+      return res.json({ assignment: serializeAssignment(outcome.value) });
+    } catch (err: any) {
+      console.error("[floor] move party error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
     }
   },

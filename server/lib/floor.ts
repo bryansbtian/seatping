@@ -428,15 +428,17 @@ export async function createAssignment(input: CreateAssignmentInput): Promise<Ou
         return fail(409, "Table already has an assignment during that time");
       }
 
-      await tx.diningTable.update({
-        where: { id: table.id },
-        data: { assignmentVersion: { increment: 1 } },
-      });
-
       let seatedAt: Date | null = null;
+      const tableData: Record<string, unknown> = { assignmentVersion: { increment: 1 } };
       if (input.status === "SEATED") {
         seatedAt = new Date();
+        tableData.cleaningSince = null;
       }
+
+      await tx.diningTable.update({
+        where: { id: table.id },
+        data: tableData,
+      });
 
       const assignment = await tx.tableAssignment.create({
         data: {
@@ -587,4 +589,114 @@ export async function completeAssignment(
 
   const completed = await prisma.tableAssignment.findUnique({ where: { id: existing.id } });
   return ok(completed);
+}
+
+export type MoveAssignmentInput = {
+  locationId: string;
+  assignmentId: string;
+  tableId: string;
+};
+
+export async function moveAssignment(input: MoveAssignmentInput): Promise<Outcome<any>> {
+  if (!OBJECT_ID_RE.test(input.assignmentId)) {
+    return fail(404, "Assignment not found or access denied");
+  }
+  if (!OBJECT_ID_RE.test(input.tableId)) {
+    return fail(404, "Table not found or access denied");
+  }
+
+  return withWriteRetry(() =>
+    prisma.$transaction(async (tx) => {
+      const existing = await tx.tableAssignment.findFirst({
+        where: { id: input.assignmentId, locationId: input.locationId },
+      });
+      if (!existing) {
+        return fail(404, "Assignment not found or access denied");
+      }
+      if (existing.status === "COMPLETED" || existing.status === "CANCELLED") {
+        return fail(409, "Assignment is already closed");
+      }
+      if (existing.tableId === input.tableId) {
+        return fail(409, "The party is already at that table");
+      }
+
+      const target = await tx.diningTable.findFirst({
+        where: { id: input.tableId, locationId: input.locationId },
+      });
+      if (!target) {
+        return fail(404, "Table not found or access denied");
+      }
+      if (target.isBlocked) {
+        return fail(409, "Table is blocked and cannot accept an assignment");
+      }
+      if (!partyFitsTable(existing.partySize, target)) {
+        return fail(409, `Table seats ${target.minimumPartySize} to ${target.capacity} guests`);
+      }
+
+      const conflict = await tx.tableAssignment.findFirst({
+        where: {
+          tableId: target.id,
+          id: { not: existing.id },
+          status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
+          expectedStartAt: { lt: existing.expectedEndAt },
+          expectedEndAt: { gt: existing.expectedStartAt },
+        },
+        select: { id: true },
+      });
+      if (conflict) {
+        return fail(409, "Table already has an assignment during that time");
+      }
+
+      await tx.diningTable.update({
+        where: { id: existing.tableId },
+        data: { assignmentVersion: { increment: 1 } },
+      });
+      await tx.diningTable.update({
+        where: { id: target.id },
+        data: { assignmentVersion: { increment: 1 }, cleaningSince: null },
+      });
+
+      const moved = await tx.tableAssignment.update({
+        where: { id: existing.id },
+        data: { tableId: target.id },
+      });
+
+      return ok(moved);
+    }),
+  );
+}
+
+export async function setTableCleaning(
+  locationId: string,
+  tableId: string,
+  cleaning: boolean,
+): Promise<Outcome<any>> {
+  const table = await findOwnedTable(locationId, tableId);
+  if (!table) {
+    return fail(404, "Table not found or access denied");
+  }
+
+  if (cleaning) {
+    const seated = await prisma.tableAssignment.findFirst({
+      where: { tableId: table.id, status: "SEATED" },
+      select: { id: true },
+    });
+    if (seated) {
+      return fail(409, "Complete the current visit before marking the table for cleaning");
+    }
+  }
+
+  let cleaningSince: Date | null = null;
+  if (cleaning) {
+    cleaningSince = new Date();
+  }
+
+  const updated = await withWriteRetry(() =>
+    prisma.diningTable.update({
+      where: { id: table.id },
+      data: { cleaningSince },
+    }),
+  );
+
+  return ok(updated);
 }

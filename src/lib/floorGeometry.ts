@@ -86,6 +86,63 @@ export function scaleToFit(
   return Math.min(byWidth, byHeight);
 }
 
+export const TABLE_LABEL_MIN_WIDTH = 45;
+export const TABLE_LABEL_MIN_HEIGHT = 40;
+
+export function fitsTableName(
+  renderedWidth: number,
+  renderedHeight: number,
+  minWidth: number = TABLE_LABEL_MIN_WIDTH,
+  minHeight: number = TABLE_LABEL_MIN_HEIGHT,
+): boolean {
+  if (!Number.isFinite(renderedWidth) || !Number.isFinite(renderedHeight)) {
+    return false;
+  }
+  if (renderedWidth < minWidth) {
+    return false;
+  }
+  if (renderedHeight < minHeight) {
+    return false;
+  }
+  return true;
+}
+
+export const CORNER_BADGE_INSET_RATIO = (1 - Math.SQRT1_2) / 2;
+export const SQUARE_CORNER_BADGE_INSET = 3;
+
+export const CORNER_BADGE_MIN_SIZE = 10;
+export const CORNER_BADGE_MAX_SIZE = 20;
+export const CORNER_BADGE_SIZE_RATIO = 0.3;
+
+export function cornerBadgeSize(renderedWidth: number, renderedHeight: number): number {
+  const smaller = Math.min(renderedWidth, renderedHeight);
+  if (!Number.isFinite(smaller)) {
+    return CORNER_BADGE_MAX_SIZE;
+  }
+  return clampNumber(
+    Math.round(smaller * CORNER_BADGE_SIZE_RATIO),
+    CORNER_BADGE_MIN_SIZE,
+    CORNER_BADGE_MAX_SIZE,
+  );
+}
+
+export function cornerBadgeOffset(
+  shape: TableShape,
+  renderedWidth: number,
+  renderedHeight: number,
+): { x: number; y: number } {
+  if (shape !== "ROUND") {
+    return { x: SQUARE_CORNER_BADGE_INSET, y: SQUARE_CORNER_BADGE_INSET };
+  }
+  if (!Number.isFinite(renderedWidth) || !Number.isFinite(renderedHeight)) {
+    return { x: SQUARE_CORNER_BADGE_INSET, y: SQUARE_CORNER_BADGE_INSET };
+  }
+  return {
+    x: renderedWidth * CORNER_BADGE_INSET_RATIO,
+    y: renderedHeight * CORNER_BADGE_INSET_RATIO,
+  };
+}
+
 export function screenDeltaToFloor(deltaPixels: number, scale: number): number {
   if (scale <= 0) {
     return deltaPixels;

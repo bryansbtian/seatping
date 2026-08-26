@@ -1,7 +1,7 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { Ban } from "lucide-react";
 import type { DiningTable } from "@/lib/floorApi";
-import { type Rect } from "@/lib/floorGeometry";
+import { fitsTableName, type Rect } from "@/lib/floorGeometry";
 import { cn } from "@/lib/utils";
 
 export type DragKind = "move" | "resize";
@@ -28,7 +28,7 @@ function shapeClasses(table: DiningTable): string {
 
 function surfaceClasses(table: DiningTable, selected: boolean): string {
   if (table.isBlocked) {
-    return "border-slate-300 bg-slate-100 text-slate-500";
+    return "border-slate-400 bg-slate-300 text-slate-700";
   }
   if (selected) {
     return "border-indigo-500 bg-indigo-50 text-slate-900";
@@ -50,6 +50,8 @@ const TableNode = ({ table, scale, selected, onSelect, onDragStart }: TableNodeP
       { x: event.clientX, y: event.clientY },
     );
   };
+
+  const showName = fitsTableName(table.width * scale, table.height * scale);
 
   let ringClass = "";
   if (selected) {
@@ -85,14 +87,19 @@ const TableNode = ({ table, scale, selected, onSelect, onDragStart }: TableNodeP
         transform: `rotate(${table.rotation}deg)`,
       }}
     >
-      <span className="pointer-events-none max-w-full truncate px-1 text-[11px] font-semibold leading-none max-md:hidden md:text-xs">
-        {table.name}
-      </span>
-      <span className="pointer-events-none mt-1 text-[11px] leading-none max-md:mt-0">
+      {showName && (
+        <span className="pointer-events-none max-w-full truncate px-1 text-[11px] font-semibold leading-none md:text-xs">
+          {table.name}
+        </span>
+      )}
+      <span className={cn("pointer-events-none text-[11px] leading-none", showName && "mt-1")}>
         {table.capacity}
       </span>
-      {table.isBlocked && (
-        <span className="pointer-events-none absolute right-1 top-1 text-slate-400">
+      {table.isBlocked && showName && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute right-1 top-1 text-slate-600"
+        >
           <Ban className="h-3.5 w-3.5" />
         </span>
       )}
