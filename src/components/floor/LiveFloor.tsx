@@ -11,11 +11,13 @@ import {
   countByStatus,
   findTable,
   formatClock,
+  recommendedTableIdForParty,
   statusStyle,
   type LiveFloor as LiveFloorData,
   type LiveRoom,
 } from "@/lib/floorLive";
 import {
+  assignTable,
   completeVisit,
   fetchLiveFloor,
   markTableAvailable,
@@ -27,6 +29,8 @@ import {
 import { blockTable, unblockTable } from "@/lib/floorApi";
 import LiveFloorCanvas from "@/components/floor/LiveFloorCanvas";
 import LiveTableDetail from "@/components/floor/LiveTableDetail";
+import AssignTableDialog, { type AssignTarget } from "@/components/floor/AssignTableDialog";
+import ReservationRow from "@/components/floor/ReservationRow";
 import { cn } from "@/lib/utils";
 
 const POLL_INTERVAL_MS = 15000;
@@ -47,6 +51,7 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [assignTarget, setAssignTarget] = useState<AssignTarget | null>(null);
   const inFlight = useRef(false);
 
   const reportFailure = useCallback(
@@ -161,6 +166,34 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
     [locationId, runAction],
   );
 
+  const handleAssignTable = useCallback(
+    async (tableId: string) => {
+      if (!assignTarget) {
+        return;
+      }
+      const body: {
+        tableId: string;
+        partySize: number;
+        queueEntryId?: string;
+        reservationId?: string;
+      } = { tableId, partySize: assignTarget.partySize };
+      if (assignTarget.queueEntryId) {
+        body.queueEntryId = assignTarget.queueEntryId;
+      }
+      if (assignTarget.reservationId) {
+        body.reservationId = assignTarget.reservationId;
+      }
+
+      let title: TKey = "floor.assign.toast.assigned";
+      if (assignTarget.currentTableId) {
+        title = "floor.assign.toast.moved";
+      }
+      await runAction(() => assignTable(locationId, body), title);
+      setAssignTarget(null);
+    },
+    [assignTarget, locationId, runAction],
+  );
+
   const handleSeatReserved = useCallback(
     async (assignmentId: string) => {
       await runAction(
@@ -263,17 +296,30 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
           {data.waitingParties.length > 0 && (
             <ul className="flex flex-col gap-2">
               {data.waitingParties.map((party) => (
-                <li
-                  key={party.id}
-                  className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2"
-                >
-                  <span className="min-w-0 truncate text-xs font-medium text-slate-800 md:text-sm">
-                    {party.name}
-                  </span>
-                  <span className="shrink-0 text-[11px] text-slate-500 md:text-xs">
-                    {t("floor.live.partyOf", { n: party.partySize })} &middot;{" "}
-                    {t("floor.live.waitingFor", { n: party.waitingMinutes })}
-                  </span>
+                <li key={party.id}>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    data-testid={`assign-waiting-${party.id}`}
+                    aria-label={t("floor.assign.action")}
+                    onClick={() =>
+                      setAssignTarget({
+                        name: party.name,
+                        partySize: party.partySize,
+                        queueEntryId: party.id,
+                        recommendedTableId: recommendedTableIdForParty(rooms, party.id),
+                      })
+                    }
+                    className="flex w-full items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-left transition-colors hover:bg-slate-100 disabled:opacity-60"
+                  >
+                    <span className="min-w-0 truncate text-xs font-medium text-slate-800 md:text-sm">
+                      {party.name}
+                    </span>
+                    <span className="shrink-0 text-[11px] text-slate-500 md:text-xs">
+                      {t("floor.live.partyOf", { n: party.partySize })} &middot;{" "}
+                      {t("floor.live.waitingFor", { n: party.waitingMinutes })}
+                    </span>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -293,28 +339,19 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
           {data.upcomingReservations.length > 0 && (
             <ul className="flex flex-col gap-2">
               {data.upcomingReservations.map((reservation) => (
-                <li
+                <ReservationRow
                   key={reservation.id}
-                  data-testid={`reservation-${reservation.id}`}
-                  className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 rounded-xl bg-slate-50 px-3 py-2"
-                >
-                  <span className="truncate text-[11px] font-semibold text-slate-700 md:text-xs">
-                    {reservation.timeLabel}
-                  </span>
-                  <span className="min-w-0 truncate text-center text-xs font-medium text-slate-800 md:text-sm">
-                    {reservation.name}
-                  </span>
-                  <span className="flex min-w-0 items-center justify-end gap-2 text-[11px] text-slate-500 md:text-xs">
-                    <span className="truncate">
-                      {t("floor.live.partyOf", { n: reservation.partySize })}
-                    </span>
-                    {reservation.tableName && (
-                      <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-800">
-                        {t("floor.live.atTable", { table: reservation.tableName })}
-                      </span>
-                    )}
-                  </span>
-                </li>
+                  reservation={reservation}
+                  busy={busy}
+                  onSelect={(row) =>
+                    setAssignTarget({
+                      name: row.name,
+                      partySize: row.partySize,
+                      reservationId: row.id,
+                      currentTableId: row.tableId,
+                    })
+                  }
+                />
               ))}
             </ul>
           )}
@@ -376,7 +413,7 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
 
       <Card className="border border-slate-200 bg-white shadow-sm">
         <CardContent className="flex items-center justify-between gap-3 p-3 md:p-4">
-          <div className="grid min-w-0 grid-cols-3 gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center">
+          <div className="grid min-w-0 grid-cols-2 gap-x-3 gap-y-2 min-[360px]:grid-cols-3 sm:flex sm:flex-wrap sm:items-center sm:gap-x-4">
             {LIVE_STATUSES.map((status) => (
               <span
                 key={status}
@@ -389,8 +426,10 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
                     statusStyle(status).swatch,
                   )}
                 />
-                <span className="truncate">{t(`floor.live.status.${status}` as TKey)}</span>
-                <span className="ml-auto font-semibold text-slate-800 sm:ml-0">
+                <span className="whitespace-nowrap">
+                  {t(`floor.live.status.${status}` as TKey)}
+                </span>
+                <span className="ml-auto shrink-0 font-semibold text-slate-800 sm:ml-0">
                   {counts[status]}
                 </span>
               </span>
@@ -436,6 +475,19 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
           </CardContent>
         </Card>
       </div>
+
+      <AssignTableDialog
+        open={assignTarget !== null}
+        target={assignTarget}
+        rooms={rooms}
+        busy={busy}
+        onOpenChange={(next) => {
+          if (!next) {
+            setAssignTarget(null);
+          }
+        }}
+        onConfirm={handleAssignTable}
+      />
     </div>
   );
 };

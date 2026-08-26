@@ -41,6 +41,7 @@ export type UpcomingReservation = {
   time: string;
   timeLabel: string;
   status: string;
+  tableId: string | null;
   tableName: string | null;
 };
 
@@ -290,14 +291,14 @@ async function loadUpcomingReservations(
     },
   });
 
-  const seatedAt = new Map<string, string>();
+  const seatedAt = new Map<string, { id: string; name: string }>();
   for (const assignment of assignments) {
     if (!assignment.reservationId) {
       continue;
     }
     const tableName = tableNames.get(assignment.tableId);
     if (tableName) {
-      seatedAt.set(assignment.reservationId, tableName);
+      seatedAt.set(assignment.reservationId, { id: assignment.tableId, name: tableName });
     }
   }
 
@@ -314,7 +315,8 @@ async function loadUpcomingReservations(
       time,
       timeLabel: formatTimeLabel(time),
       status: row.status,
-      tableName: seatedAt.get(row.id) ?? null,
+      tableId: seatedAt.get(row.id)?.id ?? null,
+      tableName: seatedAt.get(row.id)?.name ?? null,
     };
   });
 }

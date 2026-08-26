@@ -71,6 +71,7 @@ export type UpcomingReservation = {
   time: string;
   timeLabel: string;
   status: string;
+  tableId: string | null;
   tableName: string | null;
 };
 
@@ -234,4 +235,58 @@ export function persistFloorMode(mode: FloorMode): void {
   try {
     localStorage.setItem(FLOOR_MODE_KEY, mode);
   } catch {}
+}
+
+export type TableCandidate = {
+  table: LiveTable;
+  roomName: string;
+  recommended: boolean;
+};
+
+export function candidateTablesForParty(
+  rooms: LiveRoom[],
+  partySize: number,
+  recommendedTableId: string | null,
+  excludeTableId: string | null = null,
+): TableCandidate[] {
+  const candidates: TableCandidate[] = [];
+
+  for (const room of rooms) {
+    for (const table of room.tables) {
+      if (excludeTableId && table.id === excludeTableId) {
+        continue;
+      }
+      if (table.status === "BLOCKED" || table.status === "OCCUPIED") {
+        continue;
+      }
+      if (!partyFitsTable(partySize, table)) {
+        continue;
+      }
+      candidates.push({
+        table,
+        roomName: room.name,
+        recommended: table.id === recommendedTableId,
+      });
+    }
+  }
+
+  candidates.sort((a, b) => {
+    if (a.recommended !== b.recommended) {
+      if (a.recommended) {
+        return -1;
+      }
+      return 1;
+    }
+    if (a.table.capacity !== b.table.capacity) {
+      return a.table.capacity - b.table.capacity;
+    }
+    return a.table.name.localeCompare(b.table.name, undefined, { numeric: true });
+  });
+
+  return candidates;
+}
+
+export function recommendedTableIdForParty(rooms: LiveRoom[], partyId: string): string | null {
+  const match = allTables(rooms).find((table) => table.recommendedPartyId === partyId);
+  return match?.id ?? null;
 }

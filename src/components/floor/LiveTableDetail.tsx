@@ -289,8 +289,8 @@ const LiveTableDetail = ({
             style.badge,
           )}
         >
-          <StatusIcon className="h-3.5 w-3.5" aria-hidden="true" />
-          {statusLabel}
+          <StatusIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="whitespace-nowrap leading-none">{statusLabel}</span>
         </span>
       </div>
 
