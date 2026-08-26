@@ -185,8 +185,8 @@ const Feedback = () => {
     <>
       <Header />
 
-      <main className="bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 pb-12 pt-24 sm:pb-16 sm:pt-28">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-2 lg:items-stretch lg:gap-14">
+      <main className="bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 pb-12 pt-24 sm:px-6 sm:pb-16 sm:pt-28 lg:px-10">
+        <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-2 lg:items-stretch lg:gap-8 xl:gap-14">
           <div className="hidden lg:block">
             <div className="relative flex h-full min-h-[480px] flex-col justify-end overflow-hidden rounded-3xl bg-slate-900 p-8 text-white shadow-2xl">
               <img

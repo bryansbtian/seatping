@@ -668,17 +668,9 @@ export default function RestaurantPage() {
     photoWordLabel = "Photos";
   }
 
-  let reviewsHeading: string;
+  let reviewsHeading = "Reviews";
   if (r.reviewCount > 0) {
-    let reviewerPhrase: string;
-    if (r.reviewCount === 1) {
-      reviewerPhrase = "Person Is";
-    } else {
-      reviewerPhrase = "People Are";
-    }
-    reviewsHeading = `What ${r.reviewCount.toLocaleString()} ${reviewerPhrase} Saying`;
-  } else {
-    reviewsHeading = "Reviews";
+    reviewsHeading = "What Diners Are Saying";
   }
 
   let reviewsSummaryBlock: React.ReactNode;

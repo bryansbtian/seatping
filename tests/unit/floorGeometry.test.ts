@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  CORNER_BADGE_MAX_SIZE,
+  CORNER_BADGE_MIN_SIZE,
+  SQUARE_CORNER_BADGE_INSET,
+  TABLE_LABEL_MIN_HEIGHT,
+  TABLE_LABEL_MIN_WIDTH,
+  cornerBadgeOffset,
+  cornerBadgeSize,
+  fitsTableName,
   GRID_SIZE,
   TABLE_SHAPES,
   clampNumber,
@@ -340,5 +348,133 @@ describe("toNumberOrBlank", () => {
 
   it("treats unparseable text as blank", () => {
     expect(toNumberOrBlank("abc")).toBe("");
+  });
+});
+
+describe("fitsTableName", () => {
+  it("shows the name on a table rendered at full scale", () => {
+    expect(fitsTableName(130, 80)).toBe(true);
+  });
+
+  it("hides the name once the node is too narrow to read", () => {
+    expect(fitsTableName(37, 80)).toBe(false);
+  });
+
+  it("hides the name once the node is too short for two lines", () => {
+    expect(fitsTableName(130, 24)).toBe(false);
+  });
+
+  it("shows the name exactly at the threshold", () => {
+    expect(fitsTableName(TABLE_LABEL_MIN_WIDTH, TABLE_LABEL_MIN_HEIGHT)).toBe(true);
+  });
+
+  it("hides the name one pixel under either threshold", () => {
+    expect(fitsTableName(TABLE_LABEL_MIN_WIDTH - 1, TABLE_LABEL_MIN_HEIGHT)).toBe(false);
+    expect(fitsTableName(TABLE_LABEL_MIN_WIDTH, TABLE_LABEL_MIN_HEIGHT - 1)).toBe(false);
+  });
+
+  it("hides the name for a zero sized node", () => {
+    expect(fitsTableName(0, 0)).toBe(false);
+  });
+
+  it("hides the name when a measurement is not a finite number", () => {
+    expect(fitsTableName(Number.NaN, 80)).toBe(false);
+    expect(fitsTableName(130, Number.NaN)).toBe(false);
+    expect(fitsTableName(130, Number.POSITIVE_INFINITY)).toBe(false);
+    expect(fitsTableName(Number.POSITIVE_INFINITY, Number.NaN)).toBe(false);
+  });
+
+  it("flips every default shape at the same scale so one room never shows a mix", () => {
+    const shapes = [
+      defaultSizeForShape("ROUND"),
+      defaultSizeForShape("SQUARE"),
+      defaultSizeForShape("RECTANGLE"),
+    ];
+    for (let step = 1; step <= 40; step += 1) {
+      const scale = step / 40;
+      const decisions = shapes.map((shape) =>
+        fitsTableName(shape.width * scale, shape.height * scale),
+      );
+      expect(new Set(decisions).size).toBe(1);
+    }
+  });
+
+  it("honours caller supplied thresholds", () => {
+    expect(fitsTableName(50, 30, 40, 20)).toBe(true);
+    expect(fitsTableName(50, 30, 60, 20)).toBe(false);
+  });
+
+  it("reflects the scale a small floor plan renders at", () => {
+    const cramped = 0.285;
+    expect(fitsTableName(130 * cramped, 80 * cramped)).toBe(false);
+    expect(fitsTableName(130 * 0.63, 80 * 0.63)).toBe(true);
+  });
+});
+
+describe("cornerBadgeOffset", () => {
+  it("insets a round table badge onto the circle edge", () => {
+    const offset = cornerBadgeOffset("ROUND", 100, 100);
+    expect(offset.x).toBeCloseTo(14.64, 1);
+    expect(offset.y).toBeCloseTo(14.64, 1);
+  });
+
+  it("keeps the badge on the same relative spot as the table scales", () => {
+    const small = cornerBadgeOffset("ROUND", 80, 80);
+    const large = cornerBadgeOffset("ROUND", 160, 160);
+    expect(small.x / 80).toBeCloseTo(large.x / 160, 5);
+    expect(small.y / 80).toBeCloseTo(large.y / 160, 5);
+  });
+
+  it("follows a non square round table on each axis", () => {
+    const offset = cornerBadgeOffset("ROUND", 200, 100);
+    expect(offset.x).toBeCloseTo(29.29, 1);
+    expect(offset.y).toBeCloseTo(14.64, 1);
+  });
+
+  it("uses a small fixed inset for square and rectangle tables", () => {
+    expect(cornerBadgeOffset("SQUARE", 120, 120)).toEqual({
+      x: SQUARE_CORNER_BADGE_INSET,
+      y: SQUARE_CORNER_BADGE_INSET,
+    });
+    expect(cornerBadgeOffset("RECTANGLE", 130, 80)).toEqual({
+      x: SQUARE_CORNER_BADGE_INSET,
+      y: SQUARE_CORNER_BADGE_INSET,
+    });
+  });
+
+  it("falls back to the fixed inset when a measurement is not finite", () => {
+    expect(cornerBadgeOffset("ROUND", Number.NaN, 100)).toEqual({
+      x: SQUARE_CORNER_BADGE_INSET,
+      y: SQUARE_CORNER_BADGE_INSET,
+    });
+  });
+});
+
+describe("cornerBadgeSize", () => {
+  it("shrinks the badge with the table so it stays proportional", () => {
+    expect(cornerBadgeSize(39, 39)).toBe(12);
+    expect(cornerBadgeSize(55, 55)).toBe(17);
+  });
+
+  it("caps the badge on a large table", () => {
+    expect(cornerBadgeSize(400, 400)).toBe(CORNER_BADGE_MAX_SIZE);
+  });
+
+  it("keeps the badge legible on a very small table", () => {
+    expect(cornerBadgeSize(10, 10)).toBe(CORNER_BADGE_MIN_SIZE);
+  });
+
+  it("uses the smaller dimension of a rectangle", () => {
+    expect(cornerBadgeSize(300, 40)).toBe(cornerBadgeSize(40, 40));
+  });
+
+  it("falls back to the cap when a measurement is not finite", () => {
+    expect(cornerBadgeSize(Number.NaN, 100)).toBe(CORNER_BADGE_MAX_SIZE);
+  });
+
+  it("never returns a badge wider than the table it sits on", () => {
+    for (let size = 12; size <= 300; size += 4) {
+      expect(cornerBadgeSize(size, size)).toBeLessThanOrEqual(size);
+    }
   });
 });

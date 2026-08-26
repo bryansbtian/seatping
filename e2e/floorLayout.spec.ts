@@ -6,6 +6,7 @@ test("a business builds a floor layout and it survives a reload", async ({ page,
 
   await signInBusiness(page, business);
   await page.goto("/business/floor");
+  await page.getByRole("button", { name: "Edit Layout" }).click();
 
   await expect(page.getByRole("heading", { name: "Floor" })).toBeVisible();
   await expect(page.getByText("No Floor Plan Yet")).toBeVisible();
@@ -86,6 +87,7 @@ test("a table can be dragged and the new position is stored", async ({ page, db 
 
   await signInBusiness(page, business);
   await page.goto("/business/floor");
+  await page.getByRole("button", { name: "Edit Layout" }).click();
 
   const node = page.getByTestId("table-node-Table 1");
   await expect(node).toBeVisible();
@@ -153,6 +155,7 @@ test("blocking a table from the editor leaves its assignments untouched", async 
 
   await signInBusiness(page, business);
   await page.goto("/business/floor");
+  await page.getByRole("button", { name: "Edit Layout" }).click();
 
   await page.getByTestId("table-node-Table 1").click();
   await expect(page.getByTestId("table-inspector")).toBeVisible();
@@ -204,6 +207,7 @@ test("each location keeps its own floor layout", async ({ page, db }) => {
 
   await signInBusiness(page, business);
   await page.goto("/business/floor");
+  await page.getByRole("button", { name: "Edit Layout" }).click();
 
   await expect(page.getByTestId("table-node-Main Table")).toBeVisible();
   await expect(page.getByTestId("table-node-Patio Table")).toHaveCount(0);
@@ -239,6 +243,7 @@ test("the editor rejects invalid capacity before it reaches the server", async (
 
   await signInBusiness(page, business);
   await page.goto("/business/floor");
+  await page.getByRole("button", { name: "Edit Layout" }).click();
 
   await page.getByTestId("table-node-Table 1").click();
   await page.getByLabel("Minimum Party Size").fill("9");
@@ -276,6 +281,7 @@ test("a business adds a second room and a zone that both persist", async ({ page
 
   await signInBusiness(page, business);
   await page.goto("/business/floor");
+  await page.getByRole("button", { name: "Edit Layout" }).click();
 
   await expect(page.getByTestId("table-node-T1")).toBeVisible();
 

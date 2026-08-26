@@ -609,7 +609,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
   }
 
   return (
-    <div className="space-y-3 md:space-y-4">
+    <div className="flex flex-col gap-3 md:flex-1 md:gap-4">
       <Card className="border border-slate-200 bg-white shadow-sm">
         <CardContent className="space-y-3 p-3 md:space-y-4 md:p-5">
           <div className="flex items-center justify-between gap-3">
@@ -661,7 +661,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 lg:flex-row lg:flex-nowrap lg:items-end lg:justify-between lg:gap-4">
+          <div className="flex flex-col gap-3 xl:flex-row xl:flex-nowrap xl:items-end xl:justify-between xl:gap-4">
             <div className="space-y-1.5">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                 {t("floor.addTable")}
@@ -685,50 +685,52 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-end gap-2 md:gap-3 lg:flex-nowrap lg:gap-2">
-              <div className="space-y-1 shrink-0">
-                <Label htmlFor="room-name" className="text-[11px] md:text-xs">
-                  {t("floor.roomName")}
-                </Label>
-                <Input
-                  id="room-name"
-                  className="h-9 w-32 text-xs md:h-10 md:w-36 md:text-sm lg:w-32"
-                  value={roomName}
-                  onChange={(event) => setRoomName(event.target.value)}
-                />
+            <div className="flex flex-wrap items-end gap-2 md:gap-3 xl:flex-nowrap xl:gap-2">
+              <div className="grid w-full grid-cols-[2fr_1fr_1fr] items-end gap-2 md:gap-3 xl:contents">
+                <div className="min-w-0 space-y-1 xl:shrink-0">
+                  <Label htmlFor="room-name" className="text-[11px] md:text-xs">
+                    {t("floor.roomName")}
+                  </Label>
+                  <Input
+                    id="room-name"
+                    className="h-9 w-full text-xs md:h-10 md:text-sm xl:w-32"
+                    value={roomName}
+                    onChange={(event) => setRoomName(event.target.value)}
+                  />
+                </div>
+                <div className="min-w-0 space-y-1 xl:flex-none xl:shrink-0">
+                  <Label htmlFor="floor-width" className="text-[11px] md:text-xs">
+                    {t("floor.width")}
+                  </Label>
+                  <Input
+                    id="floor-width"
+                    type="number"
+                    className="h-9 w-full text-xs md:h-10 md:text-sm xl:w-20"
+                    min={200}
+                    max={6000}
+                    value={roomWidth}
+                    onChange={(event) => setRoomWidth(toNumberOrBlank(event.target.value))}
+                  />
+                </div>
+                <div className="min-w-0 space-y-1 xl:flex-none xl:shrink-0">
+                  <Label htmlFor="floor-height" className="text-[11px] md:text-xs">
+                    {t("floor.height")}
+                  </Label>
+                  <Input
+                    id="floor-height"
+                    type="number"
+                    className="h-9 w-full text-xs md:h-10 md:text-sm xl:w-20"
+                    min={200}
+                    max={6000}
+                    value={roomHeight}
+                    onChange={(event) => setRoomHeight(toNumberOrBlank(event.target.value))}
+                  />
+                </div>
               </div>
-              <div className="min-w-0 flex-1 space-y-1 lg:flex-none lg:shrink-0">
-                <Label htmlFor="floor-width" className="text-[11px] md:text-xs">
-                  {t("floor.width")}
-                </Label>
-                <Input
-                  id="floor-width"
-                  type="number"
-                  className="h-9 w-full text-xs md:h-10 md:text-sm lg:w-20"
-                  min={200}
-                  max={6000}
-                  value={roomWidth}
-                  onChange={(event) => setRoomWidth(toNumberOrBlank(event.target.value))}
-                />
-              </div>
-              <div className="min-w-0 flex-1 space-y-1 lg:flex-none lg:shrink-0">
-                <Label htmlFor="floor-height" className="text-[11px] md:text-xs">
-                  {t("floor.height")}
-                </Label>
-                <Input
-                  id="floor-height"
-                  type="number"
-                  className="h-9 w-full text-xs md:h-10 md:text-sm lg:w-20"
-                  min={200}
-                  max={6000}
-                  value={roomHeight}
-                  onChange={(event) => setRoomHeight(toNumberOrBlank(event.target.value))}
-                />
-              </div>
-              <div className="flex w-full flex-wrap gap-2 lg:contents">
+              <div className="flex w-full flex-wrap gap-2 xl:contents">
                 <Button
                   size="sm"
-                  className="h-9 flex-1 whitespace-nowrap px-2 text-xs max-[425px]:w-full max-[425px]:basis-full md:h-10 md:text-sm lg:flex-none lg:px-3"
+                  className="h-9 flex-1 whitespace-nowrap px-2 text-xs max-[425px]:w-full max-[425px]:basis-full md:h-10 md:text-sm xl:flex-none xl:px-3"
                   disabled={saving}
                   onClick={handleSaveRoom}
                 >
@@ -747,7 +749,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
                       variant="outline"
                       size="sm"
                       aria-label={t("floor.reset")}
-                      className="h-9 flex-1 whitespace-nowrap border-red-200 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 md:h-10 md:text-sm lg:flex-none lg:px-3"
+                      className="h-9 flex-1 whitespace-nowrap border-red-200 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 md:h-10 md:text-sm xl:flex-none xl:px-3"
                       disabled={saving}
                     >
                       <RotateCcw className="mr-1.5 h-4 w-4" />
@@ -767,7 +769,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
                       variant="outline"
                       size="sm"
                       aria-label={t("floor.deleteRoom")}
-                      className="h-9 flex-1 whitespace-nowrap border-red-200 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 md:h-10 md:text-sm lg:flex-none lg:px-3"
+                      className="h-9 flex-1 whitespace-nowrap border-red-200 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 md:h-10 md:text-sm xl:flex-none xl:px-3"
                       disabled={saving}
                     >
                       <Trash2 className="mr-1.5 h-4 w-4" />
@@ -787,9 +789,9 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-3 md:gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <Card className="border border-slate-200 bg-white shadow-sm">
-          <CardContent className="p-3 pt-3 md:p-5 md:pt-5">
+      <div className="grid grid-cols-1 gap-3 md:min-h-0 md:flex-1 md:gap-4 lg:landscape:grid-cols-[minmax(0,1fr)_300px] 2xl:landscape:grid-cols-[minmax(0,1fr)_340px]">
+        <Card className="flex flex-col border border-slate-200 bg-white shadow-sm">
+          <CardContent className="flex flex-1 items-center justify-center p-2 pt-2 md:p-3 md:pt-3">
             <FloorCanvas
               room={activeRoom}
               tables={activeRoom.tables}
@@ -802,8 +804,8 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
           </CardContent>
         </Card>
 
-        <Card className="flex flex-col border border-slate-200 bg-white shadow-sm">
-          <CardContent className="flex-1 overflow-y-auto p-3 pt-3 md:p-5 md:pt-5">
+        <Card className="flex flex-col border border-slate-200 bg-white shadow-sm lg:landscape:relative">
+          <CardContent className="flex-1 overflow-y-auto p-3 pt-3 md:p-5 md:pt-5 lg:landscape:absolute lg:landscape:inset-0">
             {inspector}
           </CardContent>
         </Card>
