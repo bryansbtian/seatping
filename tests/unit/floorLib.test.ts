@@ -120,18 +120,18 @@ describe("parseName", () => {
 
 describe("parseOptionalText", () => {
   it("maps missing and blank values to null", () => {
-    expect(parseOptionalText(undefined, "section", 60)).toEqual({ ok: true, value: null });
-    expect(parseOptionalText(null, "section", 60)).toEqual({ ok: true, value: null });
-    expect(parseOptionalText("   ", "section", 60)).toEqual({ ok: true, value: null });
+    expect(parseOptionalText(undefined, "reason", 60)).toEqual({ ok: true, value: null });
+    expect(parseOptionalText(null, "reason", 60)).toEqual({ ok: true, value: null });
+    expect(parseOptionalText("   ", "reason", 60)).toEqual({ ok: true, value: null });
   });
 
   it("trims provided text", () => {
-    expect(parseOptionalText(" Patio ", "section", 60)).toEqual({ ok: true, value: "Patio" });
+    expect(parseOptionalText(" Patio ", "reason", 60)).toEqual({ ok: true, value: "Patio" });
   });
 
   it("rejects overlong and non string values", () => {
-    expect(parseOptionalText("a".repeat(61), "section", 60).ok).toBe(false);
-    expect(parseOptionalText(5, "section", 60).ok).toBe(false);
+    expect(parseOptionalText("a".repeat(61), "reason", 60).ok).toBe(false);
+    expect(parseOptionalText(5, "reason", 60).ok).toBe(false);
   });
 });
 
@@ -314,7 +314,6 @@ describe("serializers", () => {
       capacity: 4,
       minimumPartySize: 2,
       shape: "RECTANGLE",
-      section: "Main Dining Room",
       x: 10,
       y: 20,
       width: 120,
@@ -331,7 +330,6 @@ describe("serializers", () => {
     expect(serialized).not.toHaveProperty("assignmentVersion");
     expect(serialized).not.toHaveProperty("businessId");
     expect(serialized.name).toBe("Table 12");
-    expect(serialized.section).toBe("Main Dining Room");
   });
 
   it("serializes a floor plan with an empty table list when none are loaded", () => {

@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { BUSINESS_NAV_GROUPS, isActiveNavPath } from "../../src/lib/businessNav.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  BUSINESS_NAV_GROUPS,
+  SIDEBAR_COLLAPSED_KEY,
+  isActiveNavPath,
+  persistSidebarCollapsed,
+  readSidebarCollapsed,
+} from "../../src/lib/businessNav.js";
 import { LOCATION_STORAGE_KEY, locationLabel } from "../../src/lib/businessSession.js";
 
 describe("business navigation config", () => {
@@ -78,5 +84,58 @@ describe("locationLabel", () => {
 describe("location persistence key", () => {
   it("is namespaced separately from the business language key", () => {
     expect(LOCATION_STORAGE_KEY).toBe("seatping.business.locationId");
+  });
+});
+
+describe("sidebar collapse persistence", () => {
+  const store = new Map<string, string>();
+
+  beforeEach(() => {
+    store.clear();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => store.set(key, value),
+      removeItem: (key: string) => store.delete(key),
+      clear: () => store.clear(),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("defaults to expanded when nothing is stored", () => {
+    expect(readSidebarCollapsed()).toBe(false);
+  });
+
+  it("round trips a collapsed sidebar", () => {
+    persistSidebarCollapsed(true);
+    expect(store.get(SIDEBAR_COLLAPSED_KEY)).toBe("true");
+    expect(readSidebarCollapsed()).toBe(true);
+
+    persistSidebarCollapsed(false);
+    expect(readSidebarCollapsed()).toBe(false);
+  });
+
+  it("treats any other stored value as expanded", () => {
+    store.set(SIDEBAR_COLLAPSED_KEY, "yes");
+    expect(readSidebarCollapsed()).toBe(false);
+  });
+
+  it("stays expanded when storage is unavailable", () => {
+    vi.stubGlobal("localStorage", {
+      getItem: () => {
+        throw new Error("blocked");
+      },
+      setItem: () => {
+        throw new Error("blocked");
+      },
+    });
+    expect(readSidebarCollapsed()).toBe(false);
+    expect(() => persistSidebarCollapsed(true)).not.toThrow();
+  });
+
+  it("uses a key separate from the location and language keys", () => {
+    expect(SIDEBAR_COLLAPSED_KEY).toBe("seatping.business.sidebarCollapsed");
   });
 });

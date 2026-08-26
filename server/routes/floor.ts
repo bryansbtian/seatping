@@ -4,12 +4,14 @@ import { requireBusiness } from "../lib/auth.js";
 import { withWriteRetry } from "../lib/dbRetry.js";
 import {
   ACTIVE_ASSIGNMENT_STATUSES,
-  BLOCK_REASON_MAX_LENGTH,
   FLOOR_MAX_DIMENSION,
   FLOOR_MIN_DIMENSION,
-  FLOOR_NAME_MAX_LENGTH,
+  MAX_ROOMS_PER_LOCATION,
+  MAX_ZONES_PER_ROOM,
   OBJECT_ID_RE,
-  SECTION_MAX_LENGTH,
+  ROOM_NAME_MAX_LENGTH,
+  ZONE_MIN_SIZE,
+  ZONE_NAME_MAX_LENGTH,
   TABLE_MAX_CAPACITY,
   TABLE_MAX_POSITION,
   TABLE_MAX_SIZE,
@@ -17,11 +19,14 @@ import {
   TABLE_MIN_SIZE,
   TABLE_NAME_MAX_LENGTH,
   assertReferencesOwned,
+  clampZoneToRoom,
   completeAssignment,
   createAssignment,
-  findFloorPlan,
   findOwnedTable,
+  findOwnedZone,
+  findRoom,
   isFailure,
+  listRooms,
   normalizeRotation,
   parseDate,
   parseInteger,
@@ -36,6 +41,7 @@ import {
   serializeAssignment,
   serializeFloorPlan,
   serializeTable,
+  serializeZone,
   updateAssignment,
   type AssignmentStatusValue,
   type Failure,
@@ -80,258 +86,463 @@ function ownedLocation(res: Response): OwnedLocation {
   return res.locals.location as OwnedLocation;
 }
 
-async function requireFloorPlan(locationId: string, res: Response) {
-  const plan = await prisma.floorPlan.findUnique({ where: { locationId } });
-  if (!plan) {
-    res.status(404).json({ error: "Floor plan not found" });
+async function requireRoom(locationId: string, roomId: string, res: Response) {
+  const room = await findRoom(locationId, roomId);
+  if (!room) {
+    res.status(404).json({ error: "Room not found or access denied" });
     return null;
   }
-  return plan;
+  return room;
+}
+
+function readRoomSize(body: any, res: Response) {
+  const size: { width?: number; height?: number } = {};
+
+  if (body?.width !== undefined) {
+    const parsed = parseInteger(body.width, "width", FLOOR_MIN_DIMENSION, FLOOR_MAX_DIMENSION);
+    if (isFailure(parsed)) {
+      sendFailure(res, parsed);
+      return null;
+    }
+    size.width = parsed.value;
+  }
+
+  if (body?.height !== undefined) {
+    const parsed = parseInteger(body.height, "height", FLOOR_MIN_DIMENSION, FLOOR_MAX_DIMENSION);
+    if (isFailure(parsed)) {
+      sendFailure(res, parsed);
+      return null;
+    }
+    size.height = parsed.value;
+  }
+
+  return size;
 }
 
 router.get("/:locationId", loadOwnedLocation, async (_req: Request, res: Response) => {
   try {
     const location = ownedLocation(res);
-    const plan = await findFloorPlan(location.id);
-    if (!plan) {
-      return res.json({ floorPlan: null });
-    }
-    return res.json({ floorPlan: serializeFloorPlan(plan) });
+    const rooms = await listRooms(location.id);
+    return res.json({ rooms: rooms.map(serializeFloorPlan) });
   } catch (err: any) {
-    console.error("[floor] get plan error:", err?.message || err);
+    console.error("[floor] list rooms error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
   }
 });
 
-router.post("/:locationId", loadOwnedLocation, async (req: Request, res: Response) => {
+router.post("/:locationId/rooms", loadOwnedLocation, async (req: Request, res: Response) => {
   try {
     const location = ownedLocation(res);
 
-    const existing = await prisma.floorPlan.findUnique({ where: { locationId: location.id } });
-    if (existing) {
-      return res.status(409).json({ error: "This location already has a floor plan" });
+    const existing = await prisma.floorPlan.count({ where: { locationId: location.id } });
+    if (existing >= MAX_ROOMS_PER_LOCATION) {
+      return res.status(409).json({ error: "This location already has the maximum rooms" });
     }
 
-    let name = "Main Floor";
+    let name = "Main Dining Room";
     if (req.body?.name !== undefined) {
-      const parsed = parseName(req.body.name, "name", FLOOR_NAME_MAX_LENGTH);
+      const parsed = parseName(req.body.name, "name", ROOM_NAME_MAX_LENGTH);
       if (isFailure(parsed)) {
         return sendFailure(res, parsed);
       }
       name = parsed.value;
     }
 
-    let width = 1200;
-    if (req.body?.width !== undefined) {
-      const parsed = parseInteger(
-        req.body.width,
-        "width",
-        FLOOR_MIN_DIMENSION,
-        FLOOR_MAX_DIMENSION,
-      );
-      if (isFailure(parsed)) {
-        return sendFailure(res, parsed);
-      }
-      width = parsed.value;
-    }
-
-    let height = 800;
-    if (req.body?.height !== undefined) {
-      const parsed = parseInteger(
-        req.body.height,
-        "height",
-        FLOOR_MIN_DIMENSION,
-        FLOOR_MAX_DIMENSION,
-      );
-      if (isFailure(parsed)) {
-        return sendFailure(res, parsed);
-      }
-      height = parsed.value;
-    }
-
-    const plan = await withWriteRetry(() =>
-      prisma.floorPlan.create({
-        data: { businessId: location.businessId, locationId: location.id, name, width, height },
-      }),
-    );
-
-    return res.status(201).json({ floorPlan: serializeFloorPlan({ ...plan, tables: [] }) });
-  } catch (err: any) {
-    console.error("[floor] create plan error:", err?.message || err);
-    return res.status(500).json({ error: "Server error" });
-  }
-});
-
-router.patch("/:locationId", loadOwnedLocation, async (req: Request, res: Response) => {
-  try {
-    const location = ownedLocation(res);
-    const plan = await requireFloorPlan(location.id, res);
-    if (!plan) {
-      return undefined;
-    }
-
-    const data: Record<string, unknown> = {};
-
-    if (req.body?.name !== undefined) {
-      const parsed = parseName(req.body.name, "name", FLOOR_NAME_MAX_LENGTH);
-      if (isFailure(parsed)) {
-        return sendFailure(res, parsed);
-      }
-      data.name = parsed.value;
-    }
-
-    if (req.body?.width !== undefined) {
-      const parsed = parseInteger(
-        req.body.width,
-        "width",
-        FLOOR_MIN_DIMENSION,
-        FLOOR_MAX_DIMENSION,
-      );
-      if (isFailure(parsed)) {
-        return sendFailure(res, parsed);
-      }
-      data.width = parsed.value;
-    }
-
-    if (req.body?.height !== undefined) {
-      const parsed = parseInteger(
-        req.body.height,
-        "height",
-        FLOOR_MIN_DIMENSION,
-        FLOOR_MAX_DIMENSION,
-      );
-      if (isFailure(parsed)) {
-        return sendFailure(res, parsed);
-      }
-      data.height = parsed.value;
-    }
-
-    if (Object.keys(data).length === 0) {
-      return res.status(400).json({ error: "No floor plan changes provided" });
-    }
-
-    await withWriteRetry(() => prisma.floorPlan.update({ where: { id: plan.id }, data }));
-
-    const updated = await findFloorPlan(location.id);
-    return res.json({ floorPlan: serializeFloorPlan(updated) });
-  } catch (err: any) {
-    console.error("[floor] update plan error:", err?.message || err);
-    return res.status(500).json({ error: "Server error" });
-  }
-});
-
-router.post("/:locationId/tables", loadOwnedLocation, async (req: Request, res: Response) => {
-  try {
-    const location = ownedLocation(res);
-    const plan = await requireFloorPlan(location.id, res);
-    if (!plan) {
-      return undefined;
-    }
-
-    const name = parseName(req.body?.name, "name", TABLE_NAME_MAX_LENGTH);
-    if (isFailure(name)) {
-      return sendFailure(res, name);
-    }
-
-    const capacity = parseInteger(
-      req.body?.capacity,
-      "capacity",
-      TABLE_MIN_CAPACITY,
-      TABLE_MAX_CAPACITY,
-    );
-    if (isFailure(capacity)) {
-      return sendFailure(res, capacity);
-    }
-
-    let minimumPartySize = 1;
-    if (req.body?.minimumPartySize !== undefined && req.body?.minimumPartySize !== null) {
-      const parsed = parseInteger(
-        req.body.minimumPartySize,
-        "minimumPartySize",
-        TABLE_MIN_CAPACITY,
-        TABLE_MAX_CAPACITY,
-      );
-      if (isFailure(parsed)) {
-        return sendFailure(res, parsed);
-      }
-      minimumPartySize = parsed.value;
-    }
-    if (minimumPartySize > capacity.value) {
-      return res.status(400).json({ error: "minimumPartySize cannot exceed capacity" });
-    }
-
-    let shape = "RECTANGLE";
-    if (req.body?.shape !== undefined) {
-      const parsed = parseShape(req.body.shape);
-      if (isFailure(parsed)) {
-        return sendFailure(res, parsed);
-      }
-      shape = parsed.value;
-    }
-
-    const section = parseOptionalText(req.body?.section, "section", SECTION_MAX_LENGTH);
-    if (isFailure(section)) {
-      return sendFailure(res, section);
-    }
-
-    const geometry: Record<string, number> = { x: 0, y: 0, width: 120, height: 80, rotation: 0 };
-    const geometryFields: [string, number, number][] = [
-      ["x", 0, TABLE_MAX_POSITION],
-      ["y", 0, TABLE_MAX_POSITION],
-      ["width", TABLE_MIN_SIZE, TABLE_MAX_SIZE],
-      ["height", TABLE_MIN_SIZE, TABLE_MAX_SIZE],
-    ];
-    for (const [field, min, max] of geometryFields) {
-      if (req.body?.[field] !== undefined) {
-        const parsed = parseInteger(req.body[field], field, min, max);
-        if (isFailure(parsed)) {
-          return sendFailure(res, parsed);
-        }
-        geometry[field] = parsed.value;
-      }
-    }
-    if (req.body?.rotation !== undefined) {
-      const parsed = parseInteger(req.body.rotation, "rotation", -3600, 3600);
-      if (isFailure(parsed)) {
-        return sendFailure(res, parsed);
-      }
-      geometry.rotation = normalizeRotation(parsed.value);
-    }
-
-    const duplicate = await prisma.diningTable.findFirst({
-      where: { locationId: location.id, name: name.value },
+    const duplicate = await prisma.floorPlan.findFirst({
+      where: { locationId: location.id, name },
       select: { id: true },
     });
     if (duplicate) {
-      return res.status(409).json({ error: "A table with that name already exists here" });
+      return res.status(409).json({ error: "A room with that name already exists here" });
     }
 
-    const table = await withWriteRetry(() =>
-      prisma.diningTable.create({
+    const size = readRoomSize(req.body, res);
+    if (!size) {
+      return undefined;
+    }
+
+    const room = await withWriteRetry(() =>
+      prisma.floorPlan.create({
         data: {
-          floorPlanId: plan.id,
           businessId: location.businessId,
           locationId: location.id,
-          name: name.value,
-          capacity: capacity.value,
-          minimumPartySize,
-          shape: shape as any,
-          section: section.value,
-          x: geometry.x,
-          y: geometry.y,
-          width: geometry.width,
-          height: geometry.height,
-          rotation: geometry.rotation,
+          name,
+          width: size.width ?? 1200,
+          height: size.height ?? 800,
+          sortOrder: existing,
         },
       }),
     );
 
-    return res.status(201).json({ table: serializeTable(table) });
+    return res.status(201).json({ room: serializeFloorPlan({ ...room, tables: [], zones: [] }) });
   } catch (err: any) {
-    console.error("[floor] create table error:", err?.message || err);
+    console.error("[floor] create room error:", err?.message || err);
     return res.status(500).json({ error: "Server error" });
   }
 });
+
+router.patch(
+  "/:locationId/rooms/:roomId",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+      const room = await requireRoom(location.id, String(req.params.roomId || ""), res);
+      if (!room) {
+        return undefined;
+      }
+
+      const data: Record<string, unknown> = {};
+
+      if (req.body?.name !== undefined) {
+        const parsed = parseName(req.body.name, "name", ROOM_NAME_MAX_LENGTH);
+        if (isFailure(parsed)) {
+          return sendFailure(res, parsed);
+        }
+        if (parsed.value !== room.name) {
+          const duplicate = await prisma.floorPlan.findFirst({
+            where: { locationId: location.id, name: parsed.value, id: { not: room.id } },
+            select: { id: true },
+          });
+          if (duplicate) {
+            return res.status(409).json({ error: "A room with that name already exists here" });
+          }
+        }
+        data.name = parsed.value;
+      }
+
+      const size = readRoomSize(req.body, res);
+      if (!size) {
+        return undefined;
+      }
+      if (size.width !== undefined) {
+        data.width = size.width;
+      }
+      if (size.height !== undefined) {
+        data.height = size.height;
+      }
+
+      if (Object.keys(data).length === 0) {
+        return res.status(400).json({ error: "No room changes provided" });
+      }
+
+      await withWriteRetry(() => prisma.floorPlan.update({ where: { id: room.id }, data }));
+
+      const updated = await findRoom(location.id, room.id);
+      return res.json({ room: serializeFloorPlan(updated) });
+    } catch (err: any) {
+      console.error("[floor] update room error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+router.delete(
+  "/:locationId/rooms/:roomId",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+      const room = await requireRoom(location.id, String(req.params.roomId || ""), res);
+      if (!room) {
+        return undefined;
+      }
+
+      const active = await prisma.tableAssignment.findFirst({
+        where: {
+          locationId: location.id,
+          status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
+          table: { floorPlanId: room.id },
+        },
+        select: { id: true },
+      });
+      if (active) {
+        return res
+          .status(409)
+          .json({ error: "A table in this room still has an active assignment" });
+      }
+
+      await withWriteRetry(() => prisma.floorPlan.delete({ where: { id: room.id } }));
+
+      return res.json({ deleted: true, roomId: room.id });
+    } catch (err: any) {
+      console.error("[floor] delete room error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+router.post(
+  "/:locationId/rooms/:roomId/zones",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+      const room = await requireRoom(location.id, String(req.params.roomId || ""), res);
+      if (!room) {
+        return undefined;
+      }
+
+      if (room.zones.length >= MAX_ZONES_PER_ROOM) {
+        return res.status(409).json({ error: "This room already has the maximum zones" });
+      }
+
+      const name = parseName(req.body?.name, "name", ZONE_NAME_MAX_LENGTH);
+      if (isFailure(name)) {
+        return sendFailure(res, name);
+      }
+
+      const duplicate = room.zones.find((zone) => zone.name === name.value);
+      if (duplicate) {
+        return res.status(409).json({ error: "A zone with that name already exists here" });
+      }
+
+      const geometry = { x: 0, y: 0, width: 300, height: 200 };
+      const fields: [string, number, number][] = [
+        ["x", 0, TABLE_MAX_POSITION],
+        ["y", 0, TABLE_MAX_POSITION],
+        ["width", ZONE_MIN_SIZE, TABLE_MAX_SIZE],
+        ["height", ZONE_MIN_SIZE, TABLE_MAX_SIZE],
+      ];
+      for (const [field, min, max] of fields) {
+        if (req.body?.[field] !== undefined) {
+          const parsed = parseInteger(req.body[field], field, min, max);
+          if (isFailure(parsed)) {
+            return sendFailure(res, parsed);
+          }
+          geometry[field as "x" | "y" | "width" | "height"] = parsed.value;
+        }
+      }
+
+      const bounded = clampZoneToRoom(geometry, room);
+
+      const zone = await withWriteRetry(() =>
+        prisma.floorZone.create({
+          data: {
+            floorPlanId: room.id,
+            businessId: location.businessId,
+            locationId: location.id,
+            name: name.value,
+            ...bounded,
+          },
+        }),
+      );
+
+      return res.status(201).json({ zone: serializeZone(zone) });
+    } catch (err: any) {
+      console.error("[floor] create zone error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+router.patch(
+  "/:locationId/zones/:zoneId",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+      const zone = await findOwnedZone(location.id, String(req.params.zoneId || ""));
+      if (!zone) {
+        return res.status(404).json({ error: "Zone not found or access denied" });
+      }
+
+      const room = await prisma.floorPlan.findFirst({
+        where: { id: zone.floorPlanId, locationId: location.id },
+      });
+      if (!room) {
+        return res.status(404).json({ error: "Room not found or access denied" });
+      }
+
+      const data: Record<string, unknown> = {};
+
+      if (req.body?.name !== undefined) {
+        const parsed = parseName(req.body.name, "name", ZONE_NAME_MAX_LENGTH);
+        if (isFailure(parsed)) {
+          return sendFailure(res, parsed);
+        }
+        if (parsed.value !== zone.name) {
+          const duplicate = await prisma.floorZone.findFirst({
+            where: { floorPlanId: zone.floorPlanId, name: parsed.value, id: { not: zone.id } },
+            select: { id: true },
+          });
+          if (duplicate) {
+            return res.status(409).json({ error: "A zone with that name already exists here" });
+          }
+        }
+        data.name = parsed.value;
+      }
+
+      const geometry = { x: zone.x, y: zone.y, width: zone.width, height: zone.height };
+      const fields: [string, number, number][] = [
+        ["x", 0, TABLE_MAX_POSITION],
+        ["y", 0, TABLE_MAX_POSITION],
+        ["width", ZONE_MIN_SIZE, TABLE_MAX_SIZE],
+        ["height", ZONE_MIN_SIZE, TABLE_MAX_SIZE],
+      ];
+      let geometryTouched = false;
+      for (const [field, min, max] of fields) {
+        if (req.body?.[field] !== undefined) {
+          const parsed = parseInteger(req.body[field], field, min, max);
+          if (isFailure(parsed)) {
+            return sendFailure(res, parsed);
+          }
+          geometry[field as "x" | "y" | "width" | "height"] = parsed.value;
+          geometryTouched = true;
+        }
+      }
+
+      if (geometryTouched) {
+        Object.assign(data, clampZoneToRoom(geometry, room));
+      }
+
+      if (Object.keys(data).length === 0) {
+        return res.status(400).json({ error: "No zone changes provided" });
+      }
+
+      const updated = await withWriteRetry(() =>
+        prisma.floorZone.update({ where: { id: zone.id }, data }),
+      );
+
+      return res.json({ zone: serializeZone(updated) });
+    } catch (err: any) {
+      console.error("[floor] update zone error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+router.delete(
+  "/:locationId/zones/:zoneId",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+      const zone = await findOwnedZone(location.id, String(req.params.zoneId || ""));
+      if (!zone) {
+        return res.status(404).json({ error: "Zone not found or access denied" });
+      }
+
+      await withWriteRetry(() => prisma.floorZone.delete({ where: { id: zone.id } }));
+
+      return res.json({ deleted: true, zoneId: zone.id });
+    } catch (err: any) {
+      console.error("[floor] delete zone error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+router.post(
+  "/:locationId/rooms/:roomId/tables",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+      const room = await requireRoom(location.id, String(req.params.roomId || ""), res);
+      if (!room) {
+        return undefined;
+      }
+
+      const name = parseName(req.body?.name, "name", TABLE_NAME_MAX_LENGTH);
+      if (isFailure(name)) {
+        return sendFailure(res, name);
+      }
+
+      const capacity = parseInteger(
+        req.body?.capacity,
+        "capacity",
+        TABLE_MIN_CAPACITY,
+        TABLE_MAX_CAPACITY,
+      );
+      if (isFailure(capacity)) {
+        return sendFailure(res, capacity);
+      }
+
+      let minimumPartySize = 1;
+      if (req.body?.minimumPartySize !== undefined && req.body?.minimumPartySize !== null) {
+        const parsed = parseInteger(
+          req.body.minimumPartySize,
+          "minimumPartySize",
+          TABLE_MIN_CAPACITY,
+          TABLE_MAX_CAPACITY,
+        );
+        if (isFailure(parsed)) {
+          return sendFailure(res, parsed);
+        }
+        minimumPartySize = parsed.value;
+      }
+      if (minimumPartySize > capacity.value) {
+        return res.status(400).json({ error: "minimumPartySize cannot exceed capacity" });
+      }
+
+      let shape = "RECTANGLE";
+      if (req.body?.shape !== undefined) {
+        const parsed = parseShape(req.body.shape);
+        if (isFailure(parsed)) {
+          return sendFailure(res, parsed);
+        }
+        shape = parsed.value;
+      }
+
+      const geometry: Record<string, number> = { x: 0, y: 0, width: 120, height: 80, rotation: 0 };
+      const geometryFields: [string, number, number][] = [
+        ["x", 0, TABLE_MAX_POSITION],
+        ["y", 0, TABLE_MAX_POSITION],
+        ["width", TABLE_MIN_SIZE, TABLE_MAX_SIZE],
+        ["height", TABLE_MIN_SIZE, TABLE_MAX_SIZE],
+      ];
+      for (const [field, min, max] of geometryFields) {
+        if (req.body?.[field] !== undefined) {
+          const parsed = parseInteger(req.body[field], field, min, max);
+          if (isFailure(parsed)) {
+            return sendFailure(res, parsed);
+          }
+          geometry[field] = parsed.value;
+        }
+      }
+      if (req.body?.rotation !== undefined) {
+        const parsed = parseInteger(req.body.rotation, "rotation", -3600, 3600);
+        if (isFailure(parsed)) {
+          return sendFailure(res, parsed);
+        }
+        geometry.rotation = normalizeRotation(parsed.value);
+      }
+
+      const duplicate = await prisma.diningTable.findFirst({
+        where: { locationId: location.id, name: name.value },
+        select: { id: true },
+      });
+      if (duplicate) {
+        return res.status(409).json({ error: "A table with that name already exists here" });
+      }
+
+      const table = await withWriteRetry(() =>
+        prisma.diningTable.create({
+          data: {
+            floorPlanId: room.id,
+            businessId: location.businessId,
+            locationId: location.id,
+            name: name.value,
+            capacity: capacity.value,
+            minimumPartySize,
+            shape: shape as any,
+            x: geometry.x,
+            y: geometry.y,
+            width: geometry.width,
+            height: geometry.height,
+            rotation: geometry.rotation,
+          },
+        }),
+      );
+
+      return res.status(201).json({ table: serializeTable(table) });
+    } catch (err: any) {
+      console.error("[floor] create table error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
 
 router.patch(
   "/:locationId/tables/:tableId",
@@ -403,14 +614,6 @@ router.patch(
           return sendFailure(res, parsed);
         }
         data.shape = parsed.value;
-      }
-
-      if (req.body?.section !== undefined) {
-        const parsed = parseOptionalText(req.body.section, "section", SECTION_MAX_LENGTH);
-        if (isFailure(parsed)) {
-          return sendFailure(res, parsed);
-        }
-        data.section = parsed.value;
       }
 
       const geometryFields: [string, number, number][] = [
@@ -495,15 +698,10 @@ router.post(
         return res.status(404).json({ error: "Table not found or access denied" });
       }
 
-      const reason = parseOptionalText(req.body?.reason, "reason", BLOCK_REASON_MAX_LENGTH);
-      if (isFailure(reason)) {
-        return sendFailure(res, reason);
-      }
-
       const updated = await withWriteRetry(() =>
         prisma.diningTable.update({
           where: { id: table.id },
-          data: { isBlocked: true, blockedReason: reason.value },
+          data: { isBlocked: true },
         }),
       );
 
@@ -529,7 +727,7 @@ router.post(
       const updated = await withWriteRetry(() =>
         prisma.diningTable.update({
           where: { id: table.id },
-          data: { isBlocked: false, blockedReason: null },
+          data: { isBlocked: false },
         }),
       );
 
