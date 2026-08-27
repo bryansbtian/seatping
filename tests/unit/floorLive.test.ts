@@ -4,10 +4,8 @@ import {
   RESERVED_LOOKAHEAD_MINUTES,
   displayName,
   minutesBetween,
-  partyFits,
   pickCurrentAssignment,
   pickUpcomingAssignment,
-  recommendQueueMatches,
   reservationWindow,
   resolveTableStatus,
   serializeLiveAssignment,
@@ -150,82 +148,6 @@ describe("pickCurrentAssignment and pickUpcomingAssignment", () => {
   it("returns null when every reservation has ended", () => {
     const ended = assignment({ expectedStartAt: minutes(-200), expectedEndAt: minutes(-10) });
     expect(pickUpcomingAssignment([ended], NOW)).toBeNull();
-  });
-});
-
-describe("partyFits", () => {
-  it("accepts a party inside the table range", () => {
-    expect(partyFits(3, { capacity: 4, minimumPartySize: 2 })).toBe(true);
-  });
-
-  it("rejects a party above capacity", () => {
-    expect(partyFits(5, { capacity: 4, minimumPartySize: 1 })).toBe(false);
-  });
-
-  it("rejects a party below the minimum", () => {
-    expect(partyFits(1, { capacity: 8, minimumPartySize: 4 })).toBe(false);
-  });
-});
-
-describe("recommendQueueMatches", () => {
-  const tables = [
-    { id: "small", capacity: 2, minimumPartySize: 1 },
-    { id: "medium", capacity: 4, minimumPartySize: 2 },
-    { id: "large", capacity: 8, minimumPartySize: 5 },
-  ];
-
-  it("gives the longest waiting party the tightest table that fits", () => {
-    const matches = recommendQueueMatches(tables, [{ id: "party-a", partySize: 2 }]);
-    expect(matches).toEqual({ small: "party-a" });
-  });
-
-  it("never recommends the same party to two tables", () => {
-    const matches = recommendQueueMatches(tables, [
-      { id: "party-a", partySize: 2 },
-      { id: "party-b", partySize: 2 },
-    ]);
-    expect(matches).toEqual({ small: "party-a", medium: "party-b" });
-  });
-
-  it("skips a party that fits nowhere and keeps serving the rest", () => {
-    const matches = recommendQueueMatches(tables, [
-      { id: "party-huge", partySize: 20 },
-      { id: "party-b", partySize: 3 },
-    ]);
-    expect(matches).toEqual({ medium: "party-b" });
-  });
-
-  it("respects the minimum party size when choosing a table", () => {
-    const matches = recommendQueueMatches(tables, [{ id: "party-solo", partySize: 6 }]);
-    expect(matches).toEqual({ large: "party-solo" });
-  });
-
-  it("switches to a tighter table found later in the list", () => {
-    const wideFirst = [
-      { id: "large", capacity: 8, minimumPartySize: 1 },
-      { id: "small", capacity: 2, minimumPartySize: 1 },
-    ];
-    expect(recommendQueueMatches(wideFirst, [{ id: "party-a", partySize: 2 }])).toEqual({
-      small: "party-a",
-    });
-  });
-
-  it("breaks capacity ties on table id so the result is stable", () => {
-    const tied = [
-      { id: "bbb", capacity: 4, minimumPartySize: 1 },
-      { id: "aaa", capacity: 4, minimumPartySize: 1 },
-    ];
-    expect(recommendQueueMatches(tied, [{ id: "party-a", partySize: 2 }])).toEqual({
-      aaa: "party-a",
-    });
-  });
-
-  it("returns nothing when there are no available tables", () => {
-    expect(recommendQueueMatches([], [{ id: "party-a", partySize: 2 }])).toEqual({});
-  });
-
-  it("returns nothing when nobody is waiting", () => {
-    expect(recommendQueueMatches(tables, [])).toEqual({});
   });
 });
 

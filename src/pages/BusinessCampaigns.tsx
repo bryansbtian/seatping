@@ -450,8 +450,8 @@ const BusinessCampaigns = () => {
   return (
     <>
       <SEO title="Campaigns | SeatPing" description={BUSINESS_DESCRIPTION} image={BUSINESS_IMAGE} />
-      <div className="flex flex-col">
-        <div className="container mx-auto px-4 py-8 flex-1 w-full">
+      <div className="flex min-h-full flex-col">
+        <div className="container mx-auto flex w-full flex-1 flex-col px-4 py-8">
           <div className="mb-6">
             <h1 className="text-xl md:text-2xl font-semibold text-gray-800">{t("camp.title")}</h1>
             <p className="text-gray-600 text-sm md:text-base">{t("camp.subtitle")}</p>
@@ -620,8 +620,8 @@ function EmptyState({
   body: string;
 }) {
   return (
-    <div className="px-6 py-16 text-center">
-      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+    <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-4">
         <Icon className="w-6 h-6 text-slate-400" />
       </div>
       <h3 className="text-base font-semibold text-slate-800">{title}</h3>
@@ -815,7 +815,7 @@ function CampaignsTab({
   }
 
   return (
-    <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
+    <Card className="flex flex-1 flex-col bg-white border border-slate-200 rounded-xl shadow-sm">
       <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
         <div className="space-y-1.5">
           <CardTitle className="text-lg md:text-xl text-slate-800">
@@ -838,7 +838,7 @@ function CampaignsTab({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="p-0">{campaignsBody}</CardContent>
+      <CardContent className="flex flex-1 flex-col p-0">{campaignsBody}</CardContent>
     </Card>
   );
 }

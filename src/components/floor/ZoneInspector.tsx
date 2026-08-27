@@ -42,16 +42,16 @@ const ZoneInspector = ({ zone, saving, onSave, onDelete }: ZoneInspectorProps) =
   }
 
   return (
-    <div className="flex h-full flex-col gap-3 md:gap-4" data-testid="zone-inspector">
+    <div className="flex min-h-full shrink-0 flex-col gap-3 md:gap-4" data-testid="zone-inspector">
       <CardTitle className="text-lg text-slate-800 md:text-xl">{t("floor.zoneSettings")}</CardTitle>
 
       <div className="space-y-1.5 md:space-y-2">
-        <Label htmlFor="zone-name" className="text-[11px] md:text-sm">
+        <Label htmlFor="zone-name" className="text-[11px]">
           {t("floor.zoneName")}
         </Label>
         <Input
           id="zone-name"
-          className="h-9 text-xs md:h-10 md:text-sm"
+          className="h-9 text-xs md:h-10 md:text-xs"
           value={name}
           maxLength={ZONE_NAME_MAX_LENGTH}
           onChange={(event) => {
@@ -77,17 +77,13 @@ const ZoneInspector = ({ zone, saving, onSave, onDelete }: ZoneInspectorProps) =
       </dl>
 
       {error && (
-        <p role="alert" className="text-xs text-red-600 md:text-sm">
+        <p role="alert" className="text-xs text-red-600">
           {t(error)}
         </p>
       )}
 
       <div className="mt-auto flex flex-col gap-2 border-t border-slate-100 pt-4">
-        <Button
-          className="h-9 w-full text-xs md:h-10 md:text-sm"
-          disabled={saving}
-          onClick={handleSave}
-        >
+        <Button className="h-9 w-full text-xs md:h-10" disabled={saving} onClick={handleSave}>
           {saveLabel}
         </Button>
 
@@ -100,7 +96,7 @@ const ZoneInspector = ({ zone, saving, onSave, onDelete }: ZoneInspectorProps) =
           trigger={
             <Button
               variant="outline"
-              className="h-9 w-full text-xs text-red-600 hover:text-red-700 md:h-10 md:text-sm"
+              className="h-9 w-full text-xs text-red-600 hover:text-red-700 md:h-10"
             >
               <Trash2 className="mr-2 h-4 w-4" />
               {t("floor.deleteZone")}
