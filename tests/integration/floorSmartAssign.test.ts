@@ -387,3 +387,99 @@ describe("a recommendation is not a lock", () => {
     expect(stored?.status).toBe("WAITING");
   });
 });
+
+describe("a table held for later tonight", () => {
+  it("shows as reserved once the booking is inside the lookahead", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const tonight = new Date(Date.now() + 60 * 60 * 1000);
+    await db.tableAssignment.create({
+      data: {
+        tableId: tables[0].id,
+        tableIds: [tables[0].id],
+        businessId: location.businessId,
+        locationId: location.id,
+        partySize: 3,
+        source: "SMART",
+        status: "RESERVED",
+        expectedStartAt: tonight,
+        expectedEndAt: new Date(tonight.getTime() + 90 * 60 * 1000),
+      },
+    });
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    const table = live.body.rooms[0].tables[0];
+
+    expect(table.status).toBe("RESERVED");
+  });
+
+  it("stays available while the booking is beyond the lookahead", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const tonight = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    await db.tableAssignment.create({
+      data: {
+        tableId: tables[0].id,
+        tableIds: [tables[0].id],
+        businessId: location.businessId,
+        locationId: location.id,
+        partySize: 3,
+        source: "SMART",
+        status: "RESERVED",
+        expectedStartAt: tonight,
+        expectedEndAt: new Date(tonight.getTime() + 90 * 60 * 1000),
+      },
+    });
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+
+    expect(live.body.rooms[0].tables[0].status).toBe("AVAILABLE");
+  });
+
+  it("can still be recommended for a walk in right now", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const tonight = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    await db.tableAssignment.create({
+      data: {
+        tableId: tables[0].id,
+        tableIds: [tables[0].id],
+        businessId: location.businessId,
+        locationId: location.id,
+        partySize: 3,
+        source: "SMART",
+        status: "RESERVED",
+        expectedStartAt: tonight,
+        expectedEndAt: new Date(tonight.getTime() + 90 * 60 * 1000),
+      },
+    });
+    const walkIn = await seedQueueEntry(location, { guestCount: 2 });
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    const party = live.body.waitingParties.find((entry: any) => entry.id === walkIn.id);
+
+    expect(party.matchState).toBe("MATCHED");
+    expect(party.recommendedTableId).toBe(tables[0].id);
+  });
+
+  it("is not offered to a walk in whose turn would overlap the booking", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const soon = new Date(Date.now() + 15 * 60 * 1000);
+    await db.tableAssignment.create({
+      data: {
+        tableId: tables[0].id,
+        tableIds: [tables[0].id],
+        businessId: location.businessId,
+        locationId: location.id,
+        partySize: 3,
+        source: "SMART",
+        status: "RESERVED",
+        expectedStartAt: soon,
+        expectedEndAt: new Date(soon.getTime() + 90 * 60 * 1000),
+      },
+    });
+    const walkIn = await seedQueueEntry(location, { guestCount: 2 });
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    const party = live.body.waitingParties.find((entry: any) => entry.id === walkIn.id);
+
+    expect(party.recommendedTableId).toBeNull();
+  });
+});

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Star, Users } from "lucide-react";
+import { Check, Star, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,8 +13,11 @@ import { useLang } from "@/lib/i18n";
 import type { TKey } from "@/lib/i18n";
 import {
   candidateTablesForParty,
+  combinableTables,
+  combinedCapacity,
+  combinedName,
+  joinedRoomId,
   statusStyle,
-  type LiveCombination,
   type LiveRoom,
   type TableCandidate,
 } from "@/lib/floorLive";
@@ -29,30 +32,38 @@ export type AssignTarget = {
   recommendedTableId?: string | null;
 };
 
+export type AssignSelection = {
+  tableIds: string[];
+  name: string;
+  capacity: number;
+};
+
 type AssignTableDialogProps = {
   open: boolean;
   target: AssignTarget | null;
   rooms: LiveRoom[];
-  combinations: LiveCombination[];
   busy: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (candidate: TableCandidate) => Promise<void>;
+  onConfirm: (selection: AssignSelection) => Promise<void>;
 };
 
 const AssignTableDialog = ({
   open,
   target,
   rooms,
-  combinations,
   busy,
   onOpenChange,
   onConfirm,
 }: AssignTableDialogProps) => {
   const { t } = useLang();
   const [chosen, setChosen] = useState<TableCandidate | null>(null);
+  const [combining, setCombining] = useState(false);
+  const [joined, setJoined] = useState<string[]>([]);
 
   useEffect(() => {
     setChosen(null);
+    setCombining(false);
+    setJoined([]);
   }, [target?.queueEntryId, target?.reservationId, open]);
 
   if (!target) {
@@ -64,23 +75,45 @@ const AssignTableDialog = ({
     target.partySize,
     target.recommendedTableId ?? null,
     target.currentTableId ?? null,
-    combinations,
   );
+  const joinable = combinableTables(rooms, target.currentTableId ?? null);
+  const picked = joined
+    .map((id) => joinable.find((option) => option.id === id))
+    .filter((option): option is TableCandidate => Boolean(option));
+  const pickedSeats = combinedCapacity(picked);
+  const enoughSeats = pickedSeats >= target.partySize;
+  const lockedRoomId = joinedRoomId(picked);
+
+  const enterCombining = () => {
+    setCombining(true);
+    setChosen(null);
+    setJoined([]);
+  };
+
+  const leaveCombining = () => {
+    setCombining(false);
+    setChosen(null);
+    setJoined([]);
+  };
+
+  const toggleJoined = (id: string) => {
+    setJoined((current) => {
+      if (current.includes(id)) {
+        return current.filter((entry) => entry !== id);
+      }
+      return [...current, id];
+    });
+  };
 
   let body = (
-    <p className="py-6 text-center text-sm text-slate-500">{t("floor.assign.noTables")}</p>
+    <p className="pt-2 text-center text-sm text-slate-500">{t("floor.assign.noTables")}</p>
   );
 
-  if (candidates.length > 0) {
+  if (!combining && candidates.length > 0) {
     body = (
       <ul className="max-h-72 space-y-2 overflow-y-auto pr-1" data-testid="assign-table-options">
         {candidates.map((candidate) => {
           const selected = chosen?.id === candidate.id;
-
-          let seatLabel = t("floor.assign.seats", { n: candidate.capacity });
-          if (candidate.kind === "COMBINATION") {
-            seatLabel = t("floor.assign.combinedSeats", { n: candidate.capacity });
-          }
 
           let swatch = null;
           if (candidate.status) {
@@ -100,13 +133,6 @@ const AssignTableDialog = ({
               {t(`floor.live.status.${candidate.status}` as TKey)}
             </span>
           );
-          if (candidate.kind === "COMBINATION") {
-            trailing = (
-              <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-800">
-                {t("floor.assign.combination")}
-              </span>
-            );
-          }
           if (candidate.recommended) {
             trailing = (
               <span
@@ -141,7 +167,8 @@ const AssignTableDialog = ({
                       {candidate.name}
                     </span>
                     <span className="block truncate text-[11px] text-slate-500">
-                      {candidate.detail} &middot; {seatLabel}
+                      {candidate.detail} &middot;{" "}
+                      {t("floor.assign.seats", { n: candidate.capacity })}
                     </span>
                   </span>
                 </span>
@@ -154,9 +181,117 @@ const AssignTableDialog = ({
     );
   }
 
+  if (combining) {
+    body = (
+      <ul className="max-h-72 space-y-2 overflow-y-auto pr-1" data-testid="assign-join-options">
+        {joinable.map((option) => {
+          const selected = joined.includes(option.id);
+          const otherRoom = Boolean(lockedRoomId) && option.roomId !== lockedRoomId;
+
+          return (
+            <li key={option.id}>
+              <button
+                type="button"
+                disabled={busy || otherRoom}
+                data-testid={`assign-join-${option.name}`}
+                aria-pressed={selected}
+                onClick={() => toggleJoined(option.id)}
+                className={cn(
+                  "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
+                  selected && "border-slate-900 bg-slate-50",
+                  !selected && "border-slate-200 hover:bg-slate-50",
+                  "disabled:cursor-not-allowed disabled:opacity-60",
+                )}
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                      selected && "border-slate-900 bg-slate-900 text-white",
+                      !selected && "border-slate-300",
+                    )}
+                  >
+                    {selected && <Check className="h-3 w-3" />}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-slate-800">
+                      {option.name}
+                    </span>
+                    <span className="block truncate text-[11px] text-slate-500">
+                      {option.detail} &middot; {t("floor.assign.seats", { n: option.capacity })}
+                    </span>
+                  </span>
+                </span>
+                {otherRoom && (
+                  <span className="shrink-0 text-[11px] text-slate-400">
+                    {t("floor.assign.otherRoom")}
+                  </span>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
+  const noSingleTable = !combining && candidates.length === 0 && joinable.length > 0;
+
   let confirmLabel = t("floor.assign.confirm");
-  if (chosen) {
+  if (noSingleTable) {
+    confirmLabel = t("floor.assign.joinTables");
+  }
+  if (!combining && chosen) {
     confirmLabel = t("floor.assign.confirmNamed", { table: chosen.name });
+  }
+  if (combining && picked.length > 0) {
+    confirmLabel = t("floor.assign.confirmNamed", { table: combinedName(picked) });
+  }
+
+  let confirmDisabled = busy || !chosen;
+  if (noSingleTable) {
+    confirmDisabled = busy;
+  }
+  if (combining) {
+    confirmDisabled = busy || picked.length === 0 || !enoughSeats;
+  }
+
+  let note = null;
+  if (!combining && chosen) {
+    note = (
+      <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600" role="status">
+        {t("floor.assign.summary", {
+          name: target.name,
+          n: target.partySize,
+          table: chosen.name,
+          capacity: chosen.capacity,
+        })}
+      </p>
+    );
+  }
+  if (combining) {
+    let joinNote = t("floor.assign.joinHelp");
+    if (picked.length > 0) {
+      joinNote = t("floor.assign.joinSummary", {
+        tables: combinedName(picked),
+        capacity: pickedSeats,
+        n: target.partySize,
+      });
+    }
+    note = (
+      <p
+        data-testid="assign-join-summary"
+        className={cn(
+          "rounded-xl px-3 py-2 text-xs",
+          enoughSeats && picked.length > 0 && "bg-slate-50 text-slate-600",
+          (!enoughSeats || picked.length === 0) && "bg-amber-50 text-amber-800",
+        )}
+        role="status"
+      >
+        {joinNote}
+      </p>
+    );
   }
 
   return (
@@ -165,38 +300,72 @@ const AssignTableDialog = ({
         <DialogHeader>
           <DialogTitle>{t("floor.assign.title")}</DialogTitle>
           <DialogDescription asChild>
-            <span className="flex items-center gap-2 text-sm text-slate-600">
-              <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="min-w-0 truncate">
-                {target.name} &middot; {t("floor.live.partyOf", { n: target.partySize })}
+            <span className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm text-slate-600">
+              <span className="flex min-w-0 items-center gap-2">
+                <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="min-w-0 truncate">
+                  {target.name} &middot; {t("floor.live.partyOf", { n: target.partySize })}
+                </span>
               </span>
+              {combining && joinable.length > 0 && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  data-testid="assign-join-toggle"
+                  onClick={leaveCombining}
+                  className="shrink-0 text-xs font-medium text-slate-700 underline underline-offset-2 hover:text-slate-900 disabled:opacity-60"
+                >
+                  {t("floor.assign.useOneTable")}
+                </button>
+              )}
             </span>
           </DialogDescription>
         </DialogHeader>
 
-        {body}
+        <div className="space-y-3">
+          {body}
 
-        {chosen && (
-          <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600" role="status">
-            {t("floor.assign.summary", {
-              name: target.name,
-              n: target.partySize,
-              table: chosen.name,
-              capacity: chosen.capacity,
-            })}
-          </p>
-        )}
+          {!combining && candidates.length > 0 && joinable.length > 0 && (
+            <button
+              type="button"
+              disabled={busy}
+              data-testid="assign-join-toggle"
+              onClick={enterCombining}
+              className="block text-left text-xs font-medium text-slate-700 underline underline-offset-2 hover:text-slate-900 disabled:opacity-60"
+            >
+              {t("floor.assign.joinTablesInstead")}
+            </button>
+          )}
+
+          {note}
+        </div>
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
             {t("common.cancel")}
           </Button>
           <Button
-            disabled={busy || !chosen}
+            disabled={confirmDisabled}
             data-testid="assign-confirm"
             onClick={() => {
+              if (noSingleTable) {
+                enterCombining();
+                return;
+              }
+              if (combining && picked.length > 0) {
+                onConfirm({
+                  tableIds: picked.map((option) => option.id),
+                  name: combinedName(picked),
+                  capacity: pickedSeats,
+                });
+                return;
+              }
               if (chosen) {
-                onConfirm(chosen);
+                onConfirm({
+                  tableIds: [chosen.id],
+                  name: chosen.name,
+                  capacity: chosen.capacity,
+                });
               }
             }}
           >

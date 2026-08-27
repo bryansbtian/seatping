@@ -71,7 +71,7 @@ export async function markTableAvailable(locationId: string, tableId: string): P
 
 export type ManualAssignBody = {
   tableId?: string;
-  combinationId?: string;
+  tableIds?: string[];
   queueEntryId?: string;
   reservationId?: string;
   partySize?: number;

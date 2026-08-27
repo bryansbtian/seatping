@@ -84,22 +84,9 @@ export type UpcomingReservation = {
   tableName: string | null;
 };
 
-export type LiveCombination = {
-  id: string;
-  name: string;
-  tableIds: string[];
-  tableNames: string[];
-  roomName: string;
-  capacity: number;
-  minimumPartySize: number;
-  isActive: boolean;
-  available: boolean;
-};
-
 export type LiveFloor = {
   now: string;
   rooms: LiveRoom[];
-  combinations: LiveCombination[];
   waitingParties: WaitingParty[];
   upcomingReservations: UpcomingReservation[];
 };
@@ -259,25 +246,82 @@ export function persistFloorMode(mode: FloorMode): void {
   } catch {}
 }
 
-export type CandidateKind = "TABLE" | "COMBINATION";
-
 export type TableCandidate = {
   id: string;
-  kind: CandidateKind;
   name: string;
   capacity: number;
+  roomId: string;
   roomName: string;
   detail: string;
   recommended: boolean;
   status: LiveStatus | null;
 };
 
+export function combinableTables(
+  rooms: LiveRoom[],
+  excludeTableId: string | null = null,
+): TableCandidate[] {
+  const options: TableCandidate[] = [];
+
+  for (const room of rooms) {
+    for (const table of room.tables) {
+      if (excludeTableId && table.id === excludeTableId) {
+        continue;
+      }
+      if (table.status === "BLOCKED" || table.status === "OCCUPIED") {
+        continue;
+      }
+      options.push({
+        id: table.id,
+        name: table.name,
+        capacity: table.capacity,
+        roomId: room.id,
+        roomName: room.name,
+        detail: room.name,
+        recommended: false,
+        status: table.status,
+      });
+    }
+  }
+
+  options.sort((a, b) => {
+    if (a.roomName !== b.roomName) {
+      return a.roomName.localeCompare(b.roomName);
+    }
+    return a.name.localeCompare(b.name, undefined, { numeric: true });
+  });
+
+  return options;
+}
+
+export function joinedRoomId(tables: TableCandidate[]): string | null {
+  if (tables.length === 0) {
+    return null;
+  }
+  return tables[0].roomId;
+}
+
+export function sameRoom(tables: TableCandidate[]): boolean {
+  const roomId = joinedRoomId(tables);
+  if (!roomId) {
+    return true;
+  }
+  return tables.every((table) => table.roomId === roomId);
+}
+
+export function combinedCapacity(tables: TableCandidate[]): number {
+  return tables.reduce((total, table) => total + table.capacity, 0);
+}
+
+export function combinedName(tables: TableCandidate[]): string {
+  return tables.map((table) => table.name).join(" + ");
+}
+
 export function candidateTablesForParty(
   rooms: LiveRoom[],
   partySize: number,
   recommendedId: string | null,
   excludeTableId: string | null = null,
-  combinations: LiveCombination[] = [],
 ): TableCandidate[] {
   const candidates: TableCandidate[] = [];
 
@@ -294,9 +338,9 @@ export function candidateTablesForParty(
       }
       candidates.push({
         id: table.id,
-        kind: "TABLE",
         name: table.name,
         capacity: table.capacity,
+        roomId: room.id,
         roomName: room.name,
         detail: room.name,
         recommended: table.id === recommendedId,
@@ -305,34 +349,9 @@ export function candidateTablesForParty(
     }
   }
 
-  for (const combination of combinations) {
-    if (!combination.available) {
-      continue;
-    }
-    if (!partyFitsTable(partySize, combination)) {
-      continue;
-    }
-    candidates.push({
-      id: combination.id,
-      kind: "COMBINATION",
-      name: combination.name,
-      capacity: combination.capacity,
-      roomName: combination.roomName,
-      detail: combination.tableNames.join(" + "),
-      recommended: combination.id === recommendedId,
-      status: null,
-    });
-  }
-
   candidates.sort((a, b) => {
     if (a.recommended !== b.recommended) {
       if (a.recommended) {
-        return -1;
-      }
-      return 1;
-    }
-    if (a.kind !== b.kind) {
-      if (a.kind === "TABLE") {
         return -1;
       }
       return 1;

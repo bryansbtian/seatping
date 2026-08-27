@@ -6,13 +6,11 @@ import {
   serializeZone,
 } from "./floor.js";
 import { getLocationTimezone, getNowWallClockInTimezone } from "./operatingHours.js";
-import { listCombinations } from "./tableCombinations.js";
 import {
   matchPartiesToTables,
   rankTablesForParty,
   type SmartOccupancy,
   type SmartParty,
-  type SmartTable as SmartSetupTable,
   type SmartTable,
 } from "./smartAssign.js";
 import { formatTimeLabel, splitDateTime } from "./reservations.js";
@@ -21,7 +19,7 @@ export const LIVE_STATUSES = ["BLOCKED", "OCCUPIED", "CLEANING", "RESERVED", "AV
 
 export type LiveStatus = (typeof LIVE_STATUSES)[number];
 
-export const RESERVED_LOOKAHEAD_MINUTES = 120;
+export const RESERVATION_LOOKAHEAD_MINUTES = 120;
 export const MAX_WAITING_PARTIES = 50;
 export const MAX_UPCOMING_RESERVATIONS = 50;
 export const RESERVATION_GRACE_MINUTES = 30;
@@ -63,18 +61,6 @@ export type UpcomingReservation = {
 export const MATCH_STATES = ["MATCHED", "QUEUED", "NO_AVAILABILITY", "NO_CAPACITY"] as const;
 
 export type MatchState = (typeof MATCH_STATES)[number];
-
-export type LiveCombination = {
-  id: string;
-  name: string;
-  tableIds: string[];
-  tableNames: string[];
-  roomName: string;
-  capacity: number;
-  minimumPartySize: number;
-  isActive: boolean;
-  available: boolean;
-};
 
 export type WaitingParty = {
   id: string;
@@ -138,7 +124,7 @@ export function resolveTableStatus(
   table: LiveTableLike,
   assignments: LiveAssignmentLike[],
   now: Date,
-  lookaheadMinutes: number = RESERVED_LOOKAHEAD_MINUTES,
+  lookaheadMinutes: number = RESERVATION_LOOKAHEAD_MINUTES,
 ): LiveStatus {
   if (table.isBlocked) {
     return "BLOCKED";
@@ -370,7 +356,7 @@ export async function buildLiveFloor(locationId: string, now: Date = new Date())
   for (const room of rooms) {
     for (const table of room.tables) {
       const status = statuses.get(table.id);
-      if (status !== "AVAILABLE" && status !== "CLEANING") {
+      if (status === "BLOCKED" || status === "OCCUPIED") {
         continue;
       }
       smartTables.push({
@@ -416,79 +402,9 @@ export async function buildLiveFloor(locationId: string, now: Date = new Date())
     preferredRoomIds: [],
   };
 
-  const roomOfTable = new Map<string, { id: string; name: string }>();
-  const tableById = new Map<string, (typeof rooms)[number]["tables"][number]>();
-  for (const room of rooms) {
-    for (const table of room.tables) {
-      roomOfTable.set(table.id, { id: room.id, name: room.name });
-      tableById.set(table.id, table);
-    }
-  }
+  const matches = matchPartiesToTables(smartTables, smartParties, smartContext);
 
-  const combinationRows = await listCombinations(locationId);
-  const combinationSetups: SmartSetupTable[] = [];
-  const combinationCandidates: { id: string; name: string; capacity: number; minimum: number }[] =
-    [];
-  const serializedCombinations: LiveCombination[] = [];
-
-  for (const entry of combinationRows) {
-    const members = entry.combination.tableIds
-      .map((id) => tableById.get(id))
-      .filter((table): table is NonNullable<typeof table> => Boolean(table));
-    if (members.length !== entry.combination.tableIds.length) {
-      continue;
-    }
-
-    const capacity = members.reduce((total, member) => total + member.capacity, 0);
-    const minimum = Math.max(
-      entry.combination.minimumPartySize,
-      ...members.map((member) => member.minimumPartySize),
-    );
-    combinationCandidates.push({
-      id: entry.combination.id,
-      name: entry.combination.name,
-      capacity,
-      minimum,
-    });
-
-    const usable =
-      entry.combination.isActive &&
-      members.every((member) => statuses.get(member.id) === "AVAILABLE");
-
-    const room = roomOfTable.get(members[0].id);
-    serializedCombinations.push({
-      id: entry.combination.id,
-      name: entry.combination.name,
-      tableIds: entry.combination.tableIds,
-      tableNames: members.map((member) => member.name),
-      roomName: room?.name ?? "",
-      capacity,
-      minimumPartySize: minimum,
-      isActive: entry.combination.isActive,
-      available: usable,
-    });
-
-    if (!usable) {
-      continue;
-    }
-    combinationSetups.push({
-      id: entry.combination.id,
-      name: entry.combination.name,
-      roomId: room?.id ?? "",
-      roomName: room?.name ?? "",
-      capacity,
-      minimumPartySize: minimum,
-      isBlocked: false,
-      cleaningSince: null,
-      kind: "COMBINATION",
-      tableIds: entry.combination.tableIds,
-    });
-  }
-
-  const allSetups = [...smartTables, ...combinationSetups];
-  const matches = matchPartiesToTables(allSetups, smartParties, smartContext);
-
-  const setupNames = new Map(allSetups.map((setup) => [setup.id, setup.name]));
+  const setupNames = new Map(smartTables.map((setup) => [setup.id, setup.name]));
   const partyMatches = new Map<string, { tableId: string; tableName: string; reasons: string[] }>();
   for (const [setupId, match] of Object.entries(matches)) {
     partyMatches.set(match.partyId, {
@@ -503,9 +419,6 @@ export async function buildLiveFloor(locationId: string, now: Date = new Date())
     for (const table of room.tables) {
       everySetupCapacity.push({ capacity: table.capacity, minimum: table.minimumPartySize });
     }
-  }
-  for (const candidate of combinationCandidates) {
-    everySetupCapacity.push({ capacity: candidate.capacity, minimum: candidate.minimum });
   }
 
   for (const party of waitingParties) {
@@ -530,7 +443,7 @@ export async function buildLiveFloor(locationId: string, now: Date = new Date())
     if (!smartParty) {
       continue;
     }
-    const eligible = rankTablesForParty(allSetups, smartParty, smartContext);
+    const eligible = rankTablesForParty(smartTables, smartParty, smartContext);
     if (eligible.ranked.length === 0) {
       party.matchState = "NO_AVAILABILITY";
       continue;
@@ -593,7 +506,6 @@ export async function buildLiveFloor(locationId: string, now: Date = new Date())
   return {
     now: now.toISOString(),
     rooms: serializedRooms,
-    combinations: serializedCombinations,
     waitingParties,
     upcomingReservations,
   };

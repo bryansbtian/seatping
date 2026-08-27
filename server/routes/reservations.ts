@@ -10,8 +10,18 @@ import {
   splitDateTime,
   formatTimeLabel,
   syncCustomerReservation,
+  effectiveGuestCap,
+  type ReservationInventory,
   type ReservationSettings,
 } from "../lib/reservations.js";
+import {
+  assignTableForReservation,
+  loadReservationInventory,
+  locationHasFloorInventory,
+  reassignTableForReservation,
+  releaseReservationTables,
+  windowForReservation,
+} from "../lib/reservationTables.js";
 import { getLocationOpeningHours, getLocationTimezone } from "../lib/operatingHours.js";
 import { readSession } from "../lib/auth.js";
 import { reservationRowToLegacy } from "../lib/liveData.js";
@@ -115,6 +125,16 @@ async function activeReservationsForValidation(locationId: string): Promise<any[
   return rows.map((r) => reservationRowToLegacy(r));
 }
 
+async function inventoryForLocation(
+  locationId: string,
+  excludeReservationId?: string | null,
+): Promise<ReservationInventory | null> {
+  if (!(await locationHasFloorInventory(locationId))) {
+    return null;
+  }
+  return loadReservationInventory(locationId, { excludeReservationId });
+}
+
 router.get("/:businessUsername/:locationId/settings", async (req, res) => {
   try {
     const resolved = await resolveLocation(
@@ -167,6 +187,7 @@ router.get("/:businessUsername/:locationId/availability", async (req, res) => {
       partySize,
       timeZone: getLocationTimezone(location),
       openingHours: getLocationOpeningHours(location),
+      inventory: await inventoryForLocation(location.id),
     });
 
     let availability: {
@@ -270,6 +291,7 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
     const reservations = await activeReservationsForValidation(location.id);
     const size = Number(partySize);
 
+    const inventory = await inventoryForLocation(location.id);
     const error = validateReservationRequest({
       settings,
       reservations,
@@ -278,6 +300,7 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
       partySize: size,
       timeZone: getLocationTimezone(location),
       openingHours: getLocationOpeningHours(location),
+      inventory,
     });
     if (error) {
       return res.status(400).json({ error });
@@ -307,7 +330,7 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
       dateKey,
       hour,
       size,
-      settings.maxReservedGuestsPerHour,
+      effectiveGuestCap(settings),
     );
     if (!reserved) {
       return res.status(400).json({
@@ -355,6 +378,18 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
       await releaseCapacity(location.id, dateKey, hour, size).catch(() => {});
       throw createErr;
     }
+
+    await assignTableForReservation({
+      businessId: business.id,
+      locationId: location.id,
+      reservationId: row.id,
+      partySize: size,
+      window: windowForReservation(location, reservationDateTime, settings),
+      inventory,
+    }).catch((assignErr: any) => {
+      console.error("[reservations] table assignment failed:", assignErr?.message || assignErr);
+      return null;
+    });
 
     const reservation = reservationRowToLegacy(row, { includeToken: true });
     const manageUrl = `${baseUrl(req)}/reservations/manage/${manageToken}`;
@@ -484,6 +519,7 @@ router.put("/manage/:manageToken", async (req, res) => {
       excludeId: reservation.id,
       timeZone: getLocationTimezone(location),
       openingHours: getLocationOpeningHours(location),
+      inventory: await inventoryForLocation(location.id, reservation.id),
     });
     if (error) {
       return res.status(400).json({ error });
@@ -498,7 +534,7 @@ router.put("/manage/:manageToken", async (req, res) => {
       newBucket.dateKey,
       newBucket.hour,
       partySize,
-      settings.maxReservedGuestsPerHour,
+      effectiveGuestCap(settings),
     );
     if (!reserved) {
       await addCapacity(location.id, oldBucket.dateKey, oldBucket.hour, reservation.guestCount);
@@ -511,6 +547,18 @@ router.put("/manage/:manageToken", async (req, res) => {
       where: { id: reservation.id },
       data: { guestCount: partySize, reservationDateTime: newDateTime },
     });
+
+    await reassignTableForReservation({
+      businessId: location.businessId,
+      locationId: location.id,
+      reservationId: updated.id,
+      partySize,
+      window: windowForReservation(location, newDateTime, settings),
+    }).catch((assignErr: any) => {
+      console.error("[reservations] table reassignment failed:", assignErr?.message || assignErr);
+      return null;
+    });
+
     await syncManageChange(location, updated);
     await touchGuestByReservationId(updated.id);
 
@@ -572,6 +620,7 @@ router.post("/manage/:manageToken/cancel", async (req, res) => {
     if (claim.count === 1) {
       const { dateKey, hour } = bucketOf(reservation.reservationDateTime);
       await releaseCapacity(location.id, dateKey, hour, reservation.guestCount);
+      await releaseReservationTables(reservation.id);
     }
     const updated = await prisma.reservation.findUniqueOrThrow({
       where: { id: reservation.id },

@@ -124,6 +124,37 @@ export function parseShape(value: unknown): Outcome<TableShapeValue> {
   return ok(match);
 }
 
+export const MAX_ASSIGNMENT_TABLES = 6;
+
+export function parseAssignmentTableIds(value: unknown): Outcome<string[]> {
+  if (!Array.isArray(value)) {
+    return fail(400, "tableIds must be a list of table ids");
+  }
+  if (value.length === 0) {
+    return fail(400, "Choose at least one table");
+  }
+  if (value.length > MAX_ASSIGNMENT_TABLES) {
+    return fail(400, `A party can use at most ${MAX_ASSIGNMENT_TABLES} tables`);
+  }
+
+  const ids: string[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "string") {
+      return fail(400, "tableIds must be a list of table ids");
+    }
+    const trimmed = entry.trim();
+    if (!OBJECT_ID_RE.test(trimmed)) {
+      return fail(400, "tableIds must be a list of table ids");
+    }
+    if (ids.includes(trimmed)) {
+      return fail(400, "Do not choose the same table twice");
+    }
+    ids.push(trimmed);
+  }
+
+  return ok(ids);
+}
+
 export function parseSource(value: unknown): Outcome<AssignmentSourceValue> {
   const raw = String(value ?? "").toUpperCase();
   const match = ASSIGNMENT_SOURCES.find((source) => source === raw);
@@ -279,6 +310,7 @@ export function serializeAssignment(assignment: any) {
   return {
     id: assignment.id,
     tableId: assignment.tableId,
+    tableIds: assignment.tableIds ?? [],
     locationId: assignment.locationId,
     queueEntryId: assignment.queueEntryId,
     reservationId: assignment.reservationId,
@@ -392,7 +424,6 @@ export type CreateAssignmentInput = {
   locationId: string;
   tableId: string;
   tableIds?: string[];
-  combinationId?: string | null;
   partySize: number;
   source: AssignmentSourceValue;
   status: AssignmentStatusValue;
@@ -426,6 +457,11 @@ export async function createAssignment(input: CreateAssignmentInput): Promise<Ou
       const blocked = members.find((candidate) => candidate.isBlocked);
       if (blocked) {
         return fail(409, "Table is blocked and cannot accept an assignment");
+      }
+
+      const roomId = members[0].floorPlanId;
+      if (members.some((candidate) => candidate.floorPlanId !== roomId)) {
+        return fail(400, "Joined tables must be in the same room");
       }
 
       const capacity = members.reduce((total, candidate) => total + candidate.capacity, 0);
@@ -502,7 +538,6 @@ export async function createAssignment(input: CreateAssignmentInput): Promise<Ou
         data: {
           tableId: table.id,
           tableIds: memberIds,
-          combinationId: input.combinationId ?? null,
           businessId: input.businessId,
           locationId: input.locationId,
           queueEntryId: input.queueEntryId,
@@ -724,7 +759,7 @@ export async function moveAssignment(input: MoveAssignmentInput): Promise<Outcom
 
       const moved = await tx.tableAssignment.update({
         where: { id: existing.id },
-        data: { tableId: target.id, tableIds: [target.id], combinationId: null },
+        data: { tableId: target.id, tableIds: [target.id] },
       });
 
       return ok(moved);

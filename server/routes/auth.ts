@@ -49,6 +49,7 @@ import {
   reservationRowToLegacy,
 } from "../lib/liveData.js";
 import { applyStatusCapacityDelta } from "../lib/reservationCapacity.js";
+import { releaseReservationTables } from "../lib/reservationTables.js";
 import { enqueueNotification, canNotifyRecipient } from "../lib/notifications.js";
 import { withWriteRetry } from "../lib/dbRetry.js";
 import {
@@ -1575,6 +1576,10 @@ router.patch(
         oldStatus: existing.status,
         newStatus: newEnum,
       });
+
+      if (["CANCELLED", "NO_SHOW", "COMPLETED"].includes(newEnum)) {
+        await releaseReservationTables(existing.id);
+      }
 
       const updated = await prisma.reservation.findUniqueOrThrow({
         where: { id: existing.id },

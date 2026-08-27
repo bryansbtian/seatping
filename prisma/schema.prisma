@@ -701,8 +701,6 @@ model TableAssignment {
   businessId String   @db.ObjectId
   locationId String   @db.ObjectId
 
-  combinationId String? @db.ObjectId
-
   queueEntryId   String? @db.ObjectId
   reservationId  String? @db.ObjectId
   guestProfileId String? @db.ObjectId
@@ -727,7 +725,6 @@ model TableAssignment {
 
   @@index([tableId, status])
   @@index([tableIds])
-  @@index([combinationId])
   @@index([locationId, status])
   @@index([businessId])
   @@index([reservationId])
@@ -735,26 +732,6 @@ model TableAssignment {
   @@index([locationId, expectedStartAt])
   @@index([expectedEndAt])
   @@map("table_assignments")
-}
-
-model TableCombination {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
-
-  businessId String @db.ObjectId
-  locationId String @db.ObjectId
-
-  name             String
-  tableIds         String[] @db.ObjectId
-  minimumPartySize Int      @default(1)
-  isActive         Boolean  @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([locationId, name])
-  @@index([locationId, isActive])
-  @@index([businessId])
-  @@map("table_combinations")
 }
 
 model FloorZone {

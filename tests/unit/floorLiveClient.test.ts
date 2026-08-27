@@ -11,15 +11,18 @@ import {
   LIVE_STATUSES,
   allTables,
   candidateTablesForParty,
+  combinableTables,
   countByStatus,
   elapsedMinutes,
   findTable,
   formatClock,
+  joinedRoomId,
   moveTargets,
   partyFitsTable,
   persistFloorMode,
   readFloorMode,
   roomOfTable,
+  sameRoom,
   seatableParties,
   statusStyle,
   type LiveRoom,
@@ -235,7 +238,6 @@ describe("live floor requests", () => {
     apiMock.mockResolvedValue({
       now: "2026-08-26T18:00:00.000Z",
       rooms: [],
-      combinations: [],
       waitingParties: [],
     });
     const live = await fetchLiveFloor(LOCATION);
@@ -391,6 +393,67 @@ describe("candidateTablesForParty", () => {
   });
 });
 
+describe("combinableTables and same room joins", () => {
+  const rooms = [
+    makeRoom("room-main", [makeTable("t1"), makeTable("t2")]),
+    makeRoom("room-patio", [makeTable("t8")]),
+  ];
+
+  it("carries the room id of every option", () => {
+    const options = combinableTables(rooms);
+
+    expect(options.map((option) => [option.id, option.roomId])).toEqual([
+      ["t1", "room-main"],
+      ["t2", "room-main"],
+      ["t8", "room-patio"],
+    ]);
+  });
+
+  it("leaves out blocked and occupied tables", () => {
+    const options = combinableTables([
+      makeRoom("room-main", [
+        makeTable("t1", { status: "BLOCKED" }),
+        makeTable("t2", { status: "OCCUPIED" }),
+        makeTable("t3", { status: "RESERVED" }),
+      ]),
+    ]);
+
+    expect(options.map((option) => option.id)).toEqual(["t3"]);
+  });
+
+  it("leaves out the table the party is already on", () => {
+    const options = combinableTables(rooms, "t1");
+
+    expect(options.some((option) => option.id === "t1")).toBe(false);
+  });
+
+  it("reports no locked room when nothing is chosen", () => {
+    expect(joinedRoomId([])).toBeNull();
+  });
+
+  it("locks to the room of the first chosen table", () => {
+    const options = combinableTables(rooms);
+
+    expect(joinedRoomId([options[1]])).toBe("room-main");
+  });
+
+  it("accepts a selection inside one room", () => {
+    const options = combinableTables(rooms);
+
+    expect(sameRoom([options[0], options[1]])).toBe(true);
+  });
+
+  it("rejects a selection spanning two rooms", () => {
+    const options = combinableTables(rooms);
+
+    expect(sameRoom([options[0], options[2]])).toBe(false);
+  });
+
+  it("treats an empty selection as valid", () => {
+    expect(sameRoom([])).toBe(true);
+  });
+});
+
 describe("assignTable request", () => {
   beforeEach(() => {
     apiMock.mockReset();
@@ -424,74 +487,5 @@ describe("assignTable request", () => {
     await expect(assignTable(LOCATION, { tableId: "table-1" })).rejects.toThrow(
       "Table already has an assignment",
     );
-  });
-});
-
-function makeCombination(
-  id: string,
-  overrides: Partial<import("../../src/lib/floorLive.js").LiveCombination> = {},
-) {
-  return {
-    id,
-    name: id.toUpperCase(),
-    tableIds: ["a", "b"],
-    tableNames: ["T1", "T2"],
-    roomName: "Main",
-    capacity: 8,
-    minimumPartySize: 1,
-    isActive: true,
-    available: true,
-    ...overrides,
-  };
-}
-
-describe("candidateTablesForParty with combinations", () => {
-  const rooms = [
-    makeRoom("Main", [
-      makeTable("small", { name: "T1", capacity: 2, status: "AVAILABLE" }),
-      makeTable("mid", { name: "T2", capacity: 4, status: "AVAILABLE" }),
-    ]),
-  ];
-
-  it("offers a combination when no single table fits", () => {
-    const list = candidateTablesForParty(rooms, 7, null, null, [makeCombination("combo")]);
-    expect(list.map((c) => c.id)).toEqual(["combo"]);
-    expect(list[0].kind).toBe("COMBINATION");
-  });
-
-  it("puts single tables before combinations when both fit", () => {
-    const list = candidateTablesForParty(rooms, 2, null, null, [makeCombination("combo")]);
-    expect(list.map((c) => c.kind)).toEqual(["TABLE", "TABLE", "COMBINATION"]);
-  });
-
-  it("still puts the recommended combination first", () => {
-    const list = candidateTablesForParty(rooms, 2, "combo", null, [makeCombination("combo")]);
-    expect(list[0].id).toBe("combo");
-    expect(list[0].recommended).toBe(true);
-  });
-
-  it("leaves out a combination that is unavailable", () => {
-    const list = candidateTablesForParty(rooms, 7, null, null, [
-      makeCombination("combo", { available: false }),
-    ]);
-    expect(list).toEqual([]);
-  });
-
-  it("leaves out a combination that cannot fit the party", () => {
-    const list = candidateTablesForParty(rooms, 12, null, null, [makeCombination("combo")]);
-    expect(list).toEqual([]);
-  });
-
-  it("respects a combination minimum party size", () => {
-    const list = candidateTablesForParty(rooms, 1, null, null, [
-      makeCombination("combo", { minimumPartySize: 5 }),
-    ]);
-    expect(list.map((c) => c.id)).not.toContain("combo");
-  });
-
-  it("describes a combination by its member tables", () => {
-    const list = candidateTablesForParty(rooms, 7, null, null, [makeCombination("combo")]);
-    expect(list[0].detail).toBe("T1 + T2");
-    expect(list[0].status).toBeNull();
   });
 });

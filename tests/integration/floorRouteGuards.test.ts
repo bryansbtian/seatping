@@ -278,3 +278,108 @@ describe("assignment listing filters", () => {
     expect(to.status).toBe(400);
   });
 });
+
+describe("joining tables across rooms", () => {
+  async function twoRooms() {
+    const { business, location, cookie, table } = await setupFloor();
+    const patio = await db.floorPlan.create({
+      data: {
+        businessId: business.id,
+        locationId: location.id,
+        name: "Patio",
+        width: 800,
+        height: 600,
+      },
+    });
+    const outside = await db.diningTable.create({
+      data: {
+        floorPlanId: patio.id,
+        businessId: business.id,
+        locationId: location.id,
+        name: "T8",
+        capacity: 8,
+        minimumPartySize: 1,
+      },
+    });
+    return { business, location, cookie, table, patio, outside };
+  }
+
+  it("refuses tables from two different rooms", async () => {
+    const { location, cookie, table, outside } = await twoRooms();
+
+    const response = await (
+      await api()
+    )
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableIds: [table.id, outside.id], partySize: 7 });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain("same room");
+    expect(await db.tableAssignment.count({ where: { locationId: location.id } })).toBe(0);
+  });
+
+  it("accepts tables that share a room", async () => {
+    const { business, location, cookie, room, table } = await setupFloor();
+    const neighbour = await db.diningTable.create({
+      data: {
+        floorPlanId: room.id,
+        businessId: business.id,
+        locationId: location.id,
+        name: "T2",
+        capacity: 4,
+        minimumPartySize: 1,
+      },
+    });
+
+    const response = await (
+      await api()
+    )
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableIds: [table.id, neighbour.id], partySize: 7 });
+
+    expect(response.status).toBe(201);
+    expect(response.body.assignment.tableIds.sort()).toEqual([table.id, neighbour.id].sort());
+  });
+
+  it("rejects the same table listed twice", async () => {
+    const { location, cookie, table } = await setupFloor();
+
+    const response = await (
+      await api()
+    )
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableIds: [table.id, table.id], partySize: 4 });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain("same table twice");
+  });
+
+  it("rejects an empty table list", async () => {
+    const { location, cookie } = await setupFloor();
+
+    const response = await (
+      await api()
+    )
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableIds: [], partySize: 4 });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects a malformed id inside the list", async () => {
+    const { location, cookie, table } = await setupFloor();
+
+    const response = await (
+      await api()
+    )
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableIds: [table.id, "nope"], partySize: 4 });
+
+    expect(response.status).toBe(400);
+  });
+});

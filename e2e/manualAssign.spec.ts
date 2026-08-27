@@ -148,8 +148,108 @@ test("a party too large for every table cannot be assigned", async ({ page, db }
 
   await page.getByTestId(`assign-waiting-${entry.id}`).click();
 
-  await expect(page.getByText("No table can take this party right now.")).toBeVisible();
+  await expect(page.getByText("No single table can take this party right now.")).toBeVisible();
+
+  await page.getByTestId("assign-confirm").click();
+  await page.getByTestId("assign-join-T1").click();
+
   await expect(page.getByTestId("assign-confirm")).toBeDisabled();
+
+  const count = await db.prisma.tableAssignment.count({
+    where: { locationId: seed.location.id },
+  });
+  expect(count).toBe(0);
+});
+
+test("a large party can be seated by joining two tables", async ({ page, db }) => {
+  const seed = await db.createBusinessWithLocation();
+  const tables = await seedRoom(db, seed, [
+    { name: "T1", capacity: 4 },
+    { name: "T2", capacity: 4 },
+  ]);
+  const entry = await db.createQueueEntry(seed.location, {
+    firstName: "John",
+    lastName: "Cena",
+    guestCount: 7,
+  });
+
+  await signInBusiness(page, seed.business);
+  await page.goto("/business/floor");
+
+  await page.getByTestId(`assign-waiting-${entry.id}`).click();
+  await page.getByTestId("assign-confirm").click();
+
+  await page.getByTestId("assign-join-T1").click();
+  await expect(page.getByTestId("assign-confirm")).toBeDisabled();
+
+  await page.getByTestId("assign-join-T2").click();
+  await expect(page.getByTestId("assign-confirm")).toContainText("T1 + T2");
+  await page.getByTestId("assign-confirm").click();
+
+  await expect(page.getByTestId("live-table-T1")).toHaveAttribute("data-status", "OCCUPIED");
+  await expect(page.getByTestId("live-table-T2")).toHaveAttribute("data-status", "OCCUPIED");
+
+  await expect
+    .poll(async () => {
+      const stored = await db.prisma.tableAssignment.findFirst({
+        where: { locationId: seed.location.id },
+      });
+      return {
+        tables: stored?.tableIds.slice().sort(),
+        partySize: stored?.partySize,
+        source: stored?.source,
+      };
+    })
+    .toEqual({
+      tables: [tables[0].id, tables[1].id].sort(),
+      partySize: 7,
+      source: "MANUAL",
+    });
+});
+
+test("tables in another room cannot be joined", async ({ page, db }) => {
+  const seed = await db.createBusinessWithLocation();
+  await seedRoom(db, seed, [{ name: "T1", capacity: 4 }]);
+  const patio = await db.prisma.floorPlan.create({
+    data: {
+      businessId: seed.business.id,
+      locationId: seed.location.id,
+      name: "Patio",
+      width: 800,
+      height: 600,
+    },
+  });
+  await db.prisma.diningTable.create({
+    data: {
+      floorPlanId: patio.id,
+      businessId: seed.business.id,
+      locationId: seed.location.id,
+      name: "T8",
+      capacity: 4,
+      minimumPartySize: 1,
+      x: 40,
+      y: 60,
+      width: 130,
+      height: 80,
+    },
+  });
+  const entry = await db.createQueueEntry(seed.location, {
+    firstName: "John",
+    lastName: "Cena",
+    guestCount: 7,
+  });
+
+  await signInBusiness(page, seed.business);
+  await page.goto("/business/floor");
+
+  await page.getByTestId(`assign-waiting-${entry.id}`).click();
+  await page.getByTestId("assign-confirm").click();
+
+  await expect(page.getByTestId("assign-join-T8")).toBeEnabled();
+
+  await page.getByTestId("assign-join-T1").click();
+
+  await expect(page.getByTestId("assign-join-T8")).toBeDisabled();
 
   const count = await db.prisma.tableAssignment.count({
     where: { locationId: seed.location.id },

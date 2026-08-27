@@ -42,7 +42,6 @@ import FloorCanvas, { type CanvasSelection } from "@/components/floor/FloorCanva
 import TableInspector from "@/components/floor/TableInspector";
 import ZoneInspector from "@/components/floor/ZoneInspector";
 import ShapePalette from "@/components/floor/ShapePalette";
-import CombinationsCard from "@/components/floor/CombinationsCard";
 import { cn } from "@/lib/utils";
 
 function nextRoomName(existing: string[]): string {
@@ -811,8 +810,6 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
           </CardContent>
         </Card>
       </div>
-
-      <CombinationsCard locationId={locationId} tables={activeRoom.tables} />
     </div>
   );
 };

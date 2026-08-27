@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  RESERVATION_LOOKAHEAD_MINUTES,
   LIVE_STATUSES,
-  RESERVED_LOOKAHEAD_MINUTES,
   displayName,
   minutesBetween,
   pickCurrentAssignment,
@@ -85,35 +85,56 @@ describe("resolveTableStatus", () => {
     expect(resolveTableStatus(dirty, [soon], NOW)).toBe("CLEANING");
   });
 
-  it("returns RESERVED when a reservation starts inside the lookahead", () => {
+  it("returns RESERVED when a booking is coming up soon", () => {
     const soon = assignment({ expectedStartAt: minutes(30), expectedEndAt: minutes(120) });
     expect(resolveTableStatus(table(), [soon], NOW)).toBe("RESERVED");
   });
 
-  it("returns RESERVED at the exact lookahead boundary", () => {
+  it("returns RESERVED exactly at the lookahead boundary", () => {
     const boundary = assignment({
-      expectedStartAt: minutes(RESERVED_LOOKAHEAD_MINUTES),
-      expectedEndAt: minutes(RESERVED_LOOKAHEAD_MINUTES + 90),
+      expectedStartAt: minutes(RESERVATION_LOOKAHEAD_MINUTES),
+      expectedEndAt: minutes(RESERVATION_LOOKAHEAD_MINUTES + 90),
     });
     expect(resolveTableStatus(table(), [boundary], NOW)).toBe("RESERVED");
   });
 
-  it("stays AVAILABLE when the reservation is beyond the lookahead", () => {
-    const later = assignment({
-      expectedStartAt: minutes(RESERVED_LOOKAHEAD_MINUTES + 1),
-      expectedEndAt: minutes(RESERVED_LOOKAHEAD_MINUTES + 91),
+  it("stays AVAILABLE one minute before the lookahead opens", () => {
+    const justOutside = assignment({
+      expectedStartAt: minutes(RESERVATION_LOOKAHEAD_MINUTES + 1),
+      expectedEndAt: minutes(RESERVATION_LOOKAHEAD_MINUTES + 91),
     });
-    expect(resolveTableStatus(table(), [later], NOW)).toBe("AVAILABLE");
+    expect(resolveTableStatus(table(), [justOutside], NOW)).toBe("AVAILABLE");
   });
 
-  it("ignores a reservation whose window already ended", () => {
-    const stale = assignment({ expectedStartAt: minutes(-180), expectedEndAt: minutes(-90) });
-    expect(resolveTableStatus(table(), [stale], NOW)).toBe("AVAILABLE");
+  it("stays AVAILABLE for a booking later tonight", () => {
+    const tonight = assignment({ expectedStartAt: minutes(480), expectedEndAt: minutes(570) });
+    expect(resolveTableStatus(table(), [tonight], NOW)).toBe("AVAILABLE");
   });
 
   it("honours a caller supplied lookahead", () => {
     const soon = assignment({ expectedStartAt: minutes(30), expectedEndAt: minutes(120) });
     expect(resolveTableStatus(table(), [soon], NOW, 10)).toBe("AVAILABLE");
+  });
+
+  it("keeps BLOCKED ahead of a booking inside the lookahead", () => {
+    const soon = assignment({ expectedStartAt: minutes(30), expectedEndAt: minutes(120) });
+    expect(resolveTableStatus(table({ isBlocked: true }), [soon], NOW)).toBe("BLOCKED");
+  });
+
+  it("keeps OCCUPIED ahead of a booking inside the lookahead", () => {
+    const soon = assignment({ expectedStartAt: minutes(30), expectedEndAt: minutes(120) });
+    const seated = assignment({ id: "seated", status: "SEATED", seatedAt: minutes(-10) });
+    expect(resolveTableStatus(table(), [seated, soon], NOW)).toBe("OCCUPIED");
+  });
+
+  it("keeps CLEANING ahead of a booking inside the lookahead", () => {
+    const soon = assignment({ expectedStartAt: minutes(30), expectedEndAt: minutes(120) });
+    expect(resolveTableStatus(table({ cleaningSince: minutes(-5) }), [soon], NOW)).toBe("CLEANING");
+  });
+
+  it("ignores a reservation whose window already ended", () => {
+    const stale = assignment({ expectedStartAt: minutes(-180), expectedEndAt: minutes(-90) });
+    expect(resolveTableStatus(table(), [stale], NOW)).toBe("AVAILABLE");
   });
 });
 

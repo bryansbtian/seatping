@@ -1,4 +1,5 @@
 import { prisma } from "./prisma.js";
+import { rankTablesForParty, type SmartOccupancy, type SmartTable } from "./smartAssign.js";
 import {
   getDateOperatingStatus,
   isMinuteWithinOperatingHours,
@@ -18,9 +19,16 @@ export type ReservationSettings = {
   maxReservedGuestsPerHour: number;
   bookingWindowDays: number;
   minNoticeMinutes: number;
+  defaultReservationDurationMinutes: number;
+  reservationHoldMinutes: number;
   confirmationMode: ConfirmationMode;
   cancellationPolicy: string;
 };
+
+export const NO_GUEST_CAP = 0;
+export const MIN_RESERVATION_DURATION_MINUTES = 30;
+export const MAX_RESERVATION_DURATION_MINUTES = 480;
+export const MAX_RESERVATION_HOLD_MINUTES = 240;
 
 export const DEFAULT_RESERVATION_SETTINGS: ReservationSettings = {
   reservationStartTime: "11:00",
@@ -29,6 +37,8 @@ export const DEFAULT_RESERVATION_SETTINGS: ReservationSettings = {
   maxReservedGuestsPerHour: 40,
   bookingWindowDays: 30,
   minNoticeMinutes: 60,
+  defaultReservationDurationMinutes: 90,
+  reservationHoldMinutes: 15,
   confirmationMode: "auto",
   cancellationPolicy: "",
 };
@@ -76,7 +86,7 @@ export function normalizeSettings(raw: any): ReservationSettings {
     maxPartySize: clampInt(s.maxPartySize, 1, 100, DEFAULT_RESERVATION_SETTINGS.maxPartySize),
     maxReservedGuestsPerHour: clampInt(
       s.maxReservedGuestsPerHour,
-      1,
+      NO_GUEST_CAP,
       10000,
       DEFAULT_RESERVATION_SETTINGS.maxReservedGuestsPerHour,
     ),
@@ -92,9 +102,88 @@ export function normalizeSettings(raw: any): ReservationSettings {
       7 * 24 * 60,
       DEFAULT_RESERVATION_SETTINGS.minNoticeMinutes,
     ),
+    defaultReservationDurationMinutes: clampInt(
+      s.defaultReservationDurationMinutes,
+      MIN_RESERVATION_DURATION_MINUTES,
+      MAX_RESERVATION_DURATION_MINUTES,
+      DEFAULT_RESERVATION_SETTINGS.defaultReservationDurationMinutes,
+    ),
+    reservationHoldMinutes: clampInt(
+      s.reservationHoldMinutes,
+      0,
+      MAX_RESERVATION_HOLD_MINUTES,
+      DEFAULT_RESERVATION_SETTINGS.reservationHoldMinutes,
+    ),
     confirmationMode: mode,
     cancellationPolicy,
   };
+}
+
+export function hasGuestCap(settings: ReservationSettings): boolean {
+  return settings.maxReservedGuestsPerHour > NO_GUEST_CAP;
+}
+
+export function effectiveGuestCap(settings: ReservationSettings): number {
+  if (!hasGuestCap(settings)) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  return settings.maxReservedGuestsPerHour;
+}
+
+export type ReservationInventory = {
+  setups: SmartTable[];
+  occupancy: SmartOccupancy[];
+};
+
+export function reservationWindow(startMs: number, durationMinutes: number): SmartWindowRange {
+  return {
+    start: new Date(startMs),
+    end: new Date(startMs + durationMinutes * 60000),
+  };
+}
+
+export type SmartWindowRange = { start: Date; end: Date };
+
+export function tablesForWindow(
+  inventory: ReservationInventory,
+  partySize: number,
+  window: SmartWindowRange,
+  now: Date,
+): SmartTable[] {
+  const ranking = rankTablesForParty(
+    inventory.setups,
+    {
+      id: "reservation",
+      partySize,
+      joinedAt: now,
+      priority: 0,
+      preferredRoomIds: [],
+    },
+    {
+      now,
+      window,
+      occupancy: inventory.occupancy,
+      preferredRoomIds: [],
+    },
+  );
+  const byId = new Map(inventory.setups.map((setup) => [setup.id, setup]));
+  const ordered: SmartTable[] = [];
+  for (const scored of ranking.ranked) {
+    const setup = byId.get(scored.tableId);
+    if (setup) {
+      ordered.push(setup);
+    }
+  }
+  return ordered;
+}
+
+export function hasTableForWindow(
+  inventory: ReservationInventory,
+  partySize: number,
+  window: SmartWindowRange,
+  now: Date,
+): boolean {
+  return tablesForWindow(inventory, partySize, window, now).length > 0;
 }
 
 function timeToMinutes(t: string): number {
@@ -220,8 +309,8 @@ export type Slot = {
   time: string;
   label: string;
   available: boolean;
-  remaining: number;
-  reason?: "full" | "too_soon" | "party_too_large" | "closed";
+  remaining: number | null;
+  reason?: "full" | "too_soon" | "party_too_large" | "closed" | "no_table";
 };
 
 function activeGuestsInHour(
@@ -260,6 +349,7 @@ export function computeAvailability(params: {
   excludeId?: string;
   timeZone?: string;
   openingHours?: any;
+  inventory?: ReservationInventory | null;
 }): {
   slots: Slot[];
   partyTooLarge: boolean;
@@ -268,6 +358,8 @@ export function computeAvailability(params: {
 } {
   const { settings, reservations, date, partySize, timeZone, openingHours } = params;
   const now = params.now || new Date();
+  const inventory = params.inventory ?? null;
+  const guestCap = effectiveGuestCap(settings);
 
   const partyTooLarge = partySize > settings.maxPartySize;
 
@@ -299,7 +391,10 @@ export function computeAvailability(params: {
     const time = minutesToTime(m);
     const hour = Math.floor(m / 60);
     const used = activeGuestsInHour(reservations, date, hour, params.excludeId);
-    const remaining = Math.max(0, settings.maxReservedGuestsPerHour - used);
+    let remaining: number | null = null;
+    if (hasGuestCap(settings)) {
+      remaining = Math.max(0, guestCap - used);
+    }
 
     const slotMs = zonedWallTimeToMs(date, time, timeZone);
     let available = true;
@@ -314,9 +409,20 @@ export function computeAvailability(params: {
     } else if (slotMs < earliestBookableMs) {
       available = false;
       reason = "too_soon";
-    } else if (used + partySize > settings.maxReservedGuestsPerHour) {
+    } else if (used + partySize > guestCap) {
       available = false;
       reason = "full";
+    } else if (
+      inventory &&
+      !hasTableForWindow(
+        inventory,
+        partySize,
+        reservationWindow(slotMs, settings.defaultReservationDurationMinutes),
+        now,
+      )
+    ) {
+      available = false;
+      reason = "no_table";
     }
 
     slots.push({ time, label: formatTimeLabel(time), available, remaining, reason });
@@ -335,6 +441,7 @@ export function validateReservationRequest(params: {
   excludeId?: string;
   timeZone?: string;
   openingHours?: any;
+  inventory?: ReservationInventory | null;
 }): string | null {
   const { settings, reservations, date, time, partySize, timeZone, openingHours } = params;
   const now = params.now || new Date();
@@ -361,6 +468,7 @@ export function validateReservationRequest(params: {
     excludeId: params.excludeId,
     timeZone,
     openingHours,
+    inventory: params.inventory,
   });
   if (outsideWindow) {
     return `Reservations can only be made up to ${settings.bookingWindowDays} days in advance.`;
@@ -385,6 +493,8 @@ export function validateReservationRequest(params: {
       return `Reservations require at least ${settings.minNoticeMinutes} minutes notice.`;
     case "full":
       return `${formatTimeLabel(time)} is fully booked. Please choose another time.`;
+    case "no_table":
+      return `We do not have a table free for a party of ${partySize} at ${formatTimeLabel(time)}. Please choose another time.`;
     case "closed":
       return "That time is not available for reservations.";
     default:
