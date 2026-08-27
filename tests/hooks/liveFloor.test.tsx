@@ -56,6 +56,7 @@ function makeTable(overrides: Partial<LiveTable> = {}): LiveTable {
     currentAssignment: null,
     upcomingAssignment: null,
     recommendedPartyId: null,
+    recommendedReasons: [],
     ...overrides,
   };
 }

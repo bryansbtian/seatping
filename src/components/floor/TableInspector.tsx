@@ -101,7 +101,7 @@ const TableInspector = ({
   let blockAction = (
     <Button
       variant="outline"
-      className="h-9 w-full text-xs md:h-10 md:text-sm"
+      className="h-9 w-full text-xs md:h-10"
       disabled={saving}
       onClick={() => onToggleBlocked(true)}
     >
@@ -113,7 +113,7 @@ const TableInspector = ({
     blockAction = (
       <Button
         variant="outline"
-        className="h-9 w-full text-xs md:h-10 md:text-sm"
+        className="h-9 w-full text-xs md:h-10"
         disabled={saving}
         onClick={() => onToggleBlocked(false)}
       >
@@ -124,7 +124,7 @@ const TableInspector = ({
   }
 
   return (
-    <div className="flex h-full flex-col gap-3 md:gap-4" data-testid="table-inspector">
+    <div className="flex min-h-full shrink-0 flex-col gap-3 md:gap-4" data-testid="table-inspector">
       <div className="flex items-center justify-between">
         <CardTitle className="text-lg text-slate-800 md:text-xl">
           {t("floor.inspector.title")}
@@ -136,14 +136,14 @@ const TableInspector = ({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid shrink-0 grid-cols-1 gap-3">
         <div className="space-y-1.5 md:space-y-2">
-          <Label htmlFor="table-name" className="text-[11px] md:text-sm">
+          <Label htmlFor="table-name" className="text-[11px]">
             {t("floor.field.name")}
           </Label>
           <Input
             id="table-name"
-            className="h-9 text-xs md:h-10 md:text-sm"
+            className="h-9 text-xs md:h-10 md:text-xs"
             value={form.name}
             maxLength={TABLE_NAME_MAX_LENGTH}
             onChange={(event) => update({ name: event.target.value })}
@@ -152,12 +152,12 @@ const TableInspector = ({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5 md:space-y-2">
-            <Label htmlFor="table-capacity" className="text-[11px] md:text-sm">
+            <Label htmlFor="table-capacity" className="whitespace-nowrap text-[11px]">
               {t("floor.field.capacity")}
             </Label>
             <Input
               id="table-capacity"
-              className="h-9 text-xs md:h-10 md:text-sm"
+              className="h-9 text-xs md:h-10 md:text-xs"
               type="number"
               min={1}
               max={40}
@@ -166,12 +166,12 @@ const TableInspector = ({
             />
           </div>
           <div className="space-y-1.5 md:space-y-2">
-            <Label htmlFor="table-minimum" className="text-[11px] md:text-sm">
+            <Label htmlFor="table-minimum" className="whitespace-nowrap text-[11px]">
               {t("floor.field.minimumPartySize")}
             </Label>
             <Input
               id="table-minimum"
-              className="h-9 text-xs md:h-10 md:text-sm"
+              className="h-9 text-xs md:h-10 md:text-xs"
               type="number"
               min={1}
               max={40}
@@ -184,7 +184,7 @@ const TableInspector = ({
         </div>
 
         <div className="space-y-1.5 md:space-y-2">
-          <Label htmlFor="table-shape" className="text-[11px] md:text-sm">
+          <Label htmlFor="table-shape" className="text-[11px]">
             {t("floor.field.shape")}
           </Label>
           <div className="relative">
@@ -192,7 +192,7 @@ const TableInspector = ({
               id="table-shape"
               value={form.shape}
               onChange={(event) => update({ shape: event.target.value as TableShape })}
-              className="h-9 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 pr-10 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 md:h-10 md:text-sm"
+              className="h-9 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 pr-10 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 md:h-10"
             >
               {TABLE_SHAPES.map((shape) => (
                 <option key={shape} value={shape}>
@@ -205,7 +205,7 @@ const TableInspector = ({
         </div>
 
         <div className="space-y-1.5 md:space-y-2">
-          <Label className="text-[11px] md:text-sm">{t("floor.field.rotation")}</Label>
+          <Label className="text-[11px]">{t("floor.field.rotation")}</Label>
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -250,18 +250,14 @@ const TableInspector = ({
       </div>
 
       {error && (
-        <p role="alert" className="text-xs text-red-600 md:text-sm">
+        <p role="alert" className="text-xs text-red-600">
           {t(error)}
         </p>
       )}
 
-      <div className="mt-auto flex flex-col gap-3 border-t border-slate-100 pt-4">
+      <div className="mt-auto flex shrink-0 flex-col gap-3 border-t border-slate-100 pt-4">
         <div className="flex flex-col gap-2">
-          <Button
-            className="h-9 w-full text-xs md:h-10 md:text-sm"
-            disabled={saving}
-            onClick={handleSave}
-          >
+          <Button className="h-9 w-full text-xs md:h-10" disabled={saving} onClick={handleSave}>
             {saveLabel}
           </Button>
 
@@ -276,7 +272,7 @@ const TableInspector = ({
             trigger={
               <Button
                 variant="outline"
-                className="h-9 w-full text-xs text-red-600 hover:text-red-700 md:h-10 md:text-sm"
+                className="h-9 w-full text-xs text-red-600 hover:text-red-700 md:h-10"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 {t("floor.delete")}

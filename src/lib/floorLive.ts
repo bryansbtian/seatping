@@ -35,6 +35,7 @@ export type LiveTable = {
   currentAssignment: LiveAssignment | null;
   upcomingAssignment: LiveAssignment | null;
   recommendedPartyId: string | null;
+  recommendedReasons: string[];
 };
 
 export type LiveZone = {
