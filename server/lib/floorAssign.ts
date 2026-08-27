@@ -135,6 +135,19 @@ export async function markReservationSeated(reservationId: string): Promise<void
   await touchGuestByReservationId(reservation.id);
 }
 
+export async function releaseQueueEntryTables(queueEntryId: string): Promise<number> {
+  const result = await withWriteRetry(() =>
+    prisma.tableAssignment.updateMany({
+      where: {
+        queueEntryId,
+        status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
+      },
+      data: { status: "CANCELLED", cancelledAt: new Date() },
+    }),
+  );
+  return result.count;
+}
+
 export async function markVisitClosed(assignment: {
   queueEntryId: string | null;
   reservationId: string | null;

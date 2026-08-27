@@ -672,18 +672,32 @@ export async function completeAssignment(
     return fail(404, "Assignment not found or access denied");
   }
 
-  const result = await withWriteRetry(() =>
-    prisma.tableAssignment.updateMany({
-      where: { id: existing.id, status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] } },
-      data: { status: "COMPLETED", completedAt: new Date() },
+  const outcome = await withWriteRetry(() =>
+    prisma.$transaction(async (tx) => {
+      const claimed = await tx.tableAssignment.updateMany({
+        where: { id: existing.id, status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] } },
+        data: { status: "COMPLETED", completedAt: new Date() },
+      });
+      if (claimed.count !== 1) {
+        return fail(409, "Assignment is already closed");
+      }
+
+      if (existing.status === "SEATED") {
+        let memberIds = [existing.tableId];
+        if (existing.tableIds && existing.tableIds.length > 0) {
+          memberIds = existing.tableIds;
+        }
+        await tx.diningTable.updateMany({
+          where: { id: { in: memberIds }, locationId },
+          data: { cleaningSince: new Date() },
+        });
+      }
+
+      return ok(await tx.tableAssignment.findUnique({ where: { id: existing.id } }));
     }),
   );
-  if (result.count !== 1) {
-    return fail(409, "Assignment is already closed");
-  }
 
-  const completed = await prisma.tableAssignment.findUnique({ where: { id: existing.id } });
-  return ok(completed);
+  return outcome;
 }
 
 export type MoveAssignmentInput = {
