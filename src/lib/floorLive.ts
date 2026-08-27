@@ -57,12 +57,20 @@ export type LiveRoom = {
   tables: LiveTable[];
 };
 
+export const MATCH_STATES = ["MATCHED", "QUEUED", "NO_AVAILABILITY", "NO_CAPACITY"] as const;
+
+export type MatchState = (typeof MATCH_STATES)[number];
+
 export type WaitingParty = {
   id: string;
   name: string;
   partySize: number;
   joinedAt: string;
   waitingMinutes: number;
+  recommendedTableId: string | null;
+  recommendedTableName: string | null;
+  recommendedReasons: string[];
+  matchState: MatchState;
 };
 
 export type UpcomingReservation = {
@@ -76,9 +84,22 @@ export type UpcomingReservation = {
   tableName: string | null;
 };
 
+export type LiveCombination = {
+  id: string;
+  name: string;
+  tableIds: string[];
+  tableNames: string[];
+  roomName: string;
+  capacity: number;
+  minimumPartySize: number;
+  isActive: boolean;
+  available: boolean;
+};
+
 export type LiveFloor = {
   now: string;
   rooms: LiveRoom[];
+  combinations: LiveCombination[];
   waitingParties: WaitingParty[];
   upcomingReservations: UpcomingReservation[];
 };
@@ -238,17 +259,25 @@ export function persistFloorMode(mode: FloorMode): void {
   } catch {}
 }
 
+export type CandidateKind = "TABLE" | "COMBINATION";
+
 export type TableCandidate = {
-  table: LiveTable;
+  id: string;
+  kind: CandidateKind;
+  name: string;
+  capacity: number;
   roomName: string;
+  detail: string;
   recommended: boolean;
+  status: LiveStatus | null;
 };
 
 export function candidateTablesForParty(
   rooms: LiveRoom[],
   partySize: number,
-  recommendedTableId: string | null,
+  recommendedId: string | null,
   excludeTableId: string | null = null,
+  combinations: LiveCombination[] = [],
 ): TableCandidate[] {
   const candidates: TableCandidate[] = [];
 
@@ -264,11 +293,35 @@ export function candidateTablesForParty(
         continue;
       }
       candidates.push({
-        table,
+        id: table.id,
+        kind: "TABLE",
+        name: table.name,
+        capacity: table.capacity,
         roomName: room.name,
-        recommended: table.id === recommendedTableId,
+        detail: room.name,
+        recommended: table.id === recommendedId,
+        status: table.status,
       });
     }
+  }
+
+  for (const combination of combinations) {
+    if (!combination.available) {
+      continue;
+    }
+    if (!partyFitsTable(partySize, combination)) {
+      continue;
+    }
+    candidates.push({
+      id: combination.id,
+      kind: "COMBINATION",
+      name: combination.name,
+      capacity: combination.capacity,
+      roomName: combination.roomName,
+      detail: combination.tableNames.join(" + "),
+      recommended: combination.id === recommendedId,
+      status: null,
+    });
   }
 
   candidates.sort((a, b) => {
@@ -278,16 +331,17 @@ export function candidateTablesForParty(
       }
       return 1;
     }
-    if (a.table.capacity !== b.table.capacity) {
-      return a.table.capacity - b.table.capacity;
+    if (a.kind !== b.kind) {
+      if (a.kind === "TABLE") {
+        return -1;
+      }
+      return 1;
     }
-    return a.table.name.localeCompare(b.table.name, undefined, { numeric: true });
+    if (a.capacity !== b.capacity) {
+      return a.capacity - b.capacity;
+    }
+    return a.name.localeCompare(b.name, undefined, { numeric: true });
   });
 
   return candidates;
-}
-
-export function recommendedTableIdForParty(rooms: LiveRoom[], partyId: string): string | null {
-  const match = allTables(rooms).find((table) => table.recommendedPartyId === partyId);
-  return match?.id ?? null;
 }

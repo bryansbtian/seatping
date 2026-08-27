@@ -281,7 +281,7 @@ describe("live floor read", () => {
     expect(tableNamed(response.body, "T2").recommendedPartyId).toBe(group.id);
   });
 
-  it("never recommends a party to an occupied or blocked table", async () => {
+  it("never recommends a party to a blocked table but still offers one being cleaned", async () => {
     const { location, cookie, request, tables } = await setupLiveFloor([
       { name: "T1", capacity: 4 },
       { name: "T2", capacity: 4 },
@@ -300,7 +300,8 @@ describe("live floor read", () => {
     const response = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
 
     expect(tableNamed(response.body, "T1").recommendedPartyId).toBeNull();
-    expect(tableNamed(response.body, "T2").recommendedPartyId).toBeNull();
+    expect(tableNamed(response.body, "T2").recommendedPartyId).toBeTruthy();
+    expect(tableNamed(response.body, "T2").recommendedReasons).toContain("NEEDS_CLEANING");
   });
 });
 

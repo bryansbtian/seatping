@@ -17,7 +17,6 @@ import {
   formatClock,
   moveTargets,
   partyFitsTable,
-  recommendedTableIdForParty,
   persistFloorMode,
   readFloorMode,
   roomOfTable,
@@ -233,7 +232,12 @@ describe("live floor requests", () => {
   }
 
   it("reads the live floor", async () => {
-    apiMock.mockResolvedValue({ now: "2026-08-26T18:00:00.000Z", rooms: [], waitingParties: [] });
+    apiMock.mockResolvedValue({
+      now: "2026-08-26T18:00:00.000Z",
+      rooms: [],
+      combinations: [],
+      waitingParties: [],
+    });
     const live = await fetchLiveFloor(LOCATION);
     expect(lastCall()[0]).toBe("/api/floor/loc-1/live");
     expect(live.rooms).toEqual([]);
@@ -353,28 +357,28 @@ describe("candidateTablesForParty", () => {
 
   it("puts the recommended table first even when a tighter one exists", () => {
     const list = candidateTablesForParty(rooms, 2, "mid");
-    expect(list[0].table.id).toBe("mid");
+    expect(list[0].id).toBe("mid");
     expect(list[0].recommended).toBe(true);
   });
 
   it("orders the rest by tightest capacity", () => {
     const list = candidateTablesForParty(rooms, 2, null);
-    expect(list.map((c) => c.table.id)).toEqual(["small", "mid", "dirty"]);
+    expect(list.map((c) => c.id)).toEqual(["small", "mid", "dirty"]);
   });
 
   it("excludes occupied and blocked tables", () => {
-    const ids = candidateTablesForParty(rooms, 2, null).map((c) => c.table.id);
+    const ids = candidateTablesForParty(rooms, 2, null).map((c) => c.id);
     expect(ids).not.toContain("busy");
     expect(ids).not.toContain("blocked");
   });
 
   it("excludes tables that cannot fit the party", () => {
-    const ids = candidateTablesForParty(rooms, 5, null).map((c) => c.table.id);
+    const ids = candidateTablesForParty(rooms, 5, null).map((c) => c.id);
     expect(ids).toEqual(["dirty"]);
   });
 
   it("excludes the table the party already sits at", () => {
-    const ids = candidateTablesForParty(rooms, 2, null, "small").map((c) => c.table.id);
+    const ids = candidateTablesForParty(rooms, 2, null, "small").map((c) => c.id);
     expect(ids).toEqual(["mid", "dirty"]);
   });
 
@@ -384,19 +388,6 @@ describe("candidateTablesForParty", () => {
 
   it("returns nothing when no table fits", () => {
     expect(candidateTablesForParty(rooms, 40, null)).toEqual([]);
-  });
-});
-
-describe("recommendedTableIdForParty", () => {
-  it("finds the table that recommends this party", () => {
-    const rooms = [
-      makeRoom("Main", [makeTable("a"), makeTable("b", { recommendedPartyId: "queue-9" })]),
-    ];
-    expect(recommendedTableIdForParty(rooms, "queue-9")).toBe("b");
-  });
-
-  it("returns null when no table recommends the party", () => {
-    expect(recommendedTableIdForParty([makeRoom("Main", [makeTable("a")])], "queue-9")).toBeNull();
   });
 });
 
@@ -433,5 +424,74 @@ describe("assignTable request", () => {
     await expect(assignTable(LOCATION, { tableId: "table-1" })).rejects.toThrow(
       "Table already has an assignment",
     );
+  });
+});
+
+function makeCombination(
+  id: string,
+  overrides: Partial<import("../../src/lib/floorLive.js").LiveCombination> = {},
+) {
+  return {
+    id,
+    name: id.toUpperCase(),
+    tableIds: ["a", "b"],
+    tableNames: ["T1", "T2"],
+    roomName: "Main",
+    capacity: 8,
+    minimumPartySize: 1,
+    isActive: true,
+    available: true,
+    ...overrides,
+  };
+}
+
+describe("candidateTablesForParty with combinations", () => {
+  const rooms = [
+    makeRoom("Main", [
+      makeTable("small", { name: "T1", capacity: 2, status: "AVAILABLE" }),
+      makeTable("mid", { name: "T2", capacity: 4, status: "AVAILABLE" }),
+    ]),
+  ];
+
+  it("offers a combination when no single table fits", () => {
+    const list = candidateTablesForParty(rooms, 7, null, null, [makeCombination("combo")]);
+    expect(list.map((c) => c.id)).toEqual(["combo"]);
+    expect(list[0].kind).toBe("COMBINATION");
+  });
+
+  it("puts single tables before combinations when both fit", () => {
+    const list = candidateTablesForParty(rooms, 2, null, null, [makeCombination("combo")]);
+    expect(list.map((c) => c.kind)).toEqual(["TABLE", "TABLE", "COMBINATION"]);
+  });
+
+  it("still puts the recommended combination first", () => {
+    const list = candidateTablesForParty(rooms, 2, "combo", null, [makeCombination("combo")]);
+    expect(list[0].id).toBe("combo");
+    expect(list[0].recommended).toBe(true);
+  });
+
+  it("leaves out a combination that is unavailable", () => {
+    const list = candidateTablesForParty(rooms, 7, null, null, [
+      makeCombination("combo", { available: false }),
+    ]);
+    expect(list).toEqual([]);
+  });
+
+  it("leaves out a combination that cannot fit the party", () => {
+    const list = candidateTablesForParty(rooms, 12, null, null, [makeCombination("combo")]);
+    expect(list).toEqual([]);
+  });
+
+  it("respects a combination minimum party size", () => {
+    const list = candidateTablesForParty(rooms, 1, null, null, [
+      makeCombination("combo", { minimumPartySize: 5 }),
+    ]);
+    expect(list.map((c) => c.id)).not.toContain("combo");
+  });
+
+  it("describes a combination by its member tables", () => {
+    const list = candidateTablesForParty(rooms, 7, null, null, [makeCombination("combo")]);
+    expect(list[0].detail).toBe("T1 + T2");
+    expect(list[0].status).toBeNull();
   });
 });

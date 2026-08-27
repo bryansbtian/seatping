@@ -27,14 +27,16 @@ const ReservationRow = ({ reservation, busy, onSelect }: ReservationRowProps) =>
         data-testid={`reservation-${reservation.id}`}
         aria-label={t("floor.assign.action")}
         onClick={() => onSelect(reservation)}
-        className="flex w-full items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-left transition-colors hover:bg-slate-100 disabled:opacity-60"
+        className="flex w-full items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 text-left transition-colors hover:bg-slate-100 disabled:opacity-60"
       >
         {badge}
-        <span className="min-w-0 flex-1 truncate text-xs font-medium text-slate-800 md:text-sm">
-          {reservation.name}
-        </span>
-        <span className="shrink-0 text-[11px] text-slate-500 md:text-xs">
-          {t("floor.live.partyOf", { n: reservation.partySize })} &middot; {reservation.timeLabel}
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="truncate text-[11px] leading-none text-slate-500">
+            {t("floor.live.partyOf", { n: reservation.partySize })} &middot; {reservation.timeLabel}
+          </span>
+          <span className="truncate text-sm font-semibold leading-tight text-slate-800">
+            {reservation.name}
+          </span>
         </span>
       </button>
     </li>

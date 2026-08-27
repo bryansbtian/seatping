@@ -11,9 +11,9 @@ import {
   countByStatus,
   findTable,
   formatClock,
-  recommendedTableIdForParty,
   statusStyle,
   type LiveFloor as LiveFloorData,
+  type TableCandidate,
   type LiveRoom,
 } from "@/lib/floorLive";
 import {
@@ -38,6 +38,7 @@ const POLL_INTERVAL_MS = 15000;
 const EMPTY_FLOOR: LiveFloorData = {
   now: "",
   rooms: [],
+  combinations: [],
   waitingParties: [],
   upcomingReservations: [],
 };
@@ -167,16 +168,22 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
   );
 
   const handleAssignTable = useCallback(
-    async (tableId: string) => {
+    async (candidate: TableCandidate) => {
       if (!assignTarget) {
         return;
       }
       const body: {
-        tableId: string;
+        tableId?: string;
+        combinationId?: string;
         partySize: number;
         queueEntryId?: string;
         reservationId?: string;
-      } = { tableId, partySize: assignTarget.partySize };
+      } = { partySize: assignTarget.partySize };
+      if (candidate.kind === "COMBINATION") {
+        body.combinationId = candidate.id;
+      } else {
+        body.tableId = candidate.id;
+      }
       if (assignTarget.queueEntryId) {
         body.queueEntryId = assignTarget.queueEntryId;
       }
@@ -307,17 +314,45 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
                         name: party.name,
                         partySize: party.partySize,
                         queueEntryId: party.id,
-                        recommendedTableId: recommendedTableIdForParty(rooms, party.id),
+                        recommendedTableId: party.recommendedTableId,
                       })
                     }
-                    className="flex w-full items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-left transition-colors hover:bg-slate-100 disabled:opacity-60"
+                    className="flex w-full items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 text-left transition-colors hover:bg-slate-100 disabled:opacity-60"
                   >
-                    <span className="min-w-0 truncate text-xs font-medium text-slate-800 md:text-sm">
-                      {party.name}
-                    </span>
-                    <span className="shrink-0 text-[11px] text-slate-500 md:text-xs">
-                      {t("floor.live.partyOf", { n: party.partySize })} &middot;{" "}
-                      {t("floor.live.waitingFor", { n: party.waitingMinutes })}
+                    {party.recommendedTableName && (
+                      <span
+                        data-testid={`waiting-suggestion-${party.id}`}
+                        className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800"
+                      >
+                        {party.recommendedTableName}
+                      </span>
+                    )}
+                    {party.matchState === "NO_CAPACITY" && (
+                      <span
+                        data-testid={`waiting-nomatch-${party.id}`}
+                        title={t("floor.live.noCapacityBody")}
+                        className="shrink-0 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-800"
+                      >
+                        {t("floor.live.noCapacity")}
+                      </span>
+                    )}
+                    {party.matchState === "NO_AVAILABILITY" && (
+                      <span
+                        data-testid={`waiting-unavailable-${party.id}`}
+                        title={t("floor.live.noAvailabilityBody")}
+                        className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800"
+                      >
+                        {t("floor.live.noAvailability")}
+                      </span>
+                    )}
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="truncate text-[11px] leading-none text-slate-500">
+                        {t("floor.live.partyOf", { n: party.partySize })} &middot;{" "}
+                        {t("floor.live.waitingFor", { n: party.waitingMinutes })}
+                      </span>
+                      <span className="truncate text-sm font-semibold leading-tight text-slate-800">
+                        {party.name}
+                      </span>
                     </span>
                   </button>
                 </li>
@@ -480,6 +515,7 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
         open={assignTarget !== null}
         target={assignTarget}
         rooms={rooms}
+        combinations={data.combinations}
         busy={busy}
         onOpenChange={(next) => {
           if (!next) {
