@@ -89,7 +89,10 @@ test("staff seat a waiting party from the live floor and the table turns occupie
     .toEqual({ status: "SEATED", partySize: 2, source: "MANUAL" });
 });
 
-test("staff complete a visit and the table returns to available", async ({ page, db }) => {
+test("staff complete a visit and the table goes to cleaning then available", async ({
+  page,
+  db,
+}) => {
   const seed = await db.createBusinessWithLocation();
   const { tables } = await seedRoomWithTables(db, seed, [{ name: "T1", capacity: 4 }]);
   await db.prisma.tableAssignment.create({
@@ -120,7 +123,7 @@ test("staff complete a visit and the table returns to available", async ({ page,
 
   await detail.getByRole("button", { name: "Complete Visit" }).click();
 
-  await expect(node).toHaveAttribute("data-status", "AVAILABLE");
+  await expect(node).toHaveAttribute("data-status", "CLEANING");
 
   await expect
     .poll(async () => {
@@ -130,6 +133,14 @@ test("staff complete a visit and the table returns to available", async ({ page,
       return stored?.status;
     })
     .toBe("COMPLETED");
+
+  await node.click();
+  await page
+    .getByTestId("live-table-detail")
+    .getByRole("button", { name: "Mark Available" })
+    .click();
+
+  await expect(node).toHaveAttribute("data-status", "AVAILABLE");
 });
 
 test("staff move a party to another table", async ({ page, db }) => {

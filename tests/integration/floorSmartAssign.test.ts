@@ -483,3 +483,199 @@ describe("a table held for later tonight", () => {
     expect(party.recommendedTableId).toBeNull();
   });
 });
+
+describe("status stays in step across queue, reservations and floor", () => {
+  it("sends a finished visit to cleaning", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const guest = await seedQueueEntry(location, { guestCount: 2 });
+
+    const seated = await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: guest.id, partySize: 2 });
+
+    await request
+      .post(`/api/floor/${location.id}/assignments/${seated.body.assignment.id}/complete`)
+      .set("Cookie", cookie)
+      .send({});
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    expect(live.body.rooms[0].tables[0].status).toBe("CLEANING");
+  });
+
+  it("sends every joined table to cleaning", async () => {
+    const { location, cookie, request, tables } = await setupFloor([
+      { name: "T1", capacity: 4 },
+      { name: "T2", capacity: 4 },
+    ]);
+    const guest = await seedQueueEntry(location, { guestCount: 7 });
+
+    const seated = await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableIds: [tables[0].id, tables[1].id], queueEntryId: guest.id, partySize: 7 });
+
+    await request
+      .post(`/api/floor/${location.id}/assignments/${seated.body.assignment.id}/complete`)
+      .set("Cookie", cookie)
+      .send({});
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    const statuses = live.body.rooms[0].tables.map((table: any) => table.status);
+    expect(statuses).toEqual(["CLEANING", "CLEANING"]);
+  });
+
+  it("leaves a table alone when a hold is closed without seating", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const guest = await seedQueueEntry(location, { guestCount: 2 });
+
+    const held = await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: guest.id, partySize: 2, seatNow: false });
+
+    await request
+      .post(`/api/floor/${location.id}/assignments/${held.body.assignment.id}/complete`)
+      .set("Cookie", cookie)
+      .send({});
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    expect(live.body.rooms[0].tables[0].status).toBe("AVAILABLE");
+  });
+
+  it("frees the table again once cleaning is done", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const guest = await seedQueueEntry(location, { guestCount: 2 });
+
+    const seated = await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: guest.id, partySize: 2 });
+    await request
+      .post(`/api/floor/${location.id}/assignments/${seated.body.assignment.id}/complete`)
+      .set("Cookie", cookie)
+      .send({});
+    await request
+      .post(`/api/floor/${location.id}/tables/${tables[0].id}/available`)
+      .set("Cookie", cookie)
+      .send({});
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    expect(live.body.rooms[0].tables[0].status).toBe("AVAILABLE");
+  });
+
+  it("hands the freed table back to smart assignment", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const first = await seedQueueEntry(location, { guestCount: 2 });
+
+    const seated = await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: first.id, partySize: 2 });
+    await request
+      .post(`/api/floor/${location.id}/assignments/${seated.body.assignment.id}/complete`)
+      .set("Cookie", cookie)
+      .send({});
+    await request
+      .post(`/api/floor/${location.id}/tables/${tables[0].id}/available`)
+      .set("Cookie", cookie)
+      .send({});
+
+    const next = await seedQueueEntry(location, { guestCount: 2 });
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    const party = live.body.waitingParties.find((row: any) => row.id === next.id);
+
+    expect(party.recommendedTableId).toBe(tables[0].id);
+  });
+});
+
+describe("a queue guest who leaves the queue", () => {
+  async function heldTable() {
+    const { business, location, cookie, request, tables } = await setupFloor([
+      { name: "T1", capacity: 4 },
+    ]);
+    const guest = await seedQueueEntry(location, { guestCount: 2 });
+    const held = await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: guest.id, partySize: 2, seatNow: false });
+    return { business, location, cookie, request, tables, guest, held };
+  }
+
+  it("gives the table back when staff remove them", async () => {
+    const { business, location, cookie, request, tables, guest } = await heldTable();
+
+    const removed = await request
+      .delete(`/auth/business/${business.username}/queue/${guest.legacyKey}`)
+      .set("Cookie", cookie);
+
+    expect(removed.status).toBe(200);
+    const active = await db.tableAssignment.count({
+      where: { queueEntryId: guest.id, status: { in: ["RESERVED", "SEATED"] } },
+    });
+    expect(active).toBe(0);
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    expect(live.body.rooms[0].tables[0].status).toBe("AVAILABLE");
+    expect(tables[0].id).toBeTruthy();
+  });
+
+  it("gives the table back when the guest leaves on their own", async () => {
+    const { business, location, cookie, request, guest } = await heldTable();
+
+    const left = await request.post(
+      `/auth/business/${business.username}/queue/${guest.legacyKey}/leave`,
+    );
+
+    expect(left.status).toBe(200);
+    const active = await db.tableAssignment.count({
+      where: { queueEntryId: guest.id, status: { in: ["RESERVED", "SEATED"] } },
+    });
+    expect(active).toBe(0);
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    expect(live.body.rooms[0].tables[0].status).toBe("AVAILABLE");
+  });
+
+  it("offers the freed table to the next party waiting", async () => {
+    const { business, location, cookie, request, tables, guest } = await heldTable();
+    const next = await seedQueueEntry(location, { guestCount: 2 });
+
+    await request
+      .delete(`/auth/business/${business.username}/queue/${guest.legacyKey}`)
+      .set("Cookie", cookie);
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    const party = live.body.waitingParties.find((row: any) => row.id === next.id);
+    expect(party.recommendedTableId).toBe(tables[0].id);
+  });
+
+  it("leaves other guests' tables alone", async () => {
+    const { business, location, cookie, request, guest } = await heldTable();
+    const other = await seedQueueEntry(location, { guestCount: 2 });
+    const room = await db.floorPlan.findFirstOrThrow({ where: { locationId: location.id } });
+    const spare = await db.diningTable.create({
+      data: {
+        floorPlanId: room.id,
+        businessId: location.businessId,
+        locationId: location.id,
+        name: "T2",
+        capacity: 4,
+        minimumPartySize: 1,
+      },
+    });
+    await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: spare.id, queueEntryId: other.id, partySize: 2, seatNow: false });
+
+    await request
+      .delete(`/auth/business/${business.username}/queue/${guest.legacyKey}`)
+      .set("Cookie", cookie);
+
+    const stillHeld = await db.tableAssignment.count({
+      where: { queueEntryId: other.id, status: { in: ["RESERVED", "SEATED"] } },
+    });
+    expect(stillHeld).toBe(1);
+  });
+});

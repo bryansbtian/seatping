@@ -20,6 +20,8 @@ const enqueueNotification = vi.fn();
 const syncCustomerQueue = vi.fn();
 const touchGuestByQueueEntryId = vi.fn();
 
+const tableAssignmentUpdateMany = vi.fn(async () => ({ count: 0 }));
+
 vi.mock("../../server/lib/prisma.js", () => {
   return {
     prisma: {
@@ -37,6 +39,7 @@ vi.mock("../../server/lib/prisma.js", () => {
         count: queueEntryCount,
       },
       reservation: { findMany: reservationFindMany },
+      tableAssignment: { updateMany: tableAssignmentUpdateMany },
     },
   };
 });

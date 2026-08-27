@@ -50,6 +50,7 @@ import {
 } from "../lib/liveData.js";
 import { applyStatusCapacityDelta } from "../lib/reservationCapacity.js";
 import { releaseReservationTables } from "../lib/reservationTables.js";
+import { releaseQueueEntryTables } from "../lib/floorAssign.js";
 import { enqueueNotification, canNotifyRecipient } from "../lib/notifications.js";
 import { withWriteRetry } from "../lib/dbRetry.js";
 import {
@@ -2500,6 +2501,8 @@ router.delete("/business/:username/queue/:customerId", requireBusiness, async (r
       return res.status(409).json({ error: "Customer is no longer in the queue" });
     }
 
+    await releaseQueueEntryTables(entry.id);
+
     const location = await prisma.location.findUnique({ where: { id: entry.locationId } });
     const removedEntry = { ...entry, status: "REMOVED" as const, removedAt };
     const removedCustomer = queueEntryToLegacy(removedEntry, { businessUsername: username });
@@ -2553,6 +2556,8 @@ router.post("/business/:username/queue/:customerId/leave", async (req, res) => {
       if (result.count === 0) {
         return res.status(409).json({ error: "You are no longer waiting in the queue" });
       }
+
+      await releaseQueueEntryTables(entry.id);
 
       const location = await prisma.location.findUnique({ where: { id: entry.locationId } });
       const leftEntry = { ...entry, status: "LEFT" as const, leftAt };

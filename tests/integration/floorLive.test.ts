@@ -611,7 +611,7 @@ describe("seat party", () => {
 });
 
 describe("complete visit", () => {
-  it("frees the table and clears the current party", async () => {
+  it("sends the table to cleaning and clears the current party", async () => {
     const { location, cookie, request, tables } = await setupLiveFloor();
     const seated = await request
       .post(`/api/floor/${location.id}/tables/${tables[0].id}/seat`)
@@ -627,7 +627,7 @@ describe("complete visit", () => {
 
     const response = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
     const table = tableNamed(response.body, "T1");
-    expect(table.status).toBe("AVAILABLE");
+    expect(table.status).toBe("CLEANING");
     expect(table.currentAssignment).toBeNull();
   });
 
