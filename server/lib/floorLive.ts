@@ -56,6 +56,7 @@ export type UpcomingReservation = {
   status: string;
   tableId: string | null;
   tableName: string | null;
+  needsReview: boolean;
 };
 
 export const MATCH_STATES = ["MATCHED", "QUEUED", "NO_AVAILABILITY", "NO_CAPACITY"] as const;
@@ -259,6 +260,7 @@ async function loadUpcomingReservations(
       guestCount: true,
       reservationDateTime: true,
       status: true,
+      needsReview: true,
     },
   });
 
@@ -288,6 +290,7 @@ async function loadUpcomingReservations(
       status: row.status,
       tableId: seatedAt.get(row.id)?.id ?? null,
       tableName: seatedAt.get(row.id)?.name ?? null,
+      needsReview: Boolean(row.needsReview),
     };
   });
 }

@@ -85,3 +85,13 @@ export async function assignTable(locationId: string, body: ManualAssignBody): P
     body: JSON.stringify(body),
   });
 }
+
+export async function resolveReservationTable(
+  locationId: string,
+  reservationId: string,
+): Promise<void> {
+  await api(`${base(locationId)}/reservations/${reservationId}/resolve`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}

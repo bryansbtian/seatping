@@ -5,6 +5,7 @@ const floorPlanFindMany = vi.fn();
 const assignmentFindMany = vi.fn();
 const assignmentUpdateMany = vi.fn();
 const diningTableFindFirst = vi.fn();
+const reservationUpdate = vi.fn();
 
 vi.mock("../../server/lib/prisma.js", () => {
   return {
@@ -12,6 +13,7 @@ vi.mock("../../server/lib/prisma.js", () => {
       floorPlan: { findMany: floorPlanFindMany },
       tableAssignment: { findMany: assignmentFindMany, updateMany: assignmentUpdateMany },
       diningTable: { findFirst: diningTableFindFirst },
+      reservation: { update: reservationUpdate },
       user: { findUnique: vi.fn(), update: vi.fn() },
     },
   };
@@ -23,6 +25,8 @@ vi.mock("../../server/lib/floor.js", async () => {
 });
 
 const {
+  NEEDS_REVIEW_NO_TABLE,
+  assignOrFlagReservation,
   assignTableForReservation,
   loadReservationInventory,
   locationHasFloorInventory,
@@ -60,6 +64,7 @@ beforeEach(() => {
   assignmentFindMany.mockReset().mockResolvedValue([]);
   assignmentUpdateMany.mockReset().mockResolvedValue({ count: 0 });
   diningTableFindFirst.mockReset().mockResolvedValue(null);
+  reservationUpdate.mockReset().mockResolvedValue({});
 });
 
 function assign(overrides: Record<string, unknown> = {}) {
@@ -269,5 +274,61 @@ describe("windowForReservation", () => {
 
     const minutes = (window.end.getTime() - window.start.getTime()) / 60000;
     expect(minutes).toBe(45);
+  });
+});
+
+describe("assignOrFlagReservation", () => {
+  function run(overrides: Record<string, unknown> = {}) {
+    return assignOrFlagReservation({
+      businessId: BUSINESS,
+      locationId: LOCATION,
+      reservationId: RESERVATION,
+      partySize: 2,
+      window: WINDOW,
+      ...overrides,
+    });
+  }
+
+  it("clears the review flag once a table is found", async () => {
+    createAssignment.mockResolvedValue({ ok: true, value: { id: "a1" } });
+
+    const result = await run();
+
+    expect(result?.tableName).toBe("T1");
+    expect(reservationUpdate).toHaveBeenCalledWith({
+      where: { id: RESERVATION },
+      data: { needsReview: false, needsReviewReason: null },
+    });
+  });
+
+  it("flags the booking when no table can take it", async () => {
+    createAssignment.mockResolvedValue({
+      ok: false,
+      status: 409,
+      error: "Table already has an assignment during that time",
+    });
+
+    const result = await run();
+
+    expect(result).toBeNull();
+    expect(reservationUpdate).toHaveBeenCalledWith({
+      where: { id: RESERVATION },
+      data: { needsReview: true, needsReviewReason: NEEDS_REVIEW_NO_TABLE },
+    });
+  });
+
+  it("flags the booking when the location tracks no tables", async () => {
+    floorPlanFindMany.mockResolvedValue([]);
+
+    expect(await run()).toBeNull();
+    expect(reservationUpdate.mock.calls[0][0].data.needsReview).toBe(true);
+  });
+
+  it("does not write an assignment when it flags", async () => {
+    floorPlanFindMany.mockResolvedValue([]);
+
+    await run();
+
+    expect(createAssignment).not.toHaveBeenCalled();
   });
 });

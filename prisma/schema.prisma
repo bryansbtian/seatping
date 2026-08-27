@@ -278,6 +278,9 @@ model Reservation {
   notes               String?
   source              String?
 
+  needsReview       Boolean @default(false)
+  needsReviewReason String?
+
   reminderEmailSentAt DateTime?
   cancelledAt         DateTime?
   arrivedAt           DateTime?
@@ -288,6 +291,7 @@ model Reservation {
   updatedAt DateTime @updatedAt
 
   @@index([locationId, status])
+  @@index([locationId, needsReview])
   @@index([businessId])
   @@index([reservationDateTime])
   @@index([customerId])

@@ -30,6 +30,7 @@ export type AssignTarget = {
   reservationId?: string;
   currentTableId?: string | null;
   recommendedTableId?: string | null;
+  needsReview?: boolean;
 };
 
 export type AssignSelection = {
@@ -45,6 +46,7 @@ type AssignTableDialogProps = {
   busy: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (selection: AssignSelection) => Promise<void>;
+  onResolve: (reservationId: string) => Promise<void>;
 };
 
 const AssignTableDialog = ({
@@ -54,6 +56,7 @@ const AssignTableDialog = ({
   busy,
   onOpenChange,
   onConfirm,
+  onResolve,
 }: AssignTableDialogProps) => {
   const { t } = useLang();
   const [chosen, setChosen] = useState<TableCandidate | null>(null);
@@ -318,24 +321,23 @@ const AssignTableDialog = ({
                   {t("floor.assign.useOneTable")}
                 </button>
               )}
+              {!combining && candidates.length > 0 && joinable.length > 0 && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  data-testid="assign-join-toggle"
+                  onClick={enterCombining}
+                  className="shrink-0 text-xs font-medium text-slate-700 underline underline-offset-2 hover:text-slate-900 disabled:opacity-60"
+                >
+                  {t("floor.assign.joinTablesInstead")}
+                </button>
+              )}
             </span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           {body}
-
-          {!combining && candidates.length > 0 && joinable.length > 0 && (
-            <button
-              type="button"
-              disabled={busy}
-              data-testid="assign-join-toggle"
-              onClick={enterCombining}
-              className="block text-left text-xs font-medium text-slate-700 underline underline-offset-2 hover:text-slate-900 disabled:opacity-60"
-            >
-              {t("floor.assign.joinTablesInstead")}
-            </button>
-          )}
 
           {note}
         </div>
@@ -344,6 +346,16 @@ const AssignTableDialog = ({
           <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
             {t("common.cancel")}
           </Button>
+          {target.needsReview && target.reservationId && !combining && (
+            <Button
+              variant="outline"
+              disabled={busy}
+              data-testid="assign-resolve"
+              onClick={() => onResolve(target.reservationId as string)}
+            >
+              {t("floor.assign.resolve")}
+            </Button>
+          )}
           <Button
             disabled={confirmDisabled}
             data-testid="assign-confirm"
