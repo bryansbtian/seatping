@@ -38,6 +38,7 @@ import {
   markTableAvailable,
   markTableCleaning,
   movePartyToTable,
+  resolveReservationTable,
   seatParty,
   seatReservedAssignment,
 } from "../../src/lib/floorLiveApi.js";
@@ -486,6 +487,30 @@ describe("assignTable request", () => {
     apiMock.mockRejectedValue(new Error("Table already has an assignment during that time"));
     await expect(assignTable(LOCATION, { tableId: "table-1" })).rejects.toThrow(
       "Table already has an assignment",
+    );
+  });
+});
+
+describe("resolveReservationTable request", () => {
+  beforeEach(() => {
+    apiMock.mockReset();
+    apiMock.mockResolvedValue({});
+  });
+
+  it("posts to the reservation resolve route", async () => {
+    await resolveReservationTable(LOCATION, "res-1");
+
+    const call = apiMock.mock.calls[apiMock.mock.calls.length - 1];
+    expect(call[0]).toBe("/api/floor/loc-1/reservations/res-1/resolve");
+    expect(call[1].method).toBe("POST");
+    expect(JSON.parse(call[1].body)).toEqual({});
+  });
+
+  it("lets a refused resolve reject so the caller can report it", async () => {
+    apiMock.mockRejectedValue(new Error("No table can take this reservation yet."));
+
+    await expect(resolveReservationTable(LOCATION, "res-1")).rejects.toThrow(
+      "No table can take this reservation yet.",
     );
   });
 });

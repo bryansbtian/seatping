@@ -1171,6 +1171,78 @@ describe("queue recommendations", () => {
   });
 });
 
+describe("a reservation that already holds a table", () => {
+  function onlyTableFloor(reservationOverrides: Record<string, unknown>) {
+    return floor({
+      rooms: [makeRoom([makeTable({ id: "t5", name: "T5", capacity: 4, status: "RESERVED" })])],
+      upcomingReservations: [makeReservation(reservationOverrides)],
+    });
+  }
+
+  it("names the table it is already on", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      onlyTableFloor({ tableId: "t5", tableName: "T5", partySize: 4 }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("reservation-res-1"));
+
+    const note = await screen.findByTestId("assign-current-table");
+    expect(note.textContent).toContain("T5");
+  });
+
+  it("says no other table is free rather than none at all", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      onlyTableFloor({ tableId: "t5", tableName: "T5", partySize: 4 }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("reservation-res-1"));
+
+    expect(
+      await screen.findByText("No other table is free for this party right now."),
+    ).toBeTruthy();
+    expect(screen.queryByText("No single table can take this party right now.")).toBeNull();
+  });
+
+  it("leaves the note off a reservation with no table", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [makeRoom([makeTable({ id: "t1", name: "T1", capacity: 4 })])],
+        upcomingReservations: [makeReservation({ partySize: 2 })],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("reservation-res-1"));
+    await screen.findByTestId("assign-table-options");
+
+    expect(screen.queryByTestId("assign-current-table")).toBeNull();
+  });
+
+  it("still lets staff switch to a free table", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [
+          makeRoom([
+            makeTable({ id: "t5", name: "T5", capacity: 4, status: "RESERVED" }),
+            makeTable({ id: "t6", name: "T6", capacity: 4 }),
+          ]),
+        ],
+        upcomingReservations: [makeReservation({ tableId: "t5", tableName: "T5", partySize: 4 })],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("reservation-res-1"));
+
+    expect(await screen.findByTestId("assign-current-table")).toBeTruthy();
+    const options = await screen.findByTestId("assign-table-options");
+    expect(within(options).getByTestId("assign-option-T6")).toBeTruthy();
+    expect(within(options).queryByTestId("assign-option-T5")).toBeNull();
+  });
+});
+
 describe("the join tables toggle", () => {
   function twoTableFloor(partySize: number) {
     return floor({

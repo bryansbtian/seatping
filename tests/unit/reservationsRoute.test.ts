@@ -48,7 +48,7 @@ vi.mock("../../server/lib/prisma.js", () => {
   };
 });
 
-const assignTableForReservation = vi.fn(async () => null);
+const assignOrFlagReservation = vi.fn(async () => null);
 const reassignTableForReservation = vi.fn(async () => null);
 const releaseReservationTables = vi.fn(async () => 0);
 
@@ -56,7 +56,7 @@ vi.mock("../../server/lib/reservationTables.js", async () => {
   const actual = await vi.importActual<any>("../../server/lib/reservationTables.js");
   return {
     ...actual,
-    assignTableForReservation,
+    assignOrFlagReservation,
     reassignTableForReservation,
     releaseReservationTables,
   };
@@ -173,7 +173,7 @@ async function book(body: Record<string, unknown> = {}, headers: Record<string, 
 
 beforeEach(() => {
   process.env.FRONTEND_URL = "https://app.test.invalid";
-  assignTableForReservation.mockReset().mockResolvedValue(null);
+  assignOrFlagReservation.mockReset().mockResolvedValue(null);
   reassignTableForReservation.mockReset().mockResolvedValue(null);
   releaseReservationTables.mockReset().mockResolvedValue(0);
   businessFindUnique.mockReset().mockResolvedValue({
@@ -341,7 +341,7 @@ describe("creating a reservation", () => {
 
 describe("when table assignment goes wrong", () => {
   it("still confirms the booking if the table hold throws", async () => {
-    assignTableForReservation.mockRejectedValue(new Error("floor unavailable"));
+    assignOrFlagReservation.mockRejectedValue(new Error("floor unavailable"));
 
     const res = await book();
 

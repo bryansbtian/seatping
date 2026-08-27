@@ -4,6 +4,7 @@ import type { SmartOccupancy, SmartTable } from "./smartAssign.js";
 import {
   normalizeSettings,
   reservationWindow,
+  formatTimeLabel,
   splitDateTime,
   tablesForWindow,
   zonedWallTimeToMs,
@@ -12,6 +13,8 @@ import {
   type SmartWindowRange,
 } from "./reservations.js";
 import { getLocationTimezone } from "./operatingHours.js";
+import { businessNotificationEmail, restaurantNameForNotification } from "./business.js";
+import { enqueueNotification } from "./notifications.js";
 
 export async function locationHasFloorInventory(locationId: string): Promise<boolean> {
   const table = await prisma.diningTable.findFirst({
@@ -173,8 +176,87 @@ export async function flagReservationForReview(
 export async function clearReservationReview(reservationId: string): Promise<void> {
   await prisma.reservation.update({
     where: { id: reservationId },
-    data: { needsReview: false, needsReviewReason: null },
+    data: { needsReview: false, needsReviewReason: null, needsReviewNotifiedAt: null },
   });
+}
+
+function frontendBase(): string {
+  return (process.env.FRONTEND_URL || "https://www.seatping.biz").replace(/\/$/, "");
+}
+
+export function readableReservationDate(date: string): string {
+  const parsed = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return date;
+  }
+  return parsed.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export async function notifyReservationNeedsReview(reservationId: string): Promise<boolean> {
+  const claimed = await prisma.reservation.updateMany({
+    where: {
+      id: reservationId,
+      needsReview: true,
+      OR: [{ needsReviewNotifiedAt: null }, { needsReviewNotifiedAt: { isSet: false } }],
+    },
+    data: { needsReviewNotifiedAt: new Date() },
+  });
+  if (claimed.count === 0) {
+    return false;
+  }
+
+  const reservation = await prisma.reservation.findUnique({ where: { id: reservationId } });
+  if (!reservation) {
+    return false;
+  }
+
+  const [location, business] = await Promise.all([
+    prisma.location.findUnique({ where: { id: reservation.locationId } }),
+    prisma.business.findUnique({
+      where: { id: reservation.businessId },
+      select: { name: true, email: true },
+    }),
+  ]);
+  if (!location) {
+    return false;
+  }
+
+  const recipient = businessNotificationEmail(location, business);
+  if (!recipient) {
+    console.warn(
+      `[NOTIFY] no business email for reservation ${reservationId}, skipping needs review email`,
+    );
+    return false;
+  }
+
+  const { date, time } = splitDateTime(reservation.reservationDateTime);
+  const guestName =
+    reservation.name || `${reservation.firstName} ${reservation.lastName}`.trim() || "Guest";
+  const base = frontendBase();
+
+  await enqueueNotification({
+    type: "reservation_needs_review",
+    businessEmail: recipient,
+    locationName: restaurantNameForNotification(
+      location,
+      location.displayName || location.name || business?.name || "your restaurant",
+    ),
+    customerName: guestName,
+    dateLabel: readableReservationDate(date),
+    timeLabel: formatTimeLabel(time),
+    partySize: reservation.guestCount,
+    reservationId: reservation.id,
+    reason: reservation.needsReviewReason,
+    reservationsUrl: `${base}/business/reservations`,
+    floorUrl: `${base}/business/floor`,
+  });
+
+  return true;
 }
 
 export async function assignOrFlagReservation(input: {
@@ -192,6 +274,14 @@ export async function assignOrFlagReservation(input: {
     return seated;
   }
   await flagReservationForReview(input.reservationId);
+  try {
+    await notifyReservationNeedsReview(input.reservationId);
+  } catch (notifyErr: any) {
+    console.error(
+      "[NOTIFY] needs review notification failed:",
+      (notifyErr && notifyErr.message) || notifyErr,
+    );
+  }
   return null;
 }
 

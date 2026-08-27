@@ -278,8 +278,9 @@ model Reservation {
   notes               String?
   source              String?
 
-  needsReview       Boolean @default(false)
-  needsReviewReason String?
+  needsReview           Boolean   @default(false)
+  needsReviewReason     String?
+  needsReviewNotifiedAt DateTime?
 
   reminderEmailSentAt DateTime?
   cancelledAt         DateTime?
