@@ -3,6 +3,7 @@ import { api } from "../helpers/app.js";
 import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
 import { seedBusinessWithLocation } from "../helpers/seed.js";
 import { businessCookie } from "../helpers/auth.js";
+import { behavior, sinks } from "../setup/externalMocks.js";
 import {
   DEFAULT_LOCATION_TIMEZONE,
   getNowWallClockInTimezone,
@@ -605,5 +606,108 @@ describe("resolving a reservation that needs review", () => {
       .send({});
 
     expect(response.status).toBe(404);
+  });
+});
+
+function needsReviewEmails() {
+  return sinks().email.filter((mail) => mail.subject.startsWith("Reservation Needs A Table"));
+}
+
+describe("telling the restaurant a reservation needs a table", () => {
+  async function flaggedBooking() {
+    const { business, location, tables } = await setupRestaurant([4]);
+    await book(business, location, { time: "19:00" });
+    const stuck = await book(business, location, { time: "19:00" });
+    return { business, location, tables, stuck };
+  }
+
+  it("emails the business when nothing can be assigned", async () => {
+    const { business, stuck } = await flaggedBooking();
+
+    const mails = needsReviewEmails();
+    expect(mails).toHaveLength(1);
+    expect(mails[0].to).toBe(business.email);
+    expect(mails[0].html).toContain(stuck.body.reservation.id);
+  });
+
+  it("carries the booking details staff need", async () => {
+    const { stuck } = await flaggedBooking();
+
+    const html = needsReviewEmails()[0].html;
+    expect(html).toContain("Needs Review");
+    expect(html).toContain("Party Of");
+    expect(html).toContain("No table was free");
+    expect(html).toContain("/business/reservations");
+    expect(html).toContain("/business/floor");
+  });
+
+  it("leaves out contact details the restaurant does not need", async () => {
+    const { stuck } = await flaggedBooking();
+
+    const html = needsReviewEmails()[0].html;
+    expect(html).not.toContain(stuck.body.reservation.email);
+  });
+
+  it("stays quiet when the booking gets a table", async () => {
+    const { business, location } = await setupRestaurant([4]);
+
+    await book(business, location, { time: "19:00" });
+
+    expect(needsReviewEmails()).toHaveLength(0);
+  });
+
+  it("sends only once for the same unresolved booking", async () => {
+    const { business, location, stuck } = await flaggedBooking();
+
+    const resolve = await (
+      await api()
+    )
+      .post(`/api/floor/${location.id}/reservations/${stuck.body.reservation.id}/resolve`)
+      .set("Cookie", businessCookie(business.id))
+      .send({});
+
+    expect(resolve.status).toBe(409);
+    expect(needsReviewEmails()).toHaveLength(1);
+  });
+
+  it("records that the notice went out", async () => {
+    const { stuck } = await flaggedBooking();
+
+    const stored = await db.reservation.findUniqueOrThrow({
+      where: { id: stuck.body.reservation.id },
+    });
+    expect(stored.needsReviewNotifiedAt).toBeInstanceOf(Date);
+  });
+
+  it("can warn again after the booking is resolved and breaks a second time", async () => {
+    const { business, location, tables, stuck } = await flaggedBooking();
+
+    await (
+      await api()
+    )
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", businessCookie(business.id))
+      .send({ tableId: tables[0].id, reservationId: stuck.body.reservation.id, seatNow: false });
+
+    const cleared = await db.reservation.findUniqueOrThrow({
+      where: { id: stuck.body.reservation.id },
+    });
+    expect(cleared.needsReviewNotifiedAt).toBeNull();
+  });
+
+  it("keeps the reservation when the email cannot be delivered", async () => {
+    behavior().emailSendError = "smtp down";
+    const { business, location } = await setupRestaurant([4]);
+
+    await book(business, location, { time: "19:00" });
+    const stuck = await book(business, location, { time: "19:00" });
+    behavior().emailSendError = null;
+
+    expect(stuck.status).toBe(200);
+    const stored = await db.reservation.findUniqueOrThrow({
+      where: { id: stuck.body.reservation.id },
+    });
+    expect(stored.needsReview).toBe(true);
+    expect(stored.status).toBe("CONFIRMED");
   });
 });

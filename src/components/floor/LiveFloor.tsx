@@ -398,6 +398,7 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
                       partySize: row.partySize,
                       reservationId: row.id,
                       currentTableId: row.tableId,
+                      currentTableName: row.tableName,
                       needsReview: row.needsReview,
                     })
                   }

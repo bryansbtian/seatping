@@ -29,6 +29,7 @@ export type AssignTarget = {
   queueEntryId?: string;
   reservationId?: string;
   currentTableId?: string | null;
+  currentTableName?: string | null;
   recommendedTableId?: string | null;
   needsReview?: boolean;
 };
@@ -108,9 +109,12 @@ const AssignTableDialog = ({
     });
   };
 
-  let body = (
-    <p className="pt-2 text-center text-sm text-slate-500">{t("floor.assign.noTables")}</p>
-  );
+  let emptyMessage = t("floor.assign.noTables");
+  if (target.currentTableName) {
+    emptyMessage = t("floor.assign.noOtherTables");
+  }
+
+  let body = <p className="pt-2 text-center text-sm text-slate-500">{emptyMessage}</p>;
 
   if (!combining && candidates.length > 0) {
     body = (
@@ -260,6 +264,19 @@ const AssignTableDialog = ({
     confirmDisabled = busy || picked.length === 0 || !enoughSeats;
   }
 
+  let currentNote = null;
+  if (target.currentTableName && !combining) {
+    currentNote = (
+      <p
+        data-testid="assign-current-table"
+        className="rounded-xl bg-indigo-50 px-3 py-2 text-xs text-indigo-900"
+        role="status"
+      >
+        {t("floor.assign.currentTable", { table: target.currentTableName })}
+      </p>
+    );
+  }
+
   let note = null;
   if (!combining && chosen) {
     note = (
@@ -337,6 +354,8 @@ const AssignTableDialog = ({
         </DialogHeader>
 
         <div className="space-y-3">
+          {currentNote}
+
           {body}
 
           {note}

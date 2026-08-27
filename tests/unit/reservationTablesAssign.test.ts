@@ -297,7 +297,7 @@ describe("assignOrFlagReservation", () => {
     expect(result?.tableName).toBe("T1");
     expect(reservationUpdate).toHaveBeenCalledWith({
       where: { id: RESERVATION },
-      data: { needsReview: false, needsReviewReason: null },
+      data: { needsReview: false, needsReviewReason: null, needsReviewNotifiedAt: null },
     });
   });
 

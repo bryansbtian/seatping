@@ -201,3 +201,45 @@ export function restaurantNameForNotification(loc: any, fallback: string): strin
     "";
   return profileName || fallback;
 }
+
+function trimmedEmail(value: unknown): string {
+  if (typeof value !== "string") {
+    return "";
+  }
+  const trimmed = value.trim();
+  if (!trimmed.includes("@")) {
+    return "";
+  }
+  return trimmed;
+}
+
+export function businessNotificationEmail(
+  loc: any,
+  business: { email?: string | null; contactEmail?: string | null } | null | undefined,
+): string | null {
+  let profile: any = {};
+  if (loc?.restaurantProfile && typeof loc.restaurantProfile === "object") {
+    profile = loc.restaurantProfile;
+  }
+  let details: any = {};
+  if (profile.details && typeof profile.details === "object") {
+    details = profile.details;
+  }
+
+  const locationEmail = trimmedEmail(details.email) || trimmedEmail(profile.email);
+  if (locationEmail) {
+    return locationEmail;
+  }
+
+  const contactEmail = trimmedEmail(business?.contactEmail);
+  if (contactEmail) {
+    return contactEmail;
+  }
+
+  const accountEmail = trimmedEmail(business?.email);
+  if (accountEmail) {
+    return accountEmail;
+  }
+
+  return null;
+}
