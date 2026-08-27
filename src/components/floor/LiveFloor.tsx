@@ -18,6 +18,7 @@ import {
 } from "@/lib/floorLive";
 import {
   assignTable,
+  resolveReservationTable,
   completeVisit,
   fetchLiveFloor,
   markTableAvailable,
@@ -203,6 +204,17 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
     [assignTarget, locationId, runAction],
   );
 
+  const handleResolveReservation = useCallback(
+    async (reservationId: string) => {
+      await runAction(
+        () => resolveReservationTable(locationId, reservationId),
+        "floor.assign.toast.resolved",
+      );
+      setAssignTarget(null);
+    },
+    [locationId, runAction],
+  );
+
   const handleSeatReserved = useCallback(
     async (assignmentId: string) => {
       await runAction(
@@ -386,6 +398,7 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
                       partySize: row.partySize,
                       reservationId: row.id,
                       currentTableId: row.tableId,
+                      needsReview: row.needsReview,
                     })
                   }
                 />
@@ -524,6 +537,7 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
           }
         }}
         onConfirm={handleAssignTable}
+        onResolve={handleResolveReservation}
       />
     </div>
   );

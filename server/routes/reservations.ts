@@ -15,7 +15,7 @@ import {
   type ReservationSettings,
 } from "../lib/reservations.js";
 import {
-  assignTableForReservation,
+  assignOrFlagReservation,
   loadReservationInventory,
   locationHasFloorInventory,
   reassignTableForReservation,
@@ -300,7 +300,6 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
       partySize: size,
       timeZone: getLocationTimezone(location),
       openingHours: getLocationOpeningHours(location),
-      inventory,
     });
     if (error) {
       return res.status(400).json({ error });
@@ -379,7 +378,7 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
       throw createErr;
     }
 
-    await assignTableForReservation({
+    await assignOrFlagReservation({
       businessId: business.id,
       locationId: location.id,
       reservationId: row.id,
@@ -519,7 +518,6 @@ router.put("/manage/:manageToken", async (req, res) => {
       excludeId: reservation.id,
       timeZone: getLocationTimezone(location),
       openingHours: getLocationOpeningHours(location),
-      inventory: await inventoryForLocation(location.id, reservation.id),
     });
     if (error) {
       return res.status(400).json({ error });

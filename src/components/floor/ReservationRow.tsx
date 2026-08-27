@@ -18,6 +18,16 @@ const ReservationRow = ({ reservation, busy, onSelect }: ReservationRowProps) =>
       </span>
     );
   }
+  if (reservation.needsReview) {
+    badge = (
+      <span
+        data-testid={`reservation-review-${reservation.id}`}
+        className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-900"
+      >
+        {t("floor.live.needsReview")}
+      </span>
+    );
+  }
 
   return (
     <li>
@@ -37,6 +47,11 @@ const ReservationRow = ({ reservation, busy, onSelect }: ReservationRowProps) =>
           <span className="truncate text-sm font-semibold leading-tight text-slate-800">
             {reservation.name}
           </span>
+          {reservation.needsReview && (
+            <span className="truncate text-[11px] leading-tight text-amber-700">
+              {t("floor.live.noTableAssigned")}
+            </span>
+          )}
         </span>
       </button>
     </li>

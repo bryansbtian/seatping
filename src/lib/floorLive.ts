@@ -82,6 +82,7 @@ export type UpcomingReservation = {
   status: string;
   tableId: string | null;
   tableName: string | null;
+  needsReview: boolean;
 };
 
 export type LiveFloor = {

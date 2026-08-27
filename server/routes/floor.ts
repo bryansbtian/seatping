@@ -1,5 +1,11 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { prisma } from "../lib/prisma.js";
+import { normalizeSettings } from "../lib/reservations.js";
+import {
+  clearReservationReview,
+  reassignTableForReservation,
+  windowForReservation,
+} from "../lib/reservationTables.js";
 import { requireBusiness } from "../lib/auth.js";
 import { withWriteRetry } from "../lib/dbRetry.js";
 import {
@@ -1014,6 +1020,10 @@ router.post("/:locationId/assign", loadOwnedLocation, async (req: Request, res: 
       return sendFailure(res, outcome);
     }
 
+    if (reservationId.value) {
+      await clearReservationReview(reservationId.value);
+    }
+
     let status = 201;
     if (outcome.value.moved) {
       status = 200;
@@ -1027,6 +1037,54 @@ router.post("/:locationId/assign", loadOwnedLocation, async (req: Request, res: 
     return res.status(500).json({ error: "Server error" });
   }
 });
+
+router.post(
+  "/:locationId/reservations/:reservationId/resolve",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+      const reservationId = String(req.params.reservationId || "").trim();
+      if (!OBJECT_ID_RE.test(reservationId)) {
+        return res.status(404).json({ error: "Reservation not found or access denied" });
+      }
+
+      const reservation = await prisma.reservation.findFirst({
+        where: { id: reservationId, locationId: location.id },
+      });
+      if (!reservation) {
+        return res.status(404).json({ error: "Reservation not found or access denied" });
+      }
+      if (["CANCELLED", "COMPLETED", "NO_SHOW"].includes(reservation.status)) {
+        return res.status(409).json({ error: "That reservation is already closed" });
+      }
+
+      const full = await prisma.location.findUniqueOrThrow({ where: { id: location.id } });
+      const settings = normalizeSettings(full.reservationSettings);
+      const seated = await reassignTableForReservation({
+        businessId: location.businessId,
+        locationId: location.id,
+        reservationId: reservation.id,
+        partySize: reservation.guestCount,
+        window: windowForReservation(full, reservation.reservationDateTime, settings),
+      });
+
+      if (!seated) {
+        return res.status(409).json({
+          error: "No table can take this reservation yet. Choose tables manually to resolve it.",
+        });
+      }
+
+      return res.json({
+        assignment: serializeAssignment(seated.assignment),
+        tableName: seated.tableName,
+      });
+    } catch (err: any) {
+      console.error("[floor] resolve reservation error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
 
 router.get("/:locationId/assignments", loadOwnedLocation, async (req: Request, res: Response) => {
   try {

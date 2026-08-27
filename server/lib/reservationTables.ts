@@ -158,6 +158,43 @@ export async function assignTableForReservation(input: {
   return null;
 }
 
+export const NEEDS_REVIEW_NO_TABLE = "NO_TABLE";
+
+export async function flagReservationForReview(
+  reservationId: string,
+  reason: string = NEEDS_REVIEW_NO_TABLE,
+): Promise<void> {
+  await prisma.reservation.update({
+    where: { id: reservationId },
+    data: { needsReview: true, needsReviewReason: reason },
+  });
+}
+
+export async function clearReservationReview(reservationId: string): Promise<void> {
+  await prisma.reservation.update({
+    where: { id: reservationId },
+    data: { needsReview: false, needsReviewReason: null },
+  });
+}
+
+export async function assignOrFlagReservation(input: {
+  businessId: string;
+  locationId: string;
+  reservationId: string;
+  partySize: number;
+  window: SmartWindowRange;
+  now?: Date;
+  inventory?: ReservationInventory | null;
+}): Promise<{ assignment: any; tableName: string } | null> {
+  const seated = await assignTableForReservation(input);
+  if (seated) {
+    await clearReservationReview(input.reservationId);
+    return seated;
+  }
+  await flagReservationForReview(input.reservationId);
+  return null;
+}
+
 export async function releaseReservationTables(reservationId: string): Promise<number> {
   const result = await prisma.tableAssignment.updateMany({
     where: {
@@ -181,5 +218,5 @@ export async function reassignTableForReservation(input: {
     return null;
   }
   await releaseReservationTables(input.reservationId);
-  return assignTableForReservation(input);
+  return assignOrFlagReservation(input);
 }

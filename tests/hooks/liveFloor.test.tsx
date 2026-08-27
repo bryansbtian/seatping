@@ -20,6 +20,7 @@ const liveApi = vi.hoisted(() => {
     markTableCleaning: vi.fn(),
     markTableAvailable: vi.fn(),
     assignTable: vi.fn(),
+    resolveReservationTable: vi.fn(),
   };
 });
 
@@ -116,6 +117,7 @@ function makeReservation(overrides: Partial<UpcomingReservation> = {}): Upcoming
     status: "CONFIRMED",
     tableId: null,
     tableName: null,
+    needsReview: false,
     ...overrides,
   };
 }
@@ -1166,5 +1168,140 @@ describe("queue recommendations", () => {
 
     expect(liveApi.assignTable).not.toHaveBeenCalled();
     expect(liveApi.seatParty).not.toHaveBeenCalled();
+  });
+});
+
+describe("the join tables toggle", () => {
+  function twoTableFloor(partySize: number) {
+    return floor({
+      rooms: [
+        makeRoom([
+          makeTable({ id: "t1", name: "T1", capacity: 4 }),
+          makeTable({ id: "t2", name: "T2", capacity: 4 }),
+        ]),
+      ],
+      waitingParties: [makeParty({ partySize })],
+    });
+  }
+
+  it("sits in the header beside the party details", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(twoTableFloor(2));
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+
+    const toggle = await screen.findByTestId("assign-join-toggle");
+    expect(toggle.textContent).toBe("Join Tables Instead");
+    expect(toggle.closest("[data-testid='assign-table-options']")).toBeNull();
+    expect(within(toggle.parentElement as HTMLElement).getByText(/Party Of 2/)).toBeTruthy();
+  });
+
+  it("swaps to the single table label once joining", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(twoTableFloor(2));
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    fireEvent.click(await screen.findByTestId("assign-join-toggle"));
+
+    const toggle = await screen.findByTestId("assign-join-toggle");
+    expect(toggle.textContent).toBe("Use a Single Table Instead");
+    expect(within(toggle.parentElement as HTMLElement).getByText(/Party Of 2/)).toBeTruthy();
+  });
+
+  it("takes the toggle back to the single table list", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(twoTableFloor(2));
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    fireEvent.click(await screen.findByTestId("assign-join-toggle"));
+    await screen.findByTestId("assign-join-options");
+
+    fireEvent.click(await screen.findByTestId("assign-join-toggle"));
+
+    expect(await screen.findByTestId("assign-table-options")).toBeTruthy();
+  });
+
+  it("is left out when the primary action already offers joining", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(twoTableFloor(7));
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    await screen.findByTestId("assign-confirm");
+
+    expect(screen.queryByTestId("assign-join-toggle")).toBeNull();
+  });
+});
+
+describe("reservations that need review", () => {
+  it("marks the row so staff can spot it", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({ upcomingReservations: [makeReservation({ needsReview: true })] }),
+    );
+    await renderFloor();
+
+    expect(await screen.findByTestId("reservation-review-res-1")).toBeTruthy();
+    expect(screen.getByText("No Table Assigned")).toBeTruthy();
+  });
+
+  it("leaves a seated reservation unmarked", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        upcomingReservations: [makeReservation({ tableId: "table-1", tableName: "T1" })],
+      }),
+    );
+    await renderFloor();
+
+    await screen.findByTestId("reservation-res-1");
+    expect(screen.queryByTestId("reservation-review-res-1")).toBeNull();
+  });
+
+  it("offers the smart assign action only for a flagged reservation", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({ upcomingReservations: [makeReservation({ needsReview: true })] }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("reservation-res-1"));
+
+    expect(await screen.findByTestId("assign-resolve")).toBeTruthy();
+  });
+
+  it("hides the smart assign action for a healthy reservation", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(floor({ upcomingReservations: [makeReservation()] }));
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("reservation-res-1"));
+    await screen.findByTestId("assign-confirm");
+
+    expect(screen.queryByTestId("assign-resolve")).toBeNull();
+  });
+
+  it("asks the api to resolve the table", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({ upcomingReservations: [makeReservation({ needsReview: true })] }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("reservation-res-1"));
+    fireEvent.click(await screen.findByTestId("assign-resolve"));
+
+    await waitFor(() =>
+      expect(liveApi.resolveReservationTable).toHaveBeenCalledWith("loc-1", "res-1"),
+    );
+  });
+
+  it("keeps the dialog open when nothing can be resolved", async () => {
+    liveApi.resolveReservationTable.mockRejectedValue(
+      new Error("No table can take this reservation yet."),
+    );
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({ upcomingReservations: [makeReservation({ needsReview: true })] }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("reservation-res-1"));
+    fireEvent.click(await screen.findByTestId("assign-resolve"));
+
+    expect(await screen.findByTestId("assign-resolve")).toBeTruthy();
   });
 });

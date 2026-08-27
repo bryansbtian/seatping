@@ -145,24 +145,36 @@ describe("assigning a table when a reservation is booked", () => {
     expect(one.tableId).not.toBe(two.tableId);
   });
 
-  it("refuses a booking when the only table is already taken", async () => {
+  it("keeps a booking for review when the only table is already taken", async () => {
     const { business, location } = await setupRestaurant([4]);
 
     await book(business, location, {});
     const second = await book(business, location, {});
 
-    expect(second.status).toBe(400);
-    expect(second.body.error).toContain("do not have a table free");
+    expect(second.status).toBe(200);
+    expect(await assignmentsFor(second.body.reservation.id)).toHaveLength(0);
+
+    const stored = await db.reservation.findUniqueOrThrow({
+      where: { id: second.body.reservation.id },
+    });
+    expect(stored.needsReview).toBe(true);
+    expect(stored.needsReviewReason).toBe("NO_TABLE");
+    expect(stored.status).toBe("CONFIRMED");
   });
 
-  it("refuses a booking that overlaps the tail of an existing one", async () => {
+  it("keeps a booking for review when it overlaps the tail of an existing one", async () => {
     const { business, location } = await setupRestaurant([4]);
 
     await book(business, location, { time: "19:00" });
     const overlapping = await book(business, location, { time: "20:00" });
 
-    expect(overlapping.status).toBe(400);
-    expect(overlapping.body.error).toContain("do not have a table free");
+    expect(overlapping.status).toBe(200);
+    expect(await assignmentsFor(overlapping.body.reservation.id)).toHaveLength(0);
+
+    const stored = await db.reservation.findUniqueOrThrow({
+      where: { id: overlapping.body.reservation.id },
+    });
+    expect(stored.needsReview).toBe(true);
   });
 
   it("accepts a booking that starts once the previous turn is over", async () => {
@@ -175,13 +187,30 @@ describe("assigning a table when a reservation is booked", () => {
     expect(await assignmentsFor(later.body.reservation.id)).toHaveLength(1);
   });
 
-  it("refuses a party larger than every table", async () => {
+  it("keeps a party larger than every table for review", async () => {
     const { business, location } = await setupRestaurant([4, 4]);
 
     const response = await book(business, location, { partySize: 7 });
 
-    expect(response.status).toBe(400);
-    expect(response.body.error).toContain("do not have a table free");
+    expect(response.status).toBe(200);
+    expect(await assignmentsFor(response.body.reservation.id)).toHaveLength(0);
+
+    const stored = await db.reservation.findUniqueOrThrow({
+      where: { id: response.body.reservation.id },
+    });
+    expect(stored.needsReview).toBe(true);
+  });
+
+  it("leaves a booking that got a table clear of review", async () => {
+    const { business, location } = await setupRestaurant([4]);
+
+    const response = await book(business, location, {});
+
+    const stored = await db.reservation.findUniqueOrThrow({
+      where: { id: response.body.reservation.id },
+    });
+    expect(stored.needsReview).toBe(false);
+    expect(stored.needsReviewReason).toBeNull();
   });
 
   it("skips a blocked table", async () => {
@@ -410,5 +439,171 @@ describe("staff actions on a reserved table", () => {
       .send({ tableId: tables[1].id });
 
     expect(response.status).toBe(409);
+  });
+});
+
+describe("resolving a reservation that needs review", () => {
+  async function flagged() {
+    const { business, location, tables } = await setupRestaurant([4]);
+    const holder = await book(business, location, { time: "19:00" });
+    const stuck = await book(business, location, { time: "19:00" });
+    return { business, location, tables, holder, stuck };
+  }
+
+  it("finds a table once one frees up", async () => {
+    const { business, location, holder, stuck } = await flagged();
+    const request = await api();
+    await request.post(`/api/reservations/manage/${holder.body.manageToken}/cancel`);
+
+    const response = await request
+      .post(`/api/floor/${location.id}/reservations/${stuck.body.reservation.id}/resolve`)
+      .set("Cookie", businessCookie(business.id))
+      .send({});
+
+    expect(response.status).toBe(200);
+    expect(response.body.tableName).toBe("T1");
+
+    const stored = await db.reservation.findUniqueOrThrow({
+      where: { id: stuck.body.reservation.id },
+    });
+    expect(stored.needsReview).toBe(false);
+    expect(stored.needsReviewReason).toBeNull();
+  });
+
+  it("stores the table inventory for the resolved booking", async () => {
+    const { business, location, holder, stuck } = await flagged();
+    const request = await api();
+    await request.post(`/api/reservations/manage/${holder.body.manageToken}/cancel`);
+
+    await request
+      .post(`/api/floor/${location.id}/reservations/${stuck.body.reservation.id}/resolve`)
+      .set("Cookie", businessCookie(business.id))
+      .send({});
+
+    const active = await db.tableAssignment.findMany({
+      where: { reservationId: stuck.body.reservation.id, status: "RESERVED" },
+    });
+    expect(active).toHaveLength(1);
+    expect(active[0].source).toBe("SMART");
+  });
+
+  it("says so when there is still nothing free", async () => {
+    const { business, location, stuck } = await flagged();
+
+    const response = await (
+      await api()
+    )
+      .post(`/api/floor/${location.id}/reservations/${stuck.body.reservation.id}/resolve`)
+      .set("Cookie", businessCookie(business.id))
+      .send({});
+
+    expect(response.status).toBe(409);
+    expect(response.body.error).toContain("No table can take this reservation yet");
+
+    const stored = await db.reservation.findUniqueOrThrow({
+      where: { id: stuck.body.reservation.id },
+    });
+    expect(stored.needsReview).toBe(true);
+    expect(await assignmentsFor(stuck.body.reservation.id)).toHaveLength(0);
+  });
+
+  it("clears the flag when staff pick tables by hand", async () => {
+    const { business, location, tables, stuck } = await flagged();
+
+    const response = await (
+      await api()
+    )
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", businessCookie(business.id))
+      .send({ tableId: tables[0].id, reservationId: stuck.body.reservation.id, seatNow: false });
+
+    expect(response.status).toBe(201);
+
+    const stored = await db.reservation.findUniqueOrThrow({
+      where: { id: stuck.body.reservation.id },
+    });
+    expect(stored.needsReview).toBe(false);
+  });
+
+  it("shows the flag on the live floor until it is resolved", async () => {
+    const { business, location, tables } = await setupRestaurant([4]);
+    const nowLocal = getNowWallClockInTimezone(DEFAULT_LOCATION_TIMEZONE);
+    const stuck = await db.reservation.create({
+      data: {
+        manageToken: `tok-${Date.now()}`,
+        locationId: location.id,
+        businessId: business.id,
+        businessUsername: business.username,
+        firstName: "John",
+        lastName: "Cena",
+        name: "John Cena",
+        email: `review-${Date.now()}@example.com`,
+        guestCount: 3,
+        reservationDateTime: nowLocal.slice(0, 16),
+        status: "CONFIRMED",
+        needsReview: true,
+        needsReviewReason: "NO_TABLE",
+      },
+    });
+
+    const request = await api();
+    const cookie = businessCookie(business.id);
+
+    const before = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    const flaggedRow = before.body.upcomingReservations.find((row: any) => row.id === stuck.id);
+    expect(flaggedRow.needsReview).toBe(true);
+    expect(flaggedRow.tableName).toBeNull();
+
+    const resolved = await request
+      .post(`/api/floor/${location.id}/reservations/${stuck.id}/resolve`)
+      .set("Cookie", cookie)
+      .send({});
+    expect(resolved.status).toBe(200);
+
+    const after = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    const cleared = after.body.upcomingReservations.find((row: any) => row.id === stuck.id);
+    expect(cleared.needsReview).toBe(false);
+    expect(cleared.tableId).toBe(tables[0].id);
+  });
+
+  it("refuses to resolve a cancelled reservation", async () => {
+    const { business, location, stuck } = await flagged();
+    const request = await api();
+    await request.post(`/api/reservations/manage/${stuck.body.manageToken}/cancel`);
+
+    const response = await request
+      .post(`/api/floor/${location.id}/reservations/${stuck.body.reservation.id}/resolve`)
+      .set("Cookie", businessCookie(business.id))
+      .send({});
+
+    expect(response.status).toBe(409);
+    expect(response.body.error).toContain("already closed");
+  });
+
+  it("refuses a reservation from another business", async () => {
+    const { stuck } = await flagged();
+    const other = await setupRestaurant([4]);
+
+    const response = await (
+      await api()
+    )
+      .post(`/api/floor/${other.location.id}/reservations/${stuck.body.reservation.id}/resolve`)
+      .set("Cookie", businessCookie(other.business.id))
+      .send({});
+
+    expect(response.status).toBe(404);
+  });
+
+  it("refuses a malformed reservation id", async () => {
+    const { business, location } = await setupRestaurant([4]);
+
+    const response = await (
+      await api()
+    )
+      .post(`/api/floor/${location.id}/reservations/not-an-id/resolve`)
+      .set("Cookie", businessCookie(business.id))
+      .send({});
+
+    expect(response.status).toBe(404);
   });
 });
