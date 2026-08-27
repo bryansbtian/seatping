@@ -17,9 +17,6 @@ const floorApi = vi.hoisted(() => {
     deleteTable: vi.fn(),
     blockTable: vi.fn(),
     unblockTable: vi.fn(),
-    fetchCombinations: vi.fn(),
-    createCombination: vi.fn(),
-    deleteCombination: vi.fn(),
   };
 });
 
@@ -84,9 +81,6 @@ beforeEach(() => {
   for (const fn of Object.values(floorApi)) {
     fn.mockReset();
   }
-  floorApi.fetchCombinations.mockResolvedValue([]);
-  floorApi.createCombination.mockResolvedValue({});
-  floorApi.deleteCombination.mockResolvedValue(undefined);
   toastSpy.mockReset();
   vi.stubGlobal(
     "ResizeObserver",
@@ -420,12 +414,7 @@ describe("resetting the floor", () => {
 
     await waitFor(() => expect(floorApi.updateRoom).toHaveBeenCalled());
     const touched = Object.keys(floorApi).filter((name) => floorApi[name].mock.calls.length > 0);
-    expect(touched.sort()).toEqual([
-      "deleteTable",
-      "fetchCombinations",
-      "fetchRooms",
-      "updateRoom",
-    ]);
+    expect(touched.sort()).toEqual(["deleteTable", "fetchRooms", "updateRoom"]);
   });
 });
 
@@ -602,11 +591,6 @@ describe("live assignments are left alone", () => {
     await waitFor(() => expect(floorApi.updateTable).toHaveBeenCalled());
 
     const touched = Object.keys(floorApi).filter((name) => floorApi[name].mock.calls.length > 0);
-    expect(touched.sort()).toEqual([
-      "createTable",
-      "fetchCombinations",
-      "fetchRooms",
-      "updateTable",
-    ]);
+    expect(touched.sort()).toEqual(["createTable", "fetchRooms", "updateTable"]);
   });
 });

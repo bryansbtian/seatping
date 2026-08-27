@@ -124,7 +124,6 @@ function floor(overrides: Partial<LiveFloorData> = {}): LiveFloorData {
   return {
     now: NOW,
     rooms: [makeRoom([makeTable()])],
-    combinations: [],
     waitingParties: [],
     upcomingReservations: [],
     ...overrides,
@@ -876,8 +875,181 @@ describe("manual table assignment", () => {
 
     fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
 
-    expect(await screen.findByText("No table can take this party right now.")).toBeTruthy();
+    expect(await screen.findByText("No single table can take this party right now.")).toBeTruthy();
+
+    const confirm = await screen.findByTestId("assign-confirm");
+    expect(confirm.textContent).toContain("Join Tables");
+    expect(confirm.hasAttribute("disabled")).toBe(false);
+  });
+
+  it("opens the join picker from the no match action", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [makeRoom([makeTable({ id: "t1", name: "T1", capacity: 4 })])],
+        waitingParties: [makeParty({ partySize: 8 })],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    fireEvent.click(await screen.findByTestId("assign-confirm"));
+
+    const options = await screen.findByTestId("assign-join-options");
+    expect(within(options).getByTestId("assign-join-T1")).toBeTruthy();
+  });
+
+  it("only confirms a join once the chosen tables seat the party", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [
+          makeRoom([
+            makeTable({ id: "t1", name: "T1", capacity: 4 }),
+            makeTable({ id: "t2", name: "T2", capacity: 4 }),
+          ]),
+        ],
+        waitingParties: [makeParty({ partySize: 7 })],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    fireEvent.click(await screen.findByTestId("assign-confirm"));
+
+    fireEvent.click(await screen.findByTestId("assign-join-T1"));
     expect((await screen.findByTestId("assign-confirm")).hasAttribute("disabled")).toBe(true);
+
+    fireEvent.click(await screen.findByTestId("assign-join-T2"));
+    const confirm = await screen.findByTestId("assign-confirm");
+    expect(confirm.hasAttribute("disabled")).toBe(false);
+    expect(confirm.textContent).toContain("T1 + T2");
+  });
+
+  it("disables tables in another room once one is chosen", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [
+          makeRoom([makeTable({ id: "t6", name: "T6", capacity: 4 })]),
+          makeRoom([makeTable({ id: "t8", name: "T8", capacity: 4 })], {
+            id: "room-2",
+            name: "Patio",
+          }),
+        ],
+        waitingParties: [makeParty({ partySize: 7 })],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    fireEvent.click(await screen.findByTestId("assign-confirm"));
+
+    expect((await screen.findByTestId("assign-join-T8")).hasAttribute("disabled")).toBe(false);
+
+    fireEvent.click(await screen.findByTestId("assign-join-T6"));
+
+    expect((await screen.findByTestId("assign-join-T8")).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("keeps tables in the same room selectable", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [
+          makeRoom([
+            makeTable({ id: "t6", name: "T6", capacity: 4 }),
+            makeTable({ id: "t7", name: "T7", capacity: 4 }),
+          ]),
+          makeRoom([makeTable({ id: "t8", name: "T8", capacity: 4 })], {
+            id: "room-2",
+            name: "Patio",
+          }),
+        ],
+        waitingParties: [makeParty({ partySize: 7 })],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    fireEvent.click(await screen.findByTestId("assign-confirm"));
+    fireEvent.click(await screen.findByTestId("assign-join-T6"));
+
+    expect((await screen.findByTestId("assign-join-T7")).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("frees every room again once the selection is cleared", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [
+          makeRoom([makeTable({ id: "t6", name: "T6", capacity: 4 })]),
+          makeRoom([makeTable({ id: "t8", name: "T8", capacity: 4 })], {
+            id: "room-2",
+            name: "Patio",
+          }),
+        ],
+        waitingParties: [makeParty({ partySize: 7 })],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    fireEvent.click(await screen.findByTestId("assign-confirm"));
+    fireEvent.click(await screen.findByTestId("assign-join-T6"));
+    expect((await screen.findByTestId("assign-join-T8")).hasAttribute("disabled")).toBe(true);
+
+    fireEvent.click(await screen.findByTestId("assign-join-T6"));
+
+    expect((await screen.findByTestId("assign-join-T8")).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("re anchors the room when the first choice is dropped", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [
+          makeRoom([
+            makeTable({ id: "t6", name: "T6", capacity: 4 }),
+            makeTable({ id: "t7", name: "T7", capacity: 4 }),
+          ]),
+          makeRoom([makeTable({ id: "t8", name: "T8", capacity: 4 })], {
+            id: "room-2",
+            name: "Patio",
+          }),
+        ],
+        waitingParties: [makeParty({ partySize: 7 })],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    fireEvent.click(await screen.findByTestId("assign-confirm"));
+    fireEvent.click(await screen.findByTestId("assign-join-T6"));
+    fireEvent.click(await screen.findByTestId("assign-join-T7"));
+    fireEvent.click(await screen.findByTestId("assign-join-T6"));
+
+    expect((await screen.findByTestId("assign-join-T8")).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("sends every joined table to the api", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [
+          makeRoom([
+            makeTable({ id: "t1", name: "T1", capacity: 4 }),
+            makeTable({ id: "t2", name: "T2", capacity: 4 }),
+          ]),
+        ],
+        waitingParties: [makeParty({ partySize: 7 })],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+    fireEvent.click(await screen.findByTestId("assign-confirm"));
+    fireEvent.click(await screen.findByTestId("assign-join-T1"));
+    fireEvent.click(await screen.findByTestId("assign-join-T2"));
+    fireEvent.click(await screen.findByTestId("assign-confirm"));
+
+    await waitFor(() => expect(liveApi.assignTable).toHaveBeenCalled());
+    const body = liveApi.assignTable.mock.calls[0][1];
+    expect(body.tableIds).toEqual(["t1", "t2"]);
+    expect(body.tableId).toBeUndefined();
   });
 
   it("reports a rejected assignment without closing the view", async () => {

@@ -38,6 +38,8 @@ type ReservationSettings = {
   maxReservedGuestsPerHour: number;
   bookingWindowDays: number;
   minNoticeMinutes: number;
+  defaultReservationDurationMinutes: number;
+  reservationHoldMinutes: number;
   confirmationMode: "auto" | "manual";
   cancellationPolicy: string;
 };
@@ -46,8 +48,8 @@ type Slot = {
   time: string;
   label: string;
   available: boolean;
-  remaining: number;
-  reason?: "full" | "too_soon" | "party_too_large" | "closed";
+  remaining: number | null;
+  reason?: "full" | "too_soon" | "party_too_large" | "closed" | "no_table";
 };
 
 type AvailabilityNotice = {
@@ -325,10 +327,14 @@ export default function ReservationBooking({
             {slots.map((s) => {
               const selected = s.time === time;
               let slotTitle: string;
-              if (s.available) {
+              if (s.available && s.remaining !== null) {
                 slotTitle = `${s.remaining} seats left this hour`;
+              } else if (s.available) {
+                slotTitle = "Available";
               } else if (s.reason === "full") {
                 slotTitle = `${s.label} is fully booked`;
+              } else if (s.reason === "no_table") {
+                slotTitle = "No table free for this party size";
               } else if (s.reason === "too_soon") {
                 slotTitle = "Too close to booking time";
               } else {

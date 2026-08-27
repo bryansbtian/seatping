@@ -178,33 +178,3 @@ export async function unblockTable(locationId: string, tableId: string): Promise
   });
   return response.table;
 }
-
-export type TableCombination = {
-  id: string;
-  locationId: string;
-  name: string;
-  tableIds: string[];
-  minimumPartySize: number;
-  isActive: boolean;
-  capacity: number;
-};
-
-export async function fetchCombinations(locationId: string): Promise<TableCombination[]> {
-  const response = await api(`${base(locationId)}/combinations`);
-  return response.combinations ?? [];
-}
-
-export async function createCombination(
-  locationId: string,
-  body: { tableIds: string[]; name?: string; minimumPartySize?: number },
-): Promise<TableCombination> {
-  const response = await api(`${base(locationId)}/combinations`, {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-  return response.combination;
-}
-
-export async function deleteCombination(locationId: string, combinationId: string): Promise<void> {
-  await api(`${base(locationId)}/combinations/${combinationId}`, { method: "DELETE" });
-}

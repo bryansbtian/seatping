@@ -29,7 +29,10 @@ import {
 import { blockTable, unblockTable } from "@/lib/floorApi";
 import LiveFloorCanvas from "@/components/floor/LiveFloorCanvas";
 import LiveTableDetail from "@/components/floor/LiveTableDetail";
-import AssignTableDialog, { type AssignTarget } from "@/components/floor/AssignTableDialog";
+import AssignTableDialog, {
+  type AssignSelection,
+  type AssignTarget,
+} from "@/components/floor/AssignTableDialog";
 import ReservationRow from "@/components/floor/ReservationRow";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +41,6 @@ const POLL_INTERVAL_MS = 15000;
 const EMPTY_FLOOR: LiveFloorData = {
   now: "",
   rooms: [],
-  combinations: [],
   waitingParties: [],
   upcomingReservations: [],
 };
@@ -168,21 +170,21 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
   );
 
   const handleAssignTable = useCallback(
-    async (candidate: TableCandidate) => {
+    async (selection: AssignSelection) => {
       if (!assignTarget) {
         return;
       }
       const body: {
         tableId?: string;
-        combinationId?: string;
+        tableIds?: string[];
         partySize: number;
         queueEntryId?: string;
         reservationId?: string;
       } = { partySize: assignTarget.partySize };
-      if (candidate.kind === "COMBINATION") {
-        body.combinationId = candidate.id;
+      if (selection.tableIds.length > 1) {
+        body.tableIds = selection.tableIds;
       } else {
-        body.tableId = candidate.id;
+        body.tableId = selection.tableIds[0];
       }
       if (assignTarget.queueEntryId) {
         body.queueEntryId = assignTarget.queueEntryId;
@@ -515,7 +517,6 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
         open={assignTarget !== null}
         target={assignTarget}
         rooms={rooms}
-        combinations={data.combinations}
         busy={busy}
         onOpenChange={(next) => {
           if (!next) {

@@ -88,18 +88,27 @@ type ReservationSettings = {
   maxReservedGuestsPerHour: number;
   bookingWindowDays: number;
   minNoticeMinutes: number;
+  defaultReservationDurationMinutes: number;
+  reservationHoldMinutes: number;
   confirmationMode: "auto" | "manual";
   cancellationPolicy: string;
 };
 
 type ReservationSettingsForm = Omit<
   ReservationSettings,
-  "maxPartySize" | "maxReservedGuestsPerHour" | "bookingWindowDays" | "minNoticeMinutes"
+  | "maxPartySize"
+  | "maxReservedGuestsPerHour"
+  | "bookingWindowDays"
+  | "minNoticeMinutes"
+  | "defaultReservationDurationMinutes"
+  | "reservationHoldMinutes"
 > & {
   maxPartySize: number | "";
   maxReservedGuestsPerHour: number | "";
   bookingWindowDays: number | "";
   minNoticeMinutes: number | "";
+  defaultReservationDurationMinutes: number | "";
+  reservationHoldMinutes: number | "";
 };
 
 const toNumberOrBlank = (raw: string): number | "" => {
@@ -120,6 +129,8 @@ const DEFAULT_RESERVATION_SETTINGS: ReservationSettings = {
   maxReservedGuestsPerHour: 40,
   bookingWindowDays: 30,
   minNoticeMinutes: 60,
+  defaultReservationDurationMinutes: 90,
+  reservationHoldMinutes: 15,
   confirmationMode: "auto",
   cancellationPolicy: "",
 };
@@ -440,7 +451,9 @@ export default function RestaurantProfileEditor({
       (reservationSettings.maxPartySize === "" ||
         reservationSettings.maxReservedGuestsPerHour === "" ||
         reservationSettings.bookingWindowDays === "" ||
-        reservationSettings.minNoticeMinutes === "")
+        reservationSettings.minNoticeMinutes === "" ||
+        reservationSettings.defaultReservationDurationMinutes === "" ||
+        reservationSettings.reservationHoldMinutes === "")
     ) {
       toast({
         title: t("rpe.toast.reservationNumbersRequired.title"),
@@ -521,12 +534,26 @@ export default function RestaurantProfileEditor({
     } else {
       normalizedMinNoticeMinutes = reservationSettings.minNoticeMinutes;
     }
+    let normalizedDuration: number;
+    if (reservationSettings.defaultReservationDurationMinutes === "") {
+      normalizedDuration = DEFAULT_RESERVATION_SETTINGS.defaultReservationDurationMinutes;
+    } else {
+      normalizedDuration = reservationSettings.defaultReservationDurationMinutes;
+    }
+    let normalizedHold: number;
+    if (reservationSettings.reservationHoldMinutes === "") {
+      normalizedHold = DEFAULT_RESERVATION_SETTINGS.reservationHoldMinutes;
+    } else {
+      normalizedHold = reservationSettings.reservationHoldMinutes;
+    }
     const normalizedReservationSettings: ReservationSettings = {
       ...reservationSettings,
       maxPartySize: normalizedMaxPartySize,
       maxReservedGuestsPerHour: normalizedMaxReservedGuestsPerHour,
       bookingWindowDays: normalizedBookingWindowDays,
       minNoticeMinutes: normalizedMinNoticeMinutes,
+      defaultReservationDurationMinutes: normalizedDuration,
+      reservationHoldMinutes: normalizedHold,
       confirmationMode: "auto",
     };
 
@@ -961,7 +988,7 @@ export default function RestaurantProfileEditor({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="maxPartySize">{t("rpe.res.maxGuests")}</Label>
+                  <Label htmlFor="maxPartySize">{t("rpe.res.maxPartySize")}</Label>
                   <Input
                     id="maxPartySize"
                     type="number"
@@ -969,7 +996,7 @@ export default function RestaurantProfileEditor({
                     value={reservationSettings.maxPartySize}
                     onChange={(e) => setRS({ maxPartySize: toNumberOrBlank(e.target.value) })}
                   />
-                  <p className="text-xs text-muted-foreground">{t("rpe.res.maxGuestsHelp")}</p>
+                  <p className="text-xs text-muted-foreground">{t("rpe.res.maxPartySizeHelp")}</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="maxPerHour">{t("rpe.res.maxPerHour")}</Label>
@@ -1015,6 +1042,38 @@ export default function RestaurantProfileEditor({
                     }
                   />
                   <p className="text-xs text-muted-foreground">{t("rpe.res.minNoticeHelp")}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="defaultDuration">{t("rpe.res.duration")}</Label>
+                  <Input
+                    id="defaultDuration"
+                    type="number"
+                    min={30}
+                    step={15}
+                    value={reservationSettings.defaultReservationDurationMinutes}
+                    onChange={(e) =>
+                      setRS({
+                        defaultReservationDurationMinutes: toNumberOrBlank(e.target.value),
+                      })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">{t("rpe.res.durationHelp")}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="holdTime">{t("rpe.res.hold")}</Label>
+                  <Input
+                    id="holdTime"
+                    type="number"
+                    min={0}
+                    step={5}
+                    value={reservationSettings.reservationHoldMinutes}
+                    onChange={(e) =>
+                      setRS({
+                        reservationHoldMinutes: toNumberOrBlank(e.target.value),
+                      })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">{t("rpe.res.holdHelp")}</p>
                 </div>
               </div>
 

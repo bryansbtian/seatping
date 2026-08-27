@@ -1,0 +1,185 @@
+import { prisma } from "./prisma.js";
+import { ACTIVE_ASSIGNMENT_STATUSES, createAssignment, isFailure, occupiedByAny } from "./floor.js";
+import type { SmartOccupancy, SmartTable } from "./smartAssign.js";
+import {
+  normalizeSettings,
+  reservationWindow,
+  splitDateTime,
+  tablesForWindow,
+  zonedWallTimeToMs,
+  type ReservationInventory,
+  type ReservationSettings,
+  type SmartWindowRange,
+} from "./reservations.js";
+import { getLocationTimezone } from "./operatingHours.js";
+
+export async function locationHasFloorInventory(locationId: string): Promise<boolean> {
+  const table = await prisma.diningTable.findFirst({
+    where: { locationId },
+    select: { id: true },
+  });
+  return Boolean(table);
+}
+
+export async function loadReservationInventory(
+  locationId: string,
+  options: { excludeReservationId?: string | null } = {},
+): Promise<ReservationInventory> {
+  const rooms = await prisma.floorPlan.findMany({
+    where: { locationId },
+    select: {
+      id: true,
+      name: true,
+      tables: {
+        select: {
+          id: true,
+          name: true,
+          capacity: true,
+          minimumPartySize: true,
+          isBlocked: true,
+        },
+      },
+    },
+  });
+
+  const setups: SmartTable[] = [];
+  const tableById = new Map<string, SmartTable>();
+  for (const room of rooms) {
+    for (const table of room.tables) {
+      const setup: SmartTable = {
+        id: table.id,
+        name: table.name,
+        roomId: room.id,
+        roomName: room.name,
+        capacity: table.capacity,
+        minimumPartySize: table.minimumPartySize,
+        isBlocked: table.isBlocked,
+        cleaningSince: null,
+      };
+      setups.push(setup);
+      tableById.set(table.id, setup);
+    }
+  }
+
+  const assignments = await prisma.tableAssignment.findMany({
+    where: {
+      locationId,
+      status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
+    },
+    select: {
+      tableId: true,
+      tableIds: true,
+      reservationId: true,
+      expectedStartAt: true,
+      expectedEndAt: true,
+    },
+  });
+
+  const occupancy: SmartOccupancy[] = [];
+  for (const assignment of assignments) {
+    if (options.excludeReservationId && assignment.reservationId === options.excludeReservationId) {
+      continue;
+    }
+    let memberIds = [assignment.tableId];
+    if (assignment.tableIds && assignment.tableIds.length > 0) {
+      memberIds = assignment.tableIds;
+    }
+    for (const memberId of memberIds) {
+      occupancy.push({
+        tableId: memberId,
+        start: assignment.expectedStartAt,
+        end: assignment.expectedEndAt,
+      });
+    }
+  }
+
+  return { setups, occupancy };
+}
+
+export function windowForReservation(
+  location: { reservationSettings?: unknown; timezone?: string | null },
+  reservationDateTime: string,
+  settings?: ReservationSettings,
+): SmartWindowRange {
+  const resolved = settings ?? normalizeSettings((location as any).reservationSettings);
+  const { date, time } = splitDateTime(reservationDateTime);
+  const startMs = zonedWallTimeToMs(date, time, getLocationTimezone(location as any));
+  return reservationWindow(startMs, resolved.defaultReservationDurationMinutes);
+}
+
+export async function assignTableForReservation(input: {
+  businessId: string;
+  locationId: string;
+  reservationId: string;
+  partySize: number;
+  window: SmartWindowRange;
+  now?: Date;
+  inventory?: ReservationInventory | null;
+}): Promise<{ assignment: any; tableName: string } | null> {
+  const now = input.now ?? new Date();
+  let inventory = input.inventory ?? null;
+  if (input.inventory === undefined) {
+    inventory = await loadReservationInventory(input.locationId, {
+      excludeReservationId: input.reservationId,
+    });
+  }
+  if (!inventory || inventory.setups.length === 0) {
+    return null;
+  }
+  const ordered = tablesForWindow(inventory, input.partySize, input.window, now);
+
+  for (const setup of ordered) {
+    const outcome = await createAssignment({
+      businessId: input.businessId,
+      locationId: input.locationId,
+      tableId: setup.id,
+      tableIds: [setup.id],
+      partySize: input.partySize,
+      source: "SMART",
+      status: "RESERVED",
+      expectedStartAt: input.window.start,
+      expectedEndAt: input.window.end,
+      queueEntryId: null,
+      reservationId: input.reservationId,
+      guestProfileId: null,
+    });
+
+    if (!isFailure(outcome)) {
+      return { assignment: outcome.value, tableName: setup.name };
+    }
+    if (outcome.status !== 409) {
+      return null;
+    }
+    if (outcome.error === "That reservation already has a table") {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+export async function releaseReservationTables(reservationId: string): Promise<number> {
+  const result = await prisma.tableAssignment.updateMany({
+    where: {
+      reservationId,
+      status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
+    },
+    data: { status: "CANCELLED", cancelledAt: new Date() },
+  });
+  return result.count;
+}
+
+export async function reassignTableForReservation(input: {
+  businessId: string;
+  locationId: string;
+  reservationId: string;
+  partySize: number;
+  window: SmartWindowRange;
+  now?: Date;
+}): Promise<{ assignment: any; tableName: string } | null> {
+  if (!(await locationHasFloorInventory(input.locationId))) {
+    return null;
+  }
+  await releaseReservationTables(input.reservationId);
+  return assignTableForReservation(input);
+}

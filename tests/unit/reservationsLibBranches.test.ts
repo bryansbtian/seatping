@@ -12,6 +12,8 @@ vi.mock("../../server/lib/prisma.js", () => {
 const {
   DEFAULT_RESERVATION_SETTINGS,
   computeAvailability,
+  effectiveGuestCap,
+  hasGuestCap,
   normalizeSettings,
   serializeReservation,
   syncCustomerReservation,
@@ -113,15 +115,34 @@ describe("normalizeSettings", () => {
   it("clamps the numeric settings into range", () => {
     const clamped = normalizeSettings({
       maxPartySize: 500,
-      maxReservedGuestsPerHour: 0,
+      maxReservedGuestsPerHour: -5,
       bookingWindowDays: -5,
       minNoticeMinutes: 999999,
+      defaultReservationDurationMinutes: 5,
+      reservationHoldMinutes: 9999,
     });
 
     expect(clamped.maxPartySize).toBe(100);
-    expect(clamped.maxReservedGuestsPerHour).toBe(1);
+    expect(clamped.maxReservedGuestsPerHour).toBe(0);
     expect(clamped.bookingWindowDays).toBe(0);
     expect(clamped.minNoticeMinutes).toBe(7 * 24 * 60);
+    expect(clamped.defaultReservationDurationMinutes).toBe(30);
+    expect(clamped.reservationHoldMinutes).toBe(240);
+  });
+
+  it("treats a zero guest cap as no cap at all", () => {
+    const uncapped = normalizeSettings({ maxReservedGuestsPerHour: 0 });
+
+    expect(uncapped.maxReservedGuestsPerHour).toBe(0);
+    expect(hasGuestCap(uncapped)).toBe(false);
+    expect(effectiveGuestCap(uncapped)).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it("keeps a configured guest cap as the effective cap", () => {
+    const capped = normalizeSettings({ maxReservedGuestsPerHour: 40 });
+
+    expect(hasGuestCap(capped)).toBe(true);
+    expect(effectiveGuestCap(capped)).toBe(40);
   });
 
   it("falls back for numbers that cannot be read", () => {

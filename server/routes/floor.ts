@@ -32,6 +32,7 @@ import {
   parseDate,
   parseInteger,
   parseName,
+  parseAssignmentTableIds,
   parseObjectId,
   parseOptionalObjectId,
   parseOptionalText,
@@ -50,13 +51,6 @@ import {
 } from "../lib/floor.js";
 import { buildLiveFloor } from "../lib/floorLive.js";
 import { manualAssign, markVisitClosed } from "../lib/floorAssign.js";
-import {
-  createCombination,
-  deleteCombination,
-  findOwnedCombination,
-  listCombinations,
-  serializeCombination,
-} from "../lib/tableCombinations.js";
 
 const router = Router();
 
@@ -926,78 +920,20 @@ router.post(
   },
 );
 
-router.get("/:locationId/combinations", loadOwnedLocation, async (_req, res: Response) => {
-  try {
-    const location = ownedLocation(res);
-    const rows = await listCombinations(location.id);
-    return res.json({
-      combinations: rows.map((row) => serializeCombination(row.combination, row.capacity)),
-    });
-  } catch (err: any) {
-    console.error("[floor] list combinations error:", err?.message || err);
-    return res.status(500).json({ error: "Server error" });
-  }
-});
-
-router.post("/:locationId/combinations", loadOwnedLocation, async (req: Request, res: Response) => {
-  try {
-    const location = ownedLocation(res);
-    const outcome = await createCombination(location.businessId, location.id, {
-      name: req.body?.name,
-      tableIds: req.body?.tableIds,
-      minimumPartySize: req.body?.minimumPartySize,
-    });
-    if (isFailure(outcome)) {
-      return sendFailure(res, outcome);
-    }
-    return res.status(201).json({ combination: outcome.value });
-  } catch (err: any) {
-    console.error("[floor] create combination error:", err?.message || err);
-    return res.status(500).json({ error: "Server error" });
-  }
-});
-
-router.delete(
-  "/:locationId/combinations/:combinationId",
-  loadOwnedLocation,
-  async (req: Request, res: Response) => {
-    try {
-      const location = ownedLocation(res);
-      const outcome = await deleteCombination(location.id, String(req.params.combinationId || ""));
-      if (isFailure(outcome)) {
-        return sendFailure(res, outcome);
-      }
-      return res.json({ ok: true });
-    } catch (err: any) {
-      console.error("[floor] delete combination error:", err?.message || err);
-      return res.status(500).json({ error: "Server error" });
-    }
-  },
-);
-
 router.post("/:locationId/assign", loadOwnedLocation, async (req: Request, res: Response) => {
   try {
     const location = ownedLocation(res);
 
     let anchorTableId: string | null = null;
     let memberTableIds: string[] | undefined;
-    let combinationId: string | null = null;
 
-    if (req.body?.combinationId !== undefined && req.body?.combinationId !== null) {
-      const parsed = parseObjectId(req.body.combinationId, "combinationId");
+    if (req.body?.tableIds !== undefined && req.body?.tableIds !== null) {
+      const parsed = parseAssignmentTableIds(req.body.tableIds);
       if (isFailure(parsed)) {
         return sendFailure(res, parsed);
       }
-      const combination = await findOwnedCombination(location.id, parsed.value);
-      if (!combination) {
-        return res.status(404).json({ error: "Combination not found or access denied" });
-      }
-      if (!combination.isActive) {
-        return res.status(409).json({ error: "That combination is not active" });
-      }
-      combinationId = combination.id;
-      memberTableIds = combination.tableIds;
-      anchorTableId = combination.tableIds[0] ?? null;
+      memberTableIds = parsed.value;
+      anchorTableId = parsed.value[0];
     } else {
       const parsed = parseObjectId(req.body?.tableId, "tableId");
       if (isFailure(parsed)) {
@@ -1066,7 +1002,6 @@ router.post("/:locationId/assign", loadOwnedLocation, async (req: Request, res: 
       locationId: location.id,
       tableId: anchorTableId,
       tableIds: memberTableIds,
-      combinationId,
       queueEntryId: queueEntryId.value,
       reservationId: reservationId.value,
       guestProfileId: guestProfileId.value,
