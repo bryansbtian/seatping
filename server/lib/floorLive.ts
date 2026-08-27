@@ -6,10 +6,13 @@ import {
   serializeZone,
 } from "./floor.js";
 import { getLocationTimezone, getNowWallClockInTimezone } from "./operatingHours.js";
+import { listCombinations } from "./tableCombinations.js";
 import {
   matchPartiesToTables,
+  rankTablesForParty,
   type SmartOccupancy,
   type SmartParty,
+  type SmartTable as SmartSetupTable,
   type SmartTable,
 } from "./smartAssign.js";
 import { formatTimeLabel, splitDateTime } from "./reservations.js";
@@ -27,6 +30,7 @@ export const UPCOMING_RESERVATION_STATUSES = ["CONFIRMED", "ARRIVED"] as const;
 export type LiveAssignmentLike = {
   id: string;
   tableId: string;
+  tableIds?: string[];
   status: string;
   partySize: number;
   source: string;
@@ -56,12 +60,32 @@ export type UpcomingReservation = {
   tableName: string | null;
 };
 
+export const MATCH_STATES = ["MATCHED", "QUEUED", "NO_AVAILABILITY", "NO_CAPACITY"] as const;
+
+export type MatchState = (typeof MATCH_STATES)[number];
+
+export type LiveCombination = {
+  id: string;
+  name: string;
+  tableIds: string[];
+  tableNames: string[];
+  roomName: string;
+  capacity: number;
+  minimumPartySize: number;
+  isActive: boolean;
+  available: boolean;
+};
+
 export type WaitingParty = {
   id: string;
   name: string;
   partySize: number;
   joinedAt: string;
   waitingMinutes: number;
+  recommendedTableId: string | null;
+  recommendedTableName: string | null;
+  recommendedReasons: string[];
+  matchState: MatchState;
 };
 
 export function reservationWindow(
@@ -296,9 +320,15 @@ export async function buildLiveFloor(locationId: string, now: Date = new Date())
 
   const byTable = new Map<string, LiveAssignmentLike[]>();
   for (const assignment of active) {
-    const bucket = byTable.get(assignment.tableId) ?? [];
-    bucket.push(assignment);
-    byTable.set(assignment.tableId, bucket);
+    let memberIds = [assignment.tableId];
+    if (assignment.tableIds && assignment.tableIds.length > 0) {
+      memberIds = assignment.tableIds;
+    }
+    for (const memberId of memberIds) {
+      const bucket = byTable.get(memberId) ?? [];
+      bucket.push(assignment);
+      byTable.set(memberId, bucket);
+    }
   }
 
   const seatedQueueIds = new Set(
@@ -320,6 +350,10 @@ export async function buildLiveFloor(locationId: string, now: Date = new Date())
       partySize: row.guestCount,
       joinedAt: row.joinedAt.toISOString(),
       waitingMinutes: minutesBetween(row.joinedAt, now) ?? 0,
+      recommendedTableId: null,
+      recommendedTableName: null,
+      recommendedReasons: [],
+      matchState: "QUEUED" as MatchState,
     }));
 
   const statuses = new Map<string, LiveStatus>();
@@ -335,7 +369,8 @@ export async function buildLiveFloor(locationId: string, now: Date = new Date())
   const smartTables: SmartTable[] = [];
   for (const room of rooms) {
     for (const table of room.tables) {
-      if (statuses.get(table.id) !== "AVAILABLE") {
+      const status = statuses.get(table.id);
+      if (status !== "AVAILABLE" && status !== "CLEANING") {
         continue;
       }
       smartTables.push({
@@ -359,18 +394,149 @@ export async function buildLiveFloor(locationId: string, now: Date = new Date())
     preferredRoomIds: [],
   }));
 
-  const occupancy: SmartOccupancy[] = active.map((assignment) => ({
-    tableId: assignment.tableId,
-    start: assignment.expectedStartAt,
-    end: assignment.expectedEndAt,
-  }));
+  const occupancy: SmartOccupancy[] = [];
+  for (const assignment of active) {
+    let memberIds = [assignment.tableId];
+    if (assignment.tableIds && assignment.tableIds.length > 0) {
+      memberIds = assignment.tableIds;
+    }
+    for (const memberId of memberIds) {
+      occupancy.push({
+        tableId: memberId,
+        start: assignment.expectedStartAt,
+        end: assignment.expectedEndAt,
+      });
+    }
+  }
 
-  const matches = matchPartiesToTables(smartTables, smartParties, {
+  const smartContext = {
     now,
     window: { start: now, end: new Date(now.getTime() + DEFAULT_TURN_MINUTES * 60 * 1000) },
     occupancy,
     preferredRoomIds: [],
-  });
+  };
+
+  const roomOfTable = new Map<string, { id: string; name: string }>();
+  const tableById = new Map<string, (typeof rooms)[number]["tables"][number]>();
+  for (const room of rooms) {
+    for (const table of room.tables) {
+      roomOfTable.set(table.id, { id: room.id, name: room.name });
+      tableById.set(table.id, table);
+    }
+  }
+
+  const combinationRows = await listCombinations(locationId);
+  const combinationSetups: SmartSetupTable[] = [];
+  const combinationCandidates: { id: string; name: string; capacity: number; minimum: number }[] =
+    [];
+  const serializedCombinations: LiveCombination[] = [];
+
+  for (const entry of combinationRows) {
+    const members = entry.combination.tableIds
+      .map((id) => tableById.get(id))
+      .filter((table): table is NonNullable<typeof table> => Boolean(table));
+    if (members.length !== entry.combination.tableIds.length) {
+      continue;
+    }
+
+    const capacity = members.reduce((total, member) => total + member.capacity, 0);
+    const minimum = Math.max(
+      entry.combination.minimumPartySize,
+      ...members.map((member) => member.minimumPartySize),
+    );
+    combinationCandidates.push({
+      id: entry.combination.id,
+      name: entry.combination.name,
+      capacity,
+      minimum,
+    });
+
+    const usable =
+      entry.combination.isActive &&
+      members.every((member) => statuses.get(member.id) === "AVAILABLE");
+
+    const room = roomOfTable.get(members[0].id);
+    serializedCombinations.push({
+      id: entry.combination.id,
+      name: entry.combination.name,
+      tableIds: entry.combination.tableIds,
+      tableNames: members.map((member) => member.name),
+      roomName: room?.name ?? "",
+      capacity,
+      minimumPartySize: minimum,
+      isActive: entry.combination.isActive,
+      available: usable,
+    });
+
+    if (!usable) {
+      continue;
+    }
+    combinationSetups.push({
+      id: entry.combination.id,
+      name: entry.combination.name,
+      roomId: room?.id ?? "",
+      roomName: room?.name ?? "",
+      capacity,
+      minimumPartySize: minimum,
+      isBlocked: false,
+      cleaningSince: null,
+      kind: "COMBINATION",
+      tableIds: entry.combination.tableIds,
+    });
+  }
+
+  const allSetups = [...smartTables, ...combinationSetups];
+  const matches = matchPartiesToTables(allSetups, smartParties, smartContext);
+
+  const setupNames = new Map(allSetups.map((setup) => [setup.id, setup.name]));
+  const partyMatches = new Map<string, { tableId: string; tableName: string; reasons: string[] }>();
+  for (const [setupId, match] of Object.entries(matches)) {
+    partyMatches.set(match.partyId, {
+      tableId: setupId,
+      tableName: setupNames.get(setupId) ?? "",
+      reasons: match.reasons,
+    });
+  }
+
+  const everySetupCapacity: { capacity: number; minimum: number }[] = [];
+  for (const room of rooms) {
+    for (const table of room.tables) {
+      everySetupCapacity.push({ capacity: table.capacity, minimum: table.minimumPartySize });
+    }
+  }
+  for (const candidate of combinationCandidates) {
+    everySetupCapacity.push({ capacity: candidate.capacity, minimum: candidate.minimum });
+  }
+
+  for (const party of waitingParties) {
+    const match = partyMatches.get(party.id);
+    if (match) {
+      party.recommendedTableId = match.tableId;
+      party.recommendedTableName = match.tableName;
+      party.recommendedReasons = match.reasons;
+      party.matchState = "MATCHED";
+      continue;
+    }
+
+    const fitsSomewhere = everySetupCapacity.some((setup) => {
+      return party.partySize <= setup.capacity && party.partySize >= setup.minimum;
+    });
+    if (!fitsSomewhere) {
+      party.matchState = "NO_CAPACITY";
+      continue;
+    }
+
+    const smartParty = smartParties.find((candidate) => candidate.id === party.id);
+    if (!smartParty) {
+      continue;
+    }
+    const eligible = rankTablesForParty(allSetups, smartParty, smartContext);
+    if (eligible.ranked.length === 0) {
+      party.matchState = "NO_AVAILABILITY";
+      continue;
+    }
+    party.matchState = "QUEUED";
+  }
 
   const serializedRooms = rooms.map((room) => ({
     id: room.id,
@@ -427,6 +593,7 @@ export async function buildLiveFloor(locationId: string, now: Date = new Date())
   return {
     now: now.toISOString(),
     rooms: serializedRooms,
+    combinations: serializedCombinations,
     waitingParties,
     upcomingReservations,
   };

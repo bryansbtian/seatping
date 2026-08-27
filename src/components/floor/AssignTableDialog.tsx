@@ -14,6 +14,7 @@ import type { TKey } from "@/lib/i18n";
 import {
   candidateTablesForParty,
   statusStyle,
+  type LiveCombination,
   type LiveRoom,
   type TableCandidate,
 } from "@/lib/floorLive";
@@ -32,15 +33,17 @@ type AssignTableDialogProps = {
   open: boolean;
   target: AssignTarget | null;
   rooms: LiveRoom[];
+  combinations: LiveCombination[];
   busy: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (tableId: string) => Promise<void>;
+  onConfirm: (candidate: TableCandidate) => Promise<void>;
 };
 
 const AssignTableDialog = ({
   open,
   target,
   rooms,
+  combinations,
   busy,
   onOpenChange,
   onConfirm,
@@ -61,6 +64,7 @@ const AssignTableDialog = ({
     target.partySize,
     target.recommendedTableId ?? null,
     target.currentTableId ?? null,
+    combinations,
   );
 
   let body = (
@@ -71,13 +75,56 @@ const AssignTableDialog = ({
     body = (
       <ul className="max-h-72 space-y-2 overflow-y-auto pr-1" data-testid="assign-table-options">
         {candidates.map((candidate) => {
-          const selected = chosen?.table.id === candidate.table.id;
+          const selected = chosen?.id === candidate.id;
+
+          let seatLabel = t("floor.assign.seats", { n: candidate.capacity });
+          if (candidate.kind === "COMBINATION") {
+            seatLabel = t("floor.assign.combinedSeats", { n: candidate.capacity });
+          }
+
+          let swatch = null;
+          if (candidate.status) {
+            swatch = (
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "h-3 w-3 shrink-0 rounded-full border-2",
+                  statusStyle(candidate.status).swatch,
+                )}
+              />
+            );
+          }
+
+          let trailing = (
+            <span className="shrink-0 text-[11px] text-slate-500">
+              {t(`floor.live.status.${candidate.status}` as TKey)}
+            </span>
+          );
+          if (candidate.kind === "COMBINATION") {
+            trailing = (
+              <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-800">
+                {t("floor.assign.combination")}
+              </span>
+            );
+          }
+          if (candidate.recommended) {
+            trailing = (
+              <span
+                data-testid="assign-recommended-badge"
+                className="flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white"
+              >
+                <Star className="h-3 w-3" aria-hidden="true" />
+                {t("floor.assign.recommended")}
+              </span>
+            );
+          }
+
           return (
-            <li key={candidate.table.id}>
+            <li key={candidate.id}>
               <button
                 type="button"
                 disabled={busy}
-                data-testid={`assign-option-${candidate.table.name}`}
+                data-testid={`assign-option-${candidate.name}`}
                 aria-pressed={selected}
                 onClick={() => setChosen(candidate)}
                 className={cn(
@@ -88,37 +135,17 @@ const AssignTableDialog = ({
                 )}
               >
                 <span className="flex min-w-0 items-center gap-2">
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "h-3 w-3 shrink-0 rounded-full border-2",
-                      statusStyle(candidate.table.status).swatch,
-                    )}
-                  />
+                  {swatch}
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-slate-800">
-                      {candidate.table.name}
+                      {candidate.name}
                     </span>
                     <span className="block truncate text-[11px] text-slate-500">
-                      {candidate.roomName} &middot;{" "}
-                      {t("floor.assign.seats", { n: candidate.table.capacity })}
+                      {candidate.detail} &middot; {seatLabel}
                     </span>
                   </span>
                 </span>
-                {candidate.recommended && (
-                  <span
-                    data-testid="assign-recommended-badge"
-                    className="flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white"
-                  >
-                    <Star className="h-3 w-3" aria-hidden="true" />
-                    {t("floor.assign.recommended")}
-                  </span>
-                )}
-                {!candidate.recommended && (
-                  <span className="shrink-0 text-[11px] text-slate-500">
-                    {t(`floor.live.status.${candidate.table.status}` as TKey)}
-                  </span>
-                )}
+                {trailing}
               </button>
             </li>
           );
@@ -129,7 +156,7 @@ const AssignTableDialog = ({
 
   let confirmLabel = t("floor.assign.confirm");
   if (chosen) {
-    confirmLabel = t("floor.assign.confirmNamed", { table: chosen.table.name });
+    confirmLabel = t("floor.assign.confirmNamed", { table: chosen.name });
   }
 
   return (
@@ -154,8 +181,8 @@ const AssignTableDialog = ({
             {t("floor.assign.summary", {
               name: target.name,
               n: target.partySize,
-              table: chosen.table.name,
-              capacity: chosen.table.capacity,
+              table: chosen.name,
+              capacity: chosen.capacity,
             })}
           </p>
         )}
@@ -169,7 +196,7 @@ const AssignTableDialog = ({
             data-testid="assign-confirm"
             onClick={() => {
               if (chosen) {
-                onConfirm(chosen.table.id);
+                onConfirm(chosen);
               }
             }}
           >

@@ -98,6 +98,10 @@ function makeParty(overrides: Partial<WaitingParty> = {}): WaitingParty {
     partySize: 2,
     joinedAt: "2026-08-26T17:30:00.000Z",
     waitingMinutes: 30,
+    recommendedTableId: null,
+    recommendedTableName: null,
+    recommendedReasons: [],
+    matchState: "QUEUED" as const,
     ...overrides,
   };
 }
@@ -120,6 +124,7 @@ function floor(overrides: Partial<LiveFloorData> = {}): LiveFloorData {
   return {
     now: NOW,
     rooms: [makeRoom([makeTable()])],
+    combinations: [],
     waitingParties: [],
     upcomingReservations: [],
     ...overrides,
@@ -295,8 +300,9 @@ describe("live floor overview", () => {
     const row = await screen.findByTestId("reservation-res-1");
     expect(row.textContent).toContain("T4");
     expect(row.textContent).not.toContain("At T4");
-    expect(row.children).toHaveLength(3);
+    expect(row.children).toHaveLength(2);
     expect((row.children[0] as HTMLElement).textContent).toBe("T4");
+    expect(row.textContent).toContain("Grace Hopper");
   });
 
   it("leaves the table badge off a reservation with no table yet", async () => {
@@ -304,8 +310,9 @@ describe("live floor overview", () => {
     await renderFloor();
 
     const row = await screen.findByTestId("reservation-res-1");
-    expect(row.children).toHaveLength(2);
+    expect(row.children).toHaveLength(1);
     expect(row.textContent).not.toContain("T1");
+    expect(row.textContent).toContain("Grace Hopper");
   });
 
   it("hides both lists once a table is selected", async () => {
@@ -735,7 +742,7 @@ describe("manual table assignment", () => {
     liveApi.fetchLiveFloor.mockResolvedValue(
       floor({
         rooms: [makeRoom([makeTable({ recommendedPartyId: "queue-1" })])],
-        waitingParties: [makeParty()],
+        waitingParties: [makeParty({ recommendedTableId: "table-1", recommendedTableName: "T1" })],
       }),
     );
     await renderFloor();
@@ -756,7 +763,7 @@ describe("manual table assignment", () => {
             makeTable({ id: "table-2", name: "T2", capacity: 6, recommendedPartyId: "queue-1" }),
           ]),
         ],
-        waitingParties: [makeParty()],
+        waitingParties: [makeParty({ recommendedTableId: "table-2", recommendedTableName: "T2" })],
       }),
     );
     await renderFloor();
@@ -908,5 +915,84 @@ describe("manual table assignment", () => {
     await waitFor(() => {
       expect(liveApi.fetchLiveFloor).toHaveBeenCalled();
     });
+  });
+});
+
+describe("queue recommendations", () => {
+  it("shows the suggested table beside a waiting party", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [makeRoom([makeTable({ recommendedPartyId: "queue-1" })])],
+        waitingParties: [makeParty({ recommendedTableId: "table-1", recommendedTableName: "T1" })],
+      }),
+    );
+    await renderFloor();
+
+    const badge = await screen.findByTestId("waiting-suggestion-queue-1");
+    expect(badge.textContent).toBe("T1");
+  });
+
+  it("shows no match when nothing can take the party", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [makeRoom([makeTable({ capacity: 2 })])],
+        waitingParties: [makeParty({ partySize: 12, matchState: "NO_CAPACITY" })],
+      }),
+    );
+    await renderFloor();
+
+    const badge = await screen.findByTestId("waiting-nomatch-queue-1");
+    expect(badge.textContent).toBe("No Table Match");
+  });
+
+  it("shows neither badge for a party queued behind another", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [makeRoom([makeTable()])],
+        waitingParties: [makeParty()],
+      }),
+    );
+    await renderFloor();
+
+    await screen.findByText("Ada Lovelace");
+    expect(screen.queryByTestId("waiting-suggestion-queue-1")).toBeNull();
+    expect(screen.queryByTestId("waiting-nomatch-queue-1")).toBeNull();
+  });
+
+  it("preselects the suggested table when the assign dialog opens", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [
+          makeRoom([
+            makeTable({ id: "table-1", name: "T1", capacity: 2 }),
+            makeTable({ id: "table-2", name: "T2", capacity: 6 }),
+          ]),
+        ],
+        waitingParties: [makeParty({ recommendedTableId: "table-2", recommendedTableName: "T2" })],
+      }),
+    );
+    await renderFloor();
+
+    fireEvent.click(await screen.findByTestId("assign-waiting-queue-1"));
+
+    const options = await screen.findByTestId("assign-table-options");
+    const first = within(options).getAllByRole("button")[0];
+    expect(first.getAttribute("data-testid")).toBe("assign-option-T2");
+    expect(within(options).getByTestId("assign-recommended-badge")).toBeTruthy();
+  });
+
+  it("never seats a party just because it was recommended", async () => {
+    liveApi.fetchLiveFloor.mockResolvedValue(
+      floor({
+        rooms: [makeRoom([makeTable({ recommendedPartyId: "queue-1" })])],
+        waitingParties: [makeParty({ recommendedTableId: "table-1", recommendedTableName: "T1" })],
+      }),
+    );
+    await renderFloor();
+
+    await screen.findByTestId("waiting-suggestion-queue-1");
+
+    expect(liveApi.assignTable).not.toHaveBeenCalled();
+    expect(liveApi.seatParty).not.toHaveBeenCalled();
   });
 });

@@ -8,12 +8,15 @@ vi.mock("@/lib/api", () => {
 
 import {
   blockTable,
+  createCombination,
   createRoom,
   createTable,
   createZone,
+  deleteCombination,
   deleteRoom,
   deleteTable,
   deleteZone,
+  fetchCombinations,
   fetchRooms,
   unblockTable,
   updateRoom,
@@ -202,6 +205,66 @@ describe("error propagation", () => {
 
     await expect(createTable(LOCATION, ROOM, {} as never)).rejects.toThrow(
       "Table already has an assignment during that time",
+    );
+  });
+});
+
+describe("combination requests", () => {
+  it("reads the combinations for a location", async () => {
+    apiMock.mockResolvedValue({ combinations: [{ id: "combo-1" }] });
+
+    const combinations = await fetchCombinations(LOCATION);
+
+    expect(lastCall()[0]).toBe("/api/floor/loc-1/combinations");
+    expect(combinations).toEqual([{ id: "combo-1" }]);
+  });
+
+  it("treats a missing combinations field as none configured", async () => {
+    apiMock.mockResolvedValue({});
+    expect(await fetchCombinations(LOCATION)).toEqual([]);
+  });
+
+  it("creates a combination from a list of tables", async () => {
+    apiMock.mockResolvedValue({ combination: { id: "combo-1" } });
+
+    const created = await createCombination(LOCATION, { tableIds: ["a", "b"] });
+
+    const [url, init] = lastCall();
+    expect(url).toBe("/api/floor/loc-1/combinations");
+    expect(init.method).toBe("POST");
+    expect(sentBody()).toEqual({ tableIds: ["a", "b"] });
+    expect(created).toEqual({ id: "combo-1" });
+  });
+
+  it("passes an explicit name and minimum party size when given", async () => {
+    apiMock.mockResolvedValue({ combination: { id: "combo-1" } });
+
+    await createCombination(LOCATION, {
+      tableIds: ["a", "b"],
+      name: "Big Setup",
+      minimumPartySize: 5,
+    });
+
+    expect(sentBody()).toEqual({
+      tableIds: ["a", "b"],
+      name: "Big Setup",
+      minimumPartySize: 5,
+    });
+  });
+
+  it("deletes a combination by id", async () => {
+    await deleteCombination(LOCATION, "combo-1");
+
+    const [url, init] = lastCall();
+    expect(url).toBe("/api/floor/loc-1/combinations/combo-1");
+    expect(init.method).toBe("DELETE");
+  });
+
+  it("lets a rejected combination request reject so the caller can report it", async () => {
+    apiMock.mockRejectedValue(new Error("A combination needs at least 2 tables"));
+
+    await expect(createCombination(LOCATION, { tableIds: ["a"] })).rejects.toThrow(
+      "A combination needs at least 2 tables",
     );
   });
 });

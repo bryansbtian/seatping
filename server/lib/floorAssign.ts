@@ -20,6 +20,8 @@ export type ManualAssignInput = {
   businessId: string;
   locationId: string;
   tableId: string;
+  tableIds?: string[];
+  combinationId?: string | null;
   queueEntryId: string | null;
   reservationId: string | null;
   guestProfileId: string | null;
@@ -188,6 +190,8 @@ export async function manualAssign(input: ManualAssignInput): Promise<Outcome<an
       businessId: input.businessId,
       locationId: input.locationId,
       tableId: input.tableId,
+      tableIds: input.tableIds,
+      combinationId: input.combinationId ?? null,
       partySize: partySize.value,
       source: "MANUAL",
       status: seatStatus(input.seatNow),

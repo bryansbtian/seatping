@@ -200,6 +200,12 @@ export function resolveOccupancyWindow(body: any): Outcome<{ start: Date; end: D
   return ok({ start: start.value, end: end.value });
 }
 
+export function occupiedByAny(tableIds: string[]) {
+  return {
+    OR: [{ tableId: { in: tableIds } }, { tableIds: { hasSome: tableIds } }],
+  };
+}
+
 export function partyFitsTable(
   partySize: number,
   table: { capacity: number; minimumPartySize: number },
@@ -385,6 +391,8 @@ export type CreateAssignmentInput = {
   businessId: string;
   locationId: string;
   tableId: string;
+  tableIds?: string[];
+  combinationId?: string | null;
   partySize: number;
   source: AssignmentSourceValue;
   status: AssignmentStatusValue;
@@ -402,22 +410,36 @@ export async function createAssignment(input: CreateAssignmentInput): Promise<Ou
 
   return withWriteRetry(() =>
     prisma.$transaction(async (tx) => {
-      const table = await tx.diningTable.findFirst({
-        where: { id: input.tableId, locationId: input.locationId },
+      const memberIds = input.tableIds ?? [input.tableId];
+      const members = await tx.diningTable.findMany({
+        where: { id: { in: memberIds }, locationId: input.locationId },
       });
+      if (members.length !== memberIds.length) {
+        return fail(404, "Table not found or access denied");
+      }
+
+      const table = members.find((candidate) => candidate.id === input.tableId);
       if (!table) {
         return fail(404, "Table not found or access denied");
       }
-      if (table.isBlocked) {
+
+      const blocked = members.find((candidate) => candidate.isBlocked);
+      if (blocked) {
         return fail(409, "Table is blocked and cannot accept an assignment");
       }
-      if (!partyFitsTable(input.partySize, table)) {
-        return fail(409, `Table seats ${table.minimumPartySize} to ${table.capacity} guests`);
+
+      const capacity = members.reduce((total, candidate) => total + candidate.capacity, 0);
+      const minimum = members.reduce(
+        (highest, candidate) => Math.max(highest, candidate.minimumPartySize),
+        1,
+      );
+      if (!partyFitsTable(input.partySize, { capacity, minimumPartySize: minimum })) {
+        return fail(409, `Table seats ${minimum} to ${capacity} guests`);
       }
 
       const conflict = await tx.tableAssignment.findFirst({
         where: {
-          tableId: table.id,
+          ...occupiedByAny(memberIds),
           status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
           expectedStartAt: { lt: input.expectedEndAt },
           expectedEndAt: { gt: input.expectedStartAt },
@@ -469,14 +491,18 @@ export async function createAssignment(input: CreateAssignmentInput): Promise<Ou
         tableData.cleaningSince = null;
       }
 
-      await tx.diningTable.update({
-        where: { id: table.id },
-        data: tableData,
-      });
+      for (const member of members) {
+        await tx.diningTable.update({
+          where: { id: member.id },
+          data: tableData,
+        });
+      }
 
       const assignment = await tx.tableAssignment.create({
         data: {
           tableId: table.id,
+          tableIds: memberIds,
+          combinationId: input.combinationId ?? null,
           businessId: input.businessId,
           locationId: input.locationId,
           queueEntryId: input.queueEntryId,
@@ -669,7 +695,7 @@ export async function moveAssignment(input: MoveAssignmentInput): Promise<Outcom
 
       const conflict = await tx.tableAssignment.findFirst({
         where: {
-          tableId: target.id,
+          ...occupiedByAny([target.id]),
           id: { not: existing.id },
           status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
           expectedStartAt: { lt: existing.expectedEndAt },
@@ -681,10 +707,16 @@ export async function moveAssignment(input: MoveAssignmentInput): Promise<Outcom
         return fail(409, "Table already has an assignment during that time");
       }
 
-      await tx.diningTable.update({
-        where: { id: existing.tableId },
-        data: { assignmentVersion: { increment: 1 } },
-      });
+      let previousIds = [existing.tableId];
+      if (existing.tableIds.length > 0) {
+        previousIds = existing.tableIds;
+      }
+      for (const previousId of previousIds) {
+        await tx.diningTable.update({
+          where: { id: previousId },
+          data: { assignmentVersion: { increment: 1 } },
+        });
+      }
       await tx.diningTable.update({
         where: { id: target.id },
         data: { assignmentVersion: { increment: 1 }, cleaningSince: null },
@@ -692,7 +724,7 @@ export async function moveAssignment(input: MoveAssignmentInput): Promise<Outcom
 
       const moved = await tx.tableAssignment.update({
         where: { id: existing.id },
-        data: { tableId: target.id },
+        data: { tableId: target.id, tableIds: [target.id], combinationId: null },
       });
 
       return ok(moved);
@@ -712,7 +744,7 @@ export async function setTableCleaning(
 
   if (cleaning) {
     const seated = await prisma.tableAssignment.findFirst({
-      where: { tableId: table.id, status: "SEATED" },
+      where: { ...occupiedByAny([table.id]), status: "SEATED" },
       select: { id: true },
     });
     if (seated) {

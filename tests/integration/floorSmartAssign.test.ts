@@ -191,3 +191,199 @@ describe("smart recommendations on the live floor", () => {
     expect(stored?.arrivedAt).toBeNull();
   });
 });
+
+function partyNamed(body: any, id: string) {
+  return body.waitingParties.find((party: any) => party.id === id);
+}
+
+describe("queue integration", () => {
+  it("tells each waiting party which table it should take", async () => {
+    const { location, cookie, request } = await setupFloor([
+      { name: "T1", capacity: 2 },
+      { name: "T2", capacity: 6 },
+    ]);
+    const pair = await seedQueueEntry(location, { guestCount: 2 });
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    const party = partyNamed(live.body, pair.id);
+
+    expect(party.recommendedTableName).toBe("T1");
+    expect(party.recommendedReasons).toContain("EXACT_FIT");
+    expect(party.matchState).toBe("MATCHED");
+  });
+
+  it("agrees with the table side of the same recommendation", async () => {
+    const { location, cookie, request } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const guest = await seedQueueEntry(location, { guestCount: 2 });
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    const party = partyNamed(live.body, guest.id);
+    const table = tableNamed(live.body, "T1");
+
+    expect(party.recommendedTableId).toBe(table.id);
+    expect(table.recommendedPartyId).toBe(guest.id);
+  });
+
+  it("reports no match when the party fits no table at all", async () => {
+    const { location, cookie, request } = await setupFloor([{ name: "T1", capacity: 2 }]);
+    const crowd = await seedQueueEntry(location, { guestCount: 12 });
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    const party = partyNamed(live.body, crowd.id);
+
+    expect(party.recommendedTableId).toBeNull();
+    expect(party.matchState).toBe("NO_CAPACITY");
+  });
+
+  it("does not call it no match when the party is simply queued behind another", async () => {
+    const { location, cookie, request } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const first = await seedQueueEntry(location, {
+      guestCount: 2,
+      joinedAt: new Date(Date.now() - 60 * 60 * 1000),
+    });
+    const second = await seedQueueEntry(location, {
+      guestCount: 2,
+      joinedAt: new Date(Date.now() - 5 * 60 * 1000),
+    });
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+
+    expect(partyNamed(live.body, first.id).recommendedTableName).toBe("T1");
+    expect(partyNamed(live.body, second.id).recommendedTableId).toBeNull();
+    expect(partyNamed(live.body, second.id).matchState).toBe("QUEUED");
+  });
+
+  it("reports no match once every table is blocked", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const guest = await seedQueueEntry(location, { guestCount: 2 });
+    await request
+      .post(`/api/floor/${location.id}/tables/${tables[0].id}/block`)
+      .set("Cookie", cookie)
+      .send({});
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    expect(partyNamed(live.body, guest.id).matchState).toBe("NO_AVAILABILITY");
+  });
+
+  it("moves the recommendation to the next party once one is seated", async () => {
+    const { location, cookie, request, tables } = await setupFloor([
+      { name: "T1", capacity: 4 },
+      { name: "T2", capacity: 4 },
+    ]);
+    const first = await seedQueueEntry(location, {
+      guestCount: 2,
+      joinedAt: new Date(Date.now() - 60 * 60 * 1000),
+    });
+    const second = await seedQueueEntry(location, {
+      guestCount: 2,
+      joinedAt: new Date(Date.now() - 5 * 60 * 1000),
+    });
+
+    const before = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    expect(partyNamed(before.body, first.id).recommendedTableId).toBe(tables[0].id);
+
+    await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: first.id });
+
+    const after = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    expect(after.body.waitingParties).toHaveLength(1);
+    expect(partyNamed(after.body, second.id).recommendedTableId).toBe(tables[1].id);
+  });
+
+  it("drops the recommendation when the table becomes occupied", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const guest = await seedQueueEntry(location, { guestCount: 2 });
+
+    await request
+      .post(`/api/floor/${location.id}/tables/${tables[0].id}/seat`)
+      .set("Cookie", cookie)
+      .send({ partySize: 4 });
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    expect(partyNamed(live.body, guest.id).recommendedTableId).toBeNull();
+    expect(partyNamed(live.body, guest.id).matchState).toBe("NO_AVAILABILITY");
+  });
+
+  it("brings the recommendation back once the visit is completed", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const guest = await seedQueueEntry(location, { guestCount: 2 });
+
+    const seated = await request
+      .post(`/api/floor/${location.id}/tables/${tables[0].id}/seat`)
+      .set("Cookie", cookie)
+      .send({ partySize: 4 });
+    await request
+      .post(`/api/floor/${location.id}/assignments/${seated.body.assignment.id}/complete`)
+      .set("Cookie", cookie)
+      .send({});
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    expect(partyNamed(live.body, guest.id).recommendedTableId).toBe(tables[0].id);
+  });
+
+  it("still recommends a table that is being cleaned and says why", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const guest = await seedQueueEntry(location, { guestCount: 2 });
+    await request
+      .post(`/api/floor/${location.id}/tables/${tables[0].id}/cleaning`)
+      .set("Cookie", cookie)
+      .send({});
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    const party = partyNamed(live.body, guest.id);
+    expect(party.recommendedTableId).toBe(tables[0].id);
+    expect(party.recommendedReasons).toContain("NEEDS_CLEANING");
+    expect(party.matchState).toBe("MATCHED");
+  });
+});
+
+describe("a recommendation is not a lock", () => {
+  it("rejects a stale recommendation instead of double booking the table", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const first = await seedQueueEntry(location, {
+      guestCount: 2,
+      joinedAt: new Date(Date.now() - 60 * 60 * 1000),
+    });
+    const second = await seedQueueEntry(location, { guestCount: 2 });
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    const staleTableId = partyNamed(live.body, first.id).recommendedTableId;
+    expect(staleTableId).toBe(tables[0].id);
+
+    const winner = await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: staleTableId, queueEntryId: second.id });
+    expect(winner.status).toBe(201);
+
+    const loser = await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: staleTableId, queueEntryId: first.id });
+
+    expect(loser.status).toBe(409);
+
+    const stored = await db.tableAssignment.findMany({ where: { tableId: tables[0].id } });
+    expect(stored).toHaveLength(1);
+  });
+
+  it("leaves the losing guest in the queue when the recommendation goes stale", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const first = await seedQueueEntry(location, { guestCount: 2 });
+    const second = await seedQueueEntry(location, { guestCount: 2 });
+
+    await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: second.id });
+    await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: first.id });
+
+    const stored = await db.queueEntry.findUnique({ where: { id: first.id } });
+    expect(stored?.status).toBe("WAITING");
+  });
+});

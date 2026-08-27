@@ -12,6 +12,7 @@ export const REASON_FREE_ALL_WINDOW = "FREE_ALL_WINDOW";
 export const REASON_RESERVATION_SOON = "RESERVATION_SOON";
 export const REASON_LONGEST_WAIT = "LONGEST_WAIT";
 export const REASON_HIGH_PRIORITY = "HIGH_PRIORITY";
+export const REASON_COMBINATION = "COMBINATION";
 
 export const SCORE_EXACT_FIT = 100;
 export const SCORE_WASTED_SEAT = 12;
@@ -22,7 +23,10 @@ export const SCORE_WAIT_MINUTE = 2;
 
 export const TIGHT_TURNAROUND_MINUTES = 30;
 export const MAX_WAIT_SCORE_MINUTES = 120;
+export const SCORE_COMBINATION_PENALTY = 15;
 export const HIGH_PRIORITY_THRESHOLD = 1;
+
+export type SmartSetupKind = "TABLE" | "COMBINATION";
 
 export type SmartTable = {
   id: string;
@@ -33,7 +37,20 @@ export type SmartTable = {
   minimumPartySize: number;
   isBlocked: boolean;
   cleaningSince: Date | null;
+  kind?: SmartSetupKind;
+  tableIds?: string[];
 };
+
+export function setupTableIds(table: Pick<SmartTable, "id" | "tableIds">): string[] {
+  if (table.tableIds && table.tableIds.length > 0) {
+    return table.tableIds;
+  }
+  return [table.id];
+}
+
+export function isCombination(table: Pick<SmartTable, "kind">): boolean {
+  return table.kind === "COMBINATION";
+}
 
 export type SmartParty = {
   id: string;
@@ -123,8 +140,9 @@ export function rejectTable(
   if (partySize < table.minimumPartySize) {
     return REJECT_BELOW_MINIMUM;
   }
+  const memberIds = setupTableIds(table);
   for (const busy of context.occupancy) {
-    if (busy.tableId !== table.id) {
+    if (!memberIds.includes(busy.tableId)) {
       continue;
     }
     if (windowsOverlap(context.window.start, context.window.end, busy.start, busy.end)) {
@@ -136,8 +154,9 @@ export function rejectTable(
 
 export function minutesUntilNextOccupancy(table: SmartTable, context: SmartContext): number | null {
   let soonest: number | null = null;
+  const memberIds = setupTableIds(table);
   for (const busy of context.occupancy) {
-    if (busy.tableId !== table.id) {
+    if (!memberIds.includes(busy.tableId)) {
       continue;
     }
     if (busy.start.getTime() < context.window.end.getTime()) {
@@ -189,6 +208,11 @@ export function scoreTableForParty(
   } else if (gap < TIGHT_TURNAROUND_MINUTES) {
     score -= SCORE_TIGHT_TURNAROUND_PENALTY;
     reasons.push(REASON_RESERVATION_SOON);
+  }
+
+  if (isCombination(table)) {
+    score -= SCORE_COMBINATION_PENALTY;
+    reasons.push(REASON_COMBINATION);
   }
 
   return { tableId: table.id, score, reasons };
@@ -359,13 +383,22 @@ export function matchPartiesToTables(
     return a.id.localeCompare(b.id);
   });
 
+  const byId = new Map(tables.map((table) => [table.id, table]));
+
   for (const party of ordered) {
-    const available = tables.filter((table) => !claimed.has(table.id));
+    const available = tables.filter((table) => {
+      return setupTableIds(table).every((memberId) => !claimed.has(memberId));
+    });
     const best = bestTableForParty(available, party, context);
     if (!best) {
       continue;
     }
-    claimed.add(best.tableId);
+    const chosen = byId.get(best.tableId);
+    if (chosen) {
+      for (const memberId of setupTableIds(chosen)) {
+        claimed.add(memberId);
+      }
+    }
     matches[best.tableId] = { partyId: party.id, reasons: best.reasons };
   }
 

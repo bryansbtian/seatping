@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   HIGH_PRIORITY_THRESHOLD,
   MAX_WAIT_SCORE_MINUTES,
+  REASON_COMBINATION,
   REASON_EFFICIENT_FIT,
   REASON_EXACT_FIT,
   REASON_FREE_ALL_WINDOW,
@@ -21,6 +22,7 @@ import {
   SCORE_WASTED_SEAT,
   TIGHT_TURNAROUND_MINUTES,
   bestPartyForTable,
+  isCombination,
   bestTableForParty,
   matchPartiesToTables,
   minutesUntilNextOccupancy,
@@ -29,6 +31,7 @@ import {
   rejectTable,
   scorePartyForTable,
   scoreTableForParty,
+  setupTableIds,
   windowsOverlap,
   type SmartContext,
   type SmartParty,
@@ -504,5 +507,179 @@ describe("reservation windows", () => {
     const result = rankTablesForParty(options, party({ partySize: 4 }), later);
     expect(result.ranked.map((r) => r.tableId)).toEqual(["open"]);
     expect(result.rejected).toEqual([{ id: "taken", reason: REJECT_OCCUPANCY_CONFLICT }]);
+  });
+});
+
+describe("tie breaking and setup members", () => {
+  it("breaks a table score tie on capacity when the scores match", () => {
+    const options = [
+      table({ id: "roomy", name: "T1", capacity: 6, roomId: "room-patio" }),
+      table({ id: "tight", name: "T2", capacity: 4 }),
+    ];
+    const result = rankTablesForParty(
+      options,
+      party({ partySize: 4, preferredRoomIds: ["room-patio"] }),
+      context(),
+    );
+    expect(result.ranked[0].score).not.toBe(result.ranked[1].score);
+    expect(result.ranked.map((r) => r.tableId)).toEqual(["tight", "roomy"]);
+  });
+
+  it("falls back to the table id when score, capacity and name all tie", () => {
+    const options = [
+      table({ id: "zzz", name: "T1", capacity: 4 }),
+      table({ id: "aaa", name: "T1", capacity: 4 }),
+    ];
+    const result = rankTablesForParty(options, party({ partySize: 4 }), context());
+    expect(result.ranked.map((r) => r.tableId)).toEqual(["aaa", "zzz"]);
+  });
+
+  it("seats the longer wait first once both parties are past the wait cap", () => {
+    const list = [
+      party({ id: "recent", partySize: 4, joinedAt: at(-(MAX_WAIT_SCORE_MINUTES + 30)) }),
+      party({ id: "oldest", partySize: 4, joinedAt: at(-(MAX_WAIT_SCORE_MINUTES + 90)) }),
+    ];
+    const result = rankPartiesForTable(list, table({ capacity: 4 }), context());
+    expect(result.ranked[0].score).toBe(result.ranked[1].score);
+    expect(result.ranked.map((r) => r.partyId)).toEqual(["oldest", "recent"]);
+  });
+
+  it("falls back to the party id when everything else ties", () => {
+    const joinedAt = at(-20);
+    const list = [
+      party({ id: "zzz", partySize: 4, joinedAt }),
+      party({ id: "aaa", partySize: 4, joinedAt }),
+    ];
+    const result = rankPartiesForTable(list, table({ capacity: 4 }), context());
+    expect(result.ranked.map((r) => r.partyId)).toEqual(["aaa", "zzz"]);
+  });
+
+  it("treats a table without explicit members as a single seat setup", () => {
+    expect(setupTableIds(table({ id: "solo" }))).toEqual(["solo"]);
+    expect(setupTableIds({ id: "solo", tableIds: [] })).toEqual(["solo"]);
+  });
+
+  it("uses the listed members for a combination", () => {
+    expect(setupTableIds({ id: "combo", tableIds: ["a", "b"] })).toEqual(["a", "b"]);
+  });
+
+  it("knows a combination from a single table", () => {
+    expect(isCombination(table())).toBe(false);
+    expect(isCombination({ kind: "COMBINATION" })).toBe(true);
+  });
+});
+
+describe("scoring a party against a table", () => {
+  it("calls a one seat overshoot efficient for the party side too", () => {
+    const result = scorePartyForTable(
+      party({ partySize: 3, joinedAt: at(0) }),
+      table({ capacity: 4 }),
+      context(),
+    );
+    expect(result.reasons).toContain(REASON_EFFICIENT_FIT);
+    expect(result.score).toBe(-SCORE_WASTED_SEAT);
+  });
+
+  it("penalises a badly oversized table on the party side", () => {
+    const result = scorePartyForTable(
+      party({ partySize: 2, joinedAt: at(0) }),
+      table({ capacity: 8 }),
+      context(),
+    );
+    expect(result.reasons).not.toContain(REASON_EFFICIENT_FIT);
+    expect(result.score).toBe(-6 * SCORE_WASTED_SEAT);
+  });
+
+  it("rewards a room the guest prefers on the party side", () => {
+    const result = scorePartyForTable(
+      party({ partySize: 4, joinedAt: at(0), preferredRoomIds: ["room-main"] }),
+      table({ capacity: 4 }),
+      context(),
+    );
+    expect(result.reasons).toContain(REASON_PREFERRED_ROOM);
+    expect(result.score).toBe(SCORE_EXACT_FIT + SCORE_PREFERRED_ROOM);
+  });
+
+  it("rewards a room the location prefers on the party side", () => {
+    const result = scorePartyForTable(
+      party({ partySize: 4, joinedAt: at(0) }),
+      table({ capacity: 4 }),
+      context({ preferredRoomIds: ["room-main"] }),
+    );
+    expect(result.reasons).toContain(REASON_PREFERRED_ROOM);
+  });
+});
+
+describe("combinations as seating candidates", () => {
+  const combo = (overrides: Partial<SmartTable> = {}): SmartTable =>
+    table({
+      id: "combo",
+      name: "T1 + T2",
+      capacity: 8,
+      kind: "COMBINATION",
+      tableIds: ["t1", "t2"],
+      ...overrides,
+    });
+
+  it("rejects a combination when any member is busy", () => {
+    const busy = context({ occupancy: [{ tableId: "t2", start: at(10), end: at(60) }] });
+    expect(rejectTable(combo(), 7, busy)).toBe(REJECT_OCCUPANCY_CONFLICT);
+  });
+
+  it("accepts a combination when only an unrelated table is busy", () => {
+    const busy = context({ occupancy: [{ tableId: "other", start: at(10), end: at(60) }] });
+    expect(rejectTable(combo(), 7, busy)).toBeNull();
+  });
+
+  it("marks a combination in its reasons and scores it below a single table", () => {
+    const single = scoreTableForParty(table({ capacity: 8 }), party({ partySize: 7 }), context());
+    const combined = scoreTableForParty(combo(), party({ partySize: 7 }), context());
+    expect(combined.reasons).toContain(REASON_COMBINATION);
+    expect(combined.score).toBeLessThan(single.score);
+  });
+
+  it("looks at every member when measuring the next booking", () => {
+    const ctx = context({ occupancy: [{ tableId: "t2", start: at(100), end: at(200) }] });
+    expect(minutesUntilNextOccupancy(combo(), ctx)).toBe(10);
+  });
+
+  it("never hands two overlapping combinations to different parties", () => {
+    const setups = [
+      combo({ id: "left", name: "T1 + T2", tableIds: ["t1", "t2"] }),
+      combo({ id: "right", name: "T2 + T3", tableIds: ["t2", "t3"] }),
+    ];
+    const parties = [
+      party({ id: "a", partySize: 7, joinedAt: at(-60) }),
+      party({ id: "b", partySize: 7, joinedAt: at(-30) }),
+    ];
+    const matches = matchPartiesToTables(setups, parties, context());
+    expect(Object.keys(matches)).toHaveLength(1);
+  });
+
+  it("frees the other combination once the shared table is not needed", () => {
+    const setups = [
+      combo({ id: "left", name: "T1 + T2", tableIds: ["t1", "t2"] }),
+      combo({ id: "far", name: "T3 + T4", tableIds: ["t3", "t4"] }),
+    ];
+    const parties = [
+      party({ id: "a", partySize: 7, joinedAt: at(-60) }),
+      party({ id: "b", partySize: 7, joinedAt: at(-30) }),
+    ];
+    const matches = matchPartiesToTables(setups, parties, context());
+    expect(Object.keys(matches).sort()).toEqual(["far", "left"]);
+  });
+
+  it("does not claim a single table that a chosen combination already uses", () => {
+    const setups = [
+      combo({ id: "left", name: "T1 + T2", tableIds: ["t1", "t2"] }),
+      table({ id: "t1", name: "T1", capacity: 4 }),
+    ];
+    const parties = [
+      party({ id: "big", partySize: 7, joinedAt: at(-60) }),
+      party({ id: "small", partySize: 4, joinedAt: at(-30) }),
+    ];
+    const matches = matchPartiesToTables(setups, parties, context());
+    expect(matches.left.partyId).toBe("big");
+    expect(matches.t1).toBeUndefined();
   });
 });
