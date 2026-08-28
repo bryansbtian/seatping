@@ -55,6 +55,17 @@ type GuestRow = {
   locationId: string;
 };
 
+type TableActivity = {
+  assignmentId: string;
+  tableName: string;
+  tableNames: string[];
+  assignmentSource: string;
+  status: string;
+  seatedAt: string | null;
+  completedAt: string | null;
+  turnMinutes: number | null;
+};
+
 type TimelineEvent = {
   id: string;
   source: "waitlist" | "reservation";
@@ -64,6 +75,7 @@ type TimelineEvent = {
   atLabel: string | null;
   location: string;
   notes: string | null;
+  table?: TableActivity | null;
 };
 
 type GuestDetail = {
@@ -1286,6 +1298,26 @@ function HistorySection({
                 <span>{sourceLabel}</span>
                 <span>·</span>
                 <span>{t(guestCountKey, { n: e.partySize })}</span>
+                {e.table?.tableName && (
+                  <>
+                    <span>·</span>
+                    <span data-testid={`timeline-table-${e.id}`}>{e.table.tableName}</span>
+                  </>
+                )}
+                {typeof e.table?.turnMinutes === "number" && (
+                  <>
+                    <span>·</span>
+                    <span data-testid={`timeline-turn-${e.id}`}>
+                      {t("guests.turnMinutes", { n: e.table.turnMinutes })}
+                    </span>
+                  </>
+                )}
+                {e.table?.assignmentSource === "SMART" && (
+                  <>
+                    <span>·</span>
+                    <span data-testid={`timeline-source-${e.id}`}>{t("guests.smartAssigned")}</span>
+                  </>
+                )}
               </div>
               {e.notes && <p className="text-xs text-slate-500 mt-1 italic">"{e.notes}"</p>}
             </li>

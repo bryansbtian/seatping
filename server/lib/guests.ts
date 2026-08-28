@@ -502,6 +502,132 @@ export async function touchGuestByReservationId(reservationId: string): Promise<
   }
 }
 
+export type TableActivity = {
+  assignmentId: string;
+  tableName: string;
+  tableNames: string[];
+  assignmentSource: string;
+  status: string;
+  seatedAt: string | null;
+  completedAt: string | null;
+  turnMinutes: number | null;
+};
+
+export function turnMinutes(
+  seatedAt: Date | null | undefined,
+  completedAt: Date | null | undefined,
+): number | null {
+  if (!seatedAt || !completedAt) {
+    return null;
+  }
+  const elapsed = completedAt.getTime() - seatedAt.getTime();
+  if (!Number.isFinite(elapsed) || elapsed < 0) {
+    return null;
+  }
+  return Math.round(elapsed / 60000);
+}
+
+const ACTIVITY_RANK: Record<string, number> = {
+  COMPLETED: 3,
+  SEATED: 2,
+  RESERVED: 1,
+  CANCELLED: 0,
+};
+
+function betterActivity(a: TableActivity, b: TableActivity): TableActivity {
+  const rankA = ACTIVITY_RANK[a.status] ?? 0;
+  const rankB = ACTIVITY_RANK[b.status] ?? 0;
+  if (rankA !== rankB) {
+    if (rankA > rankB) {
+      return a;
+    }
+    return b;
+  }
+  return a;
+}
+
+export async function loadTableActivity(
+  businessId: string,
+  ids: { queueEntryIds: string[]; reservationIds: string[] },
+): Promise<{
+  byQueueEntry: Map<string, TableActivity>;
+  byReservation: Map<string, TableActivity>;
+}> {
+  const byQueueEntry = new Map<string, TableActivity>();
+  const byReservation = new Map<string, TableActivity>();
+
+  if (ids.queueEntryIds.length === 0 && ids.reservationIds.length === 0) {
+    return { byQueueEntry, byReservation };
+  }
+
+  const assignments = await prisma.tableAssignment.findMany({
+    where: {
+      businessId,
+      OR: [
+        { queueEntryId: { in: ids.queueEntryIds } },
+        { reservationId: { in: ids.reservationIds } },
+      ],
+    },
+    orderBy: { assignedAt: "desc" },
+  });
+  if (assignments.length === 0) {
+    return { byQueueEntry, byReservation };
+  }
+
+  const tableIds = new Set<string>();
+  for (const assignment of assignments) {
+    tableIds.add(assignment.tableId);
+    for (const memberId of assignment.tableIds ?? []) {
+      tableIds.add(memberId);
+    }
+  }
+  const tables = await prisma.diningTable.findMany({
+    where: { id: { in: [...tableIds] } },
+    select: { id: true, name: true },
+  });
+  const nameOf = new Map(tables.map((table) => [table.id, table.name]));
+
+  for (const assignment of assignments) {
+    let memberIds = [assignment.tableId];
+    if (assignment.tableIds && assignment.tableIds.length > 0) {
+      memberIds = assignment.tableIds;
+    }
+    const names = memberIds
+      .map((id) => nameOf.get(id))
+      .filter((name): name is string => Boolean(name));
+
+    const activity: TableActivity = {
+      assignmentId: assignment.id,
+      tableName: names.join(" + "),
+      tableNames: names,
+      assignmentSource: assignment.source,
+      status: assignment.status,
+      seatedAt: assignment.seatedAt?.toISOString() ?? null,
+      completedAt: assignment.completedAt?.toISOString() ?? null,
+      turnMinutes: turnMinutes(assignment.seatedAt, assignment.completedAt),
+    };
+
+    if (assignment.queueEntryId) {
+      const existing = byQueueEntry.get(assignment.queueEntryId);
+      if (existing) {
+        byQueueEntry.set(assignment.queueEntryId, betterActivity(existing, activity));
+      } else {
+        byQueueEntry.set(assignment.queueEntryId, activity);
+      }
+    }
+    if (assignment.reservationId) {
+      const existing = byReservation.get(assignment.reservationId);
+      if (existing) {
+        byReservation.set(assignment.reservationId, betterActivity(existing, activity));
+      } else {
+        byReservation.set(assignment.reservationId, activity);
+      }
+    }
+  }
+
+  return { byQueueEntry, byReservation };
+}
+
 export type GuestBadge = { totalVisits: number; returning: boolean };
 
 export async function loadGuestBadgeMap(businessId: string): Promise<Map<string, GuestBadge>> {
