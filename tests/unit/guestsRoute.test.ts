@@ -15,6 +15,9 @@ const queueEntryFindMany = vi.fn();
 const reservationFindMany = vi.fn();
 const recomputeGuestStats = vi.fn();
 
+const tableAssignmentFindMany = vi.fn(async () => []);
+const diningTableFindMany = vi.fn(async () => []);
+
 vi.mock("../../server/lib/prisma.js", () => {
   return {
     prisma: {
@@ -28,6 +31,8 @@ vi.mock("../../server/lib/prisma.js", () => {
       },
       queueEntry: { findMany: queueEntryFindMany },
       reservation: { findMany: reservationFindMany },
+      tableAssignment: { findMany: tableAssignmentFindMany },
+      diningTable: { findMany: diningTableFindMany },
     },
   };
 });

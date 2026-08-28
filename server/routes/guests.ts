@@ -2,7 +2,12 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireBusiness } from "../lib/auth.js";
 import { rateLimit } from "../lib/rateLimit.js";
-import { isReturning, recomputeGuestStats, SUGGESTED_GUEST_TAGS } from "../lib/guests.js";
+import {
+  isReturning,
+  loadTableActivity,
+  recomputeGuestStats,
+  SUGGESTED_GUEST_TAGS,
+} from "../lib/guests.js";
 import { reservationStatusToLegacy } from "../lib/liveData.js";
 import { getLocationTimezone } from "../lib/operatingHours.js";
 import type { GuestProfile, QueueEntry, Reservation } from "@prisma/client";
@@ -235,6 +240,11 @@ router.get("/:guestId", async (req, res) => {
       reservationRowsPromise,
     ]);
 
+    const tableActivity = await loadTableActivity(businessId, {
+      queueEntryIds: guest.sourceQueueEntryIds,
+      reservationIds: guest.sourceReservationIds,
+    });
+
     const now = Date.now();
 
     const waitlistHistory = queueRows
@@ -254,6 +264,7 @@ router.get("/:guestId", async (req, res) => {
           atLabel,
           location: locLabel,
           notes: null as string | null,
+          table: tableActivity.byQueueEntry.get(q.id) ?? null,
         };
       })
       .sort((a, b) => timeDesc(a.at, b.at));
@@ -281,6 +292,7 @@ router.get("/:guestId", async (req, res) => {
         atLabel: formatWallClockLabel(r.reservationDateTime),
         location: locLabel,
         notes: r.notes || null,
+        table: tableActivity.byReservation.get(r.id) ?? null,
         upcoming,
       };
     });

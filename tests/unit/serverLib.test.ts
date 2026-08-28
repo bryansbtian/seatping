@@ -23,6 +23,7 @@ import {
   normalizeEmail,
   normalizePhone,
   badgeForContact,
+  turnMinutes,
 } from "../../server/lib/guests.js";
 import {
   DEFAULT_BASE_CREDITS,
@@ -532,5 +533,37 @@ describe("write retry helper", () => {
     ).rejects.toThrow(/always conflicts/);
 
     expect(attempts).toBe(3);
+  });
+});
+
+describe("turnMinutes", () => {
+  const seated = new Date("2026-08-27T18:00:00.000Z");
+
+  it("measures the time a party held the table", () => {
+    expect(turnMinutes(seated, new Date("2026-08-27T19:12:00.000Z"))).toBe(72);
+  });
+
+  it("rounds to the nearest minute", () => {
+    expect(turnMinutes(seated, new Date("2026-08-27T18:30:40.000Z"))).toBe(31);
+  });
+
+  it("returns zero for a visit closed immediately", () => {
+    expect(turnMinutes(seated, seated)).toBe(0);
+  });
+
+  it("has nothing to report before the party is seated", () => {
+    expect(turnMinutes(null, new Date())).toBeNull();
+  });
+
+  it("has nothing to report while the party is still at the table", () => {
+    expect(turnMinutes(seated, null)).toBeNull();
+  });
+
+  it("refuses a completion that lands before seating", () => {
+    expect(turnMinutes(seated, new Date("2026-08-27T17:00:00.000Z"))).toBeNull();
+  });
+
+  it("refuses an unreadable timestamp", () => {
+    expect(turnMinutes(seated, new Date("nonsense"))).toBeNull();
   });
 });
