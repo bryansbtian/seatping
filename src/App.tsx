@@ -17,6 +17,7 @@ import BusinessQueue from "./pages/BusinessQueue";
 import BusinessReservations from "./pages/BusinessReservations";
 import BusinessFloor from "./pages/BusinessFloor";
 import BusinessGuests from "./pages/BusinessGuests";
+import BusinessReviews from "./pages/BusinessReviews";
 import BusinessCampaigns from "./pages/BusinessCampaigns";
 import BusinessPerformance from "./pages/BusinessPerformance";
 import BusinessSettings from "./pages/BusinessSettings";
@@ -147,6 +148,7 @@ const App = () => (
             <Route path="/business/reservations" element={<BusinessReservations />} />
             <Route path="/business/floor" element={<BusinessFloor />} />
             <Route path="/business/guests" element={<BusinessGuests />} />
+            <Route path="/business/reviews" element={<BusinessReviews />} />
             <Route path="/business/campaigns" element={<BusinessCampaigns />} />
             <Route path="/business/performance" element={<BusinessPerformance />} />
             <Route path="/business/settings" element={<BusinessSettings />} />

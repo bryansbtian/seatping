@@ -6,6 +6,7 @@ import {
   ListOrdered,
   Megaphone,
   Settings,
+  Star,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -36,6 +37,7 @@ export const BUSINESS_NAV_GROUPS: BusinessNavGroup[] = [
     labelKey: "nav.group.customers",
     items: [
       { to: "/business/guests", labelKey: "nav.guests", icon: Users },
+      { to: "/business/reviews", labelKey: "nav.reviews", icon: Star },
       { to: "/business/campaigns", labelKey: "nav.campaigns", icon: Megaphone },
     ],
   },
