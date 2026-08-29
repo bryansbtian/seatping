@@ -32,12 +32,16 @@ import {
 } from "../../src/lib/floorLive.js";
 import { statusIcon } from "../../src/lib/floorLiveIcons.js";
 import {
+  admitParty,
   assignTable,
   completeVisit,
+  confirmPartyArrival,
   fetchLiveFloor,
+  markPartyNoShow,
   markTableAvailable,
   markTableCleaning,
   movePartyToTable,
+  removeParty,
   resolveReservationTable,
   seatParty,
   seatReservedAssignment,
@@ -512,5 +516,55 @@ describe("resolveReservationTable request", () => {
     await expect(resolveReservationTable(LOCATION, "res-1")).rejects.toThrow(
       "No table can take this reservation yet.",
     );
+  });
+});
+
+describe("queue requests", () => {
+  beforeEach(() => {
+    apiMock.mockReset();
+    apiMock.mockResolvedValue({});
+  });
+
+  function lastCall() {
+    return apiMock.mock.calls[apiMock.mock.calls.length - 1];
+  }
+
+  it("admits a waiting party", async () => {
+    await admitParty(LOCATION, "queue-1");
+
+    const call = lastCall();
+    expect(call[0]).toBe("/api/floor/loc-1/queue/queue-1/admit");
+    expect(call[1].method).toBe("POST");
+    expect(JSON.parse(call[1].body)).toEqual({});
+  });
+
+  it("confirms an arrival", async () => {
+    await confirmPartyArrival(LOCATION, "queue-1");
+
+    const call = lastCall();
+    expect(call[0]).toBe("/api/floor/loc-1/queue/queue-1/arrived");
+    expect(call[1].method).toBe("POST");
+  });
+
+  it("removes a waiting party", async () => {
+    await removeParty(LOCATION, "queue-1");
+
+    const call = lastCall();
+    expect(call[0]).toBe("/api/floor/loc-1/queue/queue-1/remove");
+    expect(call[1].method).toBe("POST");
+  });
+
+  it("marks a party a no-show", async () => {
+    await markPartyNoShow(LOCATION, "queue-1");
+
+    const call = lastCall();
+    expect(call[0]).toBe("/api/floor/loc-1/queue/queue-1/no-show");
+    expect(call[1].method).toBe("POST");
+  });
+
+  it("surfaces a rejected queue action", async () => {
+    apiMock.mockRejectedValue(new Error("Customer is no longer waiting"));
+
+    await expect(removeParty(LOCATION, "queue-1")).rejects.toThrow("Customer is no longer waiting");
   });
 });

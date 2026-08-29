@@ -73,33 +73,33 @@ export const AUDIENCE_GROUPS: Array<{
   },
   {
     key: "visited_yesterday",
-    label: "Guests Who Visited Yesterday",
-    description: "Guests whose last visit was yesterday.",
+    label: "Visited Yesterday",
+    description: "Guests who visited yesterday.",
   },
   {
     key: "not_returned_15d",
-    label: "Guests Who Have Not Returned In 15 Days",
-    description: "Visited before but not in the last 15 days.",
+    label: "15+ Days Inactive",
+    description: "No visit in the last 15 days.",
   },
   {
     key: "not_returned_30d",
-    label: "Guests Who Have Not Returned In 30 Days",
-    description: "Visited before but not in the last 30 days.",
+    label: "30+ Days Inactive",
+    description: "No visit in the last 30 days.",
   },
   {
     key: "not_returned_60d",
-    label: "Guests Who Have Not Returned In 60 Days",
-    description: "Visited before but not in the last 60 days.",
+    label: "60+ Days Inactive",
+    description: "No visit in the last 60 days.",
   },
   {
     key: "upcoming_reservations",
-    label: "Guests With Upcoming Reservations",
-    description: "Guests with at least one upcoming reservation.",
+    label: "Guests With Reservations",
+    description: "Guests with upcoming reservation.",
   },
   {
     key: "no_show_history",
-    label: "Guests With No-Show History",
-    description: "Guests who have at least one no-show.",
+    label: "No-Show Guests",
+    description: "Guests with at least one no-show.",
   },
 ];
 

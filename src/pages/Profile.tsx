@@ -1105,7 +1105,7 @@ function ProfileReviewCard({
         )}
 
         {(posted || updated) && (
-          <p className="text-[11px] text-muted-foreground sm:text-xs">
+          <p className="text-caption text-muted-foreground sm:text-xs">
             {posted && <>Posted {posted}</>}
             {updated && <> · Updated {updated}</>}
           </p>
@@ -1113,7 +1113,7 @@ function ProfileReviewCard({
 
         {review.businessReply && (
           <div className="mt-1 rounded-lg bg-slate-50 p-2.5 sm:p-3">
-            <p className="text-[11px] font-semibold text-slate-700 sm:text-xs">
+            <p className="text-caption font-semibold text-slate-700 sm:text-xs">
               Response From The Restaurant
             </p>
             <p className="mt-0.5 text-xs text-slate-600 sm:text-sm">{review.businessReply}</p>

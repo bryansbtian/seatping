@@ -3,7 +3,12 @@ import type { Business, Location } from "@prisma/client";
 import { api } from "../helpers/app.js";
 import { businessCookie } from "../helpers/auth.js";
 import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
-import { seedBusinessWithLocation, seedQueueEntry, uniqueSuffix } from "../helpers/seed.js";
+import {
+  seedBusinessWithLocation,
+  seedQueueEntry,
+  seedReservation,
+  uniqueSuffix,
+} from "../helpers/seed.js";
 
 const db = getTestPrisma();
 
@@ -518,5 +523,193 @@ describe("provider webhooks and diagnostics", () => {
     const res = await (await api()).post("/auth/telnyx/webhook").send({});
 
     expect(res.body).toEqual({ received: true });
+  });
+});
+
+describe("wait estimates against real table inventory", () => {
+  async function seedRoom(business: Business, location: Location) {
+    return db.floorPlan.create({
+      data: {
+        businessId: business.id,
+        locationId: location.id,
+        name: `Room ${uniqueSuffix()}`,
+        width: 1200,
+        height: 800,
+      },
+    });
+  }
+
+  async function seedTable(
+    business: Business,
+    location: Location,
+    overrides: {
+      capacity?: number;
+      minimumPartySize?: number;
+      name?: string;
+      roomId?: string;
+    } = {},
+  ) {
+    let roomId = overrides.roomId;
+    if (!roomId) {
+      roomId = (await seedRoom(business, location)).id;
+    }
+    return db.diningTable.create({
+      data: {
+        floorPlanId: roomId,
+        businessId: business.id,
+        locationId: location.id,
+        name: overrides.name ?? `T${uniqueSuffix()}`,
+        capacity: overrides.capacity ?? 4,
+        minimumPartySize: overrides.minimumPartySize ?? 1,
+      },
+    });
+  }
+
+  async function etaFor(business: Business, queueToken: string) {
+    const res = await (
+      await api()
+    ).get(`/auth/business/${business.username}/queue/token/${queueToken}/eta`);
+    expect(res.status).toBe(200);
+    return res.body.eta;
+  }
+
+  it("seats the front of the queue straight away when a table is open", async () => {
+    const { business, location } = await seedBusinessWithLocation();
+    await seedTable(business, location);
+    const entry = await waiting(location, { guestCount: 2 });
+
+    const eta = await etaFor(business, entry.queueToken);
+
+    expect(eta.basis.usedTableInventory).toBe(true);
+    expect(eta.basis.tableWaitMinutes).toBe(0);
+    expect(eta.displayText).toBe("Less Than 5 Minutes");
+  });
+
+  it("waits for the table the seated party is still holding", async () => {
+    const { business, location } = await seedBusinessWithLocation();
+    const table = await seedTable(business, location);
+    const seated = await seedQueueEntry(location, {
+      guestCount: 2,
+      status: "ARRIVED",
+      finalStatus: "arrived",
+    });
+    await db.tableAssignment.create({
+      data: {
+        tableId: table.id,
+        businessId: business.id,
+        locationId: location.id,
+        queueEntryId: seated.id,
+        partySize: 2,
+        source: "MANUAL",
+        status: "SEATED",
+        expectedStartAt: new Date(Date.now() - 30 * 60 * 1000),
+        expectedEndAt: new Date(Date.now() + 42 * 60 * 1000),
+        seatedAt: new Date(Date.now() - 30 * 60 * 1000),
+      },
+    });
+    const entry = await waiting(location, { guestCount: 2 });
+
+    const eta = await etaFor(business, entry.queueToken);
+
+    expect(eta.basis.usedTableInventory).toBe(true);
+    expect(eta.estimatedWaitMin).toBe(40);
+  });
+
+  it("reports no capacity when the party outgrows the whole floor", async () => {
+    const { business, location } = await seedBusinessWithLocation();
+    await seedTable(business, location, { capacity: 2 });
+    const entry = await waiting(location, { guestCount: 6 });
+
+    const eta = await etaFor(business, entry.queueToken);
+
+    expect(eta.status).toBe("NO_CAPACITY");
+    expect(eta.reason).toBe("PARTY_EXCEEDS_SEATING");
+    expect(eta.etaMinutes).toBeNull();
+    expect(eta.displayText).toBe("No Table Fits This Party");
+  });
+
+  it("joins tables in the same room for a party no single table fits", async () => {
+    const { business, location } = await seedBusinessWithLocation();
+    const room = await seedRoom(business, location);
+    await seedTable(business, location, { roomId: room.id, capacity: 4 });
+    await seedTable(business, location, { roomId: room.id, capacity: 4 });
+    const entry = await waiting(location, { guestCount: 7 });
+
+    const eta = await etaFor(business, entry.queueToken);
+
+    expect(eta.status).toBe("ETA");
+    expect(eta.basis.usedTableCombination).toBe(true);
+    expect(eta.tableEtaMinutes).toBe(0);
+  });
+
+  it("will not join tables that sit in different rooms", async () => {
+    const { business, location } = await seedBusinessWithLocation();
+    await seedTable(business, location, { capacity: 4 });
+    await seedTable(business, location, { capacity: 4 });
+    const entry = await waiting(location, { guestCount: 7 });
+
+    const eta = await etaFor(business, entry.queueToken);
+
+    expect(eta.status).toBe("NO_CAPACITY");
+  });
+
+  it("leaves the estimate table-free for a location with no layout", async () => {
+    const { business, location } = await seedBusinessWithLocation();
+    const entry = await waiting(location, { guestCount: 2 });
+
+    const eta = await etaFor(business, entry.queueToken);
+
+    expect(eta.status).toBe("ETA");
+    expect(eta.reason).toBe("NO_FLOOR_DATA");
+    expect(eta.basis.usedTableInventory).toBe(false);
+    expect(eta.basis.hasFloorPlan).toBe(false);
+  });
+
+  it("holds inventory for a confirmed booking but not a cancelled one", async () => {
+    const { business, location } = await seedBusinessWithLocation({
+      restaurantProfile: { openingHours: { timezone: "UTC" } },
+    });
+    await seedTable(business, location, { capacity: 4 });
+    const soon = new Date(Date.now() + 30 * 60 * 1000);
+    const wallClock = `${soon.toISOString().slice(0, 10)}T${soon.toISOString().slice(11, 16)}`;
+    await seedReservation(location, {
+      guestCount: 4,
+      status: "CANCELLED",
+      reservationDateTime: wallClock,
+    });
+    const entry = await waiting(location, { guestCount: 2 });
+
+    const cancelledOnly = await etaFor(business, entry.queueToken);
+
+    expect(cancelledOnly.basis.reservationsHeld).toBe(0);
+    expect(cancelledOnly.tableEtaMinutes).toBe(0);
+
+    await seedReservation(location, {
+      guestCount: 4,
+      status: "CONFIRMED",
+      reservationDateTime: wallClock,
+    });
+
+    const withBooking = await etaFor(business, entry.queueToken);
+
+    expect(withBooking.basis.reservationsHeld).toBe(1);
+    expect(withBooking.tableEtaMinutes).toBeGreaterThan(0);
+  });
+
+  it("carries the table view into the business queue list", async () => {
+    const { business, location } = await seedBusinessWithLocation();
+    await seedTable(business, location);
+    await waiting(location, { guestCount: 2 });
+
+    const res = await (
+      await api()
+    )
+      .get(`/auth/business/${business.username}/locations/${location.id}/queue-etas`)
+      .set("Cookie", businessCookie(business.id));
+
+    expect(res.status).toBe(200);
+    expect(res.body.etas).toHaveLength(1);
+    expect(res.body.etas[0].status).toBe("ETA");
+    expect(res.body.etas[0].basis.usedTableInventory).toBe(true);
   });
 });

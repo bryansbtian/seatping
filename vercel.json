@@ -49,6 +49,10 @@
       "destination": "/api/server"
     },
     {
+      "source": "/api/performance/:path*",
+      "destination": "/api/server"
+    },
+    {
       "source": "/api/search/:path*",
       "destination": "/api/server"
     },

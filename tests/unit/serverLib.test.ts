@@ -210,13 +210,13 @@ describe("reservation status mapping", () => {
 describe("page metadata", () => {
   it("recognises business paths", () => {
     expect(isBusinessPath("/business")).toBe(true);
-    expect(isBusinessPath("/business/dashboard")).toBe(true);
+    expect(isBusinessPath("/business/overview")).toBe(true);
     expect(isBusinessPath("/businesses")).toBe(false);
     expect(isBusinessPath("/")).toBe(false);
   });
 
   it("selects different metadata for business and customer paths", () => {
-    const business = metaForPath("/business/dashboard");
+    const business = metaForPath("/business/overview");
     const customer = metaForPath("/");
 
     expect(business.title).not.toBe(customer.title);

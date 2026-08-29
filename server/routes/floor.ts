@@ -35,6 +35,7 @@ import {
   listRooms,
   moveAssignment,
   normalizeRotation,
+  ok,
   parseDate,
   parseInteger,
   parseName,
@@ -54,9 +55,19 @@ import {
   updateAssignment,
   type AssignmentStatusValue,
   type Failure,
+  type Outcome,
 } from "../lib/floor.js";
 import { buildLiveFloor } from "../lib/floorLive.js";
-import { manualAssign, markVisitClosed } from "../lib/floorAssign.js";
+import {
+  findActiveAssignmentForQueueEntry,
+  manualAssign,
+  markQueueEntryAdmitted,
+  markQueueEntryArrived,
+  markQueueEntryNoShow,
+  markQueueEntryRemoved,
+  markReservationSeated,
+  markVisitClosed,
+} from "../lib/floorAssign.js";
 
 const router = Router();
 
@@ -761,6 +772,137 @@ router.get("/:locationId/live", loadOwnedLocation, async (_req: Request, res: Re
   }
 });
 
+async function resolveQueueEntry(locationId: string, raw: unknown): Promise<Outcome<string>> {
+  const parsed = parseObjectId(raw, "queueEntryId");
+  if (isFailure(parsed)) {
+    return parsed;
+  }
+  const failure = await assertReferencesOwned({
+    locationId,
+    queueEntryId: parsed.value,
+    reservationId: null,
+    guestProfileId: null,
+  });
+  if (failure) {
+    return failure;
+  }
+  return ok(parsed.value);
+}
+
+router.post(
+  "/:locationId/queue/:queueEntryId/admit",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+      const entryId = await resolveQueueEntry(location.id, req.params.queueEntryId);
+      if (isFailure(entryId)) {
+        return sendFailure(res, entryId);
+      }
+
+      const admitted = await markQueueEntryAdmitted(entryId.value);
+      if (!admitted) {
+        return res.status(409).json({ error: "Customer is no longer waiting" });
+      }
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error("[floor] admit party error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+router.post(
+  "/:locationId/queue/:queueEntryId/arrived",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+      const entryId = await resolveQueueEntry(location.id, req.params.queueEntryId);
+      if (isFailure(entryId)) {
+        return sendFailure(res, entryId);
+      }
+
+      const held = await findActiveAssignmentForQueueEntry(location.id, entryId.value);
+      let assignment = held;
+      if (held && held.status === "RESERVED") {
+        const outcome = await updateAssignment({
+          locationId: location.id,
+          assignmentId: held.id,
+          status: "SEATED",
+          partySize: null,
+          expectedStartAt: null,
+          expectedEndAt: null,
+        });
+        if (isFailure(outcome)) {
+          return sendFailure(res, outcome);
+        }
+        assignment = outcome.value;
+      }
+
+      const arrived = await markQueueEntryArrived(entryId.value);
+      if (!arrived) {
+        return res.status(409).json({ error: "Customer is no longer admitted" });
+      }
+
+      let payload = null;
+      if (assignment) {
+        payload = serializeAssignment(assignment);
+      }
+      return res.json({ success: true, assignment: payload });
+    } catch (err: any) {
+      console.error("[floor] confirm arrival error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+router.post(
+  "/:locationId/queue/:queueEntryId/no-show",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+      const entryId = await resolveQueueEntry(location.id, req.params.queueEntryId);
+      if (isFailure(entryId)) {
+        return sendFailure(res, entryId);
+      }
+
+      const marked = await markQueueEntryNoShow(entryId.value);
+      if (!marked) {
+        return res.status(409).json({ error: "Customer is no longer admitted" });
+      }
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error("[floor] no-show party error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+router.post(
+  "/:locationId/queue/:queueEntryId/remove",
+  loadOwnedLocation,
+  async (req: Request, res: Response) => {
+    try {
+      const location = ownedLocation(res);
+      const entryId = await resolveQueueEntry(location.id, req.params.queueEntryId);
+      if (isFailure(entryId)) {
+        return sendFailure(res, entryId);
+      }
+
+      const removed = await markQueueEntryRemoved(entryId.value);
+      if (!removed) {
+        return res.status(409).json({ error: "Customer is no longer waiting" });
+      }
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error("[floor] remove party error:", err?.message || err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
 router.post(
   "/:locationId/tables/:tableId/cleaning",
   loadOwnedLocation,
@@ -1228,6 +1370,10 @@ router.post("/:locationId/assignments", loadOwnedLocation, async (req: Request, 
       return sendFailure(res, outcome);
     }
 
+    if (outcome.value.status === "SEATED" && outcome.value.reservationId) {
+      await markReservationSeated(outcome.value.reservationId);
+    }
+
     return res.status(201).json({ assignment: serializeAssignment(outcome.value) });
   } catch (err: any) {
     console.error("[floor] create assignment error:", err?.message || err);
@@ -1297,6 +1443,15 @@ router.patch(
       });
       if (isFailure(outcome)) {
         return sendFailure(res, outcome);
+      }
+
+      if (outcome.value.status === "SEATED") {
+        if (outcome.value.queueEntryId) {
+          await markQueueEntryAdmitted(outcome.value.queueEntryId);
+        }
+        if (outcome.value.reservationId) {
+          await markReservationSeated(outcome.value.reservationId);
+        }
       }
 
       return res.json({ assignment: serializeAssignment(outcome.value) });

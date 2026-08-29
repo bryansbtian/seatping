@@ -679,3 +679,104 @@ describe("a queue guest who leaves the queue", () => {
     expect(stillHeld).toBe(1);
   });
 });
+
+describe("queue and reservation flows reach the floor", () => {
+  it("seats a queue party and occupies the table", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const guest = await seedQueueEntry(location, { guestCount: 2 });
+
+    const seated = await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: guest.id, partySize: 2 });
+
+    expect(seated.status).toBe(201);
+    expect(seated.body.assignment.source).toBe("MANUAL");
+    expect(seated.body.assignment.seatedAt).toEqual(expect.any(String));
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    expect(live.body.rooms[0].tables[0].status).toBe("OCCUPIED");
+
+    const entry = await db.queueEntry.findUniqueOrThrow({ where: { id: guest.id } });
+    expect(entry.status).toBe("ADMITTED");
+    expect(entry.finalStatus).toBe("pending");
+    expect(entry.joinedAt).toBeInstanceOf(Date);
+  });
+
+  it("occupies every table of a joined queue party", async () => {
+    const { location, cookie, request, tables } = await setupFloor([
+      { name: "T1", capacity: 4 },
+      { name: "T2", capacity: 4 },
+    ]);
+    const guest = await seedQueueEntry(location, { guestCount: 7 });
+
+    await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableIds: [tables[0].id, tables[1].id], queueEntryId: guest.id, partySize: 7 });
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    const statuses = live.body.rooms[0].tables.map((table: any) => table.status);
+    expect(statuses).toEqual(["OCCUPIED", "OCCUPIED"]);
+  });
+
+  it("refuses a stale recommendation once the table is taken", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const first = await seedQueueEntry(location, { guestCount: 2 });
+    const second = await seedQueueEntry(location, { guestCount: 2 });
+
+    await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: first.id, partySize: 2 });
+
+    const stale = await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: second.id, partySize: 2 });
+
+    expect(stale.status).toBe(409);
+    const assignments = await db.tableAssignment.count({
+      where: { queueEntryId: second.id, status: { in: ["RESERVED", "SEATED"] } },
+    });
+    expect(assignments).toBe(0);
+  });
+
+  it("refuses to force a party onto an undersized table", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 2 }]);
+    const guest = await seedQueueEntry(location, { guestCount: 8 });
+
+    const response = await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: guest.id, partySize: 8 });
+
+    expect(response.status).toBe(409);
+  });
+
+  it("keeps the queue history a completed visit needs for analytics", async () => {
+    const { location, cookie, request, tables } = await setupFloor([{ name: "T1", capacity: 4 }]);
+    const guest = await seedQueueEntry(location, { guestCount: 2 });
+
+    const seated = await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: guest.id, partySize: 2 });
+    await request
+      .post(`/api/floor/${location.id}/assignments/${seated.body.assignment.id}/complete`)
+      .set("Cookie", cookie)
+      .send({});
+
+    const entry = await db.queueEntry.findUniqueOrThrow({ where: { id: guest.id } });
+    const assignment = await db.tableAssignment.findUniqueOrThrow({
+      where: { id: seated.body.assignment.id },
+    });
+
+    expect(entry.joinedAt).toBeInstanceOf(Date);
+    expect(entry.arrivedAt).toBeInstanceOf(Date);
+    expect(assignment.seatedAt).toBeInstanceOf(Date);
+    expect(assignment.completedAt).toBeInstanceOf(Date);
+    expect(assignment.partySize).toBe(2);
+    expect(assignment.source).toBe("MANUAL");
+  });
+});

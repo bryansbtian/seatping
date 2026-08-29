@@ -42,6 +42,7 @@ import {
   touchGuestByReservationId,
 } from "../lib/guests.js";
 import { etaForToken, etaForAllQueueCustomers } from "../lib/queueEta.js";
+import { loadEtaCapacity } from "../lib/floorLive.js";
 import {
   queueEntryToLegacy,
   legacyKeyOf,
@@ -2108,7 +2109,8 @@ router.get("/business/:username/queue/token/:queueToken/eta", async (req, res) =
       });
       if (locationRow) {
         const location = await augmentLocationWithLiveLists(locationRow);
-        const eta = etaForToken(location, queueToken);
+        const capacity = await loadEtaCapacity(locationRow.id);
+        const eta = etaForToken({ ...location, ...capacity }, queueToken);
         if (eta) {
           return res.json({ eta });
         }
@@ -2136,7 +2138,8 @@ router.get(
         return res.status(404).json({ error: "Location not found or access denied" });
       }
       const location = await augmentLocationWithLiveLists(locationRow);
-      return res.json({ etas: etaForAllQueueCustomers(location) });
+      const capacity = await loadEtaCapacity(locationRow.id);
+      return res.json({ etas: etaForAllQueueCustomers({ ...location, ...capacity }) });
     } catch (err: any) {
       console.error("[auth] queue-etas error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });

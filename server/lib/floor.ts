@@ -486,6 +486,8 @@ export async function createAssignment(input: CreateAssignmentInput): Promise<Ou
         return fail(409, "Table already has an assignment during that time");
       }
 
+      const now = new Date();
+
       if (input.queueEntryId) {
         const held = await tx.tableAssignment.findFirst({
           where: {
@@ -514,16 +516,23 @@ export async function createAssignment(input: CreateAssignmentInput): Promise<Ou
         if (held) {
           return fail(409, "That reservation already has a table");
         }
-        await tx.reservation.update({
-          where: { id: input.reservationId },
-          data: { updatedAt: new Date() },
-        });
+        if (input.status === "SEATED") {
+          await tx.reservation.updateMany({
+            where: { id: input.reservationId, status: "CONFIRMED" },
+            data: { status: "ARRIVED", arrivedAt: now },
+          });
+        } else {
+          await tx.reservation.update({
+            where: { id: input.reservationId },
+            data: { updatedAt: now },
+          });
+        }
       }
 
       let seatedAt: Date | null = null;
       const tableData: Record<string, unknown> = { assignmentVersion: { increment: 1 } };
       if (input.status === "SEATED") {
-        seatedAt = new Date();
+        seatedAt = now;
         tableData.cleaningSince = null;
       }
 
@@ -643,14 +652,22 @@ export async function updateAssignment(input: UpdateAssignmentInput): Promise<Ou
         expectedEndAt,
         status,
       };
+      const now = new Date();
       if (status === "SEATED" && !existing.seatedAt) {
-        data.seatedAt = new Date();
+        data.seatedAt = now;
       }
       if (status === "COMPLETED" && !existing.completedAt) {
-        data.completedAt = new Date();
+        data.completedAt = now;
       }
       if (status === "CANCELLED" && !existing.cancelledAt) {
-        data.cancelledAt = new Date();
+        data.cancelledAt = now;
+      }
+
+      if (status === "SEATED" && existing.reservationId) {
+        await tx.reservation.updateMany({
+          where: { id: existing.reservationId, status: "CONFIRMED" },
+          data: { status: "ARRIVED", arrivedAt: now },
+        });
       }
 
       const updated = await tx.tableAssignment.update({
@@ -674,22 +691,32 @@ export async function completeAssignment(
 
   const outcome = await withWriteRetry(() =>
     prisma.$transaction(async (tx) => {
+      const now = new Date();
       const claimed = await tx.tableAssignment.updateMany({
         where: { id: existing.id, status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] } },
-        data: { status: "COMPLETED", completedAt: new Date() },
+        data: { status: "COMPLETED", completedAt: now },
       });
       if (claimed.count !== 1) {
         return fail(409, "Assignment is already closed");
       }
 
       if (existing.status === "SEATED") {
+        if (existing.reservationId) {
+          await tx.reservation.updateMany({
+            where: {
+              id: existing.reservationId,
+              status: { in: ["CONFIRMED", "ARRIVED"] },
+            },
+            data: { status: "COMPLETED", completedAt: now },
+          });
+        }
         let memberIds = [existing.tableId];
         if (existing.tableIds && existing.tableIds.length > 0) {
           memberIds = existing.tableIds;
         }
         await tx.diningTable.updateMany({
           where: { id: { in: memberIds }, locationId },
-          data: { cleaningSince: new Date() },
+          data: { cleaningSince: now },
         });
       }
 

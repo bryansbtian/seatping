@@ -61,6 +61,10 @@ export default defineConfig(() => ({
         target: apiTarget,
         changeOrigin: true,
       },
+      "/api/performance": {
+        target: apiTarget,
+        changeOrigin: true,
+      },
       "/api/search": {
         target: apiTarget,
         changeOrigin: true,

@@ -275,8 +275,8 @@ const LiveTableDetail = ({
       className="flex min-h-full shrink-0 flex-col gap-3 md:gap-4"
       data-testid="live-table-detail"
     >
-      <div className="flex shrink-0 items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-3">
+        <div className="flex min-w-0 flex-nowrap items-center gap-2">
           <CardTitle className="truncate text-lg text-slate-800 md:text-xl">{table.name}</CardTitle>
           <span aria-hidden="true" className="shrink-0 text-xs text-slate-300 md:text-sm">
             &middot;
@@ -285,7 +285,7 @@ const LiveTableDetail = ({
         </div>
         <span
           className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+            "ml-auto flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
             style.badge,
           )}
         >
@@ -296,7 +296,7 @@ const LiveTableDetail = ({
 
       {current && (
         <div className="shrink-0 rounded-xl bg-slate-50 p-3">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+          <p className="text-caption font-medium uppercase tracking-wide text-slate-500">
             {t("floor.live.currentParty")}
           </p>
           <p className="mt-1 truncate text-sm font-semibold text-slate-800">
@@ -310,7 +310,7 @@ const LiveTableDetail = ({
 
       {upcoming && (
         <div className="shrink-0 rounded-xl bg-amber-50 p-3">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-amber-700">
+          <p className="text-caption font-medium uppercase tracking-wide text-amber-700">
             {t("floor.live.upcoming")}
           </p>
           <p className="mt-1 truncate text-sm font-semibold text-amber-900">
@@ -325,7 +325,7 @@ const LiveTableDetail = ({
 
       {recommended && !current && (
         <div className="shrink-0 rounded-xl bg-emerald-50 p-3" data-testid="recommended-party">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-700">
+          <p className="text-caption font-medium uppercase tracking-wide text-emerald-700">
             {t("floor.live.recommended")}
           </p>
           <p className="mt-1 truncate text-sm font-semibold text-emerald-900">{recommended.name}</p>
@@ -333,7 +333,7 @@ const LiveTableDetail = ({
             {t("floor.live.partyOf", { n: recommended.partySize })} &middot;{" "}
             {t("floor.live.waitingFor", { n: recommended.waitingMinutes })}
           </p>
-          <p className="mt-1 text-[11px] text-emerald-700">{t("floor.live.recommendedHint")}</p>
+          <p className="mt-1 text-caption text-emerald-700">{t("floor.live.recommendedHint")}</p>
         </div>
       )}
 

@@ -67,6 +67,11 @@ export type WaitingParty = {
   partySize: number;
   joinedAt: string;
   waitingMinutes: number;
+  admittedAt: string | null;
+  admittedMinutes: number | null;
+  assignmentId: string | null;
+  tableId: string | null;
+  tableName: string | null;
   recommendedTableId: string | null;
   recommendedTableName: string | null;
   recommendedReasons: string[];
@@ -89,8 +94,28 @@ export type LiveFloor = {
   now: string;
   rooms: LiveRoom[];
   waitingParties: WaitingParty[];
+  admittedParties: WaitingParty[];
   upcomingReservations: UpcomingReservation[];
 };
+
+export const ARRIVAL_WINDOW_MS = 5 * 60 * 1000;
+
+export function arrivalCountdown(admittedAt: string | null, now: Date): string | null {
+  if (!admittedAt) {
+    return null;
+  }
+  const parsed = new Date(admittedAt);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  const remaining = ARRIVAL_WINDOW_MS - (now.getTime() - parsed.getTime());
+  if (remaining <= 0) {
+    return null;
+  }
+  const minutes = Math.floor(remaining / 60000);
+  const seconds = Math.floor((remaining % 60000) / 1000);
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
 
 export type StatusStyle = {
   node: string;

@@ -46,7 +46,7 @@ const ZoneInspector = ({ zone, saving, onSave, onDelete }: ZoneInspectorProps) =
       <CardTitle className="text-lg text-slate-800 md:text-xl">{t("floor.zoneSettings")}</CardTitle>
 
       <div className="space-y-1.5 md:space-y-2">
-        <Label htmlFor="zone-name" className="text-[11px]">
+        <Label htmlFor="zone-name" className="text-caption">
           {t("floor.zoneName")}
         </Label>
         <Input
@@ -61,7 +61,7 @@ const ZoneInspector = ({ zone, saving, onSave, onDelete }: ZoneInspectorProps) =
         />
       </div>
 
-      <dl className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-600 md:text-xs">
+      <dl className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2 text-caption text-slate-600 md:text-xs">
         <div className="min-w-0 text-left">
           <dt className="font-medium text-slate-500">{t("floor.field.position")}</dt>
           <dd className="truncate">

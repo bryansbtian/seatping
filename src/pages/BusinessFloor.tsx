@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 const BusinessFloor = () => {
   const { t } = useLang();
-  const { currentLocation } = useBusinessSession();
+  const { currentLocation, refreshMe } = useBusinessSession();
   const [mode, setMode] = useState<FloorMode>(() => readFloorMode());
 
   const modes: [FloorMode, string][] = [
@@ -22,7 +22,13 @@ const BusinessFloor = () => {
     if (mode === "edit") {
       body = <FloorEditor key={currentLocation.id} locationId={currentLocation.id} />;
     } else {
-      body = <LiveFloor key={currentLocation.id} locationId={currentLocation.id} />;
+      body = (
+        <LiveFloor
+          key={currentLocation.id}
+          locationId={currentLocation.id}
+          onDataChange={refreshMe}
+        />
+      );
     }
   }
 
@@ -33,7 +39,7 @@ const BusinessFloor = () => {
         description={BUSINESS_DESCRIPTION}
         image={BUSINESS_IMAGE}
       />
-      <div className="container mx-auto px-4 py-8 md:flex md:min-h-full md:flex-col">
+      <div className="container mx-auto flex min-h-full flex-col px-4 py-8">
         <div className="mb-6">
           <h1 className="text-xl md:text-2xl font-semibold text-gray-800">{t("floor.title")}</h1>
           <p className="text-gray-600 text-sm md:text-base">{t("floor.subtitle")}</p>
@@ -63,7 +69,7 @@ const BusinessFloor = () => {
           })}
         </div>
 
-        <div className="md:flex md:flex-1 md:flex-col">{body}</div>
+        <div className="flex flex-1 flex-col">{body}</div>
       </div>
     </>
   );

@@ -23,6 +23,7 @@ function iso(v: any): string | null {
 function queueBase(e: QueueEntry) {
   const joinedAt = iso(e.joinedAt);
   return {
+    id: e.id,
     firstName: e.firstName,
     lastName: e.lastName,
     name: `${e.firstName} ${e.lastName}`.trim(),

@@ -32,6 +32,7 @@ export type AssignTarget = {
   currentTableName?: string | null;
   recommendedTableId?: string | null;
   needsReview?: boolean;
+  awaitingArrival?: boolean;
 };
 
 export type AssignSelection = {
@@ -48,6 +49,8 @@ type AssignTableDialogProps = {
   onOpenChange: (open: boolean) => void;
   onConfirm: (selection: AssignSelection) => Promise<void>;
   onResolve: (reservationId: string) => Promise<void>;
+  onNoShow?: (queueEntryId: string) => Promise<void>;
+  onSeatHeldTable?: (queueEntryId: string) => Promise<void>;
 };
 
 const AssignTableDialog = ({
@@ -58,6 +61,8 @@ const AssignTableDialog = ({
   onOpenChange,
   onConfirm,
   onResolve,
+  onNoShow,
+  onSeatHeldTable,
 }: AssignTableDialogProps) => {
   const { t } = useLang();
   const [chosen, setChosen] = useState<TableCandidate | null>(null);
@@ -136,7 +141,7 @@ const AssignTableDialog = ({
           }
 
           let trailing = (
-            <span className="shrink-0 text-[11px] text-slate-500">
+            <span className="shrink-0 text-caption text-slate-500">
               {t(`floor.live.status.${candidate.status}` as TKey)}
             </span>
           );
@@ -144,7 +149,7 @@ const AssignTableDialog = ({
             trailing = (
               <span
                 data-testid="assign-recommended-badge"
-                className="flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white"
+                className="flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-2 py-0.5 text-micro font-medium text-white"
               >
                 <Star className="h-3 w-3" aria-hidden="true" />
                 {t("floor.assign.recommended")}
@@ -173,7 +178,7 @@ const AssignTableDialog = ({
                     <span className="block truncate text-sm font-semibold text-slate-800">
                       {candidate.name}
                     </span>
-                    <span className="block truncate text-[11px] text-slate-500">
+                    <span className="block truncate text-caption text-slate-500">
                       {candidate.detail} &middot;{" "}
                       {t("floor.assign.seats", { n: candidate.capacity })}
                     </span>
@@ -225,13 +230,13 @@ const AssignTableDialog = ({
                     <span className="block truncate text-sm font-semibold text-slate-800">
                       {option.name}
                     </span>
-                    <span className="block truncate text-[11px] text-slate-500">
+                    <span className="block truncate text-caption text-slate-500">
                       {option.detail} &middot; {t("floor.assign.seats", { n: option.capacity })}
                     </span>
                   </span>
                 </span>
                 {otherRoom && (
-                  <span className="shrink-0 text-[11px] text-slate-400">
+                  <span className="shrink-0 text-caption text-slate-400">
                     {t("floor.assign.otherRoom")}
                   </span>
                 )}
@@ -262,6 +267,15 @@ const AssignTableDialog = ({
   }
   if (combining) {
     confirmDisabled = busy || picked.length === 0 || !enoughSeats;
+  }
+
+  const arrivalTarget = Boolean(target.awaitingArrival) && Boolean(target.queueEntryId);
+  const seatHeldTable = Boolean(
+    arrivalTarget && onSeatHeldTable && target.currentTableId && !combining && !chosen,
+  );
+  if (seatHeldTable) {
+    confirmLabel = t("floor.live.seatNow");
+    confirmDisabled = busy;
   }
 
   let currentNote = null;
@@ -365,6 +379,16 @@ const AssignTableDialog = ({
           <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
             {t("common.cancel")}
           </Button>
+          {arrivalTarget && onNoShow && (
+            <Button
+              variant="destructiveOutline"
+              disabled={busy}
+              data-testid="assign-no-show"
+              onClick={() => onNoShow(target.queueEntryId as string)}
+            >
+              {t("floor.live.noShow")}
+            </Button>
+          )}
           {target.needsReview && target.reservationId && !combining && (
             <Button
               variant="outline"
@@ -379,6 +403,10 @@ const AssignTableDialog = ({
             disabled={confirmDisabled}
             data-testid="assign-confirm"
             onClick={() => {
+              if (seatHeldTable && onSeatHeldTable) {
+                onSeatHeldTable(target.queueEntryId as string);
+                return;
+              }
               if (noSingleTable) {
                 enterCombining();
                 return;

@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { api } from "../helpers/app.js";
+import { apiFromIp } from "../helpers/app.js";
 import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
 import { businessCookie } from "../helpers/auth.js";
 import { seedBusinessWithLocation, seedQueueEntry, seedReservation } from "../helpers/seed.js";
@@ -29,7 +29,7 @@ async function setupLiveFloor(
 ) {
   const { business, location } = await seedBusinessWithLocation();
   const cookie = businessCookie(business.id);
-  const request = await api();
+  const request = await apiFromIp();
 
   const roomResponse = await request
     .post(`/api/floor/${location.id}/rooms`)
@@ -69,7 +69,7 @@ describe("live floor read", () => {
   it("returns an empty floor for a location with no rooms", async () => {
     const { business, location } = await seedBusinessWithLocation();
     const response = await (
-      await api()
+      await apiFromIp()
     )
       .get(`/api/floor/${location.id}/live`)
       .set("Cookie", businessCookie(business.id));
@@ -913,7 +913,7 @@ describe("cleaning state", () => {
 });
 
 describe("seating a reserved party", () => {
-  it("turns the reservation into an occupied table without creating a second assignment", async () => {
+  it("syncs the reservation when its table is seated and the visit is completed", async () => {
     const { location, cookie, request, tables } = await setupLiveFloor();
     const reservation = await seedReservation(location, { guestCount: 2 });
 
@@ -943,5 +943,303 @@ describe("seating a reserved party", () => {
 
     const stored = await db.tableAssignment.findMany({ where: { tableId: tables[0].id } });
     expect(stored).toHaveLength(1);
+
+    let syncedReservation = await db.reservation.findUnique({ where: { id: reservation.id } });
+    expect(syncedReservation?.status).toBe("ARRIVED");
+    expect(syncedReservation?.arrivedAt).toBeTruthy();
+
+    const completed = await request
+      .post(`/api/floor/${location.id}/assignments/${created.body.assignment.id}/complete`)
+      .set("Cookie", cookie)
+      .send({});
+    expect(completed.status).toBe(200);
+
+    syncedReservation = await db.reservation.findUnique({ where: { id: reservation.id } });
+    expect(syncedReservation?.status).toBe("COMPLETED");
+    expect(syncedReservation?.completedAt).toBeTruthy();
+  });
+});
+
+describe("admitted parties on the live floor", () => {
+  it("lists an admitted party with the time they were admitted", async () => {
+    const { location, cookie, request } = await setupLiveFloor();
+    const admittedAt = new Date(Date.now() - 2 * 60 * 1000);
+    await seedQueueEntry(location, {
+      firstName: "Alan",
+      lastName: "Turing",
+      guestCount: 2,
+      status: "ADMITTED",
+      finalStatus: "pending",
+      admittedAt,
+    });
+
+    const response = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+
+    expect(response.body.waitingParties).toEqual([]);
+    expect(response.body.admittedParties).toHaveLength(1);
+    const party = response.body.admittedParties[0];
+    expect(party.name).toBe("Alan Turing");
+    expect(party.admittedAt).toBe(admittedAt.toISOString());
+    expect(party.admittedMinutes).toBeGreaterThanOrEqual(2);
+    expect(party.tableId).toBeNull();
+  });
+
+  it("recommends a table for an admitted party who has none yet", async () => {
+    const { location, cookie, request, tables } = await setupLiveFloor();
+    await seedQueueEntry(location, {
+      guestCount: 2,
+      status: "ADMITTED",
+      finalStatus: "pending",
+      admittedAt: new Date(),
+    });
+
+    const response = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+
+    const party = response.body.admittedParties[0];
+    expect(party.recommendedTableId).toBe(tables[0].id);
+    expect(party.recommendedTableName).toBe("T1");
+    expect(party.matchState).toBe("MATCHED");
+  });
+
+  it("gives the only table to the admitted party ahead of a party still waiting", async () => {
+    const { location, cookie, request, tables } = await setupLiveFloor();
+    await seedQueueEntry(location, {
+      guestCount: 2,
+      joinedAt: new Date(Date.now() - 60 * 60 * 1000),
+    });
+    const admitted = await seedQueueEntry(location, {
+      guestCount: 2,
+      status: "ADMITTED",
+      finalStatus: "pending",
+      admittedAt: new Date(),
+    });
+
+    const response = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+
+    expect(response.body.admittedParties[0].recommendedTableId).toBe(tables[0].id);
+    expect(response.body.waitingParties[0].recommendedTableId).toBeNull();
+    expect(tableNamed(response.body, "T1").recommendedPartyId).toBe(admitted.id);
+  });
+
+  it("shows the table an admitted party is already holding", async () => {
+    const { location, cookie, request, tables } = await setupLiveFloor();
+    const entry = await seedQueueEntry(location, {
+      guestCount: 2,
+      status: "ADMITTED",
+      finalStatus: "pending",
+      admittedAt: new Date(),
+    });
+    await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: entry.id, seatNow: false });
+
+    const response = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+
+    const party = response.body.admittedParties[0];
+    expect(party.tableId).toBe(tables[0].id);
+    expect(party.tableName).toBe("T1");
+    expect(party.assignmentId).toBeTruthy();
+    expect(party.recommendedTableId).toBeNull();
+  });
+});
+
+describe("queue actions from the live floor", () => {
+  it("admits a waiting party", async () => {
+    const { location, cookie, request } = await setupLiveFloor();
+    const entry = await seedQueueEntry(location, { guestCount: 2 });
+
+    const response = await request
+      .post(`/api/floor/${location.id}/queue/${entry.id}/admit`)
+      .set("Cookie", cookie)
+      .send({});
+
+    expect(response.status).toBe(200);
+    const stored = await db.queueEntry.findUnique({ where: { id: entry.id } });
+    expect(stored?.status).toBe("ADMITTED");
+    expect(stored?.finalStatus).toBe("pending");
+    expect(stored?.admittedAt).toBeTruthy();
+  });
+
+  it("refuses to admit a party who is no longer waiting", async () => {
+    const { location, cookie, request } = await setupLiveFloor();
+    const entry = await seedQueueEntry(location, {
+      status: "ADMITTED",
+      finalStatus: "pending",
+      admittedAt: new Date(),
+    });
+
+    const response = await request
+      .post(`/api/floor/${location.id}/queue/${entry.id}/admit`)
+      .set("Cookie", cookie)
+      .send({});
+
+    expect(response.status).toBe(409);
+  });
+
+  it("refuses to admit a queue entry from another location", async () => {
+    const { location, cookie, request } = await setupLiveFloor();
+    const other = await seedBusinessWithLocation();
+    const entry = await seedQueueEntry(other.location, { guestCount: 2 });
+
+    const response = await request
+      .post(`/api/floor/${location.id}/queue/${entry.id}/admit`)
+      .set("Cookie", cookie)
+      .send({});
+
+    expect(response.status).toBe(404);
+  });
+
+  it("confirms an arrival and seats the table the party was holding", async () => {
+    const { location, cookie, request, tables } = await setupLiveFloor();
+    const entry = await seedQueueEntry(location, {
+      guestCount: 2,
+      status: "ADMITTED",
+      finalStatus: "pending",
+      admittedAt: new Date(),
+    });
+    await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: entry.id, seatNow: false });
+
+    const response = await request
+      .post(`/api/floor/${location.id}/queue/${entry.id}/arrived`)
+      .set("Cookie", cookie)
+      .send({});
+
+    expect(response.status).toBe(200);
+    expect(response.body.assignment.status).toBe("SEATED");
+    const stored = await db.queueEntry.findUnique({ where: { id: entry.id } });
+    expect(stored?.status).toBe("ARRIVED");
+    expect(stored?.finalStatus).toBe("arrived");
+    expect(stored?.arrivedAt).toBeTruthy();
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    expect(live.body.admittedParties).toEqual([]);
+    expect(tableNamed(live.body, "T1").status).toBe("OCCUPIED");
+  });
+
+  it("confirms an arrival for a party with no table yet", async () => {
+    const { location, cookie, request } = await setupLiveFloor();
+    const entry = await seedQueueEntry(location, {
+      status: "ADMITTED",
+      finalStatus: "pending",
+      admittedAt: new Date(),
+    });
+
+    const response = await request
+      .post(`/api/floor/${location.id}/queue/${entry.id}/arrived`)
+      .set("Cookie", cookie)
+      .send({});
+
+    expect(response.status).toBe(200);
+    expect(response.body.assignment).toBeNull();
+    const stored = await db.queueEntry.findUnique({ where: { id: entry.id } });
+    expect(stored?.status).toBe("ARRIVED");
+  });
+
+  it("refuses to confirm an arrival for a party who was never admitted", async () => {
+    const { location, cookie, request } = await setupLiveFloor();
+    const entry = await seedQueueEntry(location, { guestCount: 2 });
+
+    const response = await request
+      .post(`/api/floor/${location.id}/queue/${entry.id}/arrived`)
+      .set("Cookie", cookie)
+      .send({});
+
+    expect(response.status).toBe(409);
+  });
+
+  it("marks a no-show and releases the table it was holding", async () => {
+    const { location, cookie, request, tables } = await setupLiveFloor();
+    const entry = await seedQueueEntry(location, {
+      guestCount: 2,
+      status: "ADMITTED",
+      finalStatus: "pending",
+      admittedAt: new Date(),
+    });
+    await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: entry.id, seatNow: false });
+
+    const response = await request
+      .post(`/api/floor/${location.id}/queue/${entry.id}/no-show`)
+      .set("Cookie", cookie)
+      .send({});
+
+    expect(response.status).toBe(200);
+    const stored = await db.queueEntry.findUnique({ where: { id: entry.id } });
+    expect(stored?.status).toBe("NO_SHOW");
+    expect(stored?.finalStatus).toBe("no_show");
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    expect(live.body.admittedParties).toEqual([]);
+    expect(tableNamed(live.body, "T1").status).toBe("AVAILABLE");
+  });
+
+  it("refuses to mark a no-show for a party who is still waiting", async () => {
+    const { location, cookie, request } = await setupLiveFloor();
+    const entry = await seedQueueEntry(location, { guestCount: 2 });
+
+    const response = await request
+      .post(`/api/floor/${location.id}/queue/${entry.id}/no-show`)
+      .set("Cookie", cookie)
+      .send({});
+
+    expect(response.status).toBe(409);
+  });
+
+  it("removes a waiting party and frees the table it was holding", async () => {
+    const { location, cookie, request, tables } = await setupLiveFloor();
+    const entry = await seedQueueEntry(location, { guestCount: 2 });
+    await request
+      .post(`/api/floor/${location.id}/assign`)
+      .set("Cookie", cookie)
+      .send({ tableId: tables[0].id, queueEntryId: entry.id, seatNow: false });
+
+    const response = await request
+      .post(`/api/floor/${location.id}/queue/${entry.id}/remove`)
+      .set("Cookie", cookie)
+      .send({});
+
+    expect(response.status).toBe(200);
+    const stored = await db.queueEntry.findUnique({ where: { id: entry.id } });
+    expect(stored?.status).toBe("REMOVED");
+    expect(stored?.removedAt).toBeTruthy();
+
+    const live = await request.get(`/api/floor/${location.id}/live`).set("Cookie", cookie);
+    expect(live.body.waitingParties).toEqual([]);
+    expect(tableNamed(live.body, "T1").status).toBe("AVAILABLE");
+  });
+
+  it("refuses to remove a party who was already admitted", async () => {
+    const { location, cookie, request } = await setupLiveFloor();
+    const entry = await seedQueueEntry(location, {
+      status: "ADMITTED",
+      finalStatus: "pending",
+      admittedAt: new Date(),
+    });
+
+    const response = await request
+      .post(`/api/floor/${location.id}/queue/${entry.id}/remove`)
+      .set("Cookie", cookie)
+      .send({});
+
+    expect(response.status).toBe(409);
+  });
+
+  it("refuses to remove a queue entry from another location", async () => {
+    const { location, cookie, request } = await setupLiveFloor();
+    const other = await seedBusinessWithLocation();
+    const entry = await seedQueueEntry(other.location, { guestCount: 2 });
+
+    const response = await request
+      .post(`/api/floor/${location.id}/queue/${entry.id}/remove`)
+      .set("Cookie", cookie)
+      .send({});
+
+    expect(response.status).toBe(404);
   });
 });

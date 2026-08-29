@@ -648,7 +648,7 @@ export const sendBusinessOnboardingEmail = async (
   _username: string,
   trialDays?: number,
 ): Promise<boolean> => {
-  const dashboardUrl = `${FRONTEND()}/business/dashboard`;
+  const dashboardUrl = `${FRONTEND()}/business/overview`;
 
   let trialSentence = "";
   if (trialDays && trialDays > 0) {

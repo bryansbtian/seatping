@@ -68,11 +68,11 @@ const BusinessLayout = () => {
             </div>
           </header>
 
-          <main className="flex flex-1 flex-col overflow-y-auto">
-            <div className="flex-1">
+          <main className="flex flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable]">
+            <div className="bp-shell flex-1">
               <Outlet />
             </div>
-            <Footer />
+            <Footer fullWidth />
           </main>
         </div>
       </div>

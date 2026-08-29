@@ -1,5 +1,4 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from "react";
-import { Ban } from "lucide-react";
 import type { DiningTable } from "@/lib/floorApi";
 import { fitsTableName, type Rect } from "@/lib/floorGeometry";
 import { cn } from "@/lib/utils";
@@ -88,22 +87,13 @@ const TableNode = ({ table, scale, selected, onSelect, onDragStart }: TableNodeP
       }}
     >
       {showName && (
-        <span className="pointer-events-none max-w-full truncate px-1 text-[11px] font-semibold leading-none md:text-xs">
+        <span className="pointer-events-none max-w-full truncate px-1 text-caption font-semibold leading-none md:text-xs">
           {table.name}
         </span>
       )}
-      <span className={cn("pointer-events-none text-[11px] leading-none", showName && "mt-1")}>
+      <span className={cn("pointer-events-none text-caption leading-none", showName && "mt-1")}>
         {table.capacity}
       </span>
-      {table.isBlocked && showName && (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute right-1 top-1 text-slate-600"
-        >
-          <Ban className="h-3.5 w-3.5" />
-        </span>
-      )}
-
       {selected && (
         <span
           role="button"

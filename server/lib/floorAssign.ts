@@ -1,6 +1,10 @@
 import { prisma } from "./prisma.js";
+import { restaurantNameForNotification } from "./business.js";
 import { withWriteRetry } from "./dbRetry.js";
 import { touchGuestByQueueEntryId, touchGuestByReservationId } from "./guests.js";
+import { queueEntryToLegacy } from "./liveData.js";
+import { enqueueNotification } from "./notifications.js";
+import { syncCustomerQueue, type CustomerQueueStatus } from "./queueSync.js";
 import {
   ACTIVE_ASSIGNMENT_STATUSES,
   OBJECT_ID_RE,
@@ -13,8 +17,6 @@ import {
   ok,
   type Outcome,
 } from "./floor.js";
-
-export const SEATED_QUEUE_STATUSES = ["WAITING", "ADMITTED"] as const;
 
 export type ManualAssignInput = {
   businessId: string;
@@ -85,36 +87,176 @@ export async function resolvePartySize(input: {
   return fail(400, "partySize is required");
 }
 
-export async function markQueueEntrySeated(queueEntryId: string): Promise<void> {
+export async function markQueueEntryAdmitted(queueEntryId: string): Promise<boolean> {
   const now = new Date();
   const entry = await prisma.queueEntry.findUnique({
     where: { id: queueEntryId },
-    select: { id: true, status: true, admittedAt: true },
   });
   if (!entry) {
-    return;
+    return false;
   }
-  const seatable = SEATED_QUEUE_STATUSES.some((status) => status === entry.status);
-  if (!seatable) {
-    return;
-  }
-
-  const data: Record<string, unknown> = {
-    status: "ARRIVED",
-    finalStatus: "arrived",
-    arrivedAt: now,
-  };
-  if (!entry.admittedAt) {
-    data.admittedAt = now;
+  if (entry.status !== "WAITING") {
+    return false;
   }
 
-  await withWriteRetry(() =>
+  const result = await withWriteRetry(() =>
     prisma.queueEntry.updateMany({
-      where: { id: entry.id, status: { in: [...SEATED_QUEUE_STATUSES] } },
-      data,
+      where: { id: entry.id, status: "WAITING" },
+      data: {
+        status: "ADMITTED",
+        finalStatus: "pending",
+        admittedAt: entry.admittedAt ?? now,
+      },
     }),
   );
+  if (result.count === 0) {
+    return false;
+  }
+
+  const [business, location] = await Promise.all([
+    prisma.business.findUnique({ where: { id: entry.businessId } }),
+    prisma.location.findUnique({ where: { id: entry.locationId } }),
+  ]);
+  const admittedEntry = {
+    ...entry,
+    status: "ADMITTED" as const,
+    finalStatus: "pending",
+    admittedAt: entry.admittedAt ?? now,
+  };
+  const customer = queueEntryToLegacy(admittedEntry, {
+    businessUsername: business?.username ?? null,
+  });
+  await syncCustomerQueue(customer, {
+    status: "admitted",
+    businessUsername: business?.username,
+    businessName: business?.name,
+    locationName: location?.displayName || location?.name || business?.name,
+    locationId: entry.locationId,
+  });
+
+  if (
+    entry.notificationMethod === "sms" ||
+    entry.notificationMethod === "whatsapp" ||
+    entry.notificationMethod === "email"
+  ) {
+    const fallbackName =
+      location?.displayName || location?.name || business?.name || "The business";
+    await enqueueNotification({
+      type: "queue_admitted",
+      channel: entry.notificationMethod,
+      firstName: entry.firstName,
+      countryCode: entry.countryCode || "+1",
+      phoneNumber: entry.phone || "",
+      email: entry.email || "",
+      restaurantName: restaurantNameForNotification(location, fallbackName),
+    });
+  }
   await touchGuestByQueueEntryId(entry.id);
+  return true;
+}
+
+async function syncAdmittedTransition(
+  entry: { id: string; businessId: string; locationId: string },
+  updatedEntry: Record<string, unknown>,
+  legacyStatus: CustomerQueueStatus,
+): Promise<void> {
+  const [business, location] = await Promise.all([
+    prisma.business.findUnique({ where: { id: entry.businessId } }),
+    prisma.location.findUnique({ where: { id: entry.locationId } }),
+  ]);
+  const customer = queueEntryToLegacy(updatedEntry as any, {
+    businessUsername: business?.username ?? null,
+  });
+  await syncCustomerQueue(customer, {
+    status: legacyStatus,
+    businessUsername: business?.username,
+    businessName: business?.name,
+    locationName: location?.displayName || location?.name || business?.name,
+    locationId: entry.locationId,
+  });
+  await touchGuestByQueueEntryId(entry.id);
+}
+
+export async function markQueueEntryArrived(queueEntryId: string): Promise<boolean> {
+  const entry = await prisma.queueEntry.findUnique({ where: { id: queueEntryId } });
+  if (!entry) {
+    return false;
+  }
+  if (entry.status !== "ADMITTED") {
+    return false;
+  }
+
+  const arrivedAt = new Date();
+  const result = await withWriteRetry(() =>
+    prisma.queueEntry.updateMany({
+      where: { id: entry.id, status: "ADMITTED" },
+      data: { status: "ARRIVED", finalStatus: "arrived", arrivedAt },
+    }),
+  );
+  if (result.count === 0) {
+    return false;
+  }
+
+  await syncAdmittedTransition(
+    entry,
+    { ...entry, status: "ARRIVED", finalStatus: "arrived", arrivedAt },
+    "arrived",
+  );
+  return true;
+}
+
+export async function markQueueEntryNoShow(queueEntryId: string): Promise<boolean> {
+  const entry = await prisma.queueEntry.findUnique({ where: { id: queueEntryId } });
+  if (!entry) {
+    return false;
+  }
+  if (entry.status !== "ADMITTED") {
+    return false;
+  }
+
+  const noShowAt = new Date();
+  const result = await withWriteRetry(() =>
+    prisma.queueEntry.updateMany({
+      where: { id: entry.id, status: "ADMITTED" },
+      data: { status: "NO_SHOW", finalStatus: "no_show", noShowAt },
+    }),
+  );
+  if (result.count === 0) {
+    return false;
+  }
+
+  await releaseQueueEntryTables(entry.id);
+  await syncAdmittedTransition(
+    entry,
+    { ...entry, status: "NO_SHOW", finalStatus: "no_show", noShowAt },
+    "no_show",
+  );
+  return true;
+}
+
+export async function markQueueEntryRemoved(queueEntryId: string): Promise<boolean> {
+  const entry = await prisma.queueEntry.findUnique({ where: { id: queueEntryId } });
+  if (!entry) {
+    return false;
+  }
+  if (entry.status !== "WAITING") {
+    return false;
+  }
+
+  const removedAt = new Date();
+  const result = await withWriteRetry(() =>
+    prisma.queueEntry.updateMany({
+      where: { id: entry.id, status: "WAITING" },
+      data: { status: "REMOVED", removedAt },
+    }),
+  );
+  if (result.count === 0) {
+    return false;
+  }
+
+  await releaseQueueEntryTables(entry.id);
+  await syncAdmittedTransition(entry, { ...entry, status: "REMOVED", removedAt }, "removed");
+  return true;
 }
 
 export async function markReservationSeated(reservationId: string): Promise<void> {
@@ -122,16 +264,21 @@ export async function markReservationSeated(reservationId: string): Promise<void
     where: { id: reservationId },
     select: { id: true, status: true },
   });
-  if (!reservation || reservation.status !== "CONFIRMED") {
+  if (!reservation) {
     return;
   }
 
-  await withWriteRetry(() =>
-    prisma.reservation.updateMany({
-      where: { id: reservation.id, status: "CONFIRMED" },
-      data: { status: "ARRIVED", arrivedAt: new Date() },
-    }),
-  );
+  if (reservation.status === "CONFIRMED") {
+    await withWriteRetry(() =>
+      prisma.reservation.updateMany({
+        where: { id: reservation.id, status: "CONFIRMED" },
+        data: { status: "ARRIVED", arrivedAt: new Date() },
+      }),
+    );
+  }
+  if (reservation.status !== "CONFIRMED" && reservation.status !== "ARRIVED") {
+    return;
+  }
   await touchGuestByReservationId(reservation.id);
 }
 
@@ -162,6 +309,12 @@ export async function markVisitClosed(assignment: {
     await touchGuestByReservationId(assignment.reservationId);
   }
   if (assignment.queueEntryId) {
+    await withWriteRetry(() =>
+      prisma.queueEntry.updateMany({
+        where: { id: assignment.queueEntryId as string, status: "ADMITTED" },
+        data: { status: "ARRIVED", finalStatus: "arrived", arrivedAt: new Date() },
+      }),
+    );
     await touchGuestByQueueEntryId(assignment.queueEntryId);
   }
 }
@@ -220,7 +373,7 @@ export async function manualAssign(input: ManualAssignInput): Promise<Outcome<an
 
   if (outcome.value.status === "SEATED") {
     if (input.queueEntryId) {
-      await markQueueEntrySeated(input.queueEntryId);
+      await markQueueEntryAdmitted(input.queueEntryId);
     }
     if (input.reservationId) {
       await markReservationSeated(input.reservationId);

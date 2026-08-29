@@ -13,7 +13,7 @@ const ReservationRow = ({ reservation, busy, onSelect }: ReservationRowProps) =>
   let badge = null;
   if (reservation.tableName) {
     badge = (
-      <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-800">
+      <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-micro font-medium text-indigo-800">
         {reservation.tableName}
       </span>
     );
@@ -22,7 +22,7 @@ const ReservationRow = ({ reservation, busy, onSelect }: ReservationRowProps) =>
     badge = (
       <span
         data-testid={`reservation-review-${reservation.id}`}
-        className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-900"
+        className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-micro font-medium text-amber-900"
       >
         {t("floor.live.needsReview")}
       </span>
@@ -41,14 +41,14 @@ const ReservationRow = ({ reservation, busy, onSelect }: ReservationRowProps) =>
       >
         {badge}
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate text-[11px] leading-none text-slate-500">
+          <span className="truncate text-caption leading-none text-slate-500">
             {t("floor.live.partyOf", { n: reservation.partySize })} &middot; {reservation.timeLabel}
           </span>
           <span className="truncate text-sm font-semibold leading-tight text-slate-800">
             {reservation.name}
           </span>
           {reservation.needsReview && (
-            <span className="truncate text-[11px] leading-tight text-amber-700">
+            <span className="truncate text-caption leading-tight text-amber-700">
               {t("floor.live.noTableAssigned")}
             </span>
           )}
