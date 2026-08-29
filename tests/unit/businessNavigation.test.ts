@@ -25,6 +25,7 @@ describe("business navigation config", () => {
       "/business/reservations",
       "/business/floor",
       "/business/guests",
+      "/business/reviews",
       "/business/campaigns",
       "/business/performance",
       "/business/settings",
@@ -38,6 +39,19 @@ describe("business navigation config", () => {
         expect(item.icon).toBeTruthy();
       }
     }
+  });
+
+  it("puts Reviews under Customers between Guests and Campaigns", () => {
+    const customers = BUSINESS_NAV_GROUPS.find((group) => group.labelKey === "nav.group.customers");
+
+    expect(customers?.items.map((item) => item.to)).toEqual([
+      "/business/guests",
+      "/business/reviews",
+      "/business/campaigns",
+    ]);
+    const reviews = customers?.items.find((item) => item.to === "/business/reviews");
+    expect(reviews?.labelKey).toBe("nav.reviews");
+    expect(reviews?.icon).toBeTruthy();
   });
 
   it("does not repeat a destination across groups", () => {

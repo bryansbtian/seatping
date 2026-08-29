@@ -24,12 +24,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapPin, Plus, Trash2, Pencil, Star, QrCode, Copy, Download } from "lucide-react";
+import { MapPin, Plus, Trash2, Pencil, QrCode, Copy, Download } from "lucide-react";
 import QRCode from "qrcode";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import BusinessEmptyState from "@/components/BusinessEmptyState";
 import RestaurantProfileEditor from "@/components/RestaurantProfileEditor";
-import LocationReviewsModal from "@/components/LocationReviewsModal";
 import type { PlaceDetails } from "@/lib/googleMaps";
 
 interface Location {
@@ -84,10 +83,6 @@ export default function LocationManagement({
   const [newLocationDisplayName, setNewLocationDisplayName] = useState("");
   const [newLocationPlace, setNewLocationPlace] = useState<PlaceDetails | null>(null);
   const [editing, setEditing] = useState<Location | null>(null);
-  const [selectedLocationForReviews, setSelectedLocationForReviews] = useState<Location | null>(
-    null,
-  );
-  const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
   const [qrLocation, setQrLocation] = useState<Location | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -294,13 +289,16 @@ export default function LocationManagement({
           return (
             <div
               key={location.id || index}
-              className="flex flex-col gap-4 p-3 md:p-4 bg-gray-50 rounded-lg xl:flex-row xl:items-start xl:justify-between xl:gap-4"
+              className="flex flex-col gap-4 rounded-lg bg-gray-50 p-3 md:flex-row md:items-start md:justify-between md:gap-4 md:p-4"
             >
               <div className="flex items-start space-x-3 min-w-0 flex-1">
                 <MapPin className="w-4 h-4 md:w-5 md:h-5 text-gray-400 flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <p className="font-medium text-gray-800 text-sm md:text-base break-words">
+                    <p
+                      className="break-words text-sm font-medium text-gray-800 md:text-base"
+                      data-testid={`loc-name-${location.id}`}
+                    >
                       {location.displayName ||
                         location.name ||
                         location.address ||
@@ -351,44 +349,48 @@ export default function LocationManagement({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:flex xl:flex-wrap xl:justify-end xl:gap-3 xl:shrink-0">
+              <div
+                className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3 md:shrink-0 md:flex-nowrap"
+                data-testid={`loc-actions-${location.id}`}
+              >
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-10 w-full justify-center xl:w-auto"
+                  aria-label={t("loc.editProfile")}
+                  title={t("loc.editProfile")}
+                  className="h-10 w-full justify-center sm:w-auto md:w-10 md:px-0 xl:w-auto xl:px-4"
                   onClick={() => setEditing(location)}
                 >
-                  <Pencil size={16} className="mr-2" /> {t("loc.editProfile")}
+                  <Pencil size={16} className="mr-2 md:mr-0 xl:mr-2" />
+                  <span className="md:hidden xl:inline" data-testid="loc-edit-label">
+                    {t("loc.editProfile")}
+                  </span>
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-10 w-full justify-center xl:w-auto"
-                  onClick={() => {
-                    setSelectedLocationForReviews(location);
-                    setIsReviewsModalOpen(true);
-                  }}
-                >
-                  <Star size={16} className="mr-2" /> {t("loc.viewReviews")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-10 w-full justify-center xl:w-auto"
+                  aria-label={t("loc.qrCode")}
+                  title={t("loc.qrCode")}
+                  className="h-10 w-full justify-center sm:w-auto md:w-10 md:px-0 xl:w-auto xl:px-4"
                   onClick={() => openQrModal(location)}
                 >
-                  <QrCode size={16} className="mr-2" /> {t("loc.qrCode")}
+                  <QrCode size={16} className="mr-2 md:mr-0 xl:mr-2" />
+                  <span className="md:hidden xl:inline" data-testid="loc-qr-label">
+                    {t("loc.qrCode")}
+                  </span>
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
                       size="sm"
                       variant="destructiveOutline"
-                      className="h-10 w-full justify-center xl:w-10 xl:px-0"
+                      className="h-10 w-full justify-center sm:w-10 sm:px-0"
+                      aria-label={t("loc.removeLocation")}
+                      title={t("loc.removeLocation")}
                       disabled={loading}
                     >
-                      <Trash2 size={16} className="mr-2 xl:mr-0" />
-                      <span className="xl:hidden">{t("loc.removeLocation")}</span>
+                      <Trash2 size={16} className="mr-2 sm:mr-0" />
+                      <span className="sm:hidden">{t("loc.removeLocation")}</span>
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="max-w-sm md:max-w-lg">
@@ -567,17 +569,6 @@ export default function LocationManagement({
           )}
         </DialogContent>
       </Dialog>
-
-      <LocationReviewsModal
-        location={selectedLocationForReviews}
-        open={isReviewsModalOpen}
-        onOpenChange={(open) => {
-          setIsReviewsModalOpen(open);
-          if (!open) {
-            setSelectedLocationForReviews(null);
-          }
-        }}
-      />
 
       <Dialog
         open={!!qrLocation}
