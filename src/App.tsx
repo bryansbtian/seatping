@@ -134,10 +134,6 @@ const App = () => (
           <Route path="/sales" element={<Sales />} />
 
           <Route
-            path="/business/dashboard"
-            element={<Navigate to="/business/overview" replace />}
-          />
-          <Route
             element={
               <RequireBusiness>
                 <LanguageProvider>

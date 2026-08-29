@@ -14,6 +14,7 @@ import {
   type SmartTable,
 } from "./smartAssign.js";
 import { formatTimeLabel, splitDateTime } from "./reservations.js";
+import { estimateTurnMinutes, type EtaOccupancy, type EtaTable } from "./queueEta.js";
 
 export const LIVE_STATUSES = ["BLOCKED", "OCCUPIED", "CLEANING", "RESERVED", "AVAILABLE"] as const;
 
@@ -24,6 +25,8 @@ export const MAX_WAITING_PARTIES = 50;
 export const MAX_UPCOMING_RESERVATIONS = 50;
 export const RESERVATION_GRACE_MINUTES = 30;
 export const UPCOMING_RESERVATION_STATUSES = ["CONFIRMED", "ARRIVED"] as const;
+export const TURN_SAMPLE_LIMIT = 50;
+export const TURN_SAMPLE_DAYS = 14;
 
 export type LiveAssignmentLike = {
   id: string;
@@ -69,6 +72,11 @@ export type WaitingParty = {
   partySize: number;
   joinedAt: string;
   waitingMinutes: number;
+  admittedAt: string | null;
+  admittedMinutes: number | null;
+  assignmentId: string | null;
+  tableId: string | null;
+  tableName: string | null;
   recommendedTableId: string | null;
   recommendedTableName: string | null;
   recommendedReasons: string[];
@@ -320,30 +328,99 @@ export async function buildLiveFloor(locationId: string, now: Date = new Date())
     }
   }
 
-  const seatedQueueIds = new Set(
-    active.map((assignment) => assignment.queueEntryId).filter((id): id is string => Boolean(id)),
-  );
+  const tableNames = new Map<string, string>();
+  for (const room of rooms) {
+    for (const table of room.tables) {
+      tableNames.set(table.id, table.name);
+    }
+  }
 
-  const waitingRows = await prisma.queueEntry.findMany({
-    where: { locationId, status: "WAITING" },
-    orderBy: { joinedAt: "asc" },
-    take: MAX_WAITING_PARTIES,
-    select: { id: true, firstName: true, lastName: true, guestCount: true, joinedAt: true },
-  });
+  const assignedTables = new Map<string, { assignmentId: string; id: string; name: string }>();
+  for (const assignment of active) {
+    if (!assignment.queueEntryId) {
+      continue;
+    }
+    let memberIds = [assignment.tableId];
+    if (assignment.tableIds && assignment.tableIds.length > 0) {
+      memberIds = assignment.tableIds;
+    }
+    const label = memberIds
+      .map((memberId) => tableNames.get(memberId))
+      .filter((name): name is string => Boolean(name))
+      .join(" + ");
+    assignedTables.set(assignment.queueEntryId, {
+      assignmentId: assignment.id,
+      id: assignment.tableId,
+      name: label,
+    });
+  }
+
+  const [waitingRows, admittedRows] = await Promise.all([
+    prisma.queueEntry.findMany({
+      where: { locationId, status: "WAITING" },
+      orderBy: { joinedAt: "asc" },
+      take: MAX_WAITING_PARTIES,
+      select: { id: true, firstName: true, lastName: true, guestCount: true, joinedAt: true },
+    }),
+    prisma.queueEntry.findMany({
+      where: { locationId, status: "ADMITTED" },
+      orderBy: { admittedAt: "asc" },
+      take: MAX_WAITING_PARTIES,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        guestCount: true,
+        joinedAt: true,
+        admittedAt: true,
+      },
+    }),
+  ]);
 
   const waitingParties: WaitingParty[] = waitingRows
-    .filter((row) => !seatedQueueIds.has(row.id))
+    .filter((row) => !assignedTables.has(row.id))
     .map((row) => ({
       id: row.id,
       name: displayName(row.firstName, row.lastName),
       partySize: row.guestCount,
       joinedAt: row.joinedAt.toISOString(),
       waitingMinutes: minutesBetween(row.joinedAt, now) ?? 0,
+      admittedAt: null,
+      admittedMinutes: null,
+      assignmentId: null,
+      tableId: null,
+      tableName: null,
       recommendedTableId: null,
       recommendedTableName: null,
       recommendedReasons: [],
       matchState: "QUEUED" as MatchState,
     }));
+
+  const admittedParties: WaitingParty[] = admittedRows.map((row) => {
+    const held = assignedTables.get(row.id) ?? null;
+    let matchState: MatchState = "QUEUED";
+    if (held) {
+      matchState = "MATCHED";
+    }
+    return {
+      id: row.id,
+      name: displayName(row.firstName, row.lastName),
+      partySize: row.guestCount,
+      joinedAt: row.joinedAt.toISOString(),
+      waitingMinutes: minutesBetween(row.joinedAt, now) ?? 0,
+      admittedAt: row.admittedAt?.toISOString() ?? null,
+      admittedMinutes: minutesBetween(row.admittedAt, now),
+      assignmentId: held?.assignmentId ?? null,
+      tableId: held?.id ?? null,
+      tableName: held?.name ?? null,
+      recommendedTableId: null,
+      recommendedTableName: null,
+      recommendedReasons: [],
+      matchState,
+    };
+  });
+
+  const unseatedParties = admittedParties.filter((party) => !party.tableId);
 
   const statuses = new Map<string, LiveStatus>();
 
@@ -375,13 +452,22 @@ export async function buildLiveFloor(locationId: string, now: Date = new Date())
     }
   }
 
-  const smartParties: SmartParty[] = waitingParties.map((party) => ({
-    id: party.id,
-    partySize: party.partySize,
-    joinedAt: new Date(party.joinedAt),
-    priority: 0,
-    preferredRoomIds: [],
-  }));
+  const smartParties: SmartParty[] = [
+    ...unseatedParties.map((party) => ({
+      id: party.id,
+      partySize: party.partySize,
+      joinedAt: new Date(party.joinedAt),
+      priority: 1,
+      preferredRoomIds: [],
+    })),
+    ...waitingParties.map((party) => ({
+      id: party.id,
+      partySize: party.partySize,
+      joinedAt: new Date(party.joinedAt),
+      priority: 0,
+      preferredRoomIds: [],
+    })),
+  ];
 
   const occupancy: SmartOccupancy[] = [];
   for (const assignment of active) {
@@ -424,7 +510,7 @@ export async function buildLiveFloor(locationId: string, now: Date = new Date())
     }
   }
 
-  for (const party of waitingParties) {
+  for (const party of [...unseatedParties, ...waitingParties]) {
     const match = partyMatches.get(party.id);
     if (match) {
       party.recommendedTableId = match.tableId;
@@ -497,19 +583,85 @@ export async function buildLiveFloor(locationId: string, now: Date = new Date())
     }),
   }));
 
-  const tableNames = new Map<string, string>();
-  for (const room of rooms) {
-    for (const table of room.tables) {
-      tableNames.set(table.id, table.name);
-    }
-  }
-
   const upcomingReservations = await loadUpcomingReservations(locationId, active, tableNames);
 
   return {
     now: now.toISOString(),
     rooms: serializedRooms,
     waitingParties,
+    admittedParties,
     upcomingReservations,
+  };
+}
+
+export type EtaCapacity = {
+  diningTables: EtaTable[];
+  tableOccupancy: EtaOccupancy[];
+  turnMinutes: number;
+  turnSampleCount: number;
+};
+
+export async function loadEtaCapacity(locationId: string): Promise<EtaCapacity> {
+  const since = new Date(Date.now() - TURN_SAMPLE_DAYS * 24 * 60 * 60 * 1000);
+
+  const [tables, assignments, finished] = await Promise.all([
+    prisma.diningTable.findMany({
+      where: { locationId },
+      select: {
+        id: true,
+        floorPlanId: true,
+        capacity: true,
+        minimumPartySize: true,
+        isBlocked: true,
+        cleaningSince: true,
+      },
+    }),
+    prisma.tableAssignment.findMany({
+      where: { locationId, status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] } },
+      select: {
+        tableId: true,
+        tableIds: true,
+        expectedStartAt: true,
+        expectedEndAt: true,
+        queueEntryId: true,
+        reservationId: true,
+      },
+    }),
+    prisma.tableAssignment.findMany({
+      where: { locationId, status: "COMPLETED", completedAt: { gte: since } },
+      orderBy: { completedAt: "desc" },
+      take: TURN_SAMPLE_LIMIT,
+      select: { seatedAt: true, completedAt: true },
+    }),
+  ]);
+
+  const tableOccupancy: EtaOccupancy[] = assignments.map((assignment) => {
+    let tableIds = [assignment.tableId];
+    if (assignment.tableIds && assignment.tableIds.length > 0) {
+      tableIds = assignment.tableIds;
+    }
+    return {
+      tableIds,
+      start: assignment.expectedStartAt,
+      end: assignment.expectedEndAt,
+      queueEntryId: assignment.queueEntryId,
+      reservationId: assignment.reservationId,
+    };
+  });
+
+  const turn = estimateTurnMinutes(finished);
+
+  return {
+    diningTables: tables.map((table) => ({
+      id: table.id,
+      roomId: table.floorPlanId,
+      capacity: table.capacity,
+      minimumPartySize: table.minimumPartySize,
+      isBlocked: table.isBlocked,
+      cleaningSince: table.cleaningSince,
+    })),
+    tableOccupancy,
+    turnMinutes: turn.minutes,
+    turnSampleCount: turn.sampleCount,
   };
 }

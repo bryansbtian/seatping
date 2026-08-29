@@ -12,6 +12,7 @@ import {
   type LiveAssignmentLike,
   type LiveTableLike,
 } from "../../server/lib/floorLive.js";
+import { estimateTurnMinutes } from "../../server/lib/queueEta.js";
 
 const NOW = new Date("2026-08-26T18:00:00.000Z");
 
@@ -266,5 +267,19 @@ describe("reservationWindow", () => {
     expect("2026-08-26T19:00" >= window.from).toBe(true);
     expect("2026-08-26T19:00" <= window.to).toBe(true);
     expect("2026-08-26T17:00" >= window.from).toBe(false);
+  });
+});
+
+describe("loadEtaCapacity turn samples", () => {
+  it("hands the queue estimator only visits it can trust", () => {
+    const samples = [
+      { seatedAt: minutes(0), completedAt: minutes(60) },
+      { seatedAt: minutes(0), completedAt: minutes(80) },
+      { seatedAt: null, completedAt: minutes(60) },
+      { seatedAt: minutes(0), completedAt: null },
+    ];
+
+    expect(estimateTurnMinutes(samples).sampleCount).toBe(2);
+    expect(estimateTurnMinutes(samples).usedDefault).toBe(true);
   });
 });

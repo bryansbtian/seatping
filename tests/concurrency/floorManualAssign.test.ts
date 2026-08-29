@@ -97,10 +97,10 @@ describe("concurrent manual assignment", () => {
     expect(countByStatus(responses, 201)).toBe(1);
     expect(countByStatus(responses, 409)).toBe(4);
 
-    const arrived = await db.queueEntry.findMany({
-      where: { locationId: location.id, status: "ARRIVED" },
+    const admitted = await db.queueEntry.findMany({
+      where: { locationId: location.id, status: "ADMITTED" },
     });
-    expect(arrived).toHaveLength(1);
+    expect(admitted).toHaveLength(1);
   });
 
   it("does not let a queue guest and a reservation claim the same table", async () => {
@@ -171,5 +171,85 @@ describe("concurrent manual assignment", () => {
 
     expect(occupied).toHaveLength(1);
     expect(live.body.waitingParties).toHaveLength(1);
+  });
+});
+
+describe("concurrent joined assignments", () => {
+  it("lets only one of two joined setups win a shared table", async () => {
+    const { location, cookie, tables } = await seedFloor(3);
+    const request = await api();
+    const first = await seedQueueEntry(location, { guestCount: 8 });
+    const second = await seedQueueEntry(location, { guestCount: 8 });
+
+    const responses = await Promise.all([
+      request
+        .post(`/api/floor/${location.id}/assign`)
+        .set("Cookie", cookie)
+        .send({ tableIds: [tables[0].id, tables[1].id], queueEntryId: first.id, partySize: 8 }),
+      request
+        .post(`/api/floor/${location.id}/assign`)
+        .set("Cookie", cookie)
+        .send({ tableIds: [tables[1].id, tables[2].id], queueEntryId: second.id, partySize: 8 }),
+    ]);
+
+    expect(countByStatus(responses, 201)).toBe(1);
+    expect(countByStatus(responses, 409)).toBe(1);
+
+    const active = await db.tableAssignment.findMany({
+      where: { locationId: location.id, status: { in: ["RESERVED", "SEATED"] } },
+    });
+    expect(active).toHaveLength(1);
+  });
+
+  it("does not let a joined setup and a single table share a physical table", async () => {
+    const { location, cookie, tables } = await seedFloor(2);
+    const request = await api();
+    const big = await seedQueueEntry(location, { guestCount: 8 });
+    const small = await seedQueueEntry(location, { guestCount: 2 });
+
+    const responses = await Promise.all([
+      request
+        .post(`/api/floor/${location.id}/assign`)
+        .set("Cookie", cookie)
+        .send({ tableIds: [tables[0].id, tables[1].id], queueEntryId: big.id, partySize: 8 }),
+      request
+        .post(`/api/floor/${location.id}/assign`)
+        .set("Cookie", cookie)
+        .send({ tableId: tables[1].id, queueEntryId: small.id, partySize: 2 }),
+    ]);
+
+    expect(countByStatus(responses, 201)).toBe(1);
+    expect(countByStatus(responses, 409)).toBe(1);
+  });
+
+  it("does not let two reservations hold the same window on one table", async () => {
+    const { location, cookie, tables } = await seedFloor(1);
+    const request = await api();
+    const first = await seedReservation(location, { guestCount: 2 });
+    const second = await seedReservation(location, { guestCount: 2 });
+    const start = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const end = new Date(Date.now() + 150 * 60 * 1000).toISOString();
+
+    const responses = await Promise.all([
+      request.post(`/api/floor/${location.id}/assign`).set("Cookie", cookie).send({
+        tableId: tables[0].id,
+        reservationId: first.id,
+        partySize: 2,
+        seatNow: false,
+        expectedStartAt: start,
+        expectedEndAt: end,
+      }),
+      request.post(`/api/floor/${location.id}/assign`).set("Cookie", cookie).send({
+        tableId: tables[0].id,
+        reservationId: second.id,
+        partySize: 2,
+        seatNow: false,
+        expectedStartAt: start,
+        expectedEndAt: end,
+      }),
+    ]);
+
+    expect(countByStatus(responses, 201)).toBe(1);
+    expect(countByStatus(responses, 409)).toBe(1);
   });
 });

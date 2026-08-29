@@ -41,7 +41,7 @@ const ShapePalette = ({ disabled, onAdd }: ShapePaletteProps) => {
             <span className="flex h-6 items-center justify-center">
               <span className={cn("border-2 border-slate-400 bg-slate-50", glyphClasses(shape))} />
             </span>
-            <span className="text-[11px] font-medium leading-tight text-slate-600 md:text-xs">
+            <span className="text-caption font-medium leading-tight text-slate-600 md:text-xs">
               {label}
             </span>
           </button>

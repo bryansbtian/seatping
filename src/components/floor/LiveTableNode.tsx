@@ -90,12 +90,12 @@ const LiveTableNode = ({ table, scale, selected, onSelect }: LiveTableNodeProps)
       }}
     >
       {showName && (
-        <span className="pointer-events-none relative max-w-full truncate px-1 text-[11px] font-semibold leading-none md:text-xs">
+        <span className="pointer-events-none relative max-w-full truncate px-1 text-caption font-semibold leading-none md:text-xs">
           {table.name}
         </span>
       )}
       <span
-        className={cn("pointer-events-none relative text-[11px] leading-none", showName && "mt-1")}
+        className={cn("pointer-events-none relative text-caption leading-none", showName && "mt-1")}
       >
         {detail}
       </span>

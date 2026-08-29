@@ -87,12 +87,12 @@ const BusinessSidebar = ({
         )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 pb-2">
+      <nav className={cn("flex-1 overflow-y-auto px-3 pb-2", collapsed && "space-y-0.5")}>
         {BUSINESS_NAV_GROUPS.map((group) => (
-          <div key={group.labelKey} className="mb-2">
+          <div key={group.labelKey} className={cn("mb-2", collapsed && "mb-0")}>
             <p
               className={cn(
-                "px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400",
+                "business-nav-group-label px-2 pb-1 font-semibold uppercase tracking-wide text-slate-400",
                 collapsed && "sr-only",
               )}
             >

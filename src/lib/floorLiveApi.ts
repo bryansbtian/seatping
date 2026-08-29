@@ -86,6 +86,34 @@ export async function assignTable(locationId: string, body: ManualAssignBody): P
   });
 }
 
+export async function admitParty(locationId: string, queueEntryId: string): Promise<void> {
+  await api(`${base(locationId)}/queue/${queueEntryId}/admit`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export async function confirmPartyArrival(locationId: string, queueEntryId: string): Promise<void> {
+  await api(`${base(locationId)}/queue/${queueEntryId}/arrived`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export async function removeParty(locationId: string, queueEntryId: string): Promise<void> {
+  await api(`${base(locationId)}/queue/${queueEntryId}/remove`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export async function markPartyNoShow(locationId: string, queueEntryId: string): Promise<void> {
+  await api(`${base(locationId)}/queue/${queueEntryId}/no-show`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
 export async function resolveReservationTable(
   locationId: string,
   reservationId: string,

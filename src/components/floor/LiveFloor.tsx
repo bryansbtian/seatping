@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { LayoutGrid, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -8,6 +8,7 @@ import type { TKey } from "@/lib/i18n";
 import {
   LIVE_STATUSES,
   allTables,
+  arrivalCountdown,
   countByStatus,
   findTable,
   formatClock,
@@ -15,15 +16,20 @@ import {
   type LiveFloor as LiveFloorData,
   type TableCandidate,
   type LiveRoom,
+  type WaitingParty,
 } from "@/lib/floorLive";
 import {
+  admitParty,
   assignTable,
+  confirmPartyArrival,
   resolveReservationTable,
   completeVisit,
   fetchLiveFloor,
+  markPartyNoShow,
   markTableAvailable,
   markTableCleaning,
   movePartyToTable,
+  removeParty,
   seatParty,
   seatReservedAssignment,
 } from "@/lib/floorLiveApi";
@@ -34,19 +40,27 @@ import AssignTableDialog, {
   type AssignSelection,
   type AssignTarget,
 } from "@/components/floor/AssignTableDialog";
+import QueuePartyDialog from "@/components/floor/QueuePartyDialog";
 import ReservationRow from "@/components/floor/ReservationRow";
+import BusinessEmptyState from "@/components/BusinessEmptyState";
 import { cn } from "@/lib/utils";
 
 const POLL_INTERVAL_MS = 15000;
+
+type LiveFloorProps = {
+  locationId: string;
+  onDataChange?: () => Promise<void>;
+};
 
 const EMPTY_FLOOR: LiveFloorData = {
   now: "",
   rooms: [],
   waitingParties: [],
+  admittedParties: [],
   upcomingReservations: [],
 };
 
-const LiveFloor = ({ locationId }: { locationId: string }) => {
+const LiveFloor = ({ locationId, onDataChange }: LiveFloorProps) => {
   const { t } = useLang();
   const { toast } = useToast();
 
@@ -56,6 +70,8 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [assignTarget, setAssignTarget] = useState<AssignTarget | null>(null);
+  const [queueTarget, setQueueTarget] = useState<WaitingParty | null>(null);
+  const [clock, setClock] = useState(() => new Date());
   const inFlight = useRef(false);
 
   const reportFailure = useCallback(
@@ -117,6 +133,16 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
     return () => window.clearInterval(timer);
   }, [load]);
 
+  const awaitingArrival = data.admittedParties.length > 0;
+
+  useEffect(() => {
+    if (!awaitingArrival) {
+      return undefined;
+    }
+    const timer = window.setInterval(() => setClock(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, [awaitingArrival]);
+
   const rooms = data.rooms;
 
   const activeRoom = useMemo<LiveRoom | null>(() => {
@@ -146,6 +172,9 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
       try {
         await action();
         await load();
+        if (onDataChange) {
+          await onDataChange();
+        }
         toast({ title: t(title) });
       } catch (err) {
         reportFailure(err);
@@ -153,8 +182,12 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
         setBusy(false);
       }
     },
-    [load, reportFailure, t, toast],
+    [load, onDataChange, reportFailure, t, toast],
   );
+
+  const admittedIds = useMemo(() => {
+    return new Set(data.admittedParties.map((party) => party.id));
+  }, [data.admittedParties]);
 
   const handleSeatParty = useCallback(
     async (tableId: string, partyId: string | null, partySize: number) => {
@@ -162,12 +195,65 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
       if (partyId) {
         body.queueEntryId = partyId;
       }
-      await runAction(
-        () => seatParty(locationId, tableId, body),
-        "floor.live.toast.seated" as TKey,
-      );
+      await runAction(async () => {
+        await seatParty(locationId, tableId, body);
+        if (partyId && admittedIds.has(partyId)) {
+          await confirmPartyArrival(locationId, partyId);
+        }
+      }, "floor.live.toast.seated" as TKey);
+    },
+    [admittedIds, locationId, runAction],
+  );
+
+  const handleAdmitParty = useCallback(
+    async (partyId: string) => {
+      await runAction(() => admitParty(locationId, partyId), "floor.live.toast.admitted");
+      setQueueTarget(null);
     },
     [locationId, runAction],
+  );
+
+  const handleRemoveParty = useCallback(
+    async (partyId: string) => {
+      await runAction(() => removeParty(locationId, partyId), "floor.live.toast.removed");
+      setQueueTarget(null);
+    },
+    [locationId, runAction],
+  );
+
+  const handleConfirmArrival = useCallback(
+    async (partyId: string) => {
+      await runAction(() => confirmPartyArrival(locationId, partyId), "floor.live.toast.arrived");
+    },
+    [locationId, runAction],
+  );
+
+  const handleNoShow = useCallback(
+    async (partyId: string) => {
+      await runAction(() => markPartyNoShow(locationId, partyId), "floor.live.toast.noShow");
+      setAssignTarget(null);
+    },
+    [locationId, runAction],
+  );
+
+  const openArrivalFor = useCallback((party: WaitingParty) => {
+    setAssignTarget({
+      name: party.name,
+      partySize: party.partySize,
+      queueEntryId: party.id,
+      recommendedTableId: party.recommendedTableId,
+      currentTableId: party.tableId,
+      currentTableName: party.tableName,
+      awaitingArrival: true,
+    });
+  }, []);
+
+  const handleSeatHeldTable = useCallback(
+    async (partyId: string) => {
+      await handleConfirmArrival(partyId);
+      setAssignTarget(null);
+    },
+    [handleConfirmArrival],
   );
 
   const handleAssignTable = useCallback(
@@ -198,10 +284,16 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
       if (assignTarget.currentTableId) {
         title = "floor.assign.toast.moved";
       }
-      await runAction(() => assignTable(locationId, body), title);
+      const queueEntryId = assignTarget.queueEntryId;
+      await runAction(async () => {
+        await assignTable(locationId, body);
+        if (queueEntryId && admittedIds.has(queueEntryId)) {
+          await confirmPartyArrival(locationId, queueEntryId);
+        }
+      }, title);
       setAssignTarget(null);
     },
-    [assignTarget, locationId, runAction],
+    [admittedIds, assignTarget, locationId, runAction],
   );
 
   const handleResolveReservation = useCallback(
@@ -217,12 +309,20 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
 
   const handleSeatReserved = useCallback(
     async (assignmentId: string) => {
+      const holder = data.admittedParties.find((party) => party.assignmentId === assignmentId);
+      if (holder) {
+        await runAction(
+          () => confirmPartyArrival(locationId, holder.id),
+          "floor.live.toast.seated" as TKey,
+        );
+        return;
+      }
       await runAction(
         () => seatReservedAssignment(locationId, assignmentId),
         "floor.live.toast.seated" as TKey,
       );
     },
-    [locationId, runAction],
+    [data.admittedParties, locationId, runAction],
   );
 
   const handleCompleteVisit = useCallback(
@@ -295,14 +395,22 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
 
   if (rooms.length === 0 || allTables(rooms).length === 0) {
     return (
-      <Card className="border border-slate-200 bg-white shadow-sm">
-        <CardContent className="p-6">
-          <p className="text-lg font-semibold text-slate-800">{t("floor.live.empty.title")}</p>
-          <p className="mt-2 text-sm text-slate-600">{t("floor.live.empty.body")}</p>
+      <Card className="flex flex-1 flex-col border border-slate-200 bg-white shadow-sm">
+        <CardContent className="flex flex-1 flex-col p-0">
+          <BusinessEmptyState
+            icon={LayoutGrid}
+            title={t("floor.live.empty.title")}
+            body={t("floor.live.empty.body")}
+          />
         </CardContent>
       </Card>
     );
   }
+
+  const seatableParties: WaitingParty[] = [
+    ...data.admittedParties.filter((party) => !party.tableId),
+    ...data.waitingParties,
+  ];
 
   let sidePanel = (
     <div className="flex h-full flex-col gap-3 md:gap-4">
@@ -317,26 +425,19 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
           {data.waitingParties.length > 0 && (
             <ul className="flex flex-col gap-2">
               {data.waitingParties.map((party) => (
-                <li key={party.id}>
+                <li key={party.id} className="flex items-center gap-2">
                   <button
                     type="button"
                     disabled={busy}
-                    data-testid={`assign-waiting-${party.id}`}
-                    aria-label={t("floor.assign.action")}
-                    onClick={() =>
-                      setAssignTarget({
-                        name: party.name,
-                        partySize: party.partySize,
-                        queueEntryId: party.id,
-                        recommendedTableId: party.recommendedTableId,
-                      })
-                    }
-                    className="flex w-full items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 text-left transition-colors hover:bg-slate-100 disabled:opacity-60"
+                    data-testid={`waiting-party-${party.id}`}
+                    aria-label={t("floor.live.waitingActionTitle")}
+                    onClick={() => setQueueTarget(party)}
+                    className="flex min-w-0 flex-1 items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 text-left transition-colors hover:bg-slate-100 disabled:opacity-60"
                   >
                     {party.recommendedTableName && (
                       <span
                         data-testid={`waiting-suggestion-${party.id}`}
-                        className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800"
+                        className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-micro font-medium text-emerald-800"
                       >
                         {party.recommendedTableName}
                       </span>
@@ -345,7 +446,7 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
                       <span
                         data-testid={`waiting-nomatch-${party.id}`}
                         title={t("floor.live.noCapacityBody")}
-                        className="shrink-0 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-800"
+                        className="shrink-0 rounded bg-rose-100 px-1.5 py-0.5 text-micro font-medium text-rose-800"
                       >
                         {t("floor.live.noCapacity")}
                       </span>
@@ -354,13 +455,13 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
                       <span
                         data-testid={`waiting-unavailable-${party.id}`}
                         title={t("floor.live.noAvailabilityBody")}
-                        className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800"
+                        className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-micro font-medium text-amber-800"
                       >
                         {t("floor.live.noAvailability")}
                       </span>
                     )}
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="truncate text-[11px] leading-none text-slate-500">
+                      <span className="truncate text-caption leading-none text-slate-500">
                         {t("floor.live.partyOf", { n: party.partySize })} &middot;{" "}
                         {t("floor.live.waitingFor", { n: party.waitingMinutes })}
                       </span>
@@ -371,6 +472,87 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
                   </button>
                 </li>
               ))}
+            </ul>
+          )}
+        </section>
+
+        <section
+          className="space-y-2 border-t border-slate-100 pt-4"
+          data-testid="admitted-parties"
+        >
+          <CardTitle className="text-lg text-slate-800 md:text-xl">
+            {t("floor.live.admittedTitle")}
+          </CardTitle>
+          {data.admittedParties.length === 0 && (
+            <p className="text-xs text-slate-500 md:text-sm">{t("floor.live.admittedEmpty")}</p>
+          )}
+          {data.admittedParties.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {data.admittedParties.map((party) => {
+                const countdown = arrivalCountdown(party.admittedAt, clock);
+                let countdownLabel = t("floor.live.arrivalExpired");
+                if (countdown) {
+                  countdownLabel = t("floor.live.arrivalLeft", { time: countdown });
+                }
+
+                let tableBadge = null;
+                if (party.tableName) {
+                  tableBadge = (
+                    <span
+                      data-testid={`admitted-table-${party.id}`}
+                      className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-micro font-medium text-indigo-800"
+                    >
+                      {t("floor.live.holdingTable", { table: party.tableName })}
+                    </span>
+                  );
+                } else if (party.recommendedTableName) {
+                  tableBadge = (
+                    <span
+                      data-testid={`admitted-suggestion-${party.id}`}
+                      className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-micro font-medium text-emerald-800"
+                    >
+                      {party.recommendedTableName}
+                    </span>
+                  );
+                }
+
+                let countdownTone = "bg-amber-100 text-amber-800";
+                if (!countdown) {
+                  countdownTone = "bg-rose-100 text-rose-800";
+                }
+
+                return (
+                  <li key={party.id} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      data-testid={`admitted-party-${party.id}`}
+                      aria-label={t("floor.live.seatNow")}
+                      onClick={() => openArrivalFor(party)}
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-xl bg-amber-50 px-3 py-2.5 text-left transition-colors hover:bg-amber-100 disabled:opacity-60"
+                    >
+                      {tableBadge}
+                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="truncate text-caption leading-none text-slate-500">
+                          {t("floor.live.partyOf", { n: party.partySize })}
+                        </span>
+                        <span className="truncate text-sm font-semibold leading-tight text-slate-800">
+                          {party.name}
+                        </span>
+                      </span>
+                      <span
+                        data-testid={`admitted-countdown-${party.id}`}
+                        className={cn(
+                          "shrink-0 rounded px-1.5 py-0.5 text-micro font-medium tabular-nums",
+                          countdownTone,
+                        )}
+                      >
+                        {countdownLabel}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
@@ -420,7 +602,7 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
       <LiveTableDetail
         table={selectedTable}
         rooms={rooms}
-        waitingParties={data.waitingParties}
+        waitingParties={seatableParties}
         now={now}
         busy={busy}
         onSeatParty={handleSeatParty}
@@ -468,7 +650,7 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
             {LIVE_STATUSES.map((status) => (
               <span
                 key={status}
-                className="flex items-center gap-1.5 text-[11px] text-slate-600 md:text-xs"
+                className="flex items-center gap-1.5 text-caption text-slate-600 md:text-xs"
               >
                 <span
                   aria-hidden="true"
@@ -486,7 +668,7 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
               </span>
             ))}
           </div>
-          <div className="flex shrink-0 items-center gap-2 text-[11px] text-slate-500 md:text-xs">
+          <div className="flex shrink-0 items-center gap-2 text-caption text-slate-500 md:text-xs">
             <span className="hidden sm:inline">
               {t("floor.live.updatedAt", { time: formatClock(data.now) })}
             </span>
@@ -539,6 +721,21 @@ const LiveFloor = ({ locationId }: { locationId: string }) => {
         }}
         onConfirm={handleAssignTable}
         onResolve={handleResolveReservation}
+        onNoShow={handleNoShow}
+        onSeatHeldTable={handleSeatHeldTable}
+      />
+
+      <QueuePartyDialog
+        open={queueTarget !== null}
+        party={queueTarget}
+        busy={busy}
+        onOpenChange={(next) => {
+          if (!next) {
+            setQueueTarget(null);
+          }
+        }}
+        onAdmit={handleAdmitParty}
+        onRemove={handleRemoveParty}
       />
     </div>
   );

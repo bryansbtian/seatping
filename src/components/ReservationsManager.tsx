@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { GuestStatusBadge } from "@/components/GuestBadge";
+import BusinessEmptyState from "@/components/BusinessEmptyState";
 import { formatPhoneParts } from "@shared/phone";
 import { useLang, type TKey } from "@/lib/i18n";
 import {
@@ -87,7 +88,6 @@ export default function ReservationsManager({
   reservations,
   businessUsername,
   locationId,
-  locationLabel,
   reservationsEnabled,
   timeZone,
   onUpdated,
@@ -95,7 +95,6 @@ export default function ReservationsManager({
   reservations: Reservation[];
   businessUsername: string;
   locationId: string;
-  locationLabel: string;
   reservationsEnabled: boolean;
   timeZone?: string;
   onUpdated: (user: any) => void;
@@ -190,12 +189,10 @@ export default function ReservationsManager({
     }
   };
 
-  let reservationsDescription: string;
+  let reservationsDescription = "";
   if (!locationId) {
     reservationsDescription = t("res.noLocationSelected");
-  } else if (reservationsEnabled) {
-    reservationsDescription = t("res.bookingsFor", { label: locationLabel });
-  } else {
+  } else if (!reservationsEnabled) {
     reservationsDescription = t("res.disabled");
   }
 
@@ -214,7 +211,7 @@ export default function ReservationsManager({
   }
 
   return (
-    <Card className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
+    <Card className="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
       <CardHeader className="border-b border-gray-100 p-4 md:p-6">
         <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
           <div>
@@ -222,9 +219,11 @@ export default function ReservationsManager({
               <CalendarDays className="w-5 h-5" />
               {t("res.title")}
             </CardTitle>
-            <CardDescription className="text-gray-600 text-sm mt-0.5">
-              {reservationsDescription}
-            </CardDescription>
+            {reservationsDescription && (
+              <CardDescription className="mt-0.5 text-sm text-gray-600">
+                {reservationsDescription}
+              </CardDescription>
+            )}
           </div>
         </div>
 
@@ -258,7 +257,7 @@ export default function ReservationsManager({
               >
                 {t.label}
                 {t.count > 0 && (
-                  <span className={cn("ml-1.5 rounded-full px-1.5 text-[10px]", countToneClass)}>
+                  <span className={cn("ml-1.5 rounded-full px-1.5 text-micro", countToneClass)}>
                     {t.count}
                   </span>
                 )}
@@ -268,7 +267,7 @@ export default function ReservationsManager({
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 md:p-6">
+      <CardContent className="flex flex-1 flex-col p-4 md:p-6">
         {!reservationsEnabled && (
           <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
             {t("res.enableHint")}
@@ -276,10 +275,12 @@ export default function ReservationsManager({
         )}
 
         {reservationsEnabled && visible.length === 0 && (
-          <div className="flex flex-col items-center py-10 text-center text-slate-400">
-            <CalendarClock className="h-8 w-8" />
-            <p className="mt-2 text-sm">{t("res.empty")}</p>
-          </div>
+          <BusinessEmptyState
+            icon={CalendarClock}
+            title={t("res.empty.title")}
+            body={t("res.empty.body")}
+            className="py-10"
+          />
         )}
 
         <div className="space-y-3">

@@ -57,7 +57,7 @@ const ZoneNode = ({ zone, scale, selected, onSelect, onDragStart }: ZoneNodeProp
         height: zone.height * scale,
       }}
     >
-      <span className="pointer-events-none absolute left-2 top-1.5 text-[11px] font-medium text-slate-500">
+      <span className="pointer-events-none absolute left-2 top-1.5 text-caption font-medium text-slate-500">
         {zone.name}
       </span>
 

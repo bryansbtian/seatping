@@ -50,13 +50,15 @@ test("staff manually assign a waiting guest to a table", async ({ page, db }) =>
     lastName: "Lovelace",
     guestCount: 2,
     joinedAt: new Date(Date.now() - 20 * 60 * 1000),
+    status: "ADMITTED",
+    admittedAt: new Date(),
   });
 
   await signInBusiness(page, seed.business);
   await page.goto("/business/floor");
 
   await expect(page.getByText("Ada Lovelace")).toBeVisible();
-  await page.getByTestId(`assign-waiting-${entry.id}`).click();
+  await page.getByTestId(`admitted-party-${entry.id}`).click();
 
   const options = page.getByTestId("assign-table-options");
   await expect(options).toBeVisible();
@@ -141,12 +143,14 @@ test("a party too large for every table cannot be assigned", async ({ page, db }
     firstName: "Big",
     lastName: "Group",
     guestCount: 9,
+    status: "ADMITTED",
+    admittedAt: new Date(),
   });
 
   await signInBusiness(page, seed.business);
   await page.goto("/business/floor");
 
-  await page.getByTestId(`assign-waiting-${entry.id}`).click();
+  await page.getByTestId(`admitted-party-${entry.id}`).click();
 
   await expect(page.getByText("No single table can take this party right now.")).toBeVisible();
 
@@ -171,12 +175,14 @@ test("a large party can be seated by joining two tables", async ({ page, db }) =
     firstName: "John",
     lastName: "Cena",
     guestCount: 7,
+    status: "ADMITTED",
+    admittedAt: new Date(),
   });
 
   await signInBusiness(page, seed.business);
   await page.goto("/business/floor");
 
-  await page.getByTestId(`assign-waiting-${entry.id}`).click();
+  await page.getByTestId(`admitted-party-${entry.id}`).click();
   await page.getByTestId("assign-confirm").click();
 
   await page.getByTestId("assign-join-T1").click();
@@ -237,12 +243,14 @@ test("tables in another room cannot be joined", async ({ page, db }) => {
     firstName: "John",
     lastName: "Cena",
     guestCount: 7,
+    status: "ADMITTED",
+    admittedAt: new Date(),
   });
 
   await signInBusiness(page, seed.business);
   await page.goto("/business/floor");
 
-  await page.getByTestId(`assign-waiting-${entry.id}`).click();
+  await page.getByTestId(`admitted-party-${entry.id}`).click();
   await page.getByTestId("assign-confirm").click();
 
   await expect(page.getByTestId("assign-join-T8")).toBeEnabled();

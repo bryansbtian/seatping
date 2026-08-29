@@ -138,7 +138,7 @@ const TableInspector = ({
 
       <div className="grid shrink-0 grid-cols-1 gap-3">
         <div className="space-y-1.5 md:space-y-2">
-          <Label htmlFor="table-name" className="text-[11px]">
+          <Label htmlFor="table-name" className="text-caption">
             {t("floor.field.name")}
           </Label>
           <Input
@@ -152,7 +152,7 @@ const TableInspector = ({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5 md:space-y-2">
-            <Label htmlFor="table-capacity" className="whitespace-nowrap text-[11px]">
+            <Label htmlFor="table-capacity" className="whitespace-nowrap text-caption">
               {t("floor.field.capacity")}
             </Label>
             <Input
@@ -166,7 +166,7 @@ const TableInspector = ({
             />
           </div>
           <div className="space-y-1.5 md:space-y-2">
-            <Label htmlFor="table-minimum" className="whitespace-nowrap text-[11px]">
+            <Label htmlFor="table-minimum" className="whitespace-nowrap text-caption">
               {t("floor.field.minimumPartySize")}
             </Label>
             <Input
@@ -184,7 +184,7 @@ const TableInspector = ({
         </div>
 
         <div className="space-y-1.5 md:space-y-2">
-          <Label htmlFor="table-shape" className="text-[11px]">
+          <Label htmlFor="table-shape" className="text-caption">
             {t("floor.field.shape")}
           </Label>
           <div className="relative">
@@ -205,7 +205,7 @@ const TableInspector = ({
         </div>
 
         <div className="space-y-1.5 md:space-y-2">
-          <Label className="text-[11px]">{t("floor.field.rotation")}</Label>
+          <Label className="text-caption">{t("floor.field.rotation")}</Label>
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -231,7 +231,7 @@ const TableInspector = ({
               <RotateCw className="h-4 w-4" />
             </Button>
 
-            <dl className="ml-1 flex min-w-0 flex-1 items-center justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-600 md:text-xs">
+            <dl className="ml-1 flex min-w-0 flex-1 items-center justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2 text-caption text-slate-600 md:text-xs">
               <div className="min-w-0 text-left">
                 <dt className="font-medium text-slate-500">{t("floor.field.position")}</dt>
                 <dd className="truncate">

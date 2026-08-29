@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { StatusBadge } from "@/components/StatusBadge";
 import { GuestStatusBadge, GuestTagBadge } from "@/components/GuestBadge";
+import BusinessEmptyState from "@/components/BusinessEmptyState";
 import { api } from "@/lib/api";
 import { formatPhone } from "@shared/phone";
 import { useToast } from "@/hooks/use-toast";
@@ -429,7 +430,8 @@ const BusinessGuests = () => {
     guestsPanel = <LoadingState />;
   } else if (!locations.length) {
     guestsPanel = (
-      <EmptyState
+      <BusinessEmptyState
+        icon={Inbox}
         title={t("guests.empty.noLocations.title")}
         body={t("guests.empty.noLocations.body")}
       />
@@ -444,7 +446,7 @@ const BusinessGuests = () => {
       emptyTitle = t("guests.empty.none.title");
       emptyBody = t("guests.empty.none.body");
     }
-    guestsPanel = <EmptyState title={emptyTitle} body={emptyBody} />;
+    guestsPanel = <BusinessEmptyState icon={Inbox} title={emptyTitle} body={emptyBody} />;
   } else {
     guestsPanel = (
       <GuestsTable
@@ -458,8 +460,8 @@ const BusinessGuests = () => {
   return (
     <>
       <SEO title="Guests | SeatPing" description={BUSINESS_DESCRIPTION} image={BUSINESS_IMAGE} />
-      <div className="flex flex-col">
-        <div className="container mx-auto px-4 py-8 flex-1 w-full">
+      <div className="flex min-h-full flex-col">
+        <div className="container mx-auto flex w-full flex-1 flex-col px-4 py-8">
           <div className="mb-6">
             <h1 className="text-xl md:text-2xl font-semibold text-gray-800">{t("guests.title")}</h1>
             <p className="text-gray-600 text-sm md:text-base">{t("guests.subtitle")}</p>
@@ -588,7 +590,7 @@ const BusinessGuests = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
+          <Card className="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
             <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle className="text-lg md:text-xl text-slate-800">{guestsHeading}</CardTitle>
@@ -615,7 +617,7 @@ const BusinessGuests = () => {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-0">{guestsPanel}</CardContent>
+            <CardContent className="flex flex-1 flex-col p-0">{guestsPanel}</CardContent>
           </Card>
         </div>
       </div>
@@ -703,7 +705,7 @@ function GuestsTable({
                       <GuestTagBadge key={t} tag={t} />
                     ))}
                     {g.tags.length > 3 && (
-                      <span className="shrink-0 whitespace-nowrap text-[11px] text-slate-400">
+                      <span className="shrink-0 whitespace-nowrap text-caption text-slate-400">
                         +{g.tags.length - 3}
                       </span>
                     )}
@@ -841,7 +843,7 @@ function GuestsTable({
                         <GuestTagBadge key={t} tag={t} />
                       ))}
                       {g.tags.length > 4 && (
-                        <span className="shrink-0 whitespace-nowrap text-[11px] text-slate-400">
+                        <span className="shrink-0 whitespace-nowrap text-caption text-slate-400">
                           +{g.tags.length - 4}
                         </span>
                       )}
@@ -870,18 +872,6 @@ function LoadingState() {
           <Skeleton className="h-6 w-16 rounded-full" />
         </div>
       ))}
-    </div>
-  );
-}
-
-function EmptyState({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="px-6 py-16 text-center">
-      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-        <Inbox className="w-6 h-6 text-slate-400" />
-      </div>
-      <h3 className="text-base font-semibold text-slate-800">{title}</h3>
-      <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">{body}</p>
     </div>
   );
 }
@@ -1251,7 +1241,7 @@ function ProfileStat({ label, value, tone }: { label: string; value: number; ton
   return (
     <div className="px-1 text-center">
       <div className={`text-lg font-semibold tabular-nums leading-tight ${toneClass}`}>{value}</div>
-      <div className="text-[11px] text-slate-500 mt-0.5">{label}</div>
+      <div className="text-caption text-slate-500 mt-0.5">{label}</div>
     </div>
   );
 }

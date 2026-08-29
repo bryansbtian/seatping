@@ -27,6 +27,7 @@ import {
 import { MapPin, Plus, Trash2, Pencil, Star, QrCode, Copy, Download } from "lucide-react";
 import QRCode from "qrcode";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import BusinessEmptyState from "@/components/BusinessEmptyState";
 import RestaurantProfileEditor from "@/components/RestaurantProfileEditor";
 import LocationReviewsModal from "@/components/LocationReviewsModal";
 import type { PlaceDetails } from "@/lib/googleMaps";
@@ -270,11 +271,12 @@ export default function LocationManagement({
   let locationsContent: ReactNode;
   if (locations.length === 0) {
     locationsContent = (
-      <div className="text-center py-6 md:py-8">
-        <MapPin className="w-10 h-10 md:w-12 md:h-12 text-gray-300 mx-auto mb-3 md:mb-4" />
-        <p className="text-gray-500 text-sm md:text-base">{t("loc.none")}</p>
-        <p className="text-xs md:text-sm text-gray-400 mt-1">{t("loc.none.help")}</p>
-      </div>
+      <BusinessEmptyState
+        icon={MapPin}
+        title={t("loc.none")}
+        body={t("loc.none.help")}
+        className="px-4 py-8"
+      />
     );
   } else {
     locationsContent = (
@@ -292,7 +294,7 @@ export default function LocationManagement({
           return (
             <div
               key={location.id || index}
-              className="flex flex-col gap-4 p-3 md:p-4 bg-gray-50 rounded-lg lg:flex-row lg:items-start lg:justify-between lg:gap-4"
+              className="flex flex-col gap-4 p-3 md:p-4 bg-gray-50 rounded-lg xl:flex-row xl:items-start xl:justify-between xl:gap-4"
             >
               <div className="flex items-start space-x-3 min-w-0 flex-1">
                 <MapPin className="w-4 h-4 md:w-5 md:h-5 text-gray-400 flex-shrink-0 mt-0.5" />
@@ -304,7 +306,7 @@ export default function LocationManagement({
                         location.address ||
                         t("loc.unnamed")}
                     </p>
-                    <span className="inline-flex w-fit shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
+                    <span className="inline-flex w-fit shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-caption font-medium text-indigo-700">
                       {t("loc.credits", { n: location?.credits || 0 })}
                     </span>
                   </div>
@@ -349,11 +351,11 @@ export default function LocationManagement({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end lg:gap-3 lg:shrink-0">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:flex xl:flex-wrap xl:justify-end xl:gap-3 xl:shrink-0">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-10 w-full justify-center lg:w-auto"
+                  className="h-10 w-full justify-center xl:w-auto"
                   onClick={() => setEditing(location)}
                 >
                   <Pencil size={16} className="mr-2" /> {t("loc.editProfile")}
@@ -361,7 +363,7 @@ export default function LocationManagement({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-10 w-full justify-center lg:w-auto"
+                  className="h-10 w-full justify-center xl:w-auto"
                   onClick={() => {
                     setSelectedLocationForReviews(location);
                     setIsReviewsModalOpen(true);
@@ -372,7 +374,7 @@ export default function LocationManagement({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-10 w-full justify-center lg:w-auto"
+                  className="h-10 w-full justify-center xl:w-auto"
                   onClick={() => openQrModal(location)}
                 >
                   <QrCode size={16} className="mr-2" /> {t("loc.qrCode")}
@@ -382,11 +384,11 @@ export default function LocationManagement({
                     <Button
                       size="sm"
                       variant="destructiveOutline"
-                      className="h-10 w-full justify-center lg:w-10 lg:px-0"
+                      className="h-10 w-full justify-center xl:w-10 xl:px-0"
                       disabled={loading}
                     >
-                      <Trash2 size={16} className="mr-2 lg:mr-0" />
-                      <span className="lg:hidden">{t("loc.removeLocation")}</span>
+                      <Trash2 size={16} className="mr-2 xl:mr-0" />
+                      <span className="xl:hidden">{t("loc.removeLocation")}</span>
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="max-w-sm md:max-w-lg">

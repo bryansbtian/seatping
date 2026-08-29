@@ -204,7 +204,7 @@ export function QueueCardPreview({
               </CardTitle>
               <Badge
                 variant="secondary"
-                className="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-1 whitespace-nowrap max-[374px]:hidden"
+                className="bg-indigo-100 text-indigo-700 text-micro px-2 py-1 whitespace-nowrap max-[374px]:hidden"
               >
                 {rows.length} {customerNoun}
               </Badge>
@@ -378,7 +378,7 @@ export function ReservationsCardPreview({
                 >
                   {t.label}
                   {t.count > 0 && (
-                    <span className={cn("ml-1.5 rounded-full px-1.5 text-[10px]", tabCountClass)}>
+                    <span className={cn("ml-1.5 rounded-full px-1.5 text-micro", tabCountClass)}>
                       {t.count}
                     </span>
                   )}
@@ -409,7 +409,7 @@ export function ReservationsCardPreview({
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-gray-800 text-sm md:text-base">{r.name}</p>
-                      <StatusBadge status={r.status} className="text-[10px]" />
+                      <StatusBadge status={r.status} className="text-micro" />
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
                       <span className="inline-flex items-center gap-1">
@@ -515,7 +515,7 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
               <Pill variant="outline">
                 <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Refresh
               </Pill>
-              <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 text-[10px]">
+              <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 text-micro">
                 2 customers
               </Badge>
             </div>
@@ -579,7 +579,7 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
                 >
                   {t.label}
                   {t.count > 0 && (
-                    <span className={cn("ml-1.5 rounded-full px-1.5 text-[10px]", tabCountClass)}>
+                    <span className={cn("ml-1.5 rounded-full px-1.5 text-micro", tabCountClass)}>
                       {t.count}
                     </span>
                   )}
@@ -592,7 +592,7 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
           <div className="rounded-xl border border-slate-200 p-4">
             <div className="flex items-center gap-2">
               <p className="font-semibold text-gray-800 text-sm">Sofia Almeida</p>
-              <StatusBadge status="confirmed" className="text-[10px]" />
+              <StatusBadge status="confirmed" className="text-micro" />
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
               <span className="inline-flex items-center gap-1">
@@ -773,7 +773,7 @@ function HeroDashboardWindow() {
                   >
                     {t.label}
                     {t.count > 0 && (
-                      <span className={cn("ml-1.5 rounded-full px-1.5 text-[10px]", tabCountClass)}>
+                      <span className={cn("ml-1.5 rounded-full px-1.5 text-micro", tabCountClass)}>
                         {t.count}
                       </span>
                     )}
@@ -786,7 +786,7 @@ function HeroDashboardWindow() {
             <div className="rounded-xl border border-slate-200 p-4">
               <div className="flex items-center gap-2">
                 <p className="text-base font-semibold text-gray-800">Olivia Bennett</p>
-                <StatusBadge status="confirmed" className="text-[10px]" />
+                <StatusBadge status="confirmed" className="text-micro" />
               </div>
               <div className="mt-1.5 flex items-center gap-x-3 text-xs text-slate-600">
                 <span className="inline-flex items-center gap-1">
@@ -881,7 +881,7 @@ function MiniPill({
   return (
     <span
       className={cn(
-        "inline-flex h-6 flex-1 items-center justify-center rounded-md px-2 text-[10px] font-medium",
+        "inline-flex h-6 flex-1 items-center justify-center rounded-md px-2 text-micro font-medium",
         styles[variant],
       )}
     >
@@ -893,7 +893,7 @@ function MiniPill({
 function PhoneScreenContent() {
   return (
     <div className="flex h-full w-full flex-col bg-slate-50 font-sans">
-      <div className="flex items-center justify-between px-4 pt-2.5 pb-1 text-[10px] font-medium text-slate-500">
+      <div className="flex items-center justify-between px-4 pt-2.5 pb-1 text-micro font-medium text-slate-500">
         <span className="tabular-nums">9:41</span>
         <span className="flex items-center gap-1">
           <Signal className="h-3 w-3" />
@@ -905,11 +905,11 @@ function PhoneScreenContent() {
       <div className="flex items-center justify-between px-4 pb-2">
         <div className="min-w-0">
           <p className="text-sm font-semibold leading-tight text-slate-900">SeatPing</p>
-          <p className="flex items-center gap-1 text-[10px] text-slate-500">
+          <p className="flex items-center gap-1 text-micro text-slate-500">
             <MapPin className="h-2.5 w-2.5" /> Marina Bay
           </p>
         </div>
-        <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[9px] font-medium text-indigo-700">
+        <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-preview-sm font-medium text-indigo-700">
           Credits 285
         </span>
       </div>
@@ -917,27 +917,27 @@ function PhoneScreenContent() {
       <div className="flex-1 space-y-2.5 overflow-hidden px-3 pb-3">
         <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-800">
+            <span className="flex items-center gap-1 text-caption font-semibold text-gray-800">
               <ListOrdered className="h-3.5 w-3.5" /> Queue Management
             </span>
-            <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[9px] font-medium text-indigo-700">
+            <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-preview-sm font-medium text-indigo-700">
               2
             </span>
           </div>
 
           <div className="mt-2 rounded-lg bg-gray-50 p-2">
             <div className="flex items-start gap-2">
-              <span className="inline-flex shrink-0 items-center justify-center rounded border border-gray-200 bg-white px-1 py-0.5 text-[9px] font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
+              <span className="inline-flex shrink-0 items-center justify-center rounded border border-gray-200 bg-white px-1 py-0.5 text-preview-sm font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
                 #1
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-1">
-                  <p className="truncate text-[11px] font-semibold text-gray-800">Olivia Reyes</p>
-                  <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[8px] font-medium text-amber-700">
+                  <p className="truncate text-caption font-semibold text-gray-800">Olivia Reyes</p>
+                  <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-preview-xs font-medium text-amber-700">
                     Waiting
                   </span>
                 </div>
-                <p className="truncate text-[9px] text-gray-500">Just now · 1 Guest · SMS</p>
+                <p className="truncate text-preview-sm text-gray-500">Just now · 1 Guest · SMS</p>
               </div>
             </div>
             <div className="mt-2 flex gap-1.5">
@@ -947,37 +947,37 @@ function PhoneScreenContent() {
           </div>
 
           <div className="mt-1.5 flex items-center gap-2 rounded-lg bg-gray-50 p-2">
-            <span className="inline-flex shrink-0 items-center justify-center rounded border border-gray-200 bg-white px-1 py-0.5 text-[9px] font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
+            <span className="inline-flex shrink-0 items-center justify-center rounded border border-gray-200 bg-white px-1 py-0.5 text-preview-sm font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
               #2
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[11px] font-semibold text-gray-800">Marcus Bennett</p>
-              <p className="truncate text-[9px] text-gray-500">2m ago · 3 Guests</p>
+              <p className="truncate text-caption font-semibold text-gray-800">Marcus Bennett</p>
+              <p className="truncate text-preview-sm text-gray-500">2m ago · 3 Guests</p>
             </div>
-            <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[8px] font-medium text-emerald-700">
+            <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-preview-xs font-medium text-emerald-700">
               Admitted
             </span>
           </div>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
-          <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-800">
+          <span className="flex items-center gap-1 text-caption font-semibold text-gray-800">
             <CalendarDays className="h-3.5 w-3.5" /> Reservations Management
           </span>
           <div className="mt-2 flex gap-1.5">
-            <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[9px] font-medium text-white">
+            <span className="rounded-full bg-slate-900 px-2 py-0.5 text-preview-sm font-medium text-white">
               Today
             </span>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-medium text-slate-600">
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-preview-sm font-medium text-slate-600">
               Upcoming
             </span>
           </div>
           <div className="mt-2 rounded-lg border border-slate-200 p-2">
             <div className="flex items-center justify-between gap-1">
-              <p className="truncate text-[11px] font-semibold text-gray-800">Sofia Almeida</p>
-              <StatusBadge status="confirmed" className="px-1.5 py-0.5 text-[8px]" />
+              <p className="truncate text-caption font-semibold text-gray-800">Sofia Almeida</p>
+              <StatusBadge status="confirmed" className="px-1.5 py-0.5 text-preview-xs" />
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] text-slate-600">
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-preview-sm text-slate-600">
               <span className="inline-flex items-center gap-0.5">
                 <Users className="h-2.5 w-2.5" /> 2
               </span>
@@ -1295,7 +1295,7 @@ export function QueueMiniCard({ className }: { className?: string }) {
           <ListOrdered className="h-4 w-4 text-slate-500" />
           Queue
         </span>
-        <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 text-[10px]">
+        <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 text-micro">
           1 waiting
         </Badge>
       </div>
@@ -1307,7 +1307,7 @@ export function QueueMiniCard({ className }: { className?: string }) {
           <p className="truncate text-sm font-semibold text-gray-800">Marcus Bennett</p>
           <p className="truncate text-xs text-gray-600">Just now · 1 Guest</p>
         </div>
-        <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+        <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2 py-0.5 text-micro font-medium text-amber-700">
           Waiting
         </span>
       </div>
@@ -1334,7 +1334,7 @@ export function ReservationMiniCard({ className }: { className?: string }) {
       <div className="rounded-xl border border-slate-200 p-3">
         <div className="flex items-center gap-2">
           <p className="font-semibold text-gray-800 text-sm">Sofia Almeida</p>
-          <StatusBadge status="confirmed" className="text-[10px]" />
+          <StatusBadge status="confirmed" className="text-micro" />
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
           <span className="inline-flex items-center gap-1">
@@ -1364,7 +1364,7 @@ export function PerformanceMiniCard({ className }: { className?: string }) {
           <TrendingUp className="h-4 w-4 text-slate-500" />
           Performance
         </span>
-        <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white">
+        <span className="rounded-md bg-slate-900 px-2 py-0.5 text-micro font-medium text-white">
           Daily
         </span>
       </div>
@@ -1398,7 +1398,7 @@ export function PerformanceMiniCard({ className }: { className?: string }) {
         ].map((s) => (
           <div key={s.l}>
             <p className={cn("text-base font-semibold", s.c)}>{s.v}</p>
-            <p className="text-[10px] text-slate-500">{s.l}</p>
+            <p className="text-micro text-slate-500">{s.l}</p>
           </div>
         ))}
       </div>
@@ -1414,7 +1414,7 @@ export function LocationMiniCard({ className }: { className?: string }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-semibold text-gray-800 text-sm">Marina Bay</p>
-            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
+            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-caption font-medium text-indigo-700">
               Credits: 992
             </span>
           </div>
@@ -1458,7 +1458,7 @@ export function NotifyToastMiniCard({
         <MessageSquare className="h-4 w-4" />
       </span>
       <div className="min-w-0">
-        <p className="text-[11px] font-medium text-slate-400">{label}</p>
+        <p className="text-caption font-medium text-slate-400">{label}</p>
         <p className="truncate text-sm font-medium text-slate-800">{text}</p>
       </div>
     </div>

@@ -107,13 +107,16 @@ test("seating one party updates the recommendation for the next", async ({ page,
   await expect(page.getByTestId(`waiting-suggestion-${first.id}`)).toHaveText("T1");
   await expect(page.getByTestId(`waiting-suggestion-${second.id}`)).toHaveText("T2");
 
-  await page.getByTestId(`assign-waiting-${first.id}`).click();
+  await page.getByTestId(`waiting-party-${first.id}`).click();
+  await page.getByTestId("queue-party-admit").click();
+
+  await page.getByTestId(`admitted-party-${first.id}`).click();
   await page.getByTestId("assign-option-T1").click();
   await page.getByTestId("assign-confirm").click();
 
   await expect(page.getByTestId("live-table-T1")).toHaveAttribute("data-status", "OCCUPIED");
   await expect(page.getByTestId(`waiting-suggestion-${second.id}`)).toHaveText("T2");
-  await expect(page.getByTestId(`assign-waiting-${first.id}`)).toHaveCount(0);
+  await expect(page.getByTestId(`waiting-party-${first.id}`)).toHaveCount(0);
 
   await expect
     .poll(async () => {
@@ -142,7 +145,10 @@ test("staff can seat a party at a table other than the recommended one", async (
 
   await expect(page.getByTestId(`waiting-suggestion-${guest.id}`)).toHaveText("T1");
 
-  await page.getByTestId(`assign-waiting-${guest.id}`).click();
+  await page.getByTestId(`waiting-party-${guest.id}`).click();
+  await page.getByTestId("queue-party-admit").click();
+
+  await page.getByTestId(`admitted-party-${guest.id}`).click();
   await page.getByTestId("assign-option-T2").click();
   await page.getByTestId("assign-confirm").click();
 

@@ -235,8 +235,8 @@ test("an admitted customer marked arrived leaves the waiting queue for good", as
   await openBusinessDashboard(extraPage, business);
 
   await waitingCardFor(extraPage, guest).getByRole("button", { name: "Admit" }).click();
-  await expect(extraPage.getByRole("button", { name: "Arrived" })).toBeVisible();
-  await extraPage.getByRole("button", { name: "Arrived" }).click();
+  await expect(extraPage.getByRole("button", { name: "Seat" })).toBeVisible();
+  await extraPage.getByRole("button", { name: "Seat" }).click();
 
   await expect
     .poll(async () => {
@@ -259,7 +259,7 @@ test("an admitted customer marked arrived leaves the waiting queue for good", as
     }),
   ).toBe(0);
 
-  await expect(extraPage.getByText("No customers in queue at this location.")).toBeVisible();
+  await expect(extraPage.getByTestId("queue-empty")).toBeVisible();
   await expect(page.getByText("You're Checked In.")).toBeVisible();
 });
 
@@ -304,7 +304,7 @@ test("an admitted customer can be marked as a no-show and is removed from the ac
   await expect(
     extraPage.getByRole("heading", { name: "Awaiting Arrival Confirmation" }),
   ).toHaveCount(0);
-  await expect(extraPage.getByText("No customers in queue at this location.")).toBeVisible();
+  await expect(extraPage.getByTestId("queue-empty")).toBeVisible();
 
   const status = await page.request.get(
     `/auth/business/${business.username}/queue/token/${entry.queueToken}/status`,
@@ -345,11 +345,10 @@ test("a customer leaves the queue and disappears from the business active queue"
   expect(entry.leftAt).not.toBeNull();
   expect(entry.legacyKey).toBe(legacyKeyOf(guest.firstName, guest.lastName, entry.joinedAt));
 
-  await expect(extraPage.getByText("No customers in queue at this location.")).toBeVisible({
-    timeout: 30_000,
-  });
+  await expect(extraPage.getByTestId("queue-empty")).toBeVisible({ timeout: 30_000 });
   await expect(waitingCardFor(extraPage, guest)).toHaveCount(0);
 
+  await extraPage.goto("/business/overview");
   const recentlyLeft = dashboardCard(extraPage, "Recently Left Customers");
   await expect(recentlyLeft.getByText(fullNameOf(guest))).toBeVisible();
   await expect(recentlyLeft.getByText("Left Queue").filter({ visible: true })).toBeVisible();

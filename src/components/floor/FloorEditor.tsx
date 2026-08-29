@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, RotateCcw, SquareDashed, Trash2 } from "lucide-react";
+import { LayoutGrid, Plus, RotateCcw, SquareDashed, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -42,6 +42,7 @@ import FloorCanvas, { type CanvasSelection } from "@/components/floor/FloorCanva
 import TableInspector from "@/components/floor/TableInspector";
 import ZoneInspector from "@/components/floor/ZoneInspector";
 import ShapePalette from "@/components/floor/ShapePalette";
+import BusinessEmptyState from "@/components/BusinessEmptyState";
 import { cn } from "@/lib/utils";
 
 function nextRoomName(existing: string[]): string {
@@ -561,14 +562,18 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
 
   if (!activeRoom) {
     return (
-      <Card className="border border-slate-200 bg-white shadow-sm">
-        <CardContent className="p-8 text-center">
-          <p className="text-lg font-semibold text-slate-800">{t("floor.empty.title")}</p>
-          <p className="mt-2 text-sm text-slate-600">{t("floor.empty.body")}</p>
-          <Button className="mt-5" disabled={saving} onClick={handleCreateRoom}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t("floor.createPlan")}
-          </Button>
+      <Card className="flex flex-1 flex-col border border-slate-200 bg-white shadow-sm">
+        <CardContent className="flex flex-1 flex-col p-0">
+          <BusinessEmptyState
+            icon={LayoutGrid}
+            title={t("floor.empty.title")}
+            body={t("floor.empty.body")}
+          >
+            <Button disabled={saving} onClick={handleCreateRoom}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t("floor.createPlan")}
+            </Button>
+          </BusinessEmptyState>
         </CardContent>
       </Card>
     );
@@ -622,7 +627,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
           </div>
 
           <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            <p className="text-caption font-semibold uppercase tracking-wide text-slate-400">
               {t("floor.rooms")}
             </p>
             <div className="flex flex-wrap items-center gap-2">
@@ -663,7 +668,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
 
           <div className="flex flex-col gap-3 xl:flex-row xl:flex-nowrap xl:items-end xl:justify-between xl:gap-4">
             <div className="space-y-1.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              <p className="text-caption font-semibold uppercase tracking-wide text-slate-400">
                 {t("floor.addTable")}
               </p>
               <div className="flex flex-wrap items-stretch gap-2 lg:flex-nowrap">
@@ -678,7 +683,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
                   <span className="flex h-6 items-center justify-center">
                     <SquareDashed className="h-6 w-6 text-slate-400" />
                   </span>
-                  <span className="text-[11px] font-medium leading-tight text-slate-600 md:text-xs">
+                  <span className="text-caption font-medium leading-tight text-slate-600 md:text-xs">
                     {t("floor.addZone")}
                   </span>
                 </button>
@@ -688,7 +693,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
             <div className="flex flex-wrap items-end gap-2 md:gap-3 xl:flex-nowrap xl:gap-2">
               <div className="grid w-full grid-cols-[2fr_1fr_1fr] items-end gap-2 md:gap-3 xl:contents">
                 <div className="min-w-0 space-y-1 xl:shrink-0">
-                  <Label htmlFor="room-name" className="text-[11px] md:text-xs">
+                  <Label htmlFor="room-name" className="text-caption md:text-xs">
                     {t("floor.roomName")}
                   </Label>
                   <Input
@@ -699,7 +704,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
                   />
                 </div>
                 <div className="min-w-0 space-y-1 xl:flex-none xl:shrink-0">
-                  <Label htmlFor="floor-width" className="text-[11px] md:text-xs">
+                  <Label htmlFor="floor-width" className="text-caption md:text-xs">
                     {t("floor.width")}
                   </Label>
                   <Input
@@ -713,7 +718,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
                   />
                 </div>
                 <div className="min-w-0 space-y-1 xl:flex-none xl:shrink-0">
-                  <Label htmlFor="floor-height" className="text-[11px] md:text-xs">
+                  <Label htmlFor="floor-height" className="text-caption md:text-xs">
                     {t("floor.height")}
                   </Label>
                   <Input

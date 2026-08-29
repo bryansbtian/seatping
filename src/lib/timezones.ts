@@ -249,3 +249,11 @@ export const TIMEZONE_OPTIONS: TimezoneOption[] = (() => {
   withOffset.sort((a, b) => a.min - b.min || a.value.localeCompare(b.value));
   return withOffset.map(({ value, label }) => ({ value, label }));
 })();
+
+export function getLocationTimezone(location: any): string {
+  const tz = location?.restaurantProfile?.openingHours?.timezone;
+  if (typeof tz === "string" && tz) {
+    return tz;
+  }
+  return DEFAULT_TIMEZONE;
+}

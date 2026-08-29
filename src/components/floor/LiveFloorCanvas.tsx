@@ -58,7 +58,7 @@ const LiveFloorCanvas = ({ room, selectedTableId, onSelect }: LiveFloorCanvasPro
               height: zone.height * scale,
             }}
           >
-            <span className="absolute left-2 top-1.5 text-[11px] font-medium text-slate-500">
+            <span className="absolute left-2 top-1.5 text-caption font-medium text-slate-500">
               {zone.name}
             </span>
           </div>

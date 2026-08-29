@@ -14,7 +14,7 @@ test("a business creates a location from the settings page and it survives a rel
   await page.goto("/business/settings");
 
   await expect(page.getByRole("heading", { name: "Location Management" })).toBeVisible();
-  await expect(page.getByText("No locations added yet.")).toBeVisible();
+  await expect(page.getByText("No Locations Yet")).toBeVisible();
 
   await page.getByLabel("Location Display Name").fill(displayName);
   await page.getByLabel("Search Address").fill(address);

@@ -63,7 +63,7 @@ describe("manual assignment of a queue guest", () => {
     expect(response.body.moved).toBe(false);
   });
 
-  it("moves the queue entry to arrived so the queue stays consistent", async () => {
+  it("moves the queue entry to admitted so arrival confirmation remains available", async () => {
     const { location, cookie, request, tables } = await setupFloor();
     const entry = await seedQueueEntry(location, { guestCount: 2, status: "WAITING" });
 
@@ -73,9 +73,9 @@ describe("manual assignment of a queue guest", () => {
       .send({ tableId: tables[0].id, queueEntryId: entry.id });
 
     const stored = await db.queueEntry.findUnique({ where: { id: entry.id } });
-    expect(stored?.status).toBe("ARRIVED");
-    expect(stored?.finalStatus).toBe("arrived");
-    expect(stored?.arrivedAt).toBeTruthy();
+    expect(stored?.status).toBe("ADMITTED");
+    expect(stored?.finalStatus).toBe("pending");
+    expect(stored?.arrivedAt).toBeNull();
     expect(stored?.admittedAt).toBeTruthy();
   });
 
@@ -85,6 +85,7 @@ describe("manual assignment of a queue guest", () => {
     const entry = await seedQueueEntry(location, {
       guestCount: 2,
       status: "ADMITTED",
+      finalStatus: "pending",
       admittedAt,
     });
 
@@ -94,7 +95,8 @@ describe("manual assignment of a queue guest", () => {
       .send({ tableId: tables[0].id, queueEntryId: entry.id });
 
     const stored = await db.queueEntry.findUnique({ where: { id: entry.id } });
-    expect(stored?.status).toBe("ARRIVED");
+    expect(stored?.status).toBe("ADMITTED");
+    expect(stored?.finalStatus).toBe("pending");
     expect(stored?.admittedAt?.toISOString()).toBe(admittedAt.toISOString());
   });
 
