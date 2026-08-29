@@ -323,7 +323,7 @@ const LandingPage = () => {
                 </svg>
               </span>
             </span>
-            <span className="mt-1.5 block font-hand text-[1.12em] font-bold leading-none text-indigo-600">
+            <span className="mt-1.5 block font-hand text-hand-accent font-bold leading-none text-indigo-600">
               Smooth Service
             </span>
           </h2>

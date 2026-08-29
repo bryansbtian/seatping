@@ -59,7 +59,15 @@ export function dashboardCard(page: Page, title: string): Locator {
 }
 
 export function waitingCardFor(page: Page, guest: QueueGuest): Locator {
-  return dashboardCard(page, "Queue Management")
+  return page
+    .getByTestId("queue-list")
     .getByRole("heading", { name: fullNameOf(guest) })
-    .locator("xpath=ancestor::div[contains(@class,'bg-gray-50')][1]");
+    .locator("xpath=ancestor::li[1]");
+}
+
+export function awaitingCardFor(page: Page, guest: QueueGuest): Locator {
+  return page
+    .getByTestId("queue-awaiting")
+    .getByRole("heading", { name: fullNameOf(guest) })
+    .locator("xpath=ancestor::li[1]");
 }

@@ -34,6 +34,10 @@ export default defineConfig({
         test: {
           name: "unit",
           environment: "node",
+          env: {
+            UPSTASH_REDIS_REST_TOKEN: "",
+            UPSTASH_REDIS_REST_URL: "",
+          },
           setupFiles: ["./tests/setup/unit.ts"],
           include: ["tests/unit/**/*.test.ts"],
         },

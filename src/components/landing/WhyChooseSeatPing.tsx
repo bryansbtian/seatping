@@ -198,7 +198,7 @@ function ServiceSnapshot({ className }: { className?: string }) {
             <Clock className="h-4 w-4 text-slate-700" />
             <p className="text-sm font-semibold text-slate-900">Peak Hours</p>
           </div>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+          <p className="mt-0.5 text-caption text-slate-500">
             When does your business get the most traffic?
           </p>
           <MiniBarChart data={peakHours} color="#4f46e5" max={24} yTicks={[0, 6, 12, 18, 24]} />
@@ -209,7 +209,7 @@ function ServiceSnapshot({ className }: { className?: string }) {
             <BarChart3 className="h-4 w-4 text-slate-700" />
             <p className="text-sm font-semibold text-slate-900">Wait Time Distribution</p>
           </div>
-          <p className="mt-0.5 text-[11px] text-slate-500">How efficient is your service?</p>
+          <p className="mt-0.5 text-caption text-slate-500">How efficient is your service?</p>
           <MiniBarChart
             data={waitDistribution}
             color="#64748b"

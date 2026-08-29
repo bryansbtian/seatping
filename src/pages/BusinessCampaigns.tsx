@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import BusinessHeader from "@/components/BusinessHeader";
-import Footer from "@/components/Footer";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +36,7 @@ import { format } from "date-fns";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/lib/i18n";
+import { useBusinessSession } from "@/lib/businessSession";
 import { analytics } from "@/lib/analytics";
 import { formatPhone } from "@shared/phone";
 import {
@@ -61,6 +60,7 @@ import {
   Settings,
 } from "lucide-react";
 import { CustomAudienceBuilder, SavedAudience } from "@/components/CustomAudienceBuilder";
+import BusinessEmptyState from "@/components/BusinessEmptyState";
 
 type LocationOption = {
   id: string;
@@ -273,8 +273,10 @@ const BusinessCampaigns = () => {
   const { t } = useLang();
   const { toast } = useToast();
 
+  const { currentLocation } = useBusinessSession();
+  const locationId = currentLocation?.id ?? "";
+
   const [meta, setMeta] = useState<Meta | null>(null);
-  const [locationId, setLocationId] = useState("");
   const [metaLoaded, setMetaLoaded] = useState(false);
   const [tab, setTab] = useState<TabKey>("campaigns");
 
@@ -303,9 +305,6 @@ const BusinessCampaigns = () => {
           return;
         }
         setMeta(d);
-        if (d.locations.length) {
-          setLocationId((p) => p || d.locations[0].id);
-        }
         setMetaLoaded(true);
       })
       .catch(() => setMetaLoaded(true));
@@ -449,23 +448,11 @@ const BusinessCampaigns = () => {
     [campaigns],
   );
 
-  let locationOptions: React.ReactNode;
-  if (meta?.locations.length) {
-    locationOptions = meta.locations.map((l) => (
-      <option key={l.id} value={l.id}>
-        {l.label}
-      </option>
-    ));
-  } else {
-    locationOptions = <option value="">{t("camp.noLocations")}</option>;
-  }
-
   return (
     <>
       <SEO title="Campaigns | SeatPing" description={BUSINESS_DESCRIPTION} image={BUSINESS_IMAGE} />
-      <BusinessHeader />
-      <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100 flex flex-col">
-        <div className="container mx-auto px-4 py-8 flex-1 w-full">
+      <div className="flex min-h-full flex-col">
+        <div className="container mx-auto flex w-full flex-1 flex-col px-4 py-8">
           <div className="mb-6">
             <h1 className="text-xl md:text-2xl font-semibold text-gray-800">{t("camp.title")}</h1>
             <p className="text-gray-600 text-sm md:text-base">{t("camp.subtitle")}</p>
@@ -497,17 +484,6 @@ const BusinessCampaigns = () => {
                   </button>
                 );
               })}
-            </div>
-            <div className="relative md:w-56 shrink-0">
-              <select
-                className="w-full h-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={locationId}
-                onChange={(e) => setLocationId(e.target.value)}
-                disabled={!meta?.locations.length}
-              >
-                {locationOptions}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
             </div>
           </div>
 
@@ -582,7 +558,6 @@ const BusinessCampaigns = () => {
             />
           )}
         </div>
-        <Footer />
       </div>
 
       {builderOpen && (
@@ -635,26 +610,6 @@ const BusinessCampaigns = () => {
 };
 
 export default BusinessCampaigns;
-
-function EmptyState({
-  icon: Icon,
-  title,
-  body,
-}: {
-  icon: typeof Inbox;
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className="px-6 py-16 text-center">
-      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-        <Icon className="w-6 h-6 text-slate-400" />
-      </div>
-      <h3 className="text-base font-semibold text-slate-800">{title}</h3>
-      <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">{body}</p>
-    </div>
-  );
-}
 
 function ListSkeleton() {
   return (
@@ -742,7 +697,7 @@ function CampaignsTab({
     campaignsBody = <ListSkeleton />;
   } else if (campaigns.length === 0) {
     campaignsBody = (
-      <EmptyState
+      <BusinessEmptyState
         icon={Megaphone}
         title={t("camp.empty.campaigns.title")}
         body={t("camp.empty.campaigns.body")}
@@ -841,7 +796,7 @@ function CampaignsTab({
   }
 
   return (
-    <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
+    <Card className="flex flex-1 flex-col bg-white border border-slate-200 rounded-xl shadow-sm">
       <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
         <div className="space-y-1.5">
           <CardTitle className="text-lg md:text-xl text-slate-800">
@@ -864,7 +819,7 @@ function CampaignsTab({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="p-0">{campaignsBody}</CardContent>
+      <CardContent className="flex flex-1 flex-col p-0">{campaignsBody}</CardContent>
     </Card>
   );
 }
@@ -946,6 +901,15 @@ function TemplatesTab({
   let seatpingBody: React.ReactNode;
   if (loading) {
     seatpingBody = <ListSkeleton />;
+  } else if (seatping.length === 0) {
+    seatpingBody = (
+      <BusinessEmptyState
+        icon={MessageCircle}
+        title={t("camp.empty.templates.title")}
+        body={t("camp.empty.templates.body")}
+        className="px-4 py-8"
+      />
+    );
   } else {
     seatpingBody = (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -962,11 +926,16 @@ function TemplatesTab({
     refreshIconClass = "";
   }
   let customBody: React.ReactNode;
-  if (custom.length === 0) {
+  if (loading) {
+    customBody = <ListSkeleton />;
+  } else if (custom.length === 0) {
     customBody = (
-      <p className="text-sm text-slate-500 text-center py-6">
-        No custom templates yet. Create one to request a tailored message.
-      </p>
+      <BusinessEmptyState
+        icon={MessageCircle}
+        title={t("camp.empty.customTemplates.title")}
+        body={t("camp.empty.customTemplates.body")}
+        className="px-4 py-8"
+      />
     );
   } else {
     customBody = (
@@ -1057,7 +1026,7 @@ function TemplateCard({
         </p>
       )}
       <div className="mt-auto pt-3 flex items-center justify-between gap-2 min-h-[2.75rem]">
-        <span className="text-[11px] text-slate-400">Updated {fmtDate(template.updatedAt)}</span>
+        <span className="text-caption text-slate-400">Updated {fmtDate(template.updatedAt)}</span>
         <div className="flex items-center gap-1.5">
           {isCustom &&
             (template.approvalStatus === "DRAFT" ||
@@ -1097,20 +1066,51 @@ function AudiencesTab({
   onEditCustom: (a: SavedAudience) => void;
   onDeleteCustom: (a: SavedAudience) => void;
 }) {
+  const { t } = useLang();
   let refreshIconClass: string;
   if (loading) {
     refreshIconClass = "animate-spin";
   } else {
     refreshIconClass = "";
   }
-  let savedAudiencesBody: React.ReactNode;
-  if (savedAudiences.length === 0) {
-    savedAudiencesBody = (
-      <div className="text-center py-8 text-slate-500">
-        <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-        <p>No custom groups yet.</p>
-        <p className="text-sm">Create one to target specific segments of your guests.</p>
+  let smartAudiencesBody: React.ReactNode;
+  if (loading) {
+    smartAudiencesBody = <ListSkeleton />;
+  } else if (audiences.length === 0) {
+    smartAudiencesBody = (
+      <BusinessEmptyState
+        icon={Users}
+        title={t("camp.empty.smartAudiences.title")}
+        body={t("camp.empty.smartAudiences.body")}
+        className="px-4 py-8"
+      />
+    );
+  } else {
+    smartAudiencesBody = (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {audiences.map((a) => (
+          <div key={a.key} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-indigo-500" />
+              <h4 className="font-semibold text-slate-800 text-sm">{a.label}</h4>
+            </div>
+            <p className="text-xs text-slate-500 mt-1.5">{a.description}</p>
+          </div>
+        ))}
       </div>
+    );
+  }
+  let savedAudiencesBody: React.ReactNode;
+  if (loading) {
+    savedAudiencesBody = <ListSkeleton />;
+  } else if (savedAudiences.length === 0) {
+    savedAudiencesBody = (
+      <BusinessEmptyState
+        icon={Users}
+        title={t("camp.empty.customGroups.title")}
+        body={t("camp.empty.customGroups.body")}
+        className="px-4 py-8"
+      />
     );
   } else {
     savedAudiencesBody = (
@@ -1161,19 +1161,7 @@ function AudiencesTab({
             Built-in audiences that automatically segment your guests.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-4 md:p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {audiences.map((a) => (
-              <div key={a.key} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-indigo-500" />
-                  <h4 className="font-semibold text-slate-800 text-sm">{a.label}</h4>
-                </div>
-                <p className="text-xs text-slate-500 mt-1.5">{a.description}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
+        <CardContent className="p-4 md:p-6">{smartAudiencesBody}</CardContent>
       </Card>
 
       <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
@@ -1227,7 +1215,7 @@ function HistoryTab({
     historyBody = <ListSkeleton />;
   } else if (campaigns.length === 0) {
     historyBody = (
-      <EmptyState
+      <BusinessEmptyState
         icon={Inbox}
         title={t("camp.empty.history.title")}
         body={t("camp.empty.history.body")}
@@ -2325,7 +2313,7 @@ function Section({
   return (
     <section>
       <div className="flex items-center gap-2 mb-2">
-        <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[11px] font-semibold flex items-center justify-center">
+        <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-caption font-semibold flex items-center justify-center">
           {step}
         </span>
         <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
@@ -2699,7 +2687,7 @@ function TemplateBuilderDialog({
               className="bg-slate-50 border-slate-200"
             />
             {existing?.slug && (
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-caption text-slate-400 mt-1">
                 Template ID: <span className="font-mono text-slate-500">{existing.slug}</span>
               </p>
             )}

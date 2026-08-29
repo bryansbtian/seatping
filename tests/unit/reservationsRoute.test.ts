@@ -22,6 +22,8 @@ const enqueueNotification = vi.fn();
 const syncGuestFromReservation = vi.fn();
 const touchGuestByReservationId = vi.fn();
 
+const diningTableFindFirst = vi.fn(async () => null);
+
 vi.mock("../../server/lib/prisma.js", () => {
   return {
     prisma: {
@@ -41,7 +43,22 @@ vi.mock("../../server/lib/prisma.js", () => {
         updateMany: slotCounterUpdateMany,
       },
       user: { findUnique: userFindUnique, update: userUpdate },
+      diningTable: { findFirst: diningTableFindFirst },
     },
+  };
+});
+
+const assignOrFlagReservation = vi.fn(async () => null);
+const reassignTableForReservation = vi.fn(async () => null);
+const releaseReservationTables = vi.fn(async () => 0);
+
+vi.mock("../../server/lib/reservationTables.js", async () => {
+  const actual = await vi.importActual<any>("../../server/lib/reservationTables.js");
+  return {
+    ...actual,
+    assignOrFlagReservation,
+    reassignTableForReservation,
+    releaseReservationTables,
   };
 });
 
@@ -156,6 +173,9 @@ async function book(body: Record<string, unknown> = {}, headers: Record<string, 
 
 beforeEach(() => {
   process.env.FRONTEND_URL = "https://app.test.invalid";
+  assignOrFlagReservation.mockReset().mockResolvedValue(null);
+  reassignTableForReservation.mockReset().mockResolvedValue(null);
+  releaseReservationTables.mockReset().mockResolvedValue(0);
   businessFindUnique.mockReset().mockResolvedValue({
     id: "biz-1",
     name: "Bistro",
@@ -316,6 +336,30 @@ describe("creating a reservation", () => {
     const res = await book({ date: "not-a-date" });
 
     expect(res.status).toBe(400);
+  });
+});
+
+describe("when table assignment goes wrong", () => {
+  it("still confirms the booking if the table hold throws", async () => {
+    assignOrFlagReservation.mockRejectedValue(new Error("floor unavailable"));
+
+    const res = await book();
+
+    expect(res.status).toBe(200);
+    expect(res.body.manageToken).toMatch(/^[0-9a-f]{48}$/);
+  });
+
+  it("still saves a change if the table hold throws", async () => {
+    reassignTableForReservation.mockRejectedValue(new Error("floor unavailable"));
+    reservationFindUnique.mockResolvedValue(createdRow());
+    reservationUpdate.mockResolvedValue(createdRow());
+
+    const res = await app()
+      .put("/api/reservations/manage/mt-1")
+      .set("X-Forwarded-For", freshIp())
+      .send({ partySize: 3 });
+
+    expect(res.status).toBe(200);
   });
 });
 

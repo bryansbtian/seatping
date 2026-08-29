@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures/seatping.js";
-import { openBusinessDashboard } from "./helpers/auth.js";
+import { openBusinessReservations } from "./helpers/auth.js";
 import { DEFAULT_RESERVATION_SETTINGS, uniqueId } from "./helpers/db.js";
 import {
   futureDateKey,
@@ -275,7 +275,7 @@ test("reservations land in the right business dashboard tab and move when the st
     cancelledAt: new Date(),
   });
 
-  await openBusinessDashboard(page, business);
+  await openBusinessReservations(page, business);
 
   const reservationsCard = page
     .getByRole("heading", { name: "Reservations Management" })

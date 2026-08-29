@@ -14,11 +14,10 @@ test("a business signs in through the login form and reaches an authenticated da
 
   await signInBusinessThroughForm(page, business);
 
-  await expect(page).toHaveURL(/\/business\/dashboard$/);
+  await expect(page).toHaveURL(/\/business\/overview$/);
+
+  await page.goto("/business/queue");
   await expect(queueManagementHeading(page)).toBeVisible();
-  await expect(
-    page.getByText(`Managing queue for: ${location.displayName}`).filter({ visible: true }),
-  ).toBeVisible();
 
   const cookies = await page.context().cookies();
   expect(cookies.map((c) => c.name)).toContain("sp_auth_business");
@@ -57,7 +56,7 @@ test("an unauthenticated visitor cannot use the business dashboard on the client
 }) => {
   const { business, location } = await db.createBusinessWithLocation();
 
-  await page.goto("/business/dashboard");
+  await page.goto("/business/overview");
   await expect(page).toHaveURL(/\/business\/login$/);
   await expect(queueManagementHeading(page)).toHaveCount(0);
 

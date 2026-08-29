@@ -7,11 +7,11 @@ import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { api } from "@/lib/api";
 import { formatPhoneParts } from "@shared/phone";
 import { useToast } from "@/hooks/use-toast";
-import { useIsMobile } from "@/hooks/use-mobile";
-import BusinessHeader from "@/components/BusinessHeader";
-import ReservationsManager from "@/components/ReservationsManager";
 import { useLang } from "@/lib/i18n";
+import { useBusinessSession, locationLabel } from "@/lib/businessSession";
 import { analytics } from "@/lib/analytics";
+import BarSeries from "@/components/charts/BarSeries";
+import BusinessEmptyState from "@/components/BusinessEmptyState";
 import {
   Users,
   Clock,
@@ -19,23 +19,10 @@ import {
   RefreshCw,
   Calendar,
   ListOrdered,
-  ChevronDown,
   BarChart3,
-  LogOut,
 } from "lucide-react";
-import Footer from "@/components/Footer";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import {
   DEFAULT_TIMEZONE,
   getDateKeyInTimezone,
@@ -44,15 +31,8 @@ import {
   formatDateLabelInTimezone,
   addDaysToDateKey,
   startOfWeekDateKey,
+  getLocationTimezone,
 } from "@/lib/timezones";
-
-function getLocationTimezone(location: any): string {
-  const tz = location?.restaurantProfile?.openingHours?.timezone;
-  if (typeof tz === "string" && tz) {
-    return tz;
-  }
-  return DEFAULT_TIMEZONE;
-}
 
 const TOOLTIP_CONTENT_STYLE = {
   borderRadius: 12,
@@ -61,15 +41,19 @@ const TOOLTIP_CONTENT_STYLE = {
   padding: "8px 12px",
 };
 
-const BusinessDashboard = () => {
-  const isMobile = useIsMobile();
+const BusinessOverview = () => {
   const { t, lang } = useLang();
 
   useEffect(() => {
     analytics.businessDashboardOpened();
   }, []);
-  const [me, setMe] = useState<any | null>(null);
-  const [selectedLocationIndex, setSelectedLocationIndex] = useState(0);
+  const {
+    me,
+    setMe,
+    locations,
+    currentLocation,
+    currentLocationIndex: selectedLocationIndex,
+  } = useBusinessSession();
   const [queueEtas, setQueueEtas] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
   const [analyticsTimeframe, setAnalyticsTimeframe] = useState<"daily" | "weekly">("daily");
@@ -83,13 +67,10 @@ const BusinessDashboard = () => {
   } | null>(null);
   const trialCountdownRef = useRef<NodeJS.Timeout | null>(null);
   const [, forceCountdownTick] = useState(0);
-  const locations = (me?.locations as any[]) || [];
   const { toast } = useToast();
 
-  const currentLocation = locations[selectedLocationIndex];
   const queueData = currentLocation?.queue || [];
-  const locLabel = (loc: any, idx: number) =>
-    loc?.displayName || loc?.name || loc?.address || `Location ${idx + 1}`;
+  const locLabel = locationLabel;
 
   const calculateStats = () => {
     if (!currentLocation) {
@@ -260,27 +241,7 @@ const BusinessDashboard = () => {
         }));
       }
     }
-  }, [me]);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await api("/auth/business/me");
-        setMe(res.user);
-      } catch {}
-    })();
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await api("/auth/business/me");
-        setMe(res.user);
-      } catch {}
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, []);
+  }, [me, setMe]);
 
   useEffect(() => {
     if (!me?.username || !currentLocation?.id) {
@@ -320,140 +281,6 @@ const BusinessDashboard = () => {
 
     return () => clearInterval(interval);
   }, []);
-
-  const admitCustomer = async (customerIndex: number) => {
-    if (!currentLocation) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const customer = queueData[customerIndex];
-      const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
-
-      await api(`/auth/business/${me?.username}/queue/${customerId}/admit`, {
-        method: "POST",
-      });
-
-      const updated = await api("/auth/business/me");
-      setMe(updated.user);
-
-      toast({
-        title: t("dash.toast.admitted.title"),
-        description: t("dash.toast.admitted.desc", {
-          name: `${customer.firstName} ${customer.lastName}`,
-        }),
-      });
-    } catch (error: any) {
-      toast({
-        title: t("dash.toast.admitFailed.title"),
-        description: error.message || t("common.pleaseTryAgain"),
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const removeCustomer = async (customerIndex: number) => {
-    if (!currentLocation) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const customer = queueData[customerIndex];
-      const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
-
-      await api(`/auth/business/${me?.username}/queue/${customerId}`, {
-        method: "DELETE",
-      });
-
-      const updated = await api("/auth/business/me");
-      setMe(updated.user);
-
-      toast({
-        title: t("dash.toast.removed.title"),
-        description: t("dash.toast.removed.desc", {
-          name: `${customer.firstName} ${customer.lastName}`,
-        }),
-      });
-    } catch (error: any) {
-      toast({
-        title: t("dash.toast.removeFailed.title"),
-        description: error.message || t("common.pleaseTryAgain"),
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const confirmArrival = async (customer: any) => {
-    if (!me) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
-
-      await api(`/auth/business/${me.username}/admitted/${customerId}/confirm-arrival`, {
-        method: "POST",
-      });
-
-      const updated = await api("/auth/business/me");
-      setMe(updated.user);
-
-      toast({
-        title: t("dash.toast.arrivalConfirmed.title"),
-        description: t("dash.toast.arrivalConfirmed.desc", {
-          name: `${customer.firstName} ${customer.lastName}`,
-        }),
-      });
-    } catch (error: any) {
-      toast({
-        title: t("dash.toast.confirmFailed.title"),
-        description: error.message || t("common.pleaseTryAgain"),
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const markNoShow = async (customer: any) => {
-    if (!me) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
-
-      await api(`/auth/business/${me.username}/admitted/${customerId}/mark-no-show`, {
-        method: "POST",
-      });
-
-      const updated = await api("/auth/business/me");
-      setMe(updated.user);
-
-      toast({
-        title: t("dash.toast.noShow.title"),
-        description: t("dash.toast.noShow.desc", {
-          name: `${customer.firstName} ${customer.lastName}`,
-        }),
-      });
-    } catch (error: any) {
-      toast({
-        title: t("dash.toast.noShowFailed.title"),
-        description: error.message || t("common.pleaseTryAgain"),
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const formatTimeSince = (joinedAt: string) => {
     const joined = new Date(joinedAt);
@@ -507,19 +334,6 @@ const BusinessDashboard = () => {
       return `Email: ${c.email}`;
     }
     return null;
-  };
-
-  const getTimeRemaining = (admittedAt: string) => {
-    const admitted = new Date(admittedAt);
-    const now = new Date();
-    const elapsed = now.getTime() - admitted.getTime();
-    const fiveMinutes = 5 * 60 * 1000;
-    const remaining = Math.max(0, fiveMinutes - elapsed);
-
-    const minutes = Math.floor(remaining / 60000);
-    const seconds = Math.floor((remaining % 60000) / 1000);
-
-    return { minutes, seconds, expired: remaining === 0 };
   };
 
   const getCurrentDate = () => {
@@ -811,130 +625,11 @@ const BusinessDashboard = () => {
   const peakHoursData = getPeakHoursData();
   const waitTimeDistribution = getWaitTimeDistribution();
 
-  let locationOptions: JSX.Element | JSX.Element[];
-  if (locations.length > 0) {
-    locationOptions = locations.map((loc, idx) => (
-      <option key={idx} value={idx}>
-        {locLabel(loc, idx)}
-      </option>
-    ));
-  } else {
-    locationOptions = <option value={0}>{t("dash.noLocations")}</option>;
-  }
-
-  let reservationsLocationLabel: string;
-  if (currentLocation) {
-    reservationsLocationLabel = locLabel(currentLocation, selectedLocationIndex);
-  } else {
-    reservationsLocationLabel = "";
-  }
-
   let reservationsEnabled: boolean;
   if (currentLocation) {
     reservationsEnabled = currentLocation.reservationsEnabled !== false;
   } else {
     reservationsEnabled = true;
-  }
-
-  let queueCountKey: "dash.queue.customerOne" | "dash.queue.customerMany";
-  if (queueData.length === 1) {
-    queueCountKey = "dash.queue.customerOne";
-  } else {
-    queueCountKey = "dash.queue.customerMany";
-  }
-
-  let queueManagingText: string;
-  if (currentLocation) {
-    queueManagingText = t("dash.queue.managingFor", {
-      label: locLabel(currentLocation, selectedLocationIndex),
-    });
-  } else {
-    queueManagingText = t("dash.queue.noLocationSelected");
-  }
-
-  let queueContent: JSX.Element;
-  if (queueData.length === 0) {
-    queueContent = (
-      <div className="flex flex-col items-center py-10 text-center text-slate-400">
-        <Users className="h-8 w-8" />
-        <p className="mt-2 text-sm">{t("dash.queue.empty")}</p>
-      </div>
-    );
-  } else {
-    queueContent = (
-      <div className="space-y-3 md:space-y-4">
-        {queueData.map((customer: any, index: number) => {
-          let guestCountKey: "dash.guestOne" | "dash.guestMany";
-          if (customer.numGuests === 1) {
-            guestCountKey = "dash.guestOne";
-          } else {
-            guestCountKey = "dash.guestMany";
-          }
-          return (
-            <div
-              key={index}
-              className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div className="flex items-start space-x-3 md:space-x-4">
-                <span className="mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-2 py-1 text-xs md:text-sm font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
-                  #{index + 1}
-                </span>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-800 text-sm md:text-base flex items-center gap-2 flex-wrap">
-                    {customer.firstName} {customer.lastName}
-                    {customer.isReturning && <GuestStatusBadge returning />}
-                  </h3>
-                  <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
-                    <span className="whitespace-nowrap">
-                      {t("dash.queue.joined", {
-                        time: formatTimeSince(customer.joinedAt),
-                      })}
-                    </span>
-                    <span className="text-gray-400">•</span>
-                    <span className="whitespace-nowrap">
-                      {t(guestCountKey, { n: customer.numGuests })}
-                    </span>
-                  </div>
-
-                  {notificationContact(customer) && (
-                    <p className="text-xs md:text-sm text-gray-500 mt-1 break-all">
-                      {notificationContact(customer)}
-                    </p>
-                  )}
-                  {customer.queueToken && queueEtas[customer.queueToken] && (
-                    <p className="text-xs md:text-sm font-medium text-indigo-600 mt-1">
-                      {t("dash.queue.estimatedWait", {
-                        text: queueEtas[customer.queueToken].displayText,
-                      })}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center space-x-2 md:space-x-3">
-                <Button
-                  size="sm"
-                  variant="success"
-                  className="flex-1 md:flex-none"
-                  onClick={() => admitCustomer(index)}
-                  disabled={loading}
-                >
-                  {t("dash.admit")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructiveOutline"
-                  onClick={() => removeCustomer(index)}
-                  disabled={loading}
-                  className="flex-1 md:flex-none"
-                >
-                  {t("dash.remove")}
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
   }
 
   let trialBanner: JSX.Element | null = null;
@@ -1075,119 +770,74 @@ const BusinessDashboard = () => {
     );
   } else {
     summaryChartContent = (
-      <div className="flex h-full flex-col items-center justify-center text-center">
-        <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-        <p className="text-gray-500">{t("dash.noData")}</p>
-      </div>
+      <BusinessEmptyState
+        icon={BarChart3}
+        title={t("dash.empty.performance.title")}
+        body={t("dash.empty.performance.body")}
+        className="h-full px-4 py-8"
+      />
     );
-  }
-
-  let peakHoursXAxisInterval: "preserveStartEnd" | 0;
-  if (isMobile) {
-    peakHoursXAxisInterval = "preserveStartEnd";
-  } else {
-    peakHoursXAxisInterval = 0;
-  }
-
-  let peakHoursMinTickGap: number;
-  if (isMobile) {
-    peakHoursMinTickGap = 16;
-  } else {
-    peakHoursMinTickGap = 0;
   }
 
   let waitDistributionContent: JSX.Element;
   if (waitTimeDistribution.some((b) => b.count > 0)) {
     waitDistributionContent = (
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={waitTimeDistribution} margin={{ top: 8, right: 16, left: 28, bottom: 0 }}>
-          <XAxis dataKey="range" height={40} tick={{ fontSize: 12 }} />
-
-          <YAxis yAxisId="left" width={40} />
-
-          <YAxis
-            yAxisId="right"
-            orientation="right"
-            width={40}
-            tick={false}
-            axisLine={false}
-            tickLine={false}
-          />
-
-          <Tooltip cursor={false} contentStyle={TOOLTIP_CONTENT_STYLE} />
-          <Bar
-            yAxisId="left"
-            dataKey="count"
-            fill="#64748b"
-            name={t("dash.waitDist.legend")}
-            radius={[8, 8, 0, 0]}
-          />
-        </BarChart>
-      </ResponsiveContainer>
+      <BarSeries
+        testId="overview-wait-distribution"
+        height={180}
+        barClass="bg-slate-500"
+        data={waitTimeDistribution.map((bucket: any) => ({
+          key: bucket.range,
+          label: bucket.range,
+          value: bucket.count,
+        }))}
+      />
     );
   } else {
     waitDistributionContent = (
-      <div className="text-center py-12">
-        <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-        <p className="text-gray-500">{t("dash.waitDist.noData")}</p>
-      </div>
+      <BusinessEmptyState
+        icon={BarChart3}
+        title={t("dash.empty.waitTime.title")}
+        body={t("dash.empty.waitTime.body")}
+        className="h-[180px] px-4 py-8"
+      />
     );
   }
 
   let peakHoursContent: JSX.Element;
   if (peakHoursData.length > 0) {
     peakHoursContent = (
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={peakHoursData} margin={{ top: 8, right: 16, left: 28, bottom: 0 }}>
-          <XAxis
-            dataKey="hour"
-            height={40}
-            interval={peakHoursXAxisInterval}
-            minTickGap={peakHoursMinTickGap}
-            tick={{ fontSize: 12 }}
-          />
-
-          <YAxis yAxisId="left" width={40} />
-
-          <YAxis
-            yAxisId="right"
-            orientation="right"
-            width={40}
-            tick={false}
-            axisLine={false}
-            tickLine={false}
-          />
-
-          <Tooltip cursor={false} contentStyle={TOOLTIP_CONTENT_STYLE} />
-          <Bar
-            yAxisId="left"
-            dataKey="customers"
-            fill="#4f46e5"
-            name={t("dash.peak.legend")}
-            radius={[8, 8, 0, 0]}
-          />
-        </BarChart>
-      </ResponsiveContainer>
+      <BarSeries
+        testId="overview-peak-hours"
+        height={180}
+        barClass="bg-indigo-600"
+        data={peakHoursData.map((slot: any) => ({
+          key: slot.hour,
+          label: slot.hour,
+          value: slot.customers,
+        }))}
+      />
     );
   } else {
     peakHoursContent = (
-      <div className="text-center py-12">
-        <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-        <p className="text-gray-500">{t("dash.peak.noData")}</p>
-      </div>
+      <BusinessEmptyState
+        icon={Clock}
+        title={t("dash.empty.peakHours.title")}
+        body={t("dash.empty.peakHours.body")}
+        className="h-[180px] px-4 py-8"
+      />
     );
   }
 
   return (
     <>
       <SEO
-        title="Business Dashboard | SeatPing"
+        title="Business Overview | SeatPing"
         description={BUSINESS_DESCRIPTION}
         image={BUSINESS_IMAGE}
       />
-      <BusinessHeader />
-      <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100">
-        <div className="container mx-auto px-4 py-8 [&_.text-3xl]:max-[374px]:text-2xl [&_.text-2xl]:max-[374px]:text-xl [&_.text-xl]:max-[374px]:text-lg [&_.text-lg]:max-[374px]:text-base [&_.text-base]:max-[374px]:text-sm [&_.text-sm]:max-[374px]:text-xs [&_.text-xs]:max-[374px]:text-[11px]">
+      <div>
+        <div className="container mx-auto px-4 py-8">
           {me && me.trial === true && <>{trialBanner}</>}
 
           {me && me.trial === false && currentLocation && currentLocation.credits === 0 && (
@@ -1213,41 +863,24 @@ const BusinessDashboard = () => {
             </div>
           )}
 
-          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 md:p-6 mb-4 lg:hidden">
-            <div className="mb-4">
+          <div className="overview-mobile-header bg-white border border-slate-200 rounded-xl shadow-sm p-4 md:p-6 mb-4 lg:hidden">
+            <div>
               <h2 className="text-xl md:text-2xl font-semibold text-slate-800 leading-tight">
                 {t("dash.hello", { name: me?.name || t("dash.ownerFallback") })}
               </h2>
               <p className="text-slate-600 text-sm md:text-base">{t("dash.dailyStat")}</p>
-            </div>
-
-            {currentLocation && (
-              <div className="mb-3">
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs text-slate-600 mb-1">{t("dash.credits")}</p>
-                      <p className="text-xl md:text-2xl font-semibold text-slate-800">
-                        {currentLocation?.credits || 0}
-                      </p>
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 leading-none">
-                      <Users className="w-4 h-4 text-indigo-600" />
-                    </div>
-                  </div>
+              {currentLocation && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                    {locLabel(currentLocation, selectedLocationIndex)}
+                  </span>
+                  <span className="rounded bg-indigo-100 px-2 py-1 text-xs text-indigo-700">
+                    {t("dash.creditsPill", {
+                      n: currentLocation.credits || 0,
+                    })}
+                  </span>
                 </div>
-              </div>
-            )}
-
-            <div className="relative">
-              <select
-                className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={selectedLocationIndex}
-                onChange={(e) => setSelectedLocationIndex(Number(e.target.value))}
-              >
-                {locationOptions}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+              )}
             </div>
           </div>
 
@@ -1262,6 +895,9 @@ const BusinessDashboard = () => {
                 <p className="text-slate-600 text-sm md:text-base">{t("dash.dailyStat")}</p>
                 {currentLocation && (
                   <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <span className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">
+                      {locLabel(currentLocation, selectedLocationIndex)}
+                    </span>
                     <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
                       {t("dash.creditsPill", {
                         n: currentLocation?.credits || 0,
@@ -1275,17 +911,7 @@ const BusinessDashboard = () => {
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <Calendar className="w-4 h-4" />
                   <span>{getCurrentDate()}</span>
-                </div>
-                <div className="relative">
-                  <select
-                    className="appearance-none bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={selectedLocationIndex}
-                    onChange={(e) => setSelectedLocationIndex(Number(e.target.value))}
-                  >
-                    {locationOptions}
-                  </select>
-                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                </div>
+                </div>{" "}
               </div>
             </div>
           </div>
@@ -1298,43 +924,28 @@ const BusinessDashboard = () => {
                   {
                     label: t("dash.stat.currentQueue"),
                     value: todayStats.currentQueue,
-                    icon: Users,
-                    tint: "bg-indigo-100 text-indigo-600",
                   },
                   {
                     label: t("dash.stat.reservationsToday"),
                     value: todayStats.reservationsToday,
-                    icon: Calendar,
-                    tint: "bg-blue-100 text-blue-600",
                   },
                   {
                     label: t("dash.stat.avgQueueWait"),
                     value: `${todayStats.avgWaitTime}m`,
-                    icon: Clock,
-                    tint: "bg-teal-100 text-teal-600",
                   },
                   {
                     label: t("dash.stat.servedToday"),
                     value: todayStats.totalServed,
-                    icon: TrendingUp,
-                    tint: "bg-emerald-100 text-emerald-600",
                   },
                   {
                     label: t("dash.stat.leftToday"),
                     value: todayStats.leftToday,
-                    icon: LogOut,
-                    tint: "bg-teal-100 text-teal-600",
                   },
-                ].map(({ label, value, icon: Icon, tint }) => (
+                ].map(({ label, value }) => (
                   <div key={label} className="flex items-center justify-between py-2.5">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={`w-8 h-8 rounded-full grid place-items-center shrink-0 max-[325px]:hidden ${tint}`}
-                      >
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <span className="text-sm text-slate-600 truncate">{label}</span>
-                    </div>
+                    <span className="min-w-0 truncate text-caption font-medium uppercase tracking-[0.12em] text-slate-500">
+                      {label}
+                    </span>
                     <span className="text-lg font-semibold text-slate-800 leading-none shrink-0">
                       {value}
                     </span>
@@ -1345,289 +956,61 @@ const BusinessDashboard = () => {
           </Card>
 
           <div className="hidden lg:grid grid-cols-5 gap-4 mb-6">
-            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
-              <div className="flex flex-col gap-2">
-                <p className="text-slate-600 text-xs md:text-sm">{t("dash.stat.currentQueue")}</p>
-                <div className="flex items-center justify-between">
-                  <p className="text-2xl md:text-3xl font-semibold text-slate-800">
-                    {todayStats.currentQueue}
-                  </p>
-                  <div className="p-2 bg-indigo-100 rounded-full">
-                    <Users className="w-5 h-5 md:w-6 md:h-6 text-indigo-600" />
-                  </div>
-                </div>
+            <Card className="h-full p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+              <div className="flex h-full flex-col">
+                <p className="text-caption font-medium uppercase tracking-[0.12em] text-slate-500">
+                  {t("dash.stat.currentQueue")}
+                </p>
+                <p className="mt-auto whitespace-nowrap pt-2 text-2xl font-semibold leading-none text-slate-800 md:text-3xl">
+                  {todayStats.currentQueue}
+                </p>
               </div>
             </Card>
 
-            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
-              <div className="flex flex-col gap-2">
-                <p className="text-slate-600 text-xs md:text-sm">
+            <Card className="h-full p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+              <div className="flex h-full flex-col">
+                <p className="text-caption font-medium uppercase tracking-[0.12em] text-slate-500">
                   {t("dash.stat.reservationsToday")}
                 </p>
-                <div className="flex items-center justify-between">
-                  <p className="text-2xl md:text-3xl font-semibold text-slate-800">
-                    {todayStats.reservationsToday}
-                  </p>
-                  <div className="p-2 bg-blue-100 rounded-full">
-                    <Calendar className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
-                  </div>
-                </div>
+                <p className="mt-auto whitespace-nowrap pt-2 text-2xl font-semibold leading-none text-slate-800 md:text-3xl">
+                  {todayStats.reservationsToday}
+                </p>
               </div>
             </Card>
 
-            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
-              <div className="flex flex-col gap-2">
-                <p className="text-slate-600 text-xs md:text-sm">
+            <Card className="h-full p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+              <div className="flex h-full flex-col">
+                <p className="text-caption font-medium uppercase tracking-[0.12em] text-slate-500">
                   {t("dash.stat.avgQueueWaitTime")}
                 </p>
-                <div className="flex items-center justify-between">
-                  <p className="text-2xl md:text-3xl font-semibold text-slate-800">
-                    {todayStats.avgWaitTime}m
-                  </p>
-                  <div className="p-2 bg-teal-100 rounded-full">
-                    <Clock className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
-                  </div>
-                </div>
+                <p className="mt-auto whitespace-nowrap pt-2 text-2xl font-semibold leading-none text-slate-800 md:text-3xl">
+                  {todayStats.avgWaitTime}m
+                </p>
               </div>
             </Card>
 
-            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
-              <div className="flex flex-col gap-2">
-                <p className="text-slate-600 text-xs md:text-sm">{t("dash.stat.servedToday")}</p>
-                <div className="flex items-center justify-between">
-                  <p className="text-2xl md:text-3xl font-semibold text-slate-800">
-                    {todayStats.totalServed}
-                  </p>
-                  <div className="p-2 bg-emerald-100 rounded-full">
-                    <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-emerald-600" />
-                  </div>
-                </div>
+            <Card className="h-full p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+              <div className="flex h-full flex-col">
+                <p className="text-caption font-medium uppercase tracking-[0.12em] text-slate-500">
+                  {t("dash.stat.servedToday")}
+                </p>
+                <p className="mt-auto whitespace-nowrap pt-2 text-2xl font-semibold leading-none text-slate-800 md:text-3xl">
+                  {todayStats.totalServed}
+                </p>
               </div>
             </Card>
 
-            <Card className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
-              <div className="flex flex-col gap-2">
-                <p className="text-slate-600 text-xs md:text-sm">{t("dash.stat.leftToday")}</p>
-                <div className="flex items-center justify-between">
-                  <p className="text-2xl md:text-3xl font-semibold text-slate-800">
-                    {todayStats.leftToday}
-                  </p>
-                  <div className="p-2 bg-teal-100 rounded-full">
-                    <LogOut className="w-5 h-5 md:w-6 md:h-6 text-teal-600" />
-                  </div>
-                </div>
+            <Card className="h-full p-3 md:p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+              <div className="flex h-full flex-col">
+                <p className="text-caption font-medium uppercase tracking-[0.12em] text-slate-500">
+                  {t("dash.stat.leftToday")}
+                </p>
+                <p className="mt-auto whitespace-nowrap pt-2 text-2xl font-semibold leading-none text-slate-800 md:text-3xl">
+                  {todayStats.leftToday}
+                </p>
               </div>
             </Card>
           </div>
-
-          <Card className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
-            <CardHeader className="border-b border-gray-100 p-4 md:p-6">
-              <div className="md:hidden">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-lg text-gray-800">
-                    <ListOrdered className="w-5 h-5" />
-                    {t("dash.queue.title")}
-                  </CardTitle>
-                  <Badge
-                    variant="secondary"
-                    className="bg-indigo-100 text-indigo-700 text-[10px] sm:text-xs px-2 py-1 sm:px-3 whitespace-nowrap max-[374px]:hidden"
-                  >
-                    {t(queueCountKey, { n: queueData.length })}
-                  </Badge>
-                </div>
-                <CardDescription className="text-gray-600 text-sm mb-3 mt-0.5">
-                  {queueManagingText}
-                </CardDescription>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      const res = await api("/auth/business/me");
-                      setMe(res.user);
-                      toast({
-                        title: t("dash.toast.queueRefreshed.title"),
-                        description: t("dash.toast.queueRefreshed.desc"),
-                      });
-                    } catch (error: any) {
-                      toast({
-                        title: t("dash.toast.refreshFailed.title"),
-                        description: error.message || t("common.pleaseTryAgain"),
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                  disabled={loading}
-                  className="flex items-center space-x-2 w-full"
-                >
-                  <RefreshCw size={16} />
-                  <span>{t("common.refresh")}</span>
-                </Button>
-              </div>
-
-              <div className="hidden md:flex md:items-center md:justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
-                    <ListOrdered className="w-5 h-5" />
-                    {t("dash.queue.title")}
-                  </CardTitle>
-                  <CardDescription className="text-gray-600 text-sm">
-                    {queueManagingText}
-                  </CardDescription>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      try {
-                        const res = await api("/auth/business/me");
-                        setMe(res.user);
-                        toast({
-                          title: t("dash.toast.queueRefreshed.title"),
-                          description: t("dash.toast.queueRefreshed.desc"),
-                        });
-                      } catch (error: any) {
-                        toast({
-                          title: t("dash.toast.refreshFailed.title"),
-                          description: error.message || t("common.pleaseTryAgain"),
-                          variant: "destructive",
-                        });
-                      }
-                    }}
-                    disabled={loading}
-                    className="flex items-center space-x-2"
-                  >
-                    <RefreshCw size={16} />
-                    <span>{t("common.refresh")}</span>
-                  </Button>
-                  <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
-                    {t(queueCountKey, { n: queueData.length })}
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 md:p-6">{queueContent}</CardContent>
-          </Card>
-
-          {(() => {
-            const pendingAdmittedCustomers = (currentLocation?.admittedCustomers || []).filter(
-              (customer: any) => customer.finalStatus === "pending",
-            );
-
-            return (
-              pendingAdmittedCustomers.length > 0 && (
-                <Card className="bg-amber-50 border-amber-200 rounded-xl shadow-sm mb-6">
-                  <CardHeader className="border-b border-amber-200 p-4 md:p-6">
-                    <CardTitle className="text-lg md:text-xl text-amber-800 flex items-center gap-2">
-                      <Clock className="w-5 h-5" />
-                      {t("dash.awaiting.title")}
-                    </CardTitle>
-                    <CardDescription className="text-amber-700 text-sm">
-                      {t("dash.awaiting.desc")}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-4 md:p-6">
-                    <div className="space-y-3 md:space-y-4">
-                      {pendingAdmittedCustomers.map((customer: any, index: number) => {
-                        const timeRemaining = getTimeRemaining(customer.admittedAt);
-                        const customerId = `${customer.firstName}${customer.lastName}${customer.joinedAt}`;
-                        let countdownLabel: string;
-                        if (timeRemaining.expired) {
-                          countdownLabel = "!";
-                        } else {
-                          countdownLabel = `${timeRemaining.minutes}:${timeRemaining.seconds
-                            .toString()
-                            .padStart(2, "0")}`;
-                        }
-                        let guestCountKey: "dash.guestOne" | "dash.guestMany";
-                        if (customer.numGuests === 1) {
-                          guestCountKey = "dash.guestOne";
-                        } else {
-                          guestCountKey = "dash.guestMany";
-                        }
-
-                        return (
-                          <div
-                            key={customerId}
-                            className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-white rounded-lg border border-amber-200"
-                          >
-                            <div className="flex items-center space-x-3 md:space-x-4 flex-1">
-                              <div className="flex-shrink-0">
-                                <div className="w-8 h-8 md:w-10 md:h-10 bg-amber-600 rounded-full flex items-center justify-center">
-                                  <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-white leading-none tabular-nums">
-                                    {countdownLabel}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-gray-800 text-sm md:text-base flex items-center gap-2 flex-wrap">
-                                  {customer.firstName} {customer.lastName}
-                                  {customer.isReturning && <GuestStatusBadge returning />}
-                                </h3>
-                                <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
-                                  <span className="whitespace-nowrap">
-                                    {t("dash.admitted", {
-                                      time: formatTimeSince(customer.admittedAt),
-                                    })}
-                                  </span>
-                                  <span className="text-gray-400">•</span>
-                                  <span className="whitespace-nowrap">
-                                    {t(guestCountKey, {
-                                      n: customer.numGuests,
-                                    })}
-                                  </span>
-
-                                  {timeRemaining.expired && (
-                                    <>
-                                      <span className="text-gray-400">•</span>
-                                      <span className="text-red-600 font-semibold whitespace-nowrap">
-                                        {t("dash.timeExpired")}
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 md:gap-3">
-                              <Button
-                                size="sm"
-                                variant="success"
-                                className="flex-1 md:flex-none"
-                                onClick={() => confirmArrival(customer)}
-                                disabled={loading}
-                              >
-                                {t("dash.arrived")}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructiveOutline"
-                                className="flex-1 md:flex-none"
-                                onClick={() => markNoShow(customer)}
-                                disabled={loading}
-                              >
-                                {t("dash.noShow")}
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            );
-          })()}
-
-          <ReservationsManager
-            reservations={currentLocation?.reservations || []}
-            businessUsername={me?.username || ""}
-            locationId={currentLocation?.id || ""}
-            timeZone={getLocationTimezone(currentLocation)}
-            locationLabel={reservationsLocationLabel}
-            reservationsEnabled={reservationsEnabled}
-            onUpdated={(user) => setMe(user)}
-          />
 
           {(() => {
             const now = new Date();
@@ -1643,10 +1026,12 @@ const BusinessDashboard = () => {
             let recentlyLeftContent: JSX.Element;
             if (recentlyLeftCustomers.length === 0) {
               recentlyLeftContent = (
-                <div className="flex flex-col items-center py-10 text-center text-slate-400">
-                  <Users className="h-8 w-8" />
-                  <p className="mt-2 text-sm">{t("dash.left.empty")}</p>
-                </div>
+                <BusinessEmptyState
+                  icon={Users}
+                  title={t("dash.empty.departures.title")}
+                  body={t("dash.empty.departures.body")}
+                  className="min-h-40 px-4 py-8"
+                />
               );
             } else {
               recentlyLeftContent = (
@@ -1726,7 +1111,7 @@ const BusinessDashboard = () => {
             );
           })()}
 
-          <div className="mb-6 space-y-6">
+          <div className="space-y-6">
             <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
               <CardHeader className="border-b border-slate-100 p-4 md:p-6">
                 <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
@@ -1792,9 +1177,8 @@ const BusinessDashboard = () => {
           </div>
         </div>
       </div>
-      <Footer />
     </>
   );
 };
 
-export default BusinessDashboard;
+export default BusinessOverview;

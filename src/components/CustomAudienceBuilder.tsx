@@ -675,14 +675,14 @@ export function CustomAudienceBuilder({
                                 <GuestTagBadge key={tag} tag={tag} />
                               ))}
                               {guest.tags.length > 4 && (
-                                <span className="text-[11px] text-slate-400">
+                                <span className="text-caption text-slate-400">
                                   +{guest.tags.length - 4}
                                 </span>
                               )}
                             </div>
                           )}
                           {lastVisit && (
-                            <div className="text-[11px] text-slate-400 mt-1">
+                            <div className="text-caption text-slate-400 mt-1">
                               Last visit: {lastVisit}
                             </div>
                           )}

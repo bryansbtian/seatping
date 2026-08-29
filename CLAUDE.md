@@ -160,6 +160,12 @@ can collide with it.
   recipient deduping, preserve the atomic guards and retry behavior.
 - Reservations are auto-confirmed. Do not reintroduce the deprecated reservation pending
   approval flow.
+- A location that has dining tables validates reservation availability against real table
+  inventory across the full occupancy window, not only the reservation start time. Accepted
+  reservations get a `SMART` table assignment, and changes or terminal statuses release it.
+  Locations without tables keep the older guest-count behavior.
+- `maxReservedGuestsPerHour` is an optional safety cap. Zero means no cap, so read it through
+  `effectiveGuestCap` rather than using the raw value as a limit.
 
 ## Notifications And Cron
 

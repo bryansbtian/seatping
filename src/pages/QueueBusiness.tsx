@@ -164,9 +164,10 @@ export default function QueueBusiness() {
   const positionInLine = useMemo(() => peopleAhead + 1, [peopleAhead]);
 
   const [eta, setEta] = useState<{
+    status: "ETA" | "NO_CAPACITY";
     displayText: string;
-    estimatedWaitMin: number;
-    estimatedWaitMax: number;
+    estimatedWaitMin: number | null;
+    estimatedWaitMax: number | null;
   } | null>(null);
   const [etaLoading, setEtaLoading] = useState(false);
   const [etaError, setEtaError] = useState(false);

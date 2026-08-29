@@ -185,8 +185,8 @@ const Feedback = () => {
     <>
       <Header />
 
-      <main className="bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 pb-12 pt-24 sm:pb-16 sm:pt-28">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-2 lg:items-stretch lg:gap-14">
+      <main className="bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 pb-12 pt-24 sm:px-6 sm:pb-16 sm:pt-28 lg:px-10">
+        <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-2 lg:items-stretch lg:gap-8 xl:gap-14">
           <div className="hidden lg:block">
             <div className="relative flex h-full min-h-[480px] flex-col justify-end overflow-hidden rounded-3xl bg-slate-900 p-8 text-white shadow-2xl">
               <img
@@ -199,7 +199,7 @@ const Feedback = () => {
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-950/90 via-slate-900/80 to-primary/60" />
 
               <div className="relative z-10">
-                <h2 className="text-2xl font-semibold leading-snug sm:text-[1.65rem]">
+                <h2 className="text-2xl font-semibold leading-snug sm:text-display-compact">
                   Help Us Improve SeatPing
                 </h2>
                 <p className="mt-4 text-base leading-relaxed text-white/80">

@@ -201,6 +201,49 @@ export function getNowWallClockInTimezone(timezone: string): string {
   return `${parts.date}T${hh}:${mm}`;
 }
 
+export type ZonedWeekdayHour = { weekday: number; hour: number };
+
+const WEEKDAY_INDEX: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
+
+export function zonedWeekdayHour(at: Date, timezone?: string): ZonedWeekdayHour {
+  if (!timezone) {
+    return { weekday: at.getDay(), hour: at.getHours() };
+  }
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+      hour: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(at);
+    const values: Record<string, string> = {};
+    for (const part of parts) {
+      if (part.type !== "literal") {
+        values[part.type] = part.value;
+      }
+    }
+    const weekday = WEEKDAY_INDEX[values.weekday];
+    let hour = Number(values.hour);
+    if (hour === 24) {
+      hour = 0;
+    }
+    if (weekday === undefined || !Number.isFinite(hour)) {
+      return { weekday: at.getDay(), hour: at.getHours() };
+    }
+    return { weekday, hour };
+  } catch {
+    return { weekday: at.getDay(), hour: at.getHours() };
+  }
+}
+
 export function getDateOperatingStatus(openingHours: unknown, date: string): DateOperatingStatus {
   const dayIndex = dayIndexForDate(date);
   if (dayIndex === null || !openingHours || typeof openingHours !== "object") {

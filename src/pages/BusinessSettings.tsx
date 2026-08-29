@@ -4,11 +4,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import BusinessHeader from "@/components/BusinessHeader";
 import BusinessTrialBanner from "@/components/BusinessTrialBanner";
 import LocationManagement from "@/components/LocationManagement";
 import LanguageSelector from "@/components/LanguageSelector";
-import Footer from "@/components/Footer";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { useLang } from "@/lib/i18n";
 import { formatEnteredPhone } from "@shared/phone";
@@ -47,8 +45,7 @@ const BusinessSettings = () => {
         description={BUSINESS_DESCRIPTION}
         image={BUSINESS_IMAGE}
       />
-      <BusinessHeader />
-      <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100">
+      <div>
         <div className="container mx-auto px-4 py-8">
           <BusinessTrialBanner me={me} />
 
@@ -165,7 +162,6 @@ const BusinessSettings = () => {
           </div>
         </div>
       </div>
-      <Footer />
     </>
   );
 };

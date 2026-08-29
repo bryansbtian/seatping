@@ -20,6 +20,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FieldTrigger, OptionRow } from "@/components/TimeSelect";
+import { DateField } from "@/components/DateField";
+import { localDateStr } from "@/lib/localDate";
+
+export { DateField };
 import {
   Calendar as CalendarIcon,
   CheckCircle2,
@@ -38,6 +42,8 @@ type ReservationSettings = {
   maxReservedGuestsPerHour: number;
   bookingWindowDays: number;
   minNoticeMinutes: number;
+  defaultReservationDurationMinutes: number;
+  reservationHoldMinutes: number;
   confirmationMode: "auto" | "manual";
   cancellationPolicy: string;
 };
@@ -46,8 +52,8 @@ type Slot = {
   time: string;
   label: string;
   available: boolean;
-  remaining: number;
-  reason?: "full" | "too_soon" | "party_too_large" | "closed";
+  remaining: number | null;
+  reason?: "full" | "too_soon" | "party_too_large" | "closed" | "no_table";
 };
 
 type AvailabilityNotice = {
@@ -72,13 +78,6 @@ type Props = {
   initialPartySize?: number;
   autoOpen?: boolean;
 };
-
-function localDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function readableDate(date: string): string {
   if (!date) {
@@ -325,10 +324,14 @@ export default function ReservationBooking({
             {slots.map((s) => {
               const selected = s.time === time;
               let slotTitle: string;
-              if (s.available) {
+              if (s.available && s.remaining !== null) {
                 slotTitle = `${s.remaining} seats left this hour`;
+              } else if (s.available) {
+                slotTitle = "Available";
               } else if (s.reason === "full") {
                 slotTitle = `${s.label} is fully booked`;
+              } else if (s.reason === "no_table") {
+                slotTitle = "No table free for this party size";
               } else if (s.reason === "too_soon") {
                 slotTitle = "Too close to booking time";
               } else {
@@ -702,7 +705,7 @@ function BookingModal({
               disabled={!s.available}
               onClick={() => setTime(s.time)}
               className={cn(
-                "rounded-md border px-1 py-1.5 max-[320px]:py-1 max-[320px]:text-[10px] text-xs font-medium transition",
+                "rounded-md border px-1 py-1.5 max-[320px]:py-1 max-[320px]:text-micro text-xs font-medium transition",
                 slotClass,
               )}
             >
@@ -787,30 +790,30 @@ function BookingModal({
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="max-[320px]:text-[10px] text-xs text-slate-500">
+              <Label className="max-[320px]:text-micro text-xs text-slate-500">
                 Number of Guests
               </Label>
               <PartyField
                 value={partySize}
                 onChange={setPartySize}
                 max={maxParty}
-                className="max-[320px]:h-9 max-[320px]:text-[11px]"
+                className="max-[320px]:h-9 max-[320px]:text-caption"
               />
             </div>
             <div className="space-y-1">
-              <Label className="max-[320px]:text-[10px] text-xs text-slate-500">Date</Label>
+              <Label className="max-[320px]:text-micro text-xs text-slate-500">Date</Label>
               <DateField
                 value={date}
                 onChange={setDate}
                 todayStr={todayStr}
                 maxDateStr={maxDateStr}
-                className="max-[320px]:h-9 max-[320px]:text-[11px]"
+                className="max-[320px]:h-9 max-[320px]:text-caption"
               />
             </div>
           </div>
 
           <div className="space-y-1">
-            <Label className="max-[320px]:text-[10px] text-xs text-slate-500">Time</Label>
+            <Label className="max-[320px]:text-micro text-xs text-slate-500">Time</Label>
             {modalTimeContent}
           </div>
 
@@ -834,7 +837,7 @@ function BookingModal({
                 <div className="space-y-1">
                   <Label
                     htmlFor="bk-first"
-                    className="max-[320px]:text-[10px] text-xs text-slate-500"
+                    className="max-[320px]:text-micro text-xs text-slate-500"
                   >
                     First Name
                   </Label>
@@ -842,13 +845,13 @@ function BookingModal({
                     id="bk-first"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="max-[320px]:h-8 max-[320px]:text-[11px]"
+                    className="max-[320px]:h-8 max-[320px]:text-caption"
                   />
                 </div>
                 <div className="space-y-1">
                   <Label
                     htmlFor="bk-last"
-                    className="max-[320px]:text-[10px] text-xs text-slate-500"
+                    className="max-[320px]:text-micro text-xs text-slate-500"
                   >
                     Last Name
                   </Label>
@@ -856,16 +859,13 @@ function BookingModal({
                     id="bk-last"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="max-[320px]:h-8 max-[320px]:text-[11px]"
+                    className="max-[320px]:h-8 max-[320px]:text-caption"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <Label
-                  htmlFor="bk-email"
-                  className="max-[320px]:text-[10px] text-xs text-slate-500"
-                >
+                <Label htmlFor="bk-email" className="max-[320px]:text-micro text-xs text-slate-500">
                   Email
                 </Label>
                 <Input
@@ -874,18 +874,15 @@ function BookingModal({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="max-[320px]:h-8 max-[320px]:text-[11px]"
+                  className="max-[320px]:h-8 max-[320px]:text-caption"
                 />
-                <p className="max-[320px]:text-[10px] text-xs text-slate-400">
+                <p className="max-[320px]:text-micro text-xs text-slate-400">
                   We'll send your confirmation and manage link here.
                 </p>
               </div>
 
               <div className="space-y-1">
-                <Label
-                  htmlFor="bk-notes"
-                  className="max-[320px]:text-[10px] text-xs text-slate-500"
-                >
+                <Label htmlFor="bk-notes" className="max-[320px]:text-micro text-xs text-slate-500">
                   Notes (Optional)
                 </Label>
                 <Textarea
@@ -894,12 +891,12 @@ function BookingModal({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Allergies, special requests, seating preference…"
-                  className="max-[320px]:min-h-0 max-[320px]:text-[11px]"
+                  className="max-[320px]:min-h-0 max-[320px]:text-caption"
                 />
               </div>
 
               {settings.cancellationPolicy && (
-                <p className="rounded-md bg-slate-50 p-2.5 max-[320px]:p-2 max-[320px]:text-[10px] text-xs text-slate-500">
+                <p className="rounded-md bg-slate-50 p-2.5 max-[320px]:p-2 max-[320px]:text-micro text-xs text-slate-500">
                   <span className="font-medium text-slate-600">Policy: </span>
                   {settings.cancellationPolicy}
                 </p>
@@ -948,65 +945,6 @@ function AvailabilityEmptyState({ notice }: { notice: AvailabilityNotice | null 
         <p className="mt-0.5 text-xs leading-5 text-slate-500">{helper}</p>
       </div>
     </div>
-  );
-}
-
-export function DateField({
-  value,
-  onChange,
-  todayStr,
-  maxDateStr,
-  className,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  todayStr: string;
-  maxDateStr: string;
-  className?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  let selected: Date | undefined;
-  if (value) {
-    selected = new Date(`${value}T00:00:00`);
-  } else {
-    selected = undefined;
-  }
-  const start = new Date(`${todayStr}T00:00:00`);
-  const end = new Date(`${maxDateStr}T00:00:00`);
-  let label: string;
-  if (selected && !Number.isNaN(selected.getTime())) {
-    if (isToday(selected)) {
-      label = "Today";
-    } else if (isTomorrow(selected)) {
-      label = "Tomorrow";
-    } else {
-      label = format(selected, "MMM d");
-    }
-  } else {
-    label = "Pick A Date";
-  }
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <FieldTrigger icon={CalendarIcon} aria-label={`Date: ${label}`} className={className}>
-          {label}
-        </FieldTrigger>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selected}
-          onSelect={(d) => {
-            if (d) {
-              onChange(localDateStr(d));
-            }
-            setOpen(false);
-          }}
-          disabled={{ before: start, after: end }}
-          initialFocus
-        />
-      </PopoverContent>
-    </Popover>
   );
 }
 

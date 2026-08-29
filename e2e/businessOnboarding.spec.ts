@@ -14,7 +14,7 @@ test("a business creates a location from the settings page and it survives a rel
   await page.goto("/business/settings");
 
   await expect(page.getByRole("heading", { name: "Location Management" })).toBeVisible();
-  await expect(page.getByText("No locations added yet.")).toBeVisible();
+  await expect(page.getByText("No Locations Yet")).toBeVisible();
 
   await page.getByLabel("Location Display Name").fill(displayName);
   await page.getByLabel("Search Address").fill(address);
@@ -35,7 +35,7 @@ test("a business creates a location from the settings page and it survives a rel
   expect(created.isPublished).toBe(false);
 
   await page.reload();
-  await expect(page.getByText(displayName)).toBeVisible();
+  await expect(page.getByRole("main").getByText(displayName)).toBeVisible();
 });
 
 test("a business configures opening hours, reservation limits and publishes the restaurant profile", async ({

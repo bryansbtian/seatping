@@ -117,7 +117,7 @@ export function MetricCardPreview({
   return (
     <div className={cn("rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm", className)}>
       <div className="flex flex-col gap-1">
-        <p className="text-[10px] text-slate-600">{label}</p>
+        <p className="text-micro text-slate-600">{label}</p>
         <div className="flex items-center justify-between">
           <p className="text-xl font-semibold leading-none text-slate-800">{value}</p>
           <div className={cn("grid h-7 w-7 place-items-center rounded-full", tint)}>
@@ -209,7 +209,7 @@ function ReservationPreviewRow({ row }: { row: (typeof RESERVATION_ROWS)[number]
         <StatusBadge status={row.status} />
         {row.returning && <GuestStatusBadge returning />}
       </div>
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-600">
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-micro text-slate-600">
         <span className="inline-flex items-center gap-1">
           <Users className="h-3 w-3" /> {row.party}
         </span>
@@ -220,7 +220,7 @@ function ReservationPreviewRow({ row }: { row: (typeof RESERVATION_ROWS)[number]
           <Clock className="h-3 w-3" /> {row.time}
         </span>
       </div>
-      <span className="mt-1.5 inline-flex max-w-full items-center gap-1.5 text-[10px] text-slate-500">
+      <span className="mt-1.5 inline-flex max-w-full items-center gap-1.5 text-micro text-slate-500">
         <ContactIcon className="h-3 w-3 shrink-0" />
         <span>{row.contactLabel}</span>
         <span className="text-slate-400">·</span>
@@ -233,7 +233,7 @@ function ReservationPreviewRow({ row }: { row: (typeof RESERVATION_ROWS)[number]
             size="sm"
             variant={a.variant}
             tabIndex={-1}
-            className="h-6 px-2.5 text-[10px]"
+            className="h-6 px-2.5 text-micro"
           >
             {a.label}
           </Button>
@@ -276,13 +276,15 @@ export function ReservationPreview({ className, animated = true }: PreviewProps)
                 <span
                   key={t.label}
                   className={cn(
-                    "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-medium",
+                    "inline-flex items-center rounded-full px-2.5 py-1 text-micro font-medium",
                     tabStateClass,
                   )}
                 >
                   {t.label}
                   {t.count > 0 && (
-                    <span className={cn("ml-1.5 rounded-full px-1.5 text-[9px]", countStateClass)}>
+                    <span
+                      className={cn("ml-1.5 rounded-full px-1.5 text-preview-sm", countStateClass)}
+                    >
                       {t.count}
                     </span>
                   )}
@@ -362,10 +364,10 @@ export function QueuePreview({ className, animated = true }: PreviewProps) {
       )}
     >
       <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
-        <span className="truncate text-[10px] text-gray-600">Managing queue for: Marina Bay</span>
+        <span className="truncate text-micro text-gray-600">Managing queue for: Marina Bay</span>
         <Badge
           variant="secondary"
-          className="shrink-0 bg-indigo-100 px-2 py-0.5 text-[9px] text-indigo-700 hover:bg-indigo-100"
+          className="shrink-0 bg-indigo-100 px-2 py-0.5 text-preview-sm text-indigo-700 hover:bg-indigo-100"
         >
           2 customers
         </Badge>
@@ -374,7 +376,7 @@ export function QueuePreview({ className, animated = true }: PreviewProps) {
         {QUEUE_ROWS.map((row) => (
           <div key={row.pos} className="rounded-lg bg-gray-50 p-2.5">
             <div className="flex items-start gap-2">
-              <span className="mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-1.5 py-1 text-[10px] font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
+              <span className="mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-1.5 py-1 text-micro font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
                 {row.pos}
               </span>
               <div className="min-w-0 flex-1">
@@ -383,27 +385,27 @@ export function QueuePreview({ className, animated = true }: PreviewProps) {
                   {row.returning && (
                     <GuestStatusBadge
                       returning
-                      className="shrink-0 px-1.5 text-[9px] sm:px-2.5 sm:text-[10px]"
+                      className="shrink-0 px-1.5 text-preview-sm sm:px-2.5 sm:text-micro"
                     />
                   )}
                 </p>
-                <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[10px] text-gray-600">
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-micro text-gray-600">
                   <span>{row.joined}</span>
                   <span className="text-gray-400">•</span>
                   <span>{row.guests}</span>
                 </p>
-                <p className="mt-0.5 text-[10px] font-medium text-indigo-600">{row.eta}</p>
+                <p className="mt-0.5 text-micro font-medium text-indigo-600">{row.eta}</p>
               </div>
             </div>
             <div className="mt-2 flex gap-1.5">
-              <Button size="sm" variant="success" tabIndex={-1} className="h-6 flex-1 text-[10px]">
+              <Button size="sm" variant="success" tabIndex={-1} className="h-6 flex-1 text-micro">
                 Admit
               </Button>
               <Button
                 size="sm"
                 variant="destructiveOutline"
                 tabIndex={-1}
-                className="h-6 flex-1 text-[10px]"
+                className="h-6 flex-1 text-micro"
               >
                 Remove
               </Button>
@@ -412,8 +414,8 @@ export function QueuePreview({ className, animated = true }: PreviewProps) {
         ))}
 
         <div className="bento-loop animate-bento-toast rounded-lg border border-slate-200 bg-white p-2.5 shadow-lg">
-          <p className="text-[11px] font-semibold text-slate-900">Customer Admitted</p>
-          <p className="mt-0.5 text-[10px] text-slate-500">
+          <p className="text-caption font-semibold text-slate-900">Customer Admitted</p>
+          <p className="mt-0.5 text-micro text-slate-500">
             Marcus has been admitted and will proceed to their turn.
           </p>
         </div>
@@ -476,7 +478,7 @@ function GuestProfilePanel({ profile }: { profile: (typeof GUEST_PROFILES)[numbe
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-2.5">
       <div className="flex items-start gap-2.5">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-semibold text-indigo-700">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-micro font-semibold text-indigo-700">
           {profile.initials}
         </div>
         <div className="min-w-0 flex-1">
@@ -484,11 +486,11 @@ function GuestProfilePanel({ profile }: { profile: (typeof GUEST_PROFILES)[numbe
             <span className="truncate text-xs font-medium text-slate-800">{profile.name}</span>
             <GuestStatusBadge returning={profile.returning} />
           </div>
-          <div className="mt-0.5 space-y-0.5 text-[10px] text-slate-500">
+          <div className="mt-0.5 space-y-0.5 text-micro text-slate-500">
             <div className="truncate tabular-nums">{profile.phone}</div>
             <div className="truncate">{profile.email}</div>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] text-slate-600">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-micro text-slate-600">
             <span>
               <strong className="font-semibold text-slate-800">{profile.visits}</strong> {visitWord}
             </span>
@@ -515,7 +517,7 @@ export function GuestProfilePreview({ className, animated = true }: PreviewProps
         className,
       )}
     >
-      <div className="mb-2 flex h-7 w-full items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-[10px] text-slate-400">
+      <div className="mb-2 flex h-7 w-full items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-micro text-slate-400">
         <Search className="h-3 w-3" /> Search Guests
       </div>
       <div className="flex flex-col gap-2 md:flex-1 md:justify-between lg:flex-none">
@@ -552,7 +554,7 @@ function CyclingChannelButton({
     highlightOpacityClass = "opacity-0";
   }
   return (
-    <span className="relative flex min-w-0 flex-1 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-1.5 py-1.5 text-[10px] font-medium text-slate-600">
+    <span className="relative flex min-w-0 flex-1 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-1.5 py-1.5 text-micro font-medium text-slate-600">
       <Icon className="h-3 w-3 shrink-0" />
       <span className="truncate">{channel.label}</span>
       <span
@@ -582,16 +584,16 @@ function MessagePreviewPanel({
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
       {subject && (
-        <div className="border-b border-slate-200 bg-slate-100 px-3 py-1.5 text-[10px]">
+        <div className="border-b border-slate-200 bg-slate-100 px-3 py-1.5 text-micro">
           <span className="text-slate-500">Subject:</span>{" "}
           <span className="font-medium text-slate-800">{subject}</span>
         </div>
       )}
-      <div className="flex-1 space-y-2 p-3 text-[11px] leading-relaxed text-slate-700">
+      <div className="flex-1 space-y-2 p-3 text-caption leading-relaxed text-slate-700">
         <p>Hi Sofia, it&apos;s been a while! Show this message for 10% off your next visit.</p>
         <p className="text-slate-500">- Cafe Milano (via SeatPing)</p>
       </div>
-      <div className="flex items-center gap-1.5 border-t border-slate-200 bg-slate-50 px-3 py-1.5 text-[9px] text-slate-500">
+      <div className="flex items-center gap-1.5 border-t border-slate-200 bg-slate-50 px-3 py-1.5 text-preview-sm text-slate-500">
         <Icon className="h-3 w-3 shrink-0" /> SeatPing on behalf of your restaurant
       </div>
     </div>
@@ -617,9 +619,9 @@ export function CampaignPreview({ className, animated = true }: PreviewProps) {
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <ChannelBadge channel="EMAIL" />
-            <span className="text-[10px] text-slate-500">2 Recipients</span>
+            <span className="text-micro text-slate-500">2 Recipients</span>
           </div>
-          <p className="mt-1 text-[10px] text-slate-400">· Scheduled · Jun 14, 2026, 2:00 AM</p>
+          <p className="mt-1 text-micro text-slate-400">· Scheduled · Jun 14, 2026, 2:00 AM</p>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-2.5">
@@ -628,10 +630,10 @@ export function CampaignPreview({ className, animated = true }: PreviewProps) {
             <ChannelBadge channel="SMS" />
             <CampaignStatusBadge status="SENT" />
           </div>
-          <p className="mt-0.5 text-[10px] text-slate-400">
+          <p className="mt-0.5 text-micro text-slate-400">
             Lunch Comeback Offer · Sent on Jun 11, 2026
           </p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-micro">
             <span className="flex items-center gap-1 text-emerald-700">
               <CheckCircle2 className="h-3 w-3" /> 189 Sent
             </span>
@@ -644,14 +646,14 @@ export function CampaignPreview({ className, animated = true }: PreviewProps) {
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
           <div className="flex items-center justify-between gap-2">
-            <span className="truncate text-[11px] font-medium text-slate-700">
+            <span className="truncate text-caption font-medium text-slate-700">
               Returning Guests
             </span>
-            <span className="shrink-0 text-[11px] font-semibold text-indigo-700">
+            <span className="shrink-0 text-caption font-semibold text-indigo-700">
               128 Recipients
             </span>
           </div>
-          <p className="mt-0.5 text-[10px] text-slate-500">134 Matched · 6 Excluded</p>
+          <p className="mt-0.5 text-micro text-slate-500">134 Matched · 6 Excluded</p>
         </div>
 
         <div className="flex gap-1.5">

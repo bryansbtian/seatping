@@ -37,7 +37,7 @@ export async function signInCustomerThroughForm(
 }
 
 export function queueManagementHeading(page: Page) {
-  return page.getByRole("heading", { name: "Queue Management" }).filter({ visible: true });
+  return page.getByRole("heading", { name: "Queue", exact: true }).filter({ visible: true });
 }
 
 export async function openBusinessDashboard(
@@ -45,6 +45,17 @@ export async function openBusinessDashboard(
   business: Pick<Business, "email">,
 ): Promise<void> {
   await signInBusiness(page, business);
-  await page.goto("/business/dashboard");
+  await page.goto("/business/queue");
   await expect(queueManagementHeading(page)).toBeVisible();
+}
+
+export async function openBusinessReservations(
+  page: Page,
+  business: Pick<Business, "email">,
+): Promise<void> {
+  await signInBusiness(page, business);
+  await page.goto("/business/reservations");
+  await expect(
+    page.getByRole("heading", { name: "Reservations", exact: true }).filter({ visible: true }),
+  ).toBeVisible();
 }

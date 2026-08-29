@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import BusinessHeader from "@/components/BusinessHeader";
-import Footer from "@/components/Footer";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,14 +14,15 @@ import {
 } from "@/components/ui/sheet";
 import { StatusBadge } from "@/components/StatusBadge";
 import { GuestStatusBadge, GuestTagBadge } from "@/components/GuestBadge";
+import BusinessEmptyState from "@/components/BusinessEmptyState";
 import { api } from "@/lib/api";
 import { formatPhone } from "@shared/phone";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/lib/i18n";
+import { useBusinessSession } from "@/lib/businessSession";
 import { analytics } from "@/lib/analytics";
 import {
   Search,
-  ChevronDown,
   SlidersHorizontal,
   Notebook,
   Phone,
@@ -57,6 +56,17 @@ type GuestRow = {
   locationId: string;
 };
 
+type TableActivity = {
+  assignmentId: string;
+  tableName: string;
+  tableNames: string[];
+  assignmentSource: string;
+  status: string;
+  seatedAt: string | null;
+  completedAt: string | null;
+  turnMinutes: number | null;
+};
+
 type TimelineEvent = {
   id: string;
   source: "waitlist" | "reservation";
@@ -66,6 +76,7 @@ type TimelineEvent = {
   atLabel: string | null;
   location: string;
   notes: string | null;
+  table?: TableActivity | null;
 };
 
 type GuestDetail = {
@@ -165,9 +176,11 @@ const BusinessGuests = () => {
     analytics.guestCrmOpened();
   }, []);
 
+  const { currentLocation } = useBusinessSession();
+  const locationId = currentLocation?.id ?? "";
+
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
-  const [locationId, setLocationId] = useState<string>("");
   const [metaLoaded, setMetaLoaded] = useState(false);
 
   const [search, setSearch] = useState("");
@@ -201,9 +214,6 @@ const BusinessGuests = () => {
         const locs: LocationOption[] = d?.locations ?? [];
         setLocations(locs);
         setSuggestedTags(d?.suggestedTags ?? []);
-        if (locs.length) {
-          setLocationId((prev) => prev || locs[0].id);
-        }
         setMetaLoaded(true);
       })
       .catch((e) => {
@@ -316,6 +326,10 @@ const BusinessGuests = () => {
 
   const currentLocationLabel = locations.find((l) => l.id === locationId)?.label || "";
 
+  useEffect(() => {
+    setSelectedId(null);
+  }, [locationId]);
+
   const exportCsv = useCallback(() => {
     if (!guests.length) {
       return;
@@ -377,17 +391,6 @@ const BusinessGuests = () => {
     URL.revokeObjectURL(url);
   }, [guests, locationTimezone, currentLocationLabel]);
 
-  let locationOptions: React.ReactNode;
-  if (locations.length) {
-    locationOptions = locations.map((l) => (
-      <option key={l.id} value={l.id}>
-        {l.label}
-      </option>
-    ));
-  } else {
-    locationOptions = <option value="">{t("guests.noLocations")}</option>;
-  }
-
   let filtersVisibilityClass: string;
   if (filtersOpen) {
     filtersVisibilityClass = "block";
@@ -427,7 +430,8 @@ const BusinessGuests = () => {
     guestsPanel = <LoadingState />;
   } else if (!locations.length) {
     guestsPanel = (
-      <EmptyState
+      <BusinessEmptyState
+        icon={Inbox}
         title={t("guests.empty.noLocations.title")}
         body={t("guests.empty.noLocations.body")}
       />
@@ -442,7 +446,7 @@ const BusinessGuests = () => {
       emptyTitle = t("guests.empty.none.title");
       emptyBody = t("guests.empty.none.body");
     }
-    guestsPanel = <EmptyState title={emptyTitle} body={emptyBody} />;
+    guestsPanel = <BusinessEmptyState icon={Inbox} title={emptyTitle} body={emptyBody} />;
   } else {
     guestsPanel = (
       <GuestsTable
@@ -456,9 +460,8 @@ const BusinessGuests = () => {
   return (
     <>
       <SEO title="Guests | SeatPing" description={BUSINESS_DESCRIPTION} image={BUSINESS_IMAGE} />
-      <BusinessHeader />
-      <div className="min-h-screen pt-20 bg-gradient-to-br from-slate-50 to-indigo-100 flex flex-col">
-        <div className="container mx-auto px-4 py-8 flex-1 w-full">
+      <div className="flex min-h-full flex-col">
+        <div className="container mx-auto flex w-full flex-1 flex-col px-4 py-8">
           <div className="mb-6">
             <h1 className="text-xl md:text-2xl font-semibold text-gray-800">{t("guests.title")}</h1>
             <p className="text-gray-600 text-sm md:text-base">{t("guests.subtitle")}</p>
@@ -467,21 +470,6 @@ const BusinessGuests = () => {
           <Card className="bg-white border border-slate-200 rounded-xl shadow-sm mb-6">
             <CardContent className="p-4 md:p-5 space-y-4">
               <div className="flex flex-col md:flex-row gap-3">
-                <div className="relative md:w-64 shrink-0">
-                  <select
-                    className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={locationId}
-                    onChange={(e) => {
-                      setLocationId(e.target.value);
-                      setSelectedId(null);
-                    }}
-                    disabled={!locations.length}
-                  >
-                    {locationOptions}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-                </div>
-
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   <Input
@@ -602,7 +590,7 @@ const BusinessGuests = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
+          <Card className="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
             <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle className="text-lg md:text-xl text-slate-800">{guestsHeading}</CardTitle>
@@ -629,10 +617,9 @@ const BusinessGuests = () => {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-0">{guestsPanel}</CardContent>
+            <CardContent className="flex flex-1 flex-col p-0">{guestsPanel}</CardContent>
           </Card>
         </div>
-        <Footer />
       </div>
 
       <GuestDetailDrawer
@@ -718,7 +705,7 @@ function GuestsTable({
                       <GuestTagBadge key={t} tag={t} />
                     ))}
                     {g.tags.length > 3 && (
-                      <span className="shrink-0 whitespace-nowrap text-[11px] text-slate-400">
+                      <span className="shrink-0 whitespace-nowrap text-caption text-slate-400">
                         +{g.tags.length - 3}
                       </span>
                     )}
@@ -856,7 +843,7 @@ function GuestsTable({
                         <GuestTagBadge key={t} tag={t} />
                       ))}
                       {g.tags.length > 4 && (
-                        <span className="shrink-0 whitespace-nowrap text-[11px] text-slate-400">
+                        <span className="shrink-0 whitespace-nowrap text-caption text-slate-400">
                           +{g.tags.length - 4}
                         </span>
                       )}
@@ -885,18 +872,6 @@ function LoadingState() {
           <Skeleton className="h-6 w-16 rounded-full" />
         </div>
       ))}
-    </div>
-  );
-}
-
-function EmptyState({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="px-6 py-16 text-center">
-      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-        <Inbox className="w-6 h-6 text-slate-400" />
-      </div>
-      <h3 className="text-base font-semibold text-slate-800">{title}</h3>
-      <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">{body}</p>
     </div>
   );
 }
@@ -1266,7 +1241,7 @@ function ProfileStat({ label, value, tone }: { label: string; value: number; ton
   return (
     <div className="px-1 text-center">
       <div className={`text-lg font-semibold tabular-nums leading-tight ${toneClass}`}>{value}</div>
-      <div className="text-[11px] text-slate-500 mt-0.5">{label}</div>
+      <div className="text-caption text-slate-500 mt-0.5">{label}</div>
     </div>
   );
 }
@@ -1313,6 +1288,26 @@ function HistorySection({
                 <span>{sourceLabel}</span>
                 <span>·</span>
                 <span>{t(guestCountKey, { n: e.partySize })}</span>
+                {e.table?.tableName && (
+                  <>
+                    <span>·</span>
+                    <span data-testid={`timeline-table-${e.id}`}>{e.table.tableName}</span>
+                  </>
+                )}
+                {typeof e.table?.turnMinutes === "number" && (
+                  <>
+                    <span>·</span>
+                    <span data-testid={`timeline-turn-${e.id}`}>
+                      {t("guests.turnMinutes", { n: e.table.turnMinutes })}
+                    </span>
+                  </>
+                )}
+                {e.table?.assignmentSource === "SMART" && (
+                  <>
+                    <span>·</span>
+                    <span data-testid={`timeline-source-${e.id}`}>{t("guests.smartAssigned")}</span>
+                  </>
+                )}
               </div>
               {e.notes && <p className="text-xs text-slate-500 mt-1 italic">"{e.notes}"</p>}
             </li>

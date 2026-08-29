@@ -233,6 +233,36 @@ export function emailSecondaryButton(href: string, label: string): string {
     </table>`;
 }
 
+export function emailButtonRow(
+  primary: { href: string; label: string },
+  secondary: { href: string; label: string },
+): string {
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="${SECTION_WIDTH} margin: 28px 0;">
+      <tr>
+        <td align="left">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td bgcolor="${COLORS.accent}" style="border-radius: 10px;">
+                <a href="${safeUrl(primary.href)}" target="_blank"
+                   style="display: inline-block; padding: 14px 24px; font-family: ${FONT_STACK}; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 10px; white-space: nowrap;">
+                  ${esc(primary.label)}
+                </a>
+              </td>
+              <td style="width: 12px; font-size: 0; line-height: 0;">&nbsp;</td>
+              <td bgcolor="${COLORS.card}" style="border-radius: 10px; border: 1px solid ${COLORS.accent};">
+                <a href="${safeUrl(secondary.href)}" target="_blank"
+                   style="display: inline-block; padding: 13px 23px; font-family: ${FONT_STACK}; font-size: 15px; font-weight: 600; color: ${COLORS.accent}; text-decoration: none; border-radius: 10px; white-space: nowrap;">
+                  ${esc(secondary.label)}
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>`;
+}
+
 export function fallbackLink(href: string): string {
   return `<p style="margin: 0 0 8px; color: ${COLORS.muted}; font-size: 13px; line-height: 1.6;">If the button doesn't work, paste this link into your browser:<br><a href="${safeUrl(href)}" style="color: ${COLORS.accent}; word-break: break-all;">${esc(href)}</a></p>`;
 }
@@ -618,7 +648,7 @@ export const sendBusinessOnboardingEmail = async (
   _username: string,
   trialDays?: number,
 ): Promise<boolean> => {
-  const dashboardUrl = `${FRONTEND()}/business/dashboard`;
+  const dashboardUrl = `${FRONTEND()}/business/overview`;
 
   let trialSentence = "";
   if (trialDays && trialDays > 0) {
@@ -727,6 +757,81 @@ export const sendNewReservationBusinessEmail = async (params: {
   return sendEmail({
     to,
     subject: `New Reservation At ${locationName}`,
+    html,
+    from: FROM_ADDRESS,
+  });
+};
+
+export const NEEDS_REVIEW_REASONS: Record<string, string> = {
+  NO_TABLE: "No table was free for the whole reservation window.",
+};
+
+export function needsReviewReasonLabel(reason: string | null | undefined): string {
+  if (reason && NEEDS_REVIEW_REASONS[reason]) {
+    return NEEDS_REVIEW_REASONS[reason];
+  }
+  return "Smart Assignment could not find a table for this reservation.";
+}
+
+export const sendReservationNeedsReviewEmail = async (params: {
+  to: string;
+  locationName: string;
+  customerName: string;
+  dateLabel: string;
+  timeLabel: string;
+  partySize: number;
+  reservationId: string;
+  reason?: string | null;
+  reservationsUrl: string;
+  floorUrl: string;
+}): Promise<boolean> => {
+  const {
+    to,
+    locationName,
+    customerName,
+    dateLabel,
+    timeLabel,
+    partySize,
+    reservationId,
+    reason,
+    reservationsUrl,
+    floorUrl,
+  } = params;
+
+  let guestWord = "Guests";
+  if (partySize === 1) {
+    guestWord = "Guest";
+  }
+
+  const rows: Array<[string, string]> = [
+    ["Location", esc(locationName)],
+    ["Guest", esc(customerName)],
+    ["Date", esc(dateLabel)],
+    ["Time", esc(timeLabel)],
+    ["Number of Guests", `${Number(partySize)} ${guestWord}`],
+    ["Reservation ID", esc(reservationId)],
+    ["Status", "Needs Review"],
+  ];
+
+  const html = renderEmail({
+    heading: "Reservation Needs A Table",
+    preheader: `${customerName} · Party Of ${Number(partySize)} · ${dateLabel} at ${timeLabel}`,
+    bodyHtml: `
+      ${p(`A reservation at <strong>${esc(locationName)}</strong> was confirmed, but no table could be assigned automatically.`)}
+      ${calloutBox(`<strong>Why:</strong> ${esc(needsReviewReasonLabel(reason))}`)}
+      ${detailCard("Reservation", rows)}
+      ${p("The booking is held for the guest. Assign a table when one frees up, or join tables on the floor plan.")}
+      ${emailButtonRow(
+        { href: reservationsUrl, label: "Review Reservation" },
+        { href: floorUrl, label: "Open Floor Management" },
+      )}
+      ${fallbackLink(reservationsUrl)}
+    `,
+  });
+
+  return sendEmail({
+    to,
+    subject: `Reservation Needs A Table At ${locationName}`,
     html,
     from: FROM_ADDRESS,
   });

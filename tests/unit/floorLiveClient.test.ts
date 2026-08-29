@@ -1,0 +1,570 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const apiMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/api", () => {
+  return { api: apiMock };
+});
+
+import {
+  FLOOR_MODE_KEY,
+  LIVE_STATUSES,
+  allTables,
+  candidateTablesForParty,
+  combinableTables,
+  countByStatus,
+  elapsedMinutes,
+  findTable,
+  formatClock,
+  joinedRoomId,
+  moveTargets,
+  partyFitsTable,
+  persistFloorMode,
+  readFloorMode,
+  roomOfTable,
+  sameRoom,
+  seatableParties,
+  statusStyle,
+  type LiveRoom,
+  type LiveStatus,
+  type LiveTable,
+  type WaitingParty,
+} from "../../src/lib/floorLive.js";
+import { statusIcon } from "../../src/lib/floorLiveIcons.js";
+import {
+  admitParty,
+  assignTable,
+  completeVisit,
+  confirmPartyArrival,
+  fetchLiveFloor,
+  markPartyNoShow,
+  markTableAvailable,
+  markTableCleaning,
+  movePartyToTable,
+  removeParty,
+  resolveReservationTable,
+  seatParty,
+  seatReservedAssignment,
+} from "../../src/lib/floorLiveApi.js";
+
+const LOCATION = "loc-1";
+
+function makeTable(id: string, overrides: Partial<LiveTable> = {}): LiveTable {
+  return {
+    id,
+    name: id.toUpperCase(),
+    capacity: 4,
+    minimumPartySize: 1,
+    shape: "RECTANGLE",
+    x: 0,
+    y: 0,
+    width: 120,
+    height: 80,
+    rotation: 0,
+    isBlocked: false,
+    cleaningSince: null,
+    status: "AVAILABLE",
+    currentAssignment: null,
+    upcomingAssignment: null,
+    recommendedPartyId: null,
+    recommendedReasons: [],
+    ...overrides,
+  };
+}
+
+function makeRoom(id: string, tables: LiveTable[]): LiveRoom {
+  return { id, name: id, width: 1200, height: 800, sortOrder: 0, zones: [], tables };
+}
+
+function makeParty(id: string, partySize: number): WaitingParty {
+  return { id, name: id, partySize, joinedAt: "2026-08-26T17:00:00.000Z", waitingMinutes: 20 };
+}
+
+describe("countByStatus", () => {
+  it("counts each status and leaves the rest at zero", () => {
+    const counts = countByStatus([
+      makeTable("a", { status: "AVAILABLE" }),
+      makeTable("b", { status: "OCCUPIED" }),
+      makeTable("c", { status: "OCCUPIED" }),
+    ]);
+
+    expect(counts.AVAILABLE).toBe(1);
+    expect(counts.OCCUPIED).toBe(2);
+    expect(counts.RESERVED).toBe(0);
+    expect(counts.CLEANING).toBe(0);
+    expect(counts.BLOCKED).toBe(0);
+  });
+
+  it("ignores a status the client does not know about", () => {
+    const counts = countByStatus([makeTable("a", { status: "MYSTERY" as LiveStatus })]);
+    expect(counts.AVAILABLE).toBe(0);
+  });
+
+  it("returns all zeros for an empty floor", () => {
+    const counts = countByStatus([]);
+    expect(Object.values(counts).every((value) => value === 0)).toBe(true);
+  });
+});
+
+describe("statusStyle", () => {
+  it("returns a style for every supported status", () => {
+    for (const status of LIVE_STATUSES) {
+      expect(statusStyle(status).node).toBeTruthy();
+      expect(statusStyle(status).swatch).toBeTruthy();
+      expect(statusStyle(status).badge).toBeTruthy();
+    }
+  });
+
+  it("falls back to the available style for an unknown status", () => {
+    expect(statusStyle("MYSTERY" as LiveStatus)).toEqual(statusStyle("AVAILABLE"));
+  });
+
+  it("returns an icon for every supported status", () => {
+    for (const status of LIVE_STATUSES) {
+      expect(statusIcon(status)).toBeTruthy();
+    }
+  });
+
+  it("falls back to the available icon for an unknown status", () => {
+    expect(statusIcon("MYSTERY" as LiveStatus)).toBe(statusIcon("AVAILABLE"));
+  });
+});
+
+describe("table lookups", () => {
+  const rooms = [
+    makeRoom("main", [makeTable("t1"), makeTable("t2")]),
+    makeRoom("patio", [makeTable("t3")]),
+  ];
+
+  it("flattens tables across rooms", () => {
+    expect(allTables(rooms).map((table) => table.id)).toEqual(["t1", "t2", "t3"]);
+  });
+
+  it("finds a table in any room", () => {
+    expect(findTable(rooms, "t3")?.id).toBe("t3");
+  });
+
+  it("returns null for an unknown table", () => {
+    expect(findTable(rooms, "nope")).toBeNull();
+  });
+
+  it("returns null without a table id", () => {
+    expect(findTable(rooms, null)).toBeNull();
+  });
+
+  it("finds the room that owns a table", () => {
+    expect(roomOfTable(rooms, "t3")?.id).toBe("patio");
+  });
+
+  it("returns null when no room owns the table", () => {
+    expect(roomOfTable(rooms, "nope")).toBeNull();
+    expect(roomOfTable(rooms, null)).toBeNull();
+  });
+});
+
+describe("partyFitsTable and seatableParties", () => {
+  it("keeps only parties inside the table range", () => {
+    const table = makeTable("t1", { capacity: 4, minimumPartySize: 2 });
+    const parties = [makeParty("solo", 1), makeParty("pair", 2), makeParty("crowd", 9)];
+    expect(seatableParties(table, parties).map((party) => party.id)).toEqual(["pair"]);
+  });
+
+  it("rejects a party above capacity and below the minimum", () => {
+    expect(partyFitsTable(9, { capacity: 4, minimumPartySize: 1 })).toBe(false);
+    expect(partyFitsTable(1, { capacity: 8, minimumPartySize: 4 })).toBe(false);
+  });
+});
+
+describe("moveTargets", () => {
+  const source = makeTable("source", { status: "OCCUPIED" });
+  const rooms = [
+    makeRoom("main", [
+      source,
+      makeTable("free", { status: "AVAILABLE" }),
+      makeTable("reserved", { status: "RESERVED" }),
+      makeTable("cleaning", { status: "CLEANING" }),
+      makeTable("busy", { status: "OCCUPIED" }),
+      makeTable("blocked", { status: "BLOCKED" }),
+      makeTable("tiny", { status: "AVAILABLE", capacity: 1 }),
+    ]),
+  ];
+
+  it("offers tables that can take the party and excludes the current one", () => {
+    expect(moveTargets(rooms, source, 2).map((table) => table.id)).toEqual([
+      "free",
+      "reserved",
+      "cleaning",
+    ]);
+  });
+
+  it("drops tables that are too small for the party", () => {
+    expect(moveTargets(rooms, source, 4).map((table) => table.id)).not.toContain("tiny");
+  });
+});
+
+describe("formatClock and elapsedMinutes", () => {
+  const now = new Date("2026-08-26T18:00:00.000Z");
+
+  it("returns an empty string for missing or invalid input", () => {
+    expect(formatClock(null)).toBe("");
+    expect(formatClock("not-a-date")).toBe("");
+  });
+
+  it("formats a real timestamp", () => {
+    expect(formatClock("2026-08-26T18:00:00.000Z")).not.toBe("");
+  });
+
+  it("returns whole elapsed minutes", () => {
+    expect(elapsedMinutes("2026-08-26T17:15:00.000Z", now)).toBe(45);
+  });
+
+  it("clamps a future timestamp to zero", () => {
+    expect(elapsedMinutes("2026-08-26T18:30:00.000Z", now)).toBe(0);
+  });
+
+  it("returns null for missing or invalid input", () => {
+    expect(elapsedMinutes(null, now)).toBeNull();
+    expect(elapsedMinutes("not-a-date", now)).toBeNull();
+  });
+});
+
+describe("live floor requests", () => {
+  beforeEach(() => {
+    apiMock.mockReset();
+    apiMock.mockResolvedValue({});
+  });
+
+  function lastCall(): [string, { method?: string; body?: string }] {
+    const call = apiMock.mock.calls[apiMock.mock.calls.length - 1];
+    return [call[0], call[1] ?? {}];
+  }
+
+  it("reads the live floor", async () => {
+    apiMock.mockResolvedValue({
+      now: "2026-08-26T18:00:00.000Z",
+      rooms: [],
+      waitingParties: [],
+    });
+    const live = await fetchLiveFloor(LOCATION);
+    expect(lastCall()[0]).toBe("/api/floor/loc-1/live");
+    expect(live.rooms).toEqual([]);
+  });
+
+  it("seats a queue party at a table", async () => {
+    await seatParty(LOCATION, "table-1", { queueEntryId: "queue-1", partySize: 3 });
+    const [url, init] = lastCall();
+    expect(url).toBe("/api/floor/loc-1/tables/table-1/seat");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body ?? "{}")).toEqual({ queueEntryId: "queue-1", partySize: 3 });
+  });
+
+  it("seats a party that already holds a reservation", async () => {
+    await seatReservedAssignment(LOCATION, "assign-1");
+    const [url, init] = lastCall();
+    expect(url).toBe("/api/floor/loc-1/assignments/assign-1");
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(init.body ?? "{}")).toEqual({ status: "SEATED" });
+  });
+
+  it("completes a visit", async () => {
+    await completeVisit(LOCATION, "assign-1");
+    const [url, init] = lastCall();
+    expect(url).toBe("/api/floor/loc-1/assignments/assign-1/complete");
+    expect(init.method).toBe("POST");
+  });
+
+  it("moves a party to another table", async () => {
+    await movePartyToTable(LOCATION, "assign-1", "table-2");
+    const [url, init] = lastCall();
+    expect(url).toBe("/api/floor/loc-1/assignments/assign-1/move");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body ?? "{}")).toEqual({ tableId: "table-2" });
+  });
+
+  it("marks a table for cleaning and back to available", async () => {
+    await markTableCleaning(LOCATION, "table-1");
+    expect(lastCall()[0]).toBe("/api/floor/loc-1/tables/table-1/cleaning");
+
+    await markTableAvailable(LOCATION, "table-1");
+    expect(lastCall()[0]).toBe("/api/floor/loc-1/tables/table-1/available");
+  });
+
+  it("lets a failed request reject so the caller can report it", async () => {
+    apiMock.mockRejectedValue(new Error("Table is blocked and cannot accept an assignment"));
+    await expect(seatParty(LOCATION, "table-1", { partySize: 2 })).rejects.toThrow(
+      "Table is blocked and cannot accept an assignment",
+    );
+  });
+});
+
+describe("floor mode persistence", () => {
+  const store = new Map<string, string>();
+
+  beforeEach(() => {
+    store.clear();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => store.set(key, value),
+      removeItem: (key: string) => store.delete(key),
+      clear: () => store.clear(),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("opens on the live floor when nothing is stored", () => {
+    expect(readFloorMode()).toBe("live");
+  });
+
+  it("remembers that the operator was editing the layout", () => {
+    persistFloorMode("edit");
+    expect(store.get(FLOOR_MODE_KEY)).toBe("edit");
+    expect(readFloorMode()).toBe("edit");
+
+    persistFloorMode("live");
+    expect(readFloorMode()).toBe("live");
+  });
+
+  it("treats any other stored value as the live floor", () => {
+    store.set(FLOOR_MODE_KEY, "something-else");
+    expect(readFloorMode()).toBe("live");
+  });
+
+  it("falls back to the live floor when storage is unavailable", () => {
+    vi.stubGlobal("localStorage", {
+      getItem: () => {
+        throw new Error("blocked");
+      },
+      setItem: () => {
+        throw new Error("blocked");
+      },
+    });
+    expect(readFloorMode()).toBe("live");
+    expect(() => persistFloorMode("edit")).not.toThrow();
+  });
+
+  it("uses a key separate from the other business preferences", () => {
+    expect(FLOOR_MODE_KEY).toBe("seatping.business.floorMode");
+  });
+});
+
+describe("candidateTablesForParty", () => {
+  const rooms = [
+    makeRoom("Main", [
+      makeTable("small", { name: "T1", capacity: 2, status: "AVAILABLE" }),
+      makeTable("mid", { name: "T2", capacity: 4, status: "AVAILABLE" }),
+      makeTable("busy", { name: "T3", capacity: 4, status: "OCCUPIED" }),
+      makeTable("blocked", { name: "T4", capacity: 4, status: "BLOCKED" }),
+      makeTable("dirty", { name: "T5", capacity: 6, status: "CLEANING" }),
+      makeTable("tiny", { name: "T6", capacity: 1, status: "AVAILABLE" }),
+    ]),
+  ];
+
+  it("puts the recommended table first even when a tighter one exists", () => {
+    const list = candidateTablesForParty(rooms, 2, "mid");
+    expect(list[0].id).toBe("mid");
+    expect(list[0].recommended).toBe(true);
+  });
+
+  it("orders the rest by tightest capacity", () => {
+    const list = candidateTablesForParty(rooms, 2, null);
+    expect(list.map((c) => c.id)).toEqual(["small", "mid", "dirty"]);
+  });
+
+  it("excludes occupied and blocked tables", () => {
+    const ids = candidateTablesForParty(rooms, 2, null).map((c) => c.id);
+    expect(ids).not.toContain("busy");
+    expect(ids).not.toContain("blocked");
+  });
+
+  it("excludes tables that cannot fit the party", () => {
+    const ids = candidateTablesForParty(rooms, 5, null).map((c) => c.id);
+    expect(ids).toEqual(["dirty"]);
+  });
+
+  it("excludes the table the party already sits at", () => {
+    const ids = candidateTablesForParty(rooms, 2, null, "small").map((c) => c.id);
+    expect(ids).toEqual(["mid", "dirty"]);
+  });
+
+  it("carries the room name for each candidate", () => {
+    expect(candidateTablesForParty(rooms, 2, null)[0].roomName).toBe("Main");
+  });
+
+  it("returns nothing when no table fits", () => {
+    expect(candidateTablesForParty(rooms, 40, null)).toEqual([]);
+  });
+});
+
+describe("combinableTables and same room joins", () => {
+  const rooms = [
+    makeRoom("room-main", [makeTable("t1"), makeTable("t2")]),
+    makeRoom("room-patio", [makeTable("t8")]),
+  ];
+
+  it("carries the room id of every option", () => {
+    const options = combinableTables(rooms);
+
+    expect(options.map((option) => [option.id, option.roomId])).toEqual([
+      ["t1", "room-main"],
+      ["t2", "room-main"],
+      ["t8", "room-patio"],
+    ]);
+  });
+
+  it("leaves out blocked and occupied tables", () => {
+    const options = combinableTables([
+      makeRoom("room-main", [
+        makeTable("t1", { status: "BLOCKED" }),
+        makeTable("t2", { status: "OCCUPIED" }),
+        makeTable("t3", { status: "RESERVED" }),
+      ]),
+    ]);
+
+    expect(options.map((option) => option.id)).toEqual(["t3"]);
+  });
+
+  it("leaves out the table the party is already on", () => {
+    const options = combinableTables(rooms, "t1");
+
+    expect(options.some((option) => option.id === "t1")).toBe(false);
+  });
+
+  it("reports no locked room when nothing is chosen", () => {
+    expect(joinedRoomId([])).toBeNull();
+  });
+
+  it("locks to the room of the first chosen table", () => {
+    const options = combinableTables(rooms);
+
+    expect(joinedRoomId([options[1]])).toBe("room-main");
+  });
+
+  it("accepts a selection inside one room", () => {
+    const options = combinableTables(rooms);
+
+    expect(sameRoom([options[0], options[1]])).toBe(true);
+  });
+
+  it("rejects a selection spanning two rooms", () => {
+    const options = combinableTables(rooms);
+
+    expect(sameRoom([options[0], options[2]])).toBe(false);
+  });
+
+  it("treats an empty selection as valid", () => {
+    expect(sameRoom([])).toBe(true);
+  });
+});
+
+describe("assignTable request", () => {
+  beforeEach(() => {
+    apiMock.mockReset();
+    apiMock.mockResolvedValue({});
+  });
+
+  it("posts a queue assignment to the assign route", async () => {
+    await assignTable(LOCATION, { tableId: "table-1", queueEntryId: "queue-1", partySize: 2 });
+    const call = apiMock.mock.calls[apiMock.mock.calls.length - 1];
+    expect(call[0]).toBe("/api/floor/loc-1/assign");
+    expect(call[1].method).toBe("POST");
+    expect(JSON.parse(call[1].body)).toEqual({
+      tableId: "table-1",
+      queueEntryId: "queue-1",
+      partySize: 2,
+    });
+  });
+
+  it("posts a reservation assignment to the same route", async () => {
+    await assignTable(LOCATION, { tableId: "table-2", reservationId: "res-1", seatNow: false });
+    const call = apiMock.mock.calls[apiMock.mock.calls.length - 1];
+    expect(JSON.parse(call[1].body)).toEqual({
+      tableId: "table-2",
+      reservationId: "res-1",
+      seatNow: false,
+    });
+  });
+
+  it("lets a rejected assignment reject so the caller can report it", async () => {
+    apiMock.mockRejectedValue(new Error("Table already has an assignment during that time"));
+    await expect(assignTable(LOCATION, { tableId: "table-1" })).rejects.toThrow(
+      "Table already has an assignment",
+    );
+  });
+});
+
+describe("resolveReservationTable request", () => {
+  beforeEach(() => {
+    apiMock.mockReset();
+    apiMock.mockResolvedValue({});
+  });
+
+  it("posts to the reservation resolve route", async () => {
+    await resolveReservationTable(LOCATION, "res-1");
+
+    const call = apiMock.mock.calls[apiMock.mock.calls.length - 1];
+    expect(call[0]).toBe("/api/floor/loc-1/reservations/res-1/resolve");
+    expect(call[1].method).toBe("POST");
+    expect(JSON.parse(call[1].body)).toEqual({});
+  });
+
+  it("lets a refused resolve reject so the caller can report it", async () => {
+    apiMock.mockRejectedValue(new Error("No table can take this reservation yet."));
+
+    await expect(resolveReservationTable(LOCATION, "res-1")).rejects.toThrow(
+      "No table can take this reservation yet.",
+    );
+  });
+});
+
+describe("queue requests", () => {
+  beforeEach(() => {
+    apiMock.mockReset();
+    apiMock.mockResolvedValue({});
+  });
+
+  function lastCall() {
+    return apiMock.mock.calls[apiMock.mock.calls.length - 1];
+  }
+
+  it("admits a waiting party", async () => {
+    await admitParty(LOCATION, "queue-1");
+
+    const call = lastCall();
+    expect(call[0]).toBe("/api/floor/loc-1/queue/queue-1/admit");
+    expect(call[1].method).toBe("POST");
+    expect(JSON.parse(call[1].body)).toEqual({});
+  });
+
+  it("confirms an arrival", async () => {
+    await confirmPartyArrival(LOCATION, "queue-1");
+
+    const call = lastCall();
+    expect(call[0]).toBe("/api/floor/loc-1/queue/queue-1/arrived");
+    expect(call[1].method).toBe("POST");
+  });
+
+  it("removes a waiting party", async () => {
+    await removeParty(LOCATION, "queue-1");
+
+    const call = lastCall();
+    expect(call[0]).toBe("/api/floor/loc-1/queue/queue-1/remove");
+    expect(call[1].method).toBe("POST");
+  });
+
+  it("marks a party a no-show", async () => {
+    await markPartyNoShow(LOCATION, "queue-1");
+
+    const call = lastCall();
+    expect(call[0]).toBe("/api/floor/loc-1/queue/queue-1/no-show");
+    expect(call[1].method).toBe("POST");
+  });
+
+  it("surfaces a rejected queue action", async () => {
+    apiMock.mockRejectedValue(new Error("Customer is no longer waiting"));
+
+    await expect(removeParty(LOCATION, "queue-1")).rejects.toThrow("Customer is no longer waiting");
+  });
+});

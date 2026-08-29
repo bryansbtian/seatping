@@ -42,6 +42,7 @@ import {
   touchGuestByReservationId,
 } from "../lib/guests.js";
 import { etaForToken, etaForAllQueueCustomers } from "../lib/queueEta.js";
+import { loadEtaCapacity } from "../lib/floorLive.js";
 import {
   queueEntryToLegacy,
   legacyKeyOf,
@@ -49,6 +50,8 @@ import {
   reservationRowToLegacy,
 } from "../lib/liveData.js";
 import { applyStatusCapacityDelta } from "../lib/reservationCapacity.js";
+import { releaseReservationTables } from "../lib/reservationTables.js";
+import { releaseQueueEntryTables } from "../lib/floorAssign.js";
 import { enqueueNotification, canNotifyRecipient } from "../lib/notifications.js";
 import { withWriteRetry } from "../lib/dbRetry.js";
 import {
@@ -1576,6 +1579,10 @@ router.patch(
         newStatus: newEnum,
       });
 
+      if (["CANCELLED", "NO_SHOW", "COMPLETED"].includes(newEnum)) {
+        await releaseReservationTables(existing.id);
+      }
+
       const updated = await prisma.reservation.findUniqueOrThrow({
         where: { id: existing.id },
       });
@@ -2102,7 +2109,8 @@ router.get("/business/:username/queue/token/:queueToken/eta", async (req, res) =
       });
       if (locationRow) {
         const location = await augmentLocationWithLiveLists(locationRow);
-        const eta = etaForToken(location, queueToken);
+        const capacity = await loadEtaCapacity(locationRow.id);
+        const eta = etaForToken({ ...location, ...capacity }, queueToken);
         if (eta) {
           return res.json({ eta });
         }
@@ -2130,7 +2138,8 @@ router.get(
         return res.status(404).json({ error: "Location not found or access denied" });
       }
       const location = await augmentLocationWithLiveLists(locationRow);
-      return res.json({ etas: etaForAllQueueCustomers(location) });
+      const capacity = await loadEtaCapacity(locationRow.id);
+      return res.json({ etas: etaForAllQueueCustomers({ ...location, ...capacity }) });
     } catch (err: any) {
       console.error("[auth] queue-etas error:", err?.message || err);
       return res.status(500).json({ error: "Server error" });
@@ -2495,6 +2504,8 @@ router.delete("/business/:username/queue/:customerId", requireBusiness, async (r
       return res.status(409).json({ error: "Customer is no longer in the queue" });
     }
 
+    await releaseQueueEntryTables(entry.id);
+
     const location = await prisma.location.findUnique({ where: { id: entry.locationId } });
     const removedEntry = { ...entry, status: "REMOVED" as const, removedAt };
     const removedCustomer = queueEntryToLegacy(removedEntry, { businessUsername: username });
@@ -2548,6 +2559,8 @@ router.post("/business/:username/queue/:customerId/leave", async (req, res) => {
       if (result.count === 0) {
         return res.status(409).json({ error: "You are no longer waiting in the queue" });
       }
+
+      await releaseQueueEntryTables(entry.id);
 
       const location = await prisma.location.findUnique({ where: { id: entry.locationId } });
       const leftEntry = { ...entry, status: "LEFT" as const, leftAt };

@@ -6,6 +6,7 @@ import {
   sendReservationConfirmationEmail,
   sendNewReservationBusinessEmail,
   sendReservationReminderEmail,
+  sendReservationNeedsReviewEmail,
 } from "./email.js";
 import {
   sendQueueJoinedWhatsApp,
@@ -63,6 +64,19 @@ export type NotificationJob =
       customerCountryCode?: string;
       notes?: string;
       dashboardUrl: string;
+    }
+  | {
+      type: "reservation_needs_review";
+      businessEmail: string;
+      locationName: string;
+      customerName: string;
+      dateLabel: string;
+      timeLabel: string;
+      partySize: number;
+      reservationId: string;
+      reason?: string | null;
+      reservationsUrl: string;
+      floorUrl: string;
     }
   | {
       type: "reservation_reminder";
@@ -271,6 +285,33 @@ export async function processNotification(job: NotificationJob): Promise<void> {
       return;
     }
 
+    case "reservation_needs_review": {
+      try {
+        console.log(
+          `[NOTIFY] sending needs review email for reservation ${job.reservationId} to ${maskEmail(job.businessEmail)}`,
+        );
+        const sent = await sendReservationNeedsReviewEmail({
+          to: job.businessEmail,
+          locationName: job.locationName,
+          customerName: job.customerName,
+          dateLabel: job.dateLabel,
+          timeLabel: job.timeLabel,
+          partySize: job.partySize,
+          reservationId: job.reservationId,
+          reason: job.reason,
+          reservationsUrl: job.reservationsUrl,
+          floorUrl: job.floorUrl,
+        });
+        if (!sent) {
+          console.error(
+            `[NOTIFY] needs review email was not accepted for reservation ${job.reservationId}`,
+          );
+        }
+      } catch (e: any) {
+        console.error("[NOTIFY] needs review email failed:", e?.message || e);
+      }
+      break;
+    }
     case "reservation_created": {
       if (job.customerEmail) {
         try {
