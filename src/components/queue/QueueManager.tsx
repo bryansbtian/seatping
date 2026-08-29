@@ -387,7 +387,7 @@ const QueueManager = ({
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <Card className="border border-slate-200 bg-white shadow-sm">
+      <Card className="flex flex-1 flex-col border border-slate-200 bg-white shadow-sm">
         <CardHeader className="flex-row items-center justify-between gap-4 border-b border-slate-200 p-4 md:p-6">
           <div className="min-w-0 space-y-1">
             <CardTitle className="flex items-center gap-2 text-lg text-slate-800 md:text-xl">
@@ -405,7 +405,7 @@ const QueueManager = ({
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className="p-4 md:p-6">
+        <CardContent className="flex flex-1 flex-col p-4 md:p-6">
           {floorError && (
             <p className="mb-3 text-xs text-amber-700" data-testid="queue-floor-error">
               {t("queue.floorUnavailable")}

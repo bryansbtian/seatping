@@ -102,7 +102,10 @@ describe("the queue page", () => {
   it("shows an empty state when nobody is waiting", async () => {
     renderQueue(me([]));
 
-    expect(await screen.findByTestId("queue-empty")).toBeTruthy();
+    const emptyState = await screen.findByTestId("queue-empty");
+    expect(emptyState).toBeTruthy();
+    expect(emptyState.parentElement?.classList.contains("flex-1")).toBe(true);
+    expect(emptyState.parentElement?.parentElement?.classList.contains("flex-1")).toBe(true);
     expect(screen.getByText("No Guests Waiting Yet")).toBeTruthy();
   });
 
