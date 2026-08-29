@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { api } from "../helpers/app.js";
 import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
 import { businessCookie } from "../helpers/auth.js";
-import { seedBusinessWithLocation } from "../helpers/seed.js";
+import { seedBusinessWithLocation, seedQueueEntry } from "../helpers/seed.js";
 
 const db = getTestPrisma();
 
@@ -222,9 +222,15 @@ describe("concurrent table assignment", () => {
     expect(stored?.status).toBe("COMPLETED");
   });
 
-  it("does not let a stale recommendation take a table that was blocked first", async () => {
+  it("does not let a recommendation commit after the table becomes blocked", async () => {
     const { location, cookie, tables } = await seedFloor();
     const request = await api();
+    const guest = await seedQueueEntry(location, { guestCount: 2 });
+
+    const recommendation = await request
+      .get(`/api/floor/${location.id}/live`)
+      .set("Cookie", cookie);
+    expect(recommendation.body.waitingParties[0].recommendedTableId).toBe(tables[0].id);
 
     await request
       .post(`/api/floor/${location.id}/tables/${tables[0].id}/block`)
@@ -236,7 +242,8 @@ describe("concurrent table assignment", () => {
       .set("Cookie", cookie)
       .send({
         tableId: tables[0].id,
-        partySize: 4,
+        queueEntryId: guest.id,
+        partySize: 2,
         source: "SMART",
         expectedStartAt: at(19),
         expectedEndAt: at(21),

@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { api } from "../helpers/app.js";
 import { clearTestDatabase, disconnectTestPrisma, getTestPrisma } from "../helpers/db.js";
 import { businessCookie } from "../helpers/auth.js";
-import { seedBusinessWithLocation, seedQueueEntry } from "../helpers/seed.js";
+import { seedBusinessWithLocation, seedLocation, seedQueueEntry } from "../helpers/seed.js";
 
 const db = getTestPrisma();
 
@@ -778,5 +778,72 @@ describe("queue and reservation flows reach the floor", () => {
     expect(assignment.completedAt).toBeInstanceOf(Date);
     expect(assignment.partySize).toBe(2);
     expect(assignment.source).toBe("MANUAL");
+  });
+});
+
+describe("recommendation isolation", () => {
+  it("keeps recommendations separate across locations in one business", async () => {
+    const first = await setupFloor([{ name: "First T1", capacity: 4 }]);
+    const secondLocation = await seedLocation(first.business.id, first.business.username);
+    const secondRoom = await db.floorPlan.create({
+      data: {
+        businessId: first.business.id,
+        locationId: secondLocation.id,
+        name: "Second Dining Room",
+        width: 1200,
+        height: 800,
+      },
+    });
+    const secondTable = await db.diningTable.create({
+      data: {
+        floorPlanId: secondRoom.id,
+        businessId: first.business.id,
+        locationId: secondLocation.id,
+        name: "Second T1",
+        capacity: 4,
+        minimumPartySize: 1,
+      },
+    });
+    const firstGuest = await seedQueueEntry(first.location, { guestCount: 2 });
+    const secondGuest = await seedQueueEntry(secondLocation, { guestCount: 2 });
+
+    const firstLive = await first.request
+      .get(`/api/floor/${first.location.id}/live`)
+      .set("Cookie", first.cookie);
+    const secondLive = await first.request
+      .get(`/api/floor/${secondLocation.id}/live`)
+      .set("Cookie", first.cookie);
+
+    expect(firstLive.body.waitingParties.map((party: { id: string }) => party.id)).toEqual([
+      firstGuest.id,
+    ]);
+    expect(firstLive.body.rooms[0].tables[0].recommendedPartyId).toBe(firstGuest.id);
+    expect(secondLive.body.waitingParties.map((party: { id: string }) => party.id)).toEqual([
+      secondGuest.id,
+    ]);
+    expect(secondLive.body.rooms[0].tables[0].id).toBe(secondTable.id);
+    expect(secondLive.body.rooms[0].tables[0].recommendedPartyId).toBe(secondGuest.id);
+  });
+
+  it("keeps another business out of recommendations and floor access", async () => {
+    const first = await setupFloor([{ name: "First T1", capacity: 4 }]);
+    const second = await setupFloor([{ name: "Second T1", capacity: 4 }]);
+    const firstGuest = await seedQueueEntry(first.location, { guestCount: 2 });
+    const secondGuest = await seedQueueEntry(second.location, { guestCount: 2 });
+
+    const live = await first.request
+      .get(`/api/floor/${first.location.id}/live`)
+      .set("Cookie", first.cookie);
+    const forbidden = await first.request
+      .get(`/api/floor/${second.location.id}/live`)
+      .set("Cookie", first.cookie);
+
+    expect(live.body.waitingParties.map((party: { id: string }) => party.id)).toEqual([
+      firstGuest.id,
+    ]);
+    expect(live.body.waitingParties.map((party: { id: string }) => party.id)).not.toContain(
+      secondGuest.id,
+    );
+    expect(forbidden.status).toBe(404);
   });
 });
