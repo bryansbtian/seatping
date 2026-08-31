@@ -21,17 +21,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/lib/i18n";
 import { useBusinessSession } from "@/lib/businessSession";
 import { analytics } from "@/lib/analytics";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Search,
-  SlidersHorizontal,
-  Notebook,
-  Phone,
-  Mail,
-  RefreshCw,
-  Plus,
-  Inbox,
-  Download,
-} from "lucide-react";
+  Add01Icon,
+  Call02Icon,
+  Download01Icon,
+  InboxIcon,
+  Mail01Icon,
+  NotebookIcon,
+  Refresh01Icon,
+  Search01Icon,
+  SlidersHorizontalIcon,
+} from "@hugeicons/core-free-icons";
 import Papa from "papaparse";
 
 type GuestRow = {
@@ -431,7 +432,7 @@ const BusinessGuests = () => {
   } else if (!locations.length) {
     guestsPanel = (
       <BusinessEmptyState
-        icon={Inbox}
+        icon={InboxIcon}
         title={t("guests.empty.noLocations.title")}
         body={t("guests.empty.noLocations.body")}
       />
@@ -446,7 +447,7 @@ const BusinessGuests = () => {
       emptyTitle = t("guests.empty.none.title");
       emptyBody = t("guests.empty.none.body");
     }
-    guestsPanel = <BusinessEmptyState icon={Inbox} title={emptyTitle} body={emptyBody} />;
+    guestsPanel = <BusinessEmptyState icon={InboxIcon} title={emptyTitle} body={emptyBody} />;
   } else {
     guestsPanel = (
       <GuestsTable
@@ -471,7 +472,10 @@ const BusinessGuests = () => {
             <CardContent className="p-4 md:p-5 space-y-4">
               <div className="flex flex-col md:flex-row gap-3">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <HugeiconsIcon
+                    icon={Search01Icon}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+                  />
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -486,7 +490,7 @@ const BusinessGuests = () => {
                   onClick={() => setFiltersOpen((v) => !v)}
                 >
                   <span className="flex items-center gap-2">
-                    <SlidersHorizontal className="w-4 h-4" />
+                    <HugeiconsIcon icon={SlidersHorizontalIcon} className="w-4 h-4" />
                     {t("guests.filters")}
                   </span>
                   {activeFilterCount > 0 && (
@@ -603,7 +607,7 @@ const BusinessGuests = () => {
                   onClick={exportCsv}
                   disabled={loading || guests.length === 0}
                 >
-                  <Download className="w-4 h-4" />
+                  <HugeiconsIcon icon={Download01Icon} className="w-4 h-4" />
                   <span className="hidden sm:inline ml-2">{t("guests.export")}</span>
                 </Button>
                 <Button
@@ -612,7 +616,7 @@ const BusinessGuests = () => {
                   onClick={fetchGuests}
                   disabled={loading || !locationId}
                 >
-                  <RefreshCw className={`w-4 h-4 ${refreshSpinClass}`} />
+                  <HugeiconsIcon icon={Refresh01Icon} className={`w-4 h-4 ${refreshSpinClass}`} />
                   <span className="hidden sm:inline ml-2">{t("common.refresh")}</span>
                 </Button>
               </div>
@@ -726,7 +730,9 @@ function GuestsTable({
               }
               let notesCell: React.ReactNode;
               if (g.hasNotes) {
-                notesCell = <Notebook className="w-4 h-4 text-amber-500 inline" />;
+                notesCell = (
+                  <HugeiconsIcon icon={NotebookIcon} className="w-4 h-4 text-amber-500 inline" />
+                );
               } else {
                 notesCell = <span className="text-slate-300">--</span>;
               }
@@ -756,13 +762,16 @@ function GuestsTable({
                     <div className="space-y-0.5">
                       {phoneDisplay && (
                         <div className="flex items-center gap-1.5 truncate">
-                          <Phone className="w-3 h-3 text-slate-400" />
+                          <HugeiconsIcon icon={Call02Icon} className="w-3 h-3 text-slate-400" />
                           <span className="tabular-nums whitespace-nowrap">{phoneDisplay}</span>
                         </div>
                       )}
                       {g.email && (
                         <div className="flex items-center gap-1.5 truncate max-w-[200px]">
-                          <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                          <HugeiconsIcon
+                            icon={Mail01Icon}
+                            className="w-3 h-3 text-slate-400 shrink-0"
+                          />
                           <span className="truncate">{g.email}</span>
                         </div>
                       )}
@@ -1089,7 +1098,7 @@ function GuestDetailDrawer({
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
               <div className="space-y-2.5">
                 <div className="flex items-center gap-2 text-slate-800 min-w-0">
-                  <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                  <HugeiconsIcon icon={Call02Icon} className="w-4 h-4 text-slate-400 shrink-0" />
                   <span className="truncate">
                     {formatPhone(g.normalizedPhone, g.phone) ?? (
                       <span className="text-slate-400">{t("guests.noPhone")}</span>
@@ -1097,7 +1106,7 @@ function GuestDetailDrawer({
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-800 min-w-0">
-                  <Mail className="w-4 h-4 text-slate-400 shrink-0" />
+                  <HugeiconsIcon icon={Mail01Icon} className="w-4 h-4 text-slate-400 shrink-0" />
                   <span className="truncate">
                     {g.email || <span className="text-slate-400">{t("guests.noEmail")}</span>}
                   </span>
@@ -1162,7 +1171,7 @@ function GuestDetailDrawer({
                 disabled={tagBusy}
               />
               <Button type="submit" size="sm" disabled={tagBusy || !newTag.trim()}>
-                <Plus className="w-4 h-4" />
+                <HugeiconsIcon icon={Add01Icon} className="w-4 h-4" />
               </Button>
             </form>
             {availableSuggestions.length > 0 && (

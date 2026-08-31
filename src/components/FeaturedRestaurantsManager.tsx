@@ -24,7 +24,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Plus, Search, Star, Trash2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Add01Icon,
+  Delete02Icon,
+  Loading02Icon,
+  Search01Icon,
+  StarIcon,
+} from "@hugeicons/core-free-icons";
 
 type Business = {
   id: string;
@@ -309,9 +316,11 @@ export default function FeaturedRestaurantsManager() {
 
   let searchButtonIcon;
   if (searching) {
-    searchButtonIcon = <Loader2 size={16} className="mr-2 animate-spin" />;
+    searchButtonIcon = (
+      <HugeiconsIcon icon={Loading02Icon} size={16} className="mr-2 animate-spin" />
+    );
   } else {
-    searchButtonIcon = <Search size={16} className="mr-2" />;
+    searchButtonIcon = <HugeiconsIcon icon={Search01Icon} size={16} className="mr-2" />;
   }
 
   let searchResultsContent;
@@ -346,7 +355,8 @@ export default function FeaturedRestaurantsManager() {
   if (loadingLocations) {
     locationsSection = (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 size={16} className="animate-spin" /> Loading locations...
+        <HugeiconsIcon icon={Loading02Icon} size={16} className="animate-spin" /> Loading
+        locations...
       </div>
     );
   } else if (locations && locations.length === 0) {
@@ -395,16 +405,16 @@ export default function FeaturedRestaurantsManager() {
 
   let addButtonIcon;
   if (adding) {
-    addButtonIcon = <Loader2 size={16} className="mr-2 animate-spin" />;
+    addButtonIcon = <HugeiconsIcon icon={Loading02Icon} size={16} className="mr-2 animate-spin" />;
   } else {
-    addButtonIcon = <Plus size={16} className="mr-2" />;
+    addButtonIcon = <HugeiconsIcon icon={Add01Icon} size={16} className="mr-2" />;
   }
 
   let featuredListContent;
   if (loadingList) {
     featuredListContent = (
       <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading...
+        <HugeiconsIcon icon={Loading02Icon} className="h-5 w-5 animate-spin" /> Loading...
       </div>
     );
   } else if (listError) {
@@ -416,7 +426,7 @@ export default function FeaturedRestaurantsManager() {
   } else if (featured.length === 0) {
     featuredListContent = (
       <div className="flex flex-col items-center justify-center gap-1 py-8 text-center">
-        <Star className="mb-1 h-8 w-8 text-slate-300" />
+        <HugeiconsIcon icon={StarIcon} className="mb-1 h-8 w-8 text-slate-300" />
         <p className="font-medium text-gray-700">No featured restaurants yet.</p>
         <p className="text-sm text-muted-foreground">
           Add one above to feature it on the homepage.
@@ -498,7 +508,7 @@ export default function FeaturedRestaurantsManager() {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructiveOutline" size="sm">
-                  <Trash2 size={16} className="mr-2 sm:mr-0" />
+                  <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2 sm:mr-0" />
                   <span className="sm:hidden">Remove</span>
                 </Button>
               </AlertDialogTrigger>

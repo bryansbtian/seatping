@@ -7,7 +7,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Users, Store } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Store01Icon, UsersRoundIcon } from "@hugeicons/core-free-icons";
 
 type Faq = { question: string; answer: string };
 
@@ -127,13 +128,13 @@ const Help = () => {
           <div className="space-y-8">
             <FaqSection
               title="For Customers"
-              icon={<Users className="h-5 w-5" />}
+              icon={<HugeiconsIcon icon={UsersRoundIcon} className="h-5 w-5" />}
               faqs={CUSTOMER_FAQS}
               idPrefix="customer"
             />
             <FaqSection
               title="For Businesses"
-              icon={<Store className="h-5 w-5" />}
+              icon={<HugeiconsIcon icon={Store01Icon} className="h-5 w-5" />}
               faqs={BUSINESS_FAQS}
               idPrefix="business"
             />

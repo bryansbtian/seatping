@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Star, ChevronRight } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowRight01Icon, StarIcon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
@@ -122,7 +123,11 @@ function TestimonialCard({
         <div className="mt-5 flex flex-col items-start gap-2 min-[321px]:flex-row min-[321px]:items-center min-[321px]:justify-between min-[321px]:gap-0">
           <div className="flex items-center gap-0.5">
             {Array.from({ length: 5 }).map((_, i) => (
-              <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
+              <HugeiconsIcon
+                icon={StarIcon}
+                key={i}
+                className="h-4 w-4 fill-amber-400 text-amber-400"
+              />
             ))}
           </div>
           <span className="text-xs text-slate-400">{date}</span>
@@ -266,7 +271,7 @@ const LandingPage = () => {
               aria-label="Show more testimonials"
               className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white shadow-sm transition-all duration-300 hover:bg-slate-800 hover:shadow-lg md:inline-flex"
             >
-              <ChevronRight className="h-5 w-5" />
+              <HugeiconsIcon icon={ArrowRight01Icon} className="h-5 w-5" />
             </button>
           </div>
 

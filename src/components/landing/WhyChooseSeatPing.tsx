@@ -1,17 +1,17 @@
 import { useState } from "react";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
-  ListOrdered,
-  CalendarDays,
-  Zap,
-  Plus,
-  Minus,
-  Check,
-  Clock,
-  BarChart3,
-  Contact,
-  Send,
-  type LucideIcon,
-} from "lucide-react";
+  Add01Icon,
+  ChartAnalysisIcon,
+  CalendarDaysIcon,
+  Clock01Icon,
+  ContactIcon,
+  FlashIcon,
+  LeftToRightListNumberIcon,
+  MinusSignIcon,
+  SentIcon,
+  Tick02Icon,
+} from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import {
   SECTION_PADDING,
@@ -22,29 +22,29 @@ import {
   SectionPill,
 } from "@/components/landing/section";
 
-const ACCORDION_ITEMS: { icon: LucideIcon; title: string; body: string }[] = [
+const ACCORDION_ITEMS: { icon: IconSvgElement; title: string; body: string }[] = [
   {
-    icon: ListOrdered,
+    icon: LeftToRightListNumberIcon,
     title: "Live Queue Dashboard",
     body: "See everyone waiting in real time, admit the next guest in a tap, and keep the line moving without crowding your entrance.",
   },
   {
-    icon: Zap,
+    icon: FlashIcon,
     title: "Smart Waitlist Automation",
     body: "SeatPing texts guests their place in line and an estimated wait, then notifies them automatically the moment their table is ready.",
   },
   {
-    icon: CalendarDays,
+    icon: CalendarDaysIcon,
     title: "Reservations & Booking Control",
     body: "Take bookings in advance, set capacity per hour, and confirm, seat, or cancel from one organised day view.",
   },
   {
-    icon: Contact,
+    icon: ContactIcon,
     title: "Guest CRM",
     body: "Guest profiles build themselves from every reservation and waitlist visit, so you can see visit history, notes, tags, and who your regulars are.",
   },
   {
-    icon: Send,
+    icon: SentIcon,
     title: "Guest Campaigns",
     body: "Send SeatPing-branded SMS, WhatsApp, and Email messages to selected guests, smart audiences, or your saved groups, all from one place.",
   },
@@ -76,9 +76,9 @@ function FeatureAccordion() {
         }
         let toggleIcon: React.ReactNode;
         if (active) {
-          toggleIcon = <Minus className="h-5 w-5" />;
+          toggleIcon = <HugeiconsIcon icon={MinusSignIcon} className="h-5 w-5" />;
         } else {
-          toggleIcon = <Plus className="h-5 w-5" />;
+          toggleIcon = <HugeiconsIcon icon={Add01Icon} className="h-5 w-5" />;
         }
         let bodyStateClass: string;
         if (active) {
@@ -104,7 +104,7 @@ function FeatureAccordion() {
                   iconStateClass,
                 )}
               >
-                <item.icon className="h-4 w-4" />
+                <HugeiconsIcon icon={item.icon} className="h-4 w-4" />
               </span>
               <span className={cn("flex-1", CARD_TITLE)}>{item.title}</span>
               <span className="shrink-0 text-slate-400">{toggleIcon}</span>
@@ -195,7 +195,7 @@ function ServiceSnapshot({ className }: { className?: string }) {
       <div className="mx-auto max-w-sm space-y-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5">
           <div className="flex items-center gap-1.5">
-            <Clock className="h-4 w-4 text-slate-700" />
+            <HugeiconsIcon icon={Clock01Icon} className="h-4 w-4 text-slate-700" />
             <p className="text-sm font-semibold text-slate-900">Peak Hours</p>
           </div>
           <p className="mt-0.5 text-caption text-slate-500">
@@ -206,7 +206,7 @@ function ServiceSnapshot({ className }: { className?: string }) {
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5">
           <div className="flex items-center gap-1.5">
-            <BarChart3 className="h-4 w-4 text-slate-700" />
+            <HugeiconsIcon icon={ChartAnalysisIcon} className="h-4 w-4 text-slate-700" />
             <p className="text-sm font-semibold text-slate-900">Wait Time Distribution</p>
           </div>
           <p className="mt-0.5 text-caption text-slate-500">How efficient is your service?</p>
@@ -238,7 +238,7 @@ export function SeatPingFeatureGrid() {
       <div className="container relative mx-auto max-w-6xl scroll-animate">
         <div className="grid grid-cols-1 gap-x-12 gap-y-8 lg:grid-cols-2">
           <div>
-            <SectionPill icon={Check}>Why SeatPing</SectionPill>
+            <SectionPill icon={Tick02Icon}>Why SeatPing</SectionPill>
             <h2 className={cn("mt-4", SECTION_HEADING)}>
               Power Your Front Door with Smart, Effortless Tools
             </h2>

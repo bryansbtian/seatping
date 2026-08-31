@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format, isToday, isTomorrow } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar01Icon } from "@hugeicons/core-free-icons";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FieldTrigger } from "@/components/TimeSelect";
@@ -56,7 +56,7 @@ export function DateField({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <FieldTrigger icon={CalendarIcon} aria-label={triggerLabel} className={className}>
+        <FieldTrigger icon={Calendar01Icon} aria-label={triggerLabel} className={className}>
           {label}
         </FieldTrigger>
       </PopoverTrigger>

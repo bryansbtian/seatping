@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { Menu } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Menu01Icon } from "@hugeicons/core-free-icons";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import BusinessSessionProvider from "@/components/BusinessSessionProvider";
 import BusinessSidebar from "@/components/BusinessSidebar";
@@ -57,7 +58,7 @@ const BusinessLayout = () => {
                     aria-label={t("nav.openMenu")}
                     className="inline-flex items-center justify-center rounded-xl border border-border px-3 py-2"
                   >
-                    <Menu className="h-5 w-5" />
+                    <HugeiconsIcon icon={Menu01Icon} className="h-5 w-5" />
                   </button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-72 p-0">

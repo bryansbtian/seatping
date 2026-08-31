@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Tick02Icon, UnfoldMoreIcon } from "@hugeicons/core-free-icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -56,7 +57,7 @@ export function CountryCodeSelect({
           <span className="truncate">
             {selected.flag} {selected.dial}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <HugeiconsIcon icon={UnfoldMoreIcon} className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="start">
@@ -90,7 +91,10 @@ export function CountryCodeSelect({
                       setOpen(false);
                     }}
                   >
-                    <Check className={cn("mr-2 h-4 w-4", checkOpacityClass)} />
+                    <HugeiconsIcon
+                      icon={Tick02Icon}
+                      className={cn("mr-2 h-4 w-4", checkOpacityClass)}
+                    />
                     <span className="mr-2">{c.flag}</span>
                     <span className="flex-1">{c.name}</span>
                     <span className="text-muted-foreground">{c.dial}</span>

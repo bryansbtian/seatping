@@ -21,7 +21,14 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { DateField, PartyField } from "@/components/ReservationBooking";
-import { CalendarDays, Clock, Loader2, MapPin, Users } from "lucide-react";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
+import {
+  CalendarDaysIcon,
+  Clock01Icon,
+  Loading02Icon,
+  Location01Icon,
+  UsersRoundIcon,
+} from "@hugeicons/core-free-icons";
 
 type Slot = {
   time: string;
@@ -226,7 +233,7 @@ export default function ManageReservation() {
   } else if (loadingSlots) {
     timePickerContent = (
       <div className="flex items-center gap-2 py-1 text-sm text-slate-500">
-        <Loader2 className="h-4 w-4 animate-spin" /> Checking…
+        <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" /> Checking…
       </div>
     );
   } else {
@@ -298,7 +305,7 @@ export default function ManageReservation() {
 
   let cancelActionContent: React.ReactNode;
   if (cancelling) {
-    cancelActionContent = <Loader2 className="h-4 w-4 animate-spin" />;
+    cancelActionContent = <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" />;
   } else {
     cancelActionContent = "Cancel Reservation";
   }
@@ -309,15 +316,15 @@ export default function ManageReservation() {
   } else if (!editing) {
     detailsOrEditor = (
       <div className="space-y-2">
-        <DetailRow icon={CalendarDays} label="Date" value={readableDate(current!.date)} />
-        <DetailRow icon={Clock} label="Time" value={formatTimeLabel(current!.time)} />
+        <DetailRow icon={CalendarDaysIcon} label="Date" value={readableDate(current!.date)} />
+        <DetailRow icon={Clock01Icon} label="Time" value={formatTimeLabel(current!.time)} />
         <DetailRow
-          icon={Users}
+          icon={UsersRoundIcon}
           label="Number of Guests"
           value={`${reservation.partySize} ${reservationGuestWord}`}
         />
         {restaurant?.address && (
-          <DetailRow icon={MapPin} label="Location" value={restaurant.address} stacked />
+          <DetailRow icon={Location01Icon} label="Location" value={restaurant.address} stacked />
         )}
         {reservation.notes && (
           <p className="rounded-md bg-slate-50 p-2.5 text-xs text-slate-600">
@@ -363,7 +370,7 @@ export default function ManageReservation() {
             disabled={!date || !time || partySize === "larger" || saving}
             onClick={saveChanges}
           >
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {saving && <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" />}
             Save Changes
           </Button>
           <Button
@@ -387,7 +394,7 @@ export default function ManageReservation() {
   if (loading) {
     pageContent = (
       <div className="flex items-center justify-center py-24 text-slate-500">
-        <Loader2 className="h-6 w-6 animate-spin" />
+        <HugeiconsIcon icon={Loading02Icon} className="h-6 w-6 animate-spin" />
       </div>
     );
   } else {
@@ -450,12 +457,12 @@ export default function ManageReservation() {
 }
 
 function DetailRow({
-  icon: Icon,
+  icon,
   label,
   value,
   stacked,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: IconSvgElement;
   label: string;
   value: string;
   stacked?: boolean;
@@ -464,7 +471,7 @@ function DetailRow({
     return (
       <div className="rounded-lg border border-slate-200 px-3 py-2.5">
         <span className="inline-flex items-center gap-2 text-xs text-slate-500 sm:text-sm">
-          <Icon className="h-4 w-4" /> {label}
+          <HugeiconsIcon icon={icon} className="h-4 w-4" /> {label}
         </span>
         <p className="mt-1 text-xs font-medium leading-snug text-slate-700 sm:text-sm">{value}</p>
       </div>
@@ -473,7 +480,7 @@ function DetailRow({
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2.5">
       <span className="inline-flex items-center gap-2 text-xs text-slate-500 sm:text-sm">
-        <Icon className="h-4 w-4" /> {label}
+        <HugeiconsIcon icon={icon} className="h-4 w-4" /> {label}
       </span>
       <span className="text-right text-xs font-medium text-slate-700 sm:text-sm">{value}</span>
     </div>

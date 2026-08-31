@@ -21,7 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { splitPhone } from "@shared/countryCodes";
 import { api } from "@/lib/api";
 import { EditReviewDialog } from "@/components/EditReviewDialog";
-import { X, Star, Pencil, Trash2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Cancel01Icon, Delete02Icon, Edit03Icon, StarIcon } from "@hugeicons/core-free-icons";
 import { formatEnteredPhone } from "@shared/phone";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 
@@ -910,7 +911,7 @@ function SavedRestaurantCard({
           aria-label={`Remove ${name} from saved`}
           className="h-8 w-8 shrink-0"
         >
-          <X className="h-4 w-4" />
+          <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
         </Button>
       </CardContent>
     </Card>
@@ -1022,7 +1023,7 @@ function StarsDisplay({ rating }: { rating: number }) {
         if (n <= filled) {
           starClass = "h-4 w-4 fill-yellow-400 text-yellow-400";
         }
-        return <Star key={n} className={starClass} />;
+        return <HugeiconsIcon icon={StarIcon} key={n} className={starClass} />;
       })}
     </div>
   );
@@ -1084,7 +1085,7 @@ function ProfileReviewCard({
               aria-label="Edit review"
               className="h-8 w-8 text-muted-foreground hover:text-slate-900"
             >
-              <Pencil className="h-4 w-4" />
+              <HugeiconsIcon icon={Edit03Icon} className="h-4 w-4" />
             </Button>
             <Button
               variant="destructiveOutline"
@@ -1093,7 +1094,7 @@ function ProfileReviewCard({
               aria-label="Delete review"
               className="h-8 w-8"
             >
-              <Trash2 className="h-4 w-4" />
+              <HugeiconsIcon icon={Delete02Icon} className="h-4 w-4" />
             </Button>
           </div>
         </div>

@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { Ban, ArrowRightLeft, CheckCheck, Sparkles, UserPlus } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowDataTransferHorizontalIcon,
+  BanIcon,
+  SparklesIcon,
+  CheckCheckIcon,
+  UserAdd01Icon,
+} from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { CardTitle } from "@/components/ui/card";
 import { useLang } from "@/lib/i18n";
@@ -91,7 +98,7 @@ const LiveTableDetail = ({
           disabled={busy}
           onClick={() => onSeatReserved(upcoming.id)}
         >
-          <UserPlus className="mr-2 h-4 w-4" />
+          <HugeiconsIcon icon={UserAdd01Icon} className="mr-2 h-4 w-4" />
           {t("floor.live.seatReserved")}
         </Button>,
       );
@@ -104,7 +111,7 @@ const LiveTableDetail = ({
           disabled={busy}
           onClick={() => onSeatParty(table.id, recommended.id, recommended.partySize)}
         >
-          <UserPlus className="mr-2 h-4 w-4" />
+          <HugeiconsIcon icon={UserAdd01Icon} className="mr-2 h-4 w-4" />
           {t("floor.live.seatNamed", { name: recommended.name })}
         </Button>,
       );
@@ -130,7 +137,7 @@ const LiveTableDetail = ({
         disabled={busy}
         onClick={() => onCompleteVisit(current.id)}
       >
-        <CheckCheck className="mr-2 h-4 w-4" />
+        <HugeiconsIcon icon={CheckCheckIcon} className="mr-2 h-4 w-4" />
         {t("floor.live.completeVisit")}
       </Button>,
       <Button
@@ -140,7 +147,7 @@ const LiveTableDetail = ({
         disabled={busy}
         onClick={() => setPicker((previous) => togglePicker(previous, "move"))}
       >
-        <ArrowRightLeft className="mr-2 h-4 w-4" />
+        <HugeiconsIcon icon={ArrowDataTransferHorizontalIcon} className="mr-2 h-4 w-4" />
         {t("floor.live.moveParty")}
       </Button>,
     );
@@ -154,7 +161,7 @@ const LiveTableDetail = ({
         disabled={busy}
         onClick={() => onMarkAvailable(table.id)}
       >
-        <Sparkles className="mr-2 h-4 w-4" />
+        <HugeiconsIcon icon={SparklesIcon} className="mr-2 h-4 w-4" />
         {t("floor.live.markAvailable")}
       </Button>,
     );
@@ -169,7 +176,7 @@ const LiveTableDetail = ({
         disabled={busy}
         onClick={() => onMarkCleaning(table.id)}
       >
-        <Sparkles className="mr-2 h-4 w-4" />
+        <HugeiconsIcon icon={SparklesIcon} className="mr-2 h-4 w-4" />
         {t("floor.live.markCleaning")}
       </Button>,
     );
@@ -188,7 +195,7 @@ const LiveTableDetail = ({
         disabled={busy}
         onClick={() => onToggleBlocked(table.id, !table.isBlocked)}
       >
-        <Ban className="mr-2 h-4 w-4" />
+        <HugeiconsIcon icon={BanIcon} className="mr-2 h-4 w-4" />
         {blockLabel}
       </Button>,
     );
@@ -289,7 +296,7 @@ const LiveTableDetail = ({
             style.badge,
           )}
         >
-          <StatusIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <HugeiconsIcon icon={StatusIcon} className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span className="whitespace-nowrap leading-none">{statusLabel}</span>
         </span>
       </div>

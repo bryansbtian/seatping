@@ -1,21 +1,21 @@
+import type { IconSvgElement } from "@hugeicons/react";
 import {
-  BarChart3,
-  CalendarCheck,
-  LayoutDashboard,
-  LayoutGrid,
-  ListOrdered,
-  Megaphone,
-  Settings,
-  Star,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+  ChartAnalysisIcon,
+  CalendarCheck01Icon,
+  DashboardSquare01Icon,
+  LayoutGridIcon,
+  LeftToRightListNumberIcon,
+  Megaphone01Icon,
+  Settings01Icon,
+  StarIcon,
+  UsersRoundIcon,
+} from "@hugeicons/core-free-icons";
 import type { TKey } from "@/lib/i18n";
 
 export type BusinessNavItem = {
   to: string;
   labelKey: TKey;
-  icon: LucideIcon;
+  icon: IconSvgElement;
 };
 
 export type BusinessNavGroup = {
@@ -27,27 +27,27 @@ export const BUSINESS_NAV_GROUPS: BusinessNavGroup[] = [
   {
     labelKey: "nav.group.operations",
     items: [
-      { to: "/business/overview", labelKey: "nav.overview", icon: LayoutDashboard },
-      { to: "/business/queue", labelKey: "nav.queue", icon: ListOrdered },
-      { to: "/business/reservations", labelKey: "nav.reservations", icon: CalendarCheck },
-      { to: "/business/floor", labelKey: "nav.floor", icon: LayoutGrid },
+      { to: "/business/overview", labelKey: "nav.overview", icon: DashboardSquare01Icon },
+      { to: "/business/queue", labelKey: "nav.queue", icon: LeftToRightListNumberIcon },
+      { to: "/business/reservations", labelKey: "nav.reservations", icon: CalendarCheck01Icon },
+      { to: "/business/floor", labelKey: "nav.floor", icon: LayoutGridIcon },
     ],
   },
   {
     labelKey: "nav.group.customers",
     items: [
-      { to: "/business/guests", labelKey: "nav.guests", icon: Users },
-      { to: "/business/reviews", labelKey: "nav.reviews", icon: Star },
-      { to: "/business/campaigns", labelKey: "nav.campaigns", icon: Megaphone },
+      { to: "/business/guests", labelKey: "nav.guests", icon: UsersRoundIcon },
+      { to: "/business/reviews", labelKey: "nav.reviews", icon: StarIcon },
+      { to: "/business/campaigns", labelKey: "nav.campaigns", icon: Megaphone01Icon },
     ],
   },
   {
     labelKey: "nav.group.insights",
-    items: [{ to: "/business/performance", labelKey: "nav.performance", icon: BarChart3 }],
+    items: [{ to: "/business/performance", labelKey: "nav.performance", icon: ChartAnalysisIcon }],
   },
   {
     labelKey: "nav.group.other",
-    items: [{ to: "/business/settings", labelKey: "nav.settings", icon: Settings }],
+    items: [{ to: "/business/settings", labelKey: "nav.settings", icon: Settings01Icon }],
   },
 ];
 

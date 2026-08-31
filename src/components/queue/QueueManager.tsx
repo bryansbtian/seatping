@@ -16,7 +16,13 @@ import AssignTableDialog, {
 } from "@/components/floor/AssignTableDialog";
 import BusinessEmptyState from "@/components/BusinessEmptyState";
 import { GuestStatusBadge } from "@/components/GuestBadge";
-import { Clock, ListOrdered, RefreshCw, Users } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Clock01Icon,
+  LeftToRightListNumberIcon,
+  Refresh01Icon,
+  UsersRoundIcon,
+} from "@hugeicons/core-free-icons";
 import { queueFullName, queueLegacyKey, waitedMinutes, type QueueRow } from "@/lib/queueStats";
 
 type QueueEtaSummary = {
@@ -293,7 +299,7 @@ const QueueManager = ({
   if (queueRows.length === 0) {
     listBody = (
       <BusinessEmptyState
-        icon={Users}
+        icon={UsersRoundIcon}
         title={t("queue.empty.title")}
         body={t("queue.empty.body")}
         className="py-10"
@@ -391,13 +397,20 @@ const QueueManager = ({
         <CardHeader className="flex-row items-center justify-between gap-4 border-b border-slate-200 p-4 md:p-6">
           <div className="min-w-0 space-y-1">
             <CardTitle className="flex items-center gap-2 text-lg text-slate-800 md:text-xl">
-              <ListOrdered className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <HugeiconsIcon
+                icon={LeftToRightListNumberIcon}
+                className="h-5 w-5 shrink-0"
+                aria-hidden="true"
+              />
               {t("dash.queue.title")}
             </CardTitle>
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <Button variant="outline" disabled={busy} onClick={refresh}>
-              <RefreshCw className={cn("h-4 w-4", busy && "animate-spin")} />
+              <HugeiconsIcon
+                icon={Refresh01Icon}
+                className={cn("h-4 w-4", busy && "animate-spin")}
+              />
               <span className="hidden sm:inline">{t("common.refresh")}</span>
             </Button>
             <Badge className="border-0 bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
@@ -422,7 +435,7 @@ const QueueManager = ({
         >
           <CardHeader className="border-b border-amber-200 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-lg text-amber-800 md:text-xl">
-              <Clock className="h-5 w-5" aria-hidden="true" />
+              <HugeiconsIcon icon={Clock01Icon} className="h-5 w-5" aria-hidden="true" />
               {t("dash.awaiting.title")}
             </CardTitle>
             <CardDescription className="text-sm text-amber-700">

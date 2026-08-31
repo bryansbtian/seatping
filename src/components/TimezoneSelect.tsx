@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Tick02Icon, UnfoldMoreIcon } from "@hugeicons/core-free-icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -86,7 +87,7 @@ export function TimezoneSelect({
           )}
         >
           <span className="truncate">{selectedLabel}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <HugeiconsIcon icon={UnfoldMoreIcon} className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -128,7 +129,10 @@ export function TimezoneSelect({
                       setOpen(false);
                     }}
                   >
-                    <Check className={cn("mr-2 h-4 w-4 shrink-0", checkOpacityClass)} />
+                    <HugeiconsIcon
+                      icon={Tick02Icon}
+                      className={cn("mr-2 h-4 w-4 shrink-0", checkOpacityClass)}
+                    />
                     <span className="flex-1 truncate">{t.label}</span>
                   </CommandItem>
                 );

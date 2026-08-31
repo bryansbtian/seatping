@@ -14,7 +14,10 @@ activation, credits, featured restaurants, and support tickets.
 This is one full-stack app, not a monorepo.
 
 - `src/`: React SPA. React, TypeScript, Vite, React Router, TanStack Query, Tailwind CSS,
-  shadcn/ui, Recharts.
+  shadcn/ui, Recharts. Icons come from Hugeicons: import the icon data from
+  `@hugeicons/core-free-icons` and render it through `HugeiconsIcon` from `@hugeicons/react`,
+  sizing it with Tailwind classes. An icon passed around as data is typed `IconSvgElement`,
+  not a component type.
 - `server/`: Express API in TypeScript. Routers in `server/routes/`, shared logic in
   `server/lib/`, mounting and cron wiring in `server/index.ts`.
 - `shared/`: isomorphic modules used by both halves, such as phone formatting and country

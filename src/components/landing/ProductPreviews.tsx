@@ -4,34 +4,35 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
-  Users,
-  Clock,
-  Calendar,
-  CalendarDays,
-  TrendingUp,
-  LogOut,
-  ListOrdered,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  QrCode,
-  Mail,
-  MessageSquare,
-  Phone,
-  Download,
-  Copy,
-  MapPin,
-  Pencil,
-  Star,
-  RefreshCw,
-  Wifi,
-  Signal,
-  BatteryFull,
-  Lock,
-  Plus,
-  Share,
-} from "lucide-react";
+  Add01Icon,
+  ArrowDown01Icon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  BatteryFullIcon,
+  Calendar01Icon,
+  CalendarDaysIcon,
+  Call02Icon,
+  Clock01Icon,
+  Copy01Icon,
+  Download01Icon,
+  LeftToRightListNumberIcon,
+  Location01Icon,
+  LockIcon,
+  LogoutSquare01Icon,
+  Mail01Icon,
+  Message01Icon,
+  Edit03Icon,
+  QrCodeIcon,
+  Refresh01Icon,
+  Share01Icon,
+  SignalFull02Icon,
+  StarIcon,
+  TrendingDownIcon,
+  UsersRoundIcon,
+  Wifi01Icon,
+} from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 
 function Preview({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -123,35 +124,35 @@ const STATS = [
   {
     label: "Current Queue",
     value: "3",
-    icon: Users,
+    icon: UsersRoundIcon,
     tint: "bg-indigo-100",
     fg: "text-indigo-600",
   },
   {
     label: "Reservations Today",
     value: "12",
-    icon: Calendar,
+    icon: Calendar01Icon,
     tint: "bg-blue-100",
     fg: "text-blue-600",
   },
   {
     label: "Avg Queue Wait",
     value: "5m",
-    icon: Clock,
+    icon: Clock01Icon,
     tint: "bg-teal-100",
     fg: "text-teal-600",
   },
   {
     label: "Served Today",
     value: "28",
-    icon: TrendingUp,
+    icon: TrendingDownIcon,
     tint: "bg-emerald-100",
     fg: "text-emerald-600",
   },
   {
     label: "Left Today",
     value: "4",
-    icon: LogOut,
+    icon: LogoutSquare01Icon,
     tint: "bg-teal-100",
     fg: "text-teal-600",
   },
@@ -168,7 +169,7 @@ export function StatCardsPreview({ className }: { className?: string }) {
               <div className="flex items-center justify-between">
                 <p className="text-2xl md:text-3xl font-semibold text-slate-800">{s.value}</p>
                 <div className={cn("p-2 rounded-full", s.tint)}>
-                  <s.icon className={cn("w-5 h-5 md:w-6 md:h-6", s.fg)} />
+                  <HugeiconsIcon icon={s.icon} className={cn("w-5 h-5 md:w-6 md:h-6", s.fg)} />
                 </div>
               </div>
             </div>
@@ -199,7 +200,7 @@ export function QueueCardPreview({
           <div className="md:hidden">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-lg text-gray-800">
-                <ListOrdered className="w-5 h-5" />
+                <HugeiconsIcon icon={LeftToRightListNumberIcon} className="w-5 h-5" />
                 Queue Management
               </CardTitle>
               <Badge
@@ -213,7 +214,7 @@ export function QueueCardPreview({
               Managing queue for: Downtown
             </CardDescription>
             <span className="flex h-9 w-full items-center justify-center gap-2 rounded-md border border-input bg-background text-sm font-medium text-slate-700">
-              <RefreshCw className="h-4 w-4" />
+              <HugeiconsIcon icon={Refresh01Icon} className="h-4 w-4" />
               Refresh
             </span>
           </div>
@@ -221,7 +222,7 @@ export function QueueCardPreview({
           <div className="hidden md:flex md:items-center md:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
-                <ListOrdered className="w-5 h-5" />
+                <HugeiconsIcon icon={LeftToRightListNumberIcon} className="w-5 h-5" />
                 Queue Management
               </CardTitle>
               <CardDescription className="text-gray-600 text-sm">
@@ -230,7 +231,7 @@ export function QueueCardPreview({
             </div>
             <div className="flex items-center space-x-3">
               <span className="flex h-9 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium text-slate-700">
-                <RefreshCw className="h-4 w-4" />
+                <HugeiconsIcon icon={Refresh01Icon} className="h-4 w-4" />
                 Refresh
               </span>
               <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
@@ -297,7 +298,7 @@ export function AwaitingArrivalPreview({ className }: { className?: string }) {
       <Card className="bg-amber-50 border-amber-200 rounded-xl shadow-sm">
         <CardHeader className="border-b border-amber-200 p-4 md:p-5">
           <CardTitle className="text-base md:text-lg text-amber-800 flex items-center gap-2">
-            <Clock className="w-5 h-5" />
+            <HugeiconsIcon icon={Clock01Icon} className="w-5 h-5" />
             Awaiting Arrival Confirmation
           </CardTitle>
         </CardHeader>
@@ -354,7 +355,7 @@ export function ReservationsCardPreview({
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardHeader className="border-b border-gray-100 p-4 md:p-6">
           <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
-            <CalendarDays className="w-5 h-5" />
+            <HugeiconsIcon icon={CalendarDaysIcon} className="w-5 h-5" />
             Reservations Management
           </CardTitle>
           <CardDescription className="text-gray-600 text-sm mt-0.5">
@@ -390,13 +391,13 @@ export function ReservationsCardPreview({
         <CardContent className="p-4 md:p-6">
           <div className="space-y-3">
             {rows.map((r) => {
-              let ContactIcon: typeof Mail;
+              let contactIcon: IconSvgElement;
               if (r.contact === "email") {
-                ContactIcon = Mail;
+                contactIcon = Mail01Icon;
               } else if (r.contact === "whatsapp") {
-                ContactIcon = MessageSquare;
+                contactIcon = Message01Icon;
               } else {
-                ContactIcon = Phone;
+                contactIcon = Call02Icon;
               }
               let contactLabel: string;
               if (r.contact === "sms") {
@@ -413,17 +414,17 @@ export function ReservationsCardPreview({
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
                       <span className="inline-flex items-center gap-1">
-                        <Users className="h-3.5 w-3.5" /> {r.party}
+                        <HugeiconsIcon icon={UsersRoundIcon} className="h-3.5 w-3.5" /> {r.party}
                       </span>
                       <span className="inline-flex items-center gap-1">
-                        <CalendarDays className="h-3.5 w-3.5" /> Today
+                        <HugeiconsIcon icon={CalendarDaysIcon} className="h-3.5 w-3.5" /> Today
                       </span>
                       <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" /> {r.time}
+                        <HugeiconsIcon icon={Clock01Icon} className="h-3.5 w-3.5" /> {r.time}
                       </span>
                     </div>
                     <span className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-slate-500">
-                      <ContactIcon className="h-3.5 w-3.5" />
+                      <HugeiconsIcon icon={contactIcon} className="h-3.5 w-3.5" />
                       <span className="capitalize">{contactLabel}</span>
                     </span>
                   </div>
@@ -458,14 +459,17 @@ function DashboardChrome() {
         </div>
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2 text-sm text-slate-600">
-            <Calendar className="w-4 h-4" />
+            <HugeiconsIcon icon={Calendar01Icon} className="w-4 h-4" />
             <span>Today</span>
           </div>
           <div className="relative">
             <span className="flex w-40 appearance-none items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 pr-8 text-sm text-slate-700">
               Downtown
             </span>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <HugeiconsIcon
+              icon={ArrowDown01Icon}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+            />
           </div>
         </div>
       </div>
@@ -504,7 +508,7 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <CardTitle className="flex items-center gap-2 text-base text-gray-800">
-                <ListOrdered className="w-5 h-5" />
+                <HugeiconsIcon icon={LeftToRightListNumberIcon} className="w-5 h-5" />
                 Queue Management
               </CardTitle>
               <CardDescription className="text-gray-600 text-sm">
@@ -513,7 +517,7 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <Pill variant="outline">
-                <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Refresh
+                <HugeiconsIcon icon={Refresh01Icon} className="mr-1.5 h-3.5 w-3.5" /> Refresh
               </Pill>
               <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 text-micro">
                 2 customers
@@ -555,7 +559,7 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardHeader className="border-b border-gray-100 p-4">
           <CardTitle className="flex items-center gap-2 text-base text-gray-800">
-            <CalendarDays className="w-5 h-5" />
+            <HugeiconsIcon icon={CalendarDaysIcon} className="w-5 h-5" />
             Reservations Management
           </CardTitle>
           <CardDescription className="text-gray-600 text-sm mt-0.5">
@@ -596,17 +600,17 @@ export function HeroDashboardScreen({ className }: { className?: string }) {
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
               <span className="inline-flex items-center gap-1">
-                <Users className="h-3.5 w-3.5" /> 2
+                <HugeiconsIcon icon={UsersRoundIcon} className="h-3.5 w-3.5" /> 2
               </span>
               <span className="inline-flex items-center gap-1">
-                <CalendarDays className="h-3.5 w-3.5" /> Fri, Jun 5
+                <HugeiconsIcon icon={CalendarDaysIcon} className="h-3.5 w-3.5" /> Fri, Jun 5
               </span>
               <span className="inline-flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" /> 11:00 AM
+                <HugeiconsIcon icon={Clock01Icon} className="h-3.5 w-3.5" /> 11:00 AM
               </span>
             </div>
             <span className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
-              <Mail className="h-3.5 w-3.5 shrink-0" />
+              <HugeiconsIcon icon={Mail01Icon} className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Email · sofia.almeida@example.com</span>
             </span>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -653,17 +657,17 @@ function HeroDashboardWindow() {
             <span className="h-3.5 w-3.5 rounded-full bg-emerald-400/80" />
           </div>
           <div className="flex items-center gap-1 text-slate-300">
-            <ChevronLeft className="h-5 w-5" />
-            <ChevronRight className="h-5 w-5" />
+            <HugeiconsIcon icon={ArrowLeft01Icon} className="h-5 w-5" />
+            <HugeiconsIcon icon={ArrowRight01Icon} className="h-5 w-5" />
           </div>
         </div>
         <span className="flex w-full max-w-md items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-400">
-          <Lock className="h-3.5 w-3.5" />
+          <HugeiconsIcon icon={LockIcon} className="h-3.5 w-3.5" />
           seatping.biz
         </span>
         <div className="flex flex-1 items-center justify-end gap-3 text-slate-300">
-          <Share className="h-5 w-5" />
-          <Plus className="h-5 w-5" />
+          <HugeiconsIcon icon={Share01Icon} className="h-5 w-5" />
+          <HugeiconsIcon icon={Add01Icon} className="h-5 w-5" />
         </div>
       </div>
 
@@ -681,14 +685,17 @@ function HeroDashboardWindow() {
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 text-sm text-slate-600">
-                <Calendar className="h-4 w-4" />
+                <HugeiconsIcon icon={Calendar01Icon} className="h-4 w-4" />
                 <span>Today</span>
               </div>
               <div className="relative">
                 <span className="flex w-44 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 pr-8 text-sm text-slate-700">
                   Downtown
                 </span>
-                <ChevronDown className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <HugeiconsIcon
+                  icon={ArrowDown01Icon}
+                  className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                />
               </div>
             </div>
           </div>
@@ -699,7 +706,7 @@ function HeroDashboardWindow() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2 text-xl text-gray-800">
-                  <ListOrdered className="h-5 w-5" />
+                  <HugeiconsIcon icon={LeftToRightListNumberIcon} className="h-5 w-5" />
                   Queue Management
                 </CardTitle>
                 <CardDescription className="text-sm text-gray-600">
@@ -708,7 +715,7 @@ function HeroDashboardWindow() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium text-slate-700">
-                  <RefreshCw className="h-4 w-4" />
+                  <HugeiconsIcon icon={Refresh01Icon} className="h-4 w-4" />
                   Refresh
                 </span>
                 <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
@@ -749,7 +756,7 @@ function HeroDashboardWindow() {
         <Card className="rounded-xl border-0 bg-white shadow-sm">
           <CardHeader className="border-b border-gray-100 p-6">
             <CardTitle className="flex items-center gap-2 text-xl text-gray-800">
-              <CalendarDays className="h-5 w-5" />
+              <HugeiconsIcon icon={CalendarDaysIcon} className="h-5 w-5" />
               Reservations Management
             </CardTitle>
             <CardDescription className="mt-0.5 text-sm text-gray-600">
@@ -790,17 +797,17 @@ function HeroDashboardWindow() {
               </div>
               <div className="mt-1.5 flex items-center gap-x-3 text-xs text-slate-600">
                 <span className="inline-flex items-center gap-1">
-                  <Users className="h-3.5 w-3.5" /> 4
+                  <HugeiconsIcon icon={UsersRoundIcon} className="h-3.5 w-3.5" /> 4
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <CalendarDays className="h-3.5 w-3.5" /> Today
+                  <HugeiconsIcon icon={CalendarDaysIcon} className="h-3.5 w-3.5" /> Today
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" /> 7:30 PM
+                  <HugeiconsIcon icon={Clock01Icon} className="h-3.5 w-3.5" /> 7:30 PM
                 </span>
               </div>
               <span className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
-                <Mail className="h-3.5 w-3.5 shrink-0" />
+                <HugeiconsIcon icon={Mail01Icon} className="h-3.5 w-3.5 shrink-0" />
                 <span>Email · olivia.bennett@example.com</span>
               </span>
               <div className="mt-3 flex gap-2">
@@ -896,9 +903,9 @@ function PhoneScreenContent() {
       <div className="flex items-center justify-between px-4 pt-2.5 pb-1 text-micro font-medium text-slate-500">
         <span className="tabular-nums">9:41</span>
         <span className="flex items-center gap-1">
-          <Signal className="h-3 w-3" />
-          <Wifi className="h-3 w-3" />
-          <BatteryFull className="h-3.5 w-3.5" />
+          <HugeiconsIcon icon={SignalFull02Icon} className="h-3 w-3" />
+          <HugeiconsIcon icon={Wifi01Icon} className="h-3 w-3" />
+          <HugeiconsIcon icon={BatteryFullIcon} className="h-3.5 w-3.5" />
         </span>
       </div>
 
@@ -906,7 +913,7 @@ function PhoneScreenContent() {
         <div className="min-w-0">
           <p className="text-sm font-semibold leading-tight text-slate-900">SeatPing</p>
           <p className="flex items-center gap-1 text-micro text-slate-500">
-            <MapPin className="h-2.5 w-2.5" /> Marina Bay
+            <HugeiconsIcon icon={Location01Icon} className="h-2.5 w-2.5" /> Marina Bay
           </p>
         </div>
         <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-preview-sm font-medium text-indigo-700">
@@ -918,7 +925,8 @@ function PhoneScreenContent() {
         <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1 text-caption font-semibold text-gray-800">
-              <ListOrdered className="h-3.5 w-3.5" /> Queue Management
+              <HugeiconsIcon icon={LeftToRightListNumberIcon} className="h-3.5 w-3.5" /> Queue
+              Management
             </span>
             <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-preview-sm font-medium text-indigo-700">
               2
@@ -962,7 +970,8 @@ function PhoneScreenContent() {
 
         <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
           <span className="flex items-center gap-1 text-caption font-semibold text-gray-800">
-            <CalendarDays className="h-3.5 w-3.5" /> Reservations Management
+            <HugeiconsIcon icon={CalendarDaysIcon} className="h-3.5 w-3.5" /> Reservations
+            Management
           </span>
           <div className="mt-2 flex gap-1.5">
             <span className="rounded-full bg-slate-900 px-2 py-0.5 text-preview-sm font-medium text-white">
@@ -979,13 +988,13 @@ function PhoneScreenContent() {
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-preview-sm text-slate-600">
               <span className="inline-flex items-center gap-0.5">
-                <Users className="h-2.5 w-2.5" /> 2
+                <HugeiconsIcon icon={UsersRoundIcon} className="h-2.5 w-2.5" /> 2
               </span>
               <span className="inline-flex items-center gap-0.5">
-                <CalendarDays className="h-2.5 w-2.5" /> Fri, Jun 5
+                <HugeiconsIcon icon={CalendarDaysIcon} className="h-2.5 w-2.5" /> Fri, Jun 5
               </span>
               <span className="inline-flex items-center gap-0.5">
-                <Clock className="h-2.5 w-2.5" /> 7:30 PM
+                <HugeiconsIcon icon={Clock01Icon} className="h-2.5 w-2.5" /> 7:30 PM
               </span>
             </div>
           </div>
@@ -1145,7 +1154,7 @@ export function SignupPreview({ className }: { className?: string }) {
             <div className="flex gap-2">
               <span className="flex h-11 items-center gap-1 rounded-md border border-input bg-background px-3 text-sm text-slate-700">
                 🇺🇸 +1
-                <ChevronDown className="h-4 w-4 text-slate-400" />
+                <HugeiconsIcon icon={ArrowDown01Icon} className="h-4 w-4 text-slate-400" />
               </span>
               <Input className="h-11 flex-1" value="(555) 123-4567" readOnly tabIndex={-1} />
             </div>
@@ -1262,7 +1271,7 @@ export function SettingsPreview({ className }: { className?: string }) {
       <Card className="bg-white rounded-xl shadow-sm border-0">
         <CardContent className="flex items-center gap-4 p-4 md:p-5">
           <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white">
-            <QrCode className="h-14 w-14 text-slate-900" />
+            <HugeiconsIcon icon={QrCodeIcon} className="h-14 w-14 text-slate-900" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-medium text-gray-800 text-sm">Queue QR · Downtown</p>
@@ -1271,10 +1280,10 @@ export function SettingsPreview({ className }: { className?: string }) {
             </p>
             <div className="mt-2.5 flex gap-2">
               <Pill variant="dark">
-                <Download className="mr-1.5 h-3.5 w-3.5" /> Download
+                <HugeiconsIcon icon={Download01Icon} className="mr-1.5 h-3.5 w-3.5" /> Download
               </Pill>
               <Pill variant="outline">
-                <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy link
+                <HugeiconsIcon icon={Copy01Icon} className="mr-1.5 h-3.5 w-3.5" /> Copy link
               </Pill>
             </div>
           </div>
@@ -1292,7 +1301,7 @@ export function QueueMiniCard({ className }: { className?: string }) {
     <div className={cn(miniCard, className)}>
       <div className="mb-3 flex items-center justify-between">
         <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
-          <ListOrdered className="h-4 w-4 text-slate-500" />
+          <HugeiconsIcon icon={LeftToRightListNumberIcon} className="h-4 w-4 text-slate-500" />
           Queue
         </span>
         <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 text-micro">
@@ -1327,7 +1336,7 @@ export function ReservationMiniCard({ className }: { className?: string }) {
   return (
     <div className={cn(miniCard, className)}>
       <div className="mb-3 flex items-center gap-1.5">
-        <CalendarDays className="h-4 w-4 text-slate-500" />
+        <HugeiconsIcon icon={CalendarDaysIcon} className="h-4 w-4 text-slate-500" />
         <span className="text-sm font-semibold text-gray-800">Reservations</span>
         <span className="ml-auto text-xs text-slate-400">Marina Bay</span>
       </div>
@@ -1338,17 +1347,17 @@ export function ReservationMiniCard({ className }: { className?: string }) {
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
           <span className="inline-flex items-center gap-1">
-            <Users className="h-3.5 w-3.5" /> 2
+            <HugeiconsIcon icon={UsersRoundIcon} className="h-3.5 w-3.5" /> 2
           </span>
           <span className="inline-flex items-center gap-1">
-            <CalendarDays className="h-3.5 w-3.5" /> Wed, Jun 10
+            <HugeiconsIcon icon={CalendarDaysIcon} className="h-3.5 w-3.5" /> Wed, Jun 10
           </span>
           <span className="inline-flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5" /> 7:30 PM
+            <HugeiconsIcon icon={Clock01Icon} className="h-3.5 w-3.5" /> 7:30 PM
           </span>
         </div>
         <span className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
-          <Mail className="h-3.5 w-3.5 shrink-0" />
+          <HugeiconsIcon icon={Mail01Icon} className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">Email · sofia.almeida@example.com</span>
         </span>
       </div>
@@ -1361,7 +1370,7 @@ export function PerformanceMiniCard({ className }: { className?: string }) {
     <div className={cn(miniCard, className)}>
       <div className="mb-1 flex items-center justify-between">
         <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
-          <TrendingUp className="h-4 w-4 text-slate-500" />
+          <HugeiconsIcon icon={TrendingDownIcon} className="h-4 w-4 text-slate-500" />
           Performance
         </span>
         <span className="rounded-md bg-slate-900 px-2 py-0.5 text-micro font-medium text-white">
@@ -1410,7 +1419,7 @@ export function LocationMiniCard({ className }: { className?: string }) {
   return (
     <div className={cn(miniCard, className)}>
       <div className="flex items-start gap-2">
-        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+        <HugeiconsIcon icon={Location01Icon} className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-semibold text-gray-800 text-sm">Marina Bay</p>
@@ -1423,13 +1432,13 @@ export function LocationMiniCard({ className }: { className?: string }) {
       </div>
       <div className="mt-3 flex gap-2">
         <Pill variant="outline" className="flex-1">
-          <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+          <HugeiconsIcon icon={Edit03Icon} className="mr-1 h-3.5 w-3.5" /> Edit
         </Pill>
         <Pill variant="outline" className="flex-1">
-          <Star className="mr-1 h-3.5 w-3.5" /> Reviews
+          <HugeiconsIcon icon={StarIcon} className="mr-1 h-3.5 w-3.5" /> Reviews
         </Pill>
         <Pill variant="outline" className="flex-1">
-          <QrCode className="mr-1 h-3.5 w-3.5" /> QR
+          <HugeiconsIcon icon={QrCodeIcon} className="mr-1 h-3.5 w-3.5" /> QR
         </Pill>
       </div>
     </div>
@@ -1455,7 +1464,7 @@ export function NotifyToastMiniCard({
       )}
     >
       <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", tint)}>
-        <MessageSquare className="h-4 w-4" />
+        <HugeiconsIcon icon={Message01Icon} className="h-4 w-4" />
       </span>
       <div className="min-w-0">
         <p className="text-caption font-medium text-slate-400">{label}</p>
@@ -1468,14 +1477,14 @@ export function NotifyToastMiniCard({
 export function StatChipMiniCard({
   label,
   value,
-  icon: Icon,
+  icon,
   tint,
   fg,
   className,
 }: {
   label: string;
   value: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: IconSvgElement;
   tint: string;
   fg: string;
   className?: string;
@@ -1491,7 +1500,7 @@ export function StatChipMiniCard({
       <div className="mt-1 flex items-center justify-between">
         <p className="text-2xl font-semibold text-slate-800">{value}</p>
         <span className={cn("flex h-8 w-8 items-center justify-center rounded-full", tint)}>
-          <Icon className={cn("h-4 w-4", fg)} />
+          <HugeiconsIcon icon={icon} className={cn("h-4 w-4", fg)} />
         </span>
       </div>
     </div>
@@ -1507,7 +1516,7 @@ export function QrMiniCard({ className }: { className?: string }) {
       )}
     >
       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white">
-        <QrCode className="h-8 w-8 text-slate-900" />
+        <HugeiconsIcon icon={QrCodeIcon} className="h-8 w-8 text-slate-900" />
       </span>
       <div className="min-w-0">
         <p className="text-sm font-semibold text-gray-800">Scan to join</p>
@@ -1554,7 +1563,7 @@ export function HeroCollage() {
           <StatChipMiniCard
             label="In queue"
             value="4"
-            icon={Users}
+            icon={UsersRoundIcon}
             tint="bg-indigo-100"
             fg="text-indigo-600"
           />
@@ -1566,7 +1575,7 @@ export function HeroCollage() {
           <StatChipMiniCard
             label="Reservations"
             value="12"
-            icon={Calendar}
+            icon={Calendar01Icon}
             tint="bg-blue-100"
             fg="text-blue-600"
           />
@@ -1592,7 +1601,7 @@ export function HeroCollage() {
           <StatChipMiniCard
             label="Served today"
             value="28"
-            icon={TrendingUp}
+            icon={TrendingDownIcon}
             tint="bg-emerald-100"
             fg="text-emerald-600"
           />
@@ -1601,7 +1610,7 @@ export function HeroCollage() {
           <StatChipMiniCard
             label="Avg wait"
             value="5m"
-            icon={Clock}
+            icon={Clock01Icon}
             tint="bg-teal-100"
             fg="text-teal-600"
           />

@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { Ban, ChevronDown, RotateCcw, RotateCw, Trash2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowDown01Icon,
+  BanIcon,
+  Delete02Icon,
+  RotateClockwiseIcon,
+  Rotate02Icon,
+} from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -105,7 +112,7 @@ const TableInspector = ({
       disabled={saving}
       onClick={() => onToggleBlocked(true)}
     >
-      <Ban className="mr-2 h-4 w-4" />
+      <HugeiconsIcon icon={BanIcon} className="mr-2 h-4 w-4" />
       {t("floor.block")}
     </Button>
   );
@@ -117,7 +124,7 @@ const TableInspector = ({
         disabled={saving}
         onClick={() => onToggleBlocked(false)}
       >
-        <Ban className="mr-2 h-4 w-4" />
+        <HugeiconsIcon icon={BanIcon} className="mr-2 h-4 w-4" />
         {t("floor.unblock")}
       </Button>
     );
@@ -200,7 +207,10 @@ const TableInspector = ({
                 </option>
               ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+            <HugeiconsIcon
+              icon={ArrowDown01Icon}
+              className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+            />
           </div>
         </div>
 
@@ -215,7 +225,7 @@ const TableInspector = ({
               aria-label={t("floor.rotateLeft")}
               onClick={() => update({ rotation: stepRotation(form.rotation, -ROTATION_STEP) })}
             >
-              <RotateCcw className="h-4 w-4" />
+              <HugeiconsIcon icon={RotateClockwiseIcon} className="h-4 w-4" />
             </Button>
             <span className="min-w-[2.5rem] shrink-0 text-center text-sm text-slate-700">
               {form.rotation}&deg;
@@ -228,7 +238,7 @@ const TableInspector = ({
               aria-label={t("floor.rotateRight")}
               onClick={() => update({ rotation: stepRotation(form.rotation, ROTATION_STEP) })}
             >
-              <RotateCw className="h-4 w-4" />
+              <HugeiconsIcon icon={Rotate02Icon} className="h-4 w-4" />
             </Button>
 
             <dl className="ml-1 flex min-w-0 flex-1 items-center justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2 text-caption text-slate-600 md:text-xs">
@@ -274,7 +284,7 @@ const TableInspector = ({
                 variant="outline"
                 className="h-9 w-full text-xs text-red-600 hover:text-red-700 md:h-10"
               >
-                <Trash2 className="mr-2 h-4 w-4" />
+                <HugeiconsIcon icon={Delete02Icon} className="mr-2 h-4 w-4" />
                 {t("floor.delete")}
               </Button>
             }

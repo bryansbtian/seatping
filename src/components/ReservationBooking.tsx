@@ -24,16 +24,16 @@ import { DateField } from "@/components/DateField";
 import { localDateStr } from "@/lib/localDate";
 
 export { DateField };
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Calendar as CalendarIcon,
-  CheckCircle2,
-  Clock3,
-  Copy,
-  Loader2,
-  MapPin,
-  Users,
-  Utensils,
-} from "lucide-react";
+  CheckmarkCircle02Icon,
+  Clock03Icon,
+  Copy01Icon,
+  Restaurant02Icon,
+  Loading02Icon,
+  Location01Icon,
+  UsersRoundIcon,
+} from "@hugeicons/core-free-icons";
 
 type ReservationSettings = {
   reservationStartTime: string;
@@ -289,7 +289,7 @@ export default function ReservationBooking({
   } else {
     heroContent = (
       <div className="flex h-full w-full items-center justify-center text-slate-400">
-        <Utensils className="h-5 w-5" />
+        <HugeiconsIcon icon={Restaurant02Icon} className="h-5 w-5" />
       </div>
     );
   }
@@ -312,7 +312,8 @@ export default function ReservationBooking({
     } else if (loadingSlots) {
       timeContent = (
         <div className="flex items-center gap-2 p-3 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin" /> Checking availability…
+          <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" /> Checking
+          availability…
         </div>
       );
     } else if (slots.length === 0) {
@@ -445,7 +446,7 @@ export default function ReservationBooking({
     } else {
       primaryAction = (
         <Button className="w-full" disabled={!canBook} onClick={() => setModalOpen(true)}>
-          <Utensils className="h-4 w-4" />
+          <HugeiconsIcon icon={Restaurant02Icon} className="h-4 w-4" />
           <span>Book Table</span>
         </Button>
       );
@@ -453,7 +454,7 @@ export default function ReservationBooking({
   } else {
     primaryAction = (
       <Button variant="outline" className="w-full border-slate-200 text-slate-400" disabled>
-        <Utensils className="h-4 w-4" />
+        <HugeiconsIcon icon={Restaurant02Icon} className="h-4 w-4" />
         <span>Reservations Unavailable</span>
       </Button>
     );
@@ -470,7 +471,7 @@ export default function ReservationBooking({
             <p className="truncate font-semibold text-slate-900">{name}</p>
             {locationText && (
               <p className="flex items-center gap-1 text-xs text-slate-500">
-                <MapPin className="h-3 w-3" />
+                <HugeiconsIcon icon={Location01Icon} className="h-3 w-3" />
                 <span className="truncate">{locationText}</span>
               </p>
             )}
@@ -493,7 +494,7 @@ export default function ReservationBooking({
           {queueEnabled !== false && (
             <Button variant="outline" asChild className="w-full">
               <Link to={queueHref}>
-                <Users className="h-4 w-4" />
+                <HugeiconsIcon icon={UsersRoundIcon} className="h-4 w-4" />
                 <span>Join Queue</span>
               </Link>
             </Button>
@@ -680,7 +681,7 @@ function BookingModal({
   } else if (loadingSlots) {
     modalTimeContent = (
       <div className="flex items-center gap-2 py-1 max-[320px]:text-xs text-sm text-slate-500">
-        <Loader2 className="h-4 w-4 animate-spin" /> Checking…
+        <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" /> Checking…
       </div>
     );
   } else if (slots.length === 0) {
@@ -722,7 +723,7 @@ function BookingModal({
     dialogBody = (
       <div className="space-y-4">
         <div className="flex flex-col items-center text-center">
-          <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+          <HugeiconsIcon icon={CheckmarkCircle02Icon} className="h-12 w-12 text-emerald-500" />
           <DialogTitle className="mt-3 text-lg">Reservation Confirmed</DialogTitle>
           <DialogDescription className="mt-1">
             {`You're booked at ${restaurantName}.`}
@@ -760,7 +761,7 @@ function BookingModal({
                 toast({ title: "Link copied" });
               }}
             >
-              <Copy className="h-4 w-4" />
+              <HugeiconsIcon icon={Copy01Icon} className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -903,7 +904,9 @@ function BookingModal({
               )}
 
               <Button className="w-full" disabled={!canSubmit || submitting} onClick={submit}>
-                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {submitting && (
+                  <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" />
+                )}
                 <span>Confirm Reservation</span>
               </Button>
             </>
@@ -938,7 +941,7 @@ function AvailabilityEmptyState({ notice }: { notice: AvailabilityNotice | null 
   return (
     <div className="flex gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600">
-        <Clock3 className="h-4 w-4" />
+        <HugeiconsIcon icon={Clock03Icon} className="h-4 w-4" />
       </div>
       <div className="min-w-0">
         <p className="text-sm font-medium text-slate-900">{message}</p>
@@ -977,7 +980,11 @@ export function PartyField({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <FieldTrigger icon={Users} aria-label={`Number of guests: ${value}`} className={className}>
+        <FieldTrigger
+          icon={UsersRoundIcon}
+          aria-label={`Number of guests: ${value}`}
+          className={className}
+        >
           {partyLabel}
         </FieldTrigger>
       </PopoverTrigger>

@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
-import { Star } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { StarIcon } from "@hugeicons/core-free-icons";
 
 export type EditableReview = {
   id: string;
@@ -54,7 +55,7 @@ function StarRatingInput({ value, onChange }: { value: number; onChange: (n: num
             onMouseEnter={() => setHover(n)}
             className="rounded p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20"
           >
-            <Star className={starClass} />
+            <HugeiconsIcon icon={StarIcon} className={starClass} />
           </button>
         );
       })}

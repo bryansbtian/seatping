@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LayoutGrid, RefreshCw } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { LayoutGridIcon, Refresh01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -398,7 +399,7 @@ const LiveFloor = ({ locationId, onDataChange }: LiveFloorProps) => {
       <Card className="flex flex-1 flex-col border border-slate-200 bg-white shadow-sm">
         <CardContent className="flex flex-1 flex-col p-0">
           <BusinessEmptyState
-            icon={LayoutGrid}
+            icon={LayoutGridIcon}
             title={t("floor.live.empty.title")}
             body={t("floor.live.empty.body")}
           />
@@ -683,7 +684,7 @@ const LiveFloor = ({ locationId, onDataChange }: LiveFloorProps) => {
                 load().catch(reportFailure);
               }}
             >
-              <RefreshCw className="h-4 w-4" />
+              <HugeiconsIcon icon={Refresh01Icon} className="h-4 w-4" />
             </Button>
           </div>
         </CardContent>

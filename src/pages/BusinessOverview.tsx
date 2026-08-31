@@ -12,15 +12,14 @@ import { useBusinessSession, locationLabel } from "@/lib/businessSession";
 import { analytics } from "@/lib/analytics";
 import BarSeries from "@/components/charts/BarSeries";
 import BusinessEmptyState from "@/components/BusinessEmptyState";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Users,
-  Clock,
-  TrendingUp,
-  RefreshCw,
-  Calendar,
-  ListOrdered,
-  BarChart3,
-} from "lucide-react";
+  ChartAnalysisIcon,
+  Calendar01Icon,
+  Clock01Icon,
+  TrendingDownIcon,
+  UsersRoundIcon,
+} from "@hugeicons/core-free-icons";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import {
@@ -771,7 +770,7 @@ const BusinessOverview = () => {
   } else {
     summaryChartContent = (
       <BusinessEmptyState
-        icon={BarChart3}
+        icon={ChartAnalysisIcon}
         title={t("dash.empty.performance.title")}
         body={t("dash.empty.performance.body")}
         className="h-full px-4 py-8"
@@ -796,7 +795,7 @@ const BusinessOverview = () => {
   } else {
     waitDistributionContent = (
       <BusinessEmptyState
-        icon={BarChart3}
+        icon={ChartAnalysisIcon}
         title={t("dash.empty.waitTime.title")}
         body={t("dash.empty.waitTime.body")}
         className="h-[180px] px-4 py-8"
@@ -821,7 +820,7 @@ const BusinessOverview = () => {
   } else {
     peakHoursContent = (
       <BusinessEmptyState
-        icon={Clock}
+        icon={Clock01Icon}
         title={t("dash.empty.peakHours.title")}
         body={t("dash.empty.peakHours.body")}
         className="h-[180px] px-4 py-8"
@@ -909,7 +908,7 @@ const BusinessOverview = () => {
 
               <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
                 <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <Calendar className="w-4 h-4" />
+                  <HugeiconsIcon icon={Calendar01Icon} className="w-4 h-4" />
                   <span>{getCurrentDate()}</span>
                 </div>{" "}
               </div>
@@ -1027,7 +1026,7 @@ const BusinessOverview = () => {
             if (recentlyLeftCustomers.length === 0) {
               recentlyLeftContent = (
                 <BusinessEmptyState
-                  icon={Users}
+                  icon={UsersRoundIcon}
                   title={t("dash.empty.departures.title")}
                   body={t("dash.empty.departures.body")}
                   className="min-h-40 px-4 py-8"
@@ -1099,7 +1098,7 @@ const BusinessOverview = () => {
               <Card className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
                   <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
-                    <Users className="w-5 h-5" />
+                    <HugeiconsIcon icon={UsersRoundIcon} className="w-5 h-5" />
                     <span>{t("dash.left.title")}</span>
                   </CardTitle>
                   <CardDescription className="text-gray-600 text-sm">
@@ -1117,7 +1116,7 @@ const BusinessOverview = () => {
                 <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
                   <div>
                     <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
-                      <TrendingUp className="w-5 h-5" />
+                      <HugeiconsIcon icon={TrendingDownIcon} className="w-5 h-5" />
                       <span>{t("dash.perf.title")}</span>
                     </CardTitle>
                     <CardDescription className="text-gray-600 text-sm">
@@ -1151,7 +1150,7 @@ const BusinessOverview = () => {
               <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
                   <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
-                    <Clock className="w-5 h-5" />
+                    <HugeiconsIcon icon={Clock01Icon} className="w-5 h-5" />
                     <span>{t("dash.peak.title")}</span>
                   </CardTitle>
                   <CardDescription className="text-gray-600 text-sm">
@@ -1164,7 +1163,7 @@ const BusinessOverview = () => {
               <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
                   <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
-                    <BarChart3 className="w-5 h-5" />
+                    <HugeiconsIcon icon={ChartAnalysisIcon} className="w-5 h-5" />
                     <span>{t("dash.waitDist.title")}</span>
                   </CardTitle>
                   <CardDescription className="text-gray-600 text-sm">
