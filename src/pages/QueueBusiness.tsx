@@ -17,7 +17,13 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Check, ChevronsUpDown, Clock3, Users } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Clock03Icon,
+  Tick02Icon,
+  UnfoldMoreIcon,
+  UsersRoundIcon,
+} from "@hugeicons/core-free-icons";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -826,7 +832,7 @@ export default function QueueBusiness() {
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
                     <div className="flex items-start gap-4">
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm">
-                        <Clock3 className="h-6 w-6" />
+                        <HugeiconsIcon icon={Clock03Icon} className="h-6 w-6" />
                       </div>
                       <div className="min-w-0">
                         <p className="font-semibold text-lg text-slate-900">{restaurantName}</p>
@@ -977,7 +983,10 @@ export default function QueueBusiness() {
                                 <span className="truncate">
                                   {selectedSmsCountry.flag} {selectedSmsCountry.dial}
                                 </span>
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                <HugeiconsIcon
+                                  icon={UnfoldMoreIcon}
+                                  className="ml-2 h-4 w-4 shrink-0 opacity-50"
+                                />
                               </button>
                             </PopoverTrigger>
                             <PopoverContent className="w-64 p-0" align="start">
@@ -1011,7 +1020,8 @@ export default function QueueBusiness() {
                                             setSmsCountryOpen(false);
                                           }}
                                         >
-                                          <Check
+                                          <HugeiconsIcon
+                                            icon={Tick02Icon}
                                             className={cn("mr-2 h-4 w-4", checkOpacityClass)}
                                           />
                                           <span className="mr-2">{c.flag}</span>
@@ -1130,7 +1140,10 @@ export default function QueueBusiness() {
                               <span className="truncate">
                                 {selectedWhatsappCountry.flag} {selectedWhatsappCountry.dial}
                               </span>
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              <HugeiconsIcon
+                                icon={UnfoldMoreIcon}
+                                className="ml-2 h-4 w-4 shrink-0 opacity-50"
+                              />
                             </button>
                           </PopoverTrigger>
                           <PopoverContent className="w-64 p-0" align="start">
@@ -1164,7 +1177,10 @@ export default function QueueBusiness() {
                                           setWhatsappCountryOpen(false);
                                         }}
                                       >
-                                        <Check className={cn("mr-2 h-4 w-4", checkOpacityClass)} />
+                                        <HugeiconsIcon
+                                          icon={Tick02Icon}
+                                          className={cn("mr-2 h-4 w-4", checkOpacityClass)}
+                                        />
                                         <span className="mr-2">{c.flag}</span>
                                         <span className="flex-1">{c.name}</span>
                                         <span className="text-muted-foreground">{c.dial}</span>
@@ -1213,7 +1229,7 @@ export default function QueueBusiness() {
                     className="w-full"
                     disabled={joiningQueue || loadingAddresses}
                   >
-                    <Users className="h-4 w-4" />
+                    <HugeiconsIcon icon={UsersRoundIcon} className="h-4 w-4" />
                     {joinButtonLabel}
                   </Button>
                 </form>

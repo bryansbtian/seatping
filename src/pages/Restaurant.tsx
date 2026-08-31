@@ -20,20 +20,21 @@ import { EditReviewDialog, type EditableReview } from "@/components/EditReviewDi
 import { formatTimeLabel } from "@/components/timeOptions";
 import ReservationBooking from "@/components/ReservationBooking";
 import { formatEnteredPhone } from "@shared/phone";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
-  Clock,
-  Globe,
-  Heart,
-  ImageIcon,
-  Instagram,
-  Loader2,
-  MapPin,
-  Phone,
-  Utensils,
-  Star,
-  Pencil,
-  CircleDollarSign,
-} from "lucide-react";
+  Call02Icon,
+  Clock01Icon,
+  DollarCircleIcon,
+  FavouriteIcon,
+  GlobeIcon,
+  Image01Icon,
+  InstagramIcon,
+  Restaurant02Icon,
+  Loading02Icon,
+  Location01Icon,
+  Edit03Icon,
+  StarIcon,
+} from "@hugeicons/core-free-icons";
 
 type Photo = { id: string; url: string; altText?: string | null };
 type MenuItem = {
@@ -258,7 +259,7 @@ function Stars({ rating }: { rating: number }) {
         } else {
           starClass = "h-3.5 w-3.5 fill-slate-200 text-slate-200";
         }
-        return <Star key={i} className={starClass} />;
+        return <HugeiconsIcon icon={StarIcon} key={i} className={starClass} />;
       })}
     </span>
   );
@@ -576,7 +577,8 @@ export default function RestaurantPage() {
     return (
       <PageShell>
         <div className="container mx-auto flex items-center justify-center gap-2 px-4 py-24 text-slate-500">
-          <Loader2 className="h-5 w-5 animate-spin" /> Loading restaurant...
+          <HugeiconsIcon icon={Loading02Icon} className="h-5 w-5 animate-spin" /> Loading
+          restaurant...
         </div>
       </PageShell>
     );
@@ -621,7 +623,7 @@ export default function RestaurantPage() {
   } else {
     heroContent = (
       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
-        <Utensils className="h-10 w-10" />
+        <HugeiconsIcon icon={Restaurant02Icon} className="h-10 w-10" />
       </div>
     );
   }
@@ -636,7 +638,7 @@ export default function RestaurantPage() {
     }
     ratingSummary = (
       <span className="inline-flex items-center gap-1 font-medium text-slate-700">
-        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+        <HugeiconsIcon icon={StarIcon} className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
         {r.rating.toFixed(1)}
         <span className="font-normal text-slate-500">
           ({r.reviewCount} {reviewWordLabel})
@@ -726,7 +728,7 @@ export default function RestaurantPage() {
             className="absolute bottom-4 right-4 shadow-sm"
             onClick={() => setPhotosOpen(true)}
           >
-            <ImageIcon className="h-4 w-4" />
+            <HugeiconsIcon icon={Image01Icon} className="h-4 w-4" />
             <span>View Photos</span>
           </Button>
         )}
@@ -756,7 +758,7 @@ export default function RestaurantPage() {
               {locationText && (
                 <span className="inline-flex basis-full items-center gap-1 sm:basis-auto">
                   <span className="hidden text-slate-300 sm:inline">·</span>
-                  <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                  <HugeiconsIcon icon={Location01Icon} className="h-3.5 w-3.5 text-slate-400" />
                   {locationText}
                 </span>
               )}
@@ -830,20 +832,20 @@ export default function RestaurantPage() {
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {r.cuisineTypes.length > 0 && (
                     <OverviewRow
-                      icon={Utensils}
+                      icon={Restaurant02Icon}
                       label="Cuisine"
                       value={r.cuisineTypes.join(", ")}
                     />
                   )}
                   {r.priceRange && (
-                    <OverviewRow icon={CircleDollarSign} label="Price range" value={r.priceRange} />
+                    <OverviewRow icon={DollarCircleIcon} label="Price range" value={r.priceRange} />
                   )}
                   {locationText && (
-                    <OverviewRow icon={MapPin} label="Location" value={locationText} />
+                    <OverviewRow icon={Location01Icon} label="Location" value={locationText} />
                   )}
                   {todayHours && (
                     <OverviewRow
-                      icon={Clock}
+                      icon={Clock01Icon}
                       label="Today's hours"
                       value={formatHoursForDay(todayHours)}
                     />
@@ -942,10 +944,12 @@ export default function RestaurantPage() {
               <section id="details" className="scroll-mt-32 space-y-6">
                 <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Details</h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {r.address && <DetailRow icon={MapPin} label="Location" value={addressValue} />}
+                  {r.address && (
+                    <DetailRow icon={Location01Icon} label="Location" value={addressValue} />
+                  )}
                   {r.phone && (
                     <DetailRow
-                      icon={Phone}
+                      icon={Call02Icon}
                       label="Phone number"
                       value={
                         <a
@@ -958,14 +962,18 @@ export default function RestaurantPage() {
                     />
                   )}
                   {r.cuisineTypes.length > 0 && (
-                    <DetailRow icon={Utensils} label="Cuisines" value={r.cuisineTypes.join(", ")} />
+                    <DetailRow
+                      icon={Restaurant02Icon}
+                      label="Cuisines"
+                      value={r.cuisineTypes.join(", ")}
+                    />
                   )}
                   {r.priceRange && (
-                    <DetailRow icon={CircleDollarSign} label="Price" value={r.priceRange} />
+                    <DetailRow icon={DollarCircleIcon} label="Price" value={r.priceRange} />
                   )}
                   {r.website && (
                     <DetailRow
-                      icon={Globe}
+                      icon={GlobeIcon}
                       label="Website"
                       value={
                         <a
@@ -980,7 +988,7 @@ export default function RestaurantPage() {
                     />
                   )}
                   {r.instagram && (
-                    <DetailRow icon={Instagram} label="Instagram" value={r.instagram} />
+                    <DetailRow icon={InstagramIcon} label="Instagram" value={r.instagram} />
                   )}
                 </div>
 
@@ -1088,24 +1096,27 @@ function SaveButton({
         className,
       )}
     >
-      <Heart className={cn("h-4 w-4", saved && "fill-rose-500 text-rose-500")} />
+      <HugeiconsIcon
+        icon={FavouriteIcon}
+        className={cn("h-4 w-4", saved && "fill-rose-500 text-rose-500")}
+      />
       <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }
 
 function OverviewRow({
-  icon: Icon,
+  icon,
   label,
   value,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: IconSvgElement;
   label: string;
   value: React.ReactNode;
 }) {
   return (
     <div className="flex items-start gap-3 rounded-lg border border-slate-200 p-3">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+      <HugeiconsIcon icon={icon} className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
       <div className="min-w-0">
         <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
         <p className="mt-0.5 text-sm font-medium text-slate-800 break-words">{value}</p>
@@ -1115,17 +1126,17 @@ function OverviewRow({
 }
 
 function DetailRow({
-  icon: Icon,
+  icon,
   label,
   value,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: IconSvgElement;
   label: string;
   value: React.ReactNode;
 }) {
   return (
     <div className="flex items-start gap-3">
-      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-slate-400" />
+      <HugeiconsIcon icon={icon} className="mt-0.5 h-5 w-5 shrink-0 text-slate-400" />
       <div className="min-w-0">
         <p className="text-sm font-semibold text-slate-900">{label}</p>
         <div className="mt-0.5 text-sm text-slate-600 break-words">{value}</div>
@@ -1386,7 +1397,7 @@ function ReviewsSummary({ rating, count }: { rating: number; count: number }) {
     <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center gap-1.5">
         <span className="text-2xl font-semibold text-slate-900">{rating.toFixed(1)}</span>
-        <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+        <HugeiconsIcon icon={StarIcon} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
       </div>
       <span className="text-sm text-slate-500">
         {count} Review{reviewPlural}
@@ -1511,7 +1522,7 @@ function WriteReviewBlock({
               onMouseEnter={() => setHoverRating(n)}
               className="rounded p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20"
             >
-              <Star className={starClass} />
+              <HugeiconsIcon icon={StarIcon} className={starClass} />
             </button>
           );
         })}
@@ -1601,7 +1612,7 @@ function ReviewCard({
               onClick={onEdit}
               className="ml-auto h-7 gap-1 px-2 text-xs text-slate-600 hover:text-slate-900"
             >
-              <Pencil className="h-3.5 w-3.5" />
+              <HugeiconsIcon icon={Edit03Icon} className="h-3.5 w-3.5" />
               Edit
             </Button>
           )}

@@ -1,6 +1,12 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Loader2, Utensils } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Restaurant02Icon,
+  Loading02Icon,
+  Location01Icon,
+  Search01Icon,
+} from "@hugeicons/core-free-icons";
 
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -110,7 +116,7 @@ export function SearchSuggestInput({
     if (loading && suggestions.length === 0) {
       dropdownContent = (
         <div className="flex items-center gap-2 px-4 py-3 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" />
           Searching…
         </div>
       );
@@ -140,7 +146,9 @@ export function SearchSuggestInput({
                 <img src={s.imageUrl} alt={s.name} className="h-full w-full object-cover" />
               );
             } else {
-              thumbnail = <Utensils className="h-4 w-4 text-slate-400" />;
+              thumbnail = (
+                <HugeiconsIcon icon={Restaurant02Icon} className="h-4 w-4 text-slate-400" />
+              );
             }
             return (
               <li key={s.locationId}>
@@ -165,7 +173,10 @@ export function SearchSuggestInput({
                     </span>
                     {suggestionSubtitle(s) && (
                       <span className="flex items-center gap-1 truncate text-xs text-slate-500">
-                        <MapPin className="h-3 w-3 shrink-0 text-slate-400" />
+                        <HugeiconsIcon
+                          icon={Location01Icon}
+                          className="h-3 w-3 shrink-0 text-slate-400"
+                        />
                         <span className="truncate">{suggestionSubtitle(s)}</span>
                       </span>
                     )}
@@ -181,7 +192,10 @@ export function SearchSuggestInput({
 
   return (
     <div ref={searchBoxRef} className={cn("relative w-full min-w-0", className)}>
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none max-[360px]:left-2" />
+      <HugeiconsIcon
+        icon={Search01Icon}
+        className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none max-[360px]:left-2"
+      />
       <Input
         value={value}
         onChange={(e) => {

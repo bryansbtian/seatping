@@ -1,7 +1,8 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { format, isToday, isTomorrow } from "date-fns";
-import { Calendar as CalendarIcon, Users, Search } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Calendar01Icon, Search01Icon, UsersRoundIcon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -112,7 +113,7 @@ const ReservationSearchBar = () => {
             <Popover open={dateOpen} onOpenChange={setDateOpen}>
               <PopoverTrigger asChild>
                 <FieldTrigger
-                  icon={CalendarIcon}
+                  icon={Calendar01Icon}
                   aria-label={`Date: ${dateLabel}`}
                   className={cn(FLAT_FIELD, "md:w-auto md:min-w-[120px]")}
                 >
@@ -151,7 +152,7 @@ const ReservationSearchBar = () => {
           <Popover open={peopleOpen} onOpenChange={setPeopleOpen}>
             <PopoverTrigger asChild>
               <FieldTrigger
-                icon={Users}
+                icon={UsersRoundIcon}
                 aria-label={`Number of guests: ${peopleLabel(people)}`}
                 className={cn(FLAT_FIELD, "md:w-auto md:min-w-[120px]")}
               >
@@ -191,7 +192,7 @@ const ReservationSearchBar = () => {
             size="lg"
             className="h-12 w-full rounded-xl px-8 md:col-span-full xl:col-auto"
           >
-            <Search className="h-4 w-4" />
+            <HugeiconsIcon icon={Search01Icon} className="h-4 w-4" />
             <span className="font-medium">Search</span>
           </Button>
         </div>

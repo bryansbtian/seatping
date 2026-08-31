@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Delete02Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -98,7 +99,7 @@ const ZoneInspector = ({ zone, saving, onSave, onDelete }: ZoneInspectorProps) =
               variant="outline"
               className="h-9 w-full text-xs text-red-600 hover:text-red-700 md:h-10"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <HugeiconsIcon icon={Delete02Icon} className="mr-2 h-4 w-4" />
               {t("floor.deleteZone")}
             </Button>
           }

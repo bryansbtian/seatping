@@ -1,9 +1,9 @@
-import type { LucideIcon } from "lucide-react";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 type BusinessEmptyStateProps = {
-  icon: LucideIcon;
+  icon: IconSvgElement;
   title: string;
   body: string;
   className?: string;
@@ -12,7 +12,7 @@ type BusinessEmptyStateProps = {
 };
 
 const BusinessEmptyState = ({
-  icon: Icon,
+  icon,
   title,
   body,
   className,
@@ -28,7 +28,7 @@ const BusinessEmptyState = ({
       data-testid={testId}
     >
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
-        <Icon className="h-6 w-6 text-slate-400" aria-hidden="true" />
+        <HugeiconsIcon icon={icon} className="h-6 w-6 text-slate-400" aria-hidden="true" />
       </div>
       <h3 className="text-base font-semibold text-slate-800">{title}</h3>
       <p className="mt-1 max-w-sm text-sm text-slate-500">{body}</p>

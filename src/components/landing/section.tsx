@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { cn } from "@/lib/utils";
 
 export const SECTION_PADDING = "px-4 py-14 sm:py-16 md:py-20";
@@ -20,11 +20,11 @@ export const CARD_DESCRIPTION = "text-sm leading-relaxed text-slate-500";
 export const CARD_CONTAINER = "rounded-2xl border border-slate-200/80 bg-white shadow-sm";
 
 export function SectionPill({
-  icon: Icon,
+  icon,
   children,
   className,
 }: {
-  icon: LucideIcon;
+  icon: IconSvgElement;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -36,7 +36,7 @@ export function SectionPill({
       )}
     >
       <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-white">
-        <Icon className="h-2.5 w-2.5" />
+        <HugeiconsIcon icon={icon} className="h-2.5 w-2.5" />
       </span>
       {children}
     </span>

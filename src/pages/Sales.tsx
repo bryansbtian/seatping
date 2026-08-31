@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
-import { Users, CalendarDays, Bell } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CalendarDaysIcon, Notification01Icon, UsersRoundIcon } from "@hugeicons/core-free-icons";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 
 const FloatingStat = ({
@@ -293,19 +294,19 @@ const Sales = () => {
 
               <div className="relative z-10 mb-8 space-y-3">
                 <FloatingStat
-                  icon={<Users className="h-5 w-5" />}
+                  icon={<HugeiconsIcon icon={UsersRoundIcon} className="h-5 w-5" />}
                   title="Queue"
                   detail="3 Guests Waiting"
                   className="ml-0"
                 />
                 <FloatingStat
-                  icon={<CalendarDays className="h-5 w-5" />}
+                  icon={<HugeiconsIcon icon={CalendarDaysIcon} className="h-5 w-5" />}
                   title="Reservations"
                   detail="12 Booked Today"
                   className="ml-10"
                 />
                 <FloatingStat
-                  icon={<Bell className="h-5 w-5" />}
+                  icon={<HugeiconsIcon icon={Notification01Icon} className="h-5 w-5" />}
                   title="Guest Notifications"
                   detail="SMS · WhatsApp · Email"
                   className="ml-4"

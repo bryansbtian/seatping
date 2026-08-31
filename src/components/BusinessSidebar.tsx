@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Check, ChevronsLeft, ChevronsRight, ChevronsUpDown, LogOut, MapPin } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowLeftDoubleIcon,
+  ArrowRightDoubleIcon,
+  Location01Icon,
+  LogoutSquare01Icon,
+  Tick02Icon,
+  UnfoldMoreIcon,
+} from "@hugeicons/core-free-icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useBusinessSession, locationLabel } from "@/lib/businessSession";
 import { useLang } from "@/lib/i18n";
@@ -44,10 +52,10 @@ const BusinessSidebar = ({
   }
 
   let toggleLabel = t("nav.collapse");
-  let ToggleIcon = ChevronsLeft;
+  let ToggleIcon = ArrowLeftDoubleIcon;
   if (collapsed) {
     toggleLabel = t("nav.expand");
-    ToggleIcon = ChevronsRight;
+    ToggleIcon = ArrowRightDoubleIcon;
   }
 
   let headerClass = "flex items-center justify-between px-4 pb-6 pt-4";
@@ -82,7 +90,7 @@ const BusinessSidebar = ({
             onClick={onToggleCollapse}
             className="hidden rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 lg:inline-flex"
           >
-            <ToggleIcon className="h-5 w-5" />
+            <HugeiconsIcon icon={ToggleIcon} className="h-5 w-5" />
           </button>
         )}
       </div>
@@ -128,7 +136,7 @@ const BusinessSidebar = ({
                         !active && "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                       )}
                     >
-                      <Icon className="h-4 w-4 shrink-0" />
+                      <HugeiconsIcon icon={Icon} className="h-4 w-4 shrink-0" />
                       <span className={cn(collapsed && "sr-only")}>{label}</span>
                     </Link>
                   </li>
@@ -149,7 +157,7 @@ const BusinessSidebar = ({
               disabled={locations.length === 0}
               className={locationTriggerClass}
             >
-              <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
+              <HugeiconsIcon icon={Location01Icon} className="h-4 w-4 shrink-0 text-slate-400" />
               <span
                 className={cn(
                   "min-w-0 flex-1 truncate text-sm font-medium",
@@ -158,7 +166,9 @@ const BusinessSidebar = ({
               >
                 {currentLocationName}
               </span>
-              {!collapsed && <ChevronsUpDown className="h-4 w-4 shrink-0 text-slate-400" />}
+              {!collapsed && (
+                <HugeiconsIcon icon={UnfoldMoreIcon} className="h-4 w-4 shrink-0 text-slate-400" />
+              )}
             </button>
           </PopoverTrigger>
           <PopoverContent align="start" side="top" className="w-64 p-1">
@@ -182,7 +192,12 @@ const BusinessSidebar = ({
                           </span>
                         )}
                       </span>
-                      {selected && <Check className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />}
+                      {selected && (
+                        <HugeiconsIcon
+                          icon={Tick02Icon}
+                          className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600"
+                        />
+                      )}
                     </button>
                   </li>
                 );
@@ -207,7 +222,7 @@ const BusinessSidebar = ({
             collapsed && "mt-2 justify-center px-2",
           )}
         >
-          <LogOut className="h-4 w-4 shrink-0" />
+          <HugeiconsIcon icon={LogoutSquare01Icon} className="h-4 w-4 shrink-0" />
           <span className={cn(collapsed && "sr-only")}>{t("nav.logout")}</span>
         </button>
       </div>

@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, Contact, ListOrdered, Send, type LucideIcon } from "lucide-react";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
+import {
+  CalendarDaysIcon,
+  ContactIcon,
+  LeftToRightListNumberIcon,
+  SentIcon,
+} from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import {
   SECTION_PADDING,
@@ -27,7 +33,7 @@ export interface BentoCardProps {
 }
 
 export function BentoFeatureCard({
-  icon: Icon,
+  icon,
   title,
   description,
   size = "medium",
@@ -38,7 +44,7 @@ export function BentoFeatureCard({
   previewClassName,
   children,
 }: BentoCardProps & {
-  icon: LucideIcon;
+  icon: IconSvgElement;
   title: string;
   description: string;
   size?: BentoSize;
@@ -74,7 +80,7 @@ export function BentoFeatureCard({
     >
       <div className="flex items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
-          <Icon className="h-4 w-4" />
+          <HugeiconsIcon icon={icon} className="h-4 w-4" />
         </span>
         <h3 className={CARD_TITLE}>{title}</h3>
       </div>
@@ -96,7 +102,7 @@ export function BentoFeatureCard({
 export function ReservationFeatureCard(props: BentoCardProps) {
   return (
     <BentoFeatureCard
-      icon={CalendarDays}
+      icon={CalendarDaysIcon}
       title="Reservation Management"
       description="Take bookings in advance, set capacity per hour, and keep tonight's tables organised without the paper book."
       size="large"
@@ -110,7 +116,7 @@ export function ReservationFeatureCard(props: BentoCardProps) {
 export function GuestCrmFeatureCard(props: BentoCardProps) {
   return (
     <BentoFeatureCard
-      icon={Contact}
+      icon={ContactIcon}
       title="Guest CRM"
       description="Profiles build themselves from every visit, with history, tags, and notes, so you always know your regulars."
       descriptionClassName="md:min-h-[4.3rem] lg:min-h-0"
@@ -124,7 +130,7 @@ export function GuestCrmFeatureCard(props: BentoCardProps) {
 export function LiveQueueFeatureCard(props: BentoCardProps) {
   return (
     <BentoFeatureCard
-      icon={ListOrdered}
+      icon={LeftToRightListNumberIcon}
       title="Live Queue"
       description="Track walk-ins in real time and notify guests automatically the moment their table is ready."
       descriptionClassName="md:min-h-[4.3rem] lg:min-h-0"
@@ -138,7 +144,7 @@ export function LiveQueueFeatureCard(props: BentoCardProps) {
 export function CampaignsFeatureCard(props: BentoCardProps) {
   return (
     <BentoFeatureCard
-      icon={Send}
+      icon={SentIcon}
       title="Guest Campaigns"
       description="Send SeatPing-branded SMS, WhatsApp, and Email campaigns to smart audiences or your saved guest groups."
       size="large"

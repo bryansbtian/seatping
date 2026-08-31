@@ -9,7 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { BarChart3 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ChartAnalysisIcon } from "@hugeicons/core-free-icons";
 import BusinessEmptyState from "@/components/BusinessEmptyState";
 import { DateField } from "@/components/DateField";
 import { localDateStr } from "@/lib/localDate";
@@ -248,7 +249,7 @@ const BusinessPerformance = () => {
       <Card className="flex flex-1 flex-col border border-slate-200 bg-white shadow-sm">
         <CardContent className="flex flex-1 flex-col p-0">
           <BusinessEmptyState
-            icon={BarChart3}
+            icon={ChartAnalysisIcon}
             title={t("perf.empty.title")}
             body={t("perf.empty.body")}
             testId="perf-empty"
@@ -357,7 +358,11 @@ const BusinessPerformance = () => {
                     data-testid="perf-rates-empty"
                   >
                     <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-                      <BarChart3 className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                      <HugeiconsIcon
+                        icon={ChartAnalysisIcon}
+                        className="h-4 w-4 text-slate-400"
+                        aria-hidden="true"
+                      />
                     </div>
                     <h3 className="text-sm font-semibold text-slate-800">
                       {t("perf.rates.empty.title")}
@@ -468,7 +473,7 @@ const BusinessPerformance = () => {
 
             {utilizationRows.length === 0 && (
               <BusinessEmptyState
-                icon={BarChart3}
+                icon={ChartAnalysisIcon}
                 title={t("perf.tables.empty.title")}
                 body={t("perf.tables.empty.body")}
                 className="min-h-40 px-4 py-8"

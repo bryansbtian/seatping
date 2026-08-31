@@ -1,21 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { format, isToday, isTomorrow } from "date-fns";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Calendar as CalendarIcon,
-  Check,
-  ChevronDown,
-  ImageIcon,
-  Loader2,
-  MapPin,
-  Search as SearchIcon,
-  SlidersHorizontal,
-  Sparkles,
-  Star,
-  Users,
-  Utensils,
-  X,
-} from "lucide-react";
+  ArrowDown01Icon,
+  Calendar01Icon,
+  Cancel01Icon,
+  Image01Icon,
+  Restaurant02Icon,
+  Loading02Icon,
+  Location01Icon,
+  Search01Icon,
+  SlidersHorizontalIcon,
+  SparklesIcon,
+  StarIcon,
+  Tick02Icon,
+  UsersRoundIcon,
+} from "@hugeicons/core-free-icons";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
@@ -475,7 +476,7 @@ export default function SearchResults() {
                 <Popover open={dateOpen} onOpenChange={setDateOpen}>
                   <PopoverTrigger asChild>
                     <FieldTrigger
-                      icon={CalendarIcon}
+                      icon={Calendar01Icon}
                       aria-label={`Date: ${dateLabel}`}
                       className={cn(FLAT_FIELD, "bg-white md:w-auto md:min-w-[120px]")}
                     >
@@ -514,7 +515,7 @@ export default function SearchResults() {
               <Popover open={peopleOpen} onOpenChange={setPeopleOpen}>
                 <PopoverTrigger asChild>
                   <FieldTrigger
-                    icon={Users}
+                    icon={UsersRoundIcon}
                     aria-label={`Number of guests: ${peopleLabel(people)}`}
                     className={cn(FLAT_FIELD, "bg-white md:w-auto md:min-w-[120px]")}
                   >
@@ -556,7 +557,7 @@ export default function SearchResults() {
                 disabled={!inputQuery.trim()}
                 className="h-12 w-full rounded-xl md:col-span-full xl:col-auto"
               >
-                <SearchIcon className="h-4 w-4" />
+                <HugeiconsIcon icon={Search01Icon} className="h-4 w-4" />
                 <span className="font-medium">Search</span>
               </Button>
             </div>
@@ -643,7 +644,7 @@ export default function SearchResults() {
             onClick={() => setMobileFiltersOpen(true)}
             className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm text-slate-700 hover:border-slate-300 hover:bg-slate-50 md:hidden"
           >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <HugeiconsIcon icon={SlidersHorizontalIcon} className="h-3.5 w-3.5" />
             Filters
             {activeFilterCount > 0 && (
               <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-900 px-1 text-xs font-medium text-white">
@@ -658,7 +659,7 @@ export default function SearchResults() {
               onClick={clearFilters}
               className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900"
             >
-              <X className="h-3.5 w-3.5" /> Clear Filters
+              <HugeiconsIcon icon={Cancel01Icon} className="h-3.5 w-3.5" /> Clear Filters
             </button>
           )}
         </div>
@@ -768,7 +769,7 @@ function RestaurantCard({
   } else {
     bannerContent = (
       <div className="absolute inset-0 flex items-center justify-center text-slate-300">
-        <ImageIcon className="h-10 w-10" />
+        <HugeiconsIcon icon={Image01Icon} className="h-10 w-10" />
       </div>
     );
   }
@@ -803,7 +804,7 @@ function RestaurantCard({
         className="flex-1 min-w-0 justify-center whitespace-nowrap px-3"
       >
         <Link to={bookPath}>
-          <Utensils className="h-4 w-4" />
+          <HugeiconsIcon icon={Restaurant02Icon} className="h-4 w-4" />
           <span>Book Table</span>
         </Link>
       </Button>
@@ -845,7 +846,7 @@ function RestaurantCard({
           {bannerContent}
           {r.featured && (
             <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-slate-900/90 text-white text-xs font-medium px-2.5 py-1">
-              <Sparkles className="h-3 w-3" />
+              <HugeiconsIcon icon={SparklesIcon} className="h-3 w-3" />
               Featured
             </span>
           )}
@@ -860,7 +861,7 @@ function RestaurantCard({
 
           {subAddress && (
             <p className="inline-flex items-center gap-1.5 text-sm text-slate-600">
-              <MapPin className="h-3.5 w-3.5 text-slate-400" />
+              <HugeiconsIcon icon={Location01Icon} className="h-3.5 w-3.5 text-slate-400" />
               <span className="truncate">{subAddress}</span>
             </p>
           )}
@@ -878,7 +879,7 @@ function RestaurantCard({
                 className="flex-1 min-w-0 justify-center whitespace-nowrap px-3"
               >
                 <Link to={queuePath}>
-                  <Users className="h-4 w-4" />
+                  <HugeiconsIcon icon={UsersRoundIcon} className="h-4 w-4" />
                   <span>Join Queue</span>
                 </Link>
               </Button>
@@ -904,7 +905,9 @@ function Stars({ rating }: { rating: number }) {
         } else {
           starClassName = "fill-slate-200 text-slate-200";
         }
-        return <Star key={i} className={cn("h-3.5 w-3.5", starClassName)} />;
+        return (
+          <HugeiconsIcon icon={StarIcon} key={i} className={cn("h-3.5 w-3.5", starClassName)} />
+        );
       })}
     </span>
   );
@@ -931,7 +934,7 @@ function ResultsSkeleton() {
         </div>
       ))}
       <p className="flex items-center justify-center gap-2 text-sm text-slate-500">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading results…
+        <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" /> Loading results…
       </p>
     </div>
   );
@@ -984,7 +987,7 @@ function SelectFilter({
           )}
         >
           {triggerLabel}
-          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+          <HugeiconsIcon icon={ArrowDown01Icon} className="h-3.5 w-3.5 opacity-60" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-48 p-1">
@@ -998,7 +1001,7 @@ function SelectFilter({
             className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
           >
             Any {label}
-            {current == null && <Check className="h-4 w-4" />}
+            {current == null && <HugeiconsIcon icon={Tick02Icon} className="h-4 w-4" />}
           </button>
         )}
         {options.map((o) => (
@@ -1012,7 +1015,7 @@ function SelectFilter({
             className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
           >
             {o.label}
-            {current === o.value && <Check className="h-4 w-4" />}
+            {current === o.value && <HugeiconsIcon icon={Tick02Icon} className="h-4 w-4" />}
           </button>
         ))}
       </PopoverContent>
@@ -1236,7 +1239,7 @@ function FilterGroup({ label, children }: { label: string; children: React.React
 function NoFilterMatch({ onClear }: { onClear: () => void }) {
   return (
     <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
-      <SlidersHorizontal className="mx-auto mb-3 h-8 w-8 text-slate-300" />
+      <HugeiconsIcon icon={SlidersHorizontalIcon} className="mx-auto mb-3 h-8 w-8 text-slate-300" />
       <p className="text-base font-medium text-slate-800">No restaurants match your filters.</p>
       <Button variant="outline" className="mt-4 rounded-full" onClick={onClear}>
         Clear Filters
@@ -1254,7 +1257,7 @@ function EmptyState({ query }: { query: string }) {
   }
   return (
     <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
-      <SearchIcon className="mx-auto mb-3 h-8 w-8 text-slate-300" />
+      <HugeiconsIcon icon={Search01Icon} className="mx-auto mb-3 h-8 w-8 text-slate-300" />
       <p className="text-base font-medium text-slate-800">No Restaurants Found</p>
       <p className="mt-1 text-sm text-slate-500">{hintText}</p>
     </div>

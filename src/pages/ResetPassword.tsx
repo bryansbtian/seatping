@@ -8,7 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { api } from "@/lib/api";
-import { Lock, CheckCircle, ArrowLeft } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowLeft02Icon, CheckmarkCircle02Icon, LockIcon } from "@hugeicons/core-free-icons";
 import { Link } from "react-router-dom";
 
 const ResetPassword = () => {
@@ -106,7 +107,7 @@ const ResetPassword = () => {
             <Card className="w-full max-w-[540px] shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
               <CardHeader className="px-6 pb-6 pt-8 text-center sm:px-10 sm:pt-10">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
+                  <HugeiconsIcon icon={CheckmarkCircle02Icon} className="h-8 w-8 text-green-600" />
                 </div>
                 <CardTitle className="text-3xl text-primary">Password Reset Complete!</CardTitle>
                 <CardDescription className="text-sm sm:text-base">
@@ -151,7 +152,7 @@ const ResetPassword = () => {
           <Card className="w-full max-w-[540px] shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
             <CardHeader className="px-6 pb-6 pt-8 text-center sm:px-10 sm:pt-10">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100">
-                <Lock className="h-8 w-8 text-indigo-600" />
+                <HugeiconsIcon icon={LockIcon} className="h-8 w-8 text-indigo-600" />
               </div>
               <CardTitle className="text-3xl text-primary">Reset Your Password</CardTitle>
               <CardDescription className="text-sm sm:text-base">
@@ -200,7 +201,7 @@ const ResetPassword = () => {
               <div className="mt-5 text-center">
                 <Button asChild variant="link" className="text-muted-foreground">
                   <Link to={loginPath}>
-                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    <HugeiconsIcon icon={ArrowLeft02Icon} className="w-4 h-4 mr-2" />
                     Back to Log In
                   </Link>
                 </Button>

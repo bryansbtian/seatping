@@ -2,7 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PILL_BASE_CLASS } from "@/lib/statusStyles";
 import { useLang } from "@/lib/i18n";
-import { X } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
 
 const TAG_STYLES: Record<string, string> = {
   vip: "border-amber-200 bg-amber-100 text-amber-800",
@@ -65,7 +66,7 @@ export function GuestTagBadge({
           aria-label={`Remove ${tag}`}
           className="ml-0.5 -mr-1 inline-flex items-center justify-center rounded-full hover:bg-black/10 p-0.5 transition-colors"
         >
-          <X className="w-3 h-3" />
+          <HugeiconsIcon icon={Cancel01Icon} className="w-3 h-3" />
         </button>
       )}
     </Badge>
