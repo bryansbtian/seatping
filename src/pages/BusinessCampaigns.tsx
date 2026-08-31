@@ -710,41 +710,41 @@ function CampaignsTab({
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
-                <th className="px-6 py-3 font-medium">{t("camp.col.name")}</th>
-                <th className="px-6 py-3 font-medium text-center">{t("camp.col.channel")}</th>
-                <th className="px-6 py-3 font-medium">{t("camp.col.audience")}</th>
-                <th className="px-6 py-3 font-medium">
+              <tr className="h-row text-left text-label font-medium text-ink-subtle border-b border-slate-200">
+                <th className="px-6 font-medium">{t("camp.col.name")}</th>
+                <th className="px-6 font-medium text-center">{t("camp.col.channel")}</th>
+                <th className="px-6 font-medium">{t("camp.col.audience")}</th>
+                <th className="px-6 font-medium">
                   <div className="flex justify-center">{t("camp.col.status")}</div>
                 </th>
-                <th className="px-6 py-3 font-medium text-center">{t("camp.col.recipients")}</th>
-                <th className="px-6 py-3 font-medium">Activity</th>
-                <th className="px-6 py-3 font-medium text-center">{t("camp.col.actions")}</th>
+                <th className="px-6 font-medium text-center">{t("camp.col.recipients")}</th>
+                <th className="px-6 font-medium">Activity</th>
+                <th className="px-6 font-medium text-center">{t("camp.col.actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {campaigns.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-3">
+                <tr key={c.id} className="h-row-lg hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-2">
                     <div className="font-medium text-slate-800">{c.name}</div>
-                    <div className="text-xs text-slate-400">{c.templateName}</div>
+                    <div className="text-caption text-ink-subtle">{c.templateName}</div>
                   </td>
-                  <td className="px-6 py-3 text-center">
+                  <td className="px-6 py-2 text-center">
                     <ChannelBadge channel={c.channel} />
                   </td>
-                  <td className="px-6 py-3 text-slate-600">{c.audienceLabel}</td>
-                  <td className="px-6 py-3">
+                  <td className="px-6 py-2 text-ink">{c.audienceLabel}</td>
+                  <td className="px-6 py-2">
                     <div className="flex justify-center">
                       <CampaignStatusBadge status={c.status} />
                     </div>
                   </td>
-                  <td className="px-6 py-3 text-center tabular-nums text-slate-700">
+                  <td className="px-6 py-2 text-center tabular-nums text-ink">
                     {c.recipientCount}
                   </td>
-                  <td className="px-6 py-3 text-slate-600 whitespace-nowrap text-xs">
+                  <td className="px-6 py-2 text-ink-subtle whitespace-nowrap text-label">
                     {timingSummary(c)}
                   </td>
-                  <td className="px-6 py-3 text-center">
+                  <td className="px-6 py-2 text-center">
                     <CampaignActions c={c} onOpen={onOpen} onAction={onAction} />
                   </td>
                 </tr>
@@ -800,9 +800,7 @@ function CampaignsTab({
     <Card className="flex flex-1 flex-col bg-white border border-slate-200 rounded-xl shadow-sm">
       <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
         <div className="space-y-1.5">
-          <CardTitle className="text-lg md:text-xl text-slate-800">
-            {t("camp.tab.campaigns")}
-          </CardTitle>
+          <CardTitle className="text-slate-800">{t("camp.tab.campaigns")}</CardTitle>
           <CardDescription className="text-sm">{countLabel}</CardDescription>
         </div>
         <div className="flex items-center gap-2">
@@ -957,7 +955,7 @@ function TemplatesTab({
     <div className="space-y-6">
       <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
         <CardHeader className="border-b border-slate-200 p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-slate-800">SeatPing Templates</CardTitle>
+          <CardTitle className="text-slate-800">SeatPing Templates</CardTitle>
           <CardDescription className="text-sm">
             Ready to use immediately for SMS, WhatsApp, and Email.
           </CardDescription>
@@ -968,7 +966,7 @@ function TemplatesTab({
       <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
         <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between gap-3 space-y-0">
           <div className="space-y-1.5">
-            <CardTitle className="text-lg md:text-xl text-slate-800">Custom Templates</CardTitle>
+            <CardTitle className="text-slate-800">Custom Templates</CardTitle>
             <CardDescription className="text-sm">
               Request one template, and SeatPing will prepare it for SMS, WhatsApp, and Email.
             </CardDescription>
@@ -1157,7 +1155,7 @@ function AudiencesTab({
     <div className="flex flex-col gap-6">
       <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
         <CardHeader className="border-b border-slate-200 p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-slate-800">Smart Audiences</CardTitle>
+          <CardTitle className="text-slate-800">Smart Audiences</CardTitle>
           <CardDescription className="text-sm">
             Built-in audiences that automatically segment your guests.
           </CardDescription>
@@ -1169,7 +1167,7 @@ function AudiencesTab({
         <CardHeader className="border-b border-slate-200 p-4 md:p-6">
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-1.5">
-              <CardTitle className="text-lg md:text-xl text-slate-800">Custom Groups</CardTitle>
+              <CardTitle className="text-slate-800">Custom Groups</CardTitle>
               <CardDescription className="text-sm">
                 Build and save your own guest group using filters and tags.
               </CardDescription>
@@ -1267,9 +1265,7 @@ function HistoryTab({
     <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
       <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
         <div className="space-y-1.5">
-          <CardTitle className="text-lg md:text-xl text-slate-800">
-            {t("camp.tab.history")}
-          </CardTitle>
+          <CardTitle className="text-slate-800">{t("camp.tab.history")}</CardTitle>
           <CardDescription className="text-sm">
             Delivery results for campaigns you have sent.
           </CardDescription>
@@ -2438,7 +2434,7 @@ function ManualGuestPicker({
           {selected.map((g) => (
             <span
               key={g.id}
-              className="inline-flex items-center gap-1 rounded-full bg-indigo-100 text-indigo-700 text-xs px-2.5 py-1"
+              className="inline-flex h-badge items-center gap-1 rounded-badge bg-indigo-100 text-indigo-700 text-caption font-medium px-2"
             >
               {g.name}
               <button onClick={() => toggle(g)} className="hover:text-indigo-900">

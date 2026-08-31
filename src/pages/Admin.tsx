@@ -944,9 +944,7 @@ const Admin = () => {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Total
-                    </CardTitle>
+                    <CardTitle className="text-label font-medium text-ink-subtle">Total</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-semibold">{stats.total}</div>
@@ -954,9 +952,7 @@ const Admin = () => {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Open
-                    </CardTitle>
+                    <CardTitle className="text-label font-medium text-ink-subtle">Open</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-semibold text-red-600">{stats.open}</div>
@@ -964,7 +960,7 @@ const Admin = () => {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                    <CardTitle className="text-label font-medium text-ink-subtle">
                       In Progress
                     </CardTitle>
                   </CardHeader>
@@ -974,9 +970,7 @@ const Admin = () => {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Closed
-                    </CardTitle>
+                    <CardTitle className="text-label font-medium text-ink-subtle">Closed</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-semibold text-green-600">{stats.closed}</div>
@@ -984,9 +978,7 @@ const Admin = () => {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Sales
-                    </CardTitle>
+                    <CardTitle className="text-label font-medium text-ink-subtle">Sales</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-semibold">{stats.sales}</div>
@@ -994,7 +986,7 @@ const Admin = () => {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                    <CardTitle className="text-label font-medium text-ink-subtle">
                       Feedback
                     </CardTitle>
                   </CardHeader>
@@ -1007,7 +999,7 @@ const Admin = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Filters</CardTitle>
+                <CardTitle>Filters</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-4">
                 <div className="w-40">
@@ -1149,7 +1141,7 @@ const Admin = () => {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Account Information</CardTitle>
+                    <CardTitle>Account Information</CardTitle>
                     <CardDescription>Business contact and identity details</CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1176,7 +1168,7 @@ const Admin = () => {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Trial & Access</CardTitle>
+                    <CardTitle>Trial & Access</CardTitle>
                     <CardDescription>
                       Turn Trial off to activate paid access. Credits start then and refill monthly
                     </CardDescription>
@@ -1212,7 +1204,7 @@ const Admin = () => {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Locations</CardTitle>
+                    <CardTitle>Locations</CardTitle>
                     <CardDescription>{locationsDescription}</CardDescription>
                   </CardHeader>
                   <CardContent>{locationsContent}</CardContent>

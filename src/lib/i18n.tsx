@@ -8,7 +8,6 @@ const en = {
   "nav.group.operations": "Operations",
   "nav.group.customers": "Customers",
   "nav.group.insights": "Insights",
-  "nav.group.other": "Other",
   "nav.overview": "Overview",
   "nav.queue": "Queue",
   "nav.reservations": "Reservations",
@@ -24,6 +23,7 @@ const en = {
   "nav.collapse": "Collapse Sidebar",
   "nav.expand": "Expand Sidebar",
   "nav.openMenu": "Open menu",
+  "nav.closeMenu": "Close menu",
   "nav.menu": "Business Navigation",
 
   "queue.page.subtitle": "Manage the live waitlist for the selected location.",
@@ -1027,7 +1027,6 @@ const id: Partial<Record<TKey, string>> = {
   "nav.group.operations": "Operasional",
   "nav.group.customers": "Pelanggan",
   "nav.group.insights": "Wawasan",
-  "nav.group.other": "Lainnya",
   "nav.overview": "Ringkasan",
   "nav.queue": "Antrean",
   "nav.reservations": "Reservasi",
@@ -1043,6 +1042,7 @@ const id: Partial<Record<TKey, string>> = {
   "nav.collapse": "Ciutkan Bilah Sisi",
   "nav.expand": "Bentangkan Bilah Sisi",
   "nav.openMenu": "Buka menu",
+  "nav.closeMenu": "Tutup menu",
   "nav.menu": "Navigasi Bisnis",
 
   "floor.title": "Denah",

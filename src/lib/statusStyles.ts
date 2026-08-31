@@ -1,5 +1,5 @@
 export const PILL_BASE_CLASS =
-  "shrink-0 inline-flex items-center rounded-full border px-2.5 py-0.5 text-micro font-medium leading-normal";
+  "shrink-0 inline-flex h-badge items-center rounded-badge border-transparent px-2 text-caption font-medium leading-none";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
@@ -19,20 +19,20 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: "border-amber-200 bg-amber-100 text-amber-800",
-  waiting: "border-amber-200 bg-amber-100 text-amber-800",
-  confirmed: "border-emerald-200 bg-emerald-100 text-emerald-700",
-  admitted: "border-emerald-200 bg-emerald-100 text-emerald-700",
-  arrived: "border-blue-200 bg-blue-100 text-blue-700",
-  completed: "border-slate-200 bg-slate-200 text-slate-700",
-  served: "border-slate-200 bg-slate-200 text-slate-700",
-  past: "border-slate-200 bg-slate-200 text-slate-700",
-  left: "border-slate-200 bg-slate-200 text-slate-700",
-  cancelled: "border-red-200 bg-red-100 text-red-700",
-  no_show: "border-red-200 bg-red-100 text-red-700",
-  removed: "border-red-200 bg-red-100 text-red-700",
-  reservation: "border-indigo-200 bg-indigo-50 text-indigo-700",
-  queue: "border-cyan-200 bg-cyan-50 text-cyan-700",
+  pending: "bg-amber-100 text-amber-800",
+  waiting: "bg-amber-100 text-amber-800",
+  confirmed: "bg-emerald-100 text-emerald-700",
+  admitted: "bg-emerald-100 text-emerald-700",
+  arrived: "bg-blue-100 text-blue-700",
+  completed: "bg-slate-100 text-slate-700",
+  served: "bg-slate-100 text-slate-700",
+  past: "bg-slate-100 text-slate-700",
+  left: "bg-slate-100 text-slate-700",
+  cancelled: "bg-red-100 text-red-700",
+  no_show: "bg-red-100 text-red-700",
+  removed: "bg-red-100 text-red-700",
+  reservation: "bg-indigo-100 text-indigo-700",
+  queue: "bg-cyan-100 text-cyan-700",
 };
 
 function normalizeStatus(status: string): string {
@@ -70,5 +70,5 @@ export function statusLabel(status: string): string {
 
 export function statusBadgeClass(status: string): string {
   const normalized = normalizeStatus(status);
-  return STATUS_STYLES[normalized] || "border-slate-200 bg-slate-100 text-slate-700";
+  return STATUS_STYLES[normalized] || "bg-slate-100 text-slate-700";
 }

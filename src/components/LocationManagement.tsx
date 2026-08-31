@@ -316,12 +316,12 @@ export default function LocationManagement({
                         location.address ||
                         t("loc.unnamed")}
                     </p>
-                    <span className="inline-flex w-fit shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-caption font-medium text-indigo-700">
+                    <span className="inline-flex h-badge w-fit shrink-0 items-center rounded-badge bg-indigo-100 px-2 text-caption font-medium text-indigo-700">
                       {t("loc.credits", { n: location?.credits || 0 })}
                     </span>
                   </div>
                   {!location.displayName && (
-                    <p className="text-xs text-amber-600">{t("loc.addDisplayNameHint")}</p>
+                    <p className="text-label text-amber-600">{t("loc.addDisplayNameHint")}</p>
                   )}
 
                   {location.address && (
@@ -460,7 +460,7 @@ export default function LocationManagement({
     <>
       <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
         <CardHeader className="p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-gray-800">{t("loc.title")}</CardTitle>
+          <CardTitle className="text-slate-800">{t("loc.title")}</CardTitle>
           <CardDescription className="text-gray-600 text-sm md:text-base">
             {t("loc.desc", {
               count: locations.length,

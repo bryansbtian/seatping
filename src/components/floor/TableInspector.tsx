@@ -133,9 +133,7 @@ const TableInspector = ({
   return (
     <div className="flex min-h-full shrink-0 flex-col gap-3 md:gap-4" data-testid="table-inspector">
       <div className="flex items-center justify-between">
-        <CardTitle className="text-lg text-slate-800 md:text-xl">
-          {t("floor.inspector.title")}
-        </CardTitle>
+        <CardTitle className="text-slate-800">{t("floor.inspector.title")}</CardTitle>
         {table.isBlocked && (
           <span className="rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
             {t("floor.blockedBadge")}

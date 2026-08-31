@@ -44,7 +44,7 @@ const ZoneInspector = ({ zone, saving, onSave, onDelete }: ZoneInspectorProps) =
 
   return (
     <div className="flex min-h-full shrink-0 flex-col gap-3 md:gap-4" data-testid="zone-inspector">
-      <CardTitle className="text-lg text-slate-800 md:text-xl">{t("floor.zoneSettings")}</CardTitle>
+      <CardTitle className="text-slate-800">{t("floor.zoneSettings")}</CardTitle>
 
       <div className="space-y-1.5 md:space-y-2">
         <Label htmlFor="zone-name" className="text-caption">

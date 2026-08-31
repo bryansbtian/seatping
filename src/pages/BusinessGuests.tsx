@@ -503,7 +503,7 @@ const BusinessGuests = () => {
 
               <div className={`${filtersVisibilityClass} md:block space-y-3`}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-medium text-slate-500 mr-1">
+                  <span className="text-label font-medium text-ink-subtle mr-1">
                     {t("guests.status")}
                   </span>
                   {(["all", "new", "returning"] as TypeFilter[]).map((tf) => {
@@ -526,7 +526,7 @@ const BusinessGuests = () => {
                         key={tf}
                         type="button"
                         onClick={() => setTypeFilter(tf)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${typeChipClass}`}
+                        className={`control-sm inline-flex items-center rounded-control border px-3 text-label font-medium transition-colors ${typeChipClass}`}
                       >
                         {typeChipLabel}
                       </button>
@@ -597,7 +597,7 @@ const BusinessGuests = () => {
           <Card className="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
             <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
               <div>
-                <CardTitle className="text-lg md:text-xl text-slate-800">{guestsHeading}</CardTitle>
+                <CardTitle className="text-slate-800">{guestsHeading}</CardTitle>
                 <CardDescription className="text-sm">{guestsCountText}</CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -657,7 +657,7 @@ function FilterToggle({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${toggleStateClass}`}
+      className={`control-sm inline-flex items-center gap-1.5 rounded-control border px-3 text-label font-medium transition-colors ${toggleStateClass}`}
     >
       {icon}
       {label}
@@ -680,15 +680,15 @@ function GuestsTable({
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
-              <th className="px-6 py-3 font-medium">{t("guests.col.guest")}</th>
-              <th className="px-6 py-3 font-medium">{t("guests.col.contact")}</th>
-              <th className="px-6 py-3 font-medium">{t("guests.col.tags")}</th>
-              <th className="px-6 py-3 font-medium text-center">{t("guests.col.totalVisits")}</th>
-              <th className="px-6 py-3 font-medium">{t("guests.col.lastVisit")}</th>
-              <th className="px-6 py-3 font-medium text-center">{t("guests.col.upcoming")}</th>
-              <th className="px-6 py-3 font-medium text-center">{t("guests.col.notes")}</th>
-              <th className="px-6 py-3 font-medium text-center">{t("guests.col.actions")}</th>
+            <tr className="h-row text-left text-label font-medium text-ink-subtle border-b border-slate-200">
+              <th className="px-6 font-medium">{t("guests.col.guest")}</th>
+              <th className="px-6 font-medium">{t("guests.col.contact")}</th>
+              <th className="px-6 font-medium">{t("guests.col.tags")}</th>
+              <th className="px-6 font-medium text-center">{t("guests.col.totalVisits")}</th>
+              <th className="px-6 font-medium">{t("guests.col.lastVisit")}</th>
+              <th className="px-6 font-medium text-center">{t("guests.col.upcoming")}</th>
+              <th className="px-6 font-medium text-center">{t("guests.col.notes")}</th>
+              <th className="px-6 font-medium text-center">{t("guests.col.actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -739,10 +739,10 @@ function GuestsTable({
               return (
                 <tr
                   key={g.id}
-                  className="hover:bg-slate-50 transition-colors cursor-pointer"
+                  className="h-row-lg hover:bg-slate-50 transition-colors cursor-pointer"
                   onClick={() => onSelect(g.id)}
                 >
-                  <td className="px-6 py-3">
+                  <td className="px-6 py-2">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-semibold shrink-0">
                         {initials(name)}
@@ -758,7 +758,7 @@ function GuestsTable({
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-3 text-slate-600">
+                  <td className="px-6 py-2 text-ink">
                     <div className="space-y-0.5">
                       {phoneDisplay && (
                         <div className="flex items-center gap-1.5 truncate">
@@ -778,16 +778,16 @@ function GuestsTable({
                       {!phoneDisplay && !g.email && <span className="text-slate-400">--</span>}
                     </div>
                   </td>
-                  <td className="px-6 py-3">{tagsCell}</td>
-                  <td className="px-6 py-3 text-center font-medium text-slate-700 tabular-nums">
+                  <td className="px-6 py-2">{tagsCell}</td>
+                  <td className="px-6 py-2 text-center font-medium text-ink tabular-nums">
                     {g.totalVisits}
                   </td>
-                  <td className="px-6 py-3 text-slate-600 whitespace-nowrap">
+                  <td className="px-6 py-2 text-ink whitespace-nowrap">
                     {fmtDate(g.lastVisitAt, timeZone)}
                   </td>
-                  <td className="px-6 py-3 text-center tabular-nums">{upcomingCell}</td>
-                  <td className="px-6 py-3 text-center">{notesCell}</td>
-                  <td className="px-6 py-3 text-center">
+                  <td className="px-6 py-2 text-center tabular-nums">{upcomingCell}</td>
+                  <td className="px-6 py-2 text-center">{notesCell}</td>
+                  <td className="px-6 py-2 text-center">
                     <Button
                       variant="outline"
                       size="sm"
@@ -1182,7 +1182,7 @@ function GuestDetailDrawer({
                     type="button"
                     disabled={tagBusy}
                     onClick={() => addTag(tag)}
-                    className="text-xs px-2.5 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 transition-colors disabled:opacity-50"
+                    className="inline-flex h-badge items-center rounded-badge border border-dashed border-slate-300 px-2 text-caption font-medium text-ink-subtle transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-50"
                   >
                     + {tag}
                   </button>

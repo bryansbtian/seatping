@@ -87,9 +87,7 @@ const BusinessSettings = () => {
           <div className="space-y-4 md:space-y-6">
             <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
               <CardHeader className="p-4 md:p-6">
-                <CardTitle className="text-lg md:text-xl text-gray-800">
-                  {t("settings.businessInfo.title")}
-                </CardTitle>
+                <CardTitle className="text-slate-800">{t("settings.businessInfo.title")}</CardTitle>
                 <CardDescription className="text-gray-600 text-sm md:text-base">
                   {t("settings.businessInfo.desc")}
                 </CardDescription>
@@ -146,9 +144,7 @@ const BusinessSettings = () => {
 
             <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
               <CardHeader className="p-4 md:p-6">
-                <CardTitle className="text-lg md:text-xl text-gray-800">
-                  {t("settings.prefs.title")}
-                </CardTitle>
+                <CardTitle className="text-slate-800">{t("settings.prefs.title")}</CardTitle>
                 <CardDescription className="text-gray-600 text-sm md:text-base">
                   {t("settings.prefs.desc")}
                 </CardDescription>

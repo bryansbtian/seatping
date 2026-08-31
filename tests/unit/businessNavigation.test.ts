@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BUSINESS_NAV_GROUPS,
+  BUSINESS_SETTINGS_ITEM,
   SIDEBAR_COLLAPSED_KEY,
   isActiveNavPath,
   persistSidebarCollapsed,
@@ -9,13 +10,12 @@ import {
 import { LOCATION_STORAGE_KEY, locationLabel } from "../../src/lib/businessSession.js";
 
 describe("business navigation config", () => {
-  it("groups every business destination under Operations, Customers, Insights, and Other", () => {
+  it("groups every business destination under Operations, Customers, and Insights", () => {
     const groupKeys = BUSINESS_NAV_GROUPS.map((group) => group.labelKey);
     expect(groupKeys).toEqual([
       "nav.group.operations",
       "nav.group.customers",
       "nav.group.insights",
-      "nav.group.other",
     ]);
 
     const paths = BUSINESS_NAV_GROUPS.flatMap((group) => group.items.map((item) => item.to));
@@ -28,8 +28,16 @@ describe("business navigation config", () => {
       "/business/reviews",
       "/business/campaigns",
       "/business/performance",
-      "/business/settings",
     ]);
+  });
+
+  it("keeps Settings out of the grouped navigation so it can sit beside the account", () => {
+    const paths = BUSINESS_NAV_GROUPS.flatMap((group) => group.items.map((item) => item.to));
+
+    expect(paths).not.toContain(BUSINESS_SETTINGS_ITEM.to);
+    expect(BUSINESS_SETTINGS_ITEM.to).toBe("/business/settings");
+    expect(BUSINESS_SETTINGS_ITEM.labelKey).toBe("nav.settings");
+    expect(BUSINESS_SETTINGS_ITEM.icon).toBeTruthy();
   });
 
   it("gives every navigation item a label key and an icon", () => {

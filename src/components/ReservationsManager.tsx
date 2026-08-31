@@ -216,12 +216,12 @@ export default function ReservationsManager({
       <CardHeader className="border-b border-gray-100 p-4 md:p-6">
         <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
+            <CardTitle className="flex items-center gap-2 text-slate-800">
               <HugeiconsIcon icon={CalendarDaysIcon} className="w-5 h-5" />
               {t("res.title")}
             </CardTitle>
             {reservationsDescription && (
-              <CardDescription className="mt-0.5 text-sm text-gray-600">
+              <CardDescription className="mt-0.5 text-body text-ink-subtle">
                 {reservationsDescription}
               </CardDescription>
             )}
@@ -270,7 +270,7 @@ export default function ReservationsManager({
 
       <CardContent className="flex flex-1 flex-col p-4 md:p-6">
         {!reservationsEnabled && (
-          <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+          <p className="rounded-control border border-dashed border-slate-200 bg-slate-50 p-4 text-body text-ink-subtle">
             {t("res.enableHint")}
           </p>
         )}
@@ -353,7 +353,7 @@ function ContactLine({ r }: { r: Reservation }) {
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+    <span className="inline-flex items-center gap-1.5 text-label text-ink-subtle">
       <HugeiconsIcon icon={icon} className="h-3.5 w-3.5" />
       <span className="capitalize">{contactMethodLabel}</span>
       <span className="text-slate-400">·</span>
@@ -406,15 +406,15 @@ function ReservationCard({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 p-4">
+    <div className="min-h-row-lg rounded-control border border-slate-200 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold text-gray-800 text-sm md:text-base">{r.name}</p>
+            <p className="font-medium text-slate-800 text-body">{r.name}</p>
             <StatusBadge status={r.status} label={tStatus(r.status)} />
             {r.isReturning && <GuestStatusBadge returning />}
           </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-label text-ink-subtle">
             <span className="inline-flex items-center gap-1">
               <HugeiconsIcon icon={UsersRoundIcon} className="h-3.5 w-3.5" /> {r.partySize}
             </span>
@@ -429,7 +429,7 @@ function ReservationCard({
             <ContactLine r={r} />
           </div>
           {r.notes && (
-            <p className="mt-2 rounded-md bg-slate-50 p-2 text-xs text-slate-600">{r.notes}</p>
+            <p className="mt-2 rounded-badge bg-slate-50 p-2 text-label text-ink">{r.notes}</p>
           )}
         </div>
       </div>
@@ -460,7 +460,7 @@ function ReservationCard({
                 variant={buttonVariant}
                 disabled={busy}
                 onClick={() => onChange(r, a.status)}
-                className="h-8 text-xs"
+                className="text-label"
               >
                 {buttonContent}
               </Button>
