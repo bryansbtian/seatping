@@ -150,7 +150,7 @@ const AssignTableDialog = ({
             trailing = (
               <span
                 data-testid="assign-recommended-badge"
-                className="flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-2 py-0.5 text-micro font-medium text-white"
+                className="flex h-badge shrink-0 items-center gap-1 rounded-badge bg-slate-900 px-2 text-caption font-medium text-white"
               >
                 <HugeiconsIcon icon={StarIcon} className="h-3 w-3" aria-hidden="true" />
                 {t("floor.assign.recommended")}

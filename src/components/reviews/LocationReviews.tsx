@@ -420,7 +420,7 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
                 data-testid={`reviews-chip-${key}`}
                 onClick={() => setChip(key)}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors",
+                  "control-md inline-flex items-center gap-2 rounded-control border px-3.5 text-label font-medium transition-colors",
                   selected && "border-slate-900 bg-slate-900 text-white",
                   !selected && "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
                 )}
@@ -428,7 +428,7 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
                 {t(labelKey)}
                 <span
                   className={cn(
-                    "text-xs tabular-nums",
+                    "text-caption tabular-nums",
                     selected && "text-white/70",
                     !selected && "text-slate-400",
                   )}

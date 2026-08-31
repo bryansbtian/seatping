@@ -20,10 +20,22 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Infra", "sans-serif"],
-        infra: ["Infra", "sans-serif"],
+        sans: [
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica Neue",
+          "Arial",
+          "sans-serif",
+        ],
       },
       fontSize: {
+        label: ["var(--font-size-label)", { lineHeight: "var(--line-height-label)" }],
+        body: ["var(--font-size-body)", { lineHeight: "var(--line-height-body)" }],
+        title: ["var(--font-size-title)", { lineHeight: "var(--line-height-title)" }],
         "preview-xs": ["var(--font-size-preview-xs)", { lineHeight: "0.75rem" }],
         "preview-sm": ["var(--font-size-preview-sm)", { lineHeight: "0.75rem" }],
         micro: ["var(--font-size-micro)", { lineHeight: "0.875rem" }],
@@ -46,6 +58,10 @@ export default {
         "9xl": ["var(--font-size-9xl)", { lineHeight: "1" }],
       },
       colors: {
+        ink: {
+          DEFAULT: "hsl(var(--ink))",
+          subtle: "hsl(var(--ink-subtle))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -88,6 +104,8 @@ export default {
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
+          muted: "hsl(var(--sidebar-muted))",
+          hover: "hsl(var(--sidebar-hover))",
           primary: "hsl(var(--sidebar-primary))",
           "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
           accent: "hsl(var(--sidebar-accent))",
@@ -100,6 +118,16 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        control: "var(--radius-control)",
+        badge: "var(--radius-badge)",
+      },
+      spacing: {
+        row: "var(--row-height)",
+        "row-lg": "var(--row-height-lg)",
+        badge: "var(--badge-height)",
+        "switch-w": "var(--switch-width)",
+        "switch-h": "var(--switch-height)",
+        "switch-thumb": "var(--switch-thumb)",
       },
       keyframes: {
         "accordion-down": {

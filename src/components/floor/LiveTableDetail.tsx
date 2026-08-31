@@ -284,15 +284,15 @@ const LiveTableDetail = ({
     >
       <div className="flex shrink-0 flex-nowrap items-center gap-3">
         <div className="flex min-w-0 flex-nowrap items-center gap-2">
-          <CardTitle className="truncate text-lg text-slate-800 md:text-xl">{table.name}</CardTitle>
-          <span aria-hidden="true" className="shrink-0 text-xs text-slate-300 md:text-sm">
+          <CardTitle className="truncate text-slate-800">{table.name}</CardTitle>
+          <span aria-hidden="true" className="shrink-0 text-label text-slate-300">
             &middot;
           </span>
-          <span className="shrink-0 text-xs text-slate-500 md:text-sm">{capacityLabel}</span>
+          <span className="shrink-0 text-label text-ink-subtle">{capacityLabel}</span>
         </div>
         <span
           className={cn(
-            "ml-auto flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+            "ml-auto flex h-badge shrink-0 items-center gap-1.5 rounded-badge px-2 text-caption font-medium",
             style.badge,
           )}
         >

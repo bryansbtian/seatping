@@ -780,9 +780,7 @@ export default function RestaurantProfileEditor({
     <div className="space-y-5 md:space-y-6">
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-gray-800">
-            {t("rpe.overview.title")}
-          </CardTitle>
+          <CardTitle className="text-slate-800">{t("rpe.overview.title")}</CardTitle>
           <CardDescription className={sectionDesc}>{t("rpe.overview.desc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
@@ -882,7 +880,7 @@ export default function RestaurantProfileEditor({
 
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-gray-800">{t("rpe.hours.title")}</CardTitle>
+          <CardTitle className="text-slate-800">{t("rpe.hours.title")}</CardTitle>
           <CardDescription className={sectionDesc}>{t("rpe.hours.desc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 p-4 md:p-6 pt-0">
@@ -958,7 +956,7 @@ export default function RestaurantProfileEditor({
 
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-gray-800">{t("rpe.res.title")}</CardTitle>
+          <CardTitle className="text-slate-800">{t("rpe.res.title")}</CardTitle>
           <CardDescription className={sectionDesc}>{t("rpe.res.desc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
@@ -1108,9 +1106,7 @@ export default function RestaurantProfileEditor({
 
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-gray-800">
-            {t("rpe.banner.title")}
-          </CardTitle>
+          <CardTitle className="text-slate-800">{t("rpe.banner.title")}</CardTitle>
           <CardDescription className={sectionDesc}>{t("rpe.banner.desc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
@@ -1128,9 +1124,7 @@ export default function RestaurantProfileEditor({
 
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-gray-800">
-            {t("rpe.photos.title")}
-          </CardTitle>
+          <CardTitle className="text-slate-800">{t("rpe.photos.title")}</CardTitle>
           <CardDescription className={sectionDesc}>
             {t("rpe.photos.desc", { n: photos.length, max: MAX_PHOTOS })}
           </CardDescription>
@@ -1173,9 +1167,7 @@ export default function RestaurantProfileEditor({
 
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-gray-800">
-            {t("rpe.details.title")}
-          </CardTitle>
+          <CardTitle className="text-slate-800">{t("rpe.details.title")}</CardTitle>
           <CardDescription className={sectionDesc}>{t("rpe.details.desc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 md:p-6 pt-0">
@@ -1250,9 +1242,7 @@ export default function RestaurantProfileEditor({
 
       <Card className={cardCls}>
         <CardHeader className="p-4 md:p-6">
-          <CardTitle className="text-lg md:text-xl text-gray-800">
-            {t("rpe.preview.title")}
-          </CardTitle>
+          <CardTitle className="text-slate-800">{t("rpe.preview.title")}</CardTitle>
           <CardDescription className={sectionDesc}>{t("rpe.preview.desc")}</CardDescription>
         </CardHeader>
         <CardContent className="p-4 md:p-6 pt-0">
@@ -1532,7 +1522,7 @@ function MenuSection({
   return (
     <Card className={cardCls}>
       <CardHeader className="p-4 md:p-6">
-        <CardTitle className="text-lg md:text-xl text-gray-800">{t("rpe.menu.title")}</CardTitle>
+        <CardTitle className="text-slate-800">{t("rpe.menu.title")}</CardTitle>
         <CardDescription className={sectionDesc}>{t("rpe.menu.desc")}</CardDescription>
         <p className="text-xs text-muted-foreground md:text-sm">{t("rpe.menu.subdesc")}</p>
       </CardHeader>

@@ -870,14 +870,14 @@ const BusinessOverview = () => {
               <p className="text-slate-600 text-sm md:text-base">{t("dash.dailyStat")}</p>
               {currentLocation && (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                  <Badge variant="neutral">
                     {locLabel(currentLocation, selectedLocationIndex)}
-                  </span>
-                  <span className="rounded bg-indigo-100 px-2 py-1 text-xs text-indigo-700">
+                  </Badge>
+                  <Badge variant="info">
                     {t("dash.creditsPill", {
                       n: currentLocation.credits || 0,
                     })}
-                  </span>
+                  </Badge>
                 </div>
               )}
             </div>
@@ -894,20 +894,20 @@ const BusinessOverview = () => {
                 <p className="text-slate-600 text-sm md:text-base">{t("dash.dailyStat")}</p>
                 {currentLocation && (
                   <div className="flex flex-wrap items-center gap-2 mt-2">
-                    <span className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">
+                    <Badge variant="neutral">
                       {locLabel(currentLocation, selectedLocationIndex)}
-                    </span>
-                    <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
+                    </Badge>
+                    <Badge variant="info">
                       {t("dash.creditsPill", {
                         n: currentLocation?.credits || 0,
                       })}
-                    </span>
+                    </Badge>
                   </div>
                 )}
               </div>
 
               <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
-                <div className="flex items-center gap-2 text-sm text-slate-600">
+                <div className="flex items-center gap-2 text-label text-ink-subtle">
                   <HugeiconsIcon icon={Calendar01Icon} className="w-4 h-4" />
                   <span>{getCurrentDate()}</span>
                 </div>{" "}
@@ -917,7 +917,9 @@ const BusinessOverview = () => {
 
           <Card className="mb-6 bg-white rounded-xl shadow-sm border border-slate-200 lg:hidden">
             <div className="p-4">
-              <p className="text-sm font-semibold text-slate-800 mb-3">{t("dash.todaysSummary")}</p>
+              <p className="text-title font-medium text-slate-800 mb-3">
+                {t("dash.todaysSummary")}
+              </p>
               <div className="divide-y divide-slate-100">
                 {[
                   {
@@ -941,7 +943,7 @@ const BusinessOverview = () => {
                     value: todayStats.leftToday,
                   },
                 ].map(({ label, value }) => (
-                  <div key={label} className="flex items-center justify-between py-2.5">
+                  <div key={label} className="flex min-h-row items-center justify-between py-1">
                     <span className="min-w-0 truncate text-caption font-medium uppercase tracking-[0.12em] text-slate-500">
                       {label}
                     </span>
@@ -1058,14 +1060,14 @@ const BusinessOverview = () => {
                     return (
                       <div
                         key={index}
-                        className="flex flex-col space-y-1.5 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:p-4 bg-gray-50 rounded-lg"
+                        className="flex min-h-row-lg flex-col space-y-1.5 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:px-4 bg-gray-50 rounded-control"
                       >
                         <div className="flex items-start md:items-center">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-gray-800 text-sm md:text-base">
+                            <h3 className="font-medium text-slate-800 text-body">
                               {customer.firstName} {customer.lastName}
                             </h3>
-                            <div className="flex flex-wrap items-center gap-x-1.5 text-xs md:text-sm text-gray-600">
+                            <div className="flex flex-wrap items-center gap-x-1.5 text-label text-ink-subtle">
                               <span className="whitespace-nowrap">
                                 {leftTimeLabel}:{" "}
                                 {formatTimeSince(customer.leftAt || customer.removedAt)}
@@ -1079,7 +1081,7 @@ const BusinessOverview = () => {
                             </div>
 
                             {notificationContact(customer) && (
-                              <p className="text-xs md:text-sm text-gray-500 mt-1 break-all">
+                              <p className="text-label text-ink-subtle mt-1 break-all">
                                 {notificationContact(customer)}
                               </p>
                             )}
@@ -1097,7 +1099,7 @@ const BusinessOverview = () => {
             return (
               <Card className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
-                  <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
                     <HugeiconsIcon icon={UsersRoundIcon} className="w-5 h-5" />
                     <span>{t("dash.left.title")}</span>
                   </CardTitle>
@@ -1115,7 +1117,7 @@ const BusinessOverview = () => {
               <CardHeader className="border-b border-slate-100 p-4 md:p-6">
                 <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
                   <div>
-                    <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
+                    <CardTitle className="text-slate-800 flex items-center space-x-2">
                       <HugeiconsIcon icon={TrendingDownIcon} className="w-5 h-5" />
                       <span>{t("dash.perf.title")}</span>
                     </CardTitle>
@@ -1149,7 +1151,7 @@ const BusinessOverview = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
-                  <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
+                  <CardTitle className="text-slate-800 flex items-center space-x-2">
                     <HugeiconsIcon icon={Clock01Icon} className="w-5 h-5" />
                     <span>{t("dash.peak.title")}</span>
                   </CardTitle>
@@ -1162,7 +1164,7 @@ const BusinessOverview = () => {
 
               <Card className="bg-white rounded-xl shadow-sm border border-slate-200">
                 <CardHeader className="border-b border-gray-100 p-4 md:p-6">
-                  <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center space-x-2">
+                  <CardTitle className="text-slate-800 flex items-center space-x-2">
                     <HugeiconsIcon icon={ChartAnalysisIcon} className="w-5 h-5" />
                     <span>{t("dash.waitDist.title")}</span>
                   </CardTitle>

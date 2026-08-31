@@ -1,4 +1,4 @@
-@import url("https://fonts.cdnfonts.com/css/infra");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 @import url("https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&display=swap");
 
@@ -42,6 +42,31 @@
     --ring: 239 84% 67%;
 
     --radius: 0.75rem;
+    --radius-control: 0.625rem;
+    --radius-badge: 0.375rem;
+
+    --control-height-sm: 1.75rem;
+    --control-height: 2rem;
+    --control-height-lg: 2.5rem;
+    --touch-height-sm: 2rem;
+    --touch-height: 2.25rem;
+    --touch-height-lg: 2.75rem;
+    --row-height: 2.5rem;
+    --row-height-lg: 2.75rem;
+    --badge-height: 1.25rem;
+    --switch-width: 1.5rem;
+    --switch-height: 0.875rem;
+    --switch-thumb: 0.625rem;
+
+    --ink: 215 25% 27%;
+    --ink-subtle: 215 16% 47%;
+
+    --font-size-label: 0.8125rem;
+    --line-height-label: 1rem;
+    --font-size-body: 0.875rem;
+    --line-height-body: 1.25rem;
+    --font-size-title: 1rem;
+    --line-height-title: 1.25rem;
 
     --font-size-preview-xs: 0.5rem;
     --font-size-preview-sm: 0.5625rem;
@@ -78,13 +103,15 @@
 
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-    --sidebar-background: 210 40% 98%;
-    --sidebar-foreground: 215 16% 47%;
-    --sidebar-primary: 222 47% 11%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 226 100% 97%;
-    --sidebar-accent-foreground: 239 84% 67%;
-    --sidebar-border: 214 32% 91%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 32%;
+    --sidebar-muted: 0 0% 56%;
+    --sidebar-hover: 0 0% 97%;
+    --sidebar-primary: 0 0% 13%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 13%;
+    --sidebar-border: 220 13% 91%;
     --sidebar-ring: 239 84% 67%;
   }
 
@@ -123,13 +150,18 @@
     --ring: 239 84% 67%;
 
     --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 239 84% 67%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 25% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-foreground: 0 0% 72%;
+    --sidebar-muted: 0 0% 52%;
+    --sidebar-hover: 215 25% 17%;
+    --sidebar-primary: 0 0% 98%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 215 25% 21%;
+    --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 215 25% 27%;
     --sidebar-ring: 239 84% 67%;
+
+    --ink: 214 20% 78%;
+    --ink-subtle: 215 16% 65%;
   }
 }
 
@@ -152,6 +184,42 @@
   input[type="number"] {
     -moz-appearance: textfield;
     appearance: textfield;
+  }
+}
+
+@layer components {
+  .control-sm {
+    height: var(--touch-height-sm);
+  }
+
+  .control-md {
+    height: var(--touch-height);
+  }
+
+  .control-lg {
+    height: var(--touch-height-lg);
+  }
+
+  .control-icon {
+    width: var(--touch-height);
+  }
+
+  @media (min-width: 640px) {
+    .control-sm {
+      height: var(--control-height-sm);
+    }
+
+    .control-md {
+      height: var(--control-height);
+    }
+
+    .control-lg {
+      height: var(--control-height-lg);
+    }
+
+    .control-icon {
+      width: var(--control-height);
+    }
   }
 }
 

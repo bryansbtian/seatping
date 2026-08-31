@@ -625,9 +625,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
       <Card className="border border-slate-200 bg-white shadow-sm">
         <CardContent className="space-y-3 p-3 md:space-y-4 md:p-5">
           <div className="flex items-center justify-between gap-3">
-            <CardTitle className="text-lg text-slate-800 md:text-xl">
-              {t("floor.settings.title")}
-            </CardTitle>
+            <CardTitle className="text-slate-800">{t("floor.settings.title")}</CardTitle>
             <span className="text-xs text-slate-600 md:text-sm">
               {tableCountLabel} &middot; {seatCountLabel}
             </span>

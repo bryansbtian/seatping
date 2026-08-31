@@ -193,6 +193,35 @@ Use the existing visual style: dark navy, white, subtle borders, clean SaaS feel
 cards and modern spacing. No orange primary CTAs, no overly playful restaurant imagery, and
 chair or ping icon treatments stay minimal and consistent.
 
+Inter is the typeface for the whole product, consumer pages and business dashboards alike.
+It is loaded from Google Fonts in `src/index.css` and set as `fontFamily.sans` in
+`tailwind.config.ts`, with a system fallback stack behind it. Only the 400, 500, 600, and 700
+weights are loaded, so do not introduce `font-thin`, `font-light`, `font-extrabold`, or
+`font-black`. Infra is gone: do not reintroduce it or the `font-infra` utility. `font-hand`
+(Caveat) stays as the one deliberate accent face.
+
+The interface runs on one density and type scale, defined as CSS variables in `src/index.css`
+and exposed through `tailwind.config.ts`. Reach for the tokens rather than raw pixel classes:
+
+- Type: `text-title` for card, dialog, and section titles (16/20 medium), `text-label` for
+  labels, buttons, table headers, and metadata (13/16 medium), `text-body` for body copy
+  (14 regular). `text-caption` stays the badge and footnote size.
+- Text hierarchy: `text-ink` for default copy, `text-ink-subtle` for secondary copy.
+- Controls: `control-sm`, `control-md`, `control-lg` set the height (28/32/40 on desktop,
+  32/36/44 below `sm` so touch targets stay usable), `control-icon` squares off icon buttons,
+  and `rounded-control` is the 10px control radius. These are component-layer classes, so a
+  call site can still override the height with a plain `h-*` utility.
+- Rows: `h-row` or `min-h-row` for data rows (40px), `h-row-lg` or `min-h-row-lg` for list
+  rows carrying an avatar or a second line (44px).
+- Badges: `h-badge` plus `rounded-badge` (20px tall, 6px radius) with a flat tone fill and
+  saturated text, no border. Use the `Badge` variants (`success`, `warning`, `info`, `danger`,
+  `neutral`) or `PILL_BASE_CLASS` with a tone from `src/lib/statusStyles.ts`.
+- Switches are 24x14 with a 10px thumb and an indigo-600 track when on.
+
+Any new custom Tailwind class name must be registered in the `cn` helper in `src/lib/utils.ts`.
+tailwind-merge otherwise reads an unknown `text-*` class as a text colour and silently drops
+the real colour beside it. `tests/unit/classNames.test.ts` guards this.
+
 Numeric inputs stay `type="number"` but must not show native spinner arrows (global rule in
 `src/index.css`), must not change on mouse wheel (global guard in `src/main.tsx`), must keep
 ArrowUp and ArrowDown stepping, and must stay visually blank while editing. Never coerce

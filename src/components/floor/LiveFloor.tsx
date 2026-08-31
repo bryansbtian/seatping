@@ -417,9 +417,7 @@ const LiveFloor = ({ locationId, onDataChange }: LiveFloorProps) => {
     <div className="flex h-full flex-col gap-3 md:gap-4">
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
         <section className="space-y-2" data-testid="waiting-parties">
-          <CardTitle className="text-lg text-slate-800 md:text-xl">
-            {t("floor.live.waitingTitle")}
-          </CardTitle>
+          <CardTitle className="text-slate-800">{t("floor.live.waitingTitle")}</CardTitle>
           {data.waitingParties.length === 0 && (
             <p className="text-xs text-slate-500 md:text-sm">{t("floor.live.waitingEmpty")}</p>
           )}
@@ -481,9 +479,7 @@ const LiveFloor = ({ locationId, onDataChange }: LiveFloorProps) => {
           className="space-y-2 border-t border-slate-100 pt-4"
           data-testid="admitted-parties"
         >
-          <CardTitle className="text-lg text-slate-800 md:text-xl">
-            {t("floor.live.admittedTitle")}
-          </CardTitle>
+          <CardTitle className="text-slate-800">{t("floor.live.admittedTitle")}</CardTitle>
           {data.admittedParties.length === 0 && (
             <p className="text-xs text-slate-500 md:text-sm">{t("floor.live.admittedEmpty")}</p>
           )}
@@ -562,9 +558,7 @@ const LiveFloor = ({ locationId, onDataChange }: LiveFloorProps) => {
           className="space-y-2 border-t border-slate-100 pt-4"
           data-testid="upcoming-reservations"
         >
-          <CardTitle className="text-lg text-slate-800 md:text-xl">
-            {t("floor.live.reservationsTitle")}
-          </CardTitle>
+          <CardTitle className="text-slate-800">{t("floor.live.reservationsTitle")}</CardTitle>
           {data.upcomingReservations.length === 0 && (
             <p className="text-xs text-slate-500 md:text-sm">{t("floor.live.reservationsEmpty")}</p>
           )}

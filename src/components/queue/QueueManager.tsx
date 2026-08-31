@@ -334,30 +334,28 @@ const QueueManager = ({
 
           return (
             <li key={legacyKey(row)} data-testid={`queue-row-${row.id}`}>
-              <div className="flex flex-col gap-3 rounded-lg bg-slate-50 p-3 transition-colors hover:bg-slate-100 md:flex-row md:items-center md:justify-between md:p-4">
+              <div className="flex min-h-row-lg flex-col gap-3 rounded-control bg-slate-50 p-3 transition-colors hover:bg-slate-100 md:flex-row md:items-center md:justify-between md:px-4">
                 <div className="flex min-w-0 items-start gap-3 md:gap-4">
-                  <span className="mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold leading-none tabular-nums text-slate-700 shadow-sm md:text-sm">
+                  <span className="mt-0.5 inline-flex h-badge shrink-0 items-center justify-center rounded-badge border border-slate-200 bg-white px-2 text-caption font-medium leading-none tabular-nums text-slate-700 shadow-sm">
                     #{index + 1}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800 md:text-base">
+                    <h3 className="flex flex-wrap items-center gap-2 text-body font-medium text-slate-800">
                       {fullName(row)}
                       {row.isReturning && <GuestStatusBadge returning />}
                     </h3>
-                    <div className="flex flex-wrap items-center gap-x-1.5 text-xs text-slate-600 md:text-sm">
+                    <div className="flex flex-wrap items-center gap-x-1.5 text-label text-ink-subtle">
                       <span>{t("dash.queue.joined", { time: joinedLabel })}</span>
                       <span className="text-slate-400">&middot;</span>
                       <span>{t(guestCountKey(row.numGuests), { n: row.numGuests })}</span>
                     </div>
                     {contactLine(row) && (
-                      <p className="mt-1 break-all text-xs text-slate-500 md:text-sm">
+                      <p className="mt-1 break-all text-label text-ink-subtle">
                         {contactLine(row)}
                       </p>
                     )}
                     {etaLabel && (
-                      <p className="mt-1 text-xs font-medium text-indigo-600 md:text-sm">
-                        {etaLabel}
-                      </p>
+                      <p className="mt-1 text-label font-medium text-indigo-600">{etaLabel}</p>
                     )}
                   </div>
                 </div>
@@ -396,7 +394,7 @@ const QueueManager = ({
       <Card className="flex flex-1 flex-col border border-slate-200 bg-white shadow-sm">
         <CardHeader className="flex-row items-center justify-between gap-4 border-b border-slate-200 p-4 md:p-6">
           <div className="min-w-0 space-y-1">
-            <CardTitle className="flex items-center gap-2 text-lg text-slate-800 md:text-xl">
+            <CardTitle className="flex items-center gap-2 text-slate-800">
               <HugeiconsIcon
                 icon={LeftToRightListNumberIcon}
                 className="h-5 w-5 shrink-0"
@@ -420,7 +418,7 @@ const QueueManager = ({
         </CardHeader>
         <CardContent className="flex flex-1 flex-col p-4 md:p-6">
           {floorError && (
-            <p className="mb-3 text-xs text-amber-700" data-testid="queue-floor-error">
+            <p className="mb-3 text-label text-amber-700" data-testid="queue-floor-error">
               {t("queue.floorUnavailable")}
             </p>
           )}
@@ -434,11 +432,11 @@ const QueueManager = ({
           data-testid="queue-awaiting"
         >
           <CardHeader className="border-b border-amber-200 p-4 md:p-6">
-            <CardTitle className="flex items-center gap-2 text-lg text-amber-800 md:text-xl">
+            <CardTitle className="flex items-center gap-2 text-amber-800">
               <HugeiconsIcon icon={Clock01Icon} className="h-5 w-5" aria-hidden="true" />
               {t("dash.awaiting.title")}
             </CardTitle>
-            <CardDescription className="text-sm text-amber-700">
+            <CardDescription className="text-body text-amber-700">
               {t("dash.awaiting.desc")}
             </CardDescription>
           </CardHeader>
@@ -470,25 +468,25 @@ const QueueManager = ({
                 return (
                   <li
                     key={legacyKey(row)}
-                    className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-white p-3 md:flex-row md:items-center md:justify-between md:p-4"
+                    className="flex min-h-row-lg flex-col gap-3 rounded-control border border-amber-200 bg-white p-3 md:flex-row md:items-center md:justify-between md:px-4"
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-600 text-xs font-semibold leading-none tabular-nums text-white">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-600 text-label font-medium leading-none tabular-nums text-white">
                         {countdownLabel}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800 md:text-base">
+                        <h3 className="flex flex-wrap items-center gap-2 text-body font-medium text-slate-800">
                           {fullName(row)}
                           {row.isReturning && <GuestStatusBadge returning />}
                         </h3>
-                        <div className="flex flex-wrap items-center gap-x-1.5 text-xs text-slate-600 md:text-sm">
+                        <div className="flex flex-wrap items-center gap-x-1.5 text-label text-ink-subtle">
                           <span>{t("dash.admitted", { time: admittedLabel })}</span>
                           <span className="text-slate-400">&middot;</span>
                           <span>{t(guestCountKey(row.numGuests), { n: row.numGuests })}</span>
                           {expired && (
                             <>
                               <span className="hidden text-slate-400 md:inline">&middot;</span>
-                              <span className="basis-full font-semibold text-red-600 md:basis-auto">
+                              <span className="basis-full font-medium text-red-600 md:basis-auto">
                                 {t("dash.timeExpired")}
                               </span>
                             </>

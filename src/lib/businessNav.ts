@@ -45,11 +45,13 @@ export const BUSINESS_NAV_GROUPS: BusinessNavGroup[] = [
     labelKey: "nav.group.insights",
     items: [{ to: "/business/performance", labelKey: "nav.performance", icon: ChartAnalysisIcon }],
   },
-  {
-    labelKey: "nav.group.other",
-    items: [{ to: "/business/settings", labelKey: "nav.settings", icon: Settings01Icon }],
-  },
 ];
+
+export const BUSINESS_SETTINGS_ITEM: BusinessNavItem = {
+  to: "/business/settings",
+  labelKey: "nav.settings",
+  icon: Settings01Icon,
+};
 
 export function isActiveNavPath(pathname: string, to: string): boolean {
   if (pathname === to) {

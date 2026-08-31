@@ -6,18 +6,18 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
 
 const TAG_STYLES: Record<string, string> = {
-  vip: "border-amber-200 bg-amber-100 text-amber-800",
-  regular: "border-blue-200 bg-blue-100 text-blue-700",
-  "no-show risk": "border-red-200 bg-red-100 text-red-700",
-  birthday: "border-pink-200 bg-pink-100 text-pink-700",
-  allergy: "border-orange-200 bg-orange-100 text-orange-700",
-  "prefers window seat": "border-teal-200 bg-teal-100 text-teal-700",
-  "high spender": "border-violet-200 bg-violet-100 text-violet-700",
-  "needs follow-up": "border-amber-200 bg-amber-100 text-amber-800",
+  vip: "bg-amber-100 text-amber-800",
+  regular: "bg-blue-100 text-blue-700",
+  "no-show risk": "bg-red-100 text-red-700",
+  birthday: "bg-pink-100 text-pink-700",
+  allergy: "bg-orange-100 text-orange-800",
+  "prefers window seat": "bg-teal-100 text-teal-700",
+  "high spender": "bg-violet-100 text-violet-700",
+  "needs follow-up": "bg-amber-100 text-amber-800",
 };
 
 function tagClass(tag: string): string {
-  return TAG_STYLES[tag.trim().toLowerCase()] || "border-slate-200 bg-slate-100 text-slate-700";
+  return TAG_STYLES[tag.trim().toLowerCase()] || "bg-slate-100 text-slate-700";
 }
 
 export function GuestStatusBadge({
@@ -31,10 +31,10 @@ export function GuestStatusBadge({
   let toneClass: string;
   let label: string;
   if (returning) {
-    toneClass = "border-emerald-200 bg-emerald-100 text-emerald-700";
+    toneClass = "bg-emerald-100 text-emerald-700";
     label = t("badge.returning");
   } else {
-    toneClass = "border-indigo-200 bg-indigo-100 text-indigo-700";
+    toneClass = "bg-indigo-100 text-indigo-700";
     label = t("badge.new");
   }
   return (
