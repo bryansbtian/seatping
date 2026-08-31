@@ -1,15 +1,21 @@
-import { Ban, CalendarClock, CircleCheck, Sparkles, Users } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import type { IconSvgElement } from "@hugeicons/react";
+import {
+  BanIcon,
+  CalendarClockIcon,
+  CheckmarkCircle02Icon,
+  SparklesIcon,
+  UsersRoundIcon,
+} from "@hugeicons/core-free-icons";
 import type { LiveStatus } from "@/lib/floorLive";
 
-const STATUS_ICONS: Record<LiveStatus, LucideIcon> = {
-  AVAILABLE: CircleCheck,
-  RESERVED: CalendarClock,
-  OCCUPIED: Users,
-  CLEANING: Sparkles,
-  BLOCKED: Ban,
+const STATUS_ICONS: Record<LiveStatus, IconSvgElement> = {
+  AVAILABLE: CheckmarkCircle02Icon,
+  RESERVED: CalendarClockIcon,
+  OCCUPIED: UsersRoundIcon,
+  CLEANING: SparklesIcon,
+  BLOCKED: BanIcon,
 };
 
-export function statusIcon(status: LiveStatus): LucideIcon {
-  return STATUS_ICONS[status] ?? CircleCheck;
+export function statusIcon(status: LiveStatus): IconSvgElement {
+  return STATUS_ICONS[status] ?? CheckmarkCircle02Icon;
 }

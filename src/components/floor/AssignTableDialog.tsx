@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Check, Star, Users } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { StarIcon, Tick02Icon, UsersRoundIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -151,7 +152,7 @@ const AssignTableDialog = ({
                 data-testid="assign-recommended-badge"
                 className="flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-2 py-0.5 text-micro font-medium text-white"
               >
-                <Star className="h-3 w-3" aria-hidden="true" />
+                <HugeiconsIcon icon={StarIcon} className="h-3 w-3" aria-hidden="true" />
                 {t("floor.assign.recommended")}
               </span>
             );
@@ -224,7 +225,7 @@ const AssignTableDialog = ({
                       !selected && "border-slate-300",
                     )}
                   >
-                    {selected && <Check className="h-3 w-3" />}
+                    {selected && <HugeiconsIcon icon={Tick02Icon} className="h-3 w-3" />}
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-slate-800">
@@ -336,7 +337,11 @@ const AssignTableDialog = ({
           <DialogDescription asChild>
             <span className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm text-slate-600">
               <span className="flex min-w-0 items-center gap-2">
-                <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <HugeiconsIcon
+                  icon={UsersRoundIcon}
+                  className="h-4 w-4 shrink-0"
+                  aria-hidden="true"
+                />
                 <span className="min-w-0 truncate">
                   {target.name} &middot; {t("floor.live.partyOf", { n: target.partySize })}
                 </span>

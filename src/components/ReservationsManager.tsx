@@ -14,16 +14,17 @@ import { GuestStatusBadge } from "@/components/GuestBadge";
 import BusinessEmptyState from "@/components/BusinessEmptyState";
 import { formatPhoneParts } from "@shared/phone";
 import { useLang, type TKey } from "@/lib/i18n";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
-  CalendarDays,
-  CalendarClock,
-  Clock,
-  Loader2,
-  Mail,
-  MessageSquare,
-  Phone,
-  Users,
-} from "lucide-react";
+  CalendarClockIcon,
+  CalendarDaysIcon,
+  Call02Icon,
+  Clock01Icon,
+  Loading02Icon,
+  Mail01Icon,
+  Message01Icon,
+  UsersRoundIcon,
+} from "@hugeicons/core-free-icons";
 
 type Reservation = {
   id: string;
@@ -216,7 +217,7 @@ export default function ReservationsManager({
         <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2 text-lg md:text-xl text-gray-800">
-              <CalendarDays className="w-5 h-5" />
+              <HugeiconsIcon icon={CalendarDaysIcon} className="w-5 h-5" />
               {t("res.title")}
             </CardTitle>
             {reservationsDescription && (
@@ -276,7 +277,7 @@ export default function ReservationsManager({
 
         {reservationsEnabled && visible.length === 0 && (
           <BusinessEmptyState
-            icon={CalendarClock}
+            icon={CalendarClockIcon}
             title={t("res.empty.title")}
             body={t("res.empty.body")}
             className="py-10"
@@ -328,13 +329,13 @@ export default function ReservationsManager({
 }
 
 function ContactLine({ r }: { r: Reservation }) {
-  let Icon: typeof Mail;
+  let icon: IconSvgElement;
   if (r.contactMethod === "email") {
-    Icon = Mail;
+    icon = Mail01Icon;
   } else if (r.contactMethod === "whatsapp") {
-    Icon = MessageSquare;
+    icon = Message01Icon;
   } else {
-    Icon = Phone;
+    icon = Call02Icon;
   }
   let value: string;
   if (r.contactMethod === "email") {
@@ -353,7 +354,7 @@ function ContactLine({ r }: { r: Reservation }) {
 
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
-      <Icon className="h-3.5 w-3.5" />
+      <HugeiconsIcon icon={icon} className="h-3.5 w-3.5" />
       <span className="capitalize">{contactMethodLabel}</span>
       <span className="text-slate-400">·</span>
       <span className="truncate">{value}</span>
@@ -415,13 +416,13 @@ function ReservationCard({
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
             <span className="inline-flex items-center gap-1">
-              <Users className="h-3.5 w-3.5" /> {r.partySize}
+              <HugeiconsIcon icon={UsersRoundIcon} className="h-3.5 w-3.5" /> {r.partySize}
             </span>
             <span className="inline-flex items-center gap-1">
-              <CalendarDays className="h-3.5 w-3.5" /> {readableDate(date)}
+              <HugeiconsIcon icon={CalendarDaysIcon} className="h-3.5 w-3.5" /> {readableDate(date)}
             </span>
             <span className="inline-flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" /> {formatTimeLabel(time)}
+              <HugeiconsIcon icon={Clock01Icon} className="h-3.5 w-3.5" /> {formatTimeLabel(time)}
             </span>
           </div>
           <div className="mt-1.5">
@@ -445,7 +446,9 @@ function ReservationCard({
 
             let buttonContent: ReactNode;
             if (busy) {
-              buttonContent = <Loader2 className="h-3.5 w-3.5 animate-spin" />;
+              buttonContent = (
+                <HugeiconsIcon icon={Loading02Icon} className="h-3.5 w-3.5 animate-spin" />
+              );
             } else {
               buttonContent = t(a.labelKey);
             }

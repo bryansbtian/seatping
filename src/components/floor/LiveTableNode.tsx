@@ -1,4 +1,5 @@
-import { Star } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { StarIcon } from "@hugeicons/core-free-icons";
 import { cornerBadgeOffset, cornerBadgeSize, fitsTableName } from "@/lib/floorGeometry";
 import { statusStyle, type LiveTable } from "@/lib/floorLive";
 import { useLang } from "@/lib/i18n";
@@ -52,7 +53,10 @@ const LiveTableNode = ({ table, scale, selected, onSelect }: LiveTableNodeProps)
         }}
         className="pointer-events-none absolute flex items-center justify-center rounded-full border border-white bg-slate-900 text-white shadow-sm"
       >
-        <Star style={{ width: badgeSize * 0.6, height: badgeSize * 0.6 }} />
+        <HugeiconsIcon
+          icon={StarIcon}
+          style={{ width: badgeSize * 0.6, height: badgeSize * 0.6 }}
+        />
       </span>
     );
   }

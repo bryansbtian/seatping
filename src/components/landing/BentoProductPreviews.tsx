@@ -1,18 +1,18 @@
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
-  Calendar,
-  CalendarDays,
-  CheckCircle2,
-  Clock,
-  LogOut,
-  Mail,
-  MessageCircle,
-  Phone,
-  Search,
-  TrendingUp,
-  Users,
-  XCircle,
-  type LucideIcon,
-} from "lucide-react";
+  Calendar01Icon,
+  CalendarDaysIcon,
+  Call02Icon,
+  CancelCircleIcon,
+  CheckmarkCircle02Icon,
+  Clock01Icon,
+  LogoutSquare01Icon,
+  Mail01Icon,
+  MessageCircleIcon,
+  Search01Icon,
+  TrendingDownIcon,
+  UsersRoundIcon,
+} from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -104,13 +104,13 @@ export function CycleStack({
 export function MetricCardPreview({
   label,
   value,
-  icon: Icon,
+  icon,
   tint,
   className,
 }: {
   label: string;
   value: string;
-  icon: LucideIcon;
+  icon: IconSvgElement;
   tint: string;
   className?: string;
 }) {
@@ -121,7 +121,7 @@ export function MetricCardPreview({
         <div className="flex items-center justify-between">
           <p className="text-xl font-semibold leading-none text-slate-800">{value}</p>
           <div className={cn("grid h-7 w-7 place-items-center rounded-full", tint)}>
-            <Icon className="h-3.5 w-3.5" />
+            <HugeiconsIcon icon={icon} className="h-3.5 w-3.5" />
           </div>
         </div>
       </div>
@@ -136,7 +136,7 @@ const RESERVATION_ROWS: {
   party: number;
   date: string;
   time: string;
-  contactIcon: LucideIcon;
+  contactIcon: IconSvgElement;
   contactLabel: string;
   contactValue: string;
   actions: { label: string; variant: "default" | "destructiveOutline" }[];
@@ -148,7 +148,7 @@ const RESERVATION_ROWS: {
     party: 2,
     date: "Fri, Jun 12",
     time: "7:30 PM",
-    contactIcon: Mail,
+    contactIcon: Mail01Icon,
     contactLabel: "Email",
     contactValue: "sofia.almeida@example.com",
     actions: [
@@ -162,7 +162,7 @@ const RESERVATION_ROWS: {
     party: 4,
     date: "Fri, Jun 12",
     time: "7:45 PM",
-    contactIcon: Phone,
+    contactIcon: Call02Icon,
     contactLabel: "SMS",
     contactValue: "+1 (415) 555-0114",
     actions: [
@@ -176,7 +176,7 @@ const RESERVATION_ROWS: {
     party: 3,
     date: "Fri, Jun 12",
     time: "8:00 PM",
-    contactIcon: Phone,
+    contactIcon: Call02Icon,
     contactLabel: "SMS",
     contactValue: "+1 (628) 555-0192",
     actions: [
@@ -190,7 +190,7 @@ const RESERVATION_ROWS: {
     party: 2,
     date: "Fri, Jun 12",
     time: "8:15 PM",
-    contactIcon: Mail,
+    contactIcon: Mail01Icon,
     contactLabel: "Email",
     contactValue: "daniel.lee@example.com",
     actions: [
@@ -201,7 +201,6 @@ const RESERVATION_ROWS: {
 ];
 
 function ReservationPreviewRow({ row }: { row: (typeof RESERVATION_ROWS)[number] }) {
-  const ContactIcon = row.contactIcon;
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -211,17 +210,17 @@ function ReservationPreviewRow({ row }: { row: (typeof RESERVATION_ROWS)[number]
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-micro text-slate-600">
         <span className="inline-flex items-center gap-1">
-          <Users className="h-3 w-3" /> {row.party}
+          <HugeiconsIcon icon={UsersRoundIcon} className="h-3 w-3" /> {row.party}
         </span>
         <span className="inline-flex items-center gap-1">
-          <CalendarDays className="h-3 w-3" /> {row.date}
+          <HugeiconsIcon icon={CalendarDaysIcon} className="h-3 w-3" /> {row.date}
         </span>
         <span className="inline-flex items-center gap-1">
-          <Clock className="h-3 w-3" /> {row.time}
+          <HugeiconsIcon icon={Clock01Icon} className="h-3 w-3" /> {row.time}
         </span>
       </div>
       <span className="mt-1.5 inline-flex max-w-full items-center gap-1.5 text-micro text-slate-500">
-        <ContactIcon className="h-3 w-3 shrink-0" />
+        <HugeiconsIcon icon={row.contactIcon} className="h-3 w-3 shrink-0" />
         <span>{row.contactLabel}</span>
         <span className="text-slate-400">·</span>
         <span className="truncate">{row.contactValue}</span>
@@ -306,7 +305,7 @@ export function ReservationPreview({ className, animated = true }: PreviewProps)
             <MetricCardPreview
               label="Reservations Today"
               value="12"
-              icon={Calendar}
+              icon={Calendar01Icon}
               tint="bg-blue-100 text-blue-600"
               className="shadow-md"
             />
@@ -315,7 +314,7 @@ export function ReservationPreview({ className, animated = true }: PreviewProps)
             <MetricCardPreview
               label="Served Today"
               value="28"
-              icon={TrendingUp}
+              icon={TrendingDownIcon}
               tint="bg-emerald-100 text-emerald-600"
               className="shadow-md"
             />
@@ -324,7 +323,7 @@ export function ReservationPreview({ className, animated = true }: PreviewProps)
             <MetricCardPreview
               label="Left Today"
               value="3"
-              icon={LogOut}
+              icon={LogoutSquare01Icon}
               tint="bg-teal-100 text-teal-600"
               className="shadow-md"
             />
@@ -518,7 +517,7 @@ export function GuestProfilePreview({ className, animated = true }: PreviewProps
       )}
     >
       <div className="mb-2 flex h-7 w-full items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-micro text-slate-400">
-        <Search className="h-3 w-3" /> Search Guests
+        <HugeiconsIcon icon={Search01Icon} className="h-3 w-3" /> Search Guests
       </div>
       <div className="flex flex-col gap-2 md:flex-1 md:justify-between lg:flex-none">
         {GUEST_PROFILES.slice(0, 2).map((profile) => (
@@ -531,10 +530,10 @@ export function GuestProfilePreview({ className, animated = true }: PreviewProps
 
 const CAMPAIGN_CYCLE_SECONDS = 9;
 
-const CHANNELS: { key: string; label: string; icon: LucideIcon }[] = [
-  { key: "SMS", label: "SMS", icon: Phone },
-  { key: "WHATSAPP", label: "WhatsApp", icon: MessageCircle },
-  { key: "EMAIL", label: "Email", icon: Mail },
+const CHANNELS: { key: string; label: string; icon: IconSvgElement }[] = [
+  { key: "SMS", label: "SMS", icon: Call02Icon },
+  { key: "WHATSAPP", label: "WhatsApp", icon: MessageCircleIcon },
+  { key: "EMAIL", label: "Email", icon: Mail01Icon },
 ];
 
 function CyclingChannelButton({
@@ -546,7 +545,6 @@ function CyclingChannelButton({
   index: number;
   duration: number;
 }) {
-  const Icon = channel.icon;
   let highlightOpacityClass: string;
   if (index === 0) {
     highlightOpacityClass = "opacity-100";
@@ -555,7 +553,7 @@ function CyclingChannelButton({
   }
   return (
     <span className="relative flex min-w-0 flex-1 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-1.5 py-1.5 text-micro font-medium text-slate-600">
-      <Icon className="h-3 w-3 shrink-0" />
+      <HugeiconsIcon icon={channel.icon} className="h-3 w-3 shrink-0" />
       <span className="truncate">{channel.label}</span>
       <span
         className={cn(
@@ -567,7 +565,7 @@ function CyclingChannelButton({
           animationDelay: `${(index * duration) / CHANNELS.length}s`,
         }}
       >
-        <Icon className="h-3 w-3 shrink-0" /> {channel.label}
+        <HugeiconsIcon icon={channel.icon} className="h-3 w-3 shrink-0" /> {channel.label}
       </span>
     </span>
   );
@@ -580,7 +578,6 @@ function MessagePreviewPanel({
   channel: (typeof CHANNELS)[number];
   subject?: string;
 }) {
-  const Icon = channel.icon;
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
       {subject && (
@@ -594,7 +591,8 @@ function MessagePreviewPanel({
         <p className="text-slate-500">- Cafe Milano (via SeatPing)</p>
       </div>
       <div className="flex items-center gap-1.5 border-t border-slate-200 bg-slate-50 px-3 py-1.5 text-preview-sm text-slate-500">
-        <Icon className="h-3 w-3 shrink-0" /> SeatPing on behalf of your restaurant
+        <HugeiconsIcon icon={channel.icon} className="h-3 w-3 shrink-0" /> SeatPing on behalf of
+        your restaurant
       </div>
     </div>
   );
@@ -635,10 +633,10 @@ export function CampaignPreview({ className, animated = true }: PreviewProps) {
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-micro">
             <span className="flex items-center gap-1 text-emerald-700">
-              <CheckCircle2 className="h-3 w-3" /> 189 Sent
+              <HugeiconsIcon icon={CheckmarkCircle02Icon} className="h-3 w-3" /> 189 Sent
             </span>
             <span className="flex items-center gap-1 text-red-600">
-              <XCircle className="h-3 w-3" /> 0 Failed
+              <HugeiconsIcon icon={CancelCircleIcon} className="h-3 w-3" /> 0 Failed
             </span>
             <span className="text-slate-500">0 Skipped</span>
           </div>

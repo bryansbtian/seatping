@@ -17,7 +17,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ImageIcon, ImagePlus, Loader2, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Add01Icon,
+  Delete02Icon,
+  Image01Icon,
+  ImageAdd01Icon,
+  Loading02Icon,
+  Edit03Icon,
+  Upload01Icon,
+} from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { TimeSelect } from "@/components/TimeSelect";
 import { ALL_DAY_TIME_OPTIONS } from "@/components/timeOptions";
@@ -591,14 +600,14 @@ export default function RestaurantProfileEditor({
   if (bannerUploading) {
     bannerUploadButtonContent = (
       <>
-        <Loader2 className="h-7 w-7 animate-spin" />
+        <HugeiconsIcon icon={Loading02Icon} className="h-7 w-7 animate-spin" />
         <span className="text-sm font-medium">{t("rpe.banner.uploading")}</span>
       </>
     );
   } else {
     bannerUploadButtonContent = (
       <>
-        <ImagePlus className="h-7 w-7" />
+        <HugeiconsIcon icon={ImageAdd01Icon} className="h-7 w-7" />
         <span className="text-sm font-medium">{t("rpe.banner.upload")}</span>
         <span className="text-xs text-slate-400">{t("rpe.banner.recommend")}</span>
       </>
@@ -615,7 +624,8 @@ export default function RestaurantProfileEditor({
           </div>
           {bannerUploading && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t("rpe.banner.uploading")}
+              <HugeiconsIcon icon={Loading02Icon} className="mr-2 h-5 w-5 animate-spin" />{" "}
+              {t("rpe.banner.uploading")}
             </div>
           )}
         </div>
@@ -627,7 +637,8 @@ export default function RestaurantProfileEditor({
             disabled={bannerUploading}
             onClick={() => bannerInputRef.current?.click()}
           >
-            <Upload size={16} className="mr-2" /> {t("rpe.banner.replace")}
+            <HugeiconsIcon icon={Upload01Icon} size={16} className="mr-2" />{" "}
+            {t("rpe.banner.replace")}
           </Button>
           <Button
             type="button"
@@ -636,7 +647,8 @@ export default function RestaurantProfileEditor({
             disabled={bannerUploading}
             onClick={removeBanner}
           >
-            <Trash2 size={16} className="mr-2" /> {t("rpe.banner.remove")}
+            <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />{" "}
+            {t("rpe.banner.remove")}
           </Button>
         </div>
       </div>
@@ -665,13 +677,14 @@ export default function RestaurantProfileEditor({
   if (photosUploading) {
     photosUploadButtonContent = (
       <>
-        <Loader2 size={16} className="mr-2 animate-spin" /> {t("rpe.photos.uploading")}
+        <HugeiconsIcon icon={Loading02Icon} size={16} className="mr-2 animate-spin" />{" "}
+        {t("rpe.photos.uploading")}
       </>
     );
   } else {
     photosUploadButtonContent = (
       <>
-        <Upload size={16} className="mr-2" /> {t("rpe.photos.upload")}
+        <HugeiconsIcon icon={Upload01Icon} size={16} className="mr-2" /> {t("rpe.photos.upload")}
       </>
     );
   }
@@ -699,7 +712,7 @@ export default function RestaurantProfileEditor({
                 className="absolute right-1 top-1 rounded-md bg-white/90 p-1 text-red-600 shadow hover:bg-white"
                 aria-label="Remove photo"
               >
-                <Trash2 size={14} />
+                <HugeiconsIcon icon={Delete02Icon} size={14} />
               </button>
             </div>
             <Input
@@ -736,7 +749,7 @@ export default function RestaurantProfileEditor({
   } else {
     previewCoverContent = (
       <div className="flex h-44 w-full items-center justify-center bg-gradient-to-br from-indigo-100 to-slate-100 text-slate-400">
-        <ImageIcon className="mr-2 h-6 w-6" /> {t("rpe.preview.noBanner")}
+        <HugeiconsIcon icon={Image01Icon} className="mr-2 h-6 w-6" /> {t("rpe.preview.noBanner")}
       </div>
     );
   }
@@ -1549,7 +1562,7 @@ function MenuSection({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
-                <Upload size={15} /> {t("rpe.menu.uploadCsv")}
+                <HugeiconsIcon icon={Upload01Icon} size={15} /> {t("rpe.menu.uploadCsv")}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">{t("rpe.menu.csvInclude")}</p>
             </div>
@@ -1567,7 +1580,7 @@ function MenuSection({
               onClick={() => csvInputRef.current?.click()}
               className="w-full gap-1.5 sm:w-auto"
             >
-              <Upload size={14} /> {t("rpe.menu.chooseCsv")}
+              <HugeiconsIcon icon={Upload01Icon} size={14} /> {t("rpe.menu.chooseCsv")}
             </Button>
           </div>
           {csvError && (
@@ -1697,7 +1710,7 @@ function MenuSection({
                         onClick={() => openEdit(index)}
                         className="flex-1 gap-1.5 sm:flex-none"
                       >
-                        <Pencil size={14} /> {t("rpe.menu.edit")}
+                        <HugeiconsIcon icon={Edit03Icon} size={14} /> {t("rpe.menu.edit")}
                       </Button>
                       <Button
                         type="button"
@@ -1706,7 +1719,7 @@ function MenuSection({
                         onClick={() => remove(index)}
                         className="flex-1 gap-1.5 sm:flex-none"
                       >
-                        <Trash2 size={14} /> {t("rpe.menu.delete")}
+                        <HugeiconsIcon icon={Delete02Icon} size={14} /> {t("rpe.menu.delete")}
                       </Button>
                     </div>
                   </div>
@@ -1719,7 +1732,7 @@ function MenuSection({
         {!form && (
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={openAdd} className="w-full sm:w-auto">
-              <Plus size={16} className="mr-2" /> {t("rpe.menu.addItem")}
+              <HugeiconsIcon icon={Add01Icon} size={16} className="mr-2" /> {t("rpe.menu.addItem")}
             </Button>
             {menu.length > 0 && (
               <ConfirmModal
@@ -1737,7 +1750,8 @@ function MenuSection({
                 }}
                 trigger={
                   <Button type="button" variant="destructiveOutline" className="w-full sm:w-auto">
-                    <Trash2 size={16} className="mr-2" /> {t("rpe.menu.clear")}
+                    <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />{" "}
+                    {t("rpe.menu.clear")}
                   </Button>
                 }
               />

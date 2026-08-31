@@ -18,7 +18,8 @@ import {
   CommandItem,
   CommandList,
 } from "./ui/command";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Cancel01Icon, Tick02Icon, UnfoldMoreIcon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 
 export interface CustomFilters {
@@ -395,7 +396,10 @@ export function CustomAudienceBuilder({
                       <div className="flex flex-wrap items-center gap-1.5">
                         {tagsTriggerContent}
                       </div>
-                      <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 ml-2" />
+                      <HugeiconsIcon
+                        icon={UnfoldMoreIcon}
+                        className="h-4 w-4 shrink-0 opacity-50 ml-2"
+                      />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent
@@ -433,7 +437,10 @@ export function CustomAudienceBuilder({
                                   }
                                 }}
                               >
-                                <Check className={cn("mr-2 h-4 w-4", checkOpacityClass)} />
+                                <HugeiconsIcon
+                                  icon={Tick02Icon}
+                                  className={cn("mr-2 h-4 w-4", checkOpacityClass)}
+                                />
                                 {tagOption}
                               </CommandItem>
                             );
@@ -609,7 +616,7 @@ export function CustomAudienceBuilder({
                           className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
                           onClick={() => removeGuest(guest.id)}
                         >
-                          <X className="h-4 w-4" />
+                          <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}

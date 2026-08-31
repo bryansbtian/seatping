@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LayoutGrid, Plus, RotateCcw, SquareDashed, Trash2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Add01Icon,
+  Delete02Icon,
+  LayoutGridIcon,
+  RotateClockwiseIcon,
+  SquareDashedIcon,
+} from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -565,12 +572,12 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
       <Card className="flex flex-1 flex-col border border-slate-200 bg-white shadow-sm">
         <CardContent className="flex flex-1 flex-col p-0">
           <BusinessEmptyState
-            icon={LayoutGrid}
+            icon={LayoutGridIcon}
             title={t("floor.empty.title")}
             body={t("floor.empty.body")}
           >
             <Button disabled={saving} onClick={handleCreateRoom}>
-              <Plus className="mr-2 h-4 w-4" />
+              <HugeiconsIcon icon={Add01Icon} className="mr-2 h-4 w-4" />
               {t("floor.createPlan")}
             </Button>
           </BusinessEmptyState>
@@ -660,7 +667,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
                 disabled={saving}
                 onClick={handleCreateRoom}
               >
-                <Plus className="mr-1.5 h-4 w-4" />
+                <HugeiconsIcon icon={Add01Icon} className="mr-1.5 h-4 w-4" />
                 {t("floor.newRoom")}
               </Button>
             </div>
@@ -681,7 +688,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
                   className="flex min-w-[76px] flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-white px-2 py-2.5 transition-colors hover:border-indigo-300 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[80px] lg:w-[76px] lg:min-w-0 lg:shrink-0"
                 >
                   <span className="flex h-6 items-center justify-center">
-                    <SquareDashed className="h-6 w-6 text-slate-400" />
+                    <HugeiconsIcon icon={SquareDashedIcon} className="h-6 w-6 text-slate-400" />
                   </span>
                   <span className="text-caption font-medium leading-tight text-slate-600 md:text-xs">
                     {t("floor.addZone")}
@@ -757,7 +764,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
                       className="h-9 flex-1 whitespace-nowrap border-red-200 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 md:h-10 md:text-sm xl:flex-none xl:px-3"
                       disabled={saving}
                     >
-                      <RotateCcw className="mr-1.5 h-4 w-4" />
+                      <HugeiconsIcon icon={RotateClockwiseIcon} className="mr-1.5 h-4 w-4" />
                       {t("floor.reset")}
                     </Button>
                   }
@@ -777,7 +784,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
                       className="h-9 flex-1 whitespace-nowrap border-red-200 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 md:h-10 md:text-sm xl:flex-none xl:px-3"
                       disabled={saving}
                     >
-                      <Trash2 className="mr-1.5 h-4 w-4" />
+                      <HugeiconsIcon icon={Delete02Icon} className="mr-1.5 h-4 w-4" />
                       {t("floor.deleteRoom")}
                     </Button>
                   }

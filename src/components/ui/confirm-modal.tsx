@@ -10,7 +10,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertTriangle, Trash2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Alert01Icon, Delete02Icon, Loading02Icon } from "@hugeicons/core-free-icons";
 import { useToast } from "@/hooks/use-toast";
 
 interface ConfirmModalProps {
@@ -101,8 +102,12 @@ export function ConfirmModal({
       <AlertDialogContent className="sm:max-w-[425px]">
         <AlertDialogHeader>
           <div className="flex items-center gap-3">
-            {icon === "trash" && <Trash2 className="h-5 w-5 text-red-600" />}
-            {icon === "warning" && <AlertTriangle className="h-5 w-5 text-amber-500" />}
+            {icon === "trash" && (
+              <HugeiconsIcon icon={Delete02Icon} className="h-5 w-5 text-red-600" />
+            )}
+            {icon === "warning" && (
+              <HugeiconsIcon icon={Alert01Icon} className="h-5 w-5 text-amber-500" />
+            )}
             <AlertDialogTitle className="text-slate-900">{title}</AlertDialogTitle>
           </div>
           <AlertDialogDescription className="pt-2 text-slate-500">
@@ -118,7 +123,9 @@ export function ConfirmModal({
             disabled={loading}
             className="w-full sm:w-auto"
           >
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {loading && (
+              <HugeiconsIcon icon={Loading02Icon} className="mr-2 h-4 w-4 animate-spin" />
+            )}
             {confirmLabel}
           </Button>
         </AlertDialogFooter>

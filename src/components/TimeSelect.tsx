@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { Clock, ChevronDown, Check } from "lucide-react";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
+import { ArrowDown01Icon, Clock01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 
 import { cn } from "@/lib/utils";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
@@ -12,10 +13,10 @@ export const FLAT_FIELD =
 export const FieldTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & {
-    icon?: React.ComponentType<{ className?: string }>;
+    icon?: IconSvgElement;
     leadingLabel?: string;
   }
->(({ icon: Icon, leadingLabel, children, className, ...props }, ref) => {
+>(({ icon, leadingLabel, children, className, ...props }, ref) => {
   let triggerBody: React.ReactNode;
   if (leadingLabel) {
     triggerBody = (
@@ -23,7 +24,7 @@ export const FieldTrigger = React.forwardRef<
         <span className="shrink-0 text-slate-400">{leadingLabel}</span>
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate">{children}</span>
-          <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+          <HugeiconsIcon icon={ArrowDown01Icon} className="h-4 w-4 shrink-0 text-slate-400" />
         </span>
       </>
     );
@@ -31,10 +32,10 @@ export const FieldTrigger = React.forwardRef<
     triggerBody = (
       <>
         <span className="flex min-w-0 items-center gap-2">
-          {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" />}
+          {icon && <HugeiconsIcon icon={icon} className="h-4 w-4 shrink-0 text-slate-400" />}
           <span className="truncate">{children}</span>
         </span>
-        <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+        <HugeiconsIcon icon={ArrowDown01Icon} className="h-4 w-4 shrink-0 text-slate-400" />
       </>
     );
   }
@@ -79,7 +80,7 @@ export function OptionRow({
       )}
     >
       <span>{children}</span>
-      {selected && <Check className="h-4 w-4 text-slate-900" />}
+      {selected && <HugeiconsIcon icon={Tick02Icon} className="h-4 w-4 text-slate-900" />}
     </button>
   );
 }
@@ -131,11 +132,11 @@ export function TimeSelect({
     </PopoverPrimitive.Content>
   );
 
-  let triggerIcon: React.ComponentType<{ className?: string }> | undefined;
+  let triggerIcon: IconSvgElement | undefined;
   if (label) {
     triggerIcon = undefined;
   } else {
-    triggerIcon = Clock;
+    triggerIcon = Clock01Icon;
   }
 
   let popoverContent: React.ReactNode;

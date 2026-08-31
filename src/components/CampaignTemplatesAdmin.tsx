@@ -15,7 +15,8 @@ import {
 import { TemplateStatusBadge } from "@/components/CampaignBadges";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
-import { Search, RefreshCw, Inbox } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { InboxIcon, Refresh01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 
 type AdminTemplate = {
   id: string;
@@ -118,7 +119,7 @@ const CampaignTemplatesAdmin = () => {
   } else if (templates.length === 0) {
     templatesContent = (
       <div className="py-12 text-center">
-        <Inbox className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+        <HugeiconsIcon icon={InboxIcon} className="w-8 h-8 text-slate-300 mx-auto mb-2" />
         <p className="text-sm text-slate-500">No custom templates found.</p>
       </div>
     );
@@ -173,7 +174,7 @@ const CampaignTemplatesAdmin = () => {
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={fetchTemplates} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 mr-1.5 ${refreshIconClass}`} />
+            <HugeiconsIcon icon={Refresh01Icon} className={`w-4 h-4 mr-1.5 ${refreshIconClass}`} />
             Refresh
           </Button>
         </div>
@@ -206,7 +207,10 @@ const CampaignTemplatesAdmin = () => {
           })}
         </div>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <HugeiconsIcon
+            icon={Search01Icon}
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+          />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}

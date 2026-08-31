@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MapPin, Star, Users, Utensils, Sparkles, Loader2, Compass } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  CompassIcon,
+  Restaurant02Icon,
+  Loading02Icon,
+  Location01Icon,
+  SparklesIcon,
+  StarIcon,
+  UsersRoundIcon,
+} from "@hugeicons/core-free-icons";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -102,7 +111,8 @@ const CustomerLanding = () => {
   if (loadingFeatured) {
     featuredContent = (
       <div className="flex items-center gap-2 py-12 text-slate-500">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading featured restaurants...
+        <HugeiconsIcon icon={Loading02Icon} className="h-5 w-5 animate-spin" /> Loading featured
+        restaurants...
       </div>
     );
   } else if (featured.length === 0) {
@@ -181,7 +191,7 @@ const CustomerLanding = () => {
           } else {
             bannerContent = (
               <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
-                <Utensils className="h-8 w-8" />
+                <HugeiconsIcon icon={Restaurant02Icon} className="h-8 w-8" />
               </div>
             );
           }
@@ -202,7 +212,10 @@ const CustomerLanding = () => {
             }
             ratingContent = (
               <span className="inline-flex items-center gap-1 font-medium text-slate-700">
-                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                <HugeiconsIcon
+                  icon={StarIcon}
+                  className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400"
+                />
                 {r.rating.toFixed(1)}
                 <span className="font-normal text-slate-500">{reviewCountLabel}</span>
               </span>
@@ -233,7 +246,7 @@ const CustomerLanding = () => {
                   }
                 }}
               >
-                <Utensils className="h-4 w-4" />
+                <HugeiconsIcon icon={Restaurant02Icon} className="h-4 w-4" />
                 <span>Book Table</span>
               </Button>
             );
@@ -277,7 +290,10 @@ const CustomerLanding = () => {
 
                   {locationText && (
                     <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
-                      <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
+                      <HugeiconsIcon
+                        icon={Location01Icon}
+                        className="h-4 w-4 shrink-0 text-slate-400"
+                      />
                       <span className="truncate">{locationText}</span>
                     </p>
                   )}
@@ -291,7 +307,7 @@ const CustomerLanding = () => {
                       asChild
                     >
                       <Link to={queueHref} onClick={(e) => e.stopPropagation()}>
-                        <Users className="h-4 w-4" />
+                        <HugeiconsIcon icon={UsersRoundIcon} className="h-4 w-4" />
                         <span>Join Queue</span>
                       </Link>
                     </Button>
@@ -328,7 +344,7 @@ const CustomerLanding = () => {
         <div className="relative container mx-auto px-4 pt-36 md:pt-44 pb-32 sm:pb-36 md:pb-44 text-center">
           <div className="max-w-3xl mx-auto space-y-6 animate-fade-in-up">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs sm:text-sm font-medium text-white backdrop-blur-sm">
-              <Sparkles className="h-3.5 w-3.5" />
+              <HugeiconsIcon icon={SparklesIcon} className="h-3.5 w-3.5" />
               Discover dining near you with SeatPing
             </span>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium leading-tight text-white">
@@ -347,7 +363,7 @@ const CustomerLanding = () => {
               onClick={() => navigate("/search")}
               className="w-full rounded-xl px-8 shadow-sm transition-transform hover:scale-105 hover:border-slate-200 hover:bg-white hover:text-slate-900 sm:w-auto"
             >
-              <Utensils className="h-4 w-4" />
+              <HugeiconsIcon icon={Restaurant02Icon} className="h-4 w-4" />
               <span className="font-medium">Book Table</span>
             </Button>
             <Button
@@ -356,7 +372,7 @@ const CustomerLanding = () => {
               onClick={scrollToFeatured}
               className="w-full rounded-xl px-8 backdrop-blur-sm transition-transform hover:scale-105 hover:border-white/70 hover:bg-white/10 hover:text-white sm:w-auto"
             >
-              <Compass className="h-4 w-4" />
+              <HugeiconsIcon icon={CompassIcon} className="h-4 w-4" />
               <span className="font-medium">Discover Restaurants</span>
             </Button>
           </div>

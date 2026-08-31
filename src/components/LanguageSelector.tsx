@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Label } from "@/components/ui/label";
-import { ChevronDown } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { useToast } from "@/hooks/use-toast";
 import { useLang, type Lang } from "@/lib/i18n";
 
@@ -52,7 +53,10 @@ export default function LanguageSelector() {
             </option>
           ))}
         </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+        <HugeiconsIcon
+          icon={ArrowDown01Icon}
+          className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"
+        />
       </div>
     </div>
   );

@@ -24,7 +24,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapPin, Plus, Trash2, Pencil, QrCode, Copy, Download } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Add01Icon,
+  Copy01Icon,
+  Delete02Icon,
+  Download01Icon,
+  Location01Icon,
+  Edit03Icon,
+  QrCodeIcon,
+} from "@hugeicons/core-free-icons";
 import QRCode from "qrcode";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import BusinessEmptyState from "@/components/BusinessEmptyState";
@@ -267,7 +276,7 @@ export default function LocationManagement({
   if (locations.length === 0) {
     locationsContent = (
       <BusinessEmptyState
-        icon={MapPin}
+        icon={Location01Icon}
         title={t("loc.none")}
         body={t("loc.none.help")}
         className="px-4 py-8"
@@ -292,7 +301,10 @@ export default function LocationManagement({
               className="flex flex-col gap-4 rounded-lg bg-gray-50 p-3 md:flex-row md:items-start md:justify-between md:gap-4 md:p-4"
             >
               <div className="flex items-start space-x-3 min-w-0 flex-1">
-                <MapPin className="w-4 h-4 md:w-5 md:h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                <HugeiconsIcon
+                  icon={Location01Icon}
+                  className="w-4 h-4 md:w-5 md:h-5 text-gray-400 flex-shrink-0 mt-0.5"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <p
@@ -361,7 +373,7 @@ export default function LocationManagement({
                   className="h-10 w-full justify-center sm:w-auto md:w-10 md:px-0 xl:w-auto xl:px-4"
                   onClick={() => setEditing(location)}
                 >
-                  <Pencil size={16} className="mr-2 md:mr-0 xl:mr-2" />
+                  <HugeiconsIcon icon={Edit03Icon} size={16} className="mr-2 md:mr-0 xl:mr-2" />
                   <span className="md:hidden xl:inline" data-testid="loc-edit-label">
                     {t("loc.editProfile")}
                   </span>
@@ -374,7 +386,7 @@ export default function LocationManagement({
                   className="h-10 w-full justify-center sm:w-auto md:w-10 md:px-0 xl:w-auto xl:px-4"
                   onClick={() => openQrModal(location)}
                 >
-                  <QrCode size={16} className="mr-2 md:mr-0 xl:mr-2" />
+                  <HugeiconsIcon icon={QrCodeIcon} size={16} className="mr-2 md:mr-0 xl:mr-2" />
                   <span className="md:hidden xl:inline" data-testid="loc-qr-label">
                     {t("loc.qrCode")}
                   </span>
@@ -389,7 +401,7 @@ export default function LocationManagement({
                       title={t("loc.removeLocation")}
                       disabled={loading}
                     >
-                      <Trash2 size={16} className="mr-2 sm:mr-0" />
+                      <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2 sm:mr-0" />
                       <span className="sm:hidden">{t("loc.removeLocation")}</span>
                     </Button>
                   </AlertDialogTrigger>
@@ -468,7 +480,7 @@ export default function LocationManagement({
                 disabled={loading || atMax}
                 className="hidden text-sm md:text-base lg:inline-flex"
               >
-                <Plus size={16} className="mr-2" /> {t("loc.addBtn")}
+                <HugeiconsIcon icon={Add01Icon} size={16} className="mr-2" /> {t("loc.addBtn")}
               </Button>
             </div>
             <div className="space-y-4">
@@ -519,7 +531,7 @@ export default function LocationManagement({
                 disabled={loading || atMax}
                 className="w-full text-sm md:text-base lg:hidden"
               >
-                <Plus size={16} className="mr-2" /> {t("loc.addBtn")}
+                <HugeiconsIcon icon={Add01Icon} size={16} className="mr-2" /> {t("loc.addBtn")}
               </Button>
             </div>
             {atMax && <p className="text-xs md:text-sm text-red-600 mt-2">{t("loc.atMax")}</p>}
@@ -605,10 +617,12 @@ export default function LocationManagement({
 
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button variant="outline" className="w-full sm:flex-1" onClick={copyQueueLink}>
-                <Copy size={16} className="mr-2" /> {t("loc.qrModal.copyLink")}
+                <HugeiconsIcon icon={Copy01Icon} size={16} className="mr-2" />{" "}
+                {t("loc.qrModal.copyLink")}
               </Button>
               <Button className="w-full sm:flex-1" onClick={downloadQrCode} disabled={!qrDataUrl}>
-                <Download size={16} className="mr-2" /> {t("loc.qrModal.downloadQr")}
+                <HugeiconsIcon icon={Download01Icon} size={16} className="mr-2" />{" "}
+                {t("loc.qrModal.downloadQr")}
               </Button>
             </div>
           </div>

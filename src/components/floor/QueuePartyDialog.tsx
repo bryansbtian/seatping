@@ -1,4 +1,5 @@
-import { Users } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { UsersRoundIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -41,7 +42,11 @@ const QueuePartyDialog = ({
           <DialogTitle>{t("floor.live.waitingActionTitle")}</DialogTitle>
           <DialogDescription asChild>
             <span className="flex min-w-0 items-center gap-2 text-sm text-slate-600">
-              <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <HugeiconsIcon
+                icon={UsersRoundIcon}
+                className="h-4 w-4 shrink-0"
+                aria-hidden="true"
+              />
               <span className="min-w-0 truncate">
                 {party.name} &middot; {t("floor.live.partyOf", { n: party.partySize })} &middot;{" "}
                 {t("floor.live.waitingFor", { n: party.waitingMinutes })}

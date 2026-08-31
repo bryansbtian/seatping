@@ -23,7 +23,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/lib/i18n";
 import type { TKey } from "@/lib/i18n";
-import { Loader2, MessageSquare, Reply, Star } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Loading02Icon, Message01Icon, ReplyIcon, StarIcon } from "@hugeicons/core-free-icons";
 import BusinessEmptyState from "@/components/BusinessEmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -72,7 +73,13 @@ export function Stars({ rating, className }: { rating: number; className?: strin
         } else {
           starToneClass = "fill-slate-200 text-slate-200";
         }
-        return <Star key={i} className={cn("h-3.5 w-3.5 md:h-4 md:w-4", starToneClass)} />;
+        return (
+          <HugeiconsIcon
+            icon={StarIcon}
+            key={i}
+            className={cn("h-3.5 w-3.5 md:h-4 md:w-4", starToneClass)}
+          />
+        );
       })}
     </span>
   );
@@ -273,7 +280,7 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
         className="flex items-center justify-center gap-2 py-12 text-muted-foreground"
         data-testid="reviews-loading"
       >
-        <Loader2 className="h-5 w-5 animate-spin" /> {t("rev.loading")}
+        <HugeiconsIcon icon={Loading02Icon} className="h-5 w-5 animate-spin" /> {t("rev.loading")}
       </div>
     );
   }
@@ -296,7 +303,7 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
       <Card className="flex flex-1 flex-col border border-slate-200 bg-white shadow-sm">
         <CardContent className="flex flex-1 flex-col p-0">
           <BusinessEmptyState
-            icon={MessageSquare}
+            icon={Message01Icon}
             title={t("rev.empty.title")}
             body={t("rev.empty.body")}
             testId="reviews-empty"
@@ -311,7 +318,7 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
       <Card className="flex flex-1 flex-col border border-slate-200 bg-white shadow-sm">
         <CardContent className="flex flex-1 flex-col p-0">
           <BusinessEmptyState
-            icon={MessageSquare}
+            icon={Message01Icon}
             title={t("rev.empty.title")}
             body={t("rev.range.empty")}
             testId="reviews-range-empty"
@@ -496,7 +503,8 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
             if (isSubmitting) {
               submitReplyLabel = (
                 <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("rev.saving")}
+                  <HugeiconsIcon icon={Loading02Icon} className="h-3.5 w-3.5 animate-spin" />{" "}
+                  {t("rev.saving")}
                 </>
               );
             }
@@ -668,7 +676,7 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
                           data-testid={`review-reply-${r.id}`}
                           onClick={() => startReply(r.id)}
                         >
-                          <Reply className="h-4 w-4" /> {t("rev.reply")}
+                          <HugeiconsIcon icon={ReplyIcon} className="h-4 w-4" /> {t("rev.reply")}
                         </Button>
                       </div>
                     )}
