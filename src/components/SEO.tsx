@@ -6,7 +6,7 @@ export const CUSTOMER_DESCRIPTION =
   "Discover restaurants, check availability, book tables, and join queues with SeatPing.";
 
 export const BUSINESS_DESCRIPTION =
-  "Manage queues, reservations, Guest CRM, and campaigns from one simple dashboard built for restaurants and service businesses.";
+  "Restaurant floor management, table management, virtual waitlist, reservations with Smart Table Assignment, Guest CRM, and campaigns from one simple dashboard.";
 
 export const CUSTOMER_IMAGE = `${SITE_URL}/display2.jpeg`;
 export const BUSINESS_IMAGE = `${SITE_URL}/display.jpeg`;

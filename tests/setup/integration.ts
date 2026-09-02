@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import { afterAll, beforeEach } from "vitest";
 import { TEST_ADMIN_PASSWORD } from "../helpers/constants.js";
+import { closeTestServers } from "../helpers/app.js";
 import { assertSafeTestDatabaseUrl, disconnectTestPrisma } from "../helpers/db.js";
 import { loadTestEnv } from "../helpers/loadTestEnv.js";
 import { resetExternalMocks } from "./externalMocks.js";
@@ -47,5 +48,6 @@ beforeEach(() => {
 });
 
 afterAll(async () => {
+  await closeTestServers();
   await disconnectTestPrisma();
 });

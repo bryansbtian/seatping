@@ -557,7 +557,7 @@ const en = {
   "dash.toast.queueRefreshed.title": "Queue refreshed",
   "dash.toast.queueRefreshed.desc": "Queue data has been updated.",
   "dash.toast.refreshFailed.title": "Failed to refresh",
-  "dash.toast.admitted.title": "Customer admitted",
+  "dash.toast.admitted.title": "Customer Admitted",
   "dash.toast.admitted.desc": "{name} has been admitted and will proceed to their turn.",
   "dash.toast.admitFailed.title": "Failed to admit customer",
   "dash.toast.removed.title": "Customer removed",
