@@ -8,6 +8,16 @@ import { resetExternalMocks } from "./externalMocks.js";
 
 loadTestEnv();
 
+function timezoneWithLocalMidday(): string {
+  const offsetHours = 12 - new Date().getUTCHours();
+  if (offsetHours < 0) {
+    return `Etc/GMT+${Math.abs(offsetHours)}`;
+  }
+  return `Etc/GMT-${offsetHours}`;
+}
+
+process.env.TZ = timezoneWithLocalMidday();
+
 const testUrl = assertSafeTestDatabaseUrl(process.env.TEST_DATABASE_URL);
 
 process.env.DATABASE_URL = testUrl;
