@@ -1,16 +1,14 @@
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
-  Calendar01Icon,
   CalendarDaysIcon,
   Call02Icon,
   CancelCircleIcon,
   CheckmarkCircle02Icon,
   Clock01Icon,
-  LogoutSquare01Icon,
+  LeftToRightListNumberIcon,
   Mail01Icon,
   MessageCircleIcon,
   Search01Icon,
-  TrendingDownIcon,
   UsersRoundIcon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
@@ -104,26 +102,19 @@ export function CycleStack({
 export function MetricCardPreview({
   label,
   value,
-  icon,
-  tint,
   className,
 }: {
   label: string;
   value: string;
-  icon: IconSvgElement;
-  tint: string;
   className?: string;
 }) {
   return (
     <div className={cn("rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm", className)}>
-      <div className="flex flex-col gap-1">
-        <p className="text-micro text-slate-600">{label}</p>
-        <div className="flex items-center justify-between">
-          <p className="text-xl font-semibold leading-none text-slate-800">{value}</p>
-          <div className={cn("grid h-7 w-7 place-items-center rounded-full", tint)}>
-            <HugeiconsIcon icon={icon} className="h-3.5 w-3.5" />
-          </div>
-        </div>
+      <div className="flex h-full flex-col">
+        <p className="text-preview-sm font-medium uppercase tracking-[0.12em] text-slate-500">
+          {label}
+        </p>
+        <p className="mt-auto pt-1.5 text-xl font-semibold leading-none text-slate-800">{value}</p>
       </div>
     </div>
   );
@@ -154,6 +145,7 @@ const RESERVATION_ROWS: {
     actions: [
       { label: "Mark Arrived", variant: "default" },
       { label: "No-Show", variant: "destructiveOutline" },
+      { label: "Cancel", variant: "destructiveOutline" },
     ],
   },
   {
@@ -167,6 +159,7 @@ const RESERVATION_ROWS: {
     contactValue: "+1 (415) 555-0114",
     actions: [
       { label: "Mark Arrived", variant: "default" },
+      { label: "No-Show", variant: "destructiveOutline" },
       { label: "Cancel", variant: "destructiveOutline" },
     ],
   },
@@ -196,6 +189,7 @@ const RESERVATION_ROWS: {
     actions: [
       { label: "Mark Arrived", variant: "default" },
       { label: "No-Show", variant: "destructiveOutline" },
+      { label: "Cancel", variant: "destructiveOutline" },
     ],
   },
 ];
@@ -302,31 +296,13 @@ export function ReservationPreview({ className, animated = true }: PreviewProps)
 
         <div className="hidden w-36 shrink-0 flex-col justify-between md:flex">
           <div className="rotate-2">
-            <MetricCardPreview
-              label="Reservations Today"
-              value="12"
-              icon={Calendar01Icon}
-              tint="bg-blue-100 text-blue-600"
-              className="shadow-md"
-            />
+            <MetricCardPreview label="Reservations Today" value="12" className="shadow-md" />
           </div>
           <div className="-rotate-2">
-            <MetricCardPreview
-              label="Served Today"
-              value="28"
-              icon={TrendingDownIcon}
-              tint="bg-emerald-100 text-emerald-600"
-              className="shadow-md"
-            />
+            <MetricCardPreview label="Served Today" value="28" className="shadow-md" />
           </div>
           <div className="rotate-2">
-            <MetricCardPreview
-              label="Left Today"
-              value="3"
-              icon={LogoutSquare01Icon}
-              tint="bg-teal-100 text-teal-600"
-              className="shadow-md"
-            />
+            <MetricCardPreview label="Left Today" value="3" className="shadow-md" />
           </div>
         </div>
       </div>
@@ -339,19 +315,32 @@ const QUEUE_ROWS = [
     pos: "#1",
     name: "Marcus Bennett",
     returning: true,
-    joined: "Joined: 8 mins ago",
+    joined: "Joined: 8m ago",
     guests: "2 Guests",
-    eta: "Estimated Wait: ~5 min",
+    contact: "SMS: +1 (415) 555-0114",
+    eta: "Estimated Wait: Less Than 5 Minutes",
   },
   {
     pos: "#2",
     name: "Aisha Rahman",
     returning: false,
-    joined: "Joined: 2 mins ago",
+    joined: "Joined: 2m ago",
     guests: "4 Guests",
-    eta: "Estimated Wait: ~12 min",
+    contact: "WhatsApp: +1 (628) 555-0192",
+    eta: "Estimated Wait: 10-15 Minutes",
+  },
+  {
+    pos: "#3",
+    name: "Priya Nair",
+    returning: true,
+    joined: "Joined: 1m ago",
+    guests: "3 Guests",
+    contact: "SMS: +1 (206) 555-0167",
+    eta: "Estimated Wait: 15-20 Minutes",
   },
 ];
+
+const QUEUE_ROW_VISIBILITY = ["", "", "hidden md:max-lg:block"];
 
 export function QueuePreview({ className, animated = true }: PreviewProps) {
   return (
@@ -363,17 +352,24 @@ export function QueuePreview({ className, animated = true }: PreviewProps) {
       )}
     >
       <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
-        <span className="truncate text-micro text-gray-600">Managing queue for: Marina Bay</span>
+        <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-xs font-medium text-slate-800">
+          <HugeiconsIcon icon={LeftToRightListNumberIcon} className="h-3.5 w-3.5 shrink-0" />
+          Queue Management
+        </span>
         <Badge
           variant="secondary"
           className="shrink-0 bg-indigo-100 px-2 py-0.5 text-preview-sm text-indigo-700 hover:bg-indigo-100"
         >
-          2 customers
+          <span className="md:max-lg:hidden">2 customers</span>
+          <span className="hidden md:max-lg:inline">3 customers</span>
         </Badge>
       </div>
       <div className="flex flex-col gap-2 md:flex-1 md:justify-between lg:flex-none">
-        {QUEUE_ROWS.map((row) => (
-          <div key={row.pos} className="rounded-lg bg-gray-50 p-2.5">
+        {QUEUE_ROWS.map((row, index) => (
+          <div
+            key={row.pos}
+            className={cn("rounded-lg bg-gray-50 p-2.5", QUEUE_ROW_VISIBILITY[index])}
+          >
             <div className="flex items-start gap-2">
               <span className="mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-1.5 py-1 text-micro font-semibold leading-none text-gray-700 shadow-sm tabular-nums">
                 {row.pos}
@@ -390,14 +386,15 @@ export function QueuePreview({ className, animated = true }: PreviewProps) {
                 </p>
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-micro text-gray-600">
                   <span>{row.joined}</span>
-                  <span className="text-gray-400">•</span>
+                  <span className="text-gray-400">&middot;</span>
                   <span>{row.guests}</span>
                 </p>
+                <p className="mt-0.5 truncate text-micro text-gray-600">{row.contact}</p>
                 <p className="mt-0.5 text-micro font-medium text-indigo-600">{row.eta}</p>
               </div>
             </div>
             <div className="mt-2 flex gap-1.5">
-              <Button size="sm" variant="success" tabIndex={-1} className="h-6 flex-1 text-micro">
+              <Button size="sm" tabIndex={-1} className="h-6 flex-1 text-micro">
                 Admit
               </Button>
               <Button
@@ -467,7 +464,15 @@ const GUEST_PROFILES: {
   },
 ];
 
-function GuestProfilePanel({ profile }: { profile: (typeof GUEST_PROFILES)[number] }) {
+const GUEST_PANEL_VISIBILITY = ["", "md:max-lg:hidden"];
+
+function GuestProfilePanel({
+  profile,
+  className,
+}: {
+  profile: (typeof GUEST_PROFILES)[number];
+  className?: string;
+}) {
   let visitWord: string;
   if (profile.visits === 1) {
     visitWord = "Visit";
@@ -475,7 +480,7 @@ function GuestProfilePanel({ profile }: { profile: (typeof GUEST_PROFILES)[numbe
     visitWord = "Visits";
   }
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-2.5">
+    <div className={cn("rounded-xl border border-slate-200 bg-white p-2.5", className)}>
       <div className="flex items-start gap-2.5">
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-micro font-semibold text-indigo-700">
           {profile.initials}
@@ -517,11 +522,16 @@ export function GuestProfilePreview({ className, animated = true }: PreviewProps
       )}
     >
       <div className="mb-2 flex h-7 w-full items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-micro text-slate-400">
-        <HugeiconsIcon icon={Search01Icon} className="h-3 w-3" /> Search Guests
+        <HugeiconsIcon icon={Search01Icon} className="h-3 w-3 shrink-0" />
+        <span className="truncate">Search Name, Phone, Email, Or Tag</span>
       </div>
       <div className="flex flex-col gap-2 md:flex-1 md:justify-between lg:flex-none">
-        {GUEST_PROFILES.slice(0, 2).map((profile) => (
-          <GuestProfilePanel key={profile.name} profile={profile} />
+        {GUEST_PROFILES.slice(0, 2).map((profile, index) => (
+          <GuestProfilePanel
+            key={profile.name}
+            profile={profile}
+            className={GUEST_PANEL_VISIBILITY[index]}
+          />
         ))}
       </div>
     </div>

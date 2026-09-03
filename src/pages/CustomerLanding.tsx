@@ -2,11 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  CompassIcon,
   Restaurant02Icon,
   Loading02Icon,
   Location01Icon,
-  SparklesIcon,
   StarIcon,
   UsersRoundIcon,
 } from "@hugeicons/core-free-icons";
@@ -102,10 +100,6 @@ const CustomerLanding = () => {
     elements.forEach((el) => observer.observe(el));
     return () => elements.forEach((el) => observer.unobserve(el));
   }, []);
-
-  const scrollToFeatured = () => {
-    document.getElementById("featured")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
 
   let featuredContent;
   if (loadingFeatured) {
@@ -343,10 +337,6 @@ const CustomerLanding = () => {
 
         <div className="relative container mx-auto px-4 pt-36 md:pt-44 pb-32 sm:pb-36 md:pb-44 text-center">
           <div className="max-w-3xl mx-auto space-y-6 animate-fade-in-up">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs sm:text-sm font-medium text-white backdrop-blur-sm">
-              <HugeiconsIcon icon={SparklesIcon} className="h-3.5 w-3.5" />
-              Discover dining near you with SeatPing
-            </span>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium leading-tight text-white">
               Discover Restaurants and Join the Wait Effortlessly
             </h1>
@@ -354,27 +344,6 @@ const CustomerLanding = () => {
               Find great restaurants, check availability, join the queue, and reserve your spot in
               one simple place.
             </p>
-          </div>
-
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 animate-fade-in-up animation-delay-200">
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => navigate("/search")}
-              className="w-full rounded-xl px-8 shadow-sm transition-transform hover:scale-105 hover:border-slate-200 hover:bg-white hover:text-slate-900 sm:w-auto"
-            >
-              <HugeiconsIcon icon={Restaurant02Icon} className="h-4 w-4" />
-              <span className="font-medium">Book Table</span>
-            </Button>
-            <Button
-              size="lg"
-              variant="inverseOutline"
-              onClick={scrollToFeatured}
-              className="w-full rounded-xl px-8 backdrop-blur-sm transition-transform hover:scale-105 hover:border-white/70 hover:bg-white/10 hover:text-white sm:w-auto"
-            >
-              <HugeiconsIcon icon={CompassIcon} className="h-4 w-4" />
-              <span className="font-medium">Discover Restaurants</span>
-            </Button>
           </div>
         </div>
       </section>

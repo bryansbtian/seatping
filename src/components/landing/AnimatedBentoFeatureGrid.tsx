@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
   CalendarDaysIcon,
+  ChartAnalysisIcon,
   ContactIcon,
+  LayoutGridIcon,
   LeftToRightListNumberIcon,
   SentIcon,
 } from "@hugeicons/core-free-icons";
@@ -21,6 +23,10 @@ import {
   GuestProfilePreview,
   CampaignPreview,
 } from "@/components/landing/BentoProductPreviews";
+import {
+  FloorBentoPreview,
+  PerformanceBentoPreview,
+} from "@/components/landing/FloorProductPreviews";
 
 export type BentoSize = "large" | "medium";
 
@@ -104,7 +110,8 @@ export function ReservationFeatureCard(props: BentoCardProps) {
     <BentoFeatureCard
       icon={CalendarDaysIcon}
       title="Reservation Management"
-      description="Take bookings in advance, set capacity per hour, and keep tonight's tables organised without the paper book."
+      className="md:max-lg:row-start-4"
+      description="Take bookings in advance, set capacity per hour, and let Smart Table Assignment pair each booking with a table that fits before guests arrive."
       size="large"
       {...props}
     >
@@ -118,6 +125,7 @@ export function GuestCrmFeatureCard(props: BentoCardProps) {
     <BentoFeatureCard
       icon={ContactIcon}
       title="Guest CRM"
+      className="md:max-lg:col-start-2 md:max-lg:row-start-2 md:max-lg:self-start"
       description="Profiles build themselves from every visit, with history, tags, and notes, so you always know your regulars."
       descriptionClassName="md:min-h-[4.3rem] lg:min-h-0"
       {...props}
@@ -132,7 +140,8 @@ export function LiveQueueFeatureCard(props: BentoCardProps) {
     <BentoFeatureCard
       icon={LeftToRightListNumberIcon}
       title="Live Queue"
-      description="Track walk-ins in real time and notify guests automatically the moment their table is ready."
+      className="md:max-lg:col-start-1 md:max-lg:row-start-2 md:max-lg:row-span-2 md:max-lg:self-start"
+      description="Track walk-ins in real time, see the recommended table for each waiting party, and notify guests the moment their table is ready."
       descriptionClassName="md:min-h-[4.3rem] lg:min-h-0"
       {...props}
     >
@@ -146,6 +155,7 @@ export function CampaignsFeatureCard(props: BentoCardProps) {
     <BentoFeatureCard
       icon={SentIcon}
       title="Guest Campaigns"
+      className="md:max-lg:row-start-5"
       description="Send SeatPing-branded SMS, WhatsApp, and Email campaigns to smart audiences or your saved guest groups."
       size="large"
       {...props}
@@ -155,11 +165,43 @@ export function CampaignsFeatureCard(props: BentoCardProps) {
   );
 }
 
+export function FloorManagementFeatureCard(props: BentoCardProps) {
+  return (
+    <BentoFeatureCard
+      icon={LayoutGridIcon}
+      title="Floor Management"
+      className="md:max-lg:row-start-1"
+      description="Run your dining room from a live floor plan, with table statuses, queue-to-table matching, and staff overrides in one view."
+      size="large"
+      {...props}
+    >
+      <FloorBentoPreview />
+    </BentoFeatureCard>
+  );
+}
+
+export function PerformanceFeatureCard(props: BentoCardProps) {
+  return (
+    <BentoFeatureCard
+      icon={ChartAnalysisIcon}
+      title="Performance"
+      className="md:max-lg:col-start-2 md:max-lg:row-start-3"
+      description="See wait times, table turn times, utilization, covers, and no-shows for every location."
+      descriptionClassName="md:min-h-[4.3rem] lg:min-h-0"
+      {...props}
+    >
+      <PerformanceBentoPreview />
+    </BentoFeatureCard>
+  );
+}
+
 const BUSINESS_BENTO_CARDS: React.ComponentType<BentoCardProps>[] = [
-  ReservationFeatureCard,
-  GuestCrmFeatureCard,
+  FloorManagementFeatureCard,
   LiveQueueFeatureCard,
+  GuestCrmFeatureCard,
+  ReservationFeatureCard,
   CampaignsFeatureCard,
+  PerformanceFeatureCard,
 ];
 
 interface AnimatedBentoFeatureGridProps {
@@ -214,8 +256,8 @@ function useBentoReveal(animated: boolean) {
 
 export default function AnimatedBentoFeatureGrid({
   eyebrow = "Features",
-  heading = "A Smarter Way to Manage Queues, Reservations, and Guest Flow",
-  subtitle = "Give customers a smoother waiting experience while helping staff manage queues, reservations, and daily operations from one simple dashboard.",
+  heading = "A Smarter Way to Run Your Floor, Queue, and Reservations",
+  subtitle = "Give guests a smoother waiting experience while your team manages the dining room, the queue, reservations, and daily operations from one simple dashboard.",
   cards = BUSINESS_BENTO_CARDS,
   animated = true,
   className,
@@ -241,7 +283,7 @@ export default function AnimatedBentoFeatureGrid({
         className="pointer-events-none absolute -top-24 right-0 h-72 w-[36rem] max-w-[90vw] rounded-full bg-indigo-100/40 blur-3xl"
       />
 
-      <div className="container relative mx-auto max-w-6xl">
+      <div className="relative mx-auto w-full max-w-7xl px-8 lg:px-4">
         <div className="max-w-3xl">
           {eyebrow && (
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">

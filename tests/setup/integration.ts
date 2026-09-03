@@ -1,11 +1,22 @@
 import bcrypt from "bcrypt";
 import { afterAll, beforeEach } from "vitest";
 import { TEST_ADMIN_PASSWORD } from "../helpers/constants.js";
+import { closeTestServers } from "../helpers/app.js";
 import { assertSafeTestDatabaseUrl, disconnectTestPrisma } from "../helpers/db.js";
 import { loadTestEnv } from "../helpers/loadTestEnv.js";
 import { resetExternalMocks } from "./externalMocks.js";
 
 loadTestEnv();
+
+function timezoneWithLocalMidday(): string {
+  const offsetHours = 12 - new Date().getUTCHours();
+  if (offsetHours < 0) {
+    return `Etc/GMT+${Math.abs(offsetHours)}`;
+  }
+  return `Etc/GMT-${offsetHours}`;
+}
+
+process.env.TZ = timezoneWithLocalMidday();
 
 const testUrl = assertSafeTestDatabaseUrl(process.env.TEST_DATABASE_URL);
 
@@ -47,5 +58,6 @@ beforeEach(() => {
 });
 
 afterAll(async () => {
+  await closeTestServers();
   await disconnectTestPrisma();
 });

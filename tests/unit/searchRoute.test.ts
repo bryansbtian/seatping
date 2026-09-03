@@ -218,6 +218,15 @@ describe("search matching", () => {
 });
 
 describe("open now edge cases", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-15T12:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("reports nothing without usable opening hours", async () => {
     await expect(openNowFor(undefined)).resolves.toBeNull();
     await expect(openNowFor("nine to five")).resolves.toBeNull();
@@ -294,9 +303,6 @@ describe("open now edge cases", () => {
 
   it("reports closed outside a same-day window", async () => {
     const hour = new Date().getUTCHours();
-    if (hour > 20) {
-      return;
-    }
 
     await expect(
       openNowFor({
@@ -321,9 +327,6 @@ describe("open now edge cases", () => {
 
   it("reports open before the close of a window that wraps past midnight", async () => {
     const hour = new Date().getUTCHours();
-    if (hour > 21) {
-      return;
-    }
 
     await expect(
       openNowFor({
@@ -339,9 +342,6 @@ describe("open now edge cases", () => {
 
   it("reports closed inside the gap of a window that wraps past midnight", async () => {
     const hour = new Date().getUTCHours();
-    if (hour > 22) {
-      return;
-    }
 
     await expect(
       openNowFor({
