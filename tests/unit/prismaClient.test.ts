@@ -29,8 +29,8 @@ function lastOptions(): Record<string, any> {
 }
 
 beforeEach(() => {
-  process.env.DATABASE_URL = "mongodb://127.0.0.1:27017/seatping-test";
-  delete process.env.DB_MAX_POOL_SIZE;
+  process.env.DATABASE_URL = "postgresql://u:p@127.0.0.1:5432/seatping-test";
+  delete process.env.DB_CONNECTION_LIMIT;
 });
 
 afterEach(() => {
@@ -39,50 +39,50 @@ afterEach(() => {
 });
 
 describe("prisma datasource url", () => {
-  it("appends a default pool size with a query separator", async () => {
+  it("appends a default connection limit with a query separator", async () => {
     await loadPrisma();
 
     expect(lastOptions().datasourceUrl).toBe(
-      "mongodb://127.0.0.1:27017/seatping-test?maxPoolSize=10",
+      "postgresql://u:p@127.0.0.1:5432/seatping-test?connection_limit=10",
     );
   });
 
   it("joins onto an existing query string", async () => {
-    process.env.DATABASE_URL = "mongodb://127.0.0.1:27017/seatping-test?replicaSet=rs0";
+    process.env.DATABASE_URL = "postgresql://u:p@127.0.0.1:5432/seatping-test?sslmode=require";
 
     await loadPrisma();
 
     expect(lastOptions().datasourceUrl).toBe(
-      "mongodb://127.0.0.1:27017/seatping-test?replicaSet=rs0&maxPoolSize=10",
+      "postgresql://u:p@127.0.0.1:5432/seatping-test?sslmode=require&connection_limit=10",
     );
   });
 
-  it("honours a configured pool size", async () => {
-    process.env.DB_MAX_POOL_SIZE = "25";
+  it("honours a configured connection limit", async () => {
+    process.env.DB_CONNECTION_LIMIT = "25";
 
     await loadPrisma();
 
-    expect(lastOptions().datasourceUrl).toContain("maxPoolSize=25");
+    expect(lastOptions().datasourceUrl).toContain("connection_limit=25");
   });
 
-  it("leaves a url that already sets the pool size alone", async () => {
-    process.env.DATABASE_URL = "mongodb://127.0.0.1:27017/seatping-test?maxPoolSize=5";
+  it("leaves a url that already sets the connection limit alone", async () => {
+    process.env.DATABASE_URL = "postgresql://u:p@127.0.0.1:5432/seatping-test?connection_limit=5";
 
     await loadPrisma();
 
     expect(lastOptions().datasourceUrl).toBe(
-      "mongodb://127.0.0.1:27017/seatping-test?maxPoolSize=5",
+      "postgresql://u:p@127.0.0.1:5432/seatping-test?connection_limit=5",
     );
   });
 
-  it("matches the pool size parameter regardless of case or position", async () => {
+  it("matches the connection limit parameter regardless of case or position", async () => {
     process.env.DATABASE_URL =
-      "mongodb://127.0.0.1:27017/seatping-test?replicaSet=rs0&MaxPoolSize=7";
+      "postgresql://u:p@127.0.0.1:5432/seatping-test?sslmode=require&Connection_Limit=7";
 
     await loadPrisma();
 
     expect(lastOptions().datasourceUrl).toBe(
-      "mongodb://127.0.0.1:27017/seatping-test?replicaSet=rs0&MaxPoolSize=7",
+      "postgresql://u:p@127.0.0.1:5432/seatping-test?sslmode=require&Connection_Limit=7",
     );
   });
 

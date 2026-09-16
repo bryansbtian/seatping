@@ -14,7 +14,7 @@ import {
   FLOOR_MIN_DIMENSION,
   MAX_ROOMS_PER_LOCATION,
   MAX_ZONES_PER_ROOM,
-  OBJECT_ID_RE,
+  ENTITY_ID_RE,
   ROOM_NAME_MAX_LENGTH,
   ZONE_MIN_SIZE,
   ZONE_NAME_MAX_LENGTH,
@@ -40,8 +40,8 @@ import {
   parseInteger,
   parseName,
   parseAssignmentTableIds,
-  parseObjectId,
-  parseOptionalObjectId,
+  parseEntityId,
+  parseOptionalEntityId,
   parseOptionalText,
   parseShape,
   parseSource,
@@ -86,7 +86,7 @@ function sendFailure(res: Response, failure: Failure) {
 async function loadOwnedLocation(req: Request, res: Response, next: NextFunction) {
   try {
     const locationId = String(req.params.locationId || "").trim();
-    if (!OBJECT_ID_RE.test(locationId)) {
+    if (!ENTITY_ID_RE.test(locationId)) {
       return res.status(404).json({ error: "Location not found or access denied" });
     }
     const location = await prisma.location.findFirst({
@@ -773,7 +773,7 @@ router.get("/:locationId/live", loadOwnedLocation, async (_req: Request, res: Re
 });
 
 async function resolveQueueEntry(locationId: string, raw: unknown): Promise<Outcome<string>> {
-  const parsed = parseObjectId(raw, "queueEntryId");
+  const parsed = parseEntityId(raw, "queueEntryId");
   if (isFailure(parsed)) {
     return parsed;
   }
@@ -946,15 +946,15 @@ router.post(
     try {
       const location = ownedLocation(res);
 
-      const queueEntryId = parseOptionalObjectId(req.body?.queueEntryId, "queueEntryId");
+      const queueEntryId = parseOptionalEntityId(req.body?.queueEntryId, "queueEntryId");
       if (isFailure(queueEntryId)) {
         return sendFailure(res, queueEntryId);
       }
-      const reservationId = parseOptionalObjectId(req.body?.reservationId, "reservationId");
+      const reservationId = parseOptionalEntityId(req.body?.reservationId, "reservationId");
       if (isFailure(reservationId)) {
         return sendFailure(res, reservationId);
       }
-      const guestProfileId = parseOptionalObjectId(req.body?.guestProfileId, "guestProfileId");
+      const guestProfileId = parseOptionalEntityId(req.body?.guestProfileId, "guestProfileId");
       if (isFailure(guestProfileId)) {
         return sendFailure(res, guestProfileId);
       }
@@ -1046,7 +1046,7 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const location = ownedLocation(res);
-      const tableId = parseObjectId(req.body?.tableId, "tableId");
+      const tableId = parseEntityId(req.body?.tableId, "tableId");
       if (isFailure(tableId)) {
         return sendFailure(res, tableId);
       }
@@ -1083,7 +1083,7 @@ router.post("/:locationId/assign", loadOwnedLocation, async (req: Request, res: 
       memberTableIds = parsed.value;
       anchorTableId = parsed.value[0];
     } else {
-      const parsed = parseObjectId(req.body?.tableId, "tableId");
+      const parsed = parseEntityId(req.body?.tableId, "tableId");
       if (isFailure(parsed)) {
         return sendFailure(res, parsed);
       }
@@ -1094,15 +1094,15 @@ router.post("/:locationId/assign", loadOwnedLocation, async (req: Request, res: 
       return res.status(400).json({ error: "tableId is required" });
     }
 
-    const queueEntryId = parseOptionalObjectId(req.body?.queueEntryId, "queueEntryId");
+    const queueEntryId = parseOptionalEntityId(req.body?.queueEntryId, "queueEntryId");
     if (isFailure(queueEntryId)) {
       return sendFailure(res, queueEntryId);
     }
-    const reservationId = parseOptionalObjectId(req.body?.reservationId, "reservationId");
+    const reservationId = parseOptionalEntityId(req.body?.reservationId, "reservationId");
     if (isFailure(reservationId)) {
       return sendFailure(res, reservationId);
     }
-    const guestProfileId = parseOptionalObjectId(req.body?.guestProfileId, "guestProfileId");
+    const guestProfileId = parseOptionalEntityId(req.body?.guestProfileId, "guestProfileId");
     if (isFailure(guestProfileId)) {
       return sendFailure(res, guestProfileId);
     }
@@ -1187,7 +1187,7 @@ router.post(
     try {
       const location = ownedLocation(res);
       const reservationId = String(req.params.reservationId || "").trim();
-      if (!OBJECT_ID_RE.test(reservationId)) {
+      if (!ENTITY_ID_RE.test(reservationId)) {
         return res.status(404).json({ error: "Reservation not found or access denied" });
       }
 
@@ -1234,7 +1234,7 @@ router.get("/:locationId/assignments", loadOwnedLocation, async (req: Request, r
     const where: Record<string, unknown> = { locationId: location.id };
 
     if (req.query.tableId !== undefined) {
-      const parsed = parseObjectId(req.query.tableId, "tableId");
+      const parsed = parseEntityId(req.query.tableId, "tableId");
       if (isFailure(parsed)) {
         return sendFailure(res, parsed);
       }
@@ -1287,7 +1287,7 @@ router.post("/:locationId/assignments", loadOwnedLocation, async (req: Request, 
   try {
     const location = ownedLocation(res);
 
-    const tableId = parseObjectId(req.body?.tableId, "tableId");
+    const tableId = parseEntityId(req.body?.tableId, "tableId");
     if (isFailure(tableId)) {
       return sendFailure(res, tableId);
     }
@@ -1324,15 +1324,15 @@ router.post("/:locationId/assignments", loadOwnedLocation, async (req: Request, 
       return sendFailure(res, window);
     }
 
-    const queueEntryId = parseOptionalObjectId(req.body?.queueEntryId, "queueEntryId");
+    const queueEntryId = parseOptionalEntityId(req.body?.queueEntryId, "queueEntryId");
     if (isFailure(queueEntryId)) {
       return sendFailure(res, queueEntryId);
     }
-    const reservationId = parseOptionalObjectId(req.body?.reservationId, "reservationId");
+    const reservationId = parseOptionalEntityId(req.body?.reservationId, "reservationId");
     if (isFailure(reservationId)) {
       return sendFailure(res, reservationId);
     }
-    const guestProfileId = parseOptionalObjectId(req.body?.guestProfileId, "guestProfileId");
+    const guestProfileId = parseOptionalEntityId(req.body?.guestProfileId, "guestProfileId");
     if (isFailure(guestProfileId)) {
       return sendFailure(res, guestProfileId);
     }

@@ -1,7 +1,9 @@
 import { prisma } from "./prisma.js";
 import { withWriteRetry } from "./dbRetry.js";
 
-export const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
+import { ENTITY_ID_RE } from "./entityId.js";
+
+export { ENTITY_ID_RE };
 
 export const TABLE_SHAPES = ["ROUND", "SQUARE", "RECTANGLE"] as const;
 export const ASSIGNMENT_SOURCES = ["SMART", "MANUAL"] as const;
@@ -143,7 +145,7 @@ export function parseAssignmentTableIds(value: unknown): Outcome<string[]> {
       return fail(400, "tableIds must be a list of table ids");
     }
     const trimmed = entry.trim();
-    if (!OBJECT_ID_RE.test(trimmed)) {
+    if (!ENTITY_ID_RE.test(trimmed)) {
       return fail(400, "tableIds must be a list of table ids");
     }
     if (ids.includes(trimmed)) {
@@ -184,19 +186,19 @@ export function parseDate(value: unknown, field: string): Outcome<Date> {
   return ok(parsed);
 }
 
-export function parseObjectId(value: unknown, field: string): Outcome<string> {
+export function parseEntityId(value: unknown, field: string): Outcome<string> {
   const raw = String(value ?? "").trim();
-  if (!OBJECT_ID_RE.test(raw)) {
+  if (!ENTITY_ID_RE.test(raw)) {
     return fail(400, `${field} must be a valid id`);
   }
   return ok(raw);
 }
 
-export function parseOptionalObjectId(value: unknown, field: string): Outcome<string | null> {
+export function parseOptionalEntityId(value: unknown, field: string): Outcome<string | null> {
   if (value === null || value === undefined || value === "") {
     return ok(null);
   }
-  return parseObjectId(value, field);
+  return parseEntityId(value, field);
 }
 
 export function resolveOccupancyWindow(body: any): Outcome<{ start: Date; end: Date }> {
@@ -339,7 +341,7 @@ export async function listRooms(locationId: string) {
 }
 
 export async function findRoom(locationId: string, roomId: string) {
-  if (!OBJECT_ID_RE.test(roomId)) {
+  if (!ENTITY_ID_RE.test(roomId)) {
     return null;
   }
   return prisma.floorPlan.findFirst({
@@ -352,7 +354,7 @@ export async function findRoom(locationId: string, roomId: string) {
 }
 
 export async function findOwnedZone(locationId: string, zoneId: string) {
-  if (!OBJECT_ID_RE.test(zoneId)) {
+  if (!ENTITY_ID_RE.test(zoneId)) {
     return null;
   }
   return prisma.floorZone.findFirst({ where: { id: zoneId, locationId } });
@@ -370,14 +372,14 @@ export function clampZoneToRoom(
 }
 
 export async function findOwnedTable(locationId: string, tableId: string) {
-  if (!OBJECT_ID_RE.test(tableId)) {
+  if (!ENTITY_ID_RE.test(tableId)) {
     return null;
   }
   return prisma.diningTable.findFirst({ where: { id: tableId, locationId } });
 }
 
 export async function findOwnedAssignment(locationId: string, assignmentId: string) {
-  if (!OBJECT_ID_RE.test(assignmentId)) {
+  if (!ENTITY_ID_RE.test(assignmentId)) {
     return null;
   }
   return prisma.tableAssignment.findFirst({ where: { id: assignmentId, locationId } });
@@ -435,134 +437,137 @@ export type CreateAssignmentInput = {
 };
 
 export async function createAssignment(input: CreateAssignmentInput): Promise<Outcome<any>> {
-  if (!OBJECT_ID_RE.test(input.tableId)) {
+  if (!ENTITY_ID_RE.test(input.tableId)) {
     return fail(404, "Table not found or access denied");
   }
 
   return withWriteRetry(() =>
-    prisma.$transaction(async (tx) => {
-      const memberIds = input.tableIds ?? [input.tableId];
-      const members = await tx.diningTable.findMany({
-        where: { id: { in: memberIds }, locationId: input.locationId },
-      });
-      if (members.length !== memberIds.length) {
-        return fail(404, "Table not found or access denied");
-      }
+    prisma.$transaction(
+      async (tx) => {
+        const memberIds = input.tableIds ?? [input.tableId];
+        const members = await tx.diningTable.findMany({
+          where: { id: { in: memberIds }, locationId: input.locationId },
+        });
+        if (members.length !== memberIds.length) {
+          return fail(404, "Table not found or access denied");
+        }
 
-      const table = members.find((candidate) => candidate.id === input.tableId);
-      if (!table) {
-        return fail(404, "Table not found or access denied");
-      }
+        const table = members.find((candidate) => candidate.id === input.tableId);
+        if (!table) {
+          return fail(404, "Table not found or access denied");
+        }
 
-      const blocked = members.find((candidate) => candidate.isBlocked);
-      if (blocked) {
-        return fail(409, "Table is blocked and cannot accept an assignment");
-      }
+        const blocked = members.find((candidate) => candidate.isBlocked);
+        if (blocked) {
+          return fail(409, "Table is blocked and cannot accept an assignment");
+        }
 
-      const roomId = members[0].floorPlanId;
-      if (members.some((candidate) => candidate.floorPlanId !== roomId)) {
-        return fail(400, "Joined tables must be in the same room");
-      }
+        const roomId = members[0].floorPlanId;
+        if (members.some((candidate) => candidate.floorPlanId !== roomId)) {
+          return fail(400, "Joined tables must be in the same room");
+        }
 
-      const capacity = members.reduce((total, candidate) => total + candidate.capacity, 0);
-      const minimum = members.reduce(
-        (highest, candidate) => Math.max(highest, candidate.minimumPartySize),
-        1,
-      );
-      if (!partyFitsTable(input.partySize, { capacity, minimumPartySize: minimum })) {
-        return fail(409, `Table seats ${minimum} to ${capacity} guests`);
-      }
+        const capacity = members.reduce((total, candidate) => total + candidate.capacity, 0);
+        const minimum = members.reduce(
+          (highest, candidate) => Math.max(highest, candidate.minimumPartySize),
+          1,
+        );
+        if (!partyFitsTable(input.partySize, { capacity, minimumPartySize: minimum })) {
+          return fail(409, `Table seats ${minimum} to ${capacity} guests`);
+        }
 
-      const conflict = await tx.tableAssignment.findFirst({
-        where: {
-          ...occupiedByAny(memberIds),
-          status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
-          expectedStartAt: { lt: input.expectedEndAt },
-          expectedEndAt: { gt: input.expectedStartAt },
-        },
-        select: { id: true },
-      });
-      if (conflict) {
-        return fail(409, "Table already has an assignment during that time");
-      }
-
-      const now = new Date();
-
-      if (input.queueEntryId) {
-        const held = await tx.tableAssignment.findFirst({
+        const conflict = await tx.tableAssignment.findFirst({
           where: {
-            queueEntryId: input.queueEntryId,
+            ...occupiedByAny(memberIds),
             status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
+            expectedStartAt: { lt: input.expectedEndAt },
+            expectedEndAt: { gt: input.expectedStartAt },
           },
           select: { id: true },
         });
-        if (held) {
-          return fail(409, "That guest already has a table");
+        if (conflict) {
+          return fail(409, "Table already has an assignment during that time");
         }
-        await tx.queueEntry.update({
-          where: { id: input.queueEntryId },
-          data: { updatedAt: new Date() },
-        });
-      }
 
-      if (input.reservationId) {
-        const held = await tx.tableAssignment.findFirst({
-          where: {
-            reservationId: input.reservationId,
-            status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
-          },
-          select: { id: true },
-        });
-        if (held) {
-          return fail(409, "That reservation already has a table");
+        const now = new Date();
+
+        if (input.queueEntryId) {
+          const held = await tx.tableAssignment.findFirst({
+            where: {
+              queueEntryId: input.queueEntryId,
+              status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
+            },
+            select: { id: true },
+          });
+          if (held) {
+            return fail(409, "That guest already has a table");
+          }
+          await tx.queueEntry.update({
+            where: { id: input.queueEntryId },
+            data: { updatedAt: new Date() },
+          });
         }
+
+        if (input.reservationId) {
+          const held = await tx.tableAssignment.findFirst({
+            where: {
+              reservationId: input.reservationId,
+              status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
+            },
+            select: { id: true },
+          });
+          if (held) {
+            return fail(409, "That reservation already has a table");
+          }
+          if (input.status === "SEATED") {
+            await tx.reservation.updateMany({
+              where: { id: input.reservationId, status: "CONFIRMED" },
+              data: { status: "ARRIVED", arrivedAt: now },
+            });
+          } else {
+            await tx.reservation.update({
+              where: { id: input.reservationId },
+              data: { updatedAt: now },
+            });
+          }
+        }
+
+        let seatedAt: Date | null = null;
+        const tableData: Record<string, unknown> = { assignmentVersion: { increment: 1 } };
         if (input.status === "SEATED") {
-          await tx.reservation.updateMany({
-            where: { id: input.reservationId, status: "CONFIRMED" },
-            data: { status: "ARRIVED", arrivedAt: now },
-          });
-        } else {
-          await tx.reservation.update({
-            where: { id: input.reservationId },
-            data: { updatedAt: now },
+          seatedAt = now;
+          tableData.cleaningSince = null;
+        }
+
+        for (const member of members) {
+          await tx.diningTable.update({
+            where: { id: member.id },
+            data: tableData,
           });
         }
-      }
 
-      let seatedAt: Date | null = null;
-      const tableData: Record<string, unknown> = { assignmentVersion: { increment: 1 } };
-      if (input.status === "SEATED") {
-        seatedAt = now;
-        tableData.cleaningSince = null;
-      }
-
-      for (const member of members) {
-        await tx.diningTable.update({
-          where: { id: member.id },
-          data: tableData,
+        const assignment = await tx.tableAssignment.create({
+          data: {
+            tableId: table.id,
+            tableIds: memberIds,
+            businessId: input.businessId,
+            locationId: input.locationId,
+            queueEntryId: input.queueEntryId,
+            reservationId: input.reservationId,
+            guestProfileId: input.guestProfileId,
+            partySize: input.partySize,
+            source: input.source,
+            status: input.status,
+            expectedStartAt: input.expectedStartAt,
+            expectedEndAt: input.expectedEndAt,
+            seatedAt,
+          },
         });
-      }
 
-      const assignment = await tx.tableAssignment.create({
-        data: {
-          tableId: table.id,
-          tableIds: memberIds,
-          businessId: input.businessId,
-          locationId: input.locationId,
-          queueEntryId: input.queueEntryId,
-          reservationId: input.reservationId,
-          guestProfileId: input.guestProfileId,
-          partySize: input.partySize,
-          source: input.source,
-          status: input.status,
-          expectedStartAt: input.expectedStartAt,
-          expectedEndAt: input.expectedEndAt,
-          seatedAt,
-        },
-      });
-
-      return ok(assignment);
-    }),
+        return ok(assignment);
+      },
+      { isolationLevel: "Serializable" },
+    ),
   );
 }
 
@@ -576,107 +581,110 @@ export type UpdateAssignmentInput = {
 };
 
 export async function updateAssignment(input: UpdateAssignmentInput): Promise<Outcome<any>> {
-  if (!OBJECT_ID_RE.test(input.assignmentId)) {
+  if (!ENTITY_ID_RE.test(input.assignmentId)) {
     return fail(404, "Assignment not found or access denied");
   }
 
   return withWriteRetry(() =>
-    prisma.$transaction(async (tx) => {
-      const existing = await tx.tableAssignment.findFirst({
-        where: { id: input.assignmentId, locationId: input.locationId },
-      });
-      if (!existing) {
-        return fail(404, "Assignment not found or access denied");
-      }
-      if (existing.status === "COMPLETED" || existing.status === "CANCELLED") {
-        return fail(409, "Assignment is already closed");
-      }
-
-      const table = await tx.diningTable.findFirst({
-        where: { id: existing.tableId, locationId: input.locationId },
-      });
-      if (!table) {
-        return fail(404, "Table not found or access denied");
-      }
-
-      let partySize = existing.partySize;
-      if (input.partySize !== null) {
-        partySize = input.partySize;
-      }
-      if (!partyFitsTable(partySize, table)) {
-        return fail(409, `Table seats ${table.minimumPartySize} to ${table.capacity} guests`);
-      }
-
-      let expectedStartAt = existing.expectedStartAt;
-      if (input.expectedStartAt) {
-        expectedStartAt = input.expectedStartAt;
-      }
-      let expectedEndAt = existing.expectedEndAt;
-      if (input.expectedEndAt) {
-        expectedEndAt = input.expectedEndAt;
-      }
-      if (expectedEndAt.getTime() <= expectedStartAt.getTime()) {
-        return fail(400, "expectedEndAt must be after expectedStartAt");
-      }
-
-      let status: AssignmentStatusValue = existing.status;
-      if (input.status) {
-        status = input.status;
-      }
-
-      const staysActive = ACTIVE_ASSIGNMENT_STATUSES.some((value) => value === status);
-      if (staysActive) {
-        const conflict = await tx.tableAssignment.findFirst({
-          where: {
-            tableId: existing.tableId,
-            id: { not: existing.id },
-            status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
-            expectedStartAt: { lt: expectedEndAt },
-            expectedEndAt: { gt: expectedStartAt },
-          },
-          select: { id: true },
+    prisma.$transaction(
+      async (tx) => {
+        const existing = await tx.tableAssignment.findFirst({
+          where: { id: input.assignmentId, locationId: input.locationId },
         });
-        if (conflict) {
-          return fail(409, "Table already has an assignment during that time");
+        if (!existing) {
+          return fail(404, "Assignment not found or access denied");
         }
-      }
+        if (existing.status === "COMPLETED" || existing.status === "CANCELLED") {
+          return fail(409, "Assignment is already closed");
+        }
 
-      await tx.diningTable.update({
-        where: { id: table.id },
-        data: { assignmentVersion: { increment: 1 } },
-      });
-
-      const data: Record<string, unknown> = {
-        partySize,
-        expectedStartAt,
-        expectedEndAt,
-        status,
-      };
-      const now = new Date();
-      if (status === "SEATED" && !existing.seatedAt) {
-        data.seatedAt = now;
-      }
-      if (status === "COMPLETED" && !existing.completedAt) {
-        data.completedAt = now;
-      }
-      if (status === "CANCELLED" && !existing.cancelledAt) {
-        data.cancelledAt = now;
-      }
-
-      if (status === "SEATED" && existing.reservationId) {
-        await tx.reservation.updateMany({
-          where: { id: existing.reservationId, status: "CONFIRMED" },
-          data: { status: "ARRIVED", arrivedAt: now },
+        const table = await tx.diningTable.findFirst({
+          where: { id: existing.tableId, locationId: input.locationId },
         });
-      }
+        if (!table) {
+          return fail(404, "Table not found or access denied");
+        }
 
-      const updated = await tx.tableAssignment.update({
-        where: { id: existing.id },
-        data,
-      });
+        let partySize = existing.partySize;
+        if (input.partySize !== null) {
+          partySize = input.partySize;
+        }
+        if (!partyFitsTable(partySize, table)) {
+          return fail(409, `Table seats ${table.minimumPartySize} to ${table.capacity} guests`);
+        }
 
-      return ok(updated);
-    }),
+        let expectedStartAt = existing.expectedStartAt;
+        if (input.expectedStartAt) {
+          expectedStartAt = input.expectedStartAt;
+        }
+        let expectedEndAt = existing.expectedEndAt;
+        if (input.expectedEndAt) {
+          expectedEndAt = input.expectedEndAt;
+        }
+        if (expectedEndAt.getTime() <= expectedStartAt.getTime()) {
+          return fail(400, "expectedEndAt must be after expectedStartAt");
+        }
+
+        let status: AssignmentStatusValue = existing.status;
+        if (input.status) {
+          status = input.status;
+        }
+
+        const staysActive = ACTIVE_ASSIGNMENT_STATUSES.some((value) => value === status);
+        if (staysActive) {
+          const conflict = await tx.tableAssignment.findFirst({
+            where: {
+              tableId: existing.tableId,
+              id: { not: existing.id },
+              status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
+              expectedStartAt: { lt: expectedEndAt },
+              expectedEndAt: { gt: expectedStartAt },
+            },
+            select: { id: true },
+          });
+          if (conflict) {
+            return fail(409, "Table already has an assignment during that time");
+          }
+        }
+
+        await tx.diningTable.update({
+          where: { id: table.id },
+          data: { assignmentVersion: { increment: 1 } },
+        });
+
+        const data: Record<string, unknown> = {
+          partySize,
+          expectedStartAt,
+          expectedEndAt,
+          status,
+        };
+        const now = new Date();
+        if (status === "SEATED" && !existing.seatedAt) {
+          data.seatedAt = now;
+        }
+        if (status === "COMPLETED" && !existing.completedAt) {
+          data.completedAt = now;
+        }
+        if (status === "CANCELLED" && !existing.cancelledAt) {
+          data.cancelledAt = now;
+        }
+
+        if (status === "SEATED" && existing.reservationId) {
+          await tx.reservation.updateMany({
+            where: { id: existing.reservationId, status: "CONFIRMED" },
+            data: { status: "ARRIVED", arrivedAt: now },
+          });
+        }
+
+        const updated = await tx.tableAssignment.update({
+          where: { id: existing.id },
+          data,
+        });
+
+        return ok(updated);
+      },
+      { isolationLevel: "Serializable" },
+    ),
   );
 }
 
@@ -690,38 +698,41 @@ export async function completeAssignment(
   }
 
   const outcome = await withWriteRetry(() =>
-    prisma.$transaction(async (tx) => {
-      const now = new Date();
-      const claimed = await tx.tableAssignment.updateMany({
-        where: { id: existing.id, status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] } },
-        data: { status: "COMPLETED", completedAt: now },
-      });
-      if (claimed.count !== 1) {
-        return fail(409, "Assignment is already closed");
-      }
+    prisma.$transaction(
+      async (tx) => {
+        const now = new Date();
+        const claimed = await tx.tableAssignment.updateMany({
+          where: { id: existing.id, status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] } },
+          data: { status: "COMPLETED", completedAt: now },
+        });
+        if (claimed.count !== 1) {
+          return fail(409, "Assignment is already closed");
+        }
 
-      if (existing.status === "SEATED") {
-        if (existing.reservationId) {
-          await tx.reservation.updateMany({
-            where: {
-              id: existing.reservationId,
-              status: { in: ["CONFIRMED", "ARRIVED"] },
-            },
-            data: { status: "COMPLETED", completedAt: now },
+        if (existing.status === "SEATED") {
+          if (existing.reservationId) {
+            await tx.reservation.updateMany({
+              where: {
+                id: existing.reservationId,
+                status: { in: ["CONFIRMED", "ARRIVED"] },
+              },
+              data: { status: "COMPLETED", completedAt: now },
+            });
+          }
+          let memberIds = [existing.tableId];
+          if (existing.tableIds && existing.tableIds.length > 0) {
+            memberIds = existing.tableIds;
+          }
+          await tx.diningTable.updateMany({
+            where: { id: { in: memberIds }, locationId },
+            data: { cleaningSince: now },
           });
         }
-        let memberIds = [existing.tableId];
-        if (existing.tableIds && existing.tableIds.length > 0) {
-          memberIds = existing.tableIds;
-        }
-        await tx.diningTable.updateMany({
-          where: { id: { in: memberIds }, locationId },
-          data: { cleaningSince: now },
-        });
-      }
 
-      return ok(await tx.tableAssignment.findUnique({ where: { id: existing.id } }));
-    }),
+        return ok(await tx.tableAssignment.findUnique({ where: { id: existing.id } }));
+      },
+      { isolationLevel: "Serializable" },
+    ),
   );
 
   return outcome;
@@ -734,77 +745,80 @@ export type MoveAssignmentInput = {
 };
 
 export async function moveAssignment(input: MoveAssignmentInput): Promise<Outcome<any>> {
-  if (!OBJECT_ID_RE.test(input.assignmentId)) {
+  if (!ENTITY_ID_RE.test(input.assignmentId)) {
     return fail(404, "Assignment not found or access denied");
   }
-  if (!OBJECT_ID_RE.test(input.tableId)) {
+  if (!ENTITY_ID_RE.test(input.tableId)) {
     return fail(404, "Table not found or access denied");
   }
 
   return withWriteRetry(() =>
-    prisma.$transaction(async (tx) => {
-      const existing = await tx.tableAssignment.findFirst({
-        where: { id: input.assignmentId, locationId: input.locationId },
-      });
-      if (!existing) {
-        return fail(404, "Assignment not found or access denied");
-      }
-      if (existing.status === "COMPLETED" || existing.status === "CANCELLED") {
-        return fail(409, "Assignment is already closed");
-      }
-      if (existing.tableId === input.tableId) {
-        return fail(409, "The party is already at that table");
-      }
-
-      const target = await tx.diningTable.findFirst({
-        where: { id: input.tableId, locationId: input.locationId },
-      });
-      if (!target) {
-        return fail(404, "Table not found or access denied");
-      }
-      if (target.isBlocked) {
-        return fail(409, "Table is blocked and cannot accept an assignment");
-      }
-      if (!partyFitsTable(existing.partySize, target)) {
-        return fail(409, `Table seats ${target.minimumPartySize} to ${target.capacity} guests`);
-      }
-
-      const conflict = await tx.tableAssignment.findFirst({
-        where: {
-          ...occupiedByAny([target.id]),
-          id: { not: existing.id },
-          status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
-          expectedStartAt: { lt: existing.expectedEndAt },
-          expectedEndAt: { gt: existing.expectedStartAt },
-        },
-        select: { id: true },
-      });
-      if (conflict) {
-        return fail(409, "Table already has an assignment during that time");
-      }
-
-      let previousIds = [existing.tableId];
-      if (existing.tableIds.length > 0) {
-        previousIds = existing.tableIds;
-      }
-      for (const previousId of previousIds) {
-        await tx.diningTable.update({
-          where: { id: previousId },
-          data: { assignmentVersion: { increment: 1 } },
+    prisma.$transaction(
+      async (tx) => {
+        const existing = await tx.tableAssignment.findFirst({
+          where: { id: input.assignmentId, locationId: input.locationId },
         });
-      }
-      await tx.diningTable.update({
-        where: { id: target.id },
-        data: { assignmentVersion: { increment: 1 }, cleaningSince: null },
-      });
+        if (!existing) {
+          return fail(404, "Assignment not found or access denied");
+        }
+        if (existing.status === "COMPLETED" || existing.status === "CANCELLED") {
+          return fail(409, "Assignment is already closed");
+        }
+        if (existing.tableId === input.tableId) {
+          return fail(409, "The party is already at that table");
+        }
 
-      const moved = await tx.tableAssignment.update({
-        where: { id: existing.id },
-        data: { tableId: target.id, tableIds: [target.id] },
-      });
+        const target = await tx.diningTable.findFirst({
+          where: { id: input.tableId, locationId: input.locationId },
+        });
+        if (!target) {
+          return fail(404, "Table not found or access denied");
+        }
+        if (target.isBlocked) {
+          return fail(409, "Table is blocked and cannot accept an assignment");
+        }
+        if (!partyFitsTable(existing.partySize, target)) {
+          return fail(409, `Table seats ${target.minimumPartySize} to ${target.capacity} guests`);
+        }
 
-      return ok(moved);
-    }),
+        const conflict = await tx.tableAssignment.findFirst({
+          where: {
+            ...occupiedByAny([target.id]),
+            id: { not: existing.id },
+            status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
+            expectedStartAt: { lt: existing.expectedEndAt },
+            expectedEndAt: { gt: existing.expectedStartAt },
+          },
+          select: { id: true },
+        });
+        if (conflict) {
+          return fail(409, "Table already has an assignment during that time");
+        }
+
+        let previousIds = [existing.tableId];
+        if (existing.tableIds.length > 0) {
+          previousIds = existing.tableIds;
+        }
+        for (const previousId of previousIds) {
+          await tx.diningTable.update({
+            where: { id: previousId },
+            data: { assignmentVersion: { increment: 1 } },
+          });
+        }
+        await tx.diningTable.update({
+          where: { id: target.id },
+          data: { assignmentVersion: { increment: 1 }, cleaningSince: null },
+        });
+
+        const moved = await tx.tableAssignment.update({
+          where: { id: existing.id },
+          data: { tableId: target.id, tableIds: [target.id] },
+        });
+
+        return ok(moved);
+      },
+      { isolationLevel: "Serializable" },
+    ),
   );
 }
 

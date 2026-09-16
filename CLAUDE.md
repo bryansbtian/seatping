@@ -25,7 +25,7 @@ This is one full-stack app, not a monorepo.
   Phone display formatting goes through `libphonenumber-js` so landlines and mobiles are
   grouped by each country's own numbering plan.
 - `api/server.ts`: the Vercel serverless entry that wraps the Express app.
-- `prisma/`: MongoDB schema through Prisma, using `db push` rather than SQL migration files.
+- `prisma/`: PostgreSQL schema through Prisma, with SQL migrations under `prisma/migrations/`.
 - `tests/`, `e2e/`: Vitest projects and Playwright browser tests.
 
 Boundaries that carry weight:
@@ -35,7 +35,7 @@ Boundaries that carry weight:
   stay free of browser globals and Node built-ins, and may only use isomorphic dependencies.
 - Authorization lives in `server/`. Frontend route guards are cosmetic and are never the
   only check.
-- MongoDB is the source of truth. Do not reintroduce the deprecated location JSON arrays for
+- PostgreSQL is the source of truth. Do not reintroduce the deprecated location JSON arrays for
   queue, removed customers, admitted customers, or reservations unless the task is an
   explicit data recovery.
 
@@ -52,7 +52,7 @@ npm is the canonical package manager. Do not use bun.
 ```bash
 npm ci
 npx prisma generate
-npx prisma db push
+npx prisma migrate deploy
 npm run dev
 npm run lint
 npm run build
@@ -67,8 +67,10 @@ The project builds on Node.js 24, pinned in `.nvmrc` and `package.json` engines.
 half alone. `npm run build` builds the SPA to `dist/` and the server to `dist-server/`, where
 the compiled entry is `dist-server/server/index.js`, and `npm run start` runs it.
 
-After changing `prisma/schema.prisma`, always run `npx prisma generate` then
-`npx prisma db push`, and restart the dev server.
+After changing `prisma/schema.prisma`, always run `npx prisma migrate dev --name <change>`,
+which regenerates the client and applies the migration, then restart the dev server. Use
+`npx prisma migrate deploy` to apply committed migrations elsewhere. Commit the generated
+migration directory.
 
 ## Non-Negotiable Style Rules
 
@@ -157,8 +159,9 @@ can collide with it.
 
 ## Data
 
-- Prisma with MongoDB requires a replica set for transactions. Atlas works by default, but a
-  plain local `mongod` may fail transaction-dependent flows.
+- Prisma transactions work against any PostgreSQL instance, so no replica set setup is needed.
+  `DATABASE_URL` is the pooled runtime connection and `DIRECT_URL` is the direct connection
+  migrations use. Both are required.
 - For contended writes such as credits, slot counters, queue transitions, or campaign
   recipient deduping, preserve the atomic guards and retry behavior.
 - Reservations are auto-confirmed. Do not reintroduce the deprecated reservation pending
@@ -236,13 +239,13 @@ business-facing copy without considering the i18n pattern.
 Do not add a new required environment variable without updating `server/lib/envCheck.ts`,
 `README.md`, and any relevant setup or deployment notes. Optional providers should fail
 gracefully when unset wherever possible, and a minimal local setup should require only
-MongoDB plus the core auth and admin env vars.
+PostgreSQL plus the core auth and admin env vars.
 
 ## Testing
 
 Vitest is the test runner and Playwright covers browser E2E. `npm test` runs the unit suite
 and needs no database. The integration, security, concurrency, and jobs suites require
-`TEST_DATABASE_URL` pointing at a dedicated MongoDB replica set, and they refuse to run
+`TEST_DATABASE_URL` pointing at a dedicated local PostgreSQL, and they refuse to run
 against `DATABASE_URL` or a production-looking host. See the Testing section in `README.md`.
 
 Write tests for new code and run them before finishing. They must pass. Report the actual

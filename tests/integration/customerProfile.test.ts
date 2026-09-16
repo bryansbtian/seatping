@@ -344,7 +344,7 @@ describe("saved locations", () => {
     )
       .post("/auth/me/saved-locations")
       .set("Cookie", customerCookie(customer.id))
-      .send({ locationId: "not-an-object-id" });
+      .send({ locationId: "not a valid id!" });
 
     expect(res.status).toBe(400);
   });

@@ -17,9 +17,24 @@ jobs:
     name: Lint, Typecheck, Test, and Build
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: seatping_ci_app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
-      DATABASE_URL: mongodb://localhost:27017/seatping_ci_app?replicaSet=rs0&directConnection=true
-      TEST_DATABASE_URL: mongodb://localhost:27017/seatping_test?replicaSet=rs0&directConnection=true
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/seatping_ci_app
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/seatping_ci_app
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/seatping_test
       JWT_SECRET: ci-placeholder-jwt-secret
       CRON_SECRET: ci-placeholder-cron-secret
       ADMIN_USERNAME: ci-admin
@@ -44,35 +59,14 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Start MongoDB Replica Set
-        run: |
-          docker run -d --name mongo -p 27017:27017 mongo:7 mongod --replSet rs0 --bind_ip_all
-          for i in $(seq 1 30); do
-            if docker exec mongo mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' >/dev/null 2>&1; then
-              break
-            fi
-            sleep 2
-          done
-          docker exec mongo mongosh --quiet --eval '
-            try { rs.status() } catch (e) {
-              rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "localhost:27017" }] })
-            }'
-          for i in $(seq 1 30); do
-            state=$(docker exec mongo mongosh --quiet --eval 'try { rs.status().members[0].stateStr } catch (e) { "" }')
-            if [ "$state" = "PRIMARY" ]; then
-              echo "replica set ready"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "replica set did not reach PRIMARY"
-          docker logs mongo
-          exit 1
+      - name: Create the Test Database
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -c 'CREATE DATABASE seatping_test;'
 
-      - name: Push Prisma Schema to the Test Database
-        run: npx prisma db push --skip-generate
+      - name: Apply Prisma Migrations to the Test Database
+        run: npx prisma migrate deploy
         env:
           DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          DIRECT_URL: ${{ env.TEST_DATABASE_URL }}
 
       - name: Lint
         run: npm run lint
@@ -102,9 +96,24 @@ jobs:
     name: End to End
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: seatping_e2e_app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
-      DATABASE_URL: mongodb://localhost:27017/seatping_e2e_app?replicaSet=rs0&directConnection=true
-      TEST_DATABASE_URL: mongodb://localhost:27017/seatping_e2e_test?replicaSet=rs0&directConnection=true
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/seatping_e2e_app
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/seatping_e2e_app
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/seatping_e2e_test
       JWT_SECRET: ci-e2e-jwt-secret
       CRON_SECRET: ci-e2e-cron-secret
       ADMIN_USERNAME: ci-admin
@@ -128,35 +137,14 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Start MongoDB Replica Set
-        run: |
-          docker run -d --name mongo -p 27017:27017 mongo:7 mongod --replSet rs0 --bind_ip_all
-          for i in $(seq 1 30); do
-            if docker exec mongo mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' >/dev/null 2>&1; then
-              break
-            fi
-            sleep 2
-          done
-          docker exec mongo mongosh --quiet --eval '
-            try { rs.status() } catch (e) {
-              rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "localhost:27017" }] })
-            }'
-          for i in $(seq 1 30); do
-            state=$(docker exec mongo mongosh --quiet --eval 'try { rs.status().members[0].stateStr } catch (e) { "" }')
-            if [ "$state" = "PRIMARY" ]; then
-              echo "replica set ready"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "replica set did not reach PRIMARY"
-          docker logs mongo
-          exit 1
+      - name: Create the Test Database
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -c 'CREATE DATABASE seatping_e2e_test;'
 
-      - name: Push Prisma Schema to the Test Database
-        run: npx prisma db push --skip-generate
+      - name: Apply Prisma Migrations to the Test Database
+        run: npx prisma migrate deploy
         env:
           DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          DIRECT_URL: ${{ env.TEST_DATABASE_URL }}
 
       - name: Run Playwright End to End Tests
         run: npm run test:e2e

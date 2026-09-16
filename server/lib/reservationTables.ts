@@ -202,7 +202,7 @@ export async function notifyReservationNeedsReview(reservationId: string): Promi
     where: {
       id: reservationId,
       needsReview: true,
-      OR: [{ needsReviewNotifiedAt: null }, { needsReviewNotifiedAt: { isSet: false } }],
+      needsReviewNotifiedAt: null,
     },
     data: { needsReviewNotifiedAt: new Date() },
   });

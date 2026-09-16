@@ -7,7 +7,7 @@ import { enqueueNotification } from "./notifications.js";
 import { syncCustomerQueue, type CustomerQueueStatus } from "./queueSync.js";
 import {
   ACTIVE_ASSIGNMENT_STATUSES,
-  OBJECT_ID_RE,
+  ENTITY_ID_RE,
   TABLE_MAX_CAPACITY,
   TABLE_MIN_CAPACITY,
   createAssignment,
@@ -320,7 +320,7 @@ export async function markVisitClosed(assignment: {
 }
 
 export async function manualAssign(input: ManualAssignInput): Promise<Outcome<any>> {
-  if (!OBJECT_ID_RE.test(input.tableId)) {
+  if (!ENTITY_ID_RE.test(input.tableId)) {
     return fail(404, "Table not found or access denied");
   }
   if (input.queueEntryId && input.reservationId) {

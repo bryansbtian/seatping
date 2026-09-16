@@ -6,7 +6,7 @@ import {
   resetApprovedTestDatabaseUrl,
 } from "../helpers/db.js";
 
-const SAFE = "mongodb://localhost:27018/seatping_test?replicaSet=rs0";
+const SAFE = "postgresql://postgres:pw@localhost:5433/seatping_test?schema=public";
 
 afterEach(() => {
   resetApprovedTestDatabaseUrl();
@@ -31,30 +31,30 @@ describe("test database safety guard", () => {
 
   it("refuses managed cluster hosts", () => {
     expect(() =>
-      assertSafeTestDatabaseUrl("mongodb+srv://user:pw@cluster0.mongodb.net/seatping_test"),
+      assertSafeTestDatabaseUrl("postgresql://user:pw@db.abcdefgh.supabase.co:5432/seatping_test"),
     ).toThrow(/production target/);
   });
 
   it("refuses a production-looking host even when the name says test", () => {
-    expect(() => assertSafeTestDatabaseUrl("mongodb://prod-cluster:27017/seatping_test")).toThrow(
+    expect(() => assertSafeTestDatabaseUrl("postgresql://prod-cluster:5432/seatping_test")).toThrow(
       /production target/,
     );
   });
 
   it("refuses a database whose name is not marked for testing", () => {
-    expect(() => assertSafeTestDatabaseUrl("mongodb://localhost:27018/seatping")).toThrow(
+    expect(() => assertSafeTestDatabaseUrl("postgresql://localhost:5433/seatping")).toThrow(
       /must contain "test"/,
     );
   });
 
   it("refuses a URL with no database name", () => {
-    expect(() => assertSafeTestDatabaseUrl("mongodb://localhost:27018")).toThrow(
+    expect(() => assertSafeTestDatabaseUrl("postgresql://localhost:5433")).toThrow(
       UnsafeTestDatabaseError,
     );
   });
 
   it("extracts the database name and ignores query parameters", () => {
     expect(databaseNameFromUrl(SAFE)).toBe("seatping_test");
-    expect(databaseNameFromUrl("mongodb://host:1/db_test")).toBe("db_test");
+    expect(databaseNameFromUrl("postgresql://host:1/db_test")).toBe("db_test");
   });
 });

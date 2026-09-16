@@ -60,6 +60,7 @@ import {
   getNowWallClockInTimezone,
 } from "../lib/operatingHours.js";
 import crypto from "crypto";
+import { ENTITY_ID_RE } from "../lib/entityId.js";
 
 const router = Router();
 
@@ -561,10 +562,8 @@ router.delete("/me/saved-restaurants/:businessUsername", requireCustomer, async 
   }
 });
 
-const SAVED_OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
-
 async function buildSavedLocationEntry(locationId: string) {
-  if (!SAVED_OBJECT_ID_RE.test(locationId)) {
+  if (!ENTITY_ID_RE.test(locationId)) {
     return null;
   }
   const loc = await prisma.location.findUnique({
@@ -643,7 +642,7 @@ router.post("/me/saved-locations", requireCustomer, async (req, res) => {
   try {
     const userId = (req as any).auth.sub as string;
     const locationId = String(req.body?.locationId || "").trim();
-    if (!SAVED_OBJECT_ID_RE.test(locationId)) {
+    if (!ENTITY_ID_RE.test(locationId)) {
       return res.status(400).json({ error: "A valid locationId is required" });
     }
 
@@ -788,7 +787,7 @@ router.patch("/me/reviews/:reviewId", requireCustomer, async (req, res) => {
   try {
     const userId = (req as any).auth.sub as string;
     const reviewId = String(req.params.reviewId || "").trim();
-    if (!SAVED_OBJECT_ID_RE.test(reviewId)) {
+    if (!ENTITY_ID_RE.test(reviewId)) {
       return res.status(404).json({ error: "Review not found" });
     }
 
@@ -841,7 +840,7 @@ router.delete("/me/reviews/:reviewId", requireCustomer, async (req, res) => {
   try {
     const userId = (req as any).auth.sub as string;
     const reviewId = String(req.params.reviewId || "").trim();
-    if (!SAVED_OBJECT_ID_RE.test(reviewId)) {
+    if (!ENTITY_ID_RE.test(reviewId)) {
       return res.status(404).json({ error: "Review not found" });
     }
 

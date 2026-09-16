@@ -10,8 +10,8 @@ import {
   parseDate,
   parseInteger,
   parseName,
-  parseObjectId,
-  parseOptionalObjectId,
+  parseEntityId,
+  parseOptionalEntityId,
   parseOptionalText,
   parseShape,
   parseSource,
@@ -188,25 +188,31 @@ describe("parseDate", () => {
   });
 });
 
-describe("object id parsing", () => {
+describe("entity id parsing", () => {
   const valid = "6a8ddc538ed226e915cd591d";
+  const cuid = "clh3k9x2t0000qw8fgb1n7d4z";
 
-  it("accepts a 24 character hex id", () => {
-    expect(parseObjectId(valid, "tableId")).toEqual({ ok: true, value: valid });
+  it("accepts a legacy 24 character hex id", () => {
+    expect(parseEntityId(valid, "tableId")).toEqual({ ok: true, value: valid });
+  });
+
+  it("accepts a cuid", () => {
+    expect(parseEntityId(cuid, "tableId")).toEqual({ ok: true, value: cuid });
   });
 
   it("rejects ids of the wrong shape", () => {
-    expect(parseObjectId("abc", "tableId").ok).toBe(false);
-    expect(parseObjectId(`${valid}ff`, "tableId").ok).toBe(false);
-    expect(parseObjectId("zzzzzzzzzzzzzzzzzzzzzzzz", "tableId").ok).toBe(false);
+    expect(parseEntityId("abc", "tableId").ok).toBe(false);
+    expect(parseEntityId("a".repeat(65), "tableId").ok).toBe(false);
+    expect(parseEntityId("has spaces in it", "tableId").ok).toBe(false);
+    expect(parseEntityId("drop/table", "tableId").ok).toBe(false);
   });
 
   it("treats missing optional ids as null but still validates provided ones", () => {
-    expect(parseOptionalObjectId(undefined, "queueEntryId")).toEqual({ ok: true, value: null });
-    expect(parseOptionalObjectId(null, "queueEntryId")).toEqual({ ok: true, value: null });
-    expect(parseOptionalObjectId("", "queueEntryId")).toEqual({ ok: true, value: null });
-    expect(parseOptionalObjectId(valid, "queueEntryId")).toEqual({ ok: true, value: valid });
-    expect(parseOptionalObjectId("nope", "queueEntryId").ok).toBe(false);
+    expect(parseOptionalEntityId(undefined, "queueEntryId")).toEqual({ ok: true, value: null });
+    expect(parseOptionalEntityId(null, "queueEntryId")).toEqual({ ok: true, value: null });
+    expect(parseOptionalEntityId("", "queueEntryId")).toEqual({ ok: true, value: null });
+    expect(parseOptionalEntityId(valid, "queueEntryId")).toEqual({ ok: true, value: valid });
+    expect(parseOptionalEntityId("nope", "queueEntryId").ok).toBe(false);
   });
 });
 

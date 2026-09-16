@@ -5,6 +5,7 @@ const ORIGINAL_ENV = { ...process.env };
 
 const REQUIRED_IN_PROD = [
   "DATABASE_URL",
+  "DIRECT_URL",
   "JWT_SECRET",
   "CRON_SECRET",
   "ADMIN_USERNAME",

@@ -99,10 +99,7 @@ describe("notifyReservationNeedsReview", () => {
 
     const where = reservationUpdateMany.mock.calls[0][0].where;
     expect(where.needsReview).toBe(true);
-    expect(where.OR).toEqual([
-      { needsReviewNotifiedAt: null },
-      { needsReviewNotifiedAt: { isSet: false } },
-    ]);
+    expect(where.needsReviewNotifiedAt).toBeNull();
   });
 
   it("stays quiet when the claim finds nothing to send", async () => {

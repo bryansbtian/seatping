@@ -26,6 +26,7 @@ export type ReservationSettings = {
 };
 
 export const NO_GUEST_CAP = 0;
+export const UNCAPPED_GUEST_LIMIT = 2147483647;
 export const MIN_RESERVATION_DURATION_MINUTES = 30;
 export const MAX_RESERVATION_DURATION_MINUTES = 480;
 export const MAX_RESERVATION_HOLD_MINUTES = 240;
@@ -125,7 +126,7 @@ export function hasGuestCap(settings: ReservationSettings): boolean {
 
 export function effectiveGuestCap(settings: ReservationSettings): number {
   if (!hasGuestCap(settings)) {
-    return Number.MAX_SAFE_INTEGER;
+    return UNCAPPED_GUEST_LIMIT;
   }
   return settings.maxReservedGuestsPerHour;
 }

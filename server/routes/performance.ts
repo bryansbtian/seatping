@@ -4,10 +4,9 @@ import { requireBusiness } from "../lib/auth.js";
 import { rateLimit } from "../lib/rateLimit.js";
 import { computePerformance, previousRange, resolveRange } from "../lib/performance.js";
 import { getDateOperatingStatus, getLocationOpeningHours } from "../lib/operatingHours.js";
+import { ENTITY_ID_RE } from "../lib/entityId.js";
 
 const router = Router();
-
-const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 
 router.use(requireBusiness);
 router.use(rateLimit({ name: "performance", windowMs: 60 * 1000, max: 60 }));
@@ -16,7 +15,7 @@ router.get("/:locationId", async (req: Request, res: Response) => {
   try {
     const businessId = (req as any).auth.sub as string;
     const locationId = String(req.params.locationId || "").trim();
-    if (!OBJECT_ID_RE.test(locationId)) {
+    if (!ENTITY_ID_RE.test(locationId)) {
       return res.status(404).json({ error: "Location not found or access denied" });
     }
 

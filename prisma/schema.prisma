@@ -3,23 +3,24 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String
-  username  String   @unique
-  email     String   @unique
-  phone     String
-  password  String
+  id       String @id @default(cuid())
+  name     String
+  username String @unique
+  email    String @unique
+  phone    String
+  password String
 
   upcomingReservations Json @default("[]")
   pastReservations     Json @default("[]")
   queueingActivity     Json @default("[]")
 
-  savedRestaurants     Json @default("[]")
+  savedRestaurants Json @default("[]")
 
   resetToken       String?
   resetTokenExpiry DateTime?
@@ -31,7 +32,7 @@ model User {
 }
 
 model Business {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
   name     String
   username String @unique
@@ -47,9 +48,9 @@ model Business {
 
   language String? @default("en")
 
-  creditsStartedAt    DateTime?
-  lastCreditRefillAt  DateTime?
-  nextCreditRefillAt  DateTime?
+  creditsStartedAt   DateTime?
+  lastCreditRefillAt DateTime?
+  nextCreditRefillAt DateTime?
 
   resetToken       String?
   resetTokenExpiry DateTime?
@@ -63,14 +64,14 @@ model Business {
 }
 
 model Location {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
-  businessId       String  @db.ObjectId
+  businessId       String
   businessUsername String?
 
-  name    String?
+  name        String?
   displayName String?
-  address String
+  address     String
 
   area          String?
   city          String?
@@ -105,15 +106,15 @@ model Location {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("locations")
   @@index([businessId])
   @@index([businessUsername])
   @@index([isPublished])
+  @@map("locations")
 }
 
 model Photo {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  locationId String   @db.ObjectId
+  id         String   @id @default(cuid())
+  locationId String
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   url      String
@@ -123,22 +124,22 @@ model Photo {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("photos")
   @@index([locationId])
+  @@map("photos")
 }
 
 model Review {
-  id         String  @id @default(auto()) @map("_id") @db.ObjectId
-  locationId String  @db.ObjectId
-  customerId String? @db.ObjectId
+  id         String  @id @default(cuid())
+  locationId String
+  customerId String?
 
   customerName     String?
   customerUsername String?
   rating           Int
   description      String?
 
-  partySize    Int?
-  serviceType  String?
+  partySize   Int?
+  serviceType String?
 
   businessReply          String?
   businessReplyCreatedAt DateTime?
@@ -149,15 +150,15 @@ model Review {
 
   location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
-  @@map("reviews")
   @@index([locationId])
   @@index([customerId])
+  @@map("reviews")
 }
 
 model FeaturedRestaurant {
-  id         String @id @default(auto()) @map("_id") @db.ObjectId
-  businessId String @db.ObjectId
-  locationId String @db.ObjectId
+  id         String @id @default(cuid())
+  businessId String
+  locationId String
 
   isActive  Boolean @default(true)
   sortOrder Int     @default(0)
@@ -176,26 +177,26 @@ model FeaturedRestaurant {
 }
 
 model Ticket {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  ticketNumber  String   @unique
-  type          String
-  status        String   @default("open")
-  priority      String?
-  subject       String
-  senderName    String
-  senderEmail   String
-  senderPhone   String?
-  businessName  String?
-  data          Json
-  messages      Json     @default("[]")
-  assignedTo    String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  ticketNumber String   @unique
+  type         String
+  status       String   @default("open")
+  priority     String?
+  subject      String
+  senderName   String
+  senderEmail  String
+  senderPhone  String?
+  businessName String?
+  data         Json
+  messages     Json     @default("[]")
+  assignedTo   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  @@map("tickets")
   @@index([status])
   @@index([type])
   @@index([createdAt])
+  @@map("tickets")
 }
 
 enum QueueStatus {
@@ -208,22 +209,22 @@ enum QueueStatus {
 }
 
 model QueueEntry {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
   queueToken String @unique
-  legacyKey String
+  legacyKey  String
 
-  locationId String  @db.ObjectId
-  businessId String  @db.ObjectId
-  customerId String? @db.ObjectId
+  locationId String
+  businessId String
+  customerId String?
 
-  firstName          String
-  lastName           String
-  guestCount         Int
-  notificationMethod String
-  phone              String?
-  countryCode        String?
-  email              String?
+  firstName           String
+  lastName            String
+  guestCount          Int
+  notificationMethod  String
+  phone               String?
+  countryCode         String?
+  email               String?
   smsConsent          Boolean @default(false)
   smsMarketingConsent Boolean @default(false)
 
@@ -256,13 +257,13 @@ enum ReservationStatus {
 }
 
 model Reservation {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
   manageToken      String  @unique
-  locationId       String  @db.ObjectId
-  businessId       String  @db.ObjectId
+  locationId       String
+  businessId       String
   businessUsername String?
-  customerId       String? @db.ObjectId
+  customerId       String?
 
   firstName     String
   lastName      String
@@ -300,11 +301,11 @@ model Reservation {
 }
 
 model GuestProfile {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
-  businessId       String  @db.ObjectId
+  businessId       String
   businessUsername String?
-  locationId       String  @db.ObjectId
+  locationId       String
 
   firstName String?
   lastName  String?
@@ -319,14 +320,14 @@ model GuestProfile {
   notes   String?
   summary String?
 
-  totalVisits              Int @default(0)
+  totalVisits              Int       @default(0)
   firstVisitAt             DateTime?
   lastVisitAt              DateTime?
-  upcomingReservationCount Int @default(0)
-  pastReservationCount     Int @default(0)
-  waitlistVisitCount       Int @default(0)
-  noShowCount              Int @default(0)
-  cancelledCount           Int @default(0)
+  upcomingReservationCount Int       @default(0)
+  pastReservationCount     Int       @default(0)
+  waitlistVisitCount       Int       @default(0)
+  noShowCount              Int       @default(0)
+  cancelledCount           Int       @default(0)
 
   sourceReservationIds String[] @default([])
   sourceQueueEntryIds  String[] @default([])
@@ -347,7 +348,7 @@ model GuestProfile {
   @@index([businessId, locationId])
   @@index([normalizedPhone])
   @@index([normalizedEmail])
-  @@index([tags])
+  @@index([tags], type: Gin)
   @@index([lastVisitAt])
   @@index([fullName])
   @@map("guest_profiles")
@@ -417,24 +418,24 @@ enum CampaignRecipientStatus {
 }
 
 model CampaignTemplate {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
-  businessId       String? @db.ObjectId
+  businessId       String?
   businessUsername String?
-  locationId       String? @db.ObjectId
+  locationId       String?
 
-  templateType   CampaignTemplateType
-  name           String
-  slug           String?
-  purpose        String?
-  body           String
-  offerDetails   String?
-  ctaText        String?
-  ctaUrl         String?
-  variables      String[] @default([])
-  exampleValues  Json     @default("{}")
+  templateType  CampaignTemplateType
+  name          String
+  slug          String?
+  purpose       String?
+  body          String
+  offerDetails  String?
+  ctaText       String?
+  ctaUrl        String?
+  variables     String[]             @default([])
+  exampleValues Json                 @default("{}")
 
-  approvalStatus CampaignTemplateApprovalStatus @default(DRAFT)
+  approvalStatus  CampaignTemplateApprovalStatus @default(DRAFT)
   rejectionReason String?
 
   sortOrder Int     @default(0)
@@ -445,7 +446,7 @@ model CampaignTemplate {
   whatsappProviderTemplateName String?
   whatsappProviderTemplateId   String?
   whatsappMetaCategory         String?
-  whatsappLanguage             String? @default("en")
+  whatsappLanguage             String?   @default("en")
   whatsappSubmittedAt          DateTime?
   whatsappApprovedAt           DateTime?
   whatsappRejectedAt           DateTime?
@@ -467,15 +468,15 @@ model CampaignTemplate {
 }
 
 model Campaign {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
-  businessId       String  @db.ObjectId
+  businessId       String
   businessUsername String?
-  locationId       String  @db.ObjectId
+  locationId       String
 
   name       String
   channel    CampaignChannel
-  templateId String          @db.ObjectId
+  templateId String
 
   templateValues Json @default("{}")
 
@@ -489,13 +490,13 @@ model Campaign {
   failedCount    Int            @default(0)
   skippedCount   Int            @default(0)
 
-  sendMode  CampaignSendMode @default(NOW)
-  timezone  String?
+  sendMode    CampaignSendMode @default(NOW)
+  timezone    String?
   scheduledAt DateTime?
 
-  recurrenceFrequency CampaignFrequency?
-  recurrenceStartAt   DateTime?
-  recurrenceEndAt     DateTime?
+  recurrenceFrequency        CampaignFrequency?
+  recurrenceStartAt          DateTime?
+  recurrenceEndAt            DateTime?
   maxSendsPerGuestWindowDays Int?
 
   nextRunAt DateTime?
@@ -514,10 +515,10 @@ model Campaign {
 }
 
 model CampaignRun {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
-  campaignId String @db.ObjectId
-  businessId String @db.ObjectId
+  campaignId String
+  businessId String
 
   runType      CampaignRunType
   scheduledFor DateTime?
@@ -540,12 +541,12 @@ model CampaignRun {
 }
 
 model CampaignRecipient {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
-  campaignId     String  @db.ObjectId
-  runId          String  @db.ObjectId
-  businessId     String  @db.ObjectId
-  guestProfileId String  @db.ObjectId
+  campaignId     String
+  runId          String
+  businessId     String
+  guestProfileId String
 
   channel CampaignChannel
   email   String?
@@ -571,10 +572,10 @@ model CampaignRecipient {
 }
 
 model CampaignDeliveryLog {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
-  campaignId  String  @db.ObjectId
-  recipientId String? @db.ObjectId
+  campaignId  String
+  recipientId String?
 
   eventType         String
   providerMessageId String?
@@ -588,9 +589,9 @@ model CampaignDeliveryLog {
 }
 
 model SlotCounter {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
-  locationId     String @db.ObjectId
+  locationId     String
   dateKey        String
   hour           Int
   reservedGuests Int    @default(0)
@@ -600,11 +601,11 @@ model SlotCounter {
 }
 
 model SavedAudience {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
-  businessId       String  @db.ObjectId
+  businessId       String
   businessUsername String?
-  locationId       String  @db.ObjectId
+  locationId       String
 
   name        String
   description String?
@@ -637,10 +638,10 @@ enum TableAssignmentStatus {
 }
 
 model FloorPlan {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
-  businessId String @db.ObjectId
-  locationId String @db.ObjectId
+  businessId String
+  locationId String
 
   name      String @default("Main Dining Room")
   width     Int    @default(1200)
@@ -661,11 +662,11 @@ model FloorPlan {
 }
 
 model DiningTable {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
-  floorPlanId String @db.ObjectId
-  businessId  String @db.ObjectId
-  locationId  String @db.ObjectId
+  floorPlanId String
+  businessId  String
+  locationId  String
 
   name             String
   capacity         Int
@@ -699,16 +700,16 @@ model DiningTable {
 }
 
 model TableAssignment {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
-  tableId    String   @db.ObjectId
-  tableIds   String[] @db.ObjectId
-  businessId String   @db.ObjectId
-  locationId String   @db.ObjectId
+  tableId    String
+  tableIds   String[]
+  businessId String
+  locationId String
 
-  queueEntryId   String? @db.ObjectId
-  reservationId  String? @db.ObjectId
-  guestProfileId String? @db.ObjectId
+  queueEntryId   String?
+  reservationId  String?
+  guestProfileId String?
 
   partySize Int
 
@@ -729,7 +730,7 @@ model TableAssignment {
   updatedAt DateTime @updatedAt
 
   @@index([tableId, status])
-  @@index([tableIds])
+  @@index([tableIds], type: Gin)
   @@index([locationId, status])
   @@index([businessId])
   @@index([reservationId])
@@ -740,11 +741,11 @@ model TableAssignment {
 }
 
 model FloorZone {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(cuid())
 
-  floorPlanId String @db.ObjectId
-  businessId  String @db.ObjectId
-  locationId  String @db.ObjectId
+  floorPlanId String
+  businessId  String
+  locationId  String
 
   name String
 
