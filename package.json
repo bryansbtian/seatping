@@ -89,7 +89,7 @@
     "libphonenumber-js": "^1.13.11",
     "multer": "^2.2.0",
     "next-themes": "^0.3.0",
-    "nodemailer": "^9.0.1",
+    "nodemailer": "^9.1.1",
     "papaparse": "^5.5.4",
     "postcss": "^8.5.25",
     "prisma": "^6.19.3",
@@ -135,6 +135,6 @@
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.20.5",
     "typescript-eslint": "^8.38.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }
