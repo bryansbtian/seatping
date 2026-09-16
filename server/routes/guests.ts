@@ -8,6 +8,7 @@ import {
   recomputeGuestStats,
   SUGGESTED_GUEST_TAGS,
 } from "../lib/guests.js";
+import { findGuestProfileIdsByTagSearch } from "../lib/guestTagSearch.js";
 import { reservationStatusToLegacy } from "../lib/liveData.js";
 import { getLocationTimezone } from "../lib/operatingHours.js";
 import type { GuestProfile, QueueEntry, Reservation } from "@prisma/client";
@@ -143,15 +144,9 @@ router.get("/", async (req, res) => {
         or.push({ normalizedPhone: { contains: digits } });
       }
 
-      const tagsRaw = (await prisma.guestProfile.findRaw({
-        filter: {
-          businessId: { $oid: businessId },
-          locationId: { $oid: locationId },
-          tags: { $regex: search, $options: "i" },
-        },
-      })) as unknown as any[];
-      if (tagsRaw.length) {
-        or.push({ id: { in: tagsRaw.map((t: any) => t._id.$oid) } });
+      const tagMatchedIds = await findGuestProfileIdsByTagSearch(businessId, locationId, search);
+      if (tagMatchedIds.length) {
+        or.push({ id: { in: tagMatchedIds } });
       }
 
       where.AND = [...(where.AND || []), { OR: or }];

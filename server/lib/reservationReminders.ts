@@ -49,7 +49,7 @@ export async function runReservationReminderSweep(): Promise<void> {
   const candidates = await prisma.reservation.findMany({
     where: {
       status: "CONFIRMED",
-      OR: [{ reminderEmailSentAt: null }, { reminderEmailSentAt: { isSet: false } }],
+      reminderEmailSentAt: null,
       reservationDateTime: {
         gte: boundStr(new Date(now.getTime() - 2 * dayMs)),
         lte: boundStr(new Date(now.getTime() + 2 * dayMs)),
@@ -105,7 +105,7 @@ export async function runReservationReminderSweep(): Promise<void> {
       const claim = await prisma.reservation.updateMany({
         where: {
           id: r.id,
-          OR: [{ reminderEmailSentAt: null }, { reminderEmailSentAt: { isSet: false } }],
+          reminderEmailSentAt: null,
         },
         data: { reminderEmailSentAt: new Date() },
       });

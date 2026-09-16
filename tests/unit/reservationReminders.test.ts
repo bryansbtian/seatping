@@ -320,10 +320,7 @@ describe("reminder sweep claims", () => {
     await runReservationReminderSweep();
 
     const where = reservationUpdateMany.mock.calls[0][0].where;
-    expect(where.OR).toEqual([
-      { reminderEmailSentAt: null },
-      { reminderEmailSentAt: { isSet: false } },
-    ]);
+    expect(where.reminderEmailSentAt).toBeNull();
   });
 
   it("sends nothing when another sweep already claimed the reservation", async () => {

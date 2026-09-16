@@ -126,7 +126,7 @@ describe("posting a restaurant review", () => {
     const res = await (
       await api()
     )
-      .post(reviewsPath(undefined, "not-an-object-id"))
+      .post(reviewsPath(undefined, "not a valid id!"))
       .set("Cookie", cookie)
       .send({ rating: 4 });
 

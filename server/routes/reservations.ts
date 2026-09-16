@@ -36,13 +36,12 @@ import { limitGuard, clientIp, MINUTES, HOURS } from "../lib/rateLimit.js";
 import { syncGuestFromReservation, touchGuestByReservationId } from "../lib/guests.js";
 import { withWriteRetry } from "../lib/dbRetry.js";
 import type { Reservation } from "@prisma/client";
+import { ENTITY_ID_RE } from "../lib/entityId.js";
 
 const router = Router();
 
-const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
-
 async function resolveLocation(businessUsername: string, locationId: string) {
-  if (!businessUsername || !OBJECT_ID_RE.test(locationId)) {
+  if (!businessUsername || !ENTITY_ID_RE.test(locationId)) {
     return null;
   }
   const business = await prisma.business.findUnique({

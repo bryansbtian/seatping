@@ -1,6 +1,6 @@
 import { prisma } from "./prisma.js";
 import { splitDateTime } from "./reservations.js";
-import { withWriteRetry } from "./dbRetry.js";
+import { withUpsertRetry, withWriteRetry } from "./dbRetry.js";
 
 export function bucketOf(reservationDateTime: string): {
   dateKey: string;
@@ -25,7 +25,7 @@ export async function tryReserveCapacity(
     return false;
   }
 
-  await withWriteRetry(() =>
+  await withUpsertRetry(() =>
     prisma.slotCounter.upsert({
       where: { locationId_dateKey_hour: { locationId, dateKey, hour } },
       create: { locationId, dateKey, hour, reservedGuests: 0 },
@@ -56,7 +56,7 @@ export async function addCapacity(
   if (guestCount <= 0) {
     return;
   }
-  await withWriteRetry(() =>
+  await withUpsertRetry(() =>
     prisma.slotCounter.upsert({
       where: { locationId_dateKey_hour: { locationId, dateKey, hour } },
       create: { locationId, dateKey, hour, reservedGuests: guestCount },

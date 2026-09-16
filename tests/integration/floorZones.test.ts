@@ -153,7 +153,9 @@ describe("zone creation", () => {
     const missing = await addZone(request, location.id, cookie, MISSING_ID, { name: "Zone" });
     expect(missing.status).toBe(404);
 
-    const malformed = await addZone(request, location.id, cookie, "not-an-id", { name: "Zone" });
+    const malformed = await addZone(request, location.id, cookie, "not a valid id!", {
+      name: "Zone",
+    });
     expect(malformed.status).toBe(404);
   });
 });

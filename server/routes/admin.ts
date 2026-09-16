@@ -2,6 +2,7 @@ import express from "express";
 import { prisma } from "../lib/prisma.js";
 import { computeNextRefillDate } from "../lib/trial.js";
 import { requireAdmin } from "../lib/auth.js";
+import { ENTITY_ID_RE } from "../lib/entityId.js";
 
 const router = express.Router();
 
@@ -320,8 +321,6 @@ router.patch("/customer/:username", async (req, res) => {
   }
 });
 
-const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
-
 function pickLocation(loc: any) {
   return {
     id: loc.id,
@@ -385,7 +384,7 @@ router.get("/businesses/search", async (req, res) => {
 router.get("/businesses/:businessId/locations", async (req, res) => {
   try {
     const businessId = String(req.params.businessId || "").trim();
-    if (!OBJECT_ID_RE.test(businessId)) {
+    if (!ENTITY_ID_RE.test(businessId)) {
       return res.status(404).json({ error: "Business not found" });
     }
     const business = await prisma.business.findUnique({
@@ -424,10 +423,10 @@ router.post("/featured-restaurants", async (req, res) => {
   try {
     const { businessId, locationId, sortOrder, isActive } = req.body || {};
 
-    if (!OBJECT_ID_RE.test(String(businessId || ""))) {
+    if (!ENTITY_ID_RE.test(String(businessId || ""))) {
       return res.status(400).json({ error: "A valid businessId is required" });
     }
-    if (!OBJECT_ID_RE.test(String(locationId || ""))) {
+    if (!ENTITY_ID_RE.test(String(locationId || ""))) {
       return res.status(400).json({ error: "A valid locationId is required" });
     }
 
@@ -489,7 +488,7 @@ router.post("/featured-restaurants", async (req, res) => {
 router.patch("/featured-restaurants/:id", async (req, res) => {
   try {
     const id = String(req.params.id || "").trim();
-    if (!OBJECT_ID_RE.test(id)) {
+    if (!ENTITY_ID_RE.test(id)) {
       return res.status(404).json({ error: "Featured restaurant not found" });
     }
     const { sortOrder, isActive } = req.body || {};
@@ -534,7 +533,7 @@ router.patch("/featured-restaurants/:id", async (req, res) => {
 router.delete("/featured-restaurants/:id", async (req, res) => {
   try {
     const id = String(req.params.id || "").trim();
-    if (!OBJECT_ID_RE.test(id)) {
+    if (!ENTITY_ID_RE.test(id)) {
       return res.status(404).json({ error: "Featured restaurant not found" });
     }
     const existing = await prisma.featuredRestaurant.findUnique({
@@ -675,7 +674,7 @@ router.get("/campaign-templates", async (req, res) => {
 router.get("/campaign-templates/:id", async (req, res) => {
   try {
     const id = String(req.params.id || "");
-    if (!OBJECT_ID_RE.test(id)) {
+    if (!ENTITY_ID_RE.test(id)) {
       return res.status(404).json({ error: "Template not found" });
     }
     const t = await prisma.campaignTemplate.findUnique({ where: { id } });
@@ -711,7 +710,7 @@ router.get("/campaign-templates/:id", async (req, res) => {
 router.patch("/campaign-templates/:id/review", async (req, res) => {
   try {
     const id = String(req.params.id || "");
-    if (!OBJECT_ID_RE.test(id)) {
+    if (!ENTITY_ID_RE.test(id)) {
       return res.status(404).json({ error: "Template not found" });
     }
     const t = await prisma.campaignTemplate.findUnique({ where: { id } });
@@ -761,7 +760,7 @@ router.patch("/campaign-templates/:id/review", async (req, res) => {
 router.post("/campaign-templates/:id/approve", async (req, res) => {
   try {
     const id = String(req.params.id || "");
-    if (!OBJECT_ID_RE.test(id)) {
+    if (!ENTITY_ID_RE.test(id)) {
       return res.status(404).json({ error: "Template not found" });
     }
     const t = await prisma.campaignTemplate.findUnique({ where: { id } });
@@ -804,7 +803,7 @@ router.post("/campaign-templates/:id/approve", async (req, res) => {
 router.post("/campaign-templates/:id/reject", async (req, res) => {
   try {
     const id = String(req.params.id || "");
-    if (!OBJECT_ID_RE.test(id)) {
+    if (!ENTITY_ID_RE.test(id)) {
       return res.status(404).json({ error: "Template not found" });
     }
     const reason = String(req.body?.rejectionReason || "").trim();

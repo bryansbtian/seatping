@@ -13,6 +13,7 @@ const {
   DEFAULT_RESERVATION_SETTINGS,
   computeAvailability,
   effectiveGuestCap,
+  UNCAPPED_GUEST_LIMIT,
   hasGuestCap,
   normalizeSettings,
   serializeReservation,
@@ -135,7 +136,7 @@ describe("normalizeSettings", () => {
 
     expect(uncapped.maxReservedGuestsPerHour).toBe(0);
     expect(hasGuestCap(uncapped)).toBe(false);
-    expect(effectiveGuestCap(uncapped)).toBe(Number.MAX_SAFE_INTEGER);
+    expect(effectiveGuestCap(uncapped)).toBe(UNCAPPED_GUEST_LIMIT);
   });
 
   it("keeps a configured guest cap as the effective cap", () => {

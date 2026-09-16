@@ -252,7 +252,7 @@ describe("performance metrics", () => {
   it("refuses a malformed location id", async () => {
     const { cookie } = await setup();
 
-    const response = await metricsFor("not-an-id", cookie);
+    const response = await metricsFor("not a valid id!", cookie);
 
     expect(response.status).toBe(404);
   });

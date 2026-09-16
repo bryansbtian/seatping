@@ -40,7 +40,7 @@ import {
   CustomerSignUpSchema,
   LoginSchema,
 } from "../../server/lib/validation.js";
-import { withWriteRetry } from "../../server/lib/dbRetry.js";
+import { withUpsertRetry, withWriteRetry } from "../../server/lib/dbRetry.js";
 
 function queueRow(overrides: Partial<QueueEntry> = {}): QueueEntry {
   return {
@@ -531,6 +531,72 @@ describe("write retry helper", () => {
         throw Object.assign(new Error("always conflicts"), { code: "P2034" });
       }, 3),
     ).rejects.toThrow(/always conflicts/);
+
+    expect(attempts).toBe(3);
+  });
+
+  it("does not retry a unique constraint violation", async () => {
+    let attempts = 0;
+    await expect(
+      withWriteRetry(async () => {
+        attempts += 1;
+        throw Object.assign(new Error("duplicate row"), { code: "P2002" });
+      }),
+    ).rejects.toThrow(/duplicate row/);
+
+    expect(attempts).toBe(1);
+  });
+});
+
+describe("upsert retry helper", () => {
+  it("retries a racing unique constraint violation and then succeeds", async () => {
+    let attempts = 0;
+    const result = await withUpsertRetry(async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        throw Object.assign(new Error("unique constraint failed"), { code: "P2002" });
+      }
+      return "recovered";
+    });
+
+    expect(result).toBe("recovered");
+    expect(attempts).toBe(2);
+  });
+
+  it("retries a P2034 write conflict as well", async () => {
+    let attempts = 0;
+    const result = await withUpsertRetry(async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        throw Object.assign(new Error("write conflict"), { code: "P2034" });
+      }
+      return "recovered";
+    });
+
+    expect(result).toBe("recovered");
+    expect(attempts).toBe(2);
+  });
+
+  it("rethrows a non-retryable error immediately", async () => {
+    let attempts = 0;
+    await expect(
+      withUpsertRetry(async () => {
+        attempts += 1;
+        throw new Error("permanent failure");
+      }),
+    ).rejects.toThrow(/permanent failure/);
+
+    expect(attempts).toBe(1);
+  });
+
+  it("gives up after exhausting the retry budget", async () => {
+    let attempts = 0;
+    await expect(
+      withUpsertRetry(async () => {
+        attempts += 1;
+        throw Object.assign(new Error("always duplicates"), { code: "P2002" });
+      }, 3),
+    ).rejects.toThrow(/always duplicates/);
 
     expect(attempts).toBe(3);
   });

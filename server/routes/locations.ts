@@ -10,6 +10,7 @@ import {
   signLocationUpload,
   publicIdInLocationFolder,
 } from "../lib/cloudinary.js";
+import { ENTITY_ID_RE } from "../lib/entityId.js";
 
 const router = Router();
 
@@ -233,15 +234,13 @@ function uploadErrorMessage(err: any): string {
   return err?.message || "Upload failed. Please try again.";
 }
 
-const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
-
 type OwnedLocation = { id: string; bannerImagePublicId: string | null };
 
 async function loadOwnedLocation(req: Request, res: Response, next: NextFunction) {
   try {
     const businessId = (req as any).auth.sub as string;
     const locationId = String(req.params.locationId || "").trim();
-    if (!OBJECT_ID_RE.test(locationId)) {
+    if (!ENTITY_ID_RE.test(locationId)) {
       return res.status(404).json({ error: "Location not found or access denied" });
     }
     const location = await prisma.location.findFirst({
@@ -490,7 +489,7 @@ router.patch(
     try {
       const location = res.locals.location as OwnedLocation;
       const photoId = String(req.params.photoId || "").trim();
-      if (!OBJECT_ID_RE.test(photoId)) {
+      if (!ENTITY_ID_RE.test(photoId)) {
         return res.status(404).json({ error: "Photo not found" });
       }
 
@@ -532,7 +531,7 @@ router.delete(
     try {
       const location = res.locals.location as OwnedLocation;
       const photoId = String(req.params.photoId || "").trim();
-      if (!OBJECT_ID_RE.test(photoId)) {
+      if (!ENTITY_ID_RE.test(photoId)) {
         return res.status(404).json({ error: "Photo not found" });
       }
 
@@ -605,7 +604,7 @@ router.patch(
     try {
       const location = res.locals.location as OwnedLocation;
       const reviewId = String(req.params.reviewId || "").trim();
-      if (!OBJECT_ID_RE.test(reviewId)) {
+      if (!ENTITY_ID_RE.test(reviewId)) {
         return res.status(404).json({ error: "Review not found" });
       }
 
@@ -655,7 +654,7 @@ router.delete(
     try {
       const location = res.locals.location as OwnedLocation;
       const reviewId = String(req.params.reviewId || "").trim();
-      if (!OBJECT_ID_RE.test(reviewId)) {
+      if (!ENTITY_ID_RE.test(reviewId)) {
         return res.status(404).json({ error: "Review not found" });
       }
       const review = await prisma.review.findFirst({

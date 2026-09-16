@@ -2,6 +2,7 @@ import type { CampaignTemplate, GuestProfile } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import { p, calloutBox, emailButton, esc, renderEmail } from "./email.js";
 import { normalizeEmail, normalizePhone } from "./guests.js";
+import { findGuestProfileIdsByExactTag } from "./guestTagSearch.js";
 import type { WhatsAppBodyParam } from "./whatsapp.js";
 
 export type Channel = "EMAIL" | "WHATSAPP" | "SMS";
@@ -613,18 +614,11 @@ export async function resolveAudienceGuests(q: AudienceQuery): Promise<GuestProf
       if (!tag) {
         return [];
       }
-      const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const tagsRaw = (await prisma.guestProfile.findRaw({
-        filter: {
-          businessId: { $oid: q.businessId },
-          locationId: { $oid: q.locationId },
-          tags: { $regex: `^${escaped}$`, $options: "i" },
-        },
-      })) as unknown as any[];
-      if (!tagsRaw.length) {
+      const matchedIds = await findGuestProfileIdsByExactTag(q.businessId, q.locationId, tag);
+      if (!matchedIds.length) {
         return [];
       }
-      where.id = { in: tagsRaw.map((t: any) => t._id.$oid) };
+      where.id = { in: matchedIds };
       break;
     }
     case "visited_yesterday": {
@@ -666,15 +660,7 @@ export async function resolveAudienceGuests(q: AudienceQuery): Promise<GuestProf
       if (filters.tags && Array.isArray(filters.tags) && filters.tags.length > 0) {
         const idSets = await Promise.all(
           filters.tags.map(async (tag: string) => {
-            const escaped = tag.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            const tagsRaw = (await prisma.guestProfile.findRaw({
-              filter: {
-                businessId: { $oid: q.businessId },
-                locationId: { $oid: q.locationId },
-                tags: { $regex: `^${escaped}$`, $options: "i" },
-              },
-            })) as unknown as any[];
-            return tagsRaw.map((t: any) => t._id.$oid as string);
+            return findGuestProfileIdsByExactTag(q.businessId, q.locationId, tag);
           }),
         );
         const matchedIds = Array.from(new Set(idSets.flat()));

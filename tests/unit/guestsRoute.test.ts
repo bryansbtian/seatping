@@ -9,7 +9,7 @@ const locationFindFirst = vi.fn();
 const guestFindMany = vi.fn();
 const guestFindFirst = vi.fn();
 const guestFindUnique = vi.fn();
-const guestFindRaw = vi.fn();
+const findGuestProfileIdsByTagSearch = vi.fn();
 const guestUpdate = vi.fn();
 const queueEntryFindMany = vi.fn();
 const reservationFindMany = vi.fn();
@@ -17,6 +17,10 @@ const recomputeGuestStats = vi.fn();
 
 const tableAssignmentFindMany = vi.fn(async () => []);
 const diningTableFindMany = vi.fn(async () => []);
+
+vi.mock("../../server/lib/guestTagSearch.js", () => {
+  return { findGuestProfileIdsByTagSearch };
+});
 
 vi.mock("../../server/lib/prisma.js", () => {
   return {
@@ -26,7 +30,6 @@ vi.mock("../../server/lib/prisma.js", () => {
         findMany: guestFindMany,
         findFirst: guestFindFirst,
         findUnique: guestFindUnique,
-        findRaw: guestFindRaw,
         update: guestUpdate,
       },
       queueEntry: { findMany: queueEntryFindMany },
@@ -110,7 +113,7 @@ beforeEach(() => {
   guestFindMany.mockReset().mockResolvedValue([]);
   guestFindFirst.mockReset().mockResolvedValue(guest());
   guestFindUnique.mockReset().mockResolvedValue(guest());
-  guestFindRaw.mockReset().mockResolvedValue([]);
+  findGuestProfileIdsByTagSearch.mockReset().mockResolvedValue([]);
   guestUpdate.mockReset().mockImplementation(async ({ data }) => {
     return guest(data);
   });
@@ -188,7 +191,7 @@ describe("guest list", () => {
   });
 
   it("skips the tag search when nothing matches the term", async () => {
-    guestFindRaw.mockResolvedValue([]);
+    findGuestProfileIdsByTagSearch.mockResolvedValue([]);
 
     const res = await app().get("/api/guests?locationId=loc-1&search=vip").set("Cookie", cookie());
 
@@ -199,7 +202,7 @@ describe("guest list", () => {
   });
 
   it("adds the matching tag ids when the tag search finds some", async () => {
-    guestFindRaw.mockResolvedValue([{ _id: { $oid: "guest-9" } }]);
+    findGuestProfileIdsByTagSearch.mockResolvedValue(["guest-9"]);
 
     await app().get("/api/guests?locationId=loc-1&search=vip").set("Cookie", cookie());
 

@@ -104,7 +104,7 @@ describe("reading the reviews for a business location", () => {
   it("refuses a malformed location id", async () => {
     const { business } = await seedBusinessWithLocation();
 
-    const res = await reviewsFor("not-an-id", businessCookie(business.id));
+    const res = await reviewsFor("not a valid id!", businessCookie(business.id));
 
     expect(res.status).toBe(404);
   });

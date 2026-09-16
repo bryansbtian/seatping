@@ -3,10 +3,9 @@ import { prisma } from "../lib/prisma.js";
 import { serializePhoto } from "../lib/business.js";
 import { requireCustomer } from "../lib/auth.js";
 import { limitGuard, clientIp, MINUTES, HOURS } from "../lib/rateLimit.js";
+import { ENTITY_ID_RE } from "../lib/entityId.js";
 
 const router = Router();
-
-const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 
 function serializeReview(r: any) {
   let rating = 0;
@@ -86,7 +85,7 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
   try {
     const businessUsername = String(req.params.businessUsername || "").trim();
     const locationId = String(req.params.locationId || "").trim();
-    if (!businessUsername || !OBJECT_ID_RE.test(locationId)) {
+    if (!businessUsername || !ENTITY_ID_RE.test(locationId)) {
       return res.status(404).json({ error: "Restaurant not found" });
     }
 
@@ -190,7 +189,7 @@ router.post("/:businessUsername/:locationId/reviews", requireCustomer, async (re
   try {
     const businessUsername = String(req.params.businessUsername || "").trim();
     const locationId = String(req.params.locationId || "").trim();
-    if (!businessUsername || !OBJECT_ID_RE.test(locationId)) {
+    if (!businessUsername || !ENTITY_ID_RE.test(locationId)) {
       return res.status(404).json({ error: "Restaurant not found" });
     }
 

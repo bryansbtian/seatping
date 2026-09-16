@@ -5,17 +5,17 @@ function buildDatasourceUrl(): string | undefined {
   if (!raw) {
     return undefined;
   }
-  if (/[?&]maxPoolSize=/i.test(raw)) {
+  if (/[?&]connection_limit=/i.test(raw)) {
     return raw;
   }
-  const maxPool = process.env.DB_MAX_POOL_SIZE || "10";
+  const connectionLimit = process.env.DB_CONNECTION_LIMIT || "10";
   let sep: string;
   if (raw.includes("?")) {
     sep = "&";
   } else {
     sep = "?";
   }
-  return `${raw}${sep}maxPoolSize=${maxPool}`;
+  return `${raw}${sep}connection_limit=${connectionLimit}`;
 }
 
 const globalForPrisma = global as unknown as { prisma?: PrismaClient };

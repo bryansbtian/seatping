@@ -2,14 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GuestProfile } from "@prisma/client";
 
 const guestFindMany = vi.fn();
-const guestFindRaw = vi.fn();
+const findGuestProfileIdsByExactTag = vi.fn();
 const savedAudienceFindUnique = vi.fn();
 const templateFindFirst = vi.fn();
+
+vi.mock("../../server/lib/guestTagSearch.js", () => {
+  return { findGuestProfileIdsByExactTag };
+});
 
 vi.mock("../../server/lib/prisma.js", () => {
   return {
     prisma: {
-      guestProfile: { findMany: guestFindMany, findRaw: guestFindRaw },
+      guestProfile: { findMany: guestFindMany },
       savedAudience: { findUnique: savedAudienceFindUnique },
       campaignTemplate: { findFirst: templateFindFirst },
     },
@@ -64,7 +68,7 @@ function audience(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   guestFindMany.mockReset().mockResolvedValue([]);
-  guestFindRaw.mockReset().mockResolvedValue([]);
+  findGuestProfileIdsByExactTag.mockReset().mockResolvedValue([]);
   savedAudienceFindUnique.mockReset().mockResolvedValue(null);
   templateFindFirst.mockReset().mockResolvedValue(null);
 });
@@ -439,7 +443,7 @@ describe("resolveAudienceGuests", () => {
   });
 
   it("scopes a tag audience to the matching ids", async () => {
-    guestFindRaw.mockResolvedValue([{ _id: { $oid: "guest-9" } }]);
+    findGuestProfileIdsByExactTag.mockResolvedValue(["guest-9"]);
 
     await resolveAudienceGuests(
       audience({ audienceType: "with_tag", audienceConfig: { tag: "V.I.P" } }),
@@ -524,7 +528,7 @@ describe("resolveAudienceGuests", () => {
   });
 
   it("merges the tag matches with the manually chosen guests", async () => {
-    guestFindRaw.mockResolvedValue([{ _id: { $oid: "g-tagged" } }]);
+    findGuestProfileIdsByExactTag.mockResolvedValue(["g-tagged"]);
     const tagged = guest({ id: "g-tagged", lastVisitAt: new Date("2026-08-01") });
     const manual = guest({ id: "g-manual", lastVisitAt: new Date("2026-08-10") });
     guestFindMany.mockResolvedValueOnce([tagged]).mockResolvedValueOnce([manual]);
