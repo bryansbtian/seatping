@@ -23,6 +23,7 @@ const twMerge = extendTailwindMerge({
       rounded: [{ rounded: ["control", "badge"] }],
       h: [{ h: ["row", "row-lg", "badge", "switch-h", "switch-thumb"] }],
       "min-h": [{ "min-h": ["row", "row-lg"] }],
+      ease: [{ ease: ["strong-out", "drawer", "crossfade"] }],
       w: [{ w: ["switch-w", "switch-thumb"] }],
     },
   },

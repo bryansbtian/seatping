@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
+import { SLOT_BUTTON_BASE_CLASS } from "@/lib/slotButton";
 import NotFound from "@/pages/NotFound";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -253,10 +254,7 @@ export default function ManageReservation() {
               type="button"
               disabled={!s.available}
               onClick={() => setTime(s.time)}
-              className={cn(
-                "rounded-md border px-1 py-1.5 text-xs font-medium transition",
-                slotClass,
-              )}
+              className={cn(SLOT_BUTTON_BASE_CLASS, "px-1", slotClass)}
             >
               {s.label}
             </button>

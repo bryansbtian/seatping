@@ -121,6 +121,20 @@ export default {
         control: "var(--radius-control)",
         badge: "var(--radius-badge)",
       },
+      transitionTimingFunction: {
+        "strong-out": "var(--ease-strong-out)",
+        drawer: "var(--ease-drawer)",
+        crossfade: "var(--ease-crossfade)",
+      },
+      height: {
+        screen: "var(--app-height)",
+      },
+      minHeight: {
+        screen: "var(--app-height)",
+      },
+      maxHeight: {
+        screen: "var(--app-height)",
+      },
       spacing: {
         row: "var(--row-height)",
         "row-lg": "var(--row-height-lg)",

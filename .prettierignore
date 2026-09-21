@@ -10,3 +10,4 @@ bun.lockb
 public
 *.min.js
 *.min.css
+.agents

@@ -101,7 +101,9 @@
     --shadow-success: 0 10px 30px -10px hsl(173 80% 40% / 0.2);
     --shadow-card: 0 4px 20px -4px hsl(214 32% 91% / 0.4);
 
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-strong-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-crossfade: cubic-bezier(0.2, 0, 0, 1);
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 32%;
@@ -166,6 +168,16 @@
 }
 
 @layer base {
+  :root {
+    --app-height: 100vh;
+  }
+
+  @supports (height: 100dvh) {
+    :root {
+      --app-height: 100dvh;
+    }
+  }
+
   * {
     @apply border-border;
   }
