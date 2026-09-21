@@ -4,6 +4,7 @@ import { format, isToday, isTomorrow } from "date-fns";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { SLOT_BUTTON_BASE_CLASS, SLOT_BUTTON_COMPACT_CLASS } from "@/lib/slotButton";
 import { analytics } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -357,10 +358,7 @@ export default function ReservationBooking({
                     setFullNotice("");
                   }}
                   title={slotTitle}
-                  className={cn(
-                    "rounded-md border px-2 py-1.5 text-xs font-medium transition",
-                    slotClass,
-                  )}
+                  className={cn(SLOT_BUTTON_BASE_CLASS, "px-2", slotClass)}
                 >
                   {s.label}
                 </button>
@@ -705,10 +703,7 @@ function BookingModal({
               type="button"
               disabled={!s.available}
               onClick={() => setTime(s.time)}
-              className={cn(
-                "rounded-md border px-1 py-1.5 max-[320px]:py-1 max-[320px]:text-micro text-xs font-medium transition",
-                slotClass,
-              )}
+              className={cn(SLOT_BUTTON_BASE_CLASS, SLOT_BUTTON_COMPACT_CLASS, "px-1", slotClass)}
             >
               {s.label}
             </button>
