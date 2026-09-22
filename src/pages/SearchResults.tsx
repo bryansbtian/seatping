@@ -460,7 +460,7 @@ export default function SearchResults() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div data-page-background="muted" className="min-h-screen flex flex-col">
       <SEO
         title="Search Restaurants | SeatPing"
         description={CUSTOMER_DESCRIPTION}

@@ -159,7 +159,7 @@ const Sales = () => {
     <>
       <Header />
 
-      <main className="bg-gradient-to-br from-slate-50 via-white to-indigo-50/70 px-4 pb-12 pt-24 sm:pb-16 sm:pt-28">
+      <main data-page-background="sales" className=" px-4 pb-12 pt-24 sm:pb-16 sm:pt-28">
         <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-2 lg:items-stretch lg:gap-14">
           <div className="mx-auto w-full max-w-xl lg:mx-0">
             <h1

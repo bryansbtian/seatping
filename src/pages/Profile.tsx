@@ -320,7 +320,7 @@ const Profile = () => {
     <>
       <SEO title="My Profile | SeatPing" description={CUSTOMER_DESCRIPTION} canonical="/profile" />
       <Header />
-      <main className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 pb-12 pt-24 sm:pb-16">
+      <main data-page-background="auth" className="min-h-screen px-4 pb-12 pt-24 sm:pb-16">
         <div className="mx-auto w-full max-w-3xl space-y-5 sm:space-y-6">{profileContent}</div>
       </main>
       <Footer />

@@ -142,7 +142,10 @@ const BusinessSignup = () => {
         canonical="/business/signup"
       />
       <Header variant="business" />
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 py-8 pt-24">
+      <div
+        data-page-background="auth"
+        className="min-h-screen flex items-center justify-center px-4 py-8 pt-24"
+      >
         <Card className="w-full max-w-md lg:max-w-2xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
           <CardHeader className="space-y-2 px-6 pb-6 pt-8 text-center sm:px-10 sm:pt-10">
             <CardTitle className="text-3xl text-primary">Create Your Business Account</CardTitle>

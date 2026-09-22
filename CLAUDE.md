@@ -83,32 +83,25 @@ migration directory.
   curly braces. Enforced by `curly`.
 
 ```ts
-// Correct
 if (ready) {
   return;
 }
-
-// Incorrect
-if (ready) return;
-
-// Incorrect
-const status = ready ? "Ready" : "Pending";
 ```
 
 - Never write comments. This covers every language in the repository, not just TypeScript:
   no explanatory, descriptive, or section comments, and no commented-out code, in `.ts`,
-  `.tsx`, `.js`, `.css`, `.html`, `.yml`, `.prisma`, or Markdown files. Exactly two
-  exceptions are allowed:
-  - `.env` files, including `.env.example`, where comments say which variables are required
-    and group them into sections.
-  - The `SEO:START` and `SEO:END` markers in `index.html`.
+  `.tsx`, `.js`, `.css`, `.html`, `.yml`, `.prisma`, `.sql`, `.env`, or Markdown files.
+  The only exceptions are:
+  - Environment files, including `.env.example` and `.env.test.example`, where comments
+    explain variables and group them into sections.
+  - The `SEO:START` and `SEO:END` markers used by `index.html`, its server-side SEO renderer,
+    and its tests.
 
   Nothing else qualifies, toolchain directives included. Do not reach for `eslint-disable`,
   `@ts-expect-error`, or triple slash `/// <reference>` lines. Fix the underlying problem
   instead, or move the setting into `eslint.config.js`, `tsconfig.app.json`,
   `tsconfig.server.json`, or the workflow file, where it is configuration rather than a
-  comment. Outside the two exceptions above the repository contains no comments at all.
-  Keep it that way.
+  comment. Keep new and edited code free of comments outside the exceptions above.
 
 - Never commit changes, create commits, push branches, or modify git history. The user
   handles all git operations manually.

@@ -1,49 +1,33 @@
--- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
--- CreateEnum
 CREATE TYPE "QueueStatus" AS ENUM ('WAITING', 'ADMITTED', 'ARRIVED', 'NO_SHOW', 'REMOVED', 'LEFT');
 
--- CreateEnum
 CREATE TYPE "ReservationStatus" AS ENUM ('CONFIRMED', 'ARRIVED', 'COMPLETED', 'CANCELLED', 'NO_SHOW');
 
--- CreateEnum
 CREATE TYPE "CampaignChannel" AS ENUM ('EMAIL', 'WHATSAPP', 'SMS');
 
--- CreateEnum
 CREATE TYPE "CampaignTemplateType" AS ENUM ('SEATPING', 'CUSTOM');
 
--- CreateEnum
 CREATE TYPE "CampaignTemplateApprovalStatus" AS ENUM ('DRAFT', 'PENDING_SEATPING_REVIEW', 'APPROVED', 'REJECTED');
 
--- CreateEnum
 CREATE TYPE "CampaignStatus" AS ENUM ('DRAFT', 'READY', 'SCHEDULED', 'SENDING', 'SENT', 'FAILED', 'CANCELLED', 'RECURRING', 'PAUSED');
 
--- CreateEnum
 CREATE TYPE "CampaignSendMode" AS ENUM ('NOW', 'SCHEDULED', 'RECURRING');
 
--- CreateEnum
 CREATE TYPE "CampaignFrequency" AS ENUM ('DAILY', 'WEEKLY', 'MONTHLY');
 
--- CreateEnum
 CREATE TYPE "CampaignRunType" AS ENUM ('MANUAL', 'SCHEDULED', 'RECURRING');
 
--- CreateEnum
 CREATE TYPE "CampaignRunStatus" AS ENUM ('PENDING', 'RUNNING', 'COMPLETED', 'FAILED');
 
--- CreateEnum
 CREATE TYPE "CampaignRecipientStatus" AS ENUM ('PENDING', 'SENT', 'DELIVERED', 'FAILED', 'SKIPPED');
 
--- CreateEnum
 CREATE TYPE "TableShape" AS ENUM ('ROUND', 'SQUARE', 'RECTANGLE');
 
--- CreateEnum
 CREATE TYPE "TableAssignmentSource" AS ENUM ('SMART', 'MANUAL');
 
--- CreateEnum
 CREATE TYPE "TableAssignmentStatus" AS ENUM ('RESERVED', 'SEATED', 'COMPLETED', 'CANCELLED');
 
--- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -63,7 +47,6 @@ CREATE TABLE "users" (
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "businesses" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -87,7 +70,6 @@ CREATE TABLE "businesses" (
     CONSTRAINT "businesses_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "locations" (
     "id" TEXT NOT NULL,
     "businessId" TEXT NOT NULL,
@@ -117,7 +99,6 @@ CREATE TABLE "locations" (
     CONSTRAINT "locations_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "photos" (
     "id" TEXT NOT NULL,
     "locationId" TEXT NOT NULL,
@@ -130,7 +111,6 @@ CREATE TABLE "photos" (
     CONSTRAINT "photos_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "reviews" (
     "id" TEXT NOT NULL,
     "locationId" TEXT NOT NULL,
@@ -150,7 +130,6 @@ CREATE TABLE "reviews" (
     CONSTRAINT "reviews_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "featured_restaurants" (
     "id" TEXT NOT NULL,
     "businessId" TEXT NOT NULL,
@@ -163,7 +142,6 @@ CREATE TABLE "featured_restaurants" (
     CONSTRAINT "featured_restaurants_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "tickets" (
     "id" TEXT NOT NULL,
     "ticketNumber" TEXT NOT NULL,
@@ -184,7 +162,6 @@ CREATE TABLE "tickets" (
     CONSTRAINT "tickets_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "queue_entries" (
     "id" TEXT NOT NULL,
     "queueToken" TEXT NOT NULL,
@@ -215,7 +192,6 @@ CREATE TABLE "queue_entries" (
     CONSTRAINT "queue_entries_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "reservations_v2" (
     "id" TEXT NOT NULL,
     "manageToken" TEXT NOT NULL,
@@ -249,7 +225,6 @@ CREATE TABLE "reservations_v2" (
     CONSTRAINT "reservations_v2_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "guest_profiles" (
     "id" TEXT NOT NULL,
     "businessId" TEXT NOT NULL,
@@ -288,7 +263,6 @@ CREATE TABLE "guest_profiles" (
     CONSTRAINT "guest_profiles_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "campaign_templates" (
     "id" TEXT NOT NULL,
     "businessId" TEXT,
@@ -328,7 +302,6 @@ CREATE TABLE "campaign_templates" (
     CONSTRAINT "campaign_templates_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "campaigns" (
     "id" TEXT NOT NULL,
     "businessId" TEXT NOT NULL,
@@ -363,7 +336,6 @@ CREATE TABLE "campaigns" (
     CONSTRAINT "campaigns_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "campaign_runs" (
     "id" TEXT NOT NULL,
     "campaignId" TEXT NOT NULL,
@@ -384,7 +356,6 @@ CREATE TABLE "campaign_runs" (
     CONSTRAINT "campaign_runs_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "campaign_recipients" (
     "id" TEXT NOT NULL,
     "campaignId" TEXT NOT NULL,
@@ -406,7 +377,6 @@ CREATE TABLE "campaign_recipients" (
     CONSTRAINT "campaign_recipients_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "campaign_delivery_logs" (
     "id" TEXT NOT NULL,
     "campaignId" TEXT NOT NULL,
@@ -419,7 +389,6 @@ CREATE TABLE "campaign_delivery_logs" (
     CONSTRAINT "campaign_delivery_logs_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "slot_counters" (
     "id" TEXT NOT NULL,
     "locationId" TEXT NOT NULL,
@@ -430,7 +399,6 @@ CREATE TABLE "slot_counters" (
     CONSTRAINT "slot_counters_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "saved_audiences" (
     "id" TEXT NOT NULL,
     "businessId" TEXT NOT NULL,
@@ -445,7 +413,6 @@ CREATE TABLE "saved_audiences" (
     CONSTRAINT "saved_audiences_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "floor_plans" (
     "id" TEXT NOT NULL,
     "businessId" TEXT NOT NULL,
@@ -460,7 +427,6 @@ CREATE TABLE "floor_plans" (
     CONSTRAINT "floor_plans_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "dining_tables" (
     "id" TEXT NOT NULL,
     "floorPlanId" TEXT NOT NULL,
@@ -484,7 +450,6 @@ CREATE TABLE "dining_tables" (
     CONSTRAINT "dining_tables_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "table_assignments" (
     "id" TEXT NOT NULL,
     "tableId" TEXT NOT NULL,
@@ -509,7 +474,6 @@ CREATE TABLE "table_assignments" (
     CONSTRAINT "table_assignments_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "floor_zones" (
     "id" TEXT NOT NULL,
     "floorPlanId" TEXT NOT NULL,
@@ -526,255 +490,170 @@ CREATE TABLE "floor_zones" (
     CONSTRAINT "floor_zones_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
 CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
 
--- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
--- CreateIndex
 CREATE UNIQUE INDEX "businesses_username_key" ON "businesses"("username");
 
--- CreateIndex
 CREATE UNIQUE INDEX "businesses_email_key" ON "businesses"("email");
 
--- CreateIndex
 CREATE INDEX "locations_businessId_idx" ON "locations"("businessId");
 
--- CreateIndex
 CREATE INDEX "locations_businessUsername_idx" ON "locations"("businessUsername");
 
--- CreateIndex
 CREATE INDEX "locations_isPublished_idx" ON "locations"("isPublished");
 
--- CreateIndex
 CREATE INDEX "photos_locationId_idx" ON "photos"("locationId");
 
--- CreateIndex
 CREATE INDEX "reviews_locationId_idx" ON "reviews"("locationId");
 
--- CreateIndex
 CREATE INDEX "reviews_customerId_idx" ON "reviews"("customerId");
 
--- CreateIndex
 CREATE INDEX "featured_restaurants_businessId_idx" ON "featured_restaurants"("businessId");
 
--- CreateIndex
 CREATE INDEX "featured_restaurants_isActive_idx" ON "featured_restaurants"("isActive");
 
--- CreateIndex
 CREATE INDEX "featured_restaurants_sortOrder_idx" ON "featured_restaurants"("sortOrder");
 
--- CreateIndex
 CREATE UNIQUE INDEX "featured_restaurants_locationId_key" ON "featured_restaurants"("locationId");
 
--- CreateIndex
 CREATE UNIQUE INDEX "tickets_ticketNumber_key" ON "tickets"("ticketNumber");
 
--- CreateIndex
 CREATE INDEX "tickets_status_idx" ON "tickets"("status");
 
--- CreateIndex
 CREATE INDEX "tickets_type_idx" ON "tickets"("type");
 
--- CreateIndex
 CREATE INDEX "tickets_createdAt_idx" ON "tickets"("createdAt");
 
--- CreateIndex
 CREATE UNIQUE INDEX "queue_entries_queueToken_key" ON "queue_entries"("queueToken");
 
--- CreateIndex
 CREATE INDEX "queue_entries_locationId_status_idx" ON "queue_entries"("locationId", "status");
 
--- CreateIndex
 CREATE INDEX "queue_entries_businessId_idx" ON "queue_entries"("businessId");
 
--- CreateIndex
 CREATE INDEX "queue_entries_legacyKey_idx" ON "queue_entries"("legacyKey");
 
--- CreateIndex
 CREATE INDEX "queue_entries_customerId_idx" ON "queue_entries"("customerId");
 
--- CreateIndex
 CREATE UNIQUE INDEX "reservations_v2_manageToken_key" ON "reservations_v2"("manageToken");
 
--- CreateIndex
 CREATE INDEX "reservations_v2_locationId_status_idx" ON "reservations_v2"("locationId", "status");
 
--- CreateIndex
 CREATE INDEX "reservations_v2_locationId_needsReview_idx" ON "reservations_v2"("locationId", "needsReview");
 
--- CreateIndex
 CREATE INDEX "reservations_v2_businessId_idx" ON "reservations_v2"("businessId");
 
--- CreateIndex
 CREATE INDEX "reservations_v2_reservationDateTime_idx" ON "reservations_v2"("reservationDateTime");
 
--- CreateIndex
 CREATE INDEX "reservations_v2_customerId_idx" ON "reservations_v2"("customerId");
 
--- CreateIndex
 CREATE INDEX "guest_profiles_businessId_idx" ON "guest_profiles"("businessId");
 
--- CreateIndex
 CREATE INDEX "guest_profiles_locationId_idx" ON "guest_profiles"("locationId");
 
--- CreateIndex
 CREATE INDEX "guest_profiles_businessId_locationId_idx" ON "guest_profiles"("businessId", "locationId");
 
--- CreateIndex
 CREATE INDEX "guest_profiles_normalizedPhone_idx" ON "guest_profiles"("normalizedPhone");
 
--- CreateIndex
 CREATE INDEX "guest_profiles_normalizedEmail_idx" ON "guest_profiles"("normalizedEmail");
 
--- CreateIndex
 CREATE INDEX "guest_profiles_tags_idx" ON "guest_profiles" USING GIN ("tags");
 
--- CreateIndex
 CREATE INDEX "guest_profiles_lastVisitAt_idx" ON "guest_profiles"("lastVisitAt");
 
--- CreateIndex
 CREATE INDEX "guest_profiles_fullName_idx" ON "guest_profiles"("fullName");
 
--- CreateIndex
 CREATE INDEX "campaign_templates_businessId_idx" ON "campaign_templates"("businessId");
 
--- CreateIndex
 CREATE INDEX "campaign_templates_templateType_idx" ON "campaign_templates"("templateType");
 
--- CreateIndex
 CREATE INDEX "campaign_templates_approvalStatus_idx" ON "campaign_templates"("approvalStatus");
 
--- CreateIndex
 CREATE INDEX "campaign_templates_slug_idx" ON "campaign_templates"("slug");
 
--- CreateIndex
 CREATE INDEX "campaigns_businessId_idx" ON "campaigns"("businessId");
 
--- CreateIndex
 CREATE INDEX "campaigns_businessId_locationId_idx" ON "campaigns"("businessId", "locationId");
 
--- CreateIndex
 CREATE INDEX "campaigns_status_idx" ON "campaigns"("status");
 
--- CreateIndex
 CREATE INDEX "campaigns_nextRunAt_idx" ON "campaigns"("nextRunAt");
 
--- CreateIndex
 CREATE INDEX "campaign_runs_campaignId_idx" ON "campaign_runs"("campaignId");
 
--- CreateIndex
 CREATE INDEX "campaign_runs_businessId_idx" ON "campaign_runs"("businessId");
 
--- CreateIndex
 CREATE INDEX "campaign_recipients_campaignId_idx" ON "campaign_recipients"("campaignId");
 
--- CreateIndex
 CREATE INDEX "campaign_recipients_runId_idx" ON "campaign_recipients"("runId");
 
--- CreateIndex
 CREATE INDEX "campaign_recipients_businessId_idx" ON "campaign_recipients"("businessId");
 
--- CreateIndex
 CREATE INDEX "campaign_recipients_campaignId_guestProfileId_idx" ON "campaign_recipients"("campaignId", "guestProfileId");
 
--- CreateIndex
 CREATE UNIQUE INDEX "campaign_recipients_runId_guestProfileId_key" ON "campaign_recipients"("runId", "guestProfileId");
 
--- CreateIndex
 CREATE INDEX "campaign_delivery_logs_campaignId_idx" ON "campaign_delivery_logs"("campaignId");
 
--- CreateIndex
 CREATE INDEX "campaign_delivery_logs_recipientId_idx" ON "campaign_delivery_logs"("recipientId");
 
--- CreateIndex
 CREATE UNIQUE INDEX "slot_counters_locationId_dateKey_hour_key" ON "slot_counters"("locationId", "dateKey", "hour");
 
--- CreateIndex
 CREATE INDEX "saved_audiences_businessId_idx" ON "saved_audiences"("businessId");
 
--- CreateIndex
 CREATE INDEX "saved_audiences_businessId_locationId_idx" ON "saved_audiences"("businessId", "locationId");
 
--- CreateIndex
 CREATE INDEX "floor_plans_businessId_idx" ON "floor_plans"("businessId");
 
--- CreateIndex
 CREATE INDEX "floor_plans_locationId_sortOrder_idx" ON "floor_plans"("locationId", "sortOrder");
 
--- CreateIndex
 CREATE UNIQUE INDEX "floor_plans_locationId_name_key" ON "floor_plans"("locationId", "name");
 
--- CreateIndex
 CREATE INDEX "dining_tables_floorPlanId_idx" ON "dining_tables"("floorPlanId");
 
--- CreateIndex
 CREATE INDEX "dining_tables_businessId_idx" ON "dining_tables"("businessId");
 
--- CreateIndex
 CREATE INDEX "dining_tables_locationId_isBlocked_idx" ON "dining_tables"("locationId", "isBlocked");
 
--- CreateIndex
 CREATE INDEX "dining_tables_locationId_cleaningSince_idx" ON "dining_tables"("locationId", "cleaningSince");
 
--- CreateIndex
 CREATE UNIQUE INDEX "dining_tables_locationId_name_key" ON "dining_tables"("locationId", "name");
 
--- CreateIndex
 CREATE INDEX "table_assignments_tableId_status_idx" ON "table_assignments"("tableId", "status");
 
--- CreateIndex
 CREATE INDEX "table_assignments_tableIds_idx" ON "table_assignments" USING GIN ("tableIds");
 
--- CreateIndex
 CREATE INDEX "table_assignments_locationId_status_idx" ON "table_assignments"("locationId", "status");
 
--- CreateIndex
 CREATE INDEX "table_assignments_businessId_idx" ON "table_assignments"("businessId");
 
--- CreateIndex
 CREATE INDEX "table_assignments_reservationId_idx" ON "table_assignments"("reservationId");
 
--- CreateIndex
 CREATE INDEX "table_assignments_queueEntryId_idx" ON "table_assignments"("queueEntryId");
 
--- CreateIndex
 CREATE INDEX "table_assignments_locationId_expectedStartAt_idx" ON "table_assignments"("locationId", "expectedStartAt");
 
--- CreateIndex
 CREATE INDEX "table_assignments_expectedEndAt_idx" ON "table_assignments"("expectedEndAt");
 
--- CreateIndex
 CREATE INDEX "floor_zones_locationId_idx" ON "floor_zones"("locationId");
 
--- CreateIndex
 CREATE INDEX "floor_zones_businessId_idx" ON "floor_zones"("businessId");
 
--- CreateIndex
 CREATE UNIQUE INDEX "floor_zones_floorPlanId_name_key" ON "floor_zones"("floorPlanId", "name");
 
--- AddForeignKey
 ALTER TABLE "photos" ADD CONSTRAINT "photos_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "locations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
 ALTER TABLE "reviews" ADD CONSTRAINT "reviews_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "locations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
 ALTER TABLE "featured_restaurants" ADD CONSTRAINT "featured_restaurants_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
 ALTER TABLE "featured_restaurants" ADD CONSTRAINT "featured_restaurants_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "locations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
 ALTER TABLE "floor_plans" ADD CONSTRAINT "floor_plans_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "locations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
 ALTER TABLE "dining_tables" ADD CONSTRAINT "dining_tables_floorPlanId_fkey" FOREIGN KEY ("floorPlanId") REFERENCES "floor_plans"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
 ALTER TABLE "table_assignments" ADD CONSTRAINT "table_assignments_tableId_fkey" FOREIGN KEY ("tableId") REFERENCES "dining_tables"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
 ALTER TABLE "floor_zones" ADD CONSTRAINT "floor_zones_floorPlanId_fkey" FOREIGN KEY ("floorPlanId") REFERENCES "floor_plans"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-

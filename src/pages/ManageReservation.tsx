@@ -420,7 +420,7 @@ export default function ManageReservation() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div data-page-background="muted" className="flex min-h-screen flex-col">
       <Header />
       <main className="flex flex-1 flex-col px-4 pb-10 pt-24 sm:pb-14 sm:pt-28">
         <div className="m-auto w-full max-w-lg lg:max-w-2xl">{pageContent}</div>

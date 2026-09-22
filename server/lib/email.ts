@@ -341,7 +341,6 @@ export function renderEmail(opts: {
     <tr>
       <td align="center" style="padding: 32px 16px;">
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width: 560px; max-width: 100%;">
-          <!-- Wordmark -->
           <tr>
             <td style="padding: 0 4px 18px;">
               <span style="font-family: ${FONT_STACK}; font-size: 20px; font-weight: 700; color: ${COLORS.ink}; letter-spacing: -0.01em;">
@@ -349,7 +348,6 @@ export function renderEmail(opts: {
               </span>
             </td>
           </tr>
-          <!-- Card -->
           <tr>
             <td style="background: ${COLORS.card}; border: 1px solid ${COLORS.border}; border-radius: 16px; padding: 36px 32px;">
               <h1 style="margin: 0 0 18px; font-family: ${FONT_STACK}; color: ${COLORS.ink}; font-size: 22px; font-weight: 700; line-height: 1.3;">${esc(opts.heading)}</h1>
@@ -358,7 +356,6 @@ export function renderEmail(opts: {
               </div>
             </td>
           </tr>
-          <!-- Footer -->
           <tr>
             <td style="padding: 22px 8px 0; text-align: center;">
               <p style="margin: 0 0 4px; font-family: ${FONT_STACK}; color: ${COLORS.muted}; font-size: 12px; line-height: 1.6;">${esc(tagline)}</p>

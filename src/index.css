@@ -170,6 +170,51 @@
 @layer base {
   :root {
     --app-height: 100vh;
+    --page-background-color: hsl(var(--background));
+    --page-background-image: none;
+  }
+
+  :root:has([data-page-background="auth"]) {
+    --page-background-color: color-mix(in srgb, hsl(var(--primary)) 5%, hsl(var(--background)));
+    --page-background-image: linear-gradient(
+      to bottom right,
+      var(--page-background-color),
+      hsl(var(--background)),
+      color-mix(in srgb, hsl(var(--success)) 5%, hsl(var(--background)))
+    );
+  }
+
+  :root:has([data-page-background="queue"]) {
+    --page-background-color: color-mix(in srgb, hsl(var(--success)) 5%, hsl(var(--background)));
+    --page-background-image: linear-gradient(
+      to bottom right,
+      var(--page-background-color),
+      hsl(var(--background)),
+      color-mix(in srgb, hsl(var(--primary)) 5%, hsl(var(--background)))
+    );
+  }
+
+  :root:has([data-page-background="business"]) {
+    --page-background-color: #f8fafc;
+    --page-background-image: linear-gradient(to bottom right, #f8fafc, #e0e7ff);
+  }
+
+  :root:has([data-page-background="sales"]) {
+    --page-background-color: #f8fafc;
+    --page-background-image: linear-gradient(
+      to bottom right,
+      #f8fafc,
+      #ffffff,
+      color-mix(in srgb, #eef2ff 70%, #ffffff)
+    );
+  }
+
+  :root:has([data-page-background="muted"]) {
+    --page-background-color: #f8fafc;
+  }
+
+  :root:has([data-page-background="not-found"]) {
+    --page-background-color: #fbf8ef;
   }
 
   @supports (height: 100dvh) {
@@ -182,8 +227,14 @@
     @apply border-border;
   }
 
+  html,
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--page-background-color);
+    background-image: var(--page-background-image);
+  }
+
+  body {
+    @apply text-foreground;
   }
 
   input[type="number"]::-webkit-outer-spin-button,
