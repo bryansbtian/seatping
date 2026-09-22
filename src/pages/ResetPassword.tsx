@@ -102,7 +102,7 @@ const ResetPassword = () => {
     return (
       <>
         <Header variant={headerVariant} />
-        <div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/5 via-background to-success/5">
+        <div data-page-background="auth" className="flex min-h-screen flex-col">
           <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10 sm:pt-28 sm:pb-14">
             <Card className="w-full max-w-[540px] shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
               <CardHeader className="px-6 pb-6 pt-8 text-center sm:px-10 sm:pt-10">
@@ -147,7 +147,7 @@ const ResetPassword = () => {
   return (
     <>
       <Header variant={headerVariant} />
-      <div className="flex min-h-screen flex-col bg-gradient-to-br from-primary/5 via-background to-success/5">
+      <div data-page-background="auth" className="flex min-h-screen flex-col">
         <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10 sm:pt-28 sm:pb-14">
           <Card className="w-full max-w-[540px] shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
             <CardHeader className="px-6 pb-6 pt-8 text-center sm:px-10 sm:pt-10">

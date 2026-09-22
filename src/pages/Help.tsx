@@ -114,7 +114,7 @@ const Help = () => {
     <>
       <Header />
 
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-success/5 px-4 py-12 sm:py-16 md:py-20">
+      <div data-page-background="auth" className="min-h-screen px-4 py-12 sm:py-16 md:py-20">
         <div className="max-w-3xl mx-auto space-y-10">
           <div className="text-center space-y-4">
             <h1 className="text-3xl md:text-5xl font-semibold text-slate-900 leading-tight pb-3 pt-10 sm:pt-12 md:pt-16">

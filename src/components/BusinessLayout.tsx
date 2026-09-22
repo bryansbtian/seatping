@@ -30,7 +30,7 @@ const BusinessLayout = () => {
 
   return (
     <BusinessSessionProvider>
-      <div className="h-screen overflow-hidden bg-gradient-to-br from-slate-50 to-indigo-100">
+      <div data-page-background="business" className="h-screen overflow-hidden">
         <aside
           className={cn(
             "fixed inset-y-0 left-0 z-40 hidden border-r border-sidebar-border bg-sidebar transition-[width] duration-200 lg:block",

@@ -12,7 +12,10 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <main className="flex h-dvh w-full flex-col justify-center overflow-hidden bg-[#FBF8EF] sm:justify-between">
+    <main
+      data-page-background="not-found"
+      className="flex h-dvh w-full flex-col justify-center overflow-hidden sm:justify-between"
+    >
       <div className="flex w-full items-center justify-center px-5 pb-10 pt-10 sm:min-h-0 sm:flex-1 sm:px-10 sm:pb-10 sm:pt-16 lg:items-end lg:px-24 lg:pt-20 xl:px-32">
         <DottedSeatingIllustration variant="compact" className="max-h-[26dvh] w-11/12 sm:hidden" />
         <DottedSeatingIllustration className="mx-auto hidden max-h-full w-11/12 sm:block lg:w-4/5" />

@@ -813,7 +813,7 @@ export default function QueueBusiness() {
   return (
     <>
       <Header />
-      <div className="flex min-h-screen flex-col bg-gradient-to-br from-success/5 via-background to-primary/5">
+      <div data-page-background="queue" className="flex min-h-screen flex-col">
         <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10">
           <Card className="w-full max-w-xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
             <CardHeader className="text-center">
