@@ -106,13 +106,13 @@ const LandingPage = () => {
 
       <section
         className={cn(
-          "relative overflow-hidden border-y border-slate-200 bg-slate-50",
+          "relative overflow-hidden border-y border-slate-200 bg-white",
           SECTION_PADDING,
         )}
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-indigo-50/60 via-slate-50 to-slate-50"
+          className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-indigo-50/60 via-white to-white"
         />
         <div
           aria-hidden

@@ -59,7 +59,7 @@ function MessageThreadScreen() {
         {JOIN_MESSAGE}
       </p>
       <p className="text-center text-caption text-slate-400">8:04 PM</p>
-      <p className="max-w-[92%] rounded-2xl rounded-bl-md bg-indigo-600 px-3 py-2 text-caption leading-relaxed text-white">
+      <p className="max-w-[92%] rounded-2xl rounded-bl-md border border-slate-200 bg-white px-3 py-2 text-caption leading-relaxed text-slate-700">
         {TURN_MESSAGE}
       </p>
     </div>
@@ -69,12 +69,12 @@ function MessageThreadScreen() {
 function YourTurnScreen() {
   return (
     <div className="space-y-2.5 text-center">
-      <p className="text-base font-bold text-indigo-600">It&apos;s Your Turn!</p>
-      <div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 px-3 py-4">
+      <p className="text-base font-bold text-primary">It&apos;s Your Turn!</p>
+      <div className="rounded-2xl border border-primary/10 bg-primary/5 px-3 py-4">
         <p className="text-caption font-semibold uppercase tracking-wide text-slate-500">
           Please Arrive Within
         </p>
-        <p className="mt-1 text-4xl font-bold leading-none tabular-nums text-indigo-600">4:32</p>
+        <p className="mt-1 text-4xl font-bold leading-none tabular-nums text-primary">4:32</p>
         <p className="mt-2 text-caption text-slate-500">Your spot will be held for 5 minutes.</p>
       </div>
     </div>
@@ -132,7 +132,7 @@ export function WhySeatPingSection() {
             <div key={moment.title}>
               <PhoneFrame>{moment.screen}</PhoneFrame>
               <div className="mt-5 text-center md:text-left">
-                <p className="text-caption font-semibold uppercase tracking-wide text-indigo-600">
+                <p className="text-caption font-semibold uppercase tracking-wide text-slate-900">
                   {moment.label}
                 </p>
                 <h3 className={cn("mt-1.5", CARD_TITLE)}>{moment.title}</h3>
