@@ -50,7 +50,7 @@ export function CountryCodeSelect({
           aria-expanded={open}
           aria-label={ariaLabel}
           className={cn(
-            "flex h-10 w-28 shrink-0 items-center justify-between rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring",
+            "control-md flex w-28 shrink-0 items-center justify-between rounded-control border border-input bg-background px-3 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring",
             className,
           )}
         >
