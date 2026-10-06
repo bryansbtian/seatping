@@ -978,7 +978,7 @@ export default function QueueBusiness() {
                                 type="button"
                                 role="combobox"
                                 aria-expanded={smsCountryOpen}
-                                className="flex h-10 w-32 items-center justify-between rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                                className="control-md flex w-32 shrink-0 items-center justify-between rounded-control border border-input bg-background px-3 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
                               >
                                 <span className="truncate">
                                   {selectedSmsCountry.flag} {selectedSmsCountry.dial}
@@ -1135,7 +1135,7 @@ export default function QueueBusiness() {
                               type="button"
                               role="combobox"
                               aria-expanded={whatsappCountryOpen}
-                              className="flex h-10 w-32 items-center justify-between rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                              className="control-md flex w-32 shrink-0 items-center justify-between rounded-control border border-input bg-background px-3 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
                             >
                               <span className="truncate">
                                 {selectedWhatsappCountry.flag} {selectedWhatsappCountry.dial}
