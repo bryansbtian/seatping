@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: "browser-background.spec.ts",
+  testMatch: ["browser-background.spec.ts", "restaurantDiscovery.browser.spec.ts"],
   fullyParallel: true,
   workers: 2,
   reporter: "list",

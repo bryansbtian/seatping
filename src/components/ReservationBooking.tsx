@@ -321,7 +321,7 @@ export default function ReservationBooking({
       timeContent = <AvailabilityEmptyState notice={availabilityNotice} />;
     } else {
       timeContent = (
-        <>
+        <div className="space-y-4">
           <div className="grid grid-cols-3 gap-2">
             {slots.map((s) => {
               const selected = s.time === time;
@@ -397,7 +397,7 @@ export default function ReservationBooking({
                 </p>
               );
             })()}
-        </>
+        </div>
       );
     }
     planContent = (
@@ -444,7 +444,6 @@ export default function ReservationBooking({
     } else {
       primaryAction = (
         <Button className="w-full" disabled={!canBook} onClick={() => setModalOpen(true)}>
-          <HugeiconsIcon icon={Restaurant02Icon} className="h-4 w-4" />
           <span>Book Table</span>
         </Button>
       );
@@ -452,7 +451,6 @@ export default function ReservationBooking({
   } else {
     primaryAction = (
       <Button variant="outline" className="w-full border-slate-200 text-slate-400" disabled>
-        <HugeiconsIcon icon={Restaurant02Icon} className="h-4 w-4" />
         <span>Reservations Unavailable</span>
       </Button>
     );
@@ -482,17 +480,11 @@ export default function ReservationBooking({
 
         {planContent}
 
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 items-start gap-3 [&>button]:min-w-0 [&>button]:whitespace-normal [&>a]:min-w-0">
           {primaryAction}
-          {reservationsEnabled && (!date || !time) && partySize !== "larger" && !isClosed && (
-            <p className="text-center text-xs text-slate-400">
-              Select number of guests, date, and time to book.
-            </p>
-          )}
           {queueEnabled !== false && (
             <Button variant="outline" asChild className="w-full">
               <Link to={queueHref}>
-                <HugeiconsIcon icon={UsersRoundIcon} className="h-4 w-4" />
                 <span>Join Queue</span>
               </Link>
             </Button>

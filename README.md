@@ -6,6 +6,8 @@ SeatPing is a restaurant discovery and reservation platform that helps diners fi
 
 Whether users are planning ahead or looking for a table nearby, SeatPing makes the dining experience simpler from discovery to seating.
 
+Restaurant discovery uses existing search API data for cuisine, price, rating, location, and availability filters. Desktop controls and the mobile filter sheet share filter state. Search results and homepage featured restaurants share `RestaurantCardContent` for consistent typography, spacing, and text-only booking and queue actions. Unsupported services remain disabled with accessible explanations; booking availability is checked on the restaurant page.
+
 ## Development Setup
 
 ```bash

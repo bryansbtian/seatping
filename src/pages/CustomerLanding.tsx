@@ -1,16 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  Restaurant02Icon,
-  Loading02Icon,
-  Location01Icon,
-  StarIcon,
-  UsersRoundIcon,
-} from "@hugeicons/core-free-icons";
+import { Restaurant02Icon, Loading02Icon } from "@hugeicons/core-free-icons";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import RestaurantCardContent from "@/components/RestaurantCardContent";
 import {
   Carousel,
   CarouselContent,
@@ -190,44 +185,17 @@ const CustomerLanding = () => {
             );
           }
 
-          let ratingContent;
-          if (r.rating != null) {
-            let reviewCountLabel: string;
-            if (r.reviewCount > 0) {
-              let reviewNoun: string;
-              if (r.reviewCount === 1) {
-                reviewNoun = "Review";
-              } else {
-                reviewNoun = "Reviews";
-              }
-              reviewCountLabel = `(${r.reviewCount} ${reviewNoun})`;
-            } else {
-              reviewCountLabel = "Reviews";
-            }
-            ratingContent = (
-              <span className="inline-flex items-center gap-1 font-medium text-slate-700">
-                <HugeiconsIcon
-                  icon={StarIcon}
-                  className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400"
-                />
-                {r.rating.toFixed(1)}
-                <span className="font-normal text-slate-500">{reviewCountLabel}</span>
-              </span>
-            );
-          } else {
-            ratingContent = <span>No Reviews Yet</span>;
-          }
-
           let reservationAction;
           if (r.reservationsEnabled === false) {
             reservationAction = (
-              <div
-                aria-disabled="true"
-                title="Reservations unavailable"
-                className="flex h-10 w-full min-w-0 cursor-not-allowed select-none items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-400 max-[320px]:px-2 max-[320px]:text-xs"
+              <Button
+                disabled
+                variant="outline"
+                title="Reservations Unavailable"
+                className="w-full min-w-0 border-border bg-muted/40 px-3 text-ink disabled:opacity-100"
               >
-                Reservations Unavailable
-              </div>
+                <span className="whitespace-normal leading-none">Reservations Unavailable</span>
+              </Button>
             );
           } else {
             reservationAction = (
@@ -240,7 +208,6 @@ const CustomerLanding = () => {
                   }
                 }}
               >
-                <HugeiconsIcon icon={Restaurant02Icon} className="h-4 w-4" />
                 <span>Book Table</span>
               </Button>
             );
@@ -259,54 +226,27 @@ const CustomerLanding = () => {
               >
                 <div className="relative aspect-[4/3] bg-slate-100">{bannerContent}</div>
 
-                <CardContent className="flex flex-1 flex-col p-4">
-                  <h3 className="font-semibold text-slate-900 truncate">{r.name}</h3>
-
-                  <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-slate-500">
-                    {ratingContent}
-                    {r.cuisine && (
-                      <>
-                        <span aria-hidden className="text-slate-300">
-                          ·
-                        </span>
-                        <span>{r.cuisine}</span>
-                      </>
-                    )}
-                    {r.priceRange && (
-                      <>
-                        <span aria-hidden className="text-slate-300">
-                          ·
-                        </span>
-                        <span>{r.priceRange}</span>
-                      </>
-                    )}
-                  </div>
-
-                  {locationText && (
-                    <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
-                      <HugeiconsIcon
-                        icon={Location01Icon}
-                        className="h-4 w-4 shrink-0 text-slate-400"
-                      />
-                      <span className="truncate">{locationText}</span>
-                    </p>
-                  )}
-
-                  <div className="mt-auto grid grid-cols-1 gap-3 pt-4 sm:grid-cols-2">
-                    {reservationAction}
-                    <Button
-                      variant="outline"
-                      aria-label={`Join queue at ${r.name}`}
-                      className="w-full min-w-0 justify-center whitespace-nowrap px-3"
-                      asChild
-                    >
-                      <Link to={queueHref} onClick={(e) => e.stopPropagation()}>
-                        <HugeiconsIcon icon={UsersRoundIcon} className="h-4 w-4" />
-                        <span>Join Queue</span>
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
+                <RestaurantCardContent
+                  name={r.name}
+                  rating={r.rating}
+                  reviewCount={r.reviewCount}
+                  cuisine={r.cuisine}
+                  priceRange={r.priceRange}
+                  locationText={locationText}
+                  stackActionsOnMobile
+                >
+                  {reservationAction}
+                  <Button
+                    variant="outline"
+                    aria-label={`Join queue at ${r.name}`}
+                    className="w-full min-w-0 justify-center whitespace-nowrap px-3"
+                    asChild
+                  >
+                    <Link to={queueHref} onClick={(e) => e.stopPropagation()}>
+                      <span>Join Queue</span>
+                    </Link>
+                  </Button>
+                </RestaurantCardContent>
               </Card>
             </CarouselItem>
           );
