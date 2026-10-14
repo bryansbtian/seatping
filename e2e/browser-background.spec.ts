@@ -83,7 +83,6 @@ const surfaces = [
   { path: "/feedback", surface: "auth", gradient: true },
   { path: "/sales", surface: "sales", gradient: true },
   { path: "/queue/example/location", surface: "queue", gradient: true },
-  { path: "/search", surface: "muted", gradient: false },
   { path: "/reservations/manage/example", surface: "muted", gradient: false },
   { path: "/missing-page", surface: "not-found", gradient: false },
 ];
@@ -107,7 +106,15 @@ for (const { path, surface, gradient } of surfaces) {
   });
 }
 
-for (const path of ["/", "/business", "/policy", "/terms", "/example/location", "/admin"]) {
+for (const path of [
+  "/",
+  "/business",
+  "/policy",
+  "/terms",
+  "/example/location",
+  "/admin",
+  "/search",
+]) {
   test(`${path} keeps the default document surface`, async ({ page }) => {
     await page.goto(path);
     await expect(page.locator("#root")).not.toBeEmpty();

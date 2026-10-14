@@ -18,12 +18,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  Clock03Icon,
-  Tick02Icon,
-  UnfoldMoreIcon,
-  UsersRoundIcon,
-} from "@hugeicons/core-free-icons";
+import { Clock03Icon, Tick02Icon, UnfoldMoreIcon } from "@hugeicons/core-free-icons";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -1229,7 +1224,6 @@ export default function QueueBusiness() {
                     className="w-full"
                     disabled={joiningQueue || loadingAddresses}
                   >
-                    <HugeiconsIcon icon={UsersRoundIcon} className="h-4 w-4" />
                     {joinButtonLabel}
                   </Button>
                 </form>

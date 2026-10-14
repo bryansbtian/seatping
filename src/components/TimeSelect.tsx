@@ -15,15 +15,16 @@ export const FieldTrigger = React.forwardRef<
   React.ButtonHTMLAttributes<HTMLButtonElement> & {
     icon?: IconSvgElement;
     leadingLabel?: string;
+    fieldLabel?: string;
   }
->(({ icon, leadingLabel, children, className, ...props }, ref) => {
+>(({ icon, leadingLabel, fieldLabel, children, className, ...props }, ref) => {
   let triggerBody: React.ReactNode;
   if (leadingLabel) {
     triggerBody = (
       <>
         <span className="shrink-0 text-slate-400">{leadingLabel}</span>
         <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate">{children}</span>
+          <span className="min-w-0 truncate">{children}</span>
           <HugeiconsIcon icon={ArrowDown01Icon} className="h-4 w-4 shrink-0 text-slate-400" />
         </span>
       </>
@@ -33,7 +34,12 @@ export const FieldTrigger = React.forwardRef<
       <>
         <span className="flex min-w-0 items-center gap-2">
           {icon && <HugeiconsIcon icon={icon} className="h-4 w-4 shrink-0 text-slate-400" />}
-          <span className="truncate">{children}</span>
+          <span className="min-w-0 truncate">
+            {fieldLabel && (
+              <span className="block text-caption font-normal text-ink-subtle">{fieldLabel}</span>
+            )}
+            <span className="block truncate">{children}</span>
+          </span>
         </span>
         <HugeiconsIcon icon={ArrowDown01Icon} className="h-4 w-4 shrink-0 text-slate-400" />
       </>
@@ -66,9 +72,9 @@ export function OptionRow({
 }) {
   let selectedClass: string;
   if (selected) {
-    selectedClass = "bg-slate-100 font-semibold text-slate-900";
+    selectedClass = "bg-slate-100 font-semibold text-slate-900 dark:bg-muted dark:text-foreground";
   } else {
-    selectedClass = "text-slate-700 hover:bg-slate-50";
+    selectedClass = "text-slate-700 hover:bg-slate-50 dark:text-ink dark:hover:bg-muted";
   }
   return (
     <button
@@ -94,6 +100,9 @@ export function TimeSelect({
   align = "start",
   portal = true,
   label,
+  fieldLabel,
+  contentClassName,
+  onCloseAutoFocus,
   "aria-label": ariaLabel,
 }: {
   value: string;
@@ -104,18 +113,27 @@ export function TimeSelect({
   align?: "start" | "center" | "end";
   portal?: boolean;
   label?: string;
+  fieldLabel?: string;
+  contentClassName?: string;
+  onCloseAutoFocus?: React.ComponentPropsWithoutRef<
+    typeof PopoverPrimitive.Content
+  >["onCloseAutoFocus"];
   "aria-label"?: string;
 }) {
   const [open, setOpen] = React.useState(false);
 
   const content = (
     <PopoverPrimitive.Content
+      onCloseAutoFocus={onCloseAutoFocus}
       align={align}
       sideOffset={4}
       style={{
         maxHeight: "min(18rem, var(--radix-popover-content-available-height, 18rem))",
       }}
-      className="z-50 w-40 overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2"
+      className={cn(
+        "z-50 w-40 overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2",
+        contentClassName,
+      )}
     >
       {options.map((v) => (
         <OptionRow
@@ -152,6 +170,7 @@ export function TimeSelect({
         <FieldTrigger
           icon={triggerIcon}
           leadingLabel={label}
+          fieldLabel={fieldLabel}
           disabled={disabled}
           aria-label={ariaLabel ?? `Time: ${formatTimeLabel(value)}`}
           className={className}

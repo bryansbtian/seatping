@@ -115,20 +115,22 @@ export function SearchSuggestInput({
   if (showDropdown) {
     if (loading && suggestions.length === 0) {
       dropdownContent = (
-        <div className="flex items-center gap-2 px-4 py-3 text-sm text-slate-500">
+        <div className="flex items-center gap-2 px-4 py-3 text-sm text-slate-500 dark:text-ink-subtle">
           <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" />
           Searching…
         </div>
       );
     } else if (error) {
       dropdownContent = (
-        <div className="px-4 py-3 text-sm text-slate-500">
+        <div className="px-4 py-3 text-sm text-slate-500 dark:text-ink-subtle">
           Couldn't load suggestions. Press Search to continue.
         </div>
       );
     } else if (suggestions.length === 0) {
       dropdownContent = (
-        <div className="px-4 py-3 text-sm text-slate-500">No matching restaurants found</div>
+        <div className="px-4 py-3 text-sm text-slate-500 dark:text-ink-subtle">
+          No matching restaurants found
+        </div>
       );
     } else {
       dropdownContent = (
@@ -136,9 +138,9 @@ export function SearchSuggestInput({
           {suggestions.map((s, i) => {
             let rowStateClass: string;
             if (i === highlighted) {
-              rowStateClass = "bg-slate-100";
+              rowStateClass = "bg-slate-100 dark:bg-muted";
             } else {
-              rowStateClass = "hover:bg-slate-50";
+              rowStateClass = "hover:bg-slate-50 dark:hover:bg-muted";
             }
             let thumbnail: React.ReactNode;
             if (s.imageUrl) {
@@ -164,15 +166,15 @@ export function SearchSuggestInput({
                     rowStateClass,
                   )}
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 dark:bg-muted">
                     {thumbnail}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-slate-900">
+                    <span className="block truncate text-sm font-medium text-slate-900 dark:text-foreground">
                       {s.name}
                     </span>
                     {suggestionSubtitle(s) && (
-                      <span className="flex items-center gap-1 truncate text-xs text-slate-500">
+                      <span className="flex items-center gap-1 truncate text-xs text-slate-500 dark:text-ink-subtle">
                         <HugeiconsIcon
                           icon={Location01Icon}
                           className="h-3 w-3 shrink-0 text-slate-400"
@@ -220,7 +222,7 @@ export function SearchSuggestInput({
 
       {showDropdown && (
         <div
-          className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+          className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-border dark:bg-popover"
           role="listbox"
         >
           {dropdownContent}
