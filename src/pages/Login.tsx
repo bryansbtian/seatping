@@ -9,6 +9,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { api } from "@/lib/api";
+import { resetSessionQueries } from "@/lib/queryClient";
 
 const Login = () => {
   const [emailOrUsername, setEmailOrUsername] = useState("");
@@ -47,6 +48,7 @@ const Login = () => {
         method: "POST",
         body: JSON.stringify({ emailOrUsername, password }),
       });
+      await resetSessionQueries();
       toast({
         title: "Log In successful!",
         description: `Welcome back, ${res.user.name}`,

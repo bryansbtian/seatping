@@ -3,6 +3,8 @@ dist
 dist-server
 coverage
 test-results
+performance-artifacts
+test-results-browser-owned
 playwright-report
 .vercel
 package-lock.json

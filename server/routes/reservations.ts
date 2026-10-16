@@ -177,7 +177,10 @@ router.get("/:businessUsername/:locationId/availability", async (req, res) => {
     const date = String(req.query.date || "").trim();
     const partySize = Number(req.query.partySize || 0);
     const settings = normalizeSettings(location.reservationSettings);
-    const reservations = await activeReservationsForValidation(location.id);
+    const [reservations, inventory] = await Promise.all([
+      activeReservationsForValidation(location.id),
+      inventoryForLocation(location.id),
+    ]);
 
     const { slots, partyTooLarge, outsideWindow, operatingStatus } = computeAvailability({
       settings,
@@ -186,7 +189,7 @@ router.get("/:businessUsername/:locationId/availability", async (req, res) => {
       partySize,
       timeZone: getLocationTimezone(location),
       openingHours: getLocationOpeningHours(location),
-      inventory: await inventoryForLocation(location.id),
+      inventory,
     });
 
     let availability: {

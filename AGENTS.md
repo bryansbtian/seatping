@@ -75,7 +75,9 @@ migration directory.
 ## Non-Negotiable Style Rules
 
 - Never use em dashes in code, product copy, UI text, emails, or docs. Use commas, periods,
-  colons, or parentheses.
+  colons, or parentheses. Campaign signatures are an exception: em dashes are allowed in
+  campaign signature text, template seed signatures, and the matching parsing logic and
+  test fixtures. Preserve existing campaign signatures unless the user requests a change.
 - Always use Title Case for user-facing titles, labels, and email preheaders when the
   surrounding copy does.
 - Never use ternary operators. Enforced by `no-ternary` in `eslint.config.js`.

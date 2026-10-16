@@ -1,4 +1,5 @@
 import { prisma } from "./prisma.js";
+import { measureDatabase } from "./performanceTiming.js";
 import { reconstructQueueArrays, reservationRowToLegacy } from "./liveData.js";
 import { loadGuestBadgeMap, badgeForContact, type GuestBadge } from "./guests.js";
 
@@ -101,39 +102,45 @@ export function serializeLocation(loc: any, live?: LocationLiveLists) {
 }
 
 export async function assembleBusinessMe(businessId: string) {
-  const business = await prisma.business.findUnique({
-    where: { id: businessId },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      username: true,
-      phone: true,
-      trial: true,
-      trialDurationDays: true,
-      maxLocations: true,
-      baseCredits: true,
-      language: true,
-      lastCreditRefillAt: true,
-      nextCreditRefillAt: true,
-      createdAt: true,
-    },
-  });
+  const business = await measureDatabase("business.identity", () =>
+    prisma.business.findUnique({
+      where: { id: businessId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        username: true,
+        phone: true,
+        trial: true,
+        trialDurationDays: true,
+        maxLocations: true,
+        baseCredits: true,
+        language: true,
+        lastCreditRefillAt: true,
+        nextCreditRefillAt: true,
+        createdAt: true,
+      },
+    }),
+  );
   if (!business) {
     return null;
   }
 
   const language = (business as any).language ?? "en";
 
-  const locations = await prisma.location.findMany({
-    where: { businessId },
-    orderBy: { createdAt: "asc" },
-    include: { photos: { orderBy: { createdAt: "asc" } } },
-  });
-
-  const [queueRows, reservationRows] = await Promise.all([
-    prisma.queueEntry.findMany({ where: { businessId } }),
-    prisma.reservation.findMany({ where: { businessId } }),
+  const [locations, queueRows, reservationRows, guestBadgeMap] = await Promise.all([
+    measureDatabase("business.locations", () =>
+      prisma.location.findMany({
+        where: { businessId },
+        orderBy: { createdAt: "asc" },
+        include: { photos: { orderBy: { createdAt: "asc" } } },
+      }),
+    ),
+    measureDatabase("business.queue", () => prisma.queueEntry.findMany({ where: { businessId } })),
+    measureDatabase("business.reservations", () =>
+      prisma.reservation.findMany({ where: { businessId } }),
+    ),
+    measureDatabase("business.badges", () => loadGuestBadgeMap(businessId)),
   ]);
   const queueByLoc = new Map<string, typeof queueRows>();
   for (const r of queueRows) {
@@ -147,8 +154,6 @@ export async function assembleBusinessMe(businessId: string) {
     arr.push(r);
     resByLoc.set(r.locationId, arr);
   }
-
-  const guestBadgeMap = await loadGuestBadgeMap(businessId);
 
   const serializedLocations = locations.map((loc) => {
     const { queue, admittedCustomers, removedCustomers } = reconstructQueueArrays(

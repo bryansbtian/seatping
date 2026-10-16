@@ -1,6 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
+import { useSession } from "@/hooks/useSession";
+import { useRestaurantProfile } from "@/hooks/useRestaurantProfile";
+import { useRestaurantReviews } from "@/hooks/useRestaurantReviews";
+import { prefetchBookingSettings } from "@/hooks/useBooking";
+import { useMyReview } from "@/hooks/useMyReview";
+import { invalidateRestaurantData } from "@/lib/queryClient";
+import { getRestaurantImageProps } from "@/lib/restaurantImages";
+import type {
+  RestaurantReview as Review,
+  RestaurantPhoto as Photo,
+  RestaurantMenuItem as MenuItem,
+  RestaurantDayHours as DayHours,
+  RestaurantOpeningHours as OpeningHours,
+} from "@shared/restaurantProfile";
 import NotFound from "@/pages/NotFound";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -35,63 +49,6 @@ import {
   Edit03Icon,
   StarIcon,
 } from "@hugeicons/core-free-icons";
-
-type Photo = { id: string; url: string; altText?: string | null };
-type MenuItem = {
-  name: string;
-  description?: string;
-  price?: number | null;
-  currency?: string;
-  category?: string;
-};
-type DayHours = { enabled: boolean; open: string; close: string };
-type OpeningHours = { timezone?: string } & Record<string, DayHours>;
-type Review = {
-  id: string;
-  customerName?: string | null;
-  customerUsername?: string | null;
-  rating: number;
-  description?: string | null;
-  partySize?: number | null;
-  serviceType?: string | null;
-  createdAt: string;
-  businessReply?: string | null;
-  businessReplyCreatedAt?: string | null;
-  businessReplyUpdatedAt?: string | null;
-};
-
-type Restaurant = {
-  businessUsername: string;
-  businessName: string | null;
-  locationId: string;
-  name: string;
-  shortAddress: string | null;
-  tagline: string | null;
-  description: string | null;
-  cuisineTypes: string[];
-  priceRange: string | null;
-  currency: string | null;
-  address: string;
-  area: string | null;
-  city: string | null;
-  country: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  googleMapsUrl: string | null;
-  phone: string | null;
-  website: string | null;
-  instagram: string | null;
-  openingHours: OpeningHours | null;
-  bannerImageUrl: string | null;
-  photos: Photo[];
-  menu: MenuItem[];
-  menuUrl: string | null;
-  rating: number | null;
-  reviewCount: number;
-  reviews: Review[];
-  queueEnabled: boolean;
-  reservationsEnabled: boolean;
-};
 
 const DAYS = [
   "monday",
@@ -265,8 +222,6 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
-const REVIEWS_PAGE_SIZE = 10;
-
 function useIsLgUp() {
   const [isLgUp, setIsLgUp] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
@@ -310,14 +265,35 @@ export default function RestaurantPage() {
 
   const isLgUp = useIsLgUp();
 
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [accountType, setAccountType] = useState<"customer" | "business" | null | undefined>(
-    undefined,
-  );
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [myReviewId, setMyReviewId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!businessUsername || !locationId) {
+      return;
+    }
+    void prefetchBookingSettings(businessUsername, locationId);
+  }, [businessUsername, locationId]);
+
+  const profileQuery = useRestaurantProfile(businessUsername, locationId);
+  const restaurant = profileQuery.data;
+  const loading = profileQuery.isPending;
+  const error = profileQuery.error;
+  const reviewQuery = useRestaurantReviews(businessUsername, locationId, restaurant);
+  const session = useSession();
+  const activeSaveScopeRef = useRef("");
+  activeSaveScopeRef.current = `${session?.customerId ?? ""}:${locationId}`;
+  const myReviewQuery = useMyReview<Review>(locationId);
+  const myReview = myReviewQuery.data;
+  const myReviewId = myReview?.id ?? null;
+  let accountType: "customer" | null | undefined;
+  if (session === undefined) {
+    accountType = undefined;
+  } else if (session.customer) {
+    accountType = "customer";
+  } else {
+    accountType = null;
+  }
+  const refreshReviews = () => {
+    void invalidateRestaurantData(businessUsername, locationId);
+  };
   const [editingReview, setEditingReview] = useState<EditableReview | null>(null);
   const { toast } = useToast();
   const [saved, setSaved] = useState(false);
@@ -325,7 +301,6 @@ export default function RestaurantPage() {
   const SAVE_INTENT_KEY = "seatping:pendingSaveLocationId";
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [photosOpen, setPhotosOpen] = useState(false);
-  const [visibleReviewCount, setVisibleReviewCount] = useState(REVIEWS_PAGE_SIZE);
   const [navTakeover, setNavTakeover] = useState(false);
   const navSentinelRef = useRef<HTMLDivElement>(null);
 
@@ -345,60 +320,8 @@ export default function RestaurantPage() {
   }, [restaurant]);
 
   useEffect(() => {
-    let cancelled = false;
-    fetch("/auth/session", { credentials: "include" })
-      .then((r) => {
-        if (r.ok) {
-          return r.json();
-        }
-        return { customer: null };
-      })
-      .then((d) => {
-        if (!cancelled) {
-          let nextAccountType: "customer" | null;
-          if (d?.customer) {
-            nextAccountType = "customer";
-          } else {
-            nextAccountType = null;
-          }
-          setAccountType(nextAccountType);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setAccountType(null);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (accountType !== "customer" || !locationId) {
-      setMyReviewId(null);
-      return;
-    }
-    let cancelled = false;
-    api("/auth/me/reviews")
-      .then((d) => {
-        if (cancelled) {
-          return;
-        }
-        const mine = (d.reviews || []).find((rv: any) => rv.locationId === locationId);
-        setMyReviewId(mine?.id ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setMyReviewId(null);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [accountType, locationId, refreshKey]);
-
-  useEffect(() => {
+    setSaved(false);
+    setSaveBusy(false);
     if (accountType === undefined || !locationId) {
       return;
     }
@@ -407,6 +330,7 @@ export default function RestaurantPage() {
       return;
     }
     let cancelled = false;
+    const controller = new AbortController();
     const pending = localStorage.getItem(SAVE_INTENT_KEY) === locationId;
     if (pending) {
       localStorage.removeItem(SAVE_INTENT_KEY);
@@ -417,6 +341,7 @@ export default function RestaurantPage() {
           await api("/auth/me/saved-locations", {
             method: "POST",
             body: JSON.stringify({ locationId }),
+            signal: controller.signal,
           });
           if (!cancelled) {
             setSaved(true);
@@ -424,7 +349,9 @@ export default function RestaurantPage() {
           }
           return;
         }
-        const d = await api(`/auth/me/saved-locations/${locationId}`);
+        const d = await api(`/auth/me/saved-locations/${locationId}`, {
+          signal: controller.signal,
+        });
         if (!cancelled) {
           setSaved(Boolean(d?.saved));
         }
@@ -436,8 +363,9 @@ export default function RestaurantPage() {
     })();
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, [accountType, locationId, toast]);
+  }, [accountType, locationId, toast, session?.customerId]);
 
   const toggleSave = async () => {
     if (accountType !== "customer") {
@@ -448,11 +376,15 @@ export default function RestaurantPage() {
     }
     setSaveBusy(true);
     const wasSaved = saved;
+    const requestSaveScope = activeSaveScopeRef.current;
     try {
       if (wasSaved) {
         await api(`/auth/me/saved-locations/${locationId}`, {
           method: "DELETE",
         });
+        if (activeSaveScopeRef.current !== requestSaveScope) {
+          return;
+        }
         setSaved(false);
         toast({ title: "Restaurant removed from saved" });
       } else {
@@ -460,49 +392,27 @@ export default function RestaurantPage() {
           method: "POST",
           body: JSON.stringify({ locationId }),
         });
+        if (activeSaveScopeRef.current !== requestSaveScope) {
+          return;
+        }
         setSaved(true);
         toast({ title: "Restaurant saved" });
       }
     } catch (e: any) {
+      if (activeSaveScopeRef.current !== requestSaveScope) {
+        return;
+      }
       toast({
         title: "Something went wrong",
         description: e?.message || "Please try again.",
         variant: "destructive",
       });
     } finally {
-      setSaveBusy(false);
+      if (activeSaveScopeRef.current === requestSaveScope) {
+        setSaveBusy(false);
+      }
     }
   };
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setRestaurant(null);
-    api(
-      `/api/restaurants/${encodeURIComponent(businessUsername)}/${encodeURIComponent(locationId)}`,
-    )
-      .then((res) => {
-        if (cancelled) {
-          return;
-        }
-        setRestaurant(res.restaurant ?? null);
-        setVisibleReviewCount(REVIEWS_PAGE_SIZE);
-      })
-      .catch((e: any) => {
-        if (!cancelled) {
-          setError(e?.message || "Restaurant Not Found.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [businessUsername, locationId, refreshKey]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -619,7 +529,15 @@ export default function RestaurantPage() {
 
   let heroContent: React.ReactNode;
   if (heroImage) {
-    heroContent = <img src={heroImage} alt={r.name} className="h-full w-full object-cover" />;
+    heroContent = (
+      <img
+        {...getRestaurantImageProps(heroImage, [640, 960, 1440, 1920], "100vw")}
+        alt={r.name}
+        fetchPriority="high"
+        decoding="async"
+        className="h-full w-full object-cover"
+      />
+    );
   } else {
     heroContent = (
       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
@@ -686,14 +604,14 @@ export default function RestaurantPage() {
     );
   }
 
-  let orderedReviews: Review[];
-  if (myReviewId) {
+  const loadedReviews = reviewQuery.data?.pages.flatMap((page) => page.reviews) ?? r.reviews;
+  const uniqueReviews = [...new Map(loadedReviews.map((review) => [review.id, review])).values()];
+  let orderedReviews = uniqueReviews;
+  if (myReview) {
     orderedReviews = [
-      ...r.reviews.filter((rv) => rv.id === myReviewId),
-      ...r.reviews.filter((rv) => rv.id !== myReviewId),
-    ];
-  } else {
-    orderedReviews = r.reviews;
+      myReview,
+      ...uniqueReviews.filter((review) => review.id !== myReviewId),
+    ].slice(0, Math.max(1, uniqueReviews.length));
   }
 
   let addressValue: React.ReactNode;
@@ -894,14 +812,14 @@ export default function RestaurantPage() {
                     accountType={accountType}
                     businessUsername={r.businessUsername}
                     locationId={r.locationId}
-                    onSubmitted={() => setRefreshKey((n) => n + 1)}
+                    onSubmitted={refreshReviews}
                   />
                 )}
 
-                {r.reviews.length > 0 && (
+                {orderedReviews.length > 0 && (
                   <>
                     <div className="space-y-3">
-                      {orderedReviews.slice(0, visibleReviewCount).map((rv) => (
+                      {orderedReviews.map((rv) => (
                         <ReviewCard
                           key={rv.id}
                           review={rv}
@@ -918,26 +836,30 @@ export default function RestaurantPage() {
                         />
                       ))}
                     </div>
-                    {visibleReviewCount < r.reviews.length && (
+                    {reviewQuery.hasNextPage && (
                       <div className="flex flex-col items-center gap-2">
                         <Button
                           type="button"
                           variant="outline"
                           className="w-full sm:w-auto"
-                          onClick={() =>
-                            setVisibleReviewCount((n) =>
-                              Math.min(n + REVIEWS_PAGE_SIZE, r.reviews.length),
-                            )
-                          }
+                          disabled={reviewQuery.isFetchingNextPage}
+                          onClick={() => {
+                            void reviewQuery.fetchNextPage();
+                          }}
                         >
                           Load More Reviews
                         </Button>
                         <p className="text-xs text-slate-500">
-                          Showing {visibleReviewCount} of {r.reviews.length}
+                          Showing {orderedReviews.length} of {r.reviewCount}
                         </p>
                       </div>
                     )}
                   </>
+                )}
+                {reviewQuery.isError && (
+                  <p role="alert" className="text-sm text-red-600">
+                    Unable To Load More Reviews. Please Try Again.
+                  </p>
                 )}
               </section>
 
@@ -1039,7 +961,6 @@ export default function RestaurantPage() {
         onOpenChange={(open) => !open && setEditingReview(null)}
         onSaved={() => {
           setEditingReview(null);
-          setRefreshKey((n) => n + 1);
         }}
       />
     </PageShell>
@@ -1157,7 +1078,13 @@ function PhotosGrid({ photos, onShowAll }: { photos: Photo[]; onShowAll: () => v
     return (
       <button type="button" onClick={onShowAll} className={cn(tileBase, "block w-full")}>
         <img
-          src={photos[0].url}
+          {...getRestaurantImageProps(
+            photos[0].url,
+            [480, 800, 1200],
+            "(min-width: 1024px) 65vw, 100vw",
+          )}
+          loading="lazy"
+          decoding="async"
           alt={photos[0].altText || "Restaurant photo"}
           className="h-72 w-full object-cover transition group-hover:brightness-95 sm:h-96"
         />
@@ -1176,7 +1103,9 @@ function PhotosGrid({ photos, onShowAll }: { photos: Photo[]; onShowAll: () => v
             className={cn(tileBase, "aspect-[4/3]")}
           >
             <img
-              src={p.url}
+              {...getRestaurantImageProps(p.url, [240, 480, 720], "(min-width: 1024px) 25vw, 50vw")}
+              loading="lazy"
+              decoding="async"
               alt={p.altText || "Restaurant photo"}
               className="h-full w-full object-cover transition group-hover:brightness-95"
             />
@@ -1198,7 +1127,9 @@ function PhotosGrid({ photos, onShowAll }: { photos: Photo[]; onShowAll: () => v
         className={cn(tileBase, "aspect-[4/3] md:aspect-auto md:h-full")}
       >
         <img
-          src={first.url}
+          {...getRestaurantImageProps(first.url, [320, 640, 960], "(min-width: 768px) 32vw, 100vw")}
+          loading="lazy"
+          decoding="async"
           alt={first.altText || "Restaurant photo"}
           className="h-full w-full object-cover transition group-hover:brightness-95"
         />
@@ -1223,7 +1154,13 @@ function PhotosGrid({ photos, onShowAll }: { photos: Photo[]; onShowAll: () => v
               className={cn(tileBase, "aspect-[4/3] md:aspect-auto md:h-full")}
             >
               <img
-                src={p.url}
+                {...getRestaurantImageProps(
+                  p.url,
+                  [240, 480, 720],
+                  "(min-width: 1024px) 25vw, 50vw",
+                )}
+                loading="lazy"
+                decoding="async"
                 alt={p.altText || "Restaurant photo"}
                 className="h-full w-full object-cover transition group-hover:brightness-95"
               />
@@ -1263,10 +1200,11 @@ function PhotosModal({
             className="aspect-[4/3] overflow-hidden rounded-lg border border-slate-200"
           >
             <img
-              src={p.url}
+              {...getRestaurantImageProps(p.url, [240, 480, 720], "(min-width: 1024px) 25vw, 50vw")}
+              decoding="async"
               alt={p.altText || "Restaurant photo"}
-              className="h-full w-full object-cover"
               loading="lazy"
+              className="h-full w-full object-cover"
             />
           </div>
         ))}

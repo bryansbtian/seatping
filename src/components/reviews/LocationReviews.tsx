@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { invalidateRestaurantData } from "@/lib/queryClient";
 import {
   Select,
   SelectContent,
@@ -225,6 +226,7 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
         body: JSON.stringify({ reply: draft }),
       });
       replaceReview(res.review);
+      await invalidateRestaurantData();
       cancelReply(review.id);
       let replySavedTitle: string;
       if (review.businessReply) {
@@ -258,6 +260,7 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
         method: "DELETE",
       });
       replaceReview(res.review);
+      await invalidateRestaurantData();
       toast({ title: t("rev.toast.replyRemoved") });
     } catch (e: any) {
       toast({

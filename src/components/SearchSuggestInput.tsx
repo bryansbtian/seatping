@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useSearchSuggestions, type Suggestion } from "@/hooks/useSearchSuggestions";
+import { getRestaurantImageProps } from "@/lib/restaurantImages";
 
 function localDateStr(d: Date): string {
   const y = d.getFullYear();
@@ -51,7 +52,7 @@ export function SearchSuggestInput({
   const [highlighted, setHighlighted] = React.useState(-1);
   const searchBoxRef = React.useRef<HTMLDivElement>(null);
 
-  const { suggestions, loading, error } = useSearchSuggestions(value, !justSelected);
+  const { suggestions, loading, error } = useSearchSuggestions(value, open && !justSelected);
   const showDropdown = open && !justSelected && value.trim().length > 0;
 
   React.useEffect(() => {
@@ -145,7 +146,13 @@ export function SearchSuggestInput({
             let thumbnail: React.ReactNode;
             if (s.imageUrl) {
               thumbnail = (
-                <img src={s.imageUrl} alt={s.name} className="h-full w-full object-cover" />
+                <img
+                  {...getRestaurantImageProps(s.imageUrl, [48, 96, 144], "48px")}
+                  alt={s.name}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover"
+                />
               );
             } else {
               thumbnail = (
@@ -210,6 +217,7 @@ export function SearchSuggestInput({
             setOpen(true);
           }
         }}
+        onBlur={() => setOpen(false)}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         className={cn("h-12 w-full pl-9 max-[360px]:pl-8", inputClassName)}

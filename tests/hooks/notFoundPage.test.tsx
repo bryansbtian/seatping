@@ -1,8 +1,15 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useParams } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/App.js";
 import NotFound from "../../src/pages/NotFound.js";
+
+vi.mock("../../src/pages/Restaurant", () => ({
+  default: function RestaurantRoute() {
+    const { businessUsername, locationId } = useParams();
+    return <p>{`Restaurant Route: ${businessUsername}/${locationId}`}</p>;
+  },
+}));
 
 const HEADLINE = /We couldn’t find the page you’re looking for\./;
 
@@ -116,7 +123,7 @@ describe("catch-all routing", () => {
 
     expect(screen.queryAllByTestId("dotted-seating-illustration")).toHaveLength(0);
     await waitFor(() => {
-      expect(screen.getByText(/Loading restaurant/)).toBeTruthy();
+      expect(screen.getByText("Restaurant Route: demo-restaurant/location-1")).toBeTruthy();
     });
   });
 });

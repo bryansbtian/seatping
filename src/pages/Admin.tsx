@@ -1,3 +1,4 @@
+import { invalidateRestaurantConfiguration } from "@/lib/queryClient";
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -423,6 +424,7 @@ const Admin = () => {
 
       const data = await response.json();
       setSelectedCustomer(data.customer);
+      void invalidateRestaurantConfiguration();
       setSearchUsername(data.customer.username);
       setIsEditing(false);
       setEditDraft(null);

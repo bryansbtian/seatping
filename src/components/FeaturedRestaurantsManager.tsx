@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { invalidateRestaurantConfiguration } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -208,6 +209,7 @@ export default function FeaturedRestaurantsManager() {
       });
       resetForm();
       await loadFeatured();
+      await invalidateRestaurantConfiguration();
     } catch (e: any) {
       toast({
         title: "Failed to add",
@@ -291,6 +293,7 @@ export default function FeaturedRestaurantsManager() {
         return next;
       });
       await loadFeatured();
+      await invalidateRestaurantConfiguration();
     } catch (e: any) {
       toast({
         title: "Failed to update sort order",

@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -14,18 +21,19 @@ import RestaurantCard from "@/components/restaurant-discovery/RestaurantCard";
 import RestaurantFilters, {
   SelectFilter,
 } from "@/components/restaurant-discovery/RestaurantFilters";
-import { api } from "@/lib/api";
+import { useRestaurantSearch } from "@/hooks/useRestaurantSearch";
 import {
-  areaLabel,
   countActiveFilters,
   EMPTY_FILTERS,
-  filterRestaurants,
+  filtersFromSearchParams,
+  filterSearchParams,
+  pageFromSearchParams,
+  restaurantSearchParams,
   searchLocation,
   SORT_OPTIONS,
-  sortRestaurants,
-  type SearchResponse,
-  type SearchResult,
-  type SortKey,
+  sortFromSearchParams,
+  RESTAURANT_PAGE_SIZE,
+  type RestaurantFilters as Filters,
 } from "@/lib/restaurantDiscovery";
 import "./SearchResults.css";
 
@@ -64,7 +72,7 @@ function peopleFromQuery(value: string | null): string {
 export default function SearchResults() {
   const navigate = useNavigate();
   const { query } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const activeQuery = query || searchParams.get("query") || "";
   const dateQuery = searchParams.get("date");
   const timeQuery = searchParams.get("time");
@@ -73,13 +81,30 @@ export default function SearchResults() {
   const [time, setTime] = useState(() => timeFromQuery(timeQuery));
   const [people, setPeople] = useState(() => peopleFromQuery(peopleQuery));
   const [inputQuery, setInputQuery] = useState(activeQuery);
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [retry, setRetry] = useState(0);
-  const [sort, setSort] = useState<SortKey>("recommended");
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const sort = sortFromSearchParams(searchParams);
+  const page = pageFromSearchParams(searchParams);
+  const filters = useMemo(() => filtersFromSearchParams(searchParams), [searchParams]);
+  const requestParams = restaurantSearchParams({
+    query: activeQuery,
+    page,
+    sort,
+    ...filters,
+  }).toString();
+  const search = useRestaurantSearch(requestParams);
+  const loading = search.isPending || search.isPlaceholderData;
+  const error = search.isError;
+  const results = search.data?.results ?? [];
+  const total = search.data?.total ?? 0;
+  const facets = search.data?.facets ?? { cuisines: [], locations: [] };
+  const setFilters = (next: SetStateAction<Filters>) => {
+    let value: Filters;
+    if (typeof next === "function") {
+      value = next(filters);
+    } else {
+      value = next;
+    }
+    setSearchParams(filterSearchParams(searchParams, value));
+  };
 
   useEffect(() => setInputQuery(activeQuery), [activeQuery]);
   useEffect(() => setDate(dateFromQuery(dateQuery)), [dateQuery]);
@@ -98,79 +123,31 @@ export default function SearchResults() {
     return () => window.removeEventListener("popstate", restoreSelections);
   }, [activeQuery]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
-    setError(false);
-    setResults([]);
-    setTotal(0);
-    let url = "/api/search/restaurants";
-    if (activeQuery) {
-      url += `?query=${encodeURIComponent(activeQuery)}`;
-    }
-    api(url, { signal: controller.signal })
-      .then((response: SearchResponse | SearchResult[]) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        if (Array.isArray(response)) {
-          setResults(response);
-          setTotal(response.length);
-        } else if (Array.isArray(response.results)) {
-          setResults(response.results);
-          let resultTotal = response.results.length;
-          if (Number.isFinite(response.total) && response.total >= 0) {
-            resultTotal = response.total;
-          }
-          setTotal(resultTotal);
-        } else {
-          throw new Error("Invalid Search Response");
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setError(true);
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      });
-    return () => controller.abort();
-  }, [activeQuery, retry]);
-
-  const cuisines = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          results.flatMap((restaurant) => {
-            if (restaurant.cuisine) {
-              return [restaurant.cuisine];
-            }
-            return [];
-          }),
-        ),
-      ).sort((a, b) => a.localeCompare(b)),
-    [results],
-  );
-  const locations = useMemo(
-    () =>
-      Array.from(new Set(results.map(areaLabel).filter(Boolean))).sort((a, b) =>
-        a.localeCompare(b),
-      ),
-    [results],
-  );
-  const visible = useMemo(
-    () => sortRestaurants(filterRestaurants(results, filters), sort),
-    [results, filters, sort],
-  );
+  const cuisines = facets.cuisines;
+  const locations = facets.locations;
+  const visible = results;
   const activeCount = countActiveFilters(filters);
   const location = searchLocation(results, activeQuery, filters);
-  let resultCount = total;
-  if (activeCount > 0) {
-    resultCount = visible.length;
-  }
+  const resultCount = total;
+  const totalPages = Math.ceil(total / RESTAURANT_PAGE_SIZE);
+  useEffect(() => {
+    const lastPage = Math.max(1, totalPages);
+    if (!loading && !error && page > lastPage) {
+      setSearchParams(
+        (params) => {
+          const next = new URLSearchParams(params);
+          next.set("page", String(lastPage));
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [loading, error, page, totalPages, setSearchParams]);
+  const changePage = (nextPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(nextPage));
+    setSearchParams(params);
+  };
   let restaurantWord = "Restaurants";
   if (resultCount === 1) {
     restaurantWord = "Restaurant";
@@ -190,16 +167,17 @@ export default function SearchResults() {
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextQuery = inputQuery.trim();
-    const params = new URLSearchParams({ date: format(date, "yyyy-MM-dd"), time });
+    const params = new URLSearchParams(searchParams);
+    params.delete("query");
+    params.delete("page");
+    params.set("date", format(date, "yyyy-MM-dd"));
+    params.set("time", time);
     params.set("partySize", people);
     let path = "/search";
     if (nextQuery) {
       path += `/${encodeURIComponent(nextQuery)}`;
     }
     navigate(`${path}?${params.toString()}`);
-    if (nextQuery === activeQuery) {
-      setRetry((previous) => previous + 1);
-    }
   };
 
   let content: ReactNode;
@@ -214,7 +192,7 @@ export default function SearchResults() {
         </p>
         <Button
           variant="outline"
-          onClick={() => setRetry((previous) => previous + 1)}
+          onClick={() => void search.refetch()}
           className="mt-4 dark:border-border dark:bg-background dark:text-foreground"
         >
           Try Again
@@ -333,7 +311,10 @@ export default function SearchResults() {
               onChange={(value) => {
                 const option = SORT_OPTIONS.find(({ key }) => key === value);
                 if (option) {
-                  setSort(option.key);
+                  const params = new URLSearchParams(searchParams);
+                  params.delete("page");
+                  params.set("sort", option.key);
+                  setSearchParams(params);
                 }
               }}
               clearable={false}
@@ -341,10 +322,49 @@ export default function SearchResults() {
           </div>
         </div>
         {content}
+        {!loading && !error && totalPages > 1 && (
+          <nav
+            aria-label="Restaurant Pages"
+            className="mt-8 flex flex-wrap items-center justify-center gap-2"
+          >
+            <Button variant="outline" disabled={page <= 1} onClick={() => changePage(page - 1)}>
+              Previous
+            </Button>
+            {paginationPages(page, totalPages).map((number) => (
+              <Button
+                key={number}
+                variant="outline"
+                aria-label={`Page ${number}`}
+                aria-current={number === page}
+                onClick={() => changePage(number)}
+              >
+                {number}
+              </Button>
+            ))}
+            <span className="text-caption text-ink-subtle">
+              Page {page} Of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              disabled={page >= totalPages}
+              onClick={() => changePage(page + 1)}
+            >
+              Next
+            </Button>
+          </nav>
+        )}
       </main>
       <Footer />
     </div>
   );
+}
+
+function paginationPages(page: number, total: number): number[] {
+  const pages = new Set([1, total]);
+  for (let number = Math.max(1, page - 2); number <= Math.min(total, page + 2); number++) {
+    pages.add(number);
+  }
+  return Array.from(pages).sort((a, b) => a - b);
 }
 
 function ResultsSkeleton() {

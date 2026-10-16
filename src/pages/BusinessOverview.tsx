@@ -5,6 +5,7 @@ import { GuestStatusBadge } from "@/components/GuestBadge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { api } from "@/lib/api";
+import { useVisiblePolling } from "@/hooks/useVisiblePolling";
 import { formatPhoneParts } from "@shared/phone";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/lib/i18n";
@@ -48,7 +49,6 @@ const BusinessOverview = () => {
   }, []);
   const {
     me,
-    setMe,
     locations,
     currentLocation,
     currentLocationIndex: selectedLocationIndex,
@@ -220,40 +220,17 @@ const BusinessOverview = () => {
     };
   }, [me, calculateTrialTimeLeft]);
 
-  useEffect(() => {
-    if (me && me.trial) {
-      const createdAt = new Date(me.createdAt);
-      const trialDurationDays = me.trialDurationDays || 0;
-      const trialEndDate = new Date(createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000);
-      const now = new Date();
-      const isExpired = now > trialEndDate;
-
-      if (isExpired) {
-        const updatedLocations = me.locations.map((location: any) => ({
-          ...location,
-          credits: 0,
-        }));
-
-        setMe((prevMe: any) => ({
-          ...prevMe,
-          locations: updatedLocations,
-        }));
+  const fetchEtas = useCallback(
+    async (signal: AbortSignal) => {
+      if (!me?.username || !currentLocation?.id) {
+        return;
       }
-    }
-  }, [me, setMe]);
-
-  useEffect(() => {
-    if (!me?.username || !currentLocation?.id) {
-      setQueueEtas({});
-      return;
-    }
-    let cancelled = false;
-    const fetchEtas = async () => {
       try {
         const res = await api(
           `/auth/business/${me.username}/locations/${currentLocation.id}/queue-etas`,
+          { signal },
         );
-        if (cancelled) {
+        if (signal.aborted) {
           return;
         }
         const map: Record<string, any> = {};
@@ -264,14 +241,20 @@ const BusinessOverview = () => {
         }
         setQueueEtas(map);
       } catch {}
-    };
-    fetchEtas();
-    const id = setInterval(fetchEtas, 30000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [me?.username, currentLocation?.id, queueData.length]);
+    },
+    [me?.username, currentLocation?.id],
+  );
+
+  useEffect(() => {
+    setQueueEtas({});
+  }, [me?.username, currentLocation?.id]);
+
+  useVisiblePolling(
+    fetchEtas,
+    30000,
+    Boolean(me?.username && currentLocation?.id),
+    `${me?.username}:${currentLocation?.id}:${queueData.length}`,
+  );
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -632,6 +615,7 @@ const BusinessOverview = () => {
   }
 
   let trialBanner: JSX.Element | null = null;
+  let displayCredits = currentLocation?.credits || 0;
   if (me && me.trial === true) {
     const createdAt = new Date(me.createdAt);
     let trialDurationDays = 7;
@@ -641,6 +625,7 @@ const BusinessOverview = () => {
     const trialEndDate = new Date(createdAt.getTime() + trialDurationDays * 24 * 60 * 60 * 1000);
     const now = new Date();
     if (now > trialEndDate) {
+      displayCredits = 0;
       trialBanner = (
         <div className="mb-6">
           <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
@@ -875,7 +860,7 @@ const BusinessOverview = () => {
                   </Badge>
                   <Badge variant="info">
                     {t("dash.creditsPill", {
-                      n: currentLocation.credits || 0,
+                      n: displayCredits,
                     })}
                   </Badge>
                 </div>
@@ -899,7 +884,7 @@ const BusinessOverview = () => {
                     </Badge>
                     <Badge variant="info">
                       {t("dash.creditsPill", {
-                        n: currentLocation?.credits || 0,
+                        n: displayCredits,
                       })}
                     </Badge>
                   </div>

@@ -9,6 +9,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { api } from "@/lib/api";
+import { resetSessionQueries } from "@/lib/queryClient";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 
@@ -108,6 +109,7 @@ const Signup = () => {
         body: JSON.stringify(payload),
       });
 
+      await resetSessionQueries();
       toast({
         title: "Account created!",
         description: `Welcome, ${res.user.name}`,

@@ -16,6 +16,15 @@ function extractError(data: any, status: number): string {
   return message;
 }
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
 export async function api(path: string, init: RequestInit = {}) {
   const res = await fetch(path, {
     ...init,
@@ -27,7 +36,7 @@ export async function api(path: string, init: RequestInit = {}) {
     data = await res.json();
   } catch {}
   if (!res.ok) {
-    throw new Error(extractError(data, res.status));
+    throw new ApiError(extractError(data, res.status), res.status);
   }
   return data;
 }

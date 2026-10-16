@@ -14,6 +14,7 @@ import { useBusinessSession, locationLabel } from "@/lib/businessSession";
 import { useLang } from "@/lib/i18n";
 import { BUSINESS_NAV_GROUPS, BUSINESS_SETTINGS_ITEM, isActiveNavPath } from "@/lib/businessNav";
 import { cn } from "@/lib/utils";
+import { resetSessionQueries } from "@/lib/queryClient";
 
 type BusinessSidebarProps = {
   onNavigate?: () => void;
@@ -38,7 +39,10 @@ const BusinessSidebar = ({
     fetch("/auth/business/logout", {
       method: "POST",
       credentials: "include",
-    }).then(() => (window.location.href = "/"));
+    }).then(async () => {
+      await resetSessionQueries();
+      window.location.href = "/";
+    });
   };
 
   const handleSelectLocation = (locationId: string) => {

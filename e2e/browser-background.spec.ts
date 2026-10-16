@@ -53,6 +53,7 @@ test.beforeEach(async ({ page, baseURL }) => {
             photos: [],
             menu: [],
             reviews: [],
+            reviewsPage: { nextCursor: null, hasMore: false },
             cuisineTypes: [],
             reviewCount: 0,
             rating: null,

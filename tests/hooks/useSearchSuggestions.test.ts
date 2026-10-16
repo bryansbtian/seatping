@@ -1,3 +1,4 @@
+import { queryClient } from "../../src/lib/queryClient.js";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSearchSuggestions } from "../../src/hooks/useSearchSuggestions.js";
@@ -38,6 +39,7 @@ function stubFetch(impl: (url: string, init: RequestInit) => Promise<Response>) 
 }
 
 beforeEach(() => {
+  queryClient.clear();
   vi.useFakeTimers();
   stubFetch(async () => {
     return jsonResponse({ suggestions: [suggestion()] });
@@ -52,6 +54,9 @@ afterEach(() => {
 async function flushDebounce() {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1);
   });
 }
 
@@ -207,6 +212,32 @@ describe("useSearchSuggestions results", () => {
 });
 
 describe("useSearchSuggestions failures", () => {
+  it("cancels an in-flight suggestion request when the input is no longer active", async () => {
+    let captured: AbortSignal | undefined;
+    stubFetch(async (_url, init) => {
+      captured = init.signal as AbortSignal;
+      return new Promise<Response>(() => {});
+    });
+    const view = renderHook(({ enabled }) => useSearchSuggestions("bistro", enabled), {
+      initialProps: { enabled: true },
+    });
+    await flushDebounce();
+    expect(captured?.aborted).toBe(false);
+    view.rerender({ enabled: false });
+    expect(captured?.aborted).toBe(true);
+    expect(view.result.current.loading).toBe(false);
+    expect(view.result.current.suggestions).toEqual([]);
+  });
+
+  it("deduplicates concurrent inputs and reuses a fresh matching suggestion", async () => {
+    const first = renderHook(() => useSearchSuggestions("bistro", true));
+    const second = renderHook(() => useSearchSuggestions("bistro", true));
+    await flushDebounce();
+    expect(first.result.current.suggestions).toHaveLength(1);
+    expect(second.result.current.suggestions).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("reports an error for a rejected response", async () => {
     stubFetch(async () => {
       return jsonResponse({ error: "boom" }, false);

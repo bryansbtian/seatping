@@ -222,6 +222,24 @@ describe("serializeLocation", () => {
   });
 });
 
+describe("business read scheduling", () => {
+  it("starts independent tenant-scoped reads after identity verification without waiting for locations", async () => {
+    let finishLocations = (_rows: []) => {};
+    locationFindMany.mockImplementationOnce(
+      () =>
+        new Promise<[]>((resolve) => {
+          finishLocations = resolve;
+        }),
+    );
+    const pending = assembleBusinessMe("biz-1");
+    await vi.waitFor(() => expect(guestProfileFindMany).toHaveBeenCalled());
+    expect(queueEntryFindMany).toHaveBeenCalledWith({ where: { businessId: "biz-1" } });
+    expect(reservationFindMany).toHaveBeenCalledWith({ where: { businessId: "biz-1" } });
+    finishLocations([]);
+    expect(await pending).toMatchObject({ id: "biz-1", locations: [] });
+  });
+});
+
 describe("loadLocationLiveLists", () => {
   it("splits the stored rows into live lists", async () => {
     queueEntryFindMany.mockResolvedValue([

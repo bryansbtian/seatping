@@ -28,22 +28,37 @@ export async function loadReservationInventory(
   locationId: string,
   options: { excludeReservationId?: string | null } = {},
 ): Promise<ReservationInventory> {
-  const rooms = await prisma.floorPlan.findMany({
-    where: { locationId },
-    select: {
-      id: true,
-      name: true,
-      tables: {
-        select: {
-          id: true,
-          name: true,
-          capacity: true,
-          minimumPartySize: true,
-          isBlocked: true,
+  const [rooms, assignments] = await Promise.all([
+    prisma.floorPlan.findMany({
+      where: { locationId },
+      select: {
+        id: true,
+        name: true,
+        tables: {
+          select: {
+            id: true,
+            name: true,
+            capacity: true,
+            minimumPartySize: true,
+            isBlocked: true,
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.tableAssignment.findMany({
+      where: {
+        locationId,
+        status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
+      },
+      select: {
+        tableId: true,
+        tableIds: true,
+        reservationId: true,
+        expectedStartAt: true,
+        expectedEndAt: true,
+      },
+    }),
+  ]);
 
   const setups: SmartTable[] = [];
   const tableById = new Map<string, SmartTable>();
@@ -63,20 +78,6 @@ export async function loadReservationInventory(
       tableById.set(table.id, setup);
     }
   }
-
-  const assignments = await prisma.tableAssignment.findMany({
-    where: {
-      locationId,
-      status: { in: [...ACTIVE_ASSIGNMENT_STATUSES] },
-    },
-    select: {
-      tableId: true,
-      tableIds: true,
-      reservationId: true,
-      expectedStartAt: true,
-      expectedEndAt: true,
-    },
-  });
 
   const occupancy: SmartOccupancy[] = [];
   for (const assignment of assignments) {
