@@ -1,30 +1,13 @@
-export type SearchResult = {
-  locationId: string;
-  businessUsername: string | null;
-  businessName: string | null;
-  name: string;
-  shortAddress: string | null;
-  description: string | null;
-  tagline: string | null;
-  cuisine: string | null;
-  priceRange: string | null;
-  address: string;
-  area: string | null;
-  city: string | null;
-  bannerImageUrl: string | null;
-  rating: number | null;
-  reviewCount: number;
-  queueEnabled: boolean;
-  reservationsEnabled: boolean;
-  openNow: boolean | null;
-  locationDisplayName: string | null;
-  featured: boolean;
-};
-
-export type SearchResponse = { results: SearchResult[]; total: number };
-
-export type SortKey =
-  "recommended" | "rating" | "reviews" | "name-az" | "name-za" | "price-asc" | "price-desc";
+import type { RestaurantFilters, SearchResult, SortKey } from "@shared/restaurantDiscovery";
+export type {
+  RestaurantFilters,
+  RestaurantSearchRequest,
+  SearchFacets,
+  SearchResponse,
+  SearchResult,
+  SortKey,
+} from "@shared/restaurantDiscovery";
+export { RESTAURANT_PAGE_SIZE, restaurantSearchParams } from "@shared/restaurantDiscovery";
 
 export const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "recommended", label: "Recommended" },
@@ -39,16 +22,6 @@ export const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 export const PRICE_OPTIONS = ["$", "$$", "$$$", "$$$$"];
 export const RATING_OPTIONS = [3.5, 4, 4.5];
 
-export type RestaurantFilters = {
-  cuisine: string | null;
-  price: string | null;
-  minRating: number | null;
-  location: string | null;
-  queue: boolean;
-  reservations: boolean;
-  openNow: boolean;
-};
-
 export const EMPTY_FILTERS: RestaurantFilters = {
   cuisine: null,
   price: null,
@@ -58,6 +31,65 @@ export const EMPTY_FILTERS: RestaurantFilters = {
   reservations: false,
   openNow: false,
 };
+
+export function filtersFromSearchParams(params: URLSearchParams): RestaurantFilters {
+  let minRating: number | null = null;
+  const rating = Number(params.get("minRating"));
+  if (params.has("minRating") && Number.isFinite(rating) && rating >= 0 && rating <= 5) {
+    minRating = rating;
+  }
+  const enabled = (name: string) => params.get(name) === "1" || params.get(name) === "true";
+  return {
+    cuisine: params.get("cuisine") || null,
+    price: params.get("price") || null,
+    location: params.get("location") || null,
+    minRating,
+    queue: enabled("queue"),
+    reservations: enabled("reservations") || enabled("reservation"),
+    openNow: enabled("openNow"),
+  };
+}
+
+export function sortFromSearchParams(params: URLSearchParams): SortKey {
+  return SORT_OPTIONS.find(({ key }) => key === params.get("sort"))?.key ?? "recommended";
+}
+
+export function pageFromSearchParams(params: URLSearchParams): number {
+  const page = Number(params.get("page"));
+  if (Number.isSafeInteger(page) && page >= 1 && page <= 2147483647) {
+    return page;
+  }
+  return 1;
+}
+
+export function filterSearchParams(
+  params: URLSearchParams,
+  filters: RestaurantFilters,
+): URLSearchParams {
+  const next = new URLSearchParams(params);
+  next.delete("page");
+  next.delete("reservation");
+  for (const name of [
+    "cuisine",
+    "price",
+    "location",
+    "minRating",
+    "queue",
+    "reservations",
+    "openNow",
+  ] as const) {
+    const value = filters[name];
+    next.delete(name);
+    if (value !== null && value !== false && value !== "") {
+      if (value === true) {
+        next.set(name, "1");
+      } else {
+        next.set(name, String(value));
+      }
+    }
+  }
+  return next;
+}
 
 export function areaLabel(restaurant: SearchResult): string {
   return restaurant.area || restaurant.locationDisplayName || restaurant.city || "";

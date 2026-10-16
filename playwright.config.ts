@@ -1,4 +1,4 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices, type ReporterDescription } from "@playwright/test";
 import { loadTestEnv } from "./tests/helpers/loadTestEnv.js";
 import { assertSafeTestDatabaseUrl } from "./tests/helpers/db.js";
 
@@ -37,6 +37,7 @@ if (process.env.CI) {
 }
 
 export default defineConfig({
+  outputDir: "performance-artifacts/e2e",
   testDir: "./e2e",
   timeout: 90_000,
   expect: { timeout: 15_000 },
@@ -60,7 +61,7 @@ export default defineConfig({
   webServer: managedServers(),
 });
 
-function reporters(): any {
+function reporters(): ReporterDescription[] {
   if (process.env.CI) {
     return [["list"], ["html", { open: "never" }]];
   }
@@ -73,7 +74,7 @@ function managedServers() {
   }
   return [
     {
-      command: "npm run dev:server",
+      command: "node --import tsx server/index.ts",
       port: API_PORT,
       reuseExistingServer: false,
       timeout: 120_000,
@@ -91,7 +92,7 @@ function managedServers() {
       },
     },
     {
-      command: `npm run dev:vite -- --port ${FRONTEND_PORT} --strictPort`,
+      command: `node node_modules/vite/bin/vite.js --port ${FRONTEND_PORT} --strictPort`,
       port: FRONTEND_PORT,
       reuseExistingServer: false,
       timeout: 120_000,

@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Restaurant02Icon, Loading02Icon } from "@hugeicons/core-free-icons";
-import { api } from "@/lib/api";
+import { useFeaturedRestaurants } from "@/hooks/useFeaturedRestaurants";
+import { getRestaurantImageProps } from "@/lib/restaurantImages";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import RestaurantCardContent from "@/components/RestaurantCardContent";
@@ -21,61 +22,13 @@ import ReservationSearchBar from "@/components/ReservationSearchBar";
 const HERO_IMAGE =
   "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=2400&q=80";
 
-type FeaturedRestaurant = {
-  id: string;
-  locationId: string;
-  businessUsername: string | null;
-  businessName: string | null;
-  name: string;
-  shortAddress: string | null;
-  address: string;
-  area: string | null;
-  city: string | null;
-  cuisine: string | null;
-  priceRange: string | null;
-  bannerImageUrl: string | null;
-  rating: number | null;
-  reviewCount: number;
-  reservationsEnabled?: boolean;
-  queueEnabled?: boolean;
-};
-
 const CustomerLanding = () => {
   const navigate = useNavigate();
 
-  const [featured, setFeatured] = useState<FeaturedRestaurant[]>([]);
-  const [loadingFeatured, setLoadingFeatured] = useState(true);
-  const [featuredError, setFeaturedError] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    api("/api/featured-restaurants")
-      .then((res) => {
-        if (!cancelled) {
-          let nextFeatured: FeaturedRestaurant[];
-          if (Array.isArray(res.featured)) {
-            nextFeatured = res.featured;
-          } else {
-            nextFeatured = [];
-          }
-          setFeatured(nextFeatured);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFeatured([]);
-          setFeaturedError(true);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadingFeatured(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const featuredQuery = useFeaturedRestaurants();
+  const featured = featuredQuery.data ?? [];
+  const loadingFeatured = featuredQuery.isPending;
+  const featuredError = featuredQuery.isError;
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -171,7 +124,11 @@ const CustomerLanding = () => {
           if (r.bannerImageUrl) {
             bannerContent = (
               <img
-                src={r.bannerImageUrl}
+                {...getRestaurantImageProps(
+                  r.bannerImageUrl,
+                  [320, 480, 640, 960],
+                  "(max-width: 767px) 85vw, (max-width: 1023px) 45vw, 380px",
+                )}
                 alt={r.name}
                 loading="lazy"
                 className="h-full w-full object-cover"
@@ -267,7 +224,8 @@ const CustomerLanding = () => {
       <section className="relative">
         <div className="absolute inset-0 bg-slate-900">
           <img
-            src={HERO_IMAGE}
+            {...getRestaurantImageProps(HERO_IMAGE, [640, 960, 1280, 1920, 2400], "100vw")}
+            fetchPriority="high"
             alt="Restaurant interior"
             className="h-full w-full object-cover opacity-90"
             loading="eager"

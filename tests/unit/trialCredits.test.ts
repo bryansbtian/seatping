@@ -14,6 +14,11 @@ vi.mock("../../server/lib/prisma.js", () => {
         update: businessUpdate,
       },
       location: { updateMany: locationUpdateMany },
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      $transaction: vi.fn(async (work) => {
+        const { prisma } = await import("../../server/lib/prisma.js");
+        return work(prisma);
+      }),
     },
   };
 });
@@ -24,6 +29,7 @@ const {
   enforceTrialExpiration,
   nextMonthlyAnchorAfter,
   refillCreditsForUser,
+  refreshBusinessCredits,
   runDailyCreditRefillSweep,
 } = await import("../../server/lib/trial.js");
 
@@ -133,88 +139,94 @@ describe("buildLocationData", () => {
   });
 });
 
-describe("enforceTrialExpiration", () => {
+function account(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "biz-1",
+    trial: false,
+    trialDurationDays: 7,
+    createdAt: daysAgo(60),
+    baseCredits: 450,
+    creditsStartedAt: daysAgo(60),
+    nextCreditRefillAt: daysAgo(1),
+    ...overrides,
+  };
+}
+
+describe("credit maintenance", () => {
   it("does nothing for an unknown business", async () => {
-    await enforceTrialExpiration("biz-missing");
-
-    expect(locationUpdateMany).not.toHaveBeenCalled();
-  });
-
-  it("zeroes every location of an expired trial business", async () => {
-    businessFindUnique.mockResolvedValue({
-      id: "biz-1",
-      trial: true,
-      trialDurationDays: 7,
-      createdAt: daysAgo(30),
-      baseCredits: 300,
-    });
-    locationUpdateMany.mockResolvedValue({ count: 3 });
-
-    await enforceTrialExpiration("biz-1");
-
-    expect(locationUpdateMany).toHaveBeenCalledWith({
-      where: { businessId: "biz-1" },
-      data: { credits: 0 },
-    });
-  });
-
-  it("leaves an activated business to the monthly refill", async () => {
-    businessFindUnique.mockResolvedValue({
-      id: "biz-1",
-      trial: false,
-      trialDurationDays: 7,
-      createdAt: daysAgo(30),
-      baseCredits: 300,
-    });
-
-    await enforceTrialExpiration("biz-1");
-
-    expect(locationUpdateMany).not.toHaveBeenCalled();
-  });
-
-  it("leaves a business still inside its trial alone", async () => {
-    businessFindUnique.mockResolvedValue({
-      id: "biz-1",
-      trial: true,
-      trialDurationDays: 7,
-      createdAt: daysAgo(1),
-      baseCredits: 300,
-    });
-
-    await enforceTrialExpiration("biz-1");
-
-    expect(locationUpdateMany).not.toHaveBeenCalled();
-  });
-});
-
-describe("refillCreditsForUser", () => {
-  it("does nothing for an unknown business", async () => {
-    await refillCreditsForUser("biz-missing");
-
+    await refreshBusinessCredits("missing");
     expect(locationUpdateMany).not.toHaveBeenCalled();
     expect(businessUpdate).not.toHaveBeenCalled();
   });
 
-  it("does nothing for a business that never started credits", async () => {
-    businessFindUnique.mockResolvedValue({
-      baseCredits: 300,
-      creditsStartedAt: null,
+  it("only zeroes nonzero locations belonging to an expired trial", async () => {
+    businessFindUnique.mockResolvedValue(account({ trial: true }));
+    await enforceTrialExpiration("biz-1");
+    expect(locationUpdateMany).toHaveBeenCalledExactlyOnceWith({
+      where: { businessId: "biz-1", credits: { not: 0 } },
+      data: { credits: 0 },
     });
+    expect(businessUpdate).not.toHaveBeenCalled();
+  });
 
-    await refillCreditsForUser("biz-1");
-
+  it.each([
+    account({ trial: true, createdAt: daysAgo(1) }),
+    account({ trial: true, trialDurationDays: 90 }),
+    account({ trial: false }),
+  ])("does not expire active trials or paid accounts: %o", async (business) => {
+    businessFindUnique.mockResolvedValue(business);
+    await enforceTrialExpiration("biz-1");
     expect(locationUpdateMany).not.toHaveBeenCalled();
   });
 
-  it("restores the base credits and moves the anchor forward", async () => {
-    businessFindUnique.mockResolvedValue({
-      baseCredits: 450,
-      creditsStartedAt: new Date("2026-01-15T00:00:00.000Z"),
-    });
+  it("treats a zero-day trial as expired", async () => {
+    businessFindUnique.mockResolvedValue(account({ trial: true, trialDurationDays: 0 }));
+    await refreshBusinessCredits("biz-1");
+    expect(locationUpdateMany).toHaveBeenCalledTimes(1);
+  });
 
+  it("reads one business snapshot for expiration and refill", async () => {
+    businessFindUnique.mockResolvedValue(account({ trial: true }));
+    await refreshBusinessCredits("biz-1");
+    expect(businessFindUnique).toHaveBeenCalledTimes(1);
+    expect(businessUpdate).not.toHaveBeenCalled();
+  });
+
+  it("does not refill trials even when a stale refill date is due", async () => {
+    businessFindUnique.mockResolvedValue(account({ trial: true }));
+    await checkAndRefillMonthlyCredits("biz-1");
+    expect(locationUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("does not refill a paid account without a credit start date", async () => {
+    businessFindUnique.mockResolvedValue(account({ creditsStartedAt: null }));
     await refillCreditsForUser("biz-1");
+    expect(locationUpdateMany).not.toHaveBeenCalled();
+  });
 
-    expect(locationUpdateMany).toHaveBeenCalledWith({
+  it("backfills an absent refill anchor without granting an early refill", async () => {
+    businessFindUnique.mockResolvedValue(account({ nextCreditRefillAt: null }));
+    await checkAndRefillMonthlyCredits("biz-1");
+    expect(locationUpdateMany).not.toHaveBeenCalled();
+    expect(businessUpdate).toHaveBeenCalledExactlyOnceWith({
+      where: { id: "biz-1" },
+      data: { nextCreditRefillAt: expect.any(Date) },
+    });
+  });
+
+  it("waits until a future anchor is due", async () => {
+    businessFindUnique.mockResolvedValue(
+      account({ nextCreditRefillAt: new Date(Date.now() + 86400000) }),
+    );
+    await checkAndRefillMonthlyCredits("biz-1");
+    expect(locationUpdateMany).not.toHaveBeenCalled();
+    expect(businessUpdate).not.toHaveBeenCalled();
+  });
+
+  it("refills and advances the anchor in the same transaction", async () => {
+    businessFindUnique.mockResolvedValue(account());
+    await refillCreditsForUser("biz-1");
+    expect(locationUpdateMany).toHaveBeenCalledExactlyOnceWith({
       where: { businessId: "biz-1" },
       data: { credits: 450 },
     });
@@ -223,152 +235,45 @@ describe("refillCreditsForUser", () => {
     expect(update.data.nextCreditRefillAt.getTime()).toBeGreaterThan(Date.now());
   });
 
-  it("treats a missing base allowance as zero", async () => {
-    businessFindUnique.mockResolvedValue({
-      baseCredits: null,
-      creditsStartedAt: new Date("2026-01-15T00:00:00.000Z"),
-    });
-
-    await refillCreditsForUser("biz-1");
-
+  it("allows a paid zero-credit allowance", async () => {
+    businessFindUnique.mockResolvedValue(account({ baseCredits: 0 }));
+    await refreshBusinessCredits("biz-1");
     expect(locationUpdateMany.mock.calls[0][0].data.credits).toBe(0);
   });
-});
 
-describe("checkAndRefillMonthlyCredits", () => {
-  it("does nothing for an unknown business", async () => {
-    await checkAndRefillMonthlyCredits("biz-missing");
-
+  it("propagates database failures for transaction rollback", async () => {
+    businessFindUnique.mockResolvedValue(account());
+    locationUpdateMany.mockRejectedValue(new Error("write failed"));
+    await expect(refreshBusinessCredits("biz-1")).rejects.toThrow("write failed");
     expect(businessUpdate).not.toHaveBeenCalled();
-  });
-
-  it("does nothing for a business still on trial", async () => {
-    businessFindUnique.mockResolvedValue({
-      id: "biz-1",
-      trial: true,
-      creditsStartedAt: daysAgo(60),
-      nextCreditRefillAt: daysAgo(1),
-    });
-
-    await checkAndRefillMonthlyCredits("biz-1");
-
-    expect(businessUpdate).not.toHaveBeenCalled();
-  });
-
-  it("does nothing for a business that never started credits", async () => {
-    businessFindUnique.mockResolvedValue({
-      id: "biz-1",
-      trial: false,
-      creditsStartedAt: null,
-      nextCreditRefillAt: null,
-    });
-
-    await checkAndRefillMonthlyCredits("biz-1");
-
-    expect(businessUpdate).not.toHaveBeenCalled();
-  });
-
-  it("backfills a missing refill anchor without refilling early", async () => {
-    businessFindUnique.mockResolvedValue({
-      id: "biz-1",
-      trial: false,
-      creditsStartedAt: daysAgo(10),
-      nextCreditRefillAt: null,
-    });
-
-    await checkAndRefillMonthlyCredits("biz-1");
-
-    expect(businessUpdate).toHaveBeenCalledTimes(1);
-    expect(businessUpdate.mock.calls[0][0].data.nextCreditRefillAt).toBeInstanceOf(Date);
-    expect(locationUpdateMany).not.toHaveBeenCalled();
-  });
-
-  it("refills on demand once the anchor has passed", async () => {
-    businessFindUnique.mockResolvedValue({
-      id: "biz-1",
-      trial: false,
-      creditsStartedAt: daysAgo(60),
-      nextCreditRefillAt: daysAgo(1),
-      baseCredits: 300,
-    });
-
-    await checkAndRefillMonthlyCredits("biz-1");
-
-    expect(locationUpdateMany).toHaveBeenCalledTimes(1);
-  });
-
-  it("waits when the anchor is still in the future", async () => {
-    businessFindUnique.mockResolvedValue({
-      id: "biz-1",
-      trial: false,
-      creditsStartedAt: daysAgo(10),
-      nextCreditRefillAt: new Date(Date.now() + 86_400_000),
-    });
-
-    await checkAndRefillMonthlyCredits("biz-1");
-
-    expect(locationUpdateMany).not.toHaveBeenCalled();
   });
 });
 
-describe("runDailyCreditRefillSweep", () => {
+describe("daily refill sweep", () => {
   it("does nothing when no business is due", async () => {
     await runDailyCreditRefillSweep();
-
-    expect(locationUpdateMany).not.toHaveBeenCalled();
     expect(businessUpdate).not.toHaveBeenCalled();
   });
 
-  it("refills every due business and backfills every legacy one", async () => {
-    businessFindMany.mockResolvedValueOnce([{ id: "due-1" }]).mockResolvedValueOnce([
-      {
-        id: "legacy-1",
-        trial: false,
-        creditsStartedAt: daysAgo(10),
-        nextCreditRefillAt: null,
-      },
-    ]);
-    businessFindUnique.mockResolvedValue({
-      baseCredits: 300,
-      creditsStartedAt: daysAgo(60),
-    });
-
-    await runDailyCreditRefillSweep();
-
-    expect(locationUpdateMany).toHaveBeenCalledTimes(1);
-    const backfill = businessUpdate.mock.calls.find(([arg]) => {
-      return arg.where.id === "legacy-1";
-    });
-    expect(backfill).toBeDefined();
-  });
-
-  it("keeps sweeping after a refill fails", async () => {
-    businessFindMany
-      .mockResolvedValueOnce([{ id: "due-1" }, { id: "due-2" }])
-      .mockResolvedValueOnce([]);
+  it("rechecks each due or legacy business under the credit lock", async () => {
+    businessFindMany.mockResolvedValue([{ id: "due-1" }, { id: "legacy-1" }]);
     businessFindUnique
-      .mockRejectedValueOnce(new Error("db down"))
-      .mockResolvedValue({ baseCredits: 300, creditsStartedAt: daysAgo(60) });
-
+      .mockResolvedValueOnce(account())
+      .mockResolvedValueOnce(account({ nextCreditRefillAt: null }));
     await runDailyCreditRefillSweep();
-
-    expect(console.error).toHaveBeenCalled();
     expect(locationUpdateMany).toHaveBeenCalledTimes(1);
+    expect(businessUpdate).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps sweeping after a backfill fails", async () => {
-    businessFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
-      {
-        id: "legacy-1",
-        trial: false,
-        creditsStartedAt: daysAgo(10),
-        nextCreditRefillAt: null,
-      },
-    ]);
-    businessUpdate.mockRejectedValue(new Error("db down"));
-
+  it("continues after a failed account without logging account data", async () => {
+    businessFindMany.mockResolvedValue([{ id: "due-1" }, { id: "due-2" }]);
+    businessFindUnique
+      .mockRejectedValueOnce(new Error("private database data"))
+      .mockResolvedValueOnce(account());
     await runDailyCreditRefillSweep();
-
-    expect(console.error).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalledExactlyOnceWith(
+      "[CREDIT-SWEEP] Credit maintenance failed",
+    );
+    expect(locationUpdateMany).toHaveBeenCalledTimes(1);
   });
 });

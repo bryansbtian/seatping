@@ -91,6 +91,24 @@ describe("locationHasFloorInventory", () => {
 });
 
 describe("loadReservationInventory", () => {
+  it("starts independent occupancy reads before a slow floor plan completes", async () => {
+    let completeFloorPlan: (value: unknown[]) => void = () => {};
+    floorPlanFindMany.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          completeFloorPlan = resolve;
+        }),
+    );
+    const pending = loadReservationInventory(LOCATION);
+    expect(assignmentFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { locationId: LOCATION, status: { in: expect.any(Array) } },
+      }),
+    );
+    completeFloorPlan([]);
+    expect(await pending).toEqual({ setups: [], occupancy: [] });
+  });
+
   it("reads occupancy from every member of a combined assignment", async () => {
     assignmentFindMany.mockResolvedValue([
       {

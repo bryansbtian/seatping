@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import RestaurantCardContent from "@/components/RestaurantCardContent";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SearchResult } from "@/lib/restaurantDiscovery";
+import { getRestaurantImageProps } from "@/lib/restaurantImages";
 
 function RestaurantImage({ restaurant }: { restaurant: SearchResult }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
@@ -26,7 +27,11 @@ function RestaurantImage({ restaurant }: { restaurant: SearchResult }) {
       <>
         {loadedUrl !== url && <Skeleton className="absolute inset-0 rounded-none" />}
         <img
-          src={url}
+          {...getRestaurantImageProps(
+            url,
+            [320, 480, 640, 960],
+            "(min-width: 1280px) 30vw, (min-width: 768px) 45vw, 100vw",
+          )}
           alt={restaurant.name}
           loading="lazy"
           decoding="async"

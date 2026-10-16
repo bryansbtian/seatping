@@ -6,7 +6,7 @@ export type BusinessLocation = {
   id: string;
   name?: string | null;
   displayName?: string | null;
-  address?: string | null;
+  address: string;
   [key: string]: any;
 };
 
@@ -15,6 +15,11 @@ export type BusinessMe = {
   name?: string;
   username?: string;
   email?: string;
+  phone?: string;
+  trial?: boolean;
+  trialDurationDays?: number;
+  createdAt?: string;
+  maxLocations?: number;
   locations?: BusinessLocation[];
   [key: string]: any;
 };

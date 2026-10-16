@@ -1,8 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
+  outputDir: "performance-artifacts/browser-e2e",
   testDir: "./e2e",
-  testMatch: ["browser-background.spec.ts", "restaurantDiscovery.browser.spec.ts"],
+  testMatch: [
+    "browser-background.spec.ts",
+    "restaurantDiscovery.browser.spec.ts",
+    "performanceRoadmap.browser.spec.ts",
+  ],
   fullyParallel: true,
   workers: 2,
   reporter: "list",
@@ -15,7 +20,7 @@ export default defineConfig({
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
   ],
   webServer: {
-    command: "npm run dev:vite -- --host 127.0.0.1 --port 8082 --strictPort",
+    command: "node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 8082 --strictPort",
     url: "http://127.0.0.1:8082",
     reuseExistingServer: !process.env.CI,
   },

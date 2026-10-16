@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
+import { invalidateRestaurantConfiguration } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -216,6 +217,7 @@ export default function LocationManagement({
         }),
       });
       onChanged(updated.user);
+      void invalidateRestaurantConfiguration();
       setNewLocationAddress("");
       setNewLocationDisplayName("");
       setNewLocationPlace(null);
@@ -243,6 +245,7 @@ export default function LocationManagement({
         body: JSON.stringify({ locations: updatedLocations }),
       });
       onChanged(updated.user);
+      void invalidateRestaurantConfiguration();
       toast({
         title: t("loc.toast.removed.title"),
         description: t("loc.toast.removed.desc"),
@@ -565,10 +568,12 @@ export default function LocationManagement({
               location={editing}
               onSaved={(u) => {
                 onChanged(u);
+                void invalidateRestaurantConfiguration();
                 setEditing(null);
               }}
               onMediaChange={(u: any) => {
                 onChanged(u);
+                void invalidateRestaurantConfiguration();
                 setEditing((prev) => {
                   if (!prev) {
                     return prev;

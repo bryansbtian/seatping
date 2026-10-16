@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { queryClient } from "@/lib/queryClient";
+import { queryKeys } from "@/lib/queryKeys";
 
 export type Suggestion = {
   locationId: string;
@@ -15,56 +19,53 @@ export type Suggestion = {
 };
 
 export function useSearchSuggestions(query: string, enabled: boolean) {
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
-
+  const q = query.trim();
+  const [debounced, setDebounced] = useState("");
   useEffect(() => {
-    const q = query.trim();
-    if (!enabled || q.length < 1) {
-      setSuggestions([]);
-      setLoading(false);
-      setError(false);
+    if (!enabled || !q) {
+      setDebounced("");
       return;
     }
-
-    setLoading(true);
-    setError(false);
-    const ctrl = new AbortController();
-    const t = setTimeout(() => {
-      fetch(`/api/locations/search-suggestions?query=${encodeURIComponent(q)}&limit=3`, {
-        signal: ctrl.signal,
-        credentials: "include",
-      })
-        .then((r) => {
-          if (r.ok) {
-            return r.json();
-          }
-          return Promise.reject(new Error("request failed"));
-        })
-        .then((d) => {
-          let nextSuggestions: Suggestion[] = [];
-          if (Array.isArray(d?.suggestions)) {
-            nextSuggestions = d.suggestions.slice(0, 3);
-          }
-          setSuggestions(nextSuggestions);
-          setLoading(false);
-        })
-        .catch((e) => {
-          if (e?.name === "AbortError") {
-            return;
-          }
-          setError(true);
-          setSuggestions([]);
-          setLoading(false);
-        });
-    }, 275);
-
-    return () => {
-      clearTimeout(t);
-      ctrl.abort();
-    };
-  }, [query, enabled]);
-
-  return { suggestions, loading, error };
+    const timer = setTimeout(() => setDebounced(q), 275);
+    return () => clearTimeout(timer);
+  }, [q, enabled]);
+  const active = enabled && Boolean(q) && debounced === q;
+  const request = useQuery(
+    {
+      queryKey: queryKeys.suggestions(q),
+      queryFn: async ({ signal }): Promise<Suggestion[]> => {
+        const response = await api(
+          `/api/locations/search-suggestions?query=${encodeURIComponent(q)}&limit=3`,
+          { signal },
+        );
+        if (Array.isArray(response?.suggestions)) {
+          return response.suggestions.slice(0, 3);
+        }
+        return [];
+      },
+      enabled: active,
+      staleTime: 15_000,
+      gcTime: 60_000,
+    },
+    queryClient,
+  );
+  useEffect(() => {
+    if (!enabled) {
+      const key = queryKeys.suggestions(q);
+      const query = queryClient.getQueryCache().find({ queryKey: key });
+      if (query && !query.isActive()) {
+        void queryClient.cancelQueries({ queryKey: key });
+      }
+    }
+  }, [enabled, q]);
+  const aborted = request.error?.name === "AbortError";
+  let suggestions: Suggestion[] = [];
+  if (active) {
+    suggestions = request.data ?? [];
+  }
+  return {
+    suggestions,
+    loading: enabled && Boolean(q) && (!active || request.isPending || aborted),
+    error: active && request.isError && !aborted,
+  };
 }

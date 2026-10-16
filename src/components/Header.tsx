@@ -4,13 +4,10 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Search01Icon } from "@hugeicons/core-free-icons";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useSession } from "@/hooks/useSession";
+import { resetSessionQueries } from "@/lib/queryClient";
 
 type HeaderVariant = "customer" | "business";
-
-type Session = {
-  customer: { name?: string | null } | null;
-  business: { name?: string | null } | null;
-};
 
 const Header = ({
   variant = "customer",
@@ -20,7 +17,7 @@ const Header = ({
   showSearch?: boolean;
 }) => {
   const [open, setOpen] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
+  const session = useSession(variant === "customer");
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
@@ -39,29 +36,6 @@ const Header = ({
     };
   }, []);
 
-  useEffect(() => {
-    if (variant !== "customer") {
-      return;
-    }
-    let active = true;
-    fetch("/auth/session", { credentials: "include" })
-      .then((r) => {
-        if (r.ok) {
-          return r.json();
-        }
-        return { customer: null, business: null };
-      })
-      .then((data: Session) => {
-        if (active) {
-          setSession(data);
-        }
-      })
-      .catch(() => active && setSession({ customer: null, business: null }));
-    return () => {
-      active = false;
-    };
-  }, [variant]);
-
   let logoTo: string;
   if (variant === "business") {
     logoTo = "/business";
@@ -75,7 +49,10 @@ const Header = ({
     fetch("/auth/customer/logout", {
       method: "POST",
       credentials: "include",
-    }).then(() => (window.location.href = "/"));
+    }).then(async () => {
+      await resetSessionQueries();
+      window.location.href = "/";
+    });
   };
 
   const submitSearch = (e: React.FormEvent) => {

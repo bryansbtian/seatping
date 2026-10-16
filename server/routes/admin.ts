@@ -1,6 +1,7 @@
 import express from "express";
 import { prisma } from "../lib/prisma.js";
 import { computeNextRefillDate } from "../lib/trial.js";
+import { withBusinessCreditLock } from "../lib/businessCreditLock.js";
 import { requireAdmin } from "../lib/auth.js";
 import { ENTITY_ID_RE } from "../lib/entityId.js";
 
@@ -209,6 +210,7 @@ router.patch("/customer/:username", async (req, res) => {
       orderBy: { createdAt: "asc" },
     });
 
+    const locationUpdates: Array<{ id: string; data: { address?: string; credits?: number } }> = [];
     if (locations !== undefined) {
       if (!Array.isArray(locations)) {
         return res.status(400).json({ error: "locations must be an array" });
@@ -239,25 +241,7 @@ router.patch("/customer/:username", async (req, res) => {
         if (credits !== undefined) {
           locationData.credits = Math.floor(credits);
         }
-        await prisma.location.update({
-          where: { id: locationRows[idx].id },
-          data: locationData,
-        });
-      }
-    }
-
-    if (Object.prototype.hasOwnProperty.call(data, "trial")) {
-      const finalTrial = data.trial as boolean;
-      const wasActivated = existing.trial === false;
-      if (finalTrial === false && !wasActivated) {
-        const now = new Date();
-        data.creditsStartedAt = now;
-        data.lastCreditRefillAt = now;
-        data.nextCreditRefillAt = computeNextRefillDate(now, now);
-      } else if (finalTrial === true) {
-        data.creditsStartedAt = null;
-        data.lastCreditRefillAt = null;
-        data.nextCreditRefillAt = null;
+        locationUpdates.push({ id: locationRows[idx].id, data: locationData });
       }
     }
 
@@ -265,38 +249,29 @@ router.patch("/customer/:username", async (req, res) => {
       return res.status(400).json({ error: "No editable fields provided" });
     }
 
-    let updated: {
-      id: string;
-      name: string;
-      username: string;
-      email: string;
-      phone: string;
-      trial: boolean;
-      trialDurationDays: number;
-      maxLocations: number;
-      baseCredits: number;
-      creditsStartedAt: Date | null;
-      updatedAt: Date;
-    } = existing;
-    if (Object.keys(data).length > 0) {
-      updated = await prisma.business.update({
-        where: { username: username.trim() },
-        data,
-        select: {
-          id: true,
-          name: true,
-          username: true,
-          email: true,
-          phone: true,
-          trial: true,
-          trialDurationDays: true,
-          maxLocations: true,
-          baseCredits: true,
-          creditsStartedAt: true,
-          updatedAt: true,
-        },
-      });
-    }
+    const updated = await withBusinessCreditLock(existing.id, async (tx) => {
+      const current = await tx.business.findUniqueOrThrow({ where: { id: existing.id } });
+      if (Object.prototype.hasOwnProperty.call(data, "trial")) {
+        const finalTrial = data.trial as boolean;
+        if (finalTrial === false && current.trial !== false) {
+          const now = new Date();
+          data.creditsStartedAt = now;
+          data.lastCreditRefillAt = now;
+          data.nextCreditRefillAt = computeNextRefillDate(now, now);
+        } else if (finalTrial === true) {
+          data.creditsStartedAt = null;
+          data.lastCreditRefillAt = null;
+          data.nextCreditRefillAt = null;
+        }
+      }
+      for (const update of locationUpdates) {
+        await tx.location.update({ where: { id: update.id }, data: update.data });
+      }
+      if (Object.keys(data).length === 0) {
+        return current;
+      }
+      return tx.business.update({ where: { id: existing.id }, data });
+    });
 
     const sanitizedLocations = await loadLocationsForBusiness(existing.id);
 

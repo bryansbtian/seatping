@@ -4,10 +4,34 @@ import { serializePhoto } from "../lib/business.js";
 import { requireCustomer } from "../lib/auth.js";
 import { limitGuard, clientIp, MINUTES, HOURS } from "../lib/rateLimit.js";
 import { ENTITY_ID_RE } from "../lib/entityId.js";
+import { Prisma } from "@prisma/client";
+import {
+  decodeReviewCursor,
+  encodeReviewCursor,
+  REVIEW_PAGE_SIZE,
+  reviewPageWhere,
+  roundedReviewRating,
+} from "../lib/reviewPagination.js";
 
 const router = Router();
 
-function serializeReview(r: any) {
+const publicReviewSelect = {
+  id: true,
+  customerName: true,
+  customerUsername: true,
+  rating: true,
+  description: true,
+  partySize: true,
+  serviceType: true,
+  createdAt: true,
+  businessReply: true,
+  businessReplyCreatedAt: true,
+  businessReplyUpdatedAt: true,
+} satisfies Prisma.ReviewSelect;
+
+type PublicReview = Prisma.ReviewGetPayload<{ select: typeof publicReviewSelect }>;
+
+function serializeReview(r: PublicReview) {
   let rating = 0;
   if (typeof r.rating === "number") {
     rating = r.rating;
@@ -99,21 +123,53 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
 
     const location = await prisma.location.findFirst({
       where: { id: locationId, businessId: business.id },
-      include: { photos: { orderBy: { createdAt: "asc" } } },
+      select: {
+        id: true,
+        name: true,
+        displayName: true,
+        restaurantProfile: true,
+        latitude: true,
+        longitude: true,
+        area: true,
+        city: true,
+        address: true,
+        country: true,
+        googleMapsUrl: true,
+        bannerImageUrl: true,
+        queueEnabled: true,
+        reservationsEnabled: true,
+        photos: { orderBy: { createdAt: "asc" } },
+      },
     });
     if (!location) {
       return res.status(404).json({ error: "Restaurant not found" });
     }
 
-    const reviews = await prisma.review.findMany({
-      where: { locationId: location.id },
-      orderBy: { createdAt: "desc" },
-    });
-    const reviewCount = reviews.length;
+    const paginated = req.query.version === "2";
+    const [rows, aggregate] = await prisma.$transaction(
+      [
+        prisma.review.findMany({
+          where: { locationId: location.id },
+          select: publicReviewSelect,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          ...(paginated && { take: REVIEW_PAGE_SIZE + 1 }),
+        }),
+        prisma.review.aggregate({
+          where: { locationId: location.id },
+          _count: true,
+          _avg: { rating: true },
+        }),
+      ],
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
+    let reviews = rows;
+    if (paginated) {
+      reviews = rows.slice(0, REVIEW_PAGE_SIZE);
+    }
+    const reviewCount = aggregate._count;
     let rating: number | null = null;
     if (reviewCount > 0) {
-      rating =
-        Math.round((reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviewCount) * 10) / 10;
+      rating = roundedReviewRating(aggregate._avg.rating);
     }
 
     const profile = publicProfile(location.restaurantProfile);
@@ -174,6 +230,12 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
         rating,
         reviewCount,
         reviews: reviews.map(serializeReview),
+        ...(paginated && {
+          reviewsPage: {
+            hasMore: rows.length > REVIEW_PAGE_SIZE,
+            nextCursor: reviewNextCursor(location.id, rows),
+          },
+        }),
 
         queueEnabled: location.queueEnabled ?? true,
         reservationsEnabled: location.reservationsEnabled ?? true,
@@ -182,6 +244,68 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
   } catch (err: any) {
     console.error("[restaurants] details error:", err?.message || err);
     return res.status(500).json({ error: "Failed to load restaurant." });
+  }
+});
+
+function reviewNextCursor(locationId: string, reviews: PublicReview[]): string | null {
+  if (reviews.length <= REVIEW_PAGE_SIZE) {
+    return null;
+  }
+  return encodeReviewCursor(locationId, reviews[REVIEW_PAGE_SIZE - 1]);
+}
+
+router.get("/:businessUsername/:locationId/reviews", async (req, res) => {
+  const businessUsername = String(req.params.businessUsername || "").trim();
+  const locationId = String(req.params.locationId || "").trim();
+  if (!businessUsername || !ENTITY_ID_RE.test(locationId)) {
+    return res.status(404).json({ error: "Restaurant not found" });
+  }
+  let cursor;
+  try {
+    cursor = decodeReviewCursor(req.query.cursor, locationId);
+  } catch {
+    return res.status(400).json({ error: "Invalid review cursor" });
+  }
+  try {
+    const business = await prisma.business.findUnique({
+      where: { username: businessUsername },
+      select: { id: true },
+    });
+    if (!business) {
+      return res.status(404).json({ error: "Restaurant not found" });
+    }
+    const location = await prisma.location.findFirst({
+      where: { id: locationId, businessId: business.id },
+      select: { id: true },
+    });
+    if (!location) {
+      return res.status(404).json({ error: "Restaurant not found" });
+    }
+    const [reviews, aggregate] = await prisma.$transaction(
+      [
+        prisma.review.findMany({
+          where: reviewPageWhere(location.id, cursor),
+          select: publicReviewSelect,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: REVIEW_PAGE_SIZE + 1,
+        }),
+        prisma.review.aggregate({
+          where: { locationId: location.id },
+          _count: true,
+          _avg: { rating: true },
+        }),
+      ],
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
+    return res.json({
+      reviews: reviews.slice(0, REVIEW_PAGE_SIZE).map(serializeReview),
+      nextCursor: reviewNextCursor(location.id, reviews),
+      hasMore: reviews.length > REVIEW_PAGE_SIZE,
+      totalReviews: aggregate._count,
+      avgRating: roundedReviewRating(aggregate._avg.rating),
+    });
+  } catch {
+    return res.status(500).json({ error: "Failed to load reviews." });
   }
 });
 

@@ -1,5 +1,4 @@
 import { Client } from "@upstash/qstash";
-import Telnyx from "telnyx";
 import {
   sendQueueJoinConfirmationEmail,
   sendQueueYourTurnEmail,
@@ -122,6 +121,7 @@ if (!isDev && qstashToken) {
 }
 
 const NOTIFY_DAILY_MAX = Number(process.env.NOTIFY_DAILY_MAX_PER_RECIPIENT || 20);
+let telnyxModule: Promise<typeof import("telnyx")> | undefined;
 
 function dailyCapKey(channel: NotificationChannel, recipient: string): string {
   return `${channel}:${recipient.toLowerCase()}`;
@@ -215,6 +215,13 @@ async function sendSms(
   if (!phoneNumber) {
     return null;
   }
+  if (!telnyxModule) {
+    telnyxModule = import("telnyx").catch((error: unknown) => {
+      telnyxModule = undefined;
+      throw error;
+    });
+  }
+  const { default: Telnyx } = await telnyxModule;
   const telnyx = new Telnyx({ apiKey });
   const to = (countryCode || "+1") + phoneNumber.trim().replace(/\D/g, "");
   const message = await telnyx.messages.send({ from, to, text });

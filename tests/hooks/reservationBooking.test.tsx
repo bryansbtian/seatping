@@ -1,3 +1,4 @@
+import { queryClient } from "../../src/lib/queryClient.js";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -24,6 +25,7 @@ const settings = {
 };
 
 beforeEach(() => {
+  queryClient.clear();
   apiMock.mockReset().mockImplementation(async (path: string) => {
     if (path.endsWith("/settings")) {
       return { settings };
@@ -60,6 +62,64 @@ function renderBooking(overrides: Partial<ComponentProps<typeof ReservationBooki
 }
 
 describe("restaurant booking actions", () => {
+  it("reuses fresh availability when opening the booking dialog", async () => {
+    renderBooking();
+    const book = screen.getByRole("button", { name: "Book Table", exact: true });
+    await waitFor(() => expect(book.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(book);
+    await screen.findByRole("dialog", { name: "Book a Table" });
+    expect(
+      apiMock.mock.calls.filter(([path]) => String(path).includes("/availability?")),
+    ).toHaveLength(1);
+  });
+
+  it.each(["success", "capacity conflict"])(
+    "refreshes advisory availability after booking %s",
+    async (outcome) => {
+      let booked = false;
+      apiMock.mockImplementation(async (path: string, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          booked = true;
+          if (outcome === "capacity conflict") {
+            throw new Error("The table was just booked");
+          }
+          return { reservation: { id: "reservation-1" } };
+        }
+        if (path.endsWith("/settings")) {
+          return { settings };
+        }
+        if (path.includes("/availability?")) {
+          return { slots: [{ time: "18:00", label: "6:00 PM", available: !booked, remaining: 0 }] };
+        }
+        return { customer: null, business: null };
+      });
+      renderBooking();
+      const book = screen.getByRole("button", { name: "Book Table", exact: true });
+      await waitFor(() => expect(book.hasAttribute("disabled")).toBe(false));
+      fireEvent.click(book);
+      await screen.findByRole("dialog", { name: "Book a Table" });
+      fireEvent.change(screen.getByLabelText("First Name"), { target: { value: "Fixture" } });
+      fireEvent.change(screen.getByLabelText("Last Name"), { target: { value: "Customer" } });
+      fireEvent.change(screen.getByLabelText("Email"), {
+        target: { value: "fixture@invalid.test" },
+      });
+      const confirm = screen.getByRole("button", { name: "Confirm Reservation" });
+      await waitFor(() => expect(confirm.hasAttribute("disabled")).toBe(false));
+      fireEvent.click(confirm);
+      await waitFor(() =>
+        expect(
+          apiMock.mock.calls.filter(([path]) => String(path).includes("/availability?")),
+        ).toHaveLength(2),
+      );
+      await waitFor(() => expect(book.hasAttribute("disabled")).toBe(true));
+      if (outcome === "success") {
+        expect(await screen.findByRole("heading", { name: "Reservation Confirmed" })).toBeTruthy();
+      } else {
+        expect(confirm.hasAttribute("disabled")).toBe(true);
+      }
+    },
+  );
+
   it("keeps the actions text only and omits the removed instruction", async () => {
     renderBooking();
     const book = screen.getByRole("button", { name: "Book Table", exact: true });
@@ -87,7 +147,9 @@ describe("restaurant booking actions", () => {
     });
     renderBooking();
     await waitFor(() =>
-      expect(apiMock).toHaveBeenCalledWith(expect.stringContaining("/availability?")),
+      expect(apiMock).toHaveBeenCalledWith(expect.stringContaining("/availability?"), {
+        signal: expect.any(AbortSignal),
+      }),
     );
     expect(
       screen.getByRole("button", { name: "Book Table", exact: true }).hasAttribute("disabled"),

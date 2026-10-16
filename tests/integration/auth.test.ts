@@ -27,6 +27,7 @@ describe("session endpoint", () => {
     expect(res.status).toBe(200);
     expect(res.body.customer).toBeNull();
     expect(res.body.business).toBeNull();
+    expect(res.body.customerId).toBeNull();
   });
 
   it("reports the customer identity when a customer cookie is present", async () => {
@@ -41,6 +42,7 @@ describe("session endpoint", () => {
     expect(res.status).toBe(200);
     expect(res.body.customer).not.toBeNull();
     expect(res.body.business).toBeNull();
+    expect(res.body.customerId).toBe(customer.id);
   });
 
   it("keeps customer and business sessions independent", async () => {

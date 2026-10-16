@@ -2,8 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { useBusinessSession } from "@/lib/businessSession";
 import BusinessTrialBanner from "@/components/BusinessTrialBanner";
 import LocationManagement from "@/components/LocationManagement";
 import LanguageSelector from "@/components/LanguageSelector";
@@ -11,32 +10,11 @@ import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { useLang } from "@/lib/i18n";
 import { formatEnteredPhone } from "@shared/phone";
 
-interface BusinessMe {
-  name: string;
-  username: string;
-  email: string;
-  phone: string;
-  locations: any[];
-  maxLocations?: number;
-  trial?: boolean;
-  trialDurationDays?: number;
-  createdAt?: string;
-}
-
 const BusinessSettings = () => {
   const { t } = useLang();
-  const [me, setMe] = useState<BusinessMe | null>(null);
+  const { me, setMe } = useBusinessSession();
 
   const locations = me?.locations || [];
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await api("/auth/business/me");
-        setMe(res.user);
-      } catch {}
-    })();
-  }, []);
 
   return (
     <>

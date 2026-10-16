@@ -1,12 +1,41 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { restaurant, SEARCH_RESTAURANTS } from "../tests/helpers/searchRestaurants.js";
+import {
+  areaLabel,
+  filterRestaurants,
+  filtersFromSearchParams,
+  sortFromSearchParams,
+  sortRestaurants,
+  type SearchResult,
+} from "../src/lib/restaurantDiscovery.js";
+
+function searchResponse(restaurants: SearchResult[], requestUrl: string) {
+  const params = new URL(requestUrl).searchParams;
+  const matching = sortRestaurants(
+    filterRestaurants(restaurants, filtersFromSearchParams(params)),
+    sortFromSearchParams(params),
+  );
+  const page = Math.max(1, Number(params.get("page")) || 1);
+  return {
+    results: matching.slice((page - 1) * 10, page * 10),
+    total: matching.length,
+    page,
+    limit: 10,
+    totalPages: Math.ceil(matching.length / 10),
+    hasMore: page * 10 < matching.length,
+    facets: {
+      cuisines: [...new Set(restaurants.flatMap((item) => item.cuisine || []))],
+      locations: [...new Set(restaurants.map(areaLabel).filter(Boolean))],
+    },
+  };
+}
 
 test.beforeEach(async ({ page }) => {
   await page.route("**/auth/session", (route) =>
     route.fulfill({ json: { customer: null, business: null } }),
   );
   await page.route("**/api/search/restaurants**", (route) =>
-    route.fulfill({ json: { results: SEARCH_RESTAURANTS, total: SEARCH_RESTAURANTS.length } }),
+    route.fulfill({ json: searchResponse(SEARCH_RESTAURANTS, route.request().url()) }),
   );
   await page.route("**/api/locations/search-suggestions**", (route) =>
     route.fulfill({ json: { suggestions: [] } }),
@@ -16,7 +45,12 @@ test.beforeEach(async ({ page }) => {
 
 async function mockRestaurantVisit(page: Page, available = true) {
   await page.route("**/auth/me", (route) => route.fulfill({ json: { user: null } }));
-  await page.route("**/api/restaurants/bistro/loc-1", (route) =>
+  await page.route("**/api/restaurants/bistro/loc-1/reviews?**", (route) =>
+    route.fulfill({
+      json: { reviews: [], totalReviews: 12, avgRating: 4.7, nextCursor: null, hasMore: false },
+    }),
+  );
+  await page.route("**/api/restaurants/bistro/loc-1?version=2", (route) =>
     route.fulfill({
       json: {
         restaurant: {
@@ -24,6 +58,7 @@ async function mockRestaurantVisit(page: Page, available = true) {
           photos: [],
           menu: [],
           reviews: [],
+          reviewsPage: { nextCursor: null, hasMore: false },
           cuisineTypes: ["Japanese"],
           openingHours: null,
           phone: null,
@@ -471,13 +506,13 @@ test("long names and locations fit mobile cards and selected filters", async ({ 
   const longName = "A Very Long Restaurant Name That Wraps Across Multiple Lines";
   await page.route("**/api/search/restaurants**", (route) =>
     route.fulfill({
-      json: {
-        results: [
+      json: searchResponse(
+        [
           restaurant({ name: longName, shortAddress: longLocation, area: longLocation }),
           restaurant({ locationId: "loc-2", name: "Short Name" }),
         ],
-        total: 2,
-      },
+        route.request().url(),
+      ),
     }),
   );
   for (const width of [320, 375, 390, 430]) {

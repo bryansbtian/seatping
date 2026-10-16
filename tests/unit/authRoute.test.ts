@@ -25,6 +25,7 @@ const queueEntryFindUnique = vi.fn();
 const queueEntryFindMany = vi.fn();
 const queueEntryCreate = vi.fn();
 const queueEntryCount = vi.fn();
+const reviewFindMany = vi.fn();
 
 const sendCustomerWelcomeEmail = vi.fn();
 const sendPasswordResetEmail = vi.fn();
@@ -35,7 +36,7 @@ const canNotifyRecipient = vi.fn();
 const assembleBusinessMe = vi.fn();
 const syncCustomerQueue = vi.fn();
 const syncGuestFromQueueEntry = vi.fn();
-const enforceTrialExpiration = vi.fn();
+const refreshBusinessCredits = vi.fn();
 const checkAndRefillMonthlyCredits = vi.fn();
 
 vi.mock("../../server/lib/prisma.js", () => {
@@ -69,6 +70,7 @@ vi.mock("../../server/lib/prisma.js", () => {
         create: queueEntryCreate,
         count: queueEntryCount,
       },
+      review: { findMany: reviewFindMany },
     },
   };
 });
@@ -104,7 +106,7 @@ vi.mock("../../server/lib/guests.js", async () => {
 
 vi.mock("../../server/lib/trial.js", async () => {
   const actual = await vi.importActual<any>("../../server/lib/trial.js");
-  return { ...actual, enforceTrialExpiration, checkAndRefillMonthlyCredits };
+  return { ...actual, refreshBusinessCredits, checkAndRefillMonthlyCredits };
 });
 
 const authRouter = (await import("../../server/routes/auth.js")).default;
@@ -228,6 +230,7 @@ beforeEach(async () => {
     return { id: "qe-1", ...data };
   });
   queueEntryCount.mockReset().mockResolvedValue(1);
+  reviewFindMany.mockReset().mockResolvedValue([]);
 
   sendCustomerWelcomeEmail.mockReset().mockResolvedValue(true);
   sendPasswordResetEmail.mockReset().mockResolvedValue(true);
@@ -238,7 +241,7 @@ beforeEach(async () => {
   assembleBusinessMe.mockReset().mockResolvedValue({ id: "biz-1" });
   syncCustomerQueue.mockReset().mockResolvedValue(undefined);
   syncGuestFromQueueEntry.mockReset().mockResolvedValue(undefined);
-  enforceTrialExpiration.mockReset().mockResolvedValue(undefined);
+  refreshBusinessCredits.mockReset().mockResolvedValue(undefined);
   checkAndRefillMonthlyCredits.mockReset().mockResolvedValue(undefined);
 
   vi.spyOn(console, "log").mockImplementation(() => {});
@@ -254,7 +257,7 @@ describe("session probe", () => {
   it("reports nobody when there is no cookie", async () => {
     const res = await app().get("/auth/session");
 
-    expect(res.body).toEqual({ customer: null, business: null });
+    expect(res.body).toEqual({ customer: null, business: null, customerId: null });
   });
 
   it("reports both session types when both cookies are present", async () => {
@@ -274,6 +277,50 @@ describe("session probe", () => {
 
     expect(anon.body.authenticated).toBe(false);
     expect(signedIn.body.authenticated).toBe(true);
+  });
+});
+
+describe("customer performance projections", () => {
+  it("selects only booking contact fields without activity enrichment", async () => {
+    userFindUnique.mockResolvedValue({ id: "cust-1", name: "Ada", email: "ada@test.invalid" });
+    const response = await app().get("/auth/me?view=contact").set("Cookie", customerCookie());
+    expect(response.status).toBe(200);
+    expect(userFindUnique).toHaveBeenCalledWith({
+      where: { id: "cust-1" },
+      select: { id: true, name: true, email: true },
+    });
+    expect(locationFindMany).not.toHaveBeenCalled();
+    expect(businessFindMany).not.toHaveBeenCalled();
+  });
+
+  it("bounds targeted review reads and retains the authenticated owner", async () => {
+    const response = await app()
+      .get(`/auth/me/reviews?locationId=${LOC}`)
+      .set("Cookie", customerCookie());
+    expect(response.status).toBe(200);
+    expect(reviewFindMany).toHaveBeenCalledWith({
+      where: { customerId: "cust-1", locationId: LOC },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 1,
+    });
+    expect(locationFindMany).not.toHaveBeenCalled();
+    expect(businessFindMany).not.toHaveBeenCalled();
+  });
+
+  it("batches location and business enrichment across review histories", async () => {
+    reviewFindMany.mockResolvedValue([
+      { id: "review-1", locationId: LOC, rating: 4 },
+      { id: "review-2", locationId: "location-2", rating: 5 },
+    ]);
+    locationFindMany.mockResolvedValue([locationRow(), locationRow({ id: "location-2" })]);
+    businessFindMany.mockResolvedValue([{ id: "biz-1", name: "Bistro", username: "bistro" }]);
+    const response = await app().get("/auth/me/reviews").set("Cookie", customerCookie());
+    expect(response.status).toBe(200);
+    expect(response.body.reviews).toHaveLength(2);
+    expect(locationFindMany).toHaveBeenCalledTimes(1);
+    expect(businessFindMany).toHaveBeenCalledTimes(1);
+    expect(locationFindUnique).not.toHaveBeenCalled();
+    expect(businessFindUnique).not.toHaveBeenCalled();
   });
 });
 
@@ -784,7 +831,7 @@ describe("business signup and login", () => {
   });
 
   it("reports a server error on the business profile", async () => {
-    enforceTrialExpiration.mockRejectedValue(new Error("db down"));
+    refreshBusinessCredits.mockRejectedValue(new Error("db down"));
 
     const res = await app().get("/auth/business/me").set("Cookie", businessCookie());
 

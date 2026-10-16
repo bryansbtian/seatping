@@ -1,8 +1,17 @@
+import { queryClient } from "../../src/lib/queryClient.js";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SearchResults from "../../src/pages/SearchResults.js";
 import { restaurant, SEARCH_RESTAURANTS } from "../helpers/searchRestaurants.js";
+import {
+  areaLabel,
+  filterRestaurants,
+  filtersFromSearchParams,
+  sortFromSearchParams,
+  sortRestaurants,
+  type SearchResult,
+} from "../../src/lib/restaurantDiscovery.js";
 
 const apiMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/api", () => ({ api: apiMock }));
@@ -23,6 +32,7 @@ function LocationProbe() {
         {location.search}
       </output>
       <button onClick={() => navigate(-1)}>Back</button>
+      <button onClick={() => navigate(1)}>Forward</button>
     </>
   );
 }
@@ -39,8 +49,32 @@ function renderPage(path = "/search/Test%20City?date=2027-10-16&time=19%3A00&par
   );
 }
 
+function respondWithRestaurants(restaurants: SearchResult[]) {
+  return async (url: string) => {
+    const params = new URL(url, "http://localhost").searchParams;
+    const results = sortRestaurants(
+      filterRestaurants(restaurants, filtersFromSearchParams(params)),
+      sortFromSearchParams(params),
+    );
+    const page = Number(params.get("page") || "1");
+    return {
+      results: results.slice((page - 1) * 10, page * 10),
+      total: results.length,
+      page,
+      limit: 10,
+      totalPages: Math.ceil(results.length / 10),
+      hasMore: page * 10 < results.length,
+      facets: {
+        cuisines: Array.from(new Set(restaurants.flatMap((row) => row.cuisine || []))),
+        locations: Array.from(new Set(restaurants.map(areaLabel).filter(Boolean))),
+      },
+    };
+  };
+}
+
 beforeEach(() => {
-  apiMock.mockReset().mockResolvedValue({ results: SEARCH_RESTAURANTS, total: 3 });
+  queryClient.clear();
+  apiMock.mockReset().mockImplementation(respondWithRestaurants(SEARCH_RESTAURANTS));
 });
 
 async function loadedPage(path?: string) {
@@ -49,6 +83,15 @@ async function loadedPage(path?: string) {
 }
 
 describe("restaurant discovery page", () => {
+  it("reuses fresh search data when booking selections are submitted without changing the query", async () => {
+    await loadedPage();
+    const calls = apiMock.mock.calls.length;
+    await act(async () => {
+      fireEvent.submit(screen.getByRole("search"));
+    });
+    expect(apiMock).toHaveBeenCalledTimes(calls);
+    expect(screen.getAllByRole("article")).toHaveLength(3);
+  });
   it("restores selections on browser history events even when a transition has not committed", async () => {
     await loadedPage();
     fireEvent.click(screen.getByRole("button", { name: "Date: Oct 16, 2027" }));
@@ -96,7 +139,9 @@ describe("restaurant discovery page", () => {
   it("does not double decode a literal percent sequence in a search route", async () => {
     renderPage("/search/100%2520Percent");
     await screen.findByRole("heading", { name: "3 Restaurants For “100%20Percent”" });
-    expect(apiMock.mock.calls[0][0]).toBe("/api/search/restaurants?query=100%2520Percent");
+    expect(apiMock.mock.calls[0][0]).toBe(
+      "/api/search/restaurants?version=2&page=1&query=100%2520Percent",
+    );
   });
 
   it("renders API data, metadata, featured state, and truthful missing reviews", async () => {
@@ -112,15 +157,18 @@ describe("restaurant discovery page", () => {
     expect(
       within(screen.getByRole("article", { name: "Local Kitchen" })).getByText("No Reviews Yet"),
     ).toBeTruthy();
-    expect(apiMock.mock.calls[0][0]).toBe("/api/search/restaurants?query=Test%20City");
+    expect(apiMock.mock.calls[0][0]).toBe(
+      "/api/search/restaurants?version=2&page=1&query=Test+City",
+    );
   });
 
-  it("uses server total until local filters are applied", async () => {
-    apiMock.mockResolvedValue({ results: SEARCH_RESTAURANTS, total: 6 });
+  it("uses globally filtered server totals", async () => {
+    apiMock.mockResolvedValueOnce({ results: SEARCH_RESTAURANTS, total: 6 });
     renderPage();
     await screen.findByRole("heading", { name: "6 Restaurants In Test City" });
     fireEvent.click(screen.getAllByRole("button", { name: "Queue Available" })[0]);
-    expect(screen.getByRole("heading", { name: "2 Restaurants In Test City" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "2 Restaurants In Test City" })).toBeTruthy();
+    expect(apiMock.mock.calls.at(-1)?.[0]).toContain("queue=1");
   });
 
   it("passes date, time, and guest selection to the existing booking route", async () => {
@@ -208,7 +256,9 @@ describe("restaurant discovery page", () => {
     });
     fireEvent.submit(screen.getByRole("search"));
     await waitFor(() =>
-      expect(apiMock.mock.calls.at(-1)?.[0]).toBe("/api/search/restaurants?query=Italian"),
+      expect(apiMock.mock.calls.at(-1)?.[0]).toBe(
+        "/api/search/restaurants?version=2&page=1&query=Italian",
+      ),
     );
     expect(screen.getByTestId("route").textContent).toContain(
       "/search/Italian?date=2027-10-16&time=19%3A00&partySize=3",
@@ -217,7 +267,9 @@ describe("restaurant discovery page", () => {
       target: { value: "" },
     });
     fireEvent.submit(screen.getByRole("search"));
-    await waitFor(() => expect(apiMock.mock.calls.at(-1)?.[0]).toBe("/api/search/restaurants"));
+    await waitFor(() =>
+      expect(apiMock.mock.calls.at(-1)?.[0]).toBe("/api/search/restaurants?version=2&page=1"),
+    );
   });
 
   it("does not reinterpret restaurant or cuisine queries as locations", async () => {
@@ -274,9 +326,11 @@ describe("restaurant discovery page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cuisine: Cuisine" }));
     fireEvent.click(screen.getByRole("button", { name: "Italian", exact: true }));
     fireEvent.click(screen.getAllByRole("button", { name: "Queue Available" })[0]);
-    expect(screen.getByRole("heading", { name: "No Restaurants Match Your Filters" })).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { name: "No Restaurants Match Your Filters" }),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Clear Filters" }));
-    expect(screen.getAllByRole("article")).toHaveLength(3);
+    await waitFor(() => expect(screen.getAllByRole("article")).toHaveLength(3));
   });
 });
 
@@ -295,12 +349,126 @@ describe("shared restaurant filters", () => {
       fireEvent.click(within(sheet).getByRole("switch", { name }));
     }
     expect(within(sheet).getByLabelText("7 active filters")).toBeTruthy();
-    expect(within(sheet).getByRole("button", { name: "Show 1 Restaurant" })).toBeTruthy();
+    expect(await within(sheet).findByRole("button", { name: "Show 1 Restaurant" })).toBeTruthy();
     fireEvent.click(within(sheet).getByRole("button", { name: "Clear All" }));
-    expect(within(sheet).getByRole("button", { name: "Show 3 Restaurants" })).toBeTruthy();
+    expect(await within(sheet).findByRole("button", { name: "Show 3 Restaurants" })).toBeTruthy();
     expect(within(sheet).queryByLabelText(/active filters/)).toBeNull();
     fireEvent.click(within(sheet).getByRole("button", { name: "Show 3 Restaurants" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Filters" })).toBeNull());
+    expect(screen.getAllByRole("article")).toHaveLength(3);
+  });
+});
+
+describe("database-backed discovery pagination", () => {
+  const restaurants = Array.from({ length: 23 }, (_, index) =>
+    restaurant({
+      locationId: `location-${index}`,
+      name: `Restaurant ${String(index).padStart(2, "0")}`,
+      featured: false,
+      cuisine: "Japanese",
+      city: "City",
+      area: "Common",
+    }),
+  );
+
+  beforeEach(() => apiMock.mockImplementation(respondWithRestaurants(restaurants)));
+
+  it("shows ten cards on each complete page and three on the last page with numbered navigation", async () => {
+    renderPage("/search?date=2027-10-16&time=19%3A00&partySize=3");
+    await screen.findByRole("heading", { name: "23 Restaurants" });
+    expect(screen.getAllByRole("article")).toHaveLength(10);
+    expect(screen.getByRole("button", { name: "Previous" }).hasAttribute("disabled")).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await screen.findByRole("article", { name: "Restaurant 10" });
+    expect(screen.getAllByRole("article")).toHaveLength(10);
+    expect(screen.getByTestId("route").textContent).toContain("page=2");
+    fireEvent.click(screen.getByRole("button", { name: "Page 3" }));
+    await screen.findByRole("article", { name: "Restaurant 20" });
+    expect(screen.getAllByRole("article")).toHaveLength(3);
+    expect(screen.getByText("Page 3 Of 3")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Next" }).hasAttribute("disabled")).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
+    await screen.findByRole("article", { name: "Restaurant 10" });
+  });
+
+  it("restores page, filters, and sorting on browser back and forward navigation", async () => {
+    renderPage(
+      "/search?date=2027-10-16&time=19%3A00&partySize=3&sort=name-za&cuisine=Japanese&page=2",
+    );
+    await screen.findByRole("article", { name: "Restaurant 12" });
+    fireEvent.click(screen.getByRole("button", { name: "Page 3" }));
+    await screen.findByRole("article", { name: "Restaurant 00" });
+    fireEvent.click(screen.getByRole("button", { name: "Back", exact: true }));
+    await screen.findByRole("article", { name: "Restaurant 12" });
+    expect(screen.getByTestId("route").textContent).toContain(
+      "sort=name-za&cuisine=Japanese&page=2",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Forward" }));
+    await screen.findByRole("article", { name: "Restaurant 00" });
+    expect(screen.getByTestId("route").textContent).toContain("page=3");
+  });
+
+  it("uses complete matching-set facets and resets to page one when filters change", async () => {
+    const catalog = restaurants.map((row, index) => ({ ...row, cuisine: row.cuisine }));
+    catalog[22] = { ...catalog[22], cuisine: "Rare Cuisine", area: "Rare District" };
+    apiMock.mockImplementation(respondWithRestaurants(catalog));
+    renderPage("/search?page=2&sort=name-az&date=2027-10-16&time=19%3A00&partySize=large");
+    await screen.findByRole("article", { name: "Restaurant 10" });
+    fireEvent.click(screen.getByRole("button", { name: "Cuisine: Cuisine" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rare Cuisine", exact: true }));
+    await screen.findByRole("heading", { name: "1 Restaurant" });
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+    expect(screen.getByRole("article", { name: "Restaurant 22" })).toBeTruthy();
+    expect(screen.getByTestId("route").textContent).not.toContain("page=");
+    expect(screen.getByTestId("route").textContent).toContain("partySize=large");
+    expect(screen.getByTestId("route").textContent).toContain("sort=name-az");
+  });
+
+  it("resets pagination when the query or sort changes and retains existing booking selections", async () => {
+    renderPage("/search?page=2&cuisine=Japanese&date=2027-10-16&time=19%3A00&partySize=3");
+    await screen.findByRole("article", { name: "Restaurant 10" });
+    fireEvent.click(screen.getByRole("button", { name: "Sort By: Recommended" }));
+    fireEvent.click(screen.getByRole("button", { name: "Name Z-A", exact: true }));
+    await screen.findByRole("article", { name: "Restaurant 22" });
+    expect(screen.getByTestId("route").textContent).not.toContain("page=");
+    fireEvent.click(screen.getByRole("button", { name: "Page 2" }));
+    await screen.findByRole("article", { name: "Restaurant 12" });
+    fireEvent.change(screen.getByRole("combobox", { name: /Search restaurants/ }), {
+      target: { value: "new query" },
+    });
+    fireEvent.submit(screen.getByRole("search"));
+    await screen.findByRole("article", { name: "Restaurant 22" });
+    expect(screen.getByTestId("route").textContent).toContain("/search/new%20query?");
+    expect(screen.getByTestId("route").textContent).not.toContain("page=");
+    expect(screen.getByTestId("route").textContent).toContain("cuisine=Japanese");
+    expect(screen.getByTestId("route").textContent).toContain("partySize=3");
+  });
+
+  it("ignores an older page response when a newer page completes first", async () => {
+    let finish: (value: unknown) => void = () => {};
+    const responder = respondWithRestaurants(restaurants);
+    apiMock.mockImplementation((url: string) => {
+      if (new URL(url, "http://localhost").searchParams.get("page") === "2") {
+        return new Promise((resolve) => {
+          finish = resolve;
+        });
+      }
+      return responder(url);
+    });
+    renderPage("/search");
+    await screen.findByRole("article", { name: "Restaurant 00" });
+    fireEvent.click(screen.getByRole("button", { name: "Page 2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back", exact: true }));
+    await screen.findByRole("article", { name: "Restaurant 00" });
+    await act(async () => finish(await responder("/api/search/restaurants?version=2&page=2")));
+    expect(screen.queryByRole("article", { name: "Restaurant 10" })).toBeNull();
+    expect(screen.getAllByRole("article")).toHaveLength(10);
+  });
+
+  it("recovers an out-of-range page when the catalog shrinks", async () => {
+    renderPage("/search?page=99");
+    await screen.findByRole("article", { name: "Restaurant 20" });
+    expect(screen.getByTestId("route").textContent).toContain("page=3");
     expect(screen.getAllByRole("article")).toHaveLength(3);
   });
 });

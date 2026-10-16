@@ -1,69 +1,56 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
-import Index from "./pages/Index";
-import LandingPage from "./pages/LandingPage";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import BusinessLogin from "./pages/BusinessLogin";
-import BusinessSignup from "./pages/BusinessSignup";
-import Profile from "./pages/Profile";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import BusinessOverview from "./pages/BusinessOverview";
-import BusinessQueue from "./pages/BusinessQueue";
-import BusinessReservations from "./pages/BusinessReservations";
-import BusinessFloor from "./pages/BusinessFloor";
-import BusinessGuests from "./pages/BusinessGuests";
-import BusinessReviews from "./pages/BusinessReviews";
-import BusinessCampaigns from "./pages/BusinessCampaigns";
-import BusinessPerformance from "./pages/BusinessPerformance";
-import BusinessSettings from "./pages/BusinessSettings";
-import BusinessLayout from "@/components/BusinessLayout";
-import { useEffect, useState } from "react";
-import NotFound from "./pages/NotFound";
-import Policy from "./pages/Policy";
-import Terms from "./pages/Terms";
-import Feedback from "./pages/Feedback";
-import Sales from "./pages/Sales";
-import Help from "./pages/Help";
-import QueueBusiness from "./pages/QueueBusiness";
-import Restaurant from "./pages/Restaurant";
-import ManageReservation from "./pages/ManageReservation";
-import SearchResults from "./pages/SearchResults";
-import Admin from "./pages/Admin";
-import { LanguageProvider } from "@/components/LanguageProvider";
+import { QueryClientProvider } from "@tanstack/react-query";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useParams,
+  useLocation,
+  Outlet,
+} from "react-router-dom";
+import { Suspense, type ReactNode } from "react";
+import { queryClient } from "@/lib/queryClient";
+import { useSession } from "@/hooks/useSession";
 import AnalyticsRouteTracker from "@/components/AnalyticsRouteTracker";
 
-const queryClient = new QueryClient();
+import { lazyRoute } from "@/lib/lazyRoute";
+import RouteLoading from "@/components/RouteLoading";
+import RouteErrorBoundary from "@/components/RouteErrorBoundary";
 
-type SessionState = {
-  customer: { name?: string | null } | null;
-  business: { name?: string | null } | null;
-};
-
-function useSession() {
-  const [session, setSession] = useState<SessionState | undefined>(undefined);
-  useEffect(() => {
-    fetch("/auth/session", { credentials: "include" })
-      .then((r) => {
-        if (r.ok) {
-          return r.json();
-        }
-        return { customer: null, business: null };
-      })
-      .then((d) =>
-        setSession({
-          customer: d?.customer ?? null,
-          business: d?.business ?? null,
-        }),
-      )
-      .catch(() => setSession({ customer: null, business: null }));
-  }, []);
-  return session;
-}
+const Index = lazyRoute(() => import("./pages/Index"));
+const LandingPage = lazyRoute(() => import("./pages/LandingPage"));
+const Login = lazyRoute(() => import("./pages/Login"));
+const Signup = lazyRoute(() => import("./pages/Signup"));
+const BusinessLogin = lazyRoute(() => import("./pages/BusinessLogin"));
+const BusinessSignup = lazyRoute(() => import("./pages/BusinessSignup"));
+const Profile = lazyRoute(() => import("./pages/Profile"));
+const ForgotPassword = lazyRoute(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazyRoute(() => import("./pages/ResetPassword"));
+const BusinessOverview = lazyRoute(() => import("./pages/BusinessOverview"));
+const BusinessQueue = lazyRoute(() => import("./pages/BusinessQueue"));
+const BusinessReservations = lazyRoute(() => import("./pages/BusinessReservations"));
+const BusinessFloor = lazyRoute(() => import("./pages/BusinessFloor"));
+const BusinessGuests = lazyRoute(() => import("./pages/BusinessGuests"));
+const BusinessReviews = lazyRoute(() => import("./pages/BusinessReviews"));
+const BusinessCampaigns = lazyRoute(() => import("./pages/BusinessCampaigns"));
+const BusinessPerformance = lazyRoute(() => import("./pages/BusinessPerformance"));
+const BusinessSettings = lazyRoute(() => import("./pages/BusinessSettings"));
+const BusinessLayout = lazyRoute(() => import("@/components/BusinessLayout"));
+const BusinessBootstrap = lazyRoute(() => import("@/components/BusinessBootstrap"));
+const NotFound = lazyRoute(() => import("./pages/NotFound"));
+const Policy = lazyRoute(() => import("./pages/Policy"));
+const Terms = lazyRoute(() => import("./pages/Terms"));
+const Feedback = lazyRoute(() => import("./pages/Feedback"));
+const Sales = lazyRoute(() => import("./pages/Sales"));
+const Help = lazyRoute(() => import("./pages/Help"));
+const QueueBusiness = lazyRoute(() => import("./pages/QueueBusiness"));
+const Restaurant = lazyRoute(() => import("./pages/Restaurant"));
+const ManageReservation = lazyRoute(() => import("./pages/ManageReservation"));
+const SearchResults = lazyRoute(() => import("./pages/SearchResults"));
+const Admin = lazyRoute(() => import("./pages/Admin"));
 
 function LegacyRestaurantRedirect() {
   const { businessUsername = "", locationId = "" } = useParams();
@@ -71,6 +58,22 @@ function LegacyRestaurantRedirect() {
   return <Navigate to={`/${businessUsername}/${locationId}${search}`} replace />;
 }
 
+function RouteContent({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  return (
+    <RouteErrorBoundary resetKey={pathname}>
+      <Suspense fallback={<RouteLoading />}>{children}</Suspense>
+    </RouteErrorBoundary>
+  );
+}
+
+function BusinessPageOutlet() {
+  return (
+    <RouteContent>
+      <Outlet />
+    </RouteContent>
+  );
+}
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -78,106 +81,97 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AnalyticsRouteTracker />
-        <Routes>
-          <Route path="/" element={<Index />} />
+        <RouteContent>
+          <Routes>
+            <Route path="/" element={<Index />} />
 
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
 
-          <Route
-            path="/profile"
-            element={
-              <RequireCustomer>
-                <Profile />
-              </RequireCustomer>
-            }
-          />
+            <Route
+              path="/profile"
+              element={
+                <RequireCustomer>
+                  <Profile />
+                </RequireCustomer>
+              }
+            />
 
-          <Route
-            path="/business"
-            element={
-              <BusinessGuestRoute>
-                <LandingPage />
-              </BusinessGuestRoute>
-            }
-          />
-          <Route
-            path="/business/login"
-            element={
-              <BusinessGuestRoute>
-                <BusinessLogin />
-              </BusinessGuestRoute>
-            }
-          />
-          <Route
-            path="/business/signup"
-            element={
-              <BusinessGuestRoute>
-                <BusinessSignup />
-              </BusinessGuestRoute>
-            }
-          />
+            <Route
+              path="/business"
+              element={
+                <BusinessGuestRoute>
+                  <LandingPage />
+                </BusinessGuestRoute>
+              }
+            />
+            <Route
+              path="/business/login"
+              element={
+                <BusinessGuestRoute>
+                  <BusinessLogin />
+                </BusinessGuestRoute>
+              }
+            />
+            <Route
+              path="/business/signup"
+              element={
+                <BusinessGuestRoute>
+                  <BusinessSignup />
+                </BusinessGuestRoute>
+              }
+            />
 
-          <Route path="/forgot" element={<ForgotPassword />} />
-          <Route path="/reset" element={<ResetPassword />} />
-          <Route path="/queue/:businessUsername/:locationId" element={<QueueBusiness />} />
-          <Route
-            path="/restaurants/:businessUsername/:locationId"
-            element={<LegacyRestaurantRedirect />}
-          />
-          <Route path="/reservations/manage/:token" element={<ManageReservation />} />
-          <Route path="/search" element={<SearchResults />} />
-          <Route path="/search/:query" element={<SearchResults />} />
-          <Route path="/policy" element={<Policy />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/feedback" element={<Feedback />} />
-          <Route path="/help" element={<Help />} />
-          <Route path="/sales" element={<Sales />} />
+            <Route path="/forgot" element={<ForgotPassword />} />
+            <Route path="/reset" element={<ResetPassword />} />
+            <Route path="/queue/:businessUsername/:locationId" element={<QueueBusiness />} />
+            <Route
+              path="/restaurants/:businessUsername/:locationId"
+              element={<LegacyRestaurantRedirect />}
+            />
+            <Route path="/reservations/manage/:token" element={<ManageReservation />} />
+            <Route path="/search" element={<SearchResults />} />
+            <Route path="/search/:query" element={<SearchResults />} />
+            <Route path="/policy" element={<Policy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/feedback" element={<Feedback />} />
+            <Route path="/help" element={<Help />} />
+            <Route path="/sales" element={<Sales />} />
 
-          <Route
-            element={
-              <RequireBusiness>
-                <LanguageProvider>
+            <Route
+              element={
+                <BusinessBootstrap>
                   <BusinessLayout />
-                </LanguageProvider>
-              </RequireBusiness>
-            }
-          >
-            <Route path="/business/overview" element={<BusinessOverview />} />
-            <Route path="/business/queue" element={<BusinessQueue />} />
-            <Route path="/business/reservations" element={<BusinessReservations />} />
-            <Route path="/business/floor" element={<BusinessFloor />} />
-            <Route path="/business/guests" element={<BusinessGuests />} />
-            <Route path="/business/reviews" element={<BusinessReviews />} />
-            <Route path="/business/campaigns" element={<BusinessCampaigns />} />
-            <Route path="/business/performance" element={<BusinessPerformance />} />
-            <Route path="/business/settings" element={<BusinessSettings />} />
-          </Route>
-          <Route path="/admin" element={<Admin />} />
+                </BusinessBootstrap>
+              }
+            >
+              <Route element={<BusinessPageOutlet />}>
+                <Route path="/business/overview" element={<BusinessOverview />} />
+                <Route path="/business/queue" element={<BusinessQueue />} />
+                <Route path="/business/reservations" element={<BusinessReservations />} />
+                <Route path="/business/floor" element={<BusinessFloor />} />
+                <Route path="/business/guests" element={<BusinessGuests />} />
+                <Route path="/business/reviews" element={<BusinessReviews />} />
+                <Route path="/business/campaigns" element={<BusinessCampaigns />} />
+                <Route path="/business/performance" element={<BusinessPerformance />} />
+                <Route path="/business/settings" element={<BusinessSettings />} />
+              </Route>
+            </Route>
+            <Route path="/admin" element={<Admin />} />
 
-          <Route path="/:businessUsername/:locationId" element={<Restaurant />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            <Route path="/:businessUsername/:locationId" element={<Restaurant />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </RouteContent>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
 
-function RequireBusiness({ children }: { children: React.ReactNode }) {
-  const session = useSession();
-  if (session === undefined) {
-    return null;
-  }
-  if (!session.business) {
-    return <Navigate to="/business/login" replace />;
-  }
-  return <>{children}</>;
-}
-
 function BusinessGuestRoute({ children }: { children: React.ReactNode }) {
   const session = useSession();
   if (session === undefined) {
-    return null;
+    return <RouteLoading />;
   }
   if (session.business) {
     return <Navigate to="/business/overview" replace />;
@@ -188,7 +182,7 @@ function BusinessGuestRoute({ children }: { children: React.ReactNode }) {
 function RequireCustomer({ children }: { children: React.ReactNode }) {
   const session = useSession();
   if (session === undefined) {
-    return null;
+    return <RouteLoading />;
   }
   if (!session.customer) {
     return <Navigate to="/login" replace />;

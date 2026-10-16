@@ -10,7 +10,7 @@
     "dev": "concurrently -k \"npm:dev:vite\" \"npm:dev:server\"",
     "dev:vite": "vite",
     "dev:server": "tsx watch server/index.ts",
-    "build": "vite build && tsc --project tsconfig.server.json",
+    "build": "node scripts/build.mjs",
     "start": "NODE_ENV=production node dist-server/server/index.js",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
@@ -27,7 +27,7 @@
     "test:jobs": "vitest run --project jobs",
     "test:db": "vitest run --project integration --project security --project concurrency --project jobs",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
+    "test:e2e": "node --import tsx scripts/run-e2e.mjs",
     "test:e2e:ui": "playwright test --ui",
     "test:smoke": "vitest run --config vitest.smoke.config.ts"
   },

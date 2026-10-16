@@ -1,6 +1,7 @@
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import BusinessSessionProvider from "../../src/components/BusinessSessionProvider.js";
+import { ApiError } from "../../src/lib/api.js";
 import {
   BusinessSessionContext,
   LOCATION_STORAGE_KEY,
@@ -10,8 +11,8 @@ import {
 
 const apiMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/api", () => {
-  return { api: apiMock };
+vi.mock("@/lib/api", async (importOriginal) => {
+  return { ...(await importOriginal<typeof import("../../src/lib/api.js")>()), api: apiMock };
 });
 
 function location(id: string, displayName: string) {
@@ -91,6 +92,133 @@ describe("useBusinessSession", () => {
 });
 
 describe("BusinessSessionProvider location context", () => {
+  it("does not overwrite a saved Settings update with an older poll response", async () => {
+    const { result } = renderHook(() => useBusinessSession(), { wrapper });
+    await waitFor(() => expect(result.current.me).not.toBeNull());
+    let finish = (_value: ReturnType<typeof businessMe>) => {};
+    apiMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    let refresh: Promise<void>;
+    act(() => {
+      refresh = result.current.refreshMe();
+      result.current.setMe((previous) => ({ ...previous, name: "Saved Settings" }));
+    });
+    await act(async () => {
+      finish(businessMe([location("loc-1", "Stale Response")]));
+      await refresh!;
+    });
+    expect(result.current.me?.name).toBe("Saved Settings");
+    await act(async () => {
+      await result.current.refreshMe();
+    });
+    expect(result.current.me?.name).toBe("Demo Restaurant");
+  });
+
+  it("refreshes queue and reservation data on visibility restoration", async () => {
+    let visibility: DocumentVisibilityState = "visible";
+    vi.spyOn(document, "visibilityState", "get").mockImplementation(() => visibility);
+    const { result } = renderHook(() => useBusinessSession(), { wrapper });
+    await waitFor(() => expect(result.current.me).not.toBeNull());
+    const calls = apiMock.mock.calls.length;
+    visibility = "hidden";
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    apiMock.mockResolvedValueOnce({
+      user: {
+        id: "biz-1",
+        locations: [
+          {
+            ...location("loc-1", "Fresh"),
+            queue: [{ id: "new-queue" }],
+            reservations: [{ id: "new-reservation" }],
+          },
+        ],
+      },
+    });
+    visibility = "visible";
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(apiMock).toHaveBeenCalledTimes(calls + 1);
+    expect(result.current.currentLocation?.queue).toEqual([{ id: "new-queue" }]);
+    expect(result.current.currentLocation?.reservations).toEqual([{ id: "new-reservation" }]);
+  });
+
+  it("shares an in-flight request with manual refresh callers", async () => {
+    let finish = (_value: ReturnType<typeof businessMe>) => {};
+    apiMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { result } = renderHook(() => useBusinessSession(), { wrapper });
+    let first: Promise<void>;
+    let second: Promise<void>;
+    act(() => {
+      first = result.current.refreshMe();
+      second = result.current.refreshMe();
+    });
+    expect(apiMock).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finish(businessMe([location("loc-1", "Fresh Queue And Reservations")]));
+      await Promise.all([first!, second!]);
+    });
+    expect(result.current.currentLocation?.displayName).toBe("Fresh Queue And Reservations");
+  });
+
+  it.each([401, 403])("clears private session data on status %i", async (status) => {
+    const { result } = renderHook(() => useBusinessSession(), { wrapper });
+    await waitFor(() => expect(result.current.me).not.toBeNull());
+    apiMock.mockRejectedValueOnce(new ApiError("Unauthorized", status));
+    await act(async () => {
+      await result.current.refreshMe();
+    });
+    expect(result.current.me).toBeNull();
+    expect(result.current.locations).toEqual([]);
+    expect(result.current.selectedLocationId).toBeNull();
+    expect(localStorage.getItem(LOCATION_STORAGE_KEY)).toBeNull();
+  });
+
+  it("keeps operational data on a transient server error", async () => {
+    const { result } = renderHook(() => useBusinessSession(), { wrapper });
+    await waitFor(() => expect(result.current.me).not.toBeNull());
+    apiMock.mockRejectedValueOnce(new ApiError("Server error", 500));
+    await act(async () => {
+      await result.current.refreshMe();
+    });
+    expect(result.current.me?.id).toBe("biz-1");
+  });
+
+  it("aborts requests when unmounted and does not reuse them for another account", async () => {
+    let finish = (_value: ReturnType<typeof businessMe>) => {};
+    apiMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const first = renderHook(() => useBusinessSession(), { wrapper });
+    const signal = apiMock.mock.calls[0][1].signal as AbortSignal;
+    first.unmount();
+    expect(signal.aborted).toBe(true);
+    apiMock.mockResolvedValueOnce({
+      user: { id: "biz-2", locations: [location("loc-2", "Other Account")] },
+    });
+    const second = renderHook(() => useBusinessSession(), { wrapper });
+    await waitFor(() => expect(second.result.current.me?.id).toBe("biz-2"));
+    await act(async () => {
+      finish(businessMe([location("loc-1", "Old Account")]));
+    });
+    expect(second.result.current.me?.id).toBe("biz-2");
+    expect(second.result.current.currentLocation?.id).toBe("loc-2");
+  });
+
   it("defaults to the first location and persists it", async () => {
     const { result } = renderHook(() => useBusinessSession(), { wrapper });
 

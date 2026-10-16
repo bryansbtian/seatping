@@ -1,4 +1,6 @@
 import { Router } from "express";
+import type { Prisma, Location, Review } from "@prisma/client";
+import { businessMeTiming } from "../lib/performanceTiming.js";
 import bcrypt from "bcrypt";
 import { prisma } from "../lib/prisma.js";
 import { restaurantNameForNotification } from "../lib/business.js";
@@ -19,12 +21,7 @@ import {
   CustomerUpdateSchema,
   ChangePasswordSchema,
 } from "../lib/validation.js";
-import {
-  DEFAULT_BASE_CREDITS,
-  enforceTrialExpiration,
-  buildLocationData,
-  checkAndRefillMonthlyCredits,
-} from "../lib/trial.js";
+import { DEFAULT_BASE_CREDITS, refreshBusinessCredits, buildLocationData } from "../lib/trial.js";
 import {
   sendEmail,
   sendPasswordResetEmail,
@@ -94,9 +91,14 @@ router.get("/session", (req, res) => {
   if (business) {
     businessPayload = { name: business.name };
   }
+  let customerId: string | null = null;
+  if (customer) {
+    customerId = customer.sub;
+  }
   return res.json({
     customer: customerPayload,
     business: businessPayload,
+    customerId,
   });
 });
 
@@ -337,6 +339,16 @@ async function attachActivityDetails<T extends Record<string, any>>(user: T): Pr
 router.get("/me", requireCustomer, async (req, res) => {
   try {
     const userId = (req as any).auth.sub as string;
+    if (req.query.view === "contact") {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true, email: true },
+      });
+      if (!user) {
+        return res.status(404).json({ error: "Not found" });
+      }
+      return res.json({ user });
+    }
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -717,7 +729,43 @@ router.delete("/me/saved-locations/:locationId", requireCustomer, async (req, re
   }
 });
 
-async function buildCustomerReviewEntry(review: any) {
+type CustomerReviewLocation = Pick<
+  Location,
+  "id" | "businessId" | "name" | "displayName" | "area" | "city" | "address" | "restaurantProfile"
+>;
+
+function customerReviewEntry(
+  review: Review,
+  loc: CustomerReviewLocation | null,
+  biz: { name: string; username: string } | null,
+) {
+  const rp = (loc?.restaurantProfile || {}) as Record<string, unknown>;
+  let reviewRating = 0;
+  if (typeof review.rating === "number") {
+    reviewRating = review.rating;
+  }
+  return {
+    id: review.id,
+    locationId: review.locationId,
+    customerName: review.customerName ?? null,
+    customerUsername: review.customerUsername ?? null,
+    partySize: review.partySize ?? null,
+    serviceType: review.serviceType ?? null,
+    businessUsername: biz?.username ?? null,
+    rating: reviewRating,
+    description: review.description ?? null,
+    createdAt: review.createdAt,
+    updatedAt: review.updatedAt,
+    businessReply: review.businessReply ?? null,
+    businessReplyCreatedAt: review.businessReplyCreatedAt ?? null,
+    businessReplyUpdatedAt: review.businessReplyUpdatedAt ?? null,
+    restaurantName: rp.displayName || biz?.name || loc?.displayName || loc?.name || "Restaurant",
+    locationName:
+      rp.shortAddress || loc?.displayName || loc?.area || loc?.city || loc?.address || null,
+  };
+}
+
+async function buildCustomerReviewEntry(review: Review) {
   const loc = await prisma.location.findUnique({
     where: { id: review.locationId },
     select: {
@@ -738,35 +786,28 @@ async function buildCustomerReviewEntry(review: any) {
       select: { name: true, username: true },
     });
   }
-  const rp = (loc?.restaurantProfile || {}) as any;
-  let reviewRating = 0;
-  if (typeof review.rating === "number") {
-    reviewRating = review.rating;
-  }
-  return {
-    id: review.id,
-    locationId: review.locationId,
-    businessUsername: biz?.username ?? null,
-    rating: reviewRating,
-    description: review.description ?? null,
-    createdAt: review.createdAt,
-    updatedAt: review.updatedAt,
-    businessReply: review.businessReply ?? null,
-    businessReplyCreatedAt: review.businessReplyCreatedAt ?? null,
-    businessReplyUpdatedAt: review.businessReplyUpdatedAt ?? null,
-    restaurantName: rp.displayName || biz?.name || loc?.displayName || loc?.name || "Restaurant",
-    locationName:
-      rp.shortAddress || loc?.displayName || loc?.area || loc?.city || loc?.address || null,
-  };
+  return customerReviewEntry(review, loc, biz);
 }
 
 router.get("/me/reviews", requireCustomer, async (req, res) => {
   try {
     const userId = (req as any).auth.sub as string;
-    const rows = await prisma.review.findMany({
-      where: { customerId: userId },
-      orderBy: { createdAt: "desc" },
-    });
+    const locationId = String(req.query.locationId || "").trim();
+    if (locationId && !ENTITY_ID_RE.test(locationId)) {
+      return res.status(400).json({ error: "Invalid location" });
+    }
+    const where: Prisma.ReviewWhereInput = { customerId: userId };
+    if (locationId) {
+      where.locationId = locationId;
+    }
+    const lookup: Prisma.ReviewFindManyArgs = {
+      where,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    };
+    if (locationId) {
+      lookup.take = 1;
+    }
+    const rows = await prisma.review.findMany(lookup);
     const seen = new Set<string>();
     const deduped = rows.filter((r) => {
       if (seen.has(r.locationId)) {
@@ -775,7 +816,36 @@ router.get("/me/reviews", requireCustomer, async (req, res) => {
       seen.add(r.locationId);
       return true;
     });
-    const reviews = await Promise.all(deduped.map(buildCustomerReviewEntry));
+    if (deduped.length === 0) {
+      return res.json({ reviews: [] });
+    }
+    const locations = await prisma.location.findMany({
+      where: { id: { in: deduped.map((review) => review.locationId) } },
+      select: {
+        id: true,
+        businessId: true,
+        name: true,
+        displayName: true,
+        area: true,
+        city: true,
+        address: true,
+        restaurantProfile: true,
+      },
+    });
+    const businesses = await prisma.business.findMany({
+      where: { id: { in: [...new Set(locations.map((location) => location.businessId))] } },
+      select: { id: true, name: true, username: true },
+    });
+    const locationById = new Map(locations.map((location) => [location.id, location]));
+    const businessById = new Map(businesses.map((business) => [business.id, business]));
+    const reviews = deduped.map((review) => {
+      const location = locationById.get(review.locationId) ?? null;
+      let business = null;
+      if (location) {
+        business = businessById.get(location.businessId) ?? null;
+      }
+      return customerReviewEntry(review, location, business);
+    });
     return res.json({ reviews });
   } catch (err: any) {
     console.error("[auth] list customer reviews error:", err?.message || err);
@@ -1219,12 +1289,11 @@ router.get("/admin/session", (req, res) => {
   res.json({ authenticated: session?.accountType === "admin" });
 });
 
-router.get("/business/me", requireBusiness, async (req, res) => {
+router.get("/business/me", businessMeTiming, requireBusiness, async (req, res) => {
   try {
     const businessId = (req as any).auth.sub as string;
 
-    await enforceTrialExpiration(businessId);
-    await checkAndRefillMonthlyCredits(businessId);
+    await refreshBusinessCredits(businessId);
 
     const me = await assembleBusinessMe(businessId);
     if (!me) {
@@ -2136,8 +2205,10 @@ router.get(
       if (!locationRow) {
         return res.status(404).json({ error: "Location not found or access denied" });
       }
-      const location = await augmentLocationWithLiveLists(locationRow);
-      const capacity = await loadEtaCapacity(locationRow.id);
+      const [location, capacity] = await Promise.all([
+        augmentLocationWithLiveLists(locationRow),
+        loadEtaCapacity(locationRow.id),
+      ]);
       return res.json({ etas: etaForAllQueueCustomers({ ...location, ...capacity }) });
     } catch (err: any) {
       console.error("[auth] queue-etas error:", err?.message || err);

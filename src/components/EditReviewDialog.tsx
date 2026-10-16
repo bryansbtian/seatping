@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
+import { invalidateRestaurantData } from "@/lib/queryClient";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { StarIcon } from "@hugeicons/core-free-icons";
 
@@ -100,6 +101,7 @@ export function EditReviewDialog({
         body: JSON.stringify({ rating, description }),
       });
       onSaved(res.review);
+      await invalidateRestaurantData(res.review?.businessUsername, res.review?.locationId);
       toast({ title: "Review updated" });
     } catch (err: any) {
       toast({

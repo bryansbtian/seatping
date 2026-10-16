@@ -368,14 +368,15 @@ describe("saved locations", () => {
 describe("customer reviews", () => {
   it("prefers the profile name and short address", async () => {
     reviewFindMany.mockResolvedValue([reviewRow()]);
-    locationFindUnique.mockResolvedValue(
+    locationFindMany.mockResolvedValue([
       locationRow({
         restaurantProfile: {
           displayName: "Warung Nusantara",
           shortAddress: "Kemang Raya 1",
         },
       }),
-    );
+    ]);
+    businessFindMany.mockResolvedValue([{ id: "biz-1", name: "Bistro", username: "bistro" }]);
 
     const res = await app().get("/auth/me/reviews").set("Cookie", cookie());
 
@@ -387,9 +388,9 @@ describe("customer reviews", () => {
   it("falls back through the business and location labels", async () => {
     reviewFindMany.mockResolvedValue([reviewRow()]);
     businessFindUnique.mockResolvedValue(null);
-    locationFindUnique.mockResolvedValue(
+    locationFindMany.mockResolvedValue([
       locationRow({ displayName: null, area: null, city: null }),
-    );
+    ]);
 
     const res = await app().get("/auth/me/reviews").set("Cookie", cookie());
 

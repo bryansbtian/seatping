@@ -2,6 +2,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { format, isToday, isTomorrow } from "date-fns";
 import { api } from "@/lib/api";
+import { useCustomerContact } from "@/hooks/useSession";
+import {
+  useBookingSettings,
+  useBookingAvailability,
+  invalidateAvailability,
+  type ReservationSettings,
+  type AvailabilityNotice,
+} from "@/hooks/useBooking";
+import { getRestaurantImageProps } from "@/lib/restaurantImages";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { SLOT_BUTTON_BASE_CLASS, SLOT_BUTTON_COMPACT_CLASS } from "@/lib/slotButton";
@@ -35,35 +44,6 @@ import {
   Location01Icon,
   UsersRoundIcon,
 } from "@hugeicons/core-free-icons";
-
-type ReservationSettings = {
-  reservationStartTime: string;
-  reservationEndTime: string;
-  maxPartySize: number;
-  maxReservedGuestsPerHour: number;
-  bookingWindowDays: number;
-  minNoticeMinutes: number;
-  defaultReservationDurationMinutes: number;
-  reservationHoldMinutes: number;
-  confirmationMode: "auto" | "manual";
-  cancellationPolicy: string;
-};
-
-type Slot = {
-  time: string;
-  label: string;
-  available: boolean;
-  remaining: number | null;
-  reason?: "full" | "too_soon" | "party_too_large" | "closed" | "no_table";
-};
-
-type AvailabilityNotice = {
-  status: "available" | "closed" | "outside_operating_hours";
-  dayName?: string | null;
-  hoursLabel?: string | null;
-  message?: string;
-  helper?: string;
-};
 
 type Props = {
   businessUsername: string;
@@ -109,7 +89,8 @@ export default function ReservationBooking({
   initialPartySize,
   autoOpen,
 }: Props) {
-  const [settings, setSettings] = useState<ReservationSettings | null>(null);
+  const settings =
+    useBookingSettings(businessUsername, locationId, reservationsEnabled).data ?? null;
   let initialPartyValue: number | "larger";
   if (initialPartySize && initialPartySize > 0) {
     if (initialPartySize > 10) {
@@ -128,10 +109,17 @@ export default function ReservationBooking({
   useEffect(() => {
     timeRef.current = time;
   }, [time]);
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [availabilityNotice, setAvailabilityNotice] = useState<AvailabilityNotice | null>(null);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-  const [slotsLoaded, setSlotsLoaded] = useState(false);
+  const availability = useBookingAvailability(
+    businessUsername,
+    locationId,
+    date,
+    partySize,
+    reservationsEnabled,
+  );
+  const slots = availability.data?.slots ?? [];
+  const availabilityNotice = availability.data?.availability ?? null;
+  const loadingSlots = availability.isFetching;
+  const slotsLoaded = availability.isFetched;
 
   const [modalOpen, setModalOpen] = useState(false);
   const autoOpenRef = useRef(autoOpen);
@@ -149,60 +137,19 @@ export default function ReservationBooking({
     }
   }, [modalOpen, locationId]);
 
-  const [account, setAccount] = useState<{
-    firstName: string;
-    lastName: string;
-    email: string;
-  } | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    api("/auth/me")
-      .then((d) => {
-        if (cancelled || !d?.user) {
-          return;
-        }
-        const full = String(d.user.name || "").trim();
-        const sp = full.indexOf(" ");
-        let accountFirstName: string;
-        let accountLastName: string;
-        if (sp === -1) {
-          accountFirstName = full;
-          accountLastName = "";
-        } else {
-          accountFirstName = full.slice(0, sp);
-          accountLastName = full.slice(sp + 1);
-        }
-        setAccount({
-          firstName: accountFirstName,
-          lastName: accountLastName,
-          email: d.user.email || "",
-        });
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!reservationsEnabled) {
-      return;
+  const contact = useCustomerContact().data;
+  let account: { firstName: string; lastName: string; email: string } | null = null;
+  if (contact) {
+    const full = contact.name.trim();
+    const space = full.indexOf(" ");
+    let firstName = full;
+    let lastName = "";
+    if (space !== -1) {
+      firstName = full.slice(0, space);
+      lastName = full.slice(space + 1);
     }
-    let cancelled = false;
-    api(`/api/reservations/${businessUsername}/${locationId}/settings`)
-      .then((d) => {
-        if (cancelled) {
-          return;
-        }
-        if (d?.settings) {
-          setSettings(d.settings);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [businessUsername, locationId, reservationsEnabled]);
+    account = { firstName, lastName, email: contact.email };
+  }
 
   const todayStr = localDateStr(new Date());
   const maxDateStr = useMemo(() => {
@@ -214,70 +161,31 @@ export default function ReservationBooking({
   const maxParty = settings?.maxPartySize ?? 8;
 
   useEffect(() => {
-    if (!reservationsEnabled || !date || partySize === "larger") {
-      setSlots([]);
-      setAvailabilityNotice(null);
-      setSlotsLoaded(false);
+    if (!availability.data) {
       return;
     }
-    let cancelled = false;
-    setLoadingSlots(true);
-    api(
-      `/api/reservations/${businessUsername}/${locationId}/availability?date=${encodeURIComponent(
-        date,
-      )}&partySize=${partySize}`,
-    )
-      .then((d) => {
-        if (cancelled) {
-          return;
-        }
-        let next: Slot[];
-        if (Array.isArray(d?.slots)) {
-          next = d.slots;
-        } else {
-          next = [];
-        }
-        setSlots(next);
-        setAvailabilityNotice(d?.availability || null);
-        setSlotsLoaded(true);
-        const prev = timeRef.current;
-        let slot: Slot | undefined;
-        if (prev) {
-          slot = next.find((s) => s.time === prev);
-        } else {
-          slot = undefined;
-        }
-        if (slot && slot.available) {
-          setTime(prev);
-          setFullNotice("");
-        } else if (slot) {
-          setTime("");
-          setFullNotice(prev);
-        } else {
-          setTime("");
-          setFullNotice("");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setSlots([]);
-          setAvailabilityNotice(null);
-          setSlotsLoaded(true);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadingSlots(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [businessUsername, locationId, date, partySize, reservationsEnabled]);
+    const previous = timeRef.current;
+    const slot = availability.data.slots.find((candidate) => candidate.time === previous);
+    if (slot?.available) {
+      setFullNotice("");
+    } else {
+      setTime("");
+      if (slot) {
+        setFullNotice(previous);
+      } else {
+        setFullNotice("");
+      }
+    }
+  }, [availability.data]);
 
   const selectedSlot = slots.find((s) => s.time === time);
   const canBook = Boolean(
-    date && time && partySize !== "larger" && partySize > 0 && selectedSlot?.available,
+    date &&
+    time &&
+    partySize !== "larger" &&
+    partySize > 0 &&
+    selectedSlot?.available &&
+    !loadingSlots,
   );
   const anyAvailable = slots.some((s) => s.available);
   const isClosed =
@@ -286,7 +194,14 @@ export default function ReservationBooking({
 
   let heroContent: JSX.Element;
   if (heroImage) {
-    heroContent = <img src={heroImage} alt={name} className="h-full w-full object-cover" />;
+    heroContent = (
+      <img
+        {...getRestaurantImageProps(heroImage, [160, 320, 480], "160px")}
+        loading="lazy"
+        alt={name}
+        className="h-full w-full object-cover"
+      />
+    );
   } else {
     heroContent = (
       <div className="flex h-full w-full items-center justify-center text-slate-400">
@@ -552,10 +467,6 @@ function BookingModal({
   const [time, setTime] = useState(initialTime);
   const timeRef = useRef(time);
   timeRef.current = time;
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [availabilityNotice, setAvailabilityNotice] = useState<AvailabilityNotice | null>(null);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-
   const [firstName, setFirstName] = useState(defaultFirstName || "");
   const [lastName, setLastName] = useState(defaultLastName || "");
   const [email, setEmail] = useState(defaultEmail || "");
@@ -564,49 +475,27 @@ function BookingModal({
   const [submitting, setSubmitting] = useState(false);
   const [confirmation, setConfirmation] = useState<any | null>(null);
 
+  const availability = useBookingAvailability(
+    businessUsername,
+    locationId,
+    date,
+    partySize,
+    !confirmation,
+  );
+  const slots = availability.data?.slots ?? [];
+  const availabilityNotice = availability.data?.availability ?? null;
+  const loadingSlots = availability.isFetching;
   useEffect(() => {
-    if (!date || confirmation || partySize === "larger") {
-      if (partySize === "larger") {
-        setSlots([]);
-        setAvailabilityNotice(null);
-      }
+    if (!availability.data) {
       return;
     }
-    let cancelled = false;
-    setLoadingSlots(true);
-    api(
-      `/api/reservations/${businessUsername}/${locationId}/availability?date=${encodeURIComponent(
-        date,
-      )}&partySize=${partySize}`,
-    )
-      .then((d) => {
-        if (cancelled) {
-          return;
-        }
-        let next: Slot[];
-        if (Array.isArray(d?.slots)) {
-          next = d.slots;
-        } else {
-          next = [];
-        }
-        setSlots(next);
-        setAvailabilityNotice(d?.availability || null);
-        const stillOk = next.find((s) => s.time === timeRef.current && s.available);
-        if (!stillOk) {
-          setTime("");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setSlots([]);
-          setAvailabilityNotice(null);
-        }
-      })
-      .finally(() => !cancelled && setLoadingSlots(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [date, partySize, confirmation, businessUsername, locationId]);
+    const available = availability.data.slots.some(
+      (slot) => slot.time === timeRef.current && slot.available,
+    );
+    if (!available) {
+      setTime("");
+    }
+  }, [availability.data]);
 
   const maxParty = settings.maxPartySize;
   const contactValid = email.trim().length > 3 && email.includes("@");
@@ -646,7 +535,9 @@ function BookingModal({
       });
       analytics.reservationCompleted(locationId);
       setConfirmation(res);
+      void invalidateAvailability(businessUsername, locationId);
     } catch (e: any) {
+      void invalidateAvailability(businessUsername, locationId);
       toast({
         title: "Could not book",
         description: e?.message || "Please try another time.",

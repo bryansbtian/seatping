@@ -20,6 +20,8 @@ import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { useToast } from "@/hooks/use-toast";
 import { splitPhone } from "@shared/countryCodes";
 import { api } from "@/lib/api";
+import { invalidateRestaurantData, queryClient } from "@/lib/queryClient";
+import { queryKeys } from "@/lib/queryKeys";
 import { EditReviewDialog } from "@/components/EditReviewDialog";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Cancel01Icon, Delete02Icon, Edit03Icon, StarIcon } from "@hugeicons/core-free-icons";
@@ -501,6 +503,10 @@ function EditDetailsDialog({
         }),
       });
       onUpdated(res.user);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.session }),
+        queryClient.invalidateQueries({ queryKey: ["private", "contact"] }),
+      ]);
       toast({ title: "Profile Updated" });
       onOpenChange(false);
     } catch (err: any) {
@@ -1145,6 +1151,7 @@ function DeleteReviewDialog({
     try {
       await api(`/auth/me/reviews/${review.id}`, { method: "DELETE" });
       onDeleted(review.id);
+      await invalidateRestaurantData();
       toast({ title: "Review deleted" });
     } catch (err: any) {
       toast({

@@ -11,47 +11,11 @@ import {
   publicIdInLocationFolder,
 } from "../lib/cloudinary.js";
 import { ENTITY_ID_RE } from "../lib/entityId.js";
+import { searchSuggestions } from "../lib/searchSuggestions.js";
 
 const router = Router();
 
 type UploadedFile = { buffer: Buffer; mimetype: string; originalname: string; size: number };
-
-const SUGGEST_WEIGHTS = {
-  name: 3.2,
-  label: 2.6,
-  areaCity: 1.6,
-  cuisine: 1.3,
-  address: 1.0,
-  text: 0.7,
-};
-
-function pickCuisineSuggest(rp: any): string | null {
-  const arr = rp?.cuisineTypes;
-  if (Array.isArray(arr) && arr.length) {
-    return String(arr[0]);
-  }
-  return null;
-}
-
-function fieldScore(value: any, needle: string): number {
-  if (!value) {
-    return 0;
-  }
-  const v = String(value).toLowerCase();
-  if (v === needle) {
-    return 100;
-  }
-  if (v.startsWith(needle)) {
-    return 60;
-  }
-  if (v.split(/[\s,.&/-]+/).some((w) => w && w.startsWith(needle))) {
-    return 40;
-  }
-  if (v.includes(needle)) {
-    return 20;
-  }
-  return 0;
-}
 
 router.get("/search-suggestions", async (req, res) => {
   try {
@@ -76,96 +40,7 @@ router.get("/search-suggestions", async (req, res) => {
       return res.json({ suggestions: [] });
     }
 
-    const locations = await prisma.location.findMany({
-      where: { isPublished: true },
-      include: { photos: { orderBy: { createdAt: "asc" }, take: 1 } },
-    });
-    const businessIds = Array.from(new Set(locations.map((l) => l.businessId).filter(Boolean)));
-    const businesses = await prisma.business.findMany({
-      where: { id: { in: businessIds } },
-      select: { id: true, name: true, username: true },
-    });
-    const businessById = new Map(businesses.map((b) => [b.id, b]));
-
-    const scored = locations
-      .map((loc: any) => {
-        const rp = (loc.restaurantProfile || {}) as any;
-        if (rp.isPublished === false) {
-          return null;
-        }
-        const details = (rp.details || {}) as any;
-        const biz = businessById.get(loc.businessId);
-
-        const nameScore = Math.max(fieldScore(rp.displayName, q), fieldScore(biz?.name, q));
-        const labelScore = Math.max(
-          fieldScore(loc.displayName, q),
-          fieldScore(rp.shortAddress, q),
-          fieldScore(loc.name, q),
-        );
-        const areaCityScore = Math.max(
-          fieldScore(loc.area, q),
-          fieldScore(loc.city, q),
-          fieldScore(details.area, q),
-          fieldScore(details.city, q),
-        );
-        let cuisineArr: any[] = [];
-        if (Array.isArray(rp.cuisineTypes)) {
-          cuisineArr = rp.cuisineTypes;
-        }
-        const cuisineScore = cuisineArr.reduce(
-          (m: number, c: any) => Math.max(m, fieldScore(c, q)),
-          0,
-        );
-        const addressScore = Math.max(fieldScore(loc.address, q), fieldScore(details.address, q));
-        const textScore = Math.max(
-          fieldScore(rp.tagline, q),
-          fieldScore(rp.description, q),
-          fieldScore(biz?.username, q),
-        );
-
-        const score =
-          nameScore * SUGGEST_WEIGHTS.name +
-          labelScore * SUGGEST_WEIGHTS.label +
-          areaCityScore * SUGGEST_WEIGHTS.areaCity +
-          cuisineScore * SUGGEST_WEIGHTS.cuisine +
-          addressScore * SUGGEST_WEIGHTS.address +
-          textScore * SUGGEST_WEIGHTS.text;
-
-        if (score <= 0) {
-          return null;
-        }
-        return { loc, biz, rp, score };
-      })
-      .filter(Boolean) as Array<{ loc: any; biz: any; rp: any; score: number }>;
-
-    scored.sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
-      const an = (a.rp.displayName || a.biz?.name || "").toLowerCase();
-      const bn = (b.rp.displayName || b.biz?.name || "").toLowerCase();
-      return an.localeCompare(bn);
-    });
-
-    const suggestions = scored.slice(0, limit).map(({ loc, biz, rp }) => {
-      let url: string | null = null;
-      if (biz?.username) {
-        url = `/restaurants/${biz.username}/${loc.id}`;
-      }
-      return {
-        locationId: loc.id,
-        businessId: loc.businessId,
-        businessUsername: biz?.username ?? null,
-        businessName: biz?.name ?? null,
-        name: rp.displayName || biz?.name || loc.displayName || loc.name || "Restaurant",
-        shortAddress: rp.shortAddress || loc.displayName || loc.area || loc.city || null,
-        cuisine: pickCuisineSuggest(rp),
-        area: loc.area ?? null,
-        city: loc.city ?? null,
-        imageUrl: loc.bannerImageUrl || loc.photos?.[0]?.url || null,
-        url,
-      };
-    });
+    const suggestions = await searchSuggestions(q, limit);
 
     return res.json({ suggestions });
   } catch (err: any) {

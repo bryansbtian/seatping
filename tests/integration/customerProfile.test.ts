@@ -31,6 +31,22 @@ async function seedReview(customer: User, location: Location, rating = 4) {
 }
 
 describe("customer profile", () => {
+  it("returns only the signed-in customer's booking contact when requested", async () => {
+    const customer = await seedCustomer();
+    await seedCustomer();
+    const res = await (
+      await api()
+    )
+      .get("/auth/me?view=contact")
+      .set("Cookie", customerCookie(customer.id));
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      user: { id: customer.id, name: customer.name, email: customer.email },
+    });
+    const anonymous = await (await api()).get("/auth/me?view=contact");
+    expect(anonymous.status).toBe(401);
+  });
+
   it("returns the signed-in customer", async () => {
     const customer = await seedCustomer();
 
@@ -124,6 +140,39 @@ describe("customer profile", () => {
 
     expect(res.status).toBe(409);
     expect(res.body.error).toBe("Username already in use");
+  });
+});
+
+describe("targeted customer reviews", () => {
+  it("filters by both location and authenticated customer before enrichment", async () => {
+    const customer = await seedCustomer();
+    const otherCustomer = await seedCustomer();
+    const first = await seedBusinessWithLocation();
+    const second = await seedBusinessWithLocation();
+    await seedReview(otherCustomer, first.location);
+    await seedReview(customer, second.location);
+    const review = await seedReview(customer, first.location);
+    const res = await (
+      await api()
+    )
+      .get(`/auth/me/reviews?locationId=${first.location.id}`)
+      .set("Cookie", customerCookie(customer.id));
+    expect(res.status).toBe(200);
+    expect(res.body.reviews).toHaveLength(1);
+    expect(res.body.reviews[0].id).toBe(review.id);
+    expect(res.body.reviews[0].businessUsername).toBe(first.business.username);
+  });
+
+  it("rejects malformed location filters and unauthorized requests", async () => {
+    const customer = await seedCustomer();
+    const res = await (
+      await api()
+    )
+      .get("/auth/me/reviews?locationId=invalid")
+      .set("Cookie", customerCookie(customer.id));
+    expect(res.status).toBe(400);
+    const unauthorized = await (await api()).get("/auth/me/reviews?locationId=invalid");
+    expect(unauthorized.status).toBe(401);
   });
 });
 
@@ -432,6 +481,32 @@ describe("saved locations", () => {
 });
 
 describe("customer reviews", () => {
+  it("preserves author and visit details in location lookup and private review history", async () => {
+    const customer = await seedCustomer();
+    const other = await seedCustomer();
+    const { location } = await seedBusinessWithLocation();
+    const review = await seedReview(customer, location);
+    await db.review.update({
+      where: { id: review.id },
+      data: { partySize: 4, serviceType: "reservation" },
+    });
+    await seedReview(other, location);
+    const request = await api();
+    for (const path of ["/auth/me/reviews", `/auth/me/reviews?locationId=${location.id}`]) {
+      const response = await request.get(path).set("Cookie", customerCookie(customer.id));
+      expect(response.status).toBe(200);
+      expect(response.body.reviews).toHaveLength(1);
+      expect(response.body.reviews[0]).toMatchObject({
+        id: review.id,
+        locationId: location.id,
+        customerName: customer.name,
+        customerUsername: customer.username,
+        partySize: 4,
+        serviceType: "reservation",
+      });
+    }
+  });
+
   it("lists one review per location, newest first", async () => {
     const customer = await seedCustomer();
     const first = await seedBusinessWithLocation();

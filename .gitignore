@@ -24,6 +24,8 @@ lerna-debug.log*
 coverage
 playwright-report
 test-results
+performance-artifacts
+test-results-browser-owned
 
 .vscode/*
 !.vscode/extensions.json

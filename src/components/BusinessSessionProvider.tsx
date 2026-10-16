@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { api } from "@/lib/api";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
+import { api, ApiError } from "@/lib/api";
+import { useVisiblePolling } from "@/hooks/useVisiblePolling";
 import {
   BusinessSessionContext,
   LOCATION_STORAGE_KEY,
@@ -25,28 +34,64 @@ function persistLocationId(locationId: string) {
 }
 
 export function BusinessSessionProvider({ children }: { children: ReactNode }) {
-  const [me, setMe] = useState<BusinessMe | null>(null);
+  const [me, setMeState] = useState<BusinessMe | null>(null);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(() =>
     readStoredLocationId(),
   );
 
-  const refreshMe = useCallback(async () => {
-    try {
-      const res = await api("/auth/business/me");
-      setMe(res.user);
-    } catch {}
+  const inFlight = useRef<Promise<void> | null>(null);
+  const lifecycle = useRef<AbortController | null>(null);
+  const mutationVersion = useRef(0);
+  const setMe = useCallback((update: SetStateAction<BusinessMe | null>) => {
+    mutationVersion.current++;
+    setMeState(update);
   }, []);
 
   useEffect(() => {
-    refreshMe();
-  }, [refreshMe]);
+    const controller = new AbortController();
+    lifecycle.current = controller;
+    return () => {
+      controller.abort();
+      inFlight.current = null;
+    };
+  }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refreshMe();
-    }, REFRESH_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [refreshMe]);
+  const refreshMe = useCallback((): Promise<void> => {
+    if (inFlight.current) {
+      return inFlight.current;
+    }
+    const controller = lifecycle.current;
+    const version = mutationVersion.current;
+    const request = (async () => {
+      try {
+        const res = await api("/auth/business/me", { signal: controller?.signal });
+        if (!controller?.signal.aborted && version === mutationVersion.current) {
+          setMeState(res.user);
+        }
+      } catch (error) {
+        if (
+          !controller?.signal.aborted &&
+          error instanceof ApiError &&
+          (error.status === 401 || error.status === 403)
+        ) {
+          mutationVersion.current++;
+          setMeState(null);
+          setSelectedLocationId(null);
+          try {
+            localStorage.removeItem(LOCATION_STORAGE_KEY);
+          } catch {}
+        }
+      } finally {
+        if (inFlight.current === request) {
+          inFlight.current = null;
+        }
+      }
+    })();
+    inFlight.current = request;
+    return request;
+  }, []);
+
+  useVisiblePolling(refreshMe, REFRESH_INTERVAL_MS);
 
   const locations = useMemo<BusinessLocation[]>(() => {
     const list = me?.locations;
@@ -97,7 +142,7 @@ export function BusinessSessionProvider({ children }: { children: ReactNode }) {
       selectedLocationId,
       selectLocation,
     };
-  }, [me, refreshMe, locations, selectedLocationId, selectLocation]);
+  }, [me, setMe, refreshMe, locations, selectedLocationId, selectLocation]);
 
   return (
     <BusinessSessionContext.Provider value={value}>{children}</BusinessSessionContext.Provider>
