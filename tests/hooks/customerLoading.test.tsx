@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import CustomerLanding from "../../src/pages/CustomerLanding.js";
@@ -155,8 +155,26 @@ describe("customer content loading", () => {
         <CustomerLanding />
       </MemoryRouter>,
     );
-    expect(await screen.findByText("Couldn't load featured restaurants.")).toBeTruthy();
+    const alert = await screen.findByRole("alert");
+    expect(
+      within(alert).getByRole("heading", { name: "Unable To Load Featured Restaurants" }),
+    ).toBeTruthy();
+    expect(within(alert).getByRole("button", { name: "Try Again" })).toBeTruthy();
     expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("retries featured restaurants without reloading the page and restores the cards", async () => {
+    apiMock.mockRejectedValue(new Error("Offline"));
+    render(
+      <MemoryRouter>
+        <CustomerLanding />
+      </MemoryRouter>,
+    );
+    const alert = await screen.findByRole("alert");
+    apiMock.mockResolvedValue({ featured: [{ ...restaurant(), id: "featured-1" }] });
+    fireEvent.click(within(alert).getByRole("button", { name: "Try Again" }));
+    expect(await screen.findByRole("link", { name: "View Bistro Downtown" })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it.each([

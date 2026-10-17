@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Restaurant02Icon } from "@hugeicons/core-free-icons";
 import RestaurantCardSkeleton from "@/components/restaurant-discovery/RestaurantCardSkeleton";
@@ -25,6 +25,24 @@ const HERO_IMAGE =
 
 const CustomerLanding = () => {
   const navigate = useNavigate();
+  const { hash, key } = useLocation();
+
+  useEffect(() => {
+    if (hash !== "#featured") {
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      const section = document.getElementById("featured");
+      if (section) {
+        const offset = Number.parseFloat(getComputedStyle(section).scrollMarginTop);
+        window.scrollTo({
+          top: window.scrollY + section.getBoundingClientRect().top - offset,
+          behavior: "instant",
+        });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [hash, key]);
 
   const featuredQuery = useFeaturedRestaurants();
   const featured = featuredQuery.data ?? [];
@@ -66,31 +84,26 @@ const CustomerLanding = () => {
         </div>
       </div>
     );
+  } else if (featuredError && featured.length === 0) {
+    featuredContent = (
+      <div role="alert" className="w-full rounded-xl border border-border bg-card p-8 text-center">
+        <h3 className="text-title text-foreground">Unable To Load Featured Restaurants</h3>
+        <p className="mt-2 text-body text-ink-subtle">
+          We couldn't load featured restaurants right now. Please try again.
+        </p>
+        <Button variant="outline" onClick={() => void featuredQuery.refetch()} className="mt-4">
+          Try Again
+        </Button>
+      </div>
+    );
   } else if (featured.length === 0) {
-    let emptyStateMessage;
-    if (featuredError) {
-      emptyStateMessage = (
-        <>
-          <p className="text-lg font-semibold text-slate-900">
-            Couldn't load featured restaurants.
-          </p>
-          <p className="mt-2 text-sm text-slate-500">Please refresh the page to try again.</p>
-        </>
-      );
-    } else {
-      emptyStateMessage = (
-        <>
-          <p className="text-lg font-semibold text-slate-900">No featured restaurants yet.</p>
-          <p className="mt-2 text-sm text-slate-500">
-            New dining spots are coming soon. Check back later to discover places to book, queue,
-            and enjoy.
-          </p>
-        </>
-      );
-    }
     featuredContent = (
       <div className="max-w-2xl rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 md:p-12 text-left">
-        {emptyStateMessage}
+        <p className="text-lg font-semibold text-slate-900">No featured restaurants yet.</p>
+        <p className="mt-2 text-sm text-slate-500">
+          New dining spots are coming soon. Check back later to discover places to book, queue, and
+          enjoy.
+        </p>
       </div>
     );
   } else {
@@ -261,7 +274,7 @@ const CustomerLanding = () => {
         </div>
       </div>
 
-      <section id="featured" className="py-16 md:py-24 px-4">
+      <section id="featured" className="scroll-mt-24 py-16 md:py-24 px-4">
         <div className="container mx-auto max-w-7xl">
           <Carousel opts={{ align: "start" }} className="w-full">
             <div className="mb-8 flex items-end justify-between gap-4">

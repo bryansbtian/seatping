@@ -46,6 +46,7 @@ const Policy = lazyRoute(() => import("./pages/Policy"));
 const Terms = lazyRoute(() => import("./pages/Terms"));
 const Feedback = lazyRoute(() => import("./pages/Feedback"));
 const Help = lazyRoute(() => import("./pages/Help"));
+const Blog = lazyRoute(() => import("./pages/Blog"));
 const QueueBusiness = lazyRoute(() => import("./pages/QueueBusiness"));
 const Restaurant = lazyRoute(() => import("./pages/Restaurant"));
 const ManageReservation = lazyRoute(() => import("./pages/ManageReservation"));
@@ -137,6 +138,7 @@ const App = () => (
               <Route path="/terms" element={<Terms />} />
               <Route path="/feedback" element={<Feedback />} />
               <Route path="/help" element={<Help />} />
+              <Route path="/blog" element={<Blog />} />
 
               <Route
                 element={

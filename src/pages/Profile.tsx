@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -343,7 +342,6 @@ const Profile = () => {
       <main data-page-background="auth" className="min-h-screen px-4 pb-12 pt-24 sm:pb-16">
         <div className="mx-auto w-full max-w-3xl space-y-5 sm:space-y-6">{profileContent}</div>
       </main>
-      <Footer />
     </>
   );
 };

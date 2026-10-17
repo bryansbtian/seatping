@@ -92,6 +92,9 @@ for (const { path, surface, gradient } of surfaces) {
     await page.goto(path);
     await expect(page.locator(`[data-page-background="${surface}"]`)).toBeVisible();
     await expect(page.getByRole("heading").first()).toBeVisible();
+    if (path !== "/help" && path !== "/feedback") {
+      await expect(page.locator("footer")).toHaveCount(0);
+    }
     const body = page.locator("body");
     const html = page.locator("html");
     const color = await body.evaluate((element) => getComputedStyle(element).backgroundColor);
@@ -109,6 +112,7 @@ for (const { path, surface, gradient } of surfaces) {
 for (const path of [
   "/",
   "/business",
+  "/blog",
   "/policy",
   "/terms",
   "/example/location",

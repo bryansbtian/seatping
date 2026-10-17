@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import { api } from "@/lib/api";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft02Icon, Mail01Icon } from "@hugeicons/core-free-icons";
@@ -116,7 +115,6 @@ const ForgotPassword = () => {
               </CardContent>
             </Card>
           </main>
-          <Footer />
         </div>
       </>
     );
@@ -175,7 +173,6 @@ const ForgotPassword = () => {
             </CardContent>
           </Card>
         </main>
-        <Footer />
       </div>
     </>
   );

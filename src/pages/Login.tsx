@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { api } from "@/lib/api";
 import { resetSessionQueries } from "@/lib/queryClient";
@@ -144,7 +143,6 @@ const Login = () => {
             </CardContent>
           </Card>
         </main>
-        <Footer />
       </div>
     </>
   );
