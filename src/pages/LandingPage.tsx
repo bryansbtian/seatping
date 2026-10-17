@@ -1,6 +1,6 @@
 import { useDemoBooking } from "@/lib/demoBooking";
-import { useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useLayoutEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -14,6 +14,12 @@ import { SECTION_PADDING, DISPLAY_HEADING, SECTION_SUBTITLE } from "@/components
 
 const LandingPage = () => {
   const openDemo = useDemoBooking();
+  const { key } = useLocation();
+
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [key]);
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
