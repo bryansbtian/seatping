@@ -112,8 +112,9 @@ const LandingPage = () => {
 
       <section
         className={cn(
-          "relative overflow-hidden border-y border-slate-200 bg-white",
+          "relative overflow-hidden border-t border-slate-200 bg-white",
           SECTION_PADDING,
+          "pb-8 sm:pb-8 md:pb-10",
         )}
       >
         <div
@@ -167,7 +168,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      <Footer />
+      <Footer className="pt-4 sm:pt-6 lg:pt-8" />
     </div>
   );
 };

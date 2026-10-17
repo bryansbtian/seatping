@@ -30,6 +30,47 @@ function searchResponse(restaurants: SearchResult[], requestUrl: string) {
   };
 }
 
+for (const width of [390, 768, 1440]) {
+  test(`featured error card spans the section and retries at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.route("**/auth/session", (route) =>
+      route.fulfill({ json: { customer: null, business: null } }),
+    );
+    let unavailable = true;
+    await page.route("**/api/featured-restaurants", (route) => {
+      if (unavailable) {
+        return route.fulfill({ status: 503, json: { error: "Unavailable" } });
+      }
+      return route.fulfill({ json: { featured: [{ ...restaurant(), id: "featured-1" }] } });
+    });
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    const alert = page.locator("#featured").getByRole("alert");
+    await expect(
+      alert.getByRole("heading", { name: "Unable To Load Featured Restaurants" }),
+    ).toBeVisible();
+    await alert.scrollIntoViewIfNeeded();
+    const bounds = await alert.evaluate((element) => {
+      const card = element.getBoundingClientRect();
+      const section = element.parentElement!.getBoundingClientRect();
+      return {
+        leftGap: Math.abs(card.left - section.left),
+        rightGap: Math.abs(section.right - card.right),
+        overflows: document.documentElement.scrollWidth > window.innerWidth,
+      };
+    });
+    expect(bounds.leftGap).toBeLessThanOrEqual(1);
+    expect(bounds.rightGap).toBeLessThanOrEqual(1);
+    expect(bounds.overflows).toBe(false);
+    await alert.screenshot({ path: testInfo.outputPath(`featured-error-${width}.png`) });
+    unavailable = false;
+    await alert.getByRole("button", { name: "Try Again" }).click();
+    await expect(page.getByRole("link", { name: "View Bistro Downtown" })).toBeVisible();
+    await expect(alert).toHaveCount(0);
+  });
+}
+
 test("featured restaurant skeletons stay within the viewport and resolve to cards", async ({
   page,
 }, testInfo) => {

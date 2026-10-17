@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import NotFound from "@/pages/NotFound";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -1354,7 +1353,6 @@ export default function QueueBusiness() {
             </CardContent>
           </Card>
         </main>
-        <Footer />
       </div>
     </>
   );

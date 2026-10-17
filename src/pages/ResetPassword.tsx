@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import { api } from "@/lib/api";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft02Icon, CheckmarkCircle02Icon, LockIcon } from "@hugeicons/core-free-icons";
@@ -127,7 +126,6 @@ const ResetPassword = () => {
               </CardContent>
             </Card>
           </main>
-          <Footer />
         </div>
       </>
     );
@@ -209,7 +207,6 @@ const ResetPassword = () => {
             </CardContent>
           </Card>
         </main>
-        <Footer />
       </div>
     </>
   );

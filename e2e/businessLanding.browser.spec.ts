@@ -17,9 +17,10 @@ for (const viewport of [
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("No featured restaurants yet.")).toBeVisible();
 
-    const footerLink = page.getByRole("link", { name: "SeatPing for Business", exact: true });
-    await footerLink.scrollIntoViewIfNeeded();
-    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    const footer = page.getByRole("contentinfo");
+    const footerLink = footer.getByRole("link", { name: "SeatPing for Business", exact: true });
+    await footer.getByRole("link", { name: "Terms of Service" }).scrollIntoViewIfNeeded();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
     await footerLink.click();
 
     const hero = page.getByRole("heading", {
@@ -28,9 +29,21 @@ for (const viewport of [
     await expect(page).toHaveURL(/\/business$/);
     await expect(hero).toBeInViewport();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+    const finalCta = page.locator("section").filter({
+      has: page.getByRole("heading", { name: "Turn Every Arrival Into Smooth Service" }),
+    });
+    await expect(finalCta).toHaveCSS("border-bottom-width", "0px");
+    expect(
+      await finalCta.evaluate((element) =>
+        Number.parseFloat(getComputedStyle(element).paddingBottom),
+      ),
+    ).toBeLessThanOrEqual(40);
+    expect(
+      await footer.evaluate((element) => Number.parseFloat(getComputedStyle(element).paddingTop)),
+    ).toBeLessThanOrEqual(32);
 
-    await footerLink.scrollIntoViewIfNeeded();
-    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    await footer.getByRole("link", { name: "Terms of Service" }).scrollIntoViewIfNeeded();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
     await footerLink.click();
 
     await expect(hero).toBeInViewport();

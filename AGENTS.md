@@ -123,6 +123,7 @@ if (ready) {
 - When fixing bugs, trace the full flow across frontend, API route, data model, background
   job, and deployment rewrite before changing only one layer.
 - Update documentation when behavior or architecture changes.
+- Do not modify `README.md` unless a new feature requires additional setup steps for new developers.
 - Do not claim unfinished functionality is implemented.
 
 ## Routing

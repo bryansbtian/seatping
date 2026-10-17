@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { api } from "@/lib/api";
 import { resetSessionQueries } from "@/lib/queryClient";
@@ -273,7 +272,6 @@ const BusinessSignup = () => {
           </CardContent>
         </Card>
       </div>
-      <Footer />
     </>
   );
 };

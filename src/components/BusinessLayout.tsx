@@ -4,7 +4,6 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Cancel01Icon, Menu01Icon } from "@hugeicons/core-free-icons";
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import BusinessSidebar from "@/components/BusinessSidebar";
-import Footer from "@/components/Footer";
 import { useLang } from "@/lib/i18n";
 import { persistSidebarCollapsed, readSidebarCollapsed } from "@/lib/businessNav";
 import { cn } from "@/lib/utils";
@@ -81,7 +80,6 @@ const BusinessLayout = () => {
           <div className="bp-shell flex-1">
             <Outlet />
           </div>
-          <Footer fullWidth />
         </main>
       </div>
     </div>

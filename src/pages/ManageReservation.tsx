@@ -4,7 +4,6 @@ import { api } from "@/lib/api";
 import { SLOT_BUTTON_BASE_CLASS } from "@/lib/slotButton";
 import NotFound from "@/pages/NotFound";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import TimeSlotsSkeleton from "@/components/TimeSlotsSkeleton";
@@ -438,7 +437,6 @@ export default function ManageReservation() {
       <main className="flex flex-1 flex-col px-4 pb-10 pt-24 sm:pb-14 sm:pt-28">
         <div className="m-auto w-full max-w-lg lg:max-w-2xl">{pageContent}</div>
       </main>
-      <Footer />
 
       <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <AlertDialogContent>
