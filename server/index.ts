@@ -9,7 +9,7 @@ import { fileURLToPath } from "url";
 
 import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
-import salesRouter from "./routes/sales.js";
+import demoRouter from "./routes/demo.js";
 import feedbackRouter from "./routes/feedback.js";
 import ticketsRouter from "./routes/tickets.js";
 import locationsRouter from "./routes/locations.js";
@@ -133,7 +133,7 @@ app.get("/api/health", async (_req, res) => {
 
 app.use("/auth", authRouter);
 app.use("/admin", adminRouter);
-app.use("/api/sales", salesRouter);
+app.use("/api/demo", demoRouter);
 app.use("/api/feedback", feedbackRouter);
 app.use("/api/locations", locationsRouter);
 app.use("/api/featured-restaurants", featuredRouter);

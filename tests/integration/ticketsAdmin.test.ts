@@ -254,6 +254,7 @@ describe("responding to a ticket", () => {
     expect(messages[1].isTeamResponse).toBe(true);
     expect(messages[1].message).toBe("We have shipped a fix.");
     expect(sinks().email.at(-1)?.to).toBe(ticket.senderEmail);
+    expect(sinks().email.at(-1)?.from).toBe("sender@test.invalid");
     expect(sinks().email.at(-1)?.subject).toContain(ticket.ticketNumber);
   });
 

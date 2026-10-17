@@ -8,6 +8,17 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model DemoBooking {
+  calendarId String
+  start      DateTime
+  eventId    String   @unique
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+
+  @@id([calendarId, start])
+  @@map("demo_bookings")
+}
+
 model User {
   id       String @id @default(cuid())
   name     String

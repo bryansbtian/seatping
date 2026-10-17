@@ -7,6 +7,7 @@ import {
   Tick02Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Sheet,
@@ -170,11 +171,21 @@ export default function RestaurantFilters({
   if (resultCount === 1) {
     resultWord = "Restaurant";
   }
-  let showLabel = `Show ${resultCount} ${resultWord}`;
-  if (loading) {
-    showLabel = "Loading Restaurants";
-  } else if (error) {
+  let showLabel: ReactNode = `Show ${resultCount} ${resultWord}`;
+  if (error) {
     showLabel = "Results Unavailable";
+  }
+  if (loading) {
+    showLabel = (
+      <>
+        <span className="sr-only">Loading Restaurants</span>
+        <Skeleton
+          as="span"
+          aria-hidden="true"
+          className="block h-4 w-28 bg-primary-foreground/20"
+        />
+      </>
+    );
   }
   const selectChip = (key: "cuisine" | "price", value: string) => {
     setFilters((previous) => {

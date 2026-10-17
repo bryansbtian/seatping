@@ -203,6 +203,33 @@ describe("adding a location", () => {
     expect(stored?.googlePlaceId).toBe("place-1");
   });
 
+  it("creates a US establishment without changing its country or coordinates", async () => {
+    const business = await seedBusiness({ maxLocations: 3 });
+    const location = {
+      displayName: "Ann Arbor",
+      address: "Ann Arbor, MI 48109, USA",
+      city: "Ann Arbor",
+      country: "United States",
+      latitude: 42.278,
+      longitude: -83.7382,
+      googlePlaceId: "michigan-place",
+      googleMapsUrl: "https://maps.test.invalid/michigan-place",
+    };
+    const res = await (
+      await api()
+    )
+      .post("/auth/business/locations")
+      .set("Cookie", businessCookie(business.id))
+      .send(location);
+
+    expect(res.status).toBe(200);
+    const stored = await db.location.findFirst({ where: { businessId: business.id } });
+    expect(stored).toMatchObject(location);
+    expect(res.body.user.locations).toEqual(
+      expect.arrayContaining([expect.objectContaining(location)]),
+    );
+  });
+
   it("nulls coordinates that are not numbers", async () => {
     const business = await seedBusiness({ maxLocations: 3 });
 

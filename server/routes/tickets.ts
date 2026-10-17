@@ -215,7 +215,6 @@ router.post("/:ticketNumber/respond", express.json(), async (req, res) => {
       to: ticket.senderEmail,
       subject: emailSubject,
       html: emailHtml,
-      from: "bryan.susanto@seatping.biz",
     });
 
     if (!emailSent) {

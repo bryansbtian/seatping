@@ -81,6 +81,9 @@ describe("loadGoogleMaps", () => {
     expect(appended).toHaveLength(1);
     expect(appended[0].src).toContain("key=maps-key");
     expect(appended[0].src).toContain("libraries=places");
+    const params = new URL(appended[0].src).searchParams;
+    expect(params.has("region")).toBe(false);
+    expect(params.has("language")).toBe(false);
     expect(appended[0].async).toBe(true);
 
     win.google = { maps: { places: {} } };

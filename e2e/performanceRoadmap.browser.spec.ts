@@ -181,7 +181,9 @@ test("route loading is announced while a module is delayed", async ({ page }) =>
   );
   try {
     await page.goto("/terms", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("status").filter({ hasText: "Loading Page..." })).toBeVisible();
+    const skeleton = page.getByRole("status", { name: "Loading Page" });
+    await expect(skeleton).toBeVisible();
+    await expect(skeleton).toHaveText("");
     release();
     await expect(page.getByRole("heading", { name: "Terms of Service", level: 1 })).toBeVisible();
   } finally {

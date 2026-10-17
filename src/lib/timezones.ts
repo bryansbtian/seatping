@@ -233,7 +233,7 @@ export function startOfWeekDateKey(key: string): string {
 
 export const TIMEZONE_OPTIONS: TimezoneOption[] = (() => {
   const now = new Date();
-  const withOffset = listZones().map((tz) => {
+  const withOffset = Array.from(new Set(["UTC", ...listZones()])).map((tz) => {
     let min = 0;
     try {
       min = offsetMinutes(tz, now);

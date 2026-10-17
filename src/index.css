@@ -199,16 +199,6 @@
     --page-background-image: linear-gradient(to bottom right, #f8fafc, #e0e7ff);
   }
 
-  :root:has([data-page-background="sales"]) {
-    --page-background-color: #f8fafc;
-    --page-background-image: linear-gradient(
-      to bottom right,
-      #f8fafc,
-      #ffffff,
-      color-mix(in srgb, #eef2ff 70%, #ffffff)
-    );
-  }
-
   :root:has([data-page-background="muted"]) {
     --page-background-color: #f8fafc;
   }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { LayoutGridIcon, Refresh01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/lib/i18n";
@@ -386,9 +387,13 @@ const LiveFloor = ({ locationId, onDataChange }: LiveFloorProps) => {
 
   if (loading) {
     return (
-      <Card className="border border-slate-200 bg-white shadow-sm">
+      <Card
+        role="status"
+        aria-label={t("common.loading")}
+        className="border border-slate-200 bg-white shadow-sm"
+      >
         <CardContent className="p-6">
-          <div className="h-64 animate-pulse rounded-xl bg-slate-100" />
+          <Skeleton aria-hidden="true" className="h-64 rounded-xl" />
         </CardContent>
       </Card>
     );

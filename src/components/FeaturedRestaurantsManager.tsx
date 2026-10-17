@@ -3,6 +3,7 @@ import { api } from "@/lib/api";
 import { invalidateRestaurantConfiguration } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import ListSkeleton from "@/components/ListSkeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -356,12 +357,7 @@ export default function FeaturedRestaurantsManager() {
 
   let locationsSection;
   if (loadingLocations) {
-    locationsSection = (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <HugeiconsIcon icon={Loading02Icon} size={16} className="animate-spin" /> Loading
-        locations...
-      </div>
-    );
+    locationsSection = <ListSkeleton rows={2} label="Loading Locations" className="px-0 md:px-0" />;
   } else if (locations && locations.length === 0) {
     locationsSection = (
       <p className="text-sm text-amber-600">This business has no locations yet.</p>
@@ -415,11 +411,7 @@ export default function FeaturedRestaurantsManager() {
 
   let featuredListContent;
   if (loadingList) {
-    featuredListContent = (
-      <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
-        <HugeiconsIcon icon={Loading02Icon} className="h-5 w-5 animate-spin" /> Loading...
-      </div>
-    );
+    featuredListContent = <ListSkeleton label="Loading Featured Restaurants" />;
   } else if (listError) {
     featuredListContent = (
       <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">

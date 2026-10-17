@@ -6,6 +6,8 @@ import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import ListSkeleton from "@/components/ListSkeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -213,7 +215,23 @@ const Profile = () => {
 
   let profileContent: React.ReactNode;
   if (loading) {
-    profileContent = <p className="text-center text-muted-foreground">Loading your profile…</p>;
+    profileContent = (
+      <div role="status" aria-label="Loading Profile" className="space-y-8">
+        <div
+          aria-hidden="true"
+          className="flex items-center gap-4 rounded-xl border border-border bg-card p-6"
+        >
+          <Skeleton className="size-16 shrink-0 rounded-full" />
+          <div className="flex-1 space-y-3">
+            <Skeleton className="h-6 w-1/2" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        </div>
+        <div aria-hidden="true">
+          <ListSkeleton rows={4} />
+        </div>
+      </div>
+    );
   } else if (!profile) {
     profileContent = null;
   } else {

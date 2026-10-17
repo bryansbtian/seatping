@@ -2,7 +2,13 @@ import { vi } from "vitest";
 
 export type TelnyxSend = { to: string; from: string; text: string };
 export type WhatsappSend = { to: string; template?: string; params?: unknown };
-export type EmailSend = { to: string; subject: string; html: string };
+export type EmailSend = {
+  to: string;
+  subject: string;
+  html: string;
+  from?: string;
+  replyTo?: string;
+};
 export type CloudinaryUpload = { folder: string };
 
 export type TemplateListCall = { businessAccountId: string; name: string };

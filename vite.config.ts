@@ -8,6 +8,14 @@ export default defineConfig(() => ({
   server: {
     host: "::",
     port: 8080,
+    watch: {
+      ignored: [
+        "**/performance-artifacts/**",
+        "**/test-results/**",
+        "**/playwright-report/**",
+        "**/coverage/**",
+      ],
+    },
     proxy: {
       "/auth": {
         target: apiTarget,
@@ -37,7 +45,7 @@ export default defineConfig(() => ({
         target: apiTarget,
         changeOrigin: true,
       },
-      "/api/sales": {
+      "/api/demo": {
         target: apiTarget,
         changeOrigin: true,
       },

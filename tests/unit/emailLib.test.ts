@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import nodemailer from "nodemailer";
 import {
   calloutBox,
   detailCard,
@@ -39,6 +40,45 @@ afterEach(() => {
 });
 
 describe("html building blocks", () => {
+  it("uses the configured support contact in the footer and account support links", async () => {
+    process.env.SUPPORT_EMAIL = "  support@test.invalid  ";
+    vi.resetModules();
+    const email = await import("../../server/lib/email.js");
+
+    expect(email.renderEmail({ heading: "Hi", bodyHtml: "" })).toContain(
+      'href="mailto:support@test.invalid"',
+    );
+    await email.sendPasswordChangeConfirmationEmail("guest@test.invalid", "Ada");
+    expect(lastEmail().html).toContain("support@test.invalid");
+    expect(lastEmail().html).not.toContain("help@seatping.biz");
+    expect(lastEmail().from).toBe("sender@test.invalid");
+    await email.sendFeedbackConfirmationEmail("guest@test.invalid", "Ada", "TEST-1", "Feedback");
+    expect(lastEmail().html).toContain('href="mailto:support@test.invalid"');
+  });
+
+  it.each([undefined, "", "   "])(
+    "omits unconfigured support links without replacing the configured sender: %s",
+    async (value) => {
+      if (value === undefined) {
+        delete process.env.SUPPORT_EMAIL;
+      } else {
+        process.env.SUPPORT_EMAIL = value;
+      }
+      vi.resetModules();
+      const email = await import("../../server/lib/email.js");
+
+      expect(email.renderEmail({ heading: "Hi", bodyHtml: "" })).not.toContain("mailto:");
+      await email.sendPasswordChangeConfirmationEmail("guest@test.invalid", "Ada");
+      expect(lastEmail().html).not.toContain("mailto:");
+      expect(lastEmail().html).toContain("Contact support right away");
+      expect(lastEmail().from).toBe("sender@test.invalid");
+      await email.sendFeedbackConfirmationEmail("guest@test.invalid", "Ada", "TEST-1", "Feedback");
+      expect(lastEmail().html).not.toContain("mailto:");
+      expect(lastEmail().html).toContain("TEST-1");
+      expect(lastEmail().html).not.toContain("reach us anytime at");
+    },
+  );
+
   it("escapes the characters that would break the markup", () => {
     expect(esc("<b>&\"'</b>")).not.toContain("<b>");
     expect(esc(null as never)).toEqual(expect.any(String));
@@ -85,6 +125,53 @@ describe("html building blocks", () => {
 });
 
 describe("sendEmailDetailed", () => {
+  it("uses the configured mailbox for SMTP authentication and the default sender", async () => {
+    process.env.EMAIL_USER = "  notifications@test.invalid  ";
+    const createTransport = vi.spyOn(nodemailer, "createTransport");
+    vi.resetModules();
+    const email = await import("../../server/lib/email.js");
+
+    const result = await email.sendEmailDetailed({
+      to: "guest@test.invalid",
+      subject: "Hello",
+      html: "<p>Hi</p>",
+    });
+
+    expect(createTransport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth: expect.objectContaining({ user: "notifications@test.invalid" }),
+      }),
+    );
+    expect(result.ok).toBe(true);
+    expect(lastEmail().from).toBe("notifications@test.invalid");
+
+    await email.sendPasswordResetEmail("guest@test.invalid", "test-reset", "customer");
+    expect(lastEmail().from).toBe("notifications@test.invalid");
+  });
+
+  it.each([undefined, "", "   "])(
+    "does not send without a configured mailbox: %s",
+    async (value) => {
+      if (value === undefined) {
+        delete process.env.EMAIL_USER;
+      } else {
+        process.env.EMAIL_USER = value;
+      }
+      vi.resetModules();
+      const email = await import("../../server/lib/email.js");
+
+      const result = await email.sendEmailDetailed({
+        to: "guest@test.invalid",
+        subject: "Hello",
+        html: "<p>Hi</p>",
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.error).toBe("EMAIL_USER is not configured");
+      expect(sinks().email).toHaveLength(0);
+    },
+  );
+
   it("reports a successful send", async () => {
     const result = await sendEmailDetailed({
       to: "guest@test.invalid",

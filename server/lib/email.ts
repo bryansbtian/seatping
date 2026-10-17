@@ -2,13 +2,15 @@ import nodemailer from "nodemailer";
 import { maskEmail, maskEmailList } from "./redact.js";
 import { formatEnteredPhone, formatPhoneParts } from "../../shared/phone.js";
 
+const FROM_ADDRESS = process.env.EMAIL_USER?.trim() || "";
+
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || "smtp.porkbun.com",
   port: 587,
   secure: false,
   auth: {
-    user: process.env.EMAIL_USER || "bryan.susanto@seatping.biz",
-    pass: process.env.EMAIL_PASSWORD || "your-app-password-here",
+    user: FROM_ADDRESS,
+    pass: process.env.EMAIL_PASSWORD,
   },
   tls: {
     rejectUnauthorized: process.env.EMAIL_TLS_INSECURE !== "1",
@@ -29,8 +31,7 @@ export interface EmailOptions {
   replyTo?: string;
 }
 
-const FROM_ADDRESS = "bryan.susanto@seatping.biz";
-const SUPPORT_EMAIL = "help@seatping.biz";
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL?.trim();
 
 export interface EmailSendResult {
   ok: boolean;
@@ -47,6 +48,19 @@ export const sendEmailDetailed = async (
   options: EmailOptions,
   retries = 2,
 ): Promise<EmailSendResult> => {
+  if (!FROM_ADDRESS) {
+    return {
+      ok: false,
+      recipient: options.to,
+      messageId: null,
+      response: null,
+      accepted: [],
+      rejected: [options.to],
+      envelope: null,
+      error: "EMAIL_USER is not configured",
+    };
+  }
+
   let lastError: any = null;
   const target = options.to.trim().toLowerCase();
 
@@ -326,6 +340,10 @@ export function renderEmail(opts: {
     preheader = `<span style="display:none !important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden;">${esc(opts.preheader)}</span>`;
   }
   const tagline = opts.tagline ?? "Queues & Reservations For Hospitality";
+  let supportFooter = "";
+  if (SUPPORT_EMAIL) {
+    supportFooter = ` · <a href="mailto:${esc(SUPPORT_EMAIL)}" style="color: ${COLORS.muted}; text-decoration: underline; word-break: break-word;">${esc(SUPPORT_EMAIL)}</a>`;
+  }
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -360,8 +378,7 @@ export function renderEmail(opts: {
             <td style="padding: 22px 8px 0; text-align: center;">
               <p style="margin: 0 0 4px; font-family: ${FONT_STACK}; color: ${COLORS.muted}; font-size: 12px; line-height: 1.6;">${esc(tagline)}</p>
               <p style="margin: 0; font-family: ${FONT_STACK}; color: ${COLORS.muted}; font-size: 12px; line-height: 1.6;">
-                © ${year} SeatPing ·
-                <a href="mailto:${SUPPORT_EMAIL}" style="color: ${COLORS.muted}; text-decoration: underline; word-break: break-word;">${SUPPORT_EMAIL}</a>
+                © ${year} SeatPing${supportFooter}
               </p>
             </td>
           </tr>
@@ -415,14 +432,17 @@ export const sendPasswordChangeConfirmationEmail = async (
   if (name) {
     greeting = `Hi ${esc(name)}, `;
   }
+  let securityMessage =
+    "<strong>Didn't make this change?</strong> Contact support right away so we can help secure your account.";
+  if (SUPPORT_EMAIL) {
+    securityMessage = `<strong>Didn't make this change?</strong> Reach out to us right away at <a href="mailto:${esc(SUPPORT_EMAIL)}" style="color: ${COLORS.accent}; word-break: break-word;">${esc(SUPPORT_EMAIL)}</a> and we'll help secure your account.`;
+  }
   const html = renderEmail({
     heading: "Your Password Was Changed",
     preheader: "Your SeatPing Password Was Just Updated",
     bodyHtml: `
       ${p(`${greeting}your SeatPing password was just updated. You can now sign in with your new password.`)}
-      ${calloutBox(
-        `<strong>Didn't make this change?</strong> Reach out to us right away at <a href="mailto:${SUPPORT_EMAIL}" style="color: ${COLORS.accent}; word-break: break-word;">${SUPPORT_EMAIL}</a> and we'll help secure your account.`,
-      )}
+      ${calloutBox(securityMessage)}
     `,
   });
 
@@ -834,13 +854,6 @@ export const sendReservationNeedsReviewEmail = async (params: {
   });
 };
 
-export interface SalesInquiryData {
-  businessName: string;
-  businessEmail: string;
-  contactName: string;
-  phoneNumber: string;
-}
-
 export interface FeedbackData {
   name: string;
   email: string;
@@ -896,36 +909,16 @@ export const sendFeedbackEmail = async (data: FeedbackData): Promise<boolean> =>
   });
 };
 
-export const sendSalesInquiryEmail = async (data: SalesInquiryData): Promise<boolean> => {
-  const rows: Array<[string, string]> = [
-    ["Business Name", esc(data.businessName)],
-    [
-      "Business Email",
-      `<a href="mailto:${esc(data.businessEmail)}" style="color: ${COLORS.accent};">${esc(data.businessEmail)}</a>`,
-    ],
-    ["Contact Name", esc(data.contactName)],
-    ["Phone Number", esc(formatEnteredPhone(data.phoneNumber) ?? data.phoneNumber)],
-  ];
-
-  const html = renderEmail({
-    heading: `New Sales Inquiry From ${data.businessName}`,
-    preheader: `New Sales Inquiry From ${data.businessName}`,
-    bodyHtml: detailCard("Lead", rows),
-  });
-
-  return sendEmail({
-    to: FROM_ADDRESS,
-    subject: `New Sales Inquiry From ${data.businessName}`,
-    html,
-  });
-};
-
 export const sendFeedbackConfirmationEmail = async (
   userEmail: string,
   userName: string,
   ticketNumber: string,
   subject: string,
 ): Promise<boolean> => {
+  let followUp = `Hold onto your ticket ID (<strong>${esc(ticketNumber)}</strong>) if you need to follow up.`;
+  if (SUPPORT_EMAIL) {
+    followUp += ` You can also reach us anytime at <a href="mailto:${esc(SUPPORT_EMAIL)}" style="color: ${COLORS.accent}; word-break: break-word;">${esc(SUPPORT_EMAIL)}</a>.`;
+  }
   const html = renderEmail({
     heading: "Thanks For The Feedback",
     preheader: `We've Logged Your Feedback: ${ticketNumber}`,
@@ -936,41 +929,13 @@ export const sendFeedbackConfirmationEmail = async (
         ["Subject", esc(subject)],
         ["Status", "Open"],
       ])}
-      ${p(`Hold onto your ticket ID (<strong>${esc(ticketNumber)}</strong>) if you need to follow up. You can also reach us anytime at <a href="mailto:${SUPPORT_EMAIL}" style="color: ${COLORS.accent}; word-break: break-word;">${SUPPORT_EMAIL}</a>.`)}
+      ${p(followUp)}
     `,
   });
 
   return sendEmail({
     to: userEmail,
     subject: `Feedback Received: ${ticketNumber}`,
-    html,
-    from: FROM_ADDRESS,
-  });
-};
-
-export const sendSalesInquiryConfirmationEmail = async (
-  userEmail: string,
-  contactName: string,
-  businessName: string,
-  ticketNumber: string,
-): Promise<boolean> => {
-  const html = renderEmail({
-    heading: "We Received Your SeatPing Inquiry",
-    preheader: `We've Received Your Inquiry: ${ticketNumber}`,
-    bodyHtml: `
-      ${p(`Hi ${esc(contactName)}, thanks for reaching out about SeatPing for ${esc(businessName)}. We received your inquiry and will get back to you soon.`)}
-      ${detailCard("Your ticket", [
-        ["Ticket ID", esc(ticketNumber)],
-        ["Business", esc(businessName)],
-        ["Status", "Open"],
-      ])}
-      ${p(`Keep your ticket ID (<strong>${esc(ticketNumber)}</strong>) handy for follow-ups. Questions in the meantime? Reach us at <a href="mailto:${SUPPORT_EMAIL}" style="color: ${COLORS.accent}; word-break: break-word;">${SUPPORT_EMAIL}</a>.`)}
-    `,
-  });
-
-  return sendEmail({
-    to: userEmail,
-    subject: "We Received Your SeatPing Inquiry",
     html,
     from: FROM_ADDRESS,
   });

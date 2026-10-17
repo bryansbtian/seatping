@@ -186,6 +186,20 @@ async function selectTable(name: string) {
 }
 
 describe("live floor overview", () => {
+  it("shows a silent skeleton until live table availability arrives", async () => {
+    let finish = (_value: LiveFloorData) => {};
+    liveApi.fetchLiveFloor.mockImplementationOnce(
+      () =>
+        new Promise<LiveFloorData>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    render(<LiveFloor locationId="loc-1" />);
+    expect(screen.getByRole("status", { name: "Loading" }).textContent).toBe("");
+    finish(floor());
+    await waitFor(() => expect(screen.queryByRole("status", { name: "Loading" })).toBeNull());
+  });
+
   it("prompts the operator to build a layout when there are no tables", async () => {
     liveApi.fetchLiveFloor.mockResolvedValue(floor({ rooms: [] }));
     await renderFloor();

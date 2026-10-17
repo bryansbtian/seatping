@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import ListSkeleton from "@/components/ListSkeleton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Dialog,
@@ -612,23 +613,6 @@ const BusinessCampaigns = () => {
 
 export default BusinessCampaigns;
 
-function ListSkeleton() {
-  return (
-    <div className="p-4 md:p-6 space-y-3">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3">
-          <Skeleton className="w-9 h-9 rounded-lg" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-3 w-28" />
-          </div>
-          <Skeleton className="h-6 w-16 rounded-full" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function normalizeVar(raw: string): string {
   return raw
     .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
@@ -675,9 +659,9 @@ function CampaignsTab({
   onAction: (c: Campaign, action: "cancel" | "pause" | "resume" | "delete") => void;
 }) {
   const { t } = useLang();
-  let countLabel: string;
+  let countLabel: React.ReactNode;
   if (loading) {
-    countLabel = "Loading...";
+    countLabel = <Skeleton as="span" aria-hidden="true" className="inline-block h-4 w-24" />;
   } else {
     let campaignNoun: string;
     if (campaigns.length === 1) {
@@ -2376,7 +2360,7 @@ function ManualGuestPicker({
 
   let guestListContent: React.ReactNode;
   if (loading) {
-    guestListContent = <div className="p-3 text-sm text-slate-400">Searching...</div>;
+    guestListContent = <ListSkeleton rows={3} className="p-3 md:p-3" />;
   } else if (results.length === 0) {
     guestListContent = <div className="p-3 text-sm text-slate-400">No guests found.</div>;
   } else {

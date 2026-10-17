@@ -290,6 +290,8 @@ describe("restaurant discovery page", () => {
     );
     renderPage();
     expect(screen.getByRole("status", { name: "Loading Restaurants" })).toBeTruthy();
+    expect(screen.queryByText("Searching Restaurants...")).toBeNull();
+    expect(screen.queryByRole("heading", { name: /0 Restaurants/ })).toBeNull();
     await act(async () => reject(new Error("Offline")));
     expect(await screen.findByRole("alert")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Try Again" }));

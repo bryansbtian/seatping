@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import NotFound from "@/pages/NotFound";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -758,15 +759,15 @@ export default function QueueBusiness() {
     peopleAheadNoun = "parties";
   }
 
-  let estimatedWaitText: string;
+  let estimatedWaitContent: ReactNode = (
+    <span role="status" aria-label="Loading Estimated Wait">
+      <Skeleton as="span" aria-hidden="true" className="mx-auto block h-6 w-28" />
+    </span>
+  );
   if (eta) {
-    estimatedWaitText = eta.displayText;
-  } else if (etaLoading) {
-    estimatedWaitText = "Calculating wait time…";
-  } else if (etaError) {
-    estimatedWaitText = "Updating soon";
-  } else {
-    estimatedWaitText = "Calculating wait time…";
+    estimatedWaitContent = eta.displayText;
+  } else if (!etaLoading && etaError) {
+    estimatedWaitContent = "Updating Soon";
   }
 
   let turnContent: ReactNode;
@@ -1257,7 +1258,7 @@ export default function QueueBusiness() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="rounded-lg border p-4 text-center">
                       <div className="text-sm text-muted-foreground">Estimated Wait</div>
-                      <div className="text-lg font-semibold">{estimatedWaitText}</div>
+                      <div className="text-lg font-semibold">{estimatedWaitContent}</div>
                     </div>
                     <div className="rounded-lg border p-4 text-center">
                       <div className="text-sm text-muted-foreground">Notifications</div>

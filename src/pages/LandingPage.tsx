@@ -1,3 +1,4 @@
+import { useDemoBooking } from "@/lib/demoBooking";
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { ProductWorkflowSection } from "@/components/landing/ProductWorkflow";
 import { SECTION_PADDING, DISPLAY_HEADING, SECTION_SUBTITLE } from "@/components/landing/section";
 
 const LandingPage = () => {
+  const openDemo = useDemoBooking();
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -66,12 +68,10 @@ const LandingPage = () => {
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button
                 size="lg"
-                asChild
+                onClick={openDemo}
                 className="h-11 w-full rounded-xl px-8 text-sm shadow-sm sm:h-12 sm:w-auto"
               >
-                <Link to="/sales">
-                  <span className="font-medium">Book a Demo</span>
-                </Link>
+                <span className="font-medium">Book a Demo</span>
               </Button>
               <Button
                 size="lg"
@@ -154,10 +154,8 @@ const LandingPage = () => {
           </p>
 
           <div className="mt-6 flex justify-center sm:mt-7">
-            <Button size="lg" asChild className="rounded-xl px-8 shadow-sm">
-              <Link to="/sales">
-                <span className="font-medium">Book a Demo</span>
-              </Link>
+            <Button size="lg" onClick={openDemo} className="rounded-xl px-8 shadow-sm">
+              <span className="font-medium">Book a Demo</span>
             </Button>
           </div>
         </div>

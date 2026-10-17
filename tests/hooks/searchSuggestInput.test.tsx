@@ -28,6 +28,27 @@ function input() {
 }
 
 describe("search suggestion focus", () => {
+  it("keeps pending suggestions noninteractive and replaces them when results arrive", () => {
+    useSearchSuggestions.mockReturnValue({ suggestions: [], loading: true, error: false });
+    const view = input();
+    fireEvent.focus(screen.getByRole("combobox"));
+    const skeleton = screen.getByRole("status", { name: "Loading Restaurant Suggestions" });
+    expect(skeleton.textContent).toBe("");
+    expect(screen.queryByRole("option")).toBeNull();
+    useSearchSuggestions.mockReturnValue({
+      suggestions: [{ locationId: "location", name: "Bistro", url: null }],
+      loading: false,
+      error: false,
+    });
+    view.rerender(
+      <MemoryRouter>
+        <SearchSuggestInput value="Bistro" onChange={vi.fn()} />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByRole("option").textContent).toContain("Bistro");
+  });
+
   it("keeps existing text idle until the user focuses the input", () => {
     input();
     expect(useSearchSuggestions).toHaveBeenLastCalledWith("Bistro", false);

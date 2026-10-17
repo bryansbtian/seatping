@@ -39,6 +39,7 @@ jobs:
       CRON_SECRET: ci-placeholder-cron-secret
       ADMIN_USERNAME: ci-admin
       ADMIN_PASSWORD_HASH: $2b$12$ciplaceholderciplaceholderciplaceholderciplaceholderci
+      EMAIL_USER: ci@test.invalid
       EMAIL_PASSWORD: ci-placeholder
       CLIENT_ORIGIN: http://localhost:8080
       FRONTEND_URL: http://localhost:8080

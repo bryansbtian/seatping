@@ -2,6 +2,8 @@ import { useState, useEffect, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Skeleton } from "./ui/skeleton";
+import { useLang } from "@/lib/i18n";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Checkbox } from "./ui/checkbox";
@@ -97,6 +99,7 @@ export function CustomAudienceBuilder({
   suggestedTags?: string[];
 }) {
   const { toast } = useToast();
+  const { t } = useLang();
 
   const [name, setName] = useState(existing?.name || "");
   const [description, setDescription] = useState(existing?.description || "");
@@ -551,8 +554,12 @@ export function CustomAudienceBuilder({
                   }}
                 />
                 {isSearchingGuests && (
-                  <div className="absolute right-3 top-2.5 text-xs text-slate-400">
-                    Searching...
+                  <div
+                    role="status"
+                    aria-label={t("common.loading")}
+                    className="absolute right-3 top-2.5"
+                  >
+                    <Skeleton aria-hidden="true" className="h-3 w-12" />
                   </div>
                 )}
                 {showGuestDropdown && guestSearchResults.length > 0 && (

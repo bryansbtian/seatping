@@ -327,6 +327,9 @@ describe("PostgreSQL restaurant pagination", () => {
 
 describe("database opening-hours filtering", () => {
   const now = new Date("2026-06-15T12:00:00Z");
+  const defaultWeekday = new Intl.DateTimeFormat("en-US", { weekday: "long" })
+    .format(now)
+    .toLowerCase();
   async function withHours(openingHours: Prisma.InputJsonValue | null) {
     const business = await seedBusiness();
     await seedLocation(business.id, business.username, { restaurantProfile: { openingHours } });
@@ -367,7 +370,7 @@ describe("database opening-hours filtering", () => {
       { timezone: "America/New_York", monday: { enabled: true, open: "07:00", close: "09:00" } },
       true,
     ],
-    [{ timezone: 7, monday: { enabled: true, open: "00:00", close: "00:00" } }, true],
+    [{ timezone: 7, [defaultWeekday]: { enabled: true, open: "00:00", close: "00:00" } }, true],
     [{ timezone: "utc", monday: { enabled: true, open: "00:00", close: "00:00" } }, true],
     [{ timezone: "Asia/Calcutta", monday: { enabled: true, open: "17:00", close: "18:00" } }, true],
     [{ timezone: "US/Eastern", monday: { enabled: true, open: "07:00", close: "09:00" } }, true],

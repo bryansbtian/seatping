@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import BusinessPerformance from "../../src/pages/BusinessPerformance.js";
 import type { PerformanceMetrics } from "../../src/lib/performanceApi.js";
@@ -67,6 +67,31 @@ beforeEach(() => {
 });
 
 describe("the performance page", () => {
+  it("shows a silent skeleton until performance data is ready", async () => {
+    let finish = () => {};
+    perfApi.fetchPerformance.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = () =>
+            resolve({
+              range: {
+                preset: "7d",
+                from: "2026-08-22T00:00:00.000Z",
+                to: "2026-08-25T00:00:00.000Z",
+              },
+              metrics: metrics(),
+            });
+        }),
+    );
+    render(<BusinessPerformance />);
+    const skeleton = screen.getByRole("status", { name: "Loading performance..." });
+    expect(skeleton.textContent).toBe("");
+    expect(screen.queryByText("Loading performance...")).toBeNull();
+    await act(async () => finish());
+    expect(await screen.findByTestId("perf-covers")).toBeTruthy();
+    expect(screen.queryByRole("status", { name: "Loading performance..." })).toBeNull();
+  });
+
   it("leads with the covers seated for the range", async () => {
     render(<BusinessPerformance />);
 
