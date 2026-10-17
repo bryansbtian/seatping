@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Restaurant02Icon, Loading02Icon } from "@hugeicons/core-free-icons";
+import { Restaurant02Icon } from "@hugeicons/core-free-icons";
+import RestaurantCardSkeleton from "@/components/restaurant-discovery/RestaurantCardSkeleton";
 import { useFeaturedRestaurants } from "@/hooks/useFeaturedRestaurants";
 import { getRestaurantImageProps } from "@/lib/restaurantImages";
 import { Button } from "@/components/ui/button";
@@ -52,9 +53,17 @@ const CustomerLanding = () => {
   let featuredContent;
   if (loadingFeatured) {
     featuredContent = (
-      <div className="flex items-center gap-2 py-12 text-slate-500">
-        <HugeiconsIcon icon={Loading02Icon} className="h-5 w-5 animate-spin" /> Loading featured
-        restaurants...
+      <div role="status" aria-label="Loading Featured Restaurants" className="overflow-hidden">
+        <div aria-hidden="true" className="flex -ml-4">
+          {Array.from({ length: 3 }, (_, index) => (
+            <div
+              key={index}
+              className="min-w-0 shrink-0 pl-4 basis-[88%] sm:basis-[70%] lg:basis-1/2 xl:basis-1/3"
+            >
+              <RestaurantCardSkeleton />
+            </div>
+          ))}
+        </div>
       </div>
     );
   } else if (featured.length === 0) {

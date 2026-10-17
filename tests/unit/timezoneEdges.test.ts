@@ -79,6 +79,13 @@ describe("formatDateLabelInTimezone", () => {
 });
 
 describe("TIMEZONE_OPTIONS", () => {
+  it("includes UTC with an offset label even when Intl omits it", () => {
+    expect(TIMEZONE_OPTIONS.find((option) => option.value === "UTC")).toEqual({
+      value: "UTC",
+      label: "(UTC+00:00) UTC",
+    });
+  });
+
   it("labels every zone with its UTC offset", () => {
     for (const option of TIMEZONE_OPTIONS.slice(0, 20)) {
       expect(option.label).toMatch(/^\(UTC[+-]\d{2}:\d{2}\) /);

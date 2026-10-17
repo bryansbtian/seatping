@@ -30,6 +30,101 @@ function searchResponse(restaurants: SearchResult[], requestUrl: string) {
   };
 }
 
+test("featured restaurant skeletons stay within the viewport and resolve to cards", async ({
+  page,
+}, testInfo) => {
+  let release = () => {};
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/featured-restaurants", async (route) => {
+    await pending;
+    await route.fulfill({ json: { featured: [{ ...restaurant(), id: "featured-1" }] } });
+  });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  try {
+    await page.goto("/");
+    const skeleton = page.getByRole("status", { name: "Loading Featured Restaurants" });
+    await expect(skeleton).toBeVisible();
+    await expect(skeleton).toHaveText("");
+    await skeleton.scrollIntoViewIfNeeded();
+    expect(
+      await skeleton.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.left >= 0 && bounds.right <= window.innerWidth;
+      }),
+    ).toBe(true);
+    expect(
+      await skeleton
+        .locator(".animate-pulse")
+        .evaluateAll((elements) =>
+          elements.every((element) => getComputedStyle(element).animationName === "none"),
+        ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath("featured-loading.png"),
+      animations: "disabled",
+    });
+    release();
+    await expect(page.getByRole("link", { name: "View Bistro Downtown" })).toBeVisible();
+    await expect(skeleton).toHaveCount(0);
+  } finally {
+    release();
+  }
+});
+
+test("search and restaurant details replace skeletons when their requests complete", async ({
+  page,
+}, testInfo) => {
+  let releaseSearch = () => {};
+  const searchPending = new Promise<void>((resolve) => {
+    releaseSearch = resolve;
+  });
+  await page.route("**/api/search/restaurants**", async (route) => {
+    await searchPending;
+    await route.fulfill({ json: searchResponse(SEARCH_RESTAURANTS, route.request().url()) });
+  });
+  let releaseProfile = () => {};
+  const profilePending = new Promise<void>((resolve) => {
+    releaseProfile = resolve;
+  });
+  await mockRestaurantVisit(page);
+  await page.route("**/api/restaurants/bistro/loc-1?version=2", async (route) => {
+    await profilePending;
+    await route.fallback();
+  });
+  try {
+    await page.goto("/search/Test%20City");
+    const searchSkeleton = page.getByRole("status", { name: "Loading Restaurants" });
+    await expect(searchSkeleton).toBeVisible();
+    await expect(page.getByText("Searching Restaurants...")).toHaveCount(0);
+    await page.screenshot({
+      path: testInfo.outputPath("search-loading.png"),
+      animations: "disabled",
+    });
+    releaseSearch();
+    await expect(page.getByRole("article")).toHaveCount(3);
+    await expect(searchSkeleton).toHaveCount(0);
+    await page.getByRole("link", { name: "View Bistro Downtown" }).click();
+    const profileSkeleton = page.getByRole("status", { name: "Loading Restaurant", exact: true });
+    await expect(profileSkeleton).toBeVisible();
+    await expect(profileSkeleton).toHaveText("");
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath("restaurant-loading.png"),
+      animations: "disabled",
+    });
+    releaseProfile();
+    await expect(page.getByRole("heading", { name: "Bistro Downtown", level: 1 })).toBeVisible();
+    await expect(profileSkeleton).toHaveCount(0);
+  } finally {
+    releaseSearch();
+    releaseProfile();
+  }
+});
+
 test.beforeEach(async ({ page }) => {
   await page.route("**/auth/session", (route) =>
     route.fulfill({ json: { customer: null, business: null } }),

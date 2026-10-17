@@ -1,14 +1,10 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  Restaurant02Icon,
-  Loading02Icon,
-  Location01Icon,
-  Search01Icon,
-} from "@hugeicons/core-free-icons";
+import { Restaurant02Icon, Location01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 
 import { Input } from "@/components/ui/input";
+import ListSkeleton from "@/components/ListSkeleton";
 import { cn } from "@/lib/utils";
 import { useSearchSuggestions, type Suggestion } from "@/hooks/useSearchSuggestions";
 import { getRestaurantImageProps } from "@/lib/restaurantImages";
@@ -116,10 +112,7 @@ export function SearchSuggestInput({
   if (showDropdown) {
     if (loading && suggestions.length === 0) {
       dropdownContent = (
-        <div className="flex items-center gap-2 px-4 py-3 text-sm text-slate-500 dark:text-ink-subtle">
-          <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" />
-          Searching…
-        </div>
+        <ListSkeleton rows={3} label="Loading Restaurant Suggestions" className="p-3 md:p-3" />
       );
     } else if (error) {
       dropdownContent = (

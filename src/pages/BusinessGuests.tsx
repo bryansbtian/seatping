@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import ListSkeleton from "@/components/ListSkeleton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Sheet,
@@ -406,9 +407,9 @@ const BusinessGuests = () => {
     guestsHeading = t("guests.heading");
   }
 
-  let guestsCountText: string;
+  let guestsCountText: React.ReactNode;
   if (loading) {
-    guestsCountText = t("guests.loading");
+    guestsCountText = <Skeleton as="span" aria-hidden="true" className="inline-block h-4 w-24" />;
   } else if (guests.length === 1) {
     guestsCountText = t("guests.countOne", { n: guests.length });
   } else {
@@ -869,20 +870,8 @@ function GuestsTable({
 }
 
 function LoadingState() {
-  return (
-    <div className="p-4 md:p-6 space-y-3">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3">
-          <Skeleton className="w-9 h-9 rounded-full" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-3 w-24" />
-          </div>
-          <Skeleton className="h-6 w-16 rounded-full" />
-        </div>
-      ))}
-    </div>
-  );
+  const { t } = useLang();
+  return <ListSkeleton rows={5} label={t("guests.loading")} />;
 }
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {

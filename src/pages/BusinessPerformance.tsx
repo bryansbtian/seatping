@@ -12,6 +12,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ChartAnalysisIcon } from "@hugeicons/core-free-icons";
 import BusinessEmptyState from "@/components/BusinessEmptyState";
+import RouteLoading from "@/components/RouteLoading";
 import { DateField } from "@/components/DateField";
 import { localDateStr } from "@/lib/localDate";
 import { useBusinessSession } from "@/lib/businessSession";
@@ -232,7 +233,7 @@ const BusinessPerformance = () => {
   if (!locationId) {
     body = <p className="text-sm text-slate-600">{t("perf.noLocation")}</p>;
   } else if (loading && !data) {
-    body = <p className="text-sm text-slate-500">{t("perf.loading")}</p>;
+    body = <RouteLoading label={t("perf.loading")} className="p-0 sm:px-0" />;
   } else if (error) {
     body = (
       <Card className="border border-rose-200 bg-rose-50 shadow-sm">

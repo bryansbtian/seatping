@@ -82,7 +82,6 @@ const surfaces = [
   { path: "/profile", surface: "auth", gradient: true },
   { path: "/help", surface: "auth", gradient: true },
   { path: "/feedback", surface: "auth", gradient: true },
-  { path: "/sales", surface: "sales", gradient: true },
   { path: "/queue/example/location", surface: "queue", gradient: true },
   { path: "/reservations/manage/example", surface: "muted", gradient: false },
   { path: "/missing-page", surface: "not-found", gradient: false },

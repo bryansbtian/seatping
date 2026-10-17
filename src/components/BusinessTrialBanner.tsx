@@ -1,3 +1,4 @@
+import { useDemoBooking } from "@/lib/demoBooking";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLang } from "@/lib/i18n";
@@ -10,6 +11,7 @@ type MeLike = {
 
 export default function BusinessTrialBanner({ me }: { me: MeLike }) {
   const { t } = useLang();
+  const openDemo = useDemoBooking();
   const [trialTimeLeft, setTrialTimeLeft] = useState<{
     days: number;
     hours: number;
@@ -81,11 +83,7 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
                 <p className="text-sm md:text-base opacity-90">{t("banner.trialExpired.body")}</p>
               </div>
               <div className="flex justify-end">
-                <Button
-                  variant="inverseOutline"
-                  className="border-2"
-                  onClick={() => (window.location.href = "/sales")}
-                >
+                <Button variant="inverseOutline" className="border-2" onClick={openDemo}>
                   {t("common.contactSeatPing")}
                 </Button>
               </div>
@@ -115,11 +113,7 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
               )}
             </div>
             <div className="flex justify-end">
-              <Button
-                variant="inverseOutline"
-                className="border-2"
-                onClick={() => (window.location.href = "/sales")}
-              >
+              <Button variant="inverseOutline" className="border-2" onClick={openDemo}>
                 {t("common.contactSeatPing")}
               </Button>
             </div>
@@ -145,7 +139,7 @@ export default function BusinessTrialBanner({ me }: { me: MeLike }) {
                 variant="inverseOutline"
                 size="sm"
                 className="text-xs md:text-sm"
-                onClick={() => (window.location.href = "/sales")}
+                onClick={openDemo}
               >
                 {t("common.contactSeatPing")}
               </Button>

@@ -1,3 +1,4 @@
+import { useDemoBooking } from "@/lib/demoBooking";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { formatEnteredPhone } from "@shared/phone";
 
 const BusinessSettings = () => {
   const { t } = useLang();
+  const openDemo = useDemoBooking();
   const { me, setMe } = useBusinessSession();
 
   const locations = me?.locations || [];
@@ -43,10 +45,7 @@ const BusinessSettings = () => {
                       </p>
                     </div>
                     <div className="flex justify-end">
-                      <Button
-                        variant="inverseOutline"
-                        onClick={() => (window.location.href = "/sales")}
-                      >
+                      <Button variant="inverseOutline" onClick={openDemo}>
                         {t("common.contactSeatPing")}
                       </Button>
                     </div>

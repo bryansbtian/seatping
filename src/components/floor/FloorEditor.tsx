@@ -8,6 +8,7 @@ import {
   SquareDashedIcon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { Input } from "@/components/ui/input";
@@ -559,9 +560,13 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
 
   if (loading) {
     return (
-      <Card className="border border-slate-200 bg-white shadow-sm">
+      <Card
+        role="status"
+        aria-label={t("common.loading")}
+        className="border border-slate-200 bg-white shadow-sm"
+      >
         <CardContent className="p-6">
-          <div className="h-64 animate-pulse rounded-xl bg-slate-100" />
+          <Skeleton aria-hidden="true" className="h-64 rounded-xl" />
         </CardContent>
       </Card>
     );

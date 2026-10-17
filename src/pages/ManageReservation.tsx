@@ -6,6 +6,8 @@ import NotFound from "@/pages/NotFound";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import TimeSlotsSkeleton from "@/components/TimeSlotsSkeleton";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -232,11 +234,7 @@ export default function ManageReservation() {
       </p>
     );
   } else if (loadingSlots) {
-    timePickerContent = (
-      <div className="flex items-center gap-2 py-1 text-sm text-slate-500">
-        <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" /> Checking…
-      </div>
-    );
+    timePickerContent = <TimeSlotsSkeleton />;
   } else {
     timePickerContent = (
       <div className="grid grid-cols-4 gap-1.5">
@@ -391,8 +389,23 @@ export default function ManageReservation() {
   let pageContent: React.ReactNode;
   if (loading) {
     pageContent = (
-      <div className="flex items-center justify-center py-24 text-slate-500">
-        <HugeiconsIcon icon={Loading02Icon} className="h-6 w-6 animate-spin" />
+      <div role="status" aria-label="Loading Reservation">
+        <div aria-hidden="true" className="space-y-6">
+          <div className="space-y-3">
+            <Skeleton className="mx-auto h-7 w-2/3" />
+            <Skeleton className="mx-auto h-4 w-1/2" />
+          </div>
+          <div className="space-y-5 rounded-xl border border-border bg-card p-6 lg:p-8">
+            <div className="flex justify-between gap-3">
+              <Skeleton className="h-badge w-20" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            {Array.from({ length: 3 }, (_, index) => (
+              <Skeleton key={index} className="h-14 w-full rounded-control" />
+            ))}
+            <Skeleton className="h-10 w-full rounded-control" />
+          </div>
+        </div>
       </div>
     );
   } else {

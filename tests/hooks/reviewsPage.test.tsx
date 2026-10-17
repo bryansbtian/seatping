@@ -67,6 +67,15 @@ beforeEach(() => {
 });
 
 describe("the reviews page", () => {
+  it("shows review skeletons while fetching without a visible loading message", async () => {
+    apiMock.mockImplementationOnce(() => new Promise(() => {}));
+    render(<BusinessReviews />);
+    const skeleton = await screen.findByRole("status", { name: "Loading reviews..." });
+    expect(skeleton.textContent).toBe("");
+    expect(screen.queryByText("Loading reviews...")).toBeNull();
+    expect(screen.queryByTestId("reviews-empty")).toBeNull();
+  });
+
   it("loads reviews for the location selected in the sidebar", async () => {
     render(<BusinessReviews />);
 

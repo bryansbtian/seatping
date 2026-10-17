@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { SLOT_BUTTON_BASE_CLASS, SLOT_BUTTON_COMPACT_CLASS } from "@/lib/slotButton";
 import { analytics } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
+import TimeSlotsSkeleton from "@/components/TimeSlotsSkeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -226,12 +227,7 @@ export default function ReservationBooking({
         </p>
       );
     } else if (loadingSlots) {
-      timeContent = (
-        <div className="flex items-center gap-2 p-3 text-sm text-slate-500">
-          <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" /> Checking
-          availability…
-        </div>
-      );
+      timeContent = <TimeSlotsSkeleton className="grid-cols-3 gap-2" />;
     } else if (slots.length === 0) {
       timeContent = <AvailabilityEmptyState notice={availabilityNotice} />;
     } else {
@@ -560,11 +556,7 @@ function BookingModal({
       </div>
     );
   } else if (loadingSlots) {
-    modalTimeContent = (
-      <div className="flex items-center gap-2 py-1 max-[320px]:text-xs text-sm text-slate-500">
-        <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" /> Checking…
-      </div>
-    );
+    modalTimeContent = <TimeSlotsSkeleton />;
   } else if (slots.length === 0) {
     modalTimeContent = <AvailabilityEmptyState notice={availabilityNotice} />;
   } else {

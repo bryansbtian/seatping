@@ -8,6 +8,7 @@ process.env.DATABASE_URL =
   process.env.DATABASE_URL ?? "mongodb://127.0.0.1:1/unit-tests-must-not-query";
 process.env.JWT_SECRET = process.env.JWT_SECRET ?? "unit-test-jwt-secret";
 process.env.NODE_ENV = "test";
+process.env.EMAIL_USER = "sender@test.invalid";
 
 beforeEach(() => {
   resetExternalMocks();

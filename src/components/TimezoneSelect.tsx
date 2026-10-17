@@ -17,14 +17,19 @@ export function TimezoneSelect({
   value,
   onChange,
   ariaLabel = "Timezone",
+  searchPlaceholder = "Search timezone or city...",
+  emptyText = "No timezone found.",
   className,
 }: {
   value: string;
   onChange: (timezone: string) => void;
   ariaLabel?: string;
+  searchPlaceholder?: string;
+  emptyText?: string;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
   const selected = TIMEZONE_OPTIONS.find((t) => t.value === value);
   const cleanupRef = useRef<(() => void) | null>(null);
 
@@ -77,6 +82,7 @@ export function TimezoneSelect({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
+          ref={trigger}
           type="button"
           role="combobox"
           aria-expanded={open}
@@ -98,6 +104,14 @@ export function TimezoneSelect({
       >
         <Command
           className="overflow-hidden"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              event.stopPropagation();
+              setOpen(false);
+              trigger.current?.focus();
+            }
+          }}
           filter={(value, search) => {
             if (value.toLowerCase().includes(search.toLowerCase().trim())) {
               return 1;
@@ -105,13 +119,13 @@ export function TimezoneSelect({
             return 0;
           }}
         >
-          <CommandInput placeholder="Search timezone or city..." />
+          <CommandInput placeholder={searchPlaceholder} aria-label={searchPlaceholder} />
           <CommandList
             ref={attachScrollHandlers}
             className="pointer-events-auto max-h-[300px] overflow-y-auto overscroll-contain [touch-action:pan-y]"
             style={{ WebkitOverflowScrolling: "touch" }}
           >
-            <CommandEmpty>No timezone found.</CommandEmpty>
+            <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
               {TIMEZONE_OPTIONS.map((t) => {
                 let checkOpacityClass: string;

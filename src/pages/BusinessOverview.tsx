@@ -1,3 +1,4 @@
+import { useDemoBooking } from "@/lib/demoBooking";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -43,6 +44,7 @@ const TOOLTIP_CONTENT_STYLE = {
 
 const BusinessOverview = () => {
   const { t, lang } = useLang();
+  const openDemo = useDemoBooking();
 
   useEffect(() => {
     analytics.businessDashboardOpened();
@@ -637,11 +639,7 @@ const BusinessOverview = () => {
                 <p className="text-sm md:text-base opacity-90">{t("banner.trialExpired.body")}</p>
               </div>
               <div className="flex justify-end">
-                <Button
-                  variant="inverseOutline"
-                  className="border-2"
-                  onClick={() => (window.location.href = "/sales")}
-                >
+                <Button variant="inverseOutline" className="border-2" onClick={openDemo}>
                   {t("common.contactSeatPing")}
                 </Button>
               </div>
@@ -672,11 +670,7 @@ const BusinessOverview = () => {
                 )}
               </div>
               <div className="flex justify-end">
-                <Button
-                  variant="inverseOutline"
-                  className="border-2"
-                  onClick={() => (window.location.href = "/sales")}
-                >
+                <Button variant="inverseOutline" className="border-2" onClick={openDemo}>
                   {t("common.contactSeatPing")}
                 </Button>
               </div>
@@ -835,10 +829,7 @@ const BusinessOverview = () => {
                     <p className="text-sm md:text-base opacity-90">{t("banner.noCredits.body")}</p>
                   </div>
                   <div className="flex justify-end">
-                    <Button
-                      variant="inverseOutline"
-                      onClick={() => (window.location.href = "/sales")}
-                    >
+                    <Button variant="inverseOutline" onClick={openDemo}>
                       {t("common.contactSeatPing")}
                     </Button>
                   </div>

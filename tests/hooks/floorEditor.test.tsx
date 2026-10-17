@@ -97,6 +97,21 @@ afterEach(() => {
 });
 
 describe("floor plan bootstrap", () => {
+  it("shows a silent skeleton until the floor plan arrives", async () => {
+    let finish = (_value: Room[]) => {};
+    floorApi.fetchRooms.mockImplementationOnce(
+      () =>
+        new Promise<Room[]>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    render(<FloorEditor locationId="loc-1" />);
+    expect(screen.getByRole("status", { name: "Loading" }).textContent).toBe("");
+    finish(rooms(plan([table()])));
+    expect(await screen.findByTestId("table-node-Table 1")).toBeTruthy();
+    expect(screen.queryByRole("status", { name: "Loading" })).toBeNull();
+  });
+
   it("offers to create a plan when the location has none", async () => {
     floorApi.fetchRooms.mockResolvedValue([]);
     floorApi.createRoom.mockResolvedValue(plan());

@@ -5,6 +5,10 @@
   "devCommand": "npm run dev",
   "rewrites": [
     {
+      "source": "/api/demo/:path*",
+      "destination": "/api/server"
+    },
+    {
       "source": "/auth/:path*",
       "destination": "/api/server"
     },
@@ -14,10 +18,6 @@
     },
     {
       "source": "/admin/:path*",
-      "destination": "/api/server"
-    },
-    {
-      "source": "/api/sales/:path*",
       "destination": "/api/server"
     },
     {

@@ -131,6 +131,20 @@ beforeEach(() => {
 });
 
 describe("public restaurant review and image rendering", () => {
+  it("replaces the restaurant skeleton with booking controls after the profile loads", () => {
+    const profile = state.profile;
+    state.profile = undefined;
+    const result = render(view());
+    const skeleton = screen.getByRole("status", { name: "Loading Restaurant" });
+    expect(skeleton.textContent).toBe("");
+    expect(screen.queryByText("Booking Controls")).toBeNull();
+    state.profile = profile;
+    result.rerender(view());
+    expect(screen.queryByRole("status", { name: "Loading Restaurant" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Sample", level: 1 })).toBeTruthy();
+    expect(screen.getAllByText("Booking Controls").length).toBeGreaterThan(0);
+  });
+
   it("discards and aborts an earlier customer's saved-state lookup after an account switch", async () => {
     state.customer = true;
     let resolveFirst = (_value: { saved: boolean }) => {};

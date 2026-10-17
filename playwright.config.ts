@@ -11,6 +11,10 @@ const FRONTEND_PORT = Number(process.env.E2E_FRONTEND_PORT ?? 8081);
 const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${FRONTEND_PORT}`;
 
 const EXTERNAL_PROVIDER_STUBS = {
+  GOOGLE_CALENDAR_CLIENT_ID: "",
+  GOOGLE_CALENDAR_CLIENT_SECRET: "",
+  GOOGLE_CALENDAR_REFRESH_TOKEN: "",
+  GOOGLE_CALENDAR_ID: "",
   EMAIL_HOST: "127.0.0.1",
   EMAIL_USER: "e2e@test.invalid",
   EMAIL_PASSWORD: "e2e-no-delivery",

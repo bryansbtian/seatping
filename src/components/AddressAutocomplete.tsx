@@ -43,20 +43,15 @@ export function AddressAutocomplete({
       setWarning(NO_KEY_WARNING);
       return;
     }
-    let listener: any;
+    let listener: { remove: () => void } | undefined;
     const unsubAuth = onMapsAuthFailure(() => setWarning(LOAD_FAIL_WARNING));
     loadGoogleMaps()
       .then((google) => {
         if (!inputRef.current) {
           return;
         }
-        const jakarta = new google.maps.LatLngBounds(
-          new google.maps.LatLng(-6.4, 106.6),
-          new google.maps.LatLng(-6.0, 107.0),
-        );
         const ac = new google.maps.places.Autocomplete(inputRef.current, {
-          componentRestrictions: { country: "id" },
-          bounds: jakarta,
+          strictBounds: false,
           fields: [
             "formatted_address",
             "geometry",

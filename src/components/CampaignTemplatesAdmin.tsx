@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import ListSkeleton from "@/components/ListSkeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -115,7 +116,7 @@ const CampaignTemplatesAdmin = () => {
 
   let templatesContent: ReactNode;
   if (loading) {
-    templatesContent = <div className="py-10 text-center text-sm text-slate-400">Loading...</div>;
+    templatesContent = <ListSkeleton label="Loading Templates" />;
   } else if (templates.length === 0) {
     templatesContent = (
       <div className="py-12 text-center">

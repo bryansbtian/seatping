@@ -15,6 +15,7 @@ import Footer from "@/components/Footer";
 import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import RestaurantCardSkeleton from "@/components/restaurant-discovery/RestaurantCardSkeleton";
 import { ALL_DAY_TIME_OPTIONS } from "@/components/timeOptions";
 import RestaurantSearchBar from "@/components/restaurant-discovery/RestaurantSearchBar";
 import RestaurantCard from "@/components/restaurant-discovery/RestaurantCard";
@@ -158,10 +159,14 @@ export default function SearchResults() {
   } else if (activeQuery) {
     summary += ` For “${activeQuery}”`;
   }
-  if (loading) {
-    summary = "Searching Restaurants...";
-  } else if (error) {
+  if (error) {
     summary = "Restaurants";
+  }
+  let summaryContent: ReactNode = summary;
+  if (loading) {
+    summaryContent = (
+      <Skeleton as="span" aria-hidden="true" className="block h-5 w-56 max-w-full" />
+    );
   }
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -300,7 +305,7 @@ export default function SearchResults() {
             aria-atomic="true"
             className="min-w-0 break-words text-title font-semibold text-foreground"
           >
-            {summary}
+            {summaryContent}
           </h2>
           <div className="flex max-w-full items-center gap-2">
             <span className="hidden shrink-0 text-caption text-ink-subtle md:inline">Sort By</span>
@@ -373,23 +378,7 @@ function ResultsSkeleton() {
       <span className="sr-only">Loading Restaurants</span>
       <div className={GRID_CLASS}>
         {Array.from({ length: 6 }, (_, index) => (
-          <div
-            key={index}
-            aria-hidden="true"
-            className="overflow-hidden rounded-xl border border-border bg-card"
-          >
-            <Skeleton className="aspect-[4/3] rounded-none" />
-            <div className="space-y-3 p-4">
-              <Skeleton className="h-5 w-2/3" />
-              <Skeleton className="h-4 w-1/3" />
-              <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="h-4 w-3/4" />
-              <div className="flex gap-2 pt-2">
-                <Skeleton className="h-10 flex-1" />
-                <Skeleton className="h-10 flex-1" />
-              </div>
-            </div>
-          </div>
+          <RestaurantCardSkeleton key={index} />
         ))}
       </div>
     </div>

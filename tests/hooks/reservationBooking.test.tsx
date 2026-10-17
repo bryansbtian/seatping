@@ -1,5 +1,5 @@
 import { queryClient } from "../../src/lib/queryClient.js";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -62,6 +62,32 @@ function renderBooking(overrides: Partial<ComponentProps<typeof ReservationBooki
 }
 
 describe("restaurant booking actions", () => {
+  it("replaces noninteractive time placeholders with available booking slots", async () => {
+    let finish = () => {};
+    apiMock.mockImplementation(async (path: string) => {
+      if (path.includes("/availability?")) {
+        return new Promise((resolve) => {
+          finish = () =>
+            resolve({
+              slots: [{ time: "18:00", label: "6:00 PM", available: true, remaining: 2 }],
+              availability: { status: "available" },
+            });
+        });
+      }
+      if (path.endsWith("/settings")) {
+        return { settings };
+      }
+      return { user: null };
+    });
+    renderBooking();
+    const skeleton = await screen.findByRole("status", { name: "Loading Available Times" });
+    expect(skeleton.textContent).toBe("");
+    expect(skeleton.querySelector("button")).toBeNull();
+    await act(async () => finish());
+    expect(await screen.findByRole("button", { name: "6:00 PM", exact: true })).toBeTruthy();
+    expect(screen.queryByRole("status", { name: "Loading Available Times" })).toBeNull();
+  });
+
   it("reuses fresh availability when opening the booking dialog", async () => {
     renderBooking();
     const book = screen.getByRole("button", { name: "Book Table", exact: true });

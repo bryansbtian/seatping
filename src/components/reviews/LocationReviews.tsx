@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import ListSkeleton from "@/components/ListSkeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -279,11 +280,8 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
 
   if (loading) {
     return (
-      <div
-        className="flex items-center justify-center gap-2 py-12 text-muted-foreground"
-        data-testid="reviews-loading"
-      >
-        <HugeiconsIcon icon={Loading02Icon} className="h-5 w-5 animate-spin" /> {t("rev.loading")}
+      <div data-testid="reviews-loading">
+        <ListSkeleton label={t("rev.loading")} />
       </div>
     );
   }

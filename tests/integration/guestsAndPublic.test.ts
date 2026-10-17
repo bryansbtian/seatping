@@ -300,21 +300,4 @@ describe("public intake forms", () => {
 
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
-
-  it("accepts a sales inquiry", async () => {
-    const res = await (await api()).post("/api/sales/inquiry").send({
-      name: "Ada",
-      email: `sales-${uniqueSuffix()}@test.invalid`,
-      businessName: "Test Bistro",
-      message: "Interested in SeatPing.",
-    });
-
-    expect(res.status).toBeLessThan(500);
-  });
-
-  it("rejects an incomplete sales inquiry", async () => {
-    const res = await (await api()).post("/api/sales/inquiry").send({ name: "Ada" });
-
-    expect(res.status).toBeGreaterThanOrEqual(400);
-  });
 });

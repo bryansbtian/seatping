@@ -24,8 +24,13 @@ process.env.DATABASE_URL = testUrl;
 
 process.env.VERCEL = "1";
 process.env.NODE_ENV = "test";
+process.env.EMAIL_USER = "sender@test.invalid";
 
 const NEUTRALISED_PROVIDER_VARS = [
+  "GOOGLE_CALENDAR_CLIENT_ID",
+  "GOOGLE_CALENDAR_CLIENT_SECRET",
+  "GOOGLE_CALENDAR_REFRESH_TOKEN",
+  "GOOGLE_CALENDAR_ID",
   "UPSTASH_REDIS_REST_URL",
   "UPSTASH_REDIS_REST_TOKEN",
   "QSTASH_TOKEN",

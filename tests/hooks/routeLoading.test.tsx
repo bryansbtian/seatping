@@ -75,7 +75,11 @@ describe("lazy routes", () => {
         <Page />
       </Suspense>,
     );
-    expect(screen.getByRole("status").textContent).toBe("Loading Page...");
+    const loading = screen.getByRole("status", { name: "Loading Page" });
+    expect(loading.textContent).toBe("");
+    expect(loading.querySelector("[aria-hidden='true']")).toBeTruthy();
+    expect(loading.querySelector(".motion-reduce\\:animate-none")).toBeTruthy();
+    expect(loading.querySelector("button, a, input")).toBeNull();
     await act(async () => {
       finish({ default: () => <h1>Loaded Route</h1> });
     });
