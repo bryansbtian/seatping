@@ -582,7 +582,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
             body={t("floor.empty.body")}
           >
             <Button disabled={saving} onClick={handleCreateRoom}>
-              <HugeiconsIcon icon={Add01Icon} className="mr-2 h-4 w-4" />
+              <HugeiconsIcon icon={Add01Icon} className="h-4 w-4" />
               {t("floor.createPlan")}
             </Button>
           </BusinessEmptyState>
@@ -643,34 +643,35 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
             <div className="flex flex-wrap items-center gap-2">
               {rooms.map((room) => {
                 const active = room.id === activeRoom.id;
+                let roomVariant: "default" | "outline" = "outline";
+                if (active) {
+                  roomVariant = "default";
+                }
                 const seats = room.tables.reduce((sum, table) => sum + table.capacity, 0);
                 return (
-                  <button
+                  <Button
                     key={room.id}
                     type="button"
                     aria-pressed={active}
                     onClick={() => selectRoom(room.id)}
-                    className={cn(
-                      "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors md:text-sm",
-                      active && "border-indigo-600 bg-indigo-600 text-white",
-                      !active && "border-slate-200 text-slate-600 hover:bg-slate-50",
-                    )}
+                    variant={roomVariant}
+                    size="sm"
                   >
                     <span className="max-w-[10rem] truncate">{room.name}</span>
-                    <span className={cn(active && "text-indigo-100", !active && "text-slate-400")}>
+                    <span className={cn(active && "text-white/80", !active && "text-slate-400")}>
                       {seats}
                     </span>
-                  </button>
+                  </Button>
                 );
               })}
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs md:h-9"
+
                 disabled={saving}
                 onClick={handleCreateRoom}
               >
-                <HugeiconsIcon icon={Add01Icon} className="mr-1.5 h-4 w-4" />
+                <HugeiconsIcon icon={Add01Icon} className="h-4 w-4" />
                 {t("floor.newRoom")}
               </Button>
             </div>
@@ -745,7 +746,7 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
               <div className="flex w-full flex-wrap gap-2 xl:contents">
                 <Button
                   size="sm"
-                  className="h-9 flex-1 whitespace-nowrap px-2 text-xs max-[425px]:w-full max-[425px]:basis-full md:h-10 md:text-sm xl:flex-none xl:px-3"
+                  className="flex-1 whitespace-nowrap px-2 max-[425px]:w-full max-[425px]:basis-full xl:flex-none xl:px-3"
                   disabled={saving}
                   onClick={handleSaveRoom}
                 >
@@ -761,13 +762,13 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
                   onConfirm={handleResetRoom}
                   trigger={
                     <Button
-                      variant="outline"
+                      variant="destructiveOutline"
                       size="sm"
                       aria-label={t("floor.reset")}
-                      className="h-9 flex-1 whitespace-nowrap border-red-200 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 md:h-10 md:text-sm xl:flex-none xl:px-3"
+                      className="flex-1 whitespace-nowrap px-2 xl:flex-none xl:px-3"
                       disabled={saving}
                     >
-                      <HugeiconsIcon icon={RotateClockwiseIcon} className="mr-1.5 h-4 w-4" />
+                      <HugeiconsIcon icon={RotateClockwiseIcon} className="h-4 w-4" />
                       {t("floor.reset")}
                     </Button>
                   }
@@ -781,13 +782,13 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
                   onConfirm={handleDeleteRoom}
                   trigger={
                     <Button
-                      variant="outline"
+                      variant="destructiveOutline"
                       size="sm"
                       aria-label={t("floor.deleteRoom")}
-                      className="h-9 flex-1 whitespace-nowrap border-red-200 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 md:h-10 md:text-sm xl:flex-none xl:px-3"
+                      className="flex-1 whitespace-nowrap px-2 xl:flex-none xl:px-3"
                       disabled={saving}
                     >
-                      <HugeiconsIcon icon={Delete02Icon} className="mr-1.5 h-4 w-4" />
+                      <HugeiconsIcon icon={Delete02Icon} className="h-4 w-4" />
                       {t("floor.deleteRoom")}
                     </Button>
                   }

@@ -15,7 +15,7 @@ const Blog = () => {
         canonical="/blog"
       />
       <Header />
-      <main className="flex flex-1 items-center justify-center px-6 pb-12 pt-28 sm:pb-16 sm:pt-32">
+      <main className="flex flex-1 items-end justify-center px-6 pt-28 sm:pt-32">
         <div className="w-full max-w-xl text-center">
           <svg
             data-construction="true"

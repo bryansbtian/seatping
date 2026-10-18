@@ -77,6 +77,7 @@ const surfaces = [
   { path: "/signup", surface: "auth", gradient: true },
   { path: "/business/login", surface: "auth", gradient: true },
   { path: "/business/signup", surface: "auth", gradient: true },
+  { path: "/admin", surface: "auth", gradient: true },
   { path: "/forgot", surface: "auth", gradient: true },
   { path: "/reset", surface: "auth", gradient: true },
   { path: "/profile", surface: "auth", gradient: true },
@@ -116,7 +117,6 @@ for (const path of [
   "/policy",
   "/terms",
   "/example/location",
-  "/admin",
   "/search",
 ]) {
   test(`${path} keeps the default document surface`, async ({ page }) => {

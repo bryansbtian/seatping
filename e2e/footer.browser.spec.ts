@@ -71,6 +71,66 @@ for (const path of [
   });
 }
 
+for (const width of [390, 640, 768, 1024, 1440]) {
+  test(`all public pages match the business footer gap at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width, height: 900 });
+    let expectedGap = 48;
+    if (width >= 1024) {
+      expectedGap = 72;
+    } else if (width >= 768) {
+      expectedGap = 64;
+    } else if (width >= 640) {
+      expectedGap = 56;
+    }
+    for (const [path, selector] of [
+      ["/business", "section:last-of-type > .container"],
+      ["/", "#featured > div"],
+      ["/search", "main > :last-child"],
+      ["/example/location", ".container.max-w-7xl > .grid"],
+      ["/blog", "main > div"],
+      ["/policy", "section:last-of-type > div"],
+      ["/terms", "section:last-of-type > div"],
+      ["/help", '[data-page-background="auth"] > div'],
+      ["/feedback", "main > div"],
+    ]) {
+      await page.goto(path, { waitUntil: "domcontentloaded" });
+      const footer = page.getByRole("contentinfo");
+      await expect(footer).toHaveCount(1);
+      await page.evaluate(() => document.fonts.ready);
+      const content = page.locator(selector);
+      await content.scrollIntoViewIfNeeded();
+      if (path === "/business") {
+        await expect(content).toHaveCSS("opacity", "1");
+      }
+      const measureGap = () =>
+        page.evaluate((contentSelector) => {
+          const contentBottom = document
+            .querySelector(contentSelector)!
+            .getBoundingClientRect().bottom;
+          const footer = document.querySelector("footer")!;
+          const dividerTop =
+            footer.firstElementChild!.firstElementChild!.getBoundingClientRect().top;
+          return Math.round(dividerTop - contentBottom);
+        }, selector);
+      await expect.poll(measureGap, `${path} content-to-footer gap`).toBe(expectedGap);
+      if (width === 390 || width === 1440) {
+        await footer.evaluate((element) => {
+          window.scrollTo({ top: window.scrollY + element.getBoundingClientRect().top - 240 });
+        });
+        await expect.poll(measureGap, `${path} gap after scrolling`).toBe(expectedGap);
+        let name = path.replaceAll("/", "-");
+        if (path === "/") {
+          name = "home";
+        }
+        await page.screenshot({ path: testInfo.outputPath(`footer-gap-${name}-${width}.png`) });
+      }
+    }
+  });
+}
+
 test("all management routes remain footer-free with their navigation intact", async ({ page }) => {
   test.setTimeout(90_000);
   await page.route("**/auth/session", (route) =>
@@ -213,6 +273,7 @@ for (const width of [320, 390, 768, 1024, 1440, 1923]) {
 }
 
 for (const [name, path, heading] of [
+  ["SeatPing", "/", "Discover Restaurants and Join the Wait Effortlessly"],
   ["Find Restaurants", "/search", "Search Restaurants"],
   ["SeatPing for Business", "/business", "Run Your Front of House From One Place"],
   ["Business Login", "/business/login", "Business Log In"],
@@ -224,9 +285,13 @@ for (const [name, path, heading] of [
 ]) {
   test(`${name} opens its existing destination`, async ({ page }) => {
     await page.goto("/help", { waitUntil: "domcontentloaded" });
-    await page.getByRole("contentinfo").getByRole("link", { name, exact: true }).click();
+    const footer = page.getByRole("contentinfo");
+    await footer.scrollIntoViewIfNeeded();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    await footer.getByRole("link", { name, exact: true }).click();
     await expect(page).toHaveURL(path);
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
     let footerCount = 1;
     if (path === "/business/login") {
       footerCount = 0;

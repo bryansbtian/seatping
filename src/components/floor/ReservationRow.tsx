@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { useLang } from "@/lib/i18n";
 import type { UpcomingReservation } from "@/lib/floorLive";
 
@@ -13,19 +14,20 @@ const ReservationRow = ({ reservation, busy, onSelect }: ReservationRowProps) =>
   let badge = null;
   if (reservation.tableName) {
     badge = (
-      <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-micro font-medium text-indigo-800">
+      <Badge variant="info" className="shrink-0">
         {reservation.tableName}
-      </span>
+      </Badge>
     );
   }
   if (reservation.needsReview) {
     badge = (
-      <span
+      <Badge
         data-testid={`reservation-review-${reservation.id}`}
-        className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-micro font-medium text-amber-900"
+        variant="warning"
+        className="shrink-0"
       >
         {t("floor.live.needsReview")}
-      </span>
+      </Badge>
     );
   }
 

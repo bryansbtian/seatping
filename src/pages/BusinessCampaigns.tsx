@@ -283,12 +283,12 @@ const BusinessCampaigns = () => {
   const [tab, setTab] = useState<TabKey>("campaigns");
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [campaignsLoading, setCampaignsLoading] = useState(false);
+  const [campaignsLoading, setCampaignsLoading] = useState(Boolean(locationId));
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesLoading, setTemplatesLoading] = useState(true);
 
   const [savedAudiences, setSavedAudiences] = useState<SavedAudience[]>([]);
-  const [savedAudiencesLoading, setSavedAudiencesLoading] = useState(false);
+  const [savedAudiencesLoading, setSavedAudiencesLoading] = useState(Boolean(locationId));
 
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
@@ -479,6 +479,8 @@ const BusinessCampaigns = () => {
                 return (
                   <button
                     key={key}
+                    type="button"
+                    aria-pressed={tab === key}
                     onClick={() => setTab(key)}
                     className={`flex-1 min-w-[110px] px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tabClass}`}
                   >
@@ -679,7 +681,7 @@ function CampaignsTab({
   }
   let campaignsBody: React.ReactNode;
   if (loading) {
-    campaignsBody = <ListSkeleton />;
+    campaignsBody = <ListSkeleton fill />;
   } else if (campaigns.length === 0) {
     campaignsBody = (
       <BusinessEmptyState
@@ -832,29 +834,23 @@ function CampaignActions({
   onOpen: (c: Campaign) => void;
   onAction: (c: Campaign, action: "cancel" | "pause" | "resume" | "delete") => void;
 }) {
-  const btn = "h-7 text-xs px-2.5";
   return (
     <div className="flex items-center justify-center gap-1.5">
-      <Button variant="outline" size="sm" className={btn} onClick={() => onOpen(c)}>
+      <Button variant="outline" size="sm" onClick={() => onOpen(c)}>
         Edit
       </Button>
       {c.status === "RECURRING" && (
-        <Button variant="outline" size="sm" className={btn} onClick={() => onAction(c, "pause")}>
+        <Button variant="outline" size="sm" onClick={() => onAction(c, "pause")}>
           Pause
         </Button>
       )}
       {c.status === "PAUSED" && (
-        <Button variant="outline" size="sm" className={btn} onClick={() => onAction(c, "resume")}>
+        <Button variant="outline" size="sm" onClick={() => onAction(c, "resume")}>
           Resume
         </Button>
       )}
       {["SCHEDULED", "RECURRING", "PAUSED"].includes(c.status) && (
-        <Button
-          variant="outline"
-          size="sm"
-          className={`${btn} text-red-600 border-red-200 hover:bg-red-50`}
-          onClick={() => onAction(c, "cancel")}
-        >
+        <Button variant="destructiveOutline" size="sm" onClick={() => onAction(c, "cancel")}>
           Cancel
         </Button>
       )}
@@ -883,7 +879,7 @@ function TemplatesTab({
 
   let seatpingBody: React.ReactNode;
   if (loading) {
-    seatpingBody = <ListSkeleton />;
+    seatpingBody = <ListSkeleton fill />;
   } else if (seatping.length === 0) {
     seatpingBody = (
       <BusinessEmptyState
@@ -910,7 +906,7 @@ function TemplatesTab({
   }
   let customBody: React.ReactNode;
   if (loading) {
-    customBody = <ListSkeleton />;
+    customBody = <ListSkeleton fill />;
   } else if (custom.length === 0) {
     customBody = (
       <BusinessEmptyState
@@ -1017,12 +1013,12 @@ function TemplateCard({
               template.approvalStatus === "PENDING_SEATPING_REVIEW" ||
               template.approvalStatus === "APPROVED") &&
             onEdit && (
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onEdit}>
+              <Button variant="outline" size="sm" onClick={onEdit}>
                 Edit
               </Button>
             )}
           {template.usable && onUse && (
-            <Button size="sm" className="h-7 text-xs" onClick={onUse}>
+            <Button size="sm" onClick={onUse}>
               Use
             </Button>
           )}
@@ -1058,7 +1054,7 @@ function AudiencesTab({
   }
   let smartAudiencesBody: React.ReactNode;
   if (loading) {
-    smartAudiencesBody = <ListSkeleton />;
+    smartAudiencesBody = <ListSkeleton fill />;
   } else if (audiences.length === 0) {
     smartAudiencesBody = (
       <BusinessEmptyState
@@ -1085,7 +1081,7 @@ function AudiencesTab({
   }
   let savedAudiencesBody: React.ReactNode;
   if (loading) {
-    savedAudiencesBody = <ListSkeleton />;
+    savedAudiencesBody = <ListSkeleton fill />;
   } else if (savedAudiences.length === 0) {
     savedAudiencesBody = (
       <BusinessEmptyState
@@ -1113,7 +1109,7 @@ function AudiencesTab({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-slate-400 hover:text-slate-600"
+                    className="text-slate-400 hover:text-slate-600"
                     onClick={() => onEditCustom(a)}
                   >
                     <HugeiconsIcon icon={Settings01Icon} className="w-3.5 h-3.5" />
@@ -1121,7 +1117,7 @@ function AudiencesTab({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-slate-400 hover:text-red-500"
+                    className="text-slate-400 hover:text-red-500"
                     onClick={() => onDeleteCustom(a)}
                   >
                     <HugeiconsIcon icon={Delete02Icon} className="w-3.5 h-3.5" />
@@ -1195,7 +1191,7 @@ function HistoryTab({
   }
   let historyBody: React.ReactNode;
   if (loading) {
-    historyBody = <ListSkeleton />;
+    historyBody = <ListSkeleton fill />;
   } else if (campaigns.length === 0) {
     historyBody = (
       <BusinessEmptyState
@@ -1872,22 +1868,22 @@ function CampaignBuilderDialog({
               <div className="flex gap-1.5 sm:gap-2">
                 {(["SMS", "WHATSAPP", "EMAIL"] as Channel[]).map((ch) => {
                   const icon = CHANNEL_META[ch].icon;
-                  let channelButtonClass: string;
+                  let channelButtonVariant: "default" | "outline" = "outline";
                   if (channel === ch) {
-                    channelButtonClass = "border-indigo-300 bg-indigo-100 text-indigo-700";
-                  } else {
-                    channelButtonClass =
-                      "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+                    channelButtonVariant = "default";
                   }
                   return (
-                    <button
+                    <Button
                       key={ch}
                       onClick={() => setChannel(ch)}
-                      className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-medium transition-colors ${channelButtonClass}`}
+                      type="button"
+                      variant={channelButtonVariant}
+                      aria-pressed={channel === ch}
+                      className="min-w-0 flex-1 px-2 sm:px-3"
                     >
                       <HugeiconsIcon icon={icon} className="w-4 h-4 shrink-0" />
                       <span className="truncate">{CHANNEL_META[ch].label}</span>
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -2030,20 +2026,21 @@ function CampaignBuilderDialog({
                     ["RECURRING", "Recurring"],
                   ] as [typeof sendMode, string][]
                 ).map(([mode, label]) => {
-                  let modeButtonClass: string;
+                  let modeButtonVariant: "default" | "outline" = "outline";
                   if (sendMode === mode) {
-                    modeButtonClass = "border-indigo-300 bg-indigo-100 text-indigo-700";
-                  } else {
-                    modeButtonClass = "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+                    modeButtonVariant = "default";
                   }
                   return (
-                    <button
+                    <Button
                       key={mode}
                       onClick={() => setSendMode(mode)}
-                      className={`flex-1 min-w-0 truncate px-2 sm:px-3 py-2 rounded-xl border text-xs sm:text-sm font-medium transition-colors ${modeButtonClass}`}
+                      type="button"
+                      variant={modeButtonVariant}
+                      aria-pressed={sendMode === mode}
+                      className="min-w-0 flex-1 truncate px-2 sm:px-3"
                     >
                       {label}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -2085,21 +2082,22 @@ function CampaignBuilderDialog({
                 <div className="space-y-2 mt-2">
                   <div className="flex gap-2">
                     {(["DAILY", "WEEKLY", "MONTHLY"] as const).map((f) => {
-                      let freqButtonClass: string;
+                      let freqButtonVariant: "default" | "outline" = "outline";
                       if (recurFreq === f) {
-                        freqButtonClass = "border-indigo-300 bg-indigo-100 text-indigo-700";
-                      } else {
-                        freqButtonClass =
-                          "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+                        freqButtonVariant = "default";
                       }
                       return (
-                        <button
+                        <Button
                           key={f}
                           onClick={() => setRecurFreq(f)}
-                          className={`flex-1 px-3 py-1.5 rounded-lg border text-xs font-medium capitalize transition-colors ${freqButtonClass}`}
+                          type="button"
+                          variant={freqButtonVariant}
+                          size="sm"
+                          aria-pressed={recurFreq === f}
+                          className="flex-1 capitalize"
                         >
                           {f.toLowerCase()}
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>
@@ -2181,10 +2179,10 @@ function CampaignBuilderDialog({
             </div>
             {existing && (
               <Button
-                variant="outline"
+                variant="destructiveOutline"
                 onClick={() => setConfirmDelete(true)}
                 disabled={saving || sending}
-                className="px-3 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+                className="px-3 hover:border-red-300"
                 title="Delete Campaign"
               >
                 <HugeiconsIcon icon={Delete02Icon} className="w-4 h-4" />
@@ -2321,7 +2319,7 @@ function ManualGuestPicker({
 }) {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<ManualGuest[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(locationId));
 
   useEffect(() => {
     if (!locationId) {

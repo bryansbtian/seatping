@@ -490,7 +490,11 @@ describe("cover buckets", () => {
 });
 
 describe("utilization against service hours", () => {
-  function runWithHours(openMinutes: number | null, assignments: PerformanceAssignment[]) {
+  function runWithHours(
+    openMinutes: number | null,
+    assignments: PerformanceAssignment[],
+    now = NOW,
+  ) {
     return computePerformance({
       range: todayRange(),
       queueEntries: [],
@@ -501,7 +505,7 @@ describe("utilization against service hours", () => {
         { id: "t2", name: "T2" },
       ],
       openMinutesForDate: () => openMinutes,
-      now: NOW,
+      now,
     });
   }
 
@@ -544,8 +548,20 @@ describe("utilization against service hours", () => {
   });
 
   it("falls back to the whole range when hours are not configured", () => {
-    const metrics = runWithHours(null, [assignment({ seatedAt: at(-120), completedAt: at(-60) })]);
+    const now = new Date(NOW);
+    now.setHours(15, 0, 0, 0);
+    const metrics = runWithHours(
+      null,
+      [
+        assignment({
+          seatedAt: new Date(now.getTime() - 120 * 60000),
+          completedAt: new Date(now.getTime() - 60 * 60000),
+        }),
+      ],
+      now,
+    );
 
+    expect(metrics.tableUtilization).toBe(0.033);
     expect(metrics.tableUtilization).toBeLessThan(0.063);
   });
 });

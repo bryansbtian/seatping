@@ -4,6 +4,8 @@ export default defineConfig({
   outputDir: "performance-artifacts/browser-e2e",
   testDir: "./e2e",
   testMatch: [
+    "adminPortal.browser.spec.ts",
+    "designAudit.browser.spec.ts",
     "footer.browser.spec.ts",
     "businessLanding.browser.spec.ts",
     "demoBooking.browser.spec.ts",

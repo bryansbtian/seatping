@@ -84,7 +84,7 @@ const ZoneInspector = ({ zone, saving, onSave, onDelete }: ZoneInspectorProps) =
       )}
 
       <div className="mt-auto flex flex-col gap-2 border-t border-slate-100 pt-4">
-        <Button className="h-9 w-full text-xs md:h-10" disabled={saving} onClick={handleSave}>
+        <Button className="w-full" disabled={saving} onClick={handleSave}>
           {saveLabel}
         </Button>
 
@@ -95,11 +95,8 @@ const ZoneInspector = ({ zone, saving, onSave, onDelete }: ZoneInspectorProps) =
           confirmText={t("floor.deleteZone")}
           onConfirm={onDelete}
           trigger={
-            <Button
-              variant="outline"
-              className="h-9 w-full text-xs text-red-600 hover:text-red-700 md:h-10"
-            >
-              <HugeiconsIcon icon={Delete02Icon} className="mr-2 h-4 w-4" />
+            <Button variant="destructiveOutline" className="w-full">
+              <HugeiconsIcon icon={Delete02Icon} className="h-4 w-4" />
               {t("floor.deleteZone")}
             </Button>
           }

@@ -25,7 +25,7 @@ export default defineConfig(() => ({
         target: apiTarget,
         changeOrigin: true,
       },
-      "/admin/customer": {
+      "^/admin/customer(?:/|$)": {
         target: apiTarget,
         changeOrigin: true,
       },

@@ -50,6 +50,7 @@ beforeEach(() => {
   queryClient.clear();
   vi.stubGlobal("fetch", vi.fn());
   vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(window, "scrollTo").mockImplementation(() => {});
   window.addEventListener("error", preventReportedError);
 });
 
@@ -179,9 +180,12 @@ describe("lazy routes", () => {
   });
 
   it("keeps the business layout mounted while navigating independent modules", async () => {
-    vi.mocked(fetch).mockImplementation(
-      async () => new Response(JSON.stringify({ customer: null, business: { name: "Business" } })),
-    );
+    vi.mocked(fetch).mockImplementation(async (path) => {
+      if (String(path) === "/auth/business/me") {
+        return new Response(JSON.stringify({ user: { id: "business-fixture", locations: [] } }));
+      }
+      return new Response(JSON.stringify({ customer: null, business: { name: "Business" } }));
+    });
     renderAt("/business/overview");
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: "Business Overview" })).toBeTruthy(),
@@ -201,6 +205,13 @@ describe("lazy routes", () => {
   });
 
   it("retains query parameters when redirecting legacy restaurant deep links", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          restaurant: { reviews: [], reviewsPage: { nextCursor: null, hasMore: false } },
+        }),
+      ),
+    );
     renderAt("/restaurants/demo/location-1?date=2026-10-16&party=4");
     await waitFor(() =>
       expect(
@@ -208,5 +219,91 @@ describe("lazy routes", () => {
       ).toBeTruthy(),
     );
     expect(window.location.pathname).toBe("/demo/location-1");
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    "/business/dashboard",
+    "/business/unknown/nested",
+    "/BUSINESS/dashboard/",
+    "/admin/unknown",
+    "/login/unknown",
+    "/signup/unknown",
+    "/profile/unknown",
+    "/forgot/unknown",
+    "/reset/unknown",
+    "/queue/unknown",
+    "/restaurants/unknown",
+    "/reservations/unknown",
+    "/search/unknown/nested",
+    "/policy/unknown",
+    "/terms/unknown",
+    "/feedback/unknown",
+    "/help/unknown",
+    "/blog/unknown",
+    "/api/unknown",
+    "/auth/unknown",
+    "/tickets/unknown",
+    "/unknown",
+    "/unknown/nested/page",
+  ])("shows 404 immediately without loading or fetching for %s", (path) => {
+    const { container } = renderAt(path);
+    expect(screen.getByRole("heading", { name: /We couldn’t find/ })).toBeTruthy();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(container.querySelector(".animate-pulse")).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe(path);
+  });
+
+  it("checks a potential restaurant URL without skeletons and shows 404 when it is missing", async () => {
+    let finish = (_value: Response) => {};
+    vi.mocked(fetch).mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { container } = renderAt("/missing/location-123");
+    expect(screen.getByRole("status").textContent).toBe("Loading Page");
+    expect(container.querySelector(".animate-pulse")).toBeNull();
+    expect(screen.queryByRole("heading")).toBeNull();
+    await act(async () => {
+      finish(new Response(JSON.stringify({ error: "Restaurant not found" }), { status: 404 }));
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: /We couldn’t find/ })).toBeTruthy(),
+    );
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/restaurants/missing/location-123?version=2",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+
+  it("validates each restaurant when navigating between restaurant URLs", async () => {
+    vi.mocked(fetch).mockImplementation(async (path) => {
+      if (String(path).includes("/missing/")) {
+        return new Response(JSON.stringify({ error: "Restaurant not found" }), { status: 404 });
+      }
+      return new Response(
+        JSON.stringify({
+          restaurant: { reviews: [], reviewsPage: { nextCursor: null, hasMore: false } },
+        }),
+      );
+    });
+    renderAt("/demo/location-123");
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "/demo/location-123" })).toBeTruthy(),
+    );
+    await act(async () => {
+      window.history.pushState({}, "", "/missing/location-456");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: /We couldn’t find/ })).toBeTruthy(),
+    );
+    expect(screen.queryByRole("heading", { name: "/demo/location-123" })).toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 });

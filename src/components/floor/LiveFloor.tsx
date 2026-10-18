@@ -1,3 +1,5 @@
+import { PILL_BASE_CLASS } from "@/lib/statusStyles";
+import { Badge } from "@/components/ui/badge";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { LayoutGridIcon, Refresh01Icon } from "@hugeicons/core-free-icons";
@@ -439,30 +441,33 @@ const LiveFloor = ({ locationId, onDataChange }: LiveFloorProps) => {
                     className="flex min-w-0 flex-1 items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 text-left transition-colors hover:bg-slate-100 disabled:opacity-60"
                   >
                     {party.recommendedTableName && (
-                      <span
+                      <Badge
                         data-testid={`waiting-suggestion-${party.id}`}
-                        className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-micro font-medium text-emerald-800"
+                        variant="success"
+                        className="shrink-0"
                       >
                         {party.recommendedTableName}
-                      </span>
+                      </Badge>
                     )}
                     {party.matchState === "NO_CAPACITY" && (
-                      <span
+                      <Badge
                         data-testid={`waiting-nomatch-${party.id}`}
                         title={t("floor.live.noCapacityBody")}
-                        className="shrink-0 rounded bg-rose-100 px-1.5 py-0.5 text-micro font-medium text-rose-800"
+                        variant="danger"
+                        className="shrink-0"
                       >
                         {t("floor.live.noCapacity")}
-                      </span>
+                      </Badge>
                     )}
                     {party.matchState === "NO_AVAILABILITY" && (
-                      <span
+                      <Badge
                         data-testid={`waiting-unavailable-${party.id}`}
                         title={t("floor.live.noAvailabilityBody")}
-                        className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-micro font-medium text-amber-800"
+                        variant="warning"
+                        className="shrink-0"
                       >
                         {t("floor.live.noAvailability")}
-                      </span>
+                      </Badge>
                     )}
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <span className="truncate text-caption leading-none text-slate-500">
@@ -500,21 +505,23 @@ const LiveFloor = ({ locationId, onDataChange }: LiveFloorProps) => {
                 let tableBadge = null;
                 if (party.tableName) {
                   tableBadge = (
-                    <span
+                    <Badge
                       data-testid={`admitted-table-${party.id}`}
-                      className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-micro font-medium text-indigo-800"
+                      variant="info"
+                      className="shrink-0"
                     >
                       {t("floor.live.holdingTable", { table: party.tableName })}
-                    </span>
+                    </Badge>
                   );
                 } else if (party.recommendedTableName) {
                   tableBadge = (
-                    <span
+                    <Badge
                       data-testid={`admitted-suggestion-${party.id}`}
-                      className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-micro font-medium text-emerald-800"
+                      variant="success"
+                      className="shrink-0"
                     >
                       {party.recommendedTableName}
-                    </span>
+                    </Badge>
                   );
                 }
 
@@ -544,10 +551,7 @@ const LiveFloor = ({ locationId, onDataChange }: LiveFloorProps) => {
                       </span>
                       <span
                         data-testid={`admitted-countdown-${party.id}`}
-                        className={cn(
-                          "shrink-0 rounded px-1.5 py-0.5 text-micro font-medium tabular-nums",
-                          countdownTone,
-                        )}
+                        className={cn(PILL_BASE_CLASS, "shrink-0 tabular-nums", countdownTone)}
                       >
                         {countdownLabel}
                       </span>
@@ -622,8 +626,12 @@ const LiveFloor = ({ locationId, onDataChange }: LiveFloorProps) => {
         <div className="flex flex-wrap gap-2">
           {rooms.map((room) => {
             const active = room.id === activeRoom?.id;
+            let roomVariant: "default" | "outline" = "outline";
+            if (active) {
+              roomVariant = "default";
+            }
             return (
-              <button
+              <Button
                 key={room.id}
                 type="button"
                 aria-pressed={active}
@@ -631,14 +639,11 @@ const LiveFloor = ({ locationId, onDataChange }: LiveFloorProps) => {
                   setActiveRoomId(room.id);
                   setSelectedTableId(null);
                 }}
-                className={cn(
-                  "rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors md:text-sm",
-                  active && "border-slate-900 bg-slate-900 text-white",
-                  !active && "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-                )}
+                variant={roomVariant}
+                size="sm"
               >
                 {room.name}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -676,7 +681,7 @@ const LiveFloor = ({ locationId, onDataChange }: LiveFloorProps) => {
               type="button"
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+
               aria-label={t("floor.live.refresh")}
               disabled={busy}
               onClick={() => {

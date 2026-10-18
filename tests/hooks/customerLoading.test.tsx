@@ -49,6 +49,38 @@ beforeEach(() => {
 });
 
 describe("customer content loading", () => {
+  it("keeps queue join controls hidden until the restaurant location finishes loading", async () => {
+    let finish = (_value: unknown) => {};
+    apiMock.mockImplementation((path: string) => {
+      if (path.endsWith("/addresses")) {
+        return new Promise((resolve) => {
+          finish = resolve;
+        });
+      }
+      return Promise.resolve({ user: null });
+    });
+    render(
+      <MemoryRouter initialEntries={["/queue/bistro/loc-1"]}>
+        <Routes>
+          <Route path="/queue/:businessUsername/:locationId" element={<QueueBusiness />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const skeleton = screen.getByRole("status", { name: "Loading Queue" });
+    expect(skeleton.textContent).toBe("");
+    expect(skeleton.querySelector("input, button")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Join Queue", exact: true })).toBeNull();
+    await act(async () => {
+      finish({
+        addresses: [{ id: "loc-1", businessName: "Bistro", address: "1 Main Street" }],
+      });
+    });
+
+    expect(screen.getByRole("button", { name: "Join Queue", exact: true })).toBeTruthy();
+    expect(screen.queryByRole("status", { name: "Loading Queue" })).toBeNull();
+  });
+
   it.each(["available", "failed"])(
     "replaces the queue estimate skeleton when the request is %s",
     async (outcome) => {
@@ -126,6 +158,13 @@ describe("customer content loading", () => {
     const skeleton = screen.getByRole("status", { name: "Loading Featured Restaurants" });
     expect(skeleton.textContent).toBe("");
     expect(skeleton.querySelector("a, button")).toBeNull();
+    expect(skeleton.classList.contains("overflow-hidden")).toBe(false);
+    const grid = skeleton.firstElementChild;
+    expect(grid?.className).toContain("grid-cols-1");
+    expect(grid?.className).toContain("lg:grid-cols-2");
+    expect(grid?.className).toContain("xl:grid-cols-3");
+    expect(grid?.children[1].className).toBe("hidden lg:block");
+    expect(grid?.children[2].className).toBe("hidden xl:block");
     expect(screen.getByRole("navigation").textContent).toBe("Navigation");
     await act(async () => {
       finish({ featured: [{ ...restaurant(), id: "featured-1" }] });

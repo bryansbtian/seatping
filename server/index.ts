@@ -132,6 +132,14 @@ app.get("/api/health", async (_req, res) => {
 });
 
 app.use("/auth", authRouter);
+if (process.env.NODE_ENV === "production") {
+  app.get(
+    ["/admin", "/admin/dashboard", "/admin/customers", "/admin/featured", "/admin/templates"],
+    (_req, res) => {
+      res.sendFile(path.join(__dirname, "../../dist/index.html"));
+    },
+  );
+}
 app.use("/admin", adminRouter);
 app.use("/api/demo", demoRouter);
 app.use("/api/feedback", feedbackRouter);

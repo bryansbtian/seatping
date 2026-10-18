@@ -207,6 +207,12 @@ describe("the performance page", () => {
     expect(within(list).getAllByRole("listitem")).toHaveLength(1);
     expect(list.textContent).toContain("T1");
     expect(list.textContent).not.toContain("T2");
+    expect(screen.getByTestId("perf-tables-used").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("perf-tables-all").getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(screen.getByTestId("perf-tables-all"));
+    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+    expect(screen.getByTestId("perf-tables-all").getAttribute("aria-pressed")).toBe("true");
   });
 
   it("asks the api again when the range changes", async () => {

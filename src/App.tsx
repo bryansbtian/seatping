@@ -20,6 +20,9 @@ import DemoBookingProvider from "@/components/DemoBookingProvider";
 import { lazyRoute } from "@/lib/lazyRoute";
 import RouteLoading from "@/components/RouteLoading";
 import RouteErrorBoundary from "@/components/RouteErrorBoundary";
+import RestaurantRoute from "@/components/RestaurantRoute";
+import NotFound from "@/pages/NotFound";
+import ScrollToTop from "@/components/ScrollToTop";
 
 const Index = lazyRoute(() => import("./pages/Index"));
 const LandingPage = lazyRoute(() => import("./pages/LandingPage"));
@@ -41,17 +44,37 @@ const BusinessPerformance = lazyRoute(() => import("./pages/BusinessPerformance"
 const BusinessSettings = lazyRoute(() => import("./pages/BusinessSettings"));
 const BusinessLayout = lazyRoute(() => import("@/components/BusinessLayout"));
 const BusinessBootstrap = lazyRoute(() => import("@/components/BusinessBootstrap"));
-const NotFound = lazyRoute(() => import("./pages/NotFound"));
 const Policy = lazyRoute(() => import("./pages/Policy"));
 const Terms = lazyRoute(() => import("./pages/Terms"));
 const Feedback = lazyRoute(() => import("./pages/Feedback"));
 const Help = lazyRoute(() => import("./pages/Help"));
 const Blog = lazyRoute(() => import("./pages/Blog"));
 const QueueBusiness = lazyRoute(() => import("./pages/QueueBusiness"));
-const Restaurant = lazyRoute(() => import("./pages/Restaurant"));
 const ManageReservation = lazyRoute(() => import("./pages/ManageReservation"));
 const SearchResults = lazyRoute(() => import("./pages/SearchResults"));
 const Admin = lazyRoute(() => import("./pages/Admin"));
+
+const reservedRoutePrefixes = [
+  "login",
+  "signup",
+  "profile",
+  "business",
+  "forgot",
+  "reset",
+  "queue",
+  "restaurants",
+  "reservations",
+  "search",
+  "policy",
+  "terms",
+  "feedback",
+  "help",
+  "blog",
+  "admin",
+  "api",
+  "auth",
+  "tickets",
+];
 
 function LegacyRestaurantRedirect() {
   const { businessUsername = "", locationId = "" } = useParams();
@@ -81,6 +104,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <ScrollToTop />
         <DemoBookingProvider>
           <AnalyticsRouteTracker />
           <RouteContent>
@@ -159,9 +183,17 @@ const App = () => (
                   <Route path="/business/settings" element={<BusinessSettings />} />
                 </Route>
               </Route>
-              <Route path="/admin" element={<Admin />} />
+              <Route path="/admin" element={<Admin />}>
+                <Route path="dashboard" element={<></>} />
+                <Route path="customers" element={<></>} />
+                <Route path="featured" element={<></>} />
+                <Route path="templates" element={<></>} />
+              </Route>
 
-              <Route path="/:businessUsername/:locationId" element={<Restaurant />} />
+              {reservedRoutePrefixes.map((prefix) => (
+                <Route key={prefix} path={`/${prefix}/*`} element={<NotFound />} />
+              ))}
+              <Route path="/:businessUsername/:locationId" element={<RestaurantRoute />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </RouteContent>

@@ -192,6 +192,26 @@ Use the existing visual style: dark navy, white, subtle borders, clean SaaS feel
 cards and modern spacing. No orange primary CTAs, no overly playful restaurant imagery, and
 chair or ping icon treatments stay minimal and consistent.
 
+Every new page that fetches data must show an accessible skeleton loader while its initial
+request is pending. Reuse `Skeleton`, `ListSkeleton`, or `RouteLoading` and match the final
+content layout. Full-height cards must have skeletons that fill the available content area,
+using `ListSkeleton` with `fill` where appropriate. Show a no-data state only after the
+request settles, and keep request failures distinct from successful empty results.
+Skeleton rows and cards must remain fully visible at every breakpoint. Render only the
+complete items that fit, distribute spare space between them, and update their count or
+layout when the container resizes. Never hide a partially rendered skeleton at a card edge
+or grow the page just to fit placeholder rows.
+
+Buttons and pills on every new or updated page must follow the Business Portal design.
+Use the shared `Button` component and its existing variants and sizes for actions and
+filters. Use `Badge` tone variants or the shared status pill styles for status labels.
+Reuse the existing control height, radius, typography, spacing, hover, focus, and disabled
+states. Do not introduce custom button colors, pill shapes, or competing control styles.
+Preserve the existing grouped, segmented tab design for page navigation and date ranges,
+including Campaigns, Reviews, Performance, and Floor modes. These intentional tab controls
+are separate from action buttons, filters, and status pills. Do not replace them with
+individual outlined buttons when standardizing controls.
+
 Inter is the typeface for the whole product, consumer pages and business dashboards alike.
 It is loaded from Google Fonts in `src/index.css` and set as `fontFamily.sans` in
 `tailwind.config.ts`, with a system fallback stack behind it. Only the 400, 500, 600, and 700

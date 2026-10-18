@@ -337,6 +337,24 @@ describe("restaurant discovery page", () => {
 });
 
 describe("shared restaurant filters", () => {
+  it("uses canonical filter controls while preserving selected state and URL filtering", async () => {
+    await loadedPage();
+    const queueFilter = screen.getAllByRole("button", { name: "Queue Available" })[0];
+
+    expect(queueFilter.classList.contains("rounded-control")).toBe(true);
+    expect(queueFilter.classList.contains("control-md")).toBe(true);
+    expect(queueFilter.classList.contains("active:scale-[0.96]")).toBe(true);
+    expect(queueFilter.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(queueFilter);
+
+    expect(queueFilter.getAttribute("aria-pressed")).toBe("true");
+    await waitFor(() => expect(screen.getAllByRole("article")).toHaveLength(2));
+    const filterCount = screen.getByRole("button", { name: /FiltersAll Filters/ });
+    expect(within(filterCount).getByLabelText("1 active filters").className).toContain(
+      "rounded-badge",
+    );
+  });
+
   it("applies cuisine, price, rating, location, and availability in the sheet and resets all", async () => {
     await loadedPage();
     fireEvent.click(screen.getByRole("button", { name: /FiltersAll Filters/ }));

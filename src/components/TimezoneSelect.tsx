@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Tick02Icon, UnfoldMoreIcon } from "@hugeicons/core-free-icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -81,20 +82,18 @@ export function TimezoneSelect({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
+        <Button
           ref={trigger}
           type="button"
+          variant="outline"
           role="combobox"
           aria-expanded={open}
           aria-label={ariaLabel}
-          className={cn(
-            "flex h-10 w-full items-center justify-between rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring",
-            className,
-          )}
+          className={cn("w-full justify-between text-left font-normal", className)}
         >
           <span className="truncate">{selectedLabel}</span>
           <HugeiconsIcon icon={UnfoldMoreIcon} className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent
         className="z-[60] w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] overflow-hidden p-0"

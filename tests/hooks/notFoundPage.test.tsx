@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes, useParams } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/App.js";
 import NotFound from "../../src/pages/NotFound.js";
+import { queryClient } from "../../src/lib/queryClient.js";
 
 vi.mock("../../src/pages/Restaurant", () => ({
   default: function RestaurantRoute() {
@@ -26,7 +27,9 @@ function renderAppAt(path: string) {
 }
 
 beforeEach(() => {
+  queryClient.clear();
   vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(window, "scrollTo").mockImplementation(() => {});
   vi.stubGlobal("matchMedia", (query: string) => ({
     matches: false,
     media: query,
@@ -119,6 +122,13 @@ describe("catch-all routing", () => {
   });
 
   it("keeps resolving the known dynamic restaurant route", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          restaurant: { reviews: [], reviewsPage: { nextCursor: null, hasMore: false } },
+        }),
+      ),
+    );
     renderAppAt("/demo-restaurant/location-1");
 
     expect(screen.queryAllByTestId("dotted-seating-illustration")).toHaveLength(0);

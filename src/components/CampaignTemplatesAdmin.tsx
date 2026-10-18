@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import ListSkeleton from "@/components/ListSkeleton";
+import BusinessEmptyState from "@/components/BusinessEmptyState";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,7 +18,7 @@ import { TemplateStatusBadge } from "@/components/CampaignBadges";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { InboxIcon, Refresh01Icon, Search01Icon } from "@hugeicons/core-free-icons";
+import { Megaphone01Icon, Refresh01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 
 type AdminTemplate = {
   id: string;
@@ -116,13 +117,14 @@ const CampaignTemplatesAdmin = () => {
 
   let templatesContent: ReactNode;
   if (loading) {
-    templatesContent = <ListSkeleton label="Loading Templates" />;
+    templatesContent = <ListSkeleton fill label="Loading Templates" className="p-0 md:p-0" />;
   } else if (templates.length === 0) {
     templatesContent = (
-      <div className="py-12 text-center">
-        <HugeiconsIcon icon={InboxIcon} className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-        <p className="text-sm text-slate-500">No custom templates found.</p>
-      </div>
+      <BusinessEmptyState
+        icon={Megaphone01Icon}
+        title="No Templates Found"
+        body="Business-submitted campaign templates will appear here. Try changing your filters or search."
+      />
     );
   } else {
     templatesContent = (
@@ -165,8 +167,8 @@ const CampaignTemplatesAdmin = () => {
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card data-testid="admin-content-card" className="flex flex-1 flex-col">
+      <CardHeader className="border-b border-slate-200 p-4 md:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="space-y-1.5">
             <CardTitle>Campaign Templates</CardTitle>
@@ -175,19 +177,19 @@ const CampaignTemplatesAdmin = () => {
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={fetchTemplates} disabled={loading}>
-            <HugeiconsIcon icon={Refresh01Icon} className={`w-4 h-4 mr-1.5 ${refreshIconClass}`} />
+            <HugeiconsIcon icon={Refresh01Icon} className={`w-4 h-4 ${refreshIconClass}`} />
             Refresh
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="flex flex-1 flex-col gap-4 p-4 md:p-6">
         <div className="flex flex-wrap items-center gap-2">
           {STATUS_FILTERS.map((f) => {
-            let filterButtonClass: string;
+            let filterVariant: "default" | "outline";
             if (status === f.key) {
-              filterButtonClass = "border-indigo-300 bg-indigo-100 text-indigo-700";
+              filterVariant = "default";
             } else {
-              filterButtonClass = "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+              filterVariant = "outline";
             }
             let filterCountLabel: string;
             if (f.key !== "ALL" && counts[f.key]) {
@@ -196,14 +198,17 @@ const CampaignTemplatesAdmin = () => {
               filterCountLabel = "";
             }
             return (
-              <button
+              <Button
                 key={f.key}
+                type="button"
+                size="sm"
+                variant={filterVariant}
+                aria-pressed={status === f.key}
                 onClick={() => setStatus(f.key)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${filterButtonClass}`}
               >
                 {f.label}
                 {filterCountLabel}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -316,14 +321,16 @@ function ReviewDialog({
   let templateSlugContent: ReactNode;
   if (template.slug) {
     templateSlugContent = (
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={() => copyText(template.slug!, "Username")}
         title="Click to copy username"
-        className="text-sm font-medium text-slate-800 flex-1 min-w-0 break-words text-left hover:text-indigo-700 cursor-pointer"
+        className="h-auto min-w-0 flex-1 justify-start whitespace-normal break-words px-2 py-1 text-left"
       >
         {template.slug}
-      </button>
+      </Button>
     );
   } else {
     templateSlugContent = (
@@ -383,14 +390,15 @@ function ReviewDialog({
             {template.purpose && <Row label="Campaign Goal" value={template.purpose} />}
             <div>
               <div className="text-xs text-slate-500">Main Message</div>
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => copyText(template.body, "Message")}
                 title="Click to copy message"
-                className="mt-1 w-full text-left rounded-lg border border-slate-200 bg-white p-3 text-slate-800 whitespace-pre-wrap hover:border-indigo-200 hover:bg-indigo-50/40 cursor-pointer transition-colors"
+                className="mt-1 h-auto w-full justify-start whitespace-pre-wrap break-words p-3 text-left text-body font-normal"
               >
                 {template.body}
-              </button>
+              </Button>
             </div>
             {template.offerDetails && <Row label="Offer" value={template.offerDetails} />}
             {(template.ctaText || template.ctaUrl) && (

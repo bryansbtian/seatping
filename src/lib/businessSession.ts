@@ -26,6 +26,8 @@ export type BusinessMe = {
 
 export type BusinessSessionValue = {
   me: BusinessMe | null;
+  loadingMe?: boolean;
+  meError?: boolean;
   setMe: Dispatch<SetStateAction<BusinessMe | null>>;
   refreshMe: () => Promise<void>;
   locations: BusinessLocation[];

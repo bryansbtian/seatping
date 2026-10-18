@@ -337,23 +337,26 @@ export default function LocationManagement({
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                         {hasFullMore && (
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={() => toggleExpanded(location.id)}
-                            className="text-xs font-medium text-indigo-600 hover:underline"
+                            aria-expanded={isExpanded}
                           >
                             {fullAddressToggleLabel}
-                          </button>
+                          </Button>
                         )}
                         {location.googleMapsUrl && (
-                          <a
-                            href={location.googleMapsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-medium text-indigo-600 hover:underline"
-                          >
-                            {t("loc.viewOnMaps")}
-                          </a>
+                          <Button variant="ghost" size="sm" asChild>
+                            <a
+                              href={location.googleMapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {t("loc.viewOnMaps")}
+                            </a>
+                          </Button>
                         )}
                       </div>
                       {isExpanded && (
@@ -373,10 +376,10 @@ export default function LocationManagement({
                   variant="outline"
                   aria-label={t("loc.editProfile")}
                   title={t("loc.editProfile")}
-                  className="h-10 w-full justify-center sm:w-auto md:w-10 md:px-0 xl:w-auto xl:px-4"
+                  className="w-full justify-center sm:w-auto md:w-10 md:px-0 xl:w-auto xl:px-4"
                   onClick={() => setEditing(location)}
                 >
-                  <HugeiconsIcon icon={Edit03Icon} size={16} className="mr-2 md:mr-0 xl:mr-2" />
+                  <HugeiconsIcon icon={Edit03Icon} size={16} />
                   <span className="md:hidden xl:inline" data-testid="loc-edit-label">
                     {t("loc.editProfile")}
                   </span>
@@ -386,10 +389,10 @@ export default function LocationManagement({
                   variant="outline"
                   aria-label={t("loc.qrCode")}
                   title={t("loc.qrCode")}
-                  className="h-10 w-full justify-center sm:w-auto md:w-10 md:px-0 xl:w-auto xl:px-4"
+                  className="w-full justify-center sm:w-auto md:w-10 md:px-0 xl:w-auto xl:px-4"
                   onClick={() => openQrModal(location)}
                 >
-                  <HugeiconsIcon icon={QrCodeIcon} size={16} className="mr-2 md:mr-0 xl:mr-2" />
+                  <HugeiconsIcon icon={QrCodeIcon} size={16} />
                   <span className="md:hidden xl:inline" data-testid="loc-qr-label">
                     {t("loc.qrCode")}
                   </span>
@@ -399,12 +402,12 @@ export default function LocationManagement({
                     <Button
                       size="sm"
                       variant="destructiveOutline"
-                      className="h-10 w-full justify-center sm:w-10 sm:px-0"
+                      className="w-full justify-center sm:w-10 sm:px-0"
                       aria-label={t("loc.removeLocation")}
                       title={t("loc.removeLocation")}
                       disabled={loading}
                     >
-                      <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2 sm:mr-0" />
+                      <HugeiconsIcon icon={Delete02Icon} size={16} />
                       <span className="sm:hidden">{t("loc.removeLocation")}</span>
                     </Button>
                   </AlertDialogTrigger>
@@ -483,7 +486,7 @@ export default function LocationManagement({
                 disabled={loading || atMax}
                 className="hidden text-sm md:text-base lg:inline-flex"
               >
-                <HugeiconsIcon icon={Add01Icon} size={16} className="mr-2" /> {t("loc.addBtn")}
+                <HugeiconsIcon icon={Add01Icon} size={16} /> {t("loc.addBtn")}
               </Button>
             </div>
             <div className="space-y-4">
@@ -534,7 +537,7 @@ export default function LocationManagement({
                 disabled={loading || atMax}
                 className="w-full text-sm md:text-base lg:hidden"
               >
-                <HugeiconsIcon icon={Add01Icon} size={16} className="mr-2" /> {t("loc.addBtn")}
+                <HugeiconsIcon icon={Add01Icon} size={16} /> {t("loc.addBtn")}
               </Button>
             </div>
             {atMax && <p className="text-xs md:text-sm text-red-600 mt-2">{t("loc.atMax")}</p>}
@@ -622,12 +625,10 @@ export default function LocationManagement({
 
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button variant="outline" className="w-full sm:flex-1" onClick={copyQueueLink}>
-                <HugeiconsIcon icon={Copy01Icon} size={16} className="mr-2" />{" "}
-                {t("loc.qrModal.copyLink")}
+                <HugeiconsIcon icon={Copy01Icon} size={16} /> {t("loc.qrModal.copyLink")}
               </Button>
               <Button className="w-full sm:flex-1" onClick={downloadQrCode} disabled={!qrDataUrl}>
-                <HugeiconsIcon icon={Download01Icon} size={16} className="mr-2" />{" "}
-                {t("loc.qrModal.downloadQr")}
+                <HugeiconsIcon icon={Download01Icon} size={16} /> {t("loc.qrModal.downloadQr")}
               </Button>
             </div>
           </div>

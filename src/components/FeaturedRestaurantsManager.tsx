@@ -3,7 +3,9 @@ import { api } from "@/lib/api";
 import { invalidateRestaurantConfiguration } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import ListSkeleton from "@/components/ListSkeleton";
+import BusinessEmptyState from "@/components/BusinessEmptyState";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -320,11 +322,9 @@ export default function FeaturedRestaurantsManager() {
 
   let searchButtonIcon;
   if (searching) {
-    searchButtonIcon = (
-      <HugeiconsIcon icon={Loading02Icon} size={16} className="mr-2 animate-spin" />
-    );
+    searchButtonIcon = <HugeiconsIcon icon={Loading02Icon} size={16} className="animate-spin" />;
   } else {
-    searchButtonIcon = <HugeiconsIcon icon={Search01Icon} size={16} className="mr-2" />;
+    searchButtonIcon = <HugeiconsIcon icon={Search01Icon} size={16} />;
   }
 
   let searchResultsContent;
@@ -404,39 +404,45 @@ export default function FeaturedRestaurantsManager() {
 
   let addButtonIcon;
   if (adding) {
-    addButtonIcon = <HugeiconsIcon icon={Loading02Icon} size={16} className="mr-2 animate-spin" />;
+    addButtonIcon = <HugeiconsIcon icon={Loading02Icon} size={16} className="animate-spin" />;
   } else {
-    addButtonIcon = <HugeiconsIcon icon={Add01Icon} size={16} className="mr-2" />;
+    addButtonIcon = <HugeiconsIcon icon={Add01Icon} size={16} />;
   }
 
   let featuredListContent;
   if (loadingList) {
-    featuredListContent = <ListSkeleton label="Loading Featured Restaurants" />;
+    featuredListContent = (
+      <ListSkeleton fill label="Loading Featured Restaurants" className="p-0 md:p-0" />
+    );
   } else if (listError) {
     featuredListContent = (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-        {listError}
-      </div>
+      <BusinessEmptyState
+        icon={StarIcon}
+        title="Unable To Load Featured Restaurants"
+        body="We couldn't load featured restaurants right now. Please try again."
+      >
+        <Button type="button" variant="outline" onClick={loadFeatured}>
+          Try Again
+        </Button>
+      </BusinessEmptyState>
     );
   } else if (featured.length === 0) {
     featuredListContent = (
-      <div className="flex flex-col items-center justify-center gap-1 py-8 text-center">
-        <HugeiconsIcon icon={StarIcon} className="mb-1 h-8 w-8 text-slate-300" />
-        <p className="font-medium text-gray-700">No featured restaurants yet.</p>
-        <p className="text-sm text-muted-foreground">
-          Add one above to feature it on the homepage.
-        </p>
-      </div>
+      <BusinessEmptyState
+        icon={StarIcon}
+        title="No Featured Restaurants Yet"
+        body="Search for a business above to feature one of its locations on the homepage."
+      />
     );
   } else {
     featuredListContent = featured.map((f) => {
-      let statusBadgeClass: string;
+      let statusVariant: "success" | "neutral";
       let statusLabel: string;
       if (f.isActive) {
-        statusBadgeClass = "bg-green-100 text-green-700";
+        statusVariant = "success";
         statusLabel = "Active";
       } else {
-        statusBadgeClass = "bg-gray-100 text-gray-500";
+        statusVariant = "neutral";
         statusLabel = "Inactive";
       }
 
@@ -457,9 +463,7 @@ export default function FeaturedRestaurantsManager() {
               <p className="font-medium text-slate-900 break-words">
                 {f.location?.displayName || f.location?.name || "Unnamed location"}
               </p>
-              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass}`}>
-                {statusLabel}
-              </span>
+              <Badge variant={statusVariant}>{statusLabel}</Badge>
             </div>
             <p className="text-sm text-slate-500 break-words">
               @{f.business?.username ?? "unknown"}
@@ -479,7 +483,7 @@ export default function FeaturedRestaurantsManager() {
               <Input
                 id={`order-${f.id}`}
                 type="number"
-                className="h-9 w-20"
+                className="w-20"
                 value={orderEdits[f.id] ?? String(f.sortOrder)}
                 onChange={(e) => setOrderEdits((o) => ({ ...o, [f.id]: e.target.value }))}
                 onBlur={() => saveSortOrder(f)}
@@ -502,8 +506,12 @@ export default function FeaturedRestaurantsManager() {
 
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructiveOutline" size="sm">
-                  <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2 sm:mr-0" />
+                <Button
+                  variant="destructiveOutline"
+                  size="sm"
+                  aria-label="Remove Featured Restaurant"
+                >
+                  <HugeiconsIcon icon={Delete02Icon} size={16} />
                   <span className="sm:hidden">Remove</span>
                 </Button>
               </AlertDialogTrigger>
@@ -530,8 +538,8 @@ export default function FeaturedRestaurantsManager() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="flex flex-1 flex-col gap-6">
+      <Card className="shrink-0">
         <CardHeader>
           <CardTitle>Add Featured Restaurant</CardTitle>
           <CardDescription>
@@ -554,7 +562,7 @@ export default function FeaturedRestaurantsManager() {
                   }
                 }}
                 placeholder="e.g. senopati-house"
-                className="flex-1"
+                className="sm:flex-1"
               />
               <Button
                 type="button"
@@ -601,14 +609,16 @@ export default function FeaturedRestaurantsManager() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
+      <Card data-testid="admin-content-card" className="flex flex-1 flex-col">
+        <CardHeader className="border-b border-slate-200 p-4 md:p-6">
           <CardTitle>Current Featured Restaurants</CardTitle>
           <CardDescription>
             Sorted by sort order, then newest. Inactive entries are hidden from the homepage.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">{featuredListContent}</CardContent>
+        <CardContent className="flex flex-1 flex-col gap-3 p-4 md:p-6">
+          {featuredListContent}
+        </CardContent>
       </Card>
     </div>
   );

@@ -1,5 +1,6 @@
 import { invalidateRestaurantConfiguration } from "@/lib/queryClient";
 import { useState, useEffect, useCallback } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import FeaturedRestaurantsManager from "@/components/FeaturedRestaurantsManager";
 import CampaignTemplatesAdmin from "@/components/CampaignTemplatesAdmin";
+import AdminLogin from "@/components/AdminLogin";
+import AdminLayout from "@/components/AdminLayout";
+import RouteLoading from "@/components/RouteLoading";
+import ListSkeleton from "@/components/ListSkeleton";
+import BusinessEmptyState from "@/components/BusinessEmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Ticket01Icon, UsersRoundIcon } from "@hugeicons/core-free-icons";
+import SEO from "@/components/SEO";
 import { formatEnteredPhone } from "@shared/phone";
 
 interface Ticket {
@@ -49,7 +58,16 @@ interface Ticket {
   senderEmail: string;
   senderPhone?: string;
   businessName?: string;
-  data: any;
+  data: {
+    businessWebsite?: string;
+    locations?: string | number;
+    smsPerMonth?: string | number;
+    customersPerDay?: string | number;
+    useCase?: string;
+    budget?: string;
+    feedbackType?: string;
+    severity?: string;
+  } | null;
   messages: Array<{
     sender: string;
     message: string;
@@ -105,8 +123,27 @@ type CustomerDraft = Omit<
 
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
+  const [checkingSession, setCheckingSession] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  let section = "tickets";
+  let pageTitle = "Ticket Management";
+  let pageDescription = "Manage support tickets, sales inquiries, and customer feedback.";
+  if (pathname.toLowerCase().replace(/\/$/, "") === "/admin/customers") {
+    section = "customer";
+    pageTitle = "Customer Management";
+    pageDescription = "Manage business accounts, access, locations, and credits.";
+  } else if (pathname.toLowerCase().replace(/\/$/, "") === "/admin/featured") {
+    section = "featured";
+    pageTitle = "Featured Restaurants";
+    pageDescription = "Choose and manage the restaurants featured on SeatPing.";
+  } else if (pathname.toLowerCase().replace(/\/$/, "") === "/admin/templates") {
+    section = "campaigns";
+    pageTitle = "Campaign Templates";
+    pageDescription = "Review and manage campaign templates across business accounts.";
+  }
 
   const [searchUsername, setSearchUsername] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerRecord | null>(null);
@@ -118,6 +155,9 @@ const Admin = () => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [ticketsError, setTicketsError] = useState<string | null>(null);
+  const [statsError, setStatsError] = useState(false);
   const [stats, setStats] = useState<TicketStats | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -134,18 +174,22 @@ const Admin = () => {
   const { toast } = useToast();
 
   const fetchStats = async () => {
+    setStatsError(false);
     try {
       const response = await fetch("/tickets/stats");
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats);
+      if (!response.ok) {
+        throw new Error("Failed to load ticket statistics");
       }
-    } catch (error) {
-      console.error("Error fetching stats:", error);
+      const data = await response.json();
+      setStats(data.stats);
+    } catch {
+      setStatsError(true);
     }
   };
 
   const fetchTickets = useCallback(async () => {
+    setTicketsLoading(true);
+    setTicketsError(null);
     try {
       const params = new URLSearchParams();
       if (filter.status !== "all") {
@@ -159,12 +203,15 @@ const Admin = () => {
       }
 
       const response = await fetch(`/tickets?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setTickets(data.tickets);
+      if (!response.ok) {
+        throw new Error("Failed to load tickets");
       }
-    } catch (error) {
-      console.error("Error fetching tickets:", error);
+      const data = await response.json();
+      setTickets(data.tickets);
+    } catch {
+      setTicketsError("Tickets could not be loaded. Please try again.");
+    } finally {
+      setTicketsLoading(false);
     }
   }, [filter]);
 
@@ -178,32 +225,40 @@ const Admin = () => {
   useEffect(() => {
     let active = true;
     fetch("/auth/admin/session", { credentials: "include" })
-      .then((r) => r.json())
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Admin session unavailable");
+        }
+        return response.json();
+      })
       .then((d) => {
         if (active && d?.authenticated) {
           setIsAuthenticated(true);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (active) {
+          setCheckingSession(false);
+        }
+      });
     return () => {
       active = false;
     };
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (credentials: { username: string; password: string }) => {
     setIsLoading(true);
     try {
       const res = await fetch("/auth/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(loginForm),
+        body: JSON.stringify(credentials),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setIsAuthenticated(true);
-        setLoginForm({ username: "", password: "" });
         toast({ title: "Success", description: "Admin access granted" });
       } else {
         toast({
@@ -231,6 +286,16 @@ const Admin = () => {
       });
     } catch {}
     setIsAuthenticated(false);
+    setSelectedCustomer(null);
+    setEditDraft(null);
+    setSearchUsername("");
+    setSelectedTicket(null);
+    setTickets([]);
+    setStats(null);
+    setIsDialogOpen(false);
+    setIsConfirmOpen(false);
+    setResponseForm({ message: "", responderName: "" });
+    navigate("/admin", { replace: true });
   };
 
   const handleSearchCustomer = async () => {
@@ -586,67 +651,45 @@ const Admin = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      open: "destructive",
-      in_progress: "default",
-      closed: "secondary",
+    const variants: Record<string, "warning" | "info" | "success"> = {
+      open: "warning",
+      in_progress: "info",
+      closed: "success",
     };
-    return (
-      <Badge variant={variants[status] || "outline"}>
-        {status.replace("_", " ").toUpperCase()}
-      </Badge>
-    );
+    const labels: Record<string, string> = {
+      open: "Open",
+      in_progress: "In Progress",
+      closed: "Closed",
+    };
+    return <Badge variant={variants[status] || "neutral"}>{labels[status] || status}</Badge>;
   };
 
   const getPriorityBadge = (priority?: string) => {
     if (!priority) {
       return null;
     }
-    const variants: Record<string, "default" | "secondary" | "destructive"> = {
-      high: "destructive",
-      medium: "default",
-      low: "secondary",
+    const variants: Record<string, "danger" | "warning" | "neutral"> = {
+      high: "danger",
+      medium: "warning",
+      low: "neutral",
     };
-    return <Badge variant={variants[priority] || "secondary"}>{priority.toUpperCase()}</Badge>;
+    return (
+      <Badge variant={variants[priority] || "neutral"}>
+        {priority.charAt(0).toUpperCase() + priority.slice(1)}
+      </Badge>
+    );
   };
 
+  if (checkingSession) {
+    return <RouteLoading label="Checking Admin Session" />;
+  }
+
   if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center">Admin Access</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={loginForm.username}
-                  onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={loginForm.password}
-                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full">
-                Log In
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <AdminLogin onSubmit={handleLogin} loading={isLoading} />;
+  }
+
+  if (pathname.toLowerCase().replace(/\/$/, "") === "/admin") {
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   let searchCustomerLabel: string;
@@ -921,575 +964,659 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
-            <p className="text-muted-foreground">Manage customer accounts and support tickets</p>
+    <AdminLayout onLogout={handleLogout}>
+      <SEO title={`${pageTitle} | SeatPing Admin`} description={pageDescription} />
+      <div className="flex min-h-full flex-col">
+        <div className="container mx-auto flex w-full flex-1 flex-col gap-6 px-4 py-8">
+          <div className="shrink-0">
+            <h1 className="text-xl font-semibold text-ink md:text-2xl">{pageTitle}</h1>
+            <p className="mt-1 text-body text-ink-subtle">{pageDescription}</p>
           </div>
-          <Button variant="outline" onClick={handleLogout}>
-            Log Out
-          </Button>
-        </div>
 
-        <Tabs defaultValue="tickets" className="w-full">
-          <TabsList className="grid w-full grid-cols-1 h-auto sm:grid-cols-4">
-            <TabsTrigger value="tickets">Ticket Management</TabsTrigger>
-            <TabsTrigger value="customer">Customer Management</TabsTrigger>
-            <TabsTrigger value="featured">Featured Restaurants</TabsTrigger>
-            <TabsTrigger value="campaigns">Campaign Templates</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="tickets" className="space-y-6 mt-6">
-            {stats && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-label font-medium text-ink-subtle">Total</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-semibold">{stats.total}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-label font-medium text-ink-subtle">Open</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-semibold text-red-600">{stats.open}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-label font-medium text-ink-subtle">
-                      In Progress
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-semibold text-indigo-600">{stats.inProgress}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-label font-medium text-ink-subtle">Closed</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-semibold text-green-600">{stats.closed}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-label font-medium text-ink-subtle">Sales</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-semibold">{stats.sales}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-label font-medium text-ink-subtle">
-                      Feedback
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-semibold">{stats.feedback}</div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Filters</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-4">
-                <div className="w-40">
-                  <Select
-                    value={filter.status}
-                    onValueChange={(value) => setFilter({ ...filter, status: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="open">Open</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="w-40">
-                  <Select
-                    value={filter.type}
-                    onValueChange={(value) => setFilter({ ...filter, type: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="sales">Sales</SelectItem>
-                      <SelectItem value="feedback">Feedback</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="w-40">
-                  <Select
-                    value={filter.priority}
-                    onValueChange={(value) => setFilter({ ...filter, priority: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Priorities</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="low">Low</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-4">
-              {tickets.map((ticket) => (
-                <Card
-                  key={ticket.id}
-                  className="cursor-pointer hover:bg-accent"
-                  onClick={() => handleViewTicket(ticket.ticketNumber)}
+          {section === "tickets" && (
+            <div className="flex flex-1 flex-col gap-6">
+              {!stats && !statsError && (
+                <div
+                  role="status"
+                  aria-label="Loading Ticket Statistics"
+                  className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6"
                 >
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-2 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-lg">{ticket.subject}</h3>
-                          {getStatusBadge(ticket.status)}
-                          {getPriorityBadge(ticket.priority)}
-                          <Badge variant="outline">{ticket.type.toUpperCase()}</Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {ticket.ticketNumber} • From: {ticket.senderName} ({ticket.senderEmail})
-                          {ticket.businessName && ` • ${ticket.businessName}`}
-                        </p>
-                        <p className="text-sm">
-                          Created: {new Date(ticket.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="customer" className="mt-6 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Customer Management</CardTitle>
-                <CardDescription>Search and view business account details</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="searchUsername">Business Username</Label>
-                  <Input
-                    id="searchUsername"
-                    type="text"
-                    value={searchUsername}
-                    onChange={(e) => setSearchUsername(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleSearchCustomer();
-                      }
-                    }}
-                    placeholder="Enter business username"
-                  />
+                  {Array.from({ length: 6 }, (_, index) => (
+                    <Card key={index} aria-hidden="true">
+                      <CardContent className="space-y-4 p-6">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-7 w-12" />
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-
-                <Button
-                  className="w-full sm:w-auto"
-                  onClick={handleSearchCustomer}
-                  disabled={isSearching}
+              )}
+              {statsError && (
+                <div
+                  role="alert"
+                  className="w-full rounded-xl border border-border bg-card p-8 text-center"
                 >
-                  {searchCustomerLabel}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {customerError && !isSearching && (
-              <Card>
-                <CardContent className="p-6 text-center text-muted-foreground">
-                  {customerError}
-                </CardContent>
-              </Card>
-            )}
-
-            {selectedCustomer && !isSearching && (
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Viewing Customer:{" "}
-                      <span className="font-medium text-foreground">
-                        {selectedCustomer.username}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="flex gap-2">{customerEditActions}</div>
+                  <h3 className="text-title text-foreground">Unable To Load Ticket Statistics</h3>
+                  <p className="mt-2 text-body text-ink-subtle">
+                    We couldn't load ticket statistics right now. Please try again.
+                  </p>
+                  <Button variant="outline" onClick={fetchStats} className="mt-4">
+                    Try Again
+                  </Button>
                 </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Account Information</CardTitle>
-                    <CardDescription>Business contact and identity details</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-muted-foreground">Name</Label>
-                        {nameField}
+              )}
+              {stats && !statsError && (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-label font-medium text-ink-subtle">
+                        Total
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-semibold">{stats.total}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-label font-medium text-ink-subtle">Open</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-semibold text-red-600">{stats.open}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-label font-medium text-ink-subtle">
+                        In Progress
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-semibold text-indigo-600">
+                        {stats.inProgress}
                       </div>
-                      <div>
-                        <Label className="text-muted-foreground">Username</Label>
-                        {usernameField}
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Email</Label>
-                        {emailField}
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Phone</Label>
-                        {phoneField}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-label font-medium text-ink-subtle">
+                        Closed
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-semibold text-green-600">{stats.closed}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-label font-medium text-ink-subtle">
+                        Sales
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-semibold">{stats.sales}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-label font-medium text-ink-subtle">
+                        Feedback
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-semibold">{stats.feedback}</div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Trial & Access</CardTitle>
-                    <CardDescription>
-                      Turn Trial off to activate paid access. Credits start then and refill monthly
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <Label className="text-muted-foreground">Trial</Label>
-                        {trialField}
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Trial Duration (Days)</Label>
-                        {trialDurationField}
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Max Locations</Label>
-                        {maxLocationsField}
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Base Credits</Label>
-                        {baseCreditsField}
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Credits Cycle Started</Label>
-                        <p className="text-sm md:text-base font-medium">{creditsStartedText}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Set automatically when Trial is turned off.
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Locations</CardTitle>
-                    <CardDescription>{locationsDescription}</CardDescription>
-                  </CardHeader>
-                  <CardContent>{locationsContent}</CardContent>
-                </Card>
-              </div>
-            )}
-
-            <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Confirm changes</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {editDraft && selectedCustomer && (
-                      <>
-                        Apply these changes to{" "}
-                        <span className="font-medium">{selectedCustomer.username}</span>
-                        ?
-                        <br />
-                        <br />
-                        Name: {editDraft.name}
-                        <br />
-                        Username: {editDraft.username}
-                        {editDraft.username !== selectedCustomer.username && (
-                          <span className="text-amber-600"> (rename, must be unique)</span>
-                        )}
-                        <br />
-                        Email: {editDraft.email}
-                        {editDraft.email !== selectedCustomer.email && (
-                          <span className="text-amber-600"> (changed, must be unique)</span>
-                        )}
-                        <br />
-                        Phone: {formatEnteredPhone(editDraft.phone)}
-                        <br />
-                        <br />
-                        Trial: {formatBoolean(editDraft.trial)}
-                        <br />
-                        Trial Duration: {editDraft.trialDurationDays} days
-                        <br />
-                        Max Locations: {editDraft.maxLocations}
-                        <br />
-                        Base Credits: {editDraft.baseCredits}
-                        {editDraft.trial !== selectedCustomer.trial && (
-                          <>
-                            <br />
-                            <span className="text-amber-600">{trialChangeMessage}</span>
-                          </>
-                        )}
-                        {editDraft.locations.length > 0 && (
-                          <>
-                            <br />
-                            <br />
-                            Location addresses and per-location credits will also be updated.
-                          </>
-                        )}
-                      </>
-                    )}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleSaveCustomer} disabled={isSaving}>
-                    {confirmButtonLabel}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </TabsContent>
-
-          <TabsContent value="featured" className="mt-6">
-            <FeaturedRestaurantsManager />
-          </TabsContent>
-
-          <TabsContent value="campaigns" className="mt-6">
-            <CampaignTemplatesAdmin />
-          </TabsContent>
-        </Tabs>
-
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{selectedTicket?.subject}</DialogTitle>
-              <DialogDescription>Ticket #{selectedTicket?.ticketNumber}</DialogDescription>
-            </DialogHeader>
-
-            {selectedTicket && (
-              <Tabs defaultValue="details" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="details">Details</TabsTrigger>
-                  <TabsTrigger value="messages">Messages</TabsTrigger>
-                  <TabsTrigger value="respond">Respond</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="details" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Status</Label>
+              <Card data-testid="admin-content-card" className="flex flex-1 flex-col">
+                <CardHeader className="border-b border-border p-4 md:p-6">
+                  <CardTitle>Filters</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+                  <div className="flex flex-wrap gap-4">
+                    <div className="w-full sm:w-40">
                       <Select
-                        value={selectedTicket.status}
-                        onValueChange={(value) =>
-                          handleUpdateStatus(selectedTicket.ticketNumber, value)
-                        }
+                        value={filter.status}
+                        onValueChange={(value) => setFilter({ ...filter, status: value })}
                       >
-                        <SelectTrigger>
-                          <SelectValue />
+                        <SelectTrigger aria-label="Filter by Status">
+                          <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="all">All Status</SelectItem>
                           <SelectItem value="open">Open</SelectItem>
                           <SelectItem value="in_progress">In Progress</SelectItem>
                           <SelectItem value="closed">Closed</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <Label>Priority</Label>
+                    <div className="w-full sm:w-40">
                       <Select
-                        value={selectedTicket.priority || "low"}
-                        onValueChange={(value) =>
-                          handleUpdatePriority(selectedTicket.ticketNumber, value)
-                        }
+                        value={filter.type}
+                        onValueChange={(value) => setFilter({ ...filter, type: value })}
                       >
-                        <SelectTrigger>
-                          <SelectValue />
+                        <SelectTrigger aria-label="Filter by Type">
+                          <SelectValue placeholder="Type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="all">All Types</SelectItem>
+                          <SelectItem value="sales">Sales</SelectItem>
+                          <SelectItem value="feedback">Feedback</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="w-full sm:w-40">
+                      <Select
+                        value={filter.priority}
+                        onValueChange={(value) => setFilter({ ...filter, priority: value })}
+                      >
+                        <SelectTrigger aria-label="Filter by Priority">
+                          <SelectValue placeholder="Priority" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Priorities</SelectItem>
                           <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="low">Low</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Contact Information</Label>
-                    <div className="bg-muted p-4 rounded-md space-y-1">
-                      <p>
-                        <strong>Name:</strong> {selectedTicket.senderName}
-                      </p>
-                      <p>
-                        <strong>Email:</strong> {selectedTicket.senderEmail}
-                      </p>
-                      {selectedTicket.senderPhone && (
-                        <p>
-                          <strong>Phone:</strong> {formatEnteredPhone(selectedTicket.senderPhone)}
-                        </p>
-                      )}
-                      {selectedTicket.businessName && (
-                        <p>
-                          <strong>Business:</strong> {selectedTicket.businessName}
-                        </p>
-                      )}
+                  {ticketsLoading && (
+                    <ListSkeleton fill label="Loading Tickets" className="p-0 md:p-0" />
+                  )}
+                  {!ticketsLoading && ticketsError && (
+                    <div role="alert" className="flex flex-1 flex-col">
+                      <BusinessEmptyState
+                        icon={Ticket01Icon}
+                        title="Unable To Load Tickets"
+                        body={ticketsError}
+                      >
+                        <Button variant="outline" onClick={fetchTickets}>
+                          Retry Tickets
+                        </Button>
+                      </BusinessEmptyState>
                     </div>
+                  )}
+                  {!ticketsLoading && !ticketsError && tickets.length === 0 && (
+                    <BusinessEmptyState
+                      icon={Ticket01Icon}
+                      title="No Tickets Found"
+                      body="New tickets will appear here. Try changing your filters to find another ticket."
+                    />
+                  )}
+                  {!ticketsLoading && !ticketsError && tickets.length > 0 && (
+                    <div className="space-y-4">
+                      {tickets.map((ticket) => (
+                        <Card key={ticket.id}>
+                          <button
+                            type="button"
+                            className="block w-full rounded-xl text-left transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            onClick={() => handleViewTicket(ticket.ticketNumber)}
+                          >
+                            <CardContent className="p-4 md:p-6">
+                              <div className="flex justify-between items-start">
+                                <div className="min-w-0 flex-1 space-y-2 break-words">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h3 className="text-title font-medium text-ink">
+                                      {ticket.subject}
+                                    </h3>
+                                    {getStatusBadge(ticket.status)}
+                                    {getPriorityBadge(ticket.priority)}
+                                    <Badge variant="neutral">
+                                      {ticket.type.charAt(0).toUpperCase() + ticket.type.slice(1)}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    {ticket.ticketNumber} • From: {ticket.senderName} (
+                                    {ticket.senderEmail})
+                                    {ticket.businessName && ` • ${ticket.businessName}`}
+                                  </p>
+                                  <p className="text-sm">
+                                    Created: {new Date(ticket.createdAt).toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </button>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {section === "customer" && (
+            <Card data-testid="admin-content-card" className="flex flex-1 flex-col">
+              <CardHeader className="border-b border-border p-4 md:p-6">
+                <CardTitle>Customer Management</CardTitle>
+                <CardDescription>Search and view business account details</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="searchUsername">Business Username</Label>
+                    <Input
+                      id="searchUsername"
+                      type="text"
+                      value={searchUsername}
+                      onChange={(e) => setSearchUsername(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSearchCustomer();
+                        }
+                      }}
+                      placeholder="Enter business username"
+                    />
                   </div>
 
-                  {selectedTicket.type === "sales" && selectedTicket.data && (
-                    <div className="space-y-2">
-                      <Label>Sales Details</Label>
-                      <div className="bg-muted p-4 rounded-md space-y-1 text-sm">
-                        {selectedTicket.data.businessWebsite && (
-                          <p>
-                            <strong>Website:</strong> {selectedTicket.data.businessWebsite}
-                          </p>
-                        )}
-                        {selectedTicket.data.locations && (
-                          <p>
-                            <strong>Locations:</strong> {selectedTicket.data.locations}
-                          </p>
-                        )}
-                        {selectedTicket.data.smsPerMonth && (
-                          <p>
-                            <strong>SMS/Month:</strong> {selectedTicket.data.smsPerMonth}
-                          </p>
-                        )}
-                        {selectedTicket.data.customersPerDay && (
-                          <p>
-                            <strong>Customers/Day:</strong> {selectedTicket.data.customersPerDay}
-                          </p>
-                        )}
-                        {selectedTicket.data.useCase && (
-                          <p>
-                            <strong>Use Case:</strong> {selectedTicket.data.useCase}
-                          </p>
-                        )}
-                        {selectedTicket.data.budget && (
-                          <p>
-                            <strong>Budget:</strong> {selectedTicket.data.budget}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                  <Button
+                    className="w-full sm:w-auto"
+                    onClick={handleSearchCustomer}
+                    disabled={isSearching}
+                  >
+                    {searchCustomerLabel}
+                  </Button>
+                </div>
+
+                {isSearching && (
+                  <ListSkeleton fill label="Searching Customers" className="p-0 md:p-0" />
+                )}
+
+                {!selectedCustomer && !isSearching && !customerError && (
+                  <BusinessEmptyState
+                    icon={UsersRoundIcon}
+                    title="Find a Business Account"
+                    body="Search for a business username to view and manage its account, locations, and credits."
+                  />
+                )}
+
+                {customerError === "No customer found with this username." && !isSearching && (
+                  <BusinessEmptyState
+                    icon={UsersRoundIcon}
+                    title="No Customer Found"
+                    body="Try another business username to find the account you need."
+                  />
+                )}
+
+                {customerError &&
+                  customerError !== "No customer found with this username." &&
+                  !isSearching && (
+                    <Card>
+                      <CardContent className="p-6 text-center text-muted-foreground">
+                        {customerError}
+                      </CardContent>
+                    </Card>
                   )}
 
-                  {selectedTicket.type === "feedback" && selectedTicket.data && (
-                    <div className="space-y-2">
-                      <Label>Feedback Details</Label>
-                      <div className="bg-muted p-4 rounded-md space-y-1 text-sm">
-                        {selectedTicket.data.feedbackType && (
-                          <p>
-                            <strong>Type:</strong> {selectedTicket.data.feedbackType}
-                          </p>
-                        )}
-                        {selectedTicket.data.severity && (
-                          <p>
-                            <strong>Severity:</strong> {selectedTicket.data.severity}
-                          </p>
-                        )}
+                {selectedCustomer && !isSearching && (
+                  <div className="space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          Viewing Customer:{" "}
+                          <span className="font-medium text-foreground">
+                            {selectedCustomer.username}
+                          </span>
+                        </p>
                       </div>
+                      <div className="flex gap-2">{customerEditActions}</div>
                     </div>
-                  )}
-                </TabsContent>
 
-                <TabsContent value="messages" className="space-y-4">
-                  <div className="space-y-4">
-                    {selectedTicket.messages.map((msg, idx) => {
-                      let messageToneClass: string;
-                      if (msg.isTeamResponse) {
-                        messageToneClass = "bg-indigo-50 border-l-4 border-indigo-500";
-                      } else {
-                        messageToneClass = "bg-muted";
-                      }
-                      return (
-                        <div key={idx} className={`p-4 rounded-md ${messageToneClass}`}>
-                          <div className="flex justify-between items-start mb-2">
-                            <p className="font-semibold">{msg.sender}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(msg.timestamp).toLocaleString()}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Account Information</CardTitle>
+                        <CardDescription>Business contact and identity details</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-muted-foreground">Name</Label>
+                            {nameField}
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground">Username</Label>
+                            {usernameField}
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground">Email</Label>
+                            {emailField}
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground">Phone</Label>
+                            {phoneField}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Trial & Access</CardTitle>
+                        <CardDescription>
+                          Turn Trial off to activate paid access. Credits start then and refill
+                          monthly
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <Label className="text-muted-foreground">Trial</Label>
+                            {trialField}
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground">Trial Duration (Days)</Label>
+                            {trialDurationField}
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground">Max Locations</Label>
+                            {maxLocationsField}
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground">Base Credits</Label>
+                            {baseCreditsField}
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground">Credits Cycle Started</Label>
+                            <p className="text-sm md:text-base font-medium">{creditsStartedText}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Set automatically when Trial is turned off.
                             </p>
                           </div>
-                          <p className="whitespace-pre-wrap">{msg.message}</p>
                         </div>
-                      );
-                    })}
-                  </div>
-                </TabsContent>
+                      </CardContent>
+                    </Card>
 
-                <TabsContent value="respond" className="space-y-4">
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Your Name</Label>
-                      <Input
-                        value={responseForm.responderName}
-                        onChange={(e) =>
-                          setResponseForm({
-                            ...responseForm,
-                            responderName: e.target.value,
-                          })
-                        }
-                        placeholder="Enter your name"
-                      />
-                    </div>
-                    <div>
-                      <Label>Response Message</Label>
-                      <Textarea
-                        value={responseForm.message}
-                        onChange={(e) =>
-                          setResponseForm({
-                            ...responseForm,
-                            message: e.target.value,
-                          })
-                        }
-                        placeholder="Type your response here..."
-                        rows={8}
-                      />
-                    </div>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Locations</CardTitle>
+                        <CardDescription>{locationsDescription}</CardDescription>
+                      </CardHeader>
+                      <CardContent>{locationsContent}</CardContent>
+                    </Card>
                   </div>
-                </TabsContent>
-              </Tabs>
-            )}
+                )}
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Close
-              </Button>
+                <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Confirm Changes</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {editDraft && selectedCustomer && (
+                          <>
+                            Apply these changes to{" "}
+                            <span className="font-medium">{selectedCustomer.username}</span>
+                            ?
+                            <br />
+                            <br />
+                            Name: {editDraft.name}
+                            <br />
+                            Username: {editDraft.username}
+                            {editDraft.username !== selectedCustomer.username && (
+                              <span className="text-amber-600"> (rename, must be unique)</span>
+                            )}
+                            <br />
+                            Email: {editDraft.email}
+                            {editDraft.email !== selectedCustomer.email && (
+                              <span className="text-amber-600"> (changed, must be unique)</span>
+                            )}
+                            <br />
+                            Phone: {formatEnteredPhone(editDraft.phone)}
+                            <br />
+                            <br />
+                            Trial: {formatBoolean(editDraft.trial)}
+                            <br />
+                            Trial Duration: {editDraft.trialDurationDays} days
+                            <br />
+                            Max Locations: {editDraft.maxLocations}
+                            <br />
+                            Base Credits: {editDraft.baseCredits}
+                            {editDraft.trial !== selectedCustomer.trial && (
+                              <>
+                                <br />
+                                <span className="text-amber-600">{trialChangeMessage}</span>
+                              </>
+                            )}
+                            {editDraft.locations.length > 0 && (
+                              <>
+                                <br />
+                                <br />
+                                Location addresses and per-location credits will also be updated.
+                              </>
+                            )}
+                          </>
+                        )}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleSaveCustomer} disabled={isSaving}>
+                        {confirmButtonLabel}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardContent>
+            </Card>
+          )}
+
+          {section === "featured" && <FeaturedRestaurantsManager />}
+
+          {section === "campaigns" && <CampaignTemplatesAdmin />}
+
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{selectedTicket?.subject}</DialogTitle>
+                <DialogDescription>Ticket #{selectedTicket?.ticketNumber}</DialogDescription>
+              </DialogHeader>
+
               {selectedTicket && (
-                <Button onClick={handleRespond} disabled={isLoading}>
-                  {sendResponseLabel}
-                </Button>
+                <Tabs defaultValue="details" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="details">Details</TabsTrigger>
+                    <TabsTrigger value="messages">Messages</TabsTrigger>
+                    <TabsTrigger value="respond">Respond</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="details" className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Status</Label>
+                        <Select
+                          value={selectedTicket.status}
+                          onValueChange={(value) =>
+                            handleUpdateStatus(selectedTicket.ticketNumber, value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="open">Open</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="closed">Closed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Priority</Label>
+                        <Select
+                          value={selectedTicket.priority || "low"}
+                          onValueChange={(value) =>
+                            handleUpdatePriority(selectedTicket.ticketNumber, value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Contact Information</Label>
+                      <div className="bg-muted p-4 rounded-md space-y-1">
+                        <p>
+                          <strong>Name:</strong> {selectedTicket.senderName}
+                        </p>
+                        <p>
+                          <strong>Email:</strong> {selectedTicket.senderEmail}
+                        </p>
+                        {selectedTicket.senderPhone && (
+                          <p>
+                            <strong>Phone:</strong> {formatEnteredPhone(selectedTicket.senderPhone)}
+                          </p>
+                        )}
+                        {selectedTicket.businessName && (
+                          <p>
+                            <strong>Business:</strong> {selectedTicket.businessName}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedTicket.type === "sales" && selectedTicket.data && (
+                      <div className="space-y-2">
+                        <Label>Sales Details</Label>
+                        <div className="bg-muted p-4 rounded-md space-y-1 text-sm">
+                          {selectedTicket.data.businessWebsite && (
+                            <p>
+                              <strong>Website:</strong> {selectedTicket.data.businessWebsite}
+                            </p>
+                          )}
+                          {selectedTicket.data.locations && (
+                            <p>
+                              <strong>Locations:</strong> {selectedTicket.data.locations}
+                            </p>
+                          )}
+                          {selectedTicket.data.smsPerMonth && (
+                            <p>
+                              <strong>SMS/Month:</strong> {selectedTicket.data.smsPerMonth}
+                            </p>
+                          )}
+                          {selectedTicket.data.customersPerDay && (
+                            <p>
+                              <strong>Customers/Day:</strong> {selectedTicket.data.customersPerDay}
+                            </p>
+                          )}
+                          {selectedTicket.data.useCase && (
+                            <p>
+                              <strong>Use Case:</strong> {selectedTicket.data.useCase}
+                            </p>
+                          )}
+                          {selectedTicket.data.budget && (
+                            <p>
+                              <strong>Budget:</strong> {selectedTicket.data.budget}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedTicket.type === "feedback" && selectedTicket.data && (
+                      <div className="space-y-2">
+                        <Label>Feedback Details</Label>
+                        <div className="bg-muted p-4 rounded-md space-y-1 text-sm">
+                          {selectedTicket.data.feedbackType && (
+                            <p>
+                              <strong>Type:</strong> {selectedTicket.data.feedbackType}
+                            </p>
+                          )}
+                          {selectedTicket.data.severity && (
+                            <p>
+                              <strong>Severity:</strong> {selectedTicket.data.severity}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="messages" className="space-y-4">
+                    <div className="space-y-4">
+                      {selectedTicket.messages.map((msg, idx) => {
+                        let messageToneClass: string;
+                        if (msg.isTeamResponse) {
+                          messageToneClass = "bg-indigo-50 border-l-4 border-indigo-500";
+                        } else {
+                          messageToneClass = "bg-muted";
+                        }
+                        return (
+                          <div key={idx} className={`p-4 rounded-md ${messageToneClass}`}>
+                            <div className="flex justify-between items-start mb-2">
+                              <p className="font-semibold">{msg.sender}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(msg.timestamp).toLocaleString()}
+                              </p>
+                            </div>
+                            <p className="whitespace-pre-wrap">{msg.message}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="respond" className="space-y-4">
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Your Name</Label>
+                        <Input
+                          value={responseForm.responderName}
+                          onChange={(e) =>
+                            setResponseForm({
+                              ...responseForm,
+                              responderName: e.target.value,
+                            })
+                          }
+                          placeholder="Enter your name"
+                        />
+                      </div>
+                      <div>
+                        <Label>Response Message</Label>
+                        <Textarea
+                          value={responseForm.message}
+                          onChange={(e) =>
+                            setResponseForm({
+                              ...responseForm,
+                              message: e.target.value,
+                            })
+                          }
+                          placeholder="Type your response here..."
+                          rows={8}
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Close
+                </Button>
+                {selectedTicket && (
+                  <Button onClick={handleRespond} disabled={isLoading}>
+                    {sendResponseLabel}
+                  </Button>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 

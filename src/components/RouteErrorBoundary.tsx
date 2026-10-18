@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from "react";
 import { isChunkLoadError } from "@/lib/lazyRoute";
+import { Button } from "@/components/ui/button";
 
 type Props = { children: ReactNode; resetKey?: string };
 type State = { error: Error | null; resetKey?: string };
@@ -32,16 +33,12 @@ export default class RouteErrorBoundary extends Component<Props, State> {
       <div role="alert" className="mx-auto max-w-lg px-6 py-16 text-center">
         <h1 className="text-title text-ink">{title}</h1>
         <p className="mt-3 text-body text-ink-subtle">{description}</p>
-        <button
-          type="button"
-          className="mt-6 rounded-control bg-slate-900 px-4 py-3 text-label text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-          onClick={() => window.location.reload()}
-        >
+        <Button type="button" className="mt-6" onClick={() => window.location.reload()}>
           Reload Page
-        </button>
-        <a href="/" className="ml-4 text-label text-ink underline">
-          Back To Home
-        </a>
+        </Button>
+        <Button asChild variant="link" className="ml-4">
+          <a href="/">Back To Home</a>
+        </Button>
       </div>
     );
   }

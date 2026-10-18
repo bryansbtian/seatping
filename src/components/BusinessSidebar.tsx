@@ -173,7 +173,7 @@ const BusinessSidebar = ({
           <div key={group.labelKey} className={cn("mb-2", collapsed && "mb-0")}>
             <p
               className={cn(
-                "business-nav-group-label px-2 pb-1 font-medium uppercase tracking-wide text-sidebar-muted",
+                "business-nav-group-label px-2 pb-1 font-normal uppercase tracking-wide text-sidebar-muted",
                 collapsed && "sr-only",
               )}
             >
@@ -203,7 +203,7 @@ const BusinessSidebar = ({
                       aria-current={ariaCurrent}
                       title={itemTitle}
                       className={cn(
-                        "flex h-row items-center gap-3 rounded-control px-3 text-label font-medium transition-colors duration-150",
+                        "flex h-row items-center gap-3 rounded-control px-3 text-label font-normal transition-colors duration-150",
                         collapsed && "justify-center px-2",
                         active && "bg-sidebar-accent text-sidebar-accent-foreground",
                         !active &&
@@ -237,7 +237,7 @@ const BusinessSidebar = ({
               aria-label={settingsLabel}
               title={settingsLabel}
               className={cn(
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded-control transition-colors duration-150",
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-control font-normal transition-colors duration-150",
                 settingsToneClass,
               )}
             >
@@ -253,7 +253,7 @@ const BusinessSidebar = ({
             aria-current={settingsAriaCurrent}
             title={settingsLabel}
             className={cn(
-              "mt-2 flex h-row w-full items-center justify-center rounded-control transition-colors duration-150",
+              "mt-2 flex h-row w-full items-center justify-center rounded-control font-normal transition-colors duration-150",
               settingsToneClass,
             )}
           >
@@ -267,7 +267,7 @@ const BusinessSidebar = ({
           onClick={handleLogout}
           title={t("nav.logout")}
           className={cn(
-            "flex h-row w-full items-center gap-3 rounded-control px-3 text-label font-medium text-sidebar-foreground transition-colors duration-150 hover:bg-sidebar-hover hover:text-sidebar-accent-foreground",
+            "flex h-row w-full items-center gap-3 rounded-control px-3 text-label font-normal text-sidebar-foreground transition-colors duration-150 hover:bg-sidebar-hover hover:text-sidebar-accent-foreground",
             collapsed && "mt-2 justify-center px-2",
           )}
         >

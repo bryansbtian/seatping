@@ -198,6 +198,22 @@ describe("sorting and filtering on the reviews page", () => {
     }
   });
 
+  it("exposes the selected review range and filter while updating the visible results", async () => {
+    render(<BusinessReviews />);
+    await screen.findByTestId("reviews-list");
+
+    expect(screen.getByTestId("reviews-range-all").getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByTestId("reviews-range-30d"));
+    expect(screen.getByTestId("reviews-range-30d").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("reviews-range-all").getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(screen.getByTestId("reviews-range-all"));
+
+    fireEvent.click(screen.getByTestId("reviews-chip-low"));
+    expect(screen.getByTestId("reviews-chip-low").getAttribute("aria-pressed")).toBe("true");
+    const list = screen.getByTestId("reviews-list");
+    expect(orderedNames(list)).toEqual(["Kevin Nguyen"]);
+  });
+
   it("starts on newest first", async () => {
     render(<BusinessReviews />);
     await screen.findByTestId("reviews-list");

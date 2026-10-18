@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Linkedin02Icon } from "@hugeicons/core-free-icons";
-import { cn } from "@/lib/utils";
 
 const footerLink =
   "inline-flex min-h-8 items-center rounded-sm text-slate-600 transition-colors duration-150 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring";
@@ -31,14 +30,9 @@ const footerGroups = [
   },
 ];
 
-const Footer = ({ className }: { className?: string }) => {
+const Footer = () => {
   return (
-    <footer
-      className={cn(
-        "shrink-0 bg-white pt-10 font-sans text-body text-slate-600 sm:pt-14 lg:pt-20",
-        className,
-      )}
-    >
+    <footer className="shrink-0 bg-white pt-12 font-sans text-body text-slate-600 sm:pt-14 md:pt-16 lg:pt-[4.5rem]">
       <div className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-16">
         <div aria-hidden="true" className="border-t border-slate-200" />
 
@@ -46,6 +40,7 @@ const Footer = ({ className }: { className?: string }) => {
           <div className="col-span-2 sm:col-span-4 lg:col-span-1">
             <Link
               to="/"
+              state={{ scrollToTop: true }}
               className="inline-block rounded-sm text-2xl font-semibold tracking-tight text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
             >
               SeatPing
@@ -61,7 +56,7 @@ const Footer = ({ className }: { className?: string }) => {
               <ul>
                 {group.links.map((link) => (
                   <li key={link.to}>
-                    <Link to={link.to} className={footerLink}>
+                    <Link to={link.to} state={{ scrollToTop: true }} className={footerLink}>
                       {link.label}
                     </Link>
                   </li>
@@ -99,11 +94,11 @@ const Footer = ({ className }: { className?: string }) => {
             aria-label="Legal"
             className="flex flex-wrap items-center justify-center gap-x-4 sm:justify-end sm:gap-x-6"
           >
-            <Link to="/policy" className={footerLink}>
+            <Link to="/policy" state={{ scrollToTop: true }} className={footerLink}>
               Privacy Policy
             </Link>
             <span aria-hidden="true">|</span>
-            <Link to="/terms" className={footerLink}>
+            <Link to="/terms" state={{ scrollToTop: true }} className={footerLink}>
               Terms of Service
             </Link>
           </nav>

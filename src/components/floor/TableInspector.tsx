@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -108,11 +109,11 @@ const TableInspector = ({
   let blockAction = (
     <Button
       variant="outline"
-      className="h-9 w-full text-xs md:h-10"
+      className="w-full"
       disabled={saving}
       onClick={() => onToggleBlocked(true)}
     >
-      <HugeiconsIcon icon={BanIcon} className="mr-2 h-4 w-4" />
+      <HugeiconsIcon icon={BanIcon} className="h-4 w-4" />
       {t("floor.block")}
     </Button>
   );
@@ -120,11 +121,11 @@ const TableInspector = ({
     blockAction = (
       <Button
         variant="outline"
-        className="h-9 w-full text-xs md:h-10"
+        className="w-full"
         disabled={saving}
         onClick={() => onToggleBlocked(false)}
       >
-        <HugeiconsIcon icon={BanIcon} className="mr-2 h-4 w-4" />
+        <HugeiconsIcon icon={BanIcon} className="h-4 w-4" />
         {t("floor.unblock")}
       </Button>
     );
@@ -134,11 +135,7 @@ const TableInspector = ({
     <div className="flex min-h-full shrink-0 flex-col gap-3 md:gap-4" data-testid="table-inspector">
       <div className="flex items-center justify-between">
         <CardTitle className="text-slate-800">{t("floor.inspector.title")}</CardTitle>
-        {table.isBlocked && (
-          <span className="rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
-            {t("floor.blockedBadge")}
-          </span>
-        )}
+        {table.isBlocked && <Badge variant="neutral">{t("floor.blockedBadge")}</Badge>}
       </div>
 
       <div className="grid shrink-0 grid-cols-1 gap-3">
@@ -219,7 +216,7 @@ const TableInspector = ({
               type="button"
               variant="outline"
               size="icon"
-              className="h-9 w-9 shrink-0 md:h-10 md:w-10"
+              className="shrink-0"
               aria-label={t("floor.rotateLeft")}
               onClick={() => update({ rotation: stepRotation(form.rotation, -ROTATION_STEP) })}
             >
@@ -232,7 +229,7 @@ const TableInspector = ({
               type="button"
               variant="outline"
               size="icon"
-              className="h-9 w-9 shrink-0 md:h-10 md:w-10"
+              className="shrink-0"
               aria-label={t("floor.rotateRight")}
               onClick={() => update({ rotation: stepRotation(form.rotation, ROTATION_STEP) })}
             >
@@ -265,7 +262,7 @@ const TableInspector = ({
 
       <div className="mt-auto flex shrink-0 flex-col gap-3 border-t border-slate-100 pt-4">
         <div className="flex flex-col gap-2">
-          <Button className="h-9 w-full text-xs md:h-10" disabled={saving} onClick={handleSave}>
+          <Button className="w-full" disabled={saving} onClick={handleSave}>
             {saveLabel}
           </Button>
 
@@ -278,11 +275,8 @@ const TableInspector = ({
             confirmText={t("floor.delete.confirm")}
             onConfirm={onDelete}
             trigger={
-              <Button
-                variant="outline"
-                className="h-9 w-full text-xs text-red-600 hover:text-red-700 md:h-10"
-              >
-                <HugeiconsIcon icon={Delete02Icon} className="mr-2 h-4 w-4" />
+              <Button variant="destructiveOutline" className="w-full">
+                <HugeiconsIcon icon={Delete02Icon} className="h-4 w-4" />
                 {t("floor.delete")}
               </Button>
             }
