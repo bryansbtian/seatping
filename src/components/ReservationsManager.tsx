@@ -9,6 +9,7 @@ import {
 } from "@/lib/timezones";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { GuestStatusBadge } from "@/components/GuestBadge";
 import BusinessEmptyState from "@/components/BusinessEmptyState";
@@ -230,39 +231,28 @@ export default function ReservationsManager({
 
         <div className="!mt-4 flex flex-wrap gap-2">
           {tabs.map((t) => {
-            let tabToneClass: string;
+            let tabVariant: "default" | "outline";
             if (tab === t.key) {
-              tabToneClass = "bg-slate-900 text-white";
+              tabVariant = "default";
             } else {
-              tabToneClass = "bg-slate-100 text-slate-600 hover:bg-slate-200";
-            }
-
-            let countToneClass: string;
-            if (tab === t.key) {
-              countToneClass = "bg-white/20 text-white";
-            } else {
-              countToneClass = "bg-white text-slate-500";
+              tabVariant = "outline";
             }
 
             return (
-              <button
+              <Button
                 key={t.key}
+                type="button"
+                size="sm"
+                variant={tabVariant}
+                aria-pressed={tab === t.key}
                 onClick={() => {
                   setTab(t.key);
                   setExpanded(false);
                 }}
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-medium transition",
-                  tabToneClass,
-                )}
               >
                 {t.label}
-                {t.count > 0 && (
-                  <span className={cn("ml-1.5 rounded-full px-1.5 text-micro", countToneClass)}>
-                    {t.count}
-                  </span>
-                )}
-              </button>
+                {t.count > 0 && <Badge variant="neutral">{t.count}</Badge>}
+              </Button>
             );
           })}
         </div>
@@ -313,12 +303,7 @@ export default function ReservationsManager({
 
         {visible.length > 2 && (
           <div className={cn("mt-3 flex justify-center", expandToggleWrapperClass)}>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setExpanded((v) => !v)}
-              className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
-            >
+            <Button variant="ghost" size="sm" onClick={() => setExpanded((v) => !v)}>
               {expandToggleLabel}
             </Button>
           </div>

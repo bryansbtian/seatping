@@ -411,9 +411,7 @@ const QueueManager = ({
               />
               <span className="hidden sm:inline">{t("common.refresh")}</span>
             </Button>
-            <Badge className="border-0 bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
-              {t(queueCountKey, { n: queueRows.length })}
-            </Badge>
+            <Badge variant="info">{t(queueCountKey, { n: queueRows.length })}</Badge>
           </div>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col p-4 md:p-6">

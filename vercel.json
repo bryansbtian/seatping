@@ -17,6 +17,22 @@
       "destination": "/index.html"
     },
     {
+      "source": "/admin/dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/customers",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/featured",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/templates",
+      "destination": "/index.html"
+    },
+    {
       "source": "/admin/:path*",
       "destination": "/api/server"
     },

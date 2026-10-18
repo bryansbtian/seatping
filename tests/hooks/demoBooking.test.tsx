@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DemoBookingProvider from "../../src/components/DemoBookingProvider.js";
 import { useDemoBooking } from "../../src/lib/demoBooking.js";
@@ -109,6 +109,35 @@ describe("demo booking dialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Book a Demo" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("shows complete time skeletons until availability resolves and replaces them with the date prompt", async () => {
+    let finish = (_value: Response) => {};
+    fetchMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    render(
+      <DemoBookingProvider>
+        <Trigger />
+      </DemoBookingProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Book a Demo" }));
+    const times = await screen.findByRole("region", { name: "Available Times" });
+    const skeleton = within(times).getByRole("status");
+
+    expect(skeleton.querySelector("button")).toBeNull();
+    expect(skeleton.textContent).toBe("");
+    expect(skeleton.firstElementChild?.children).toHaveLength(6);
+    expect(within(times).queryByText("Choose an available date to see meeting times.")).toBeNull();
+    await act(async () => {
+      finish(new Response(JSON.stringify({ slots: ["2026-10-02T13:00:00.000Z"] })));
+    });
+
+    expect(within(times).queryByRole("status")).toBeNull();
+    expect(within(times).getByText("Choose an available date to see meeting times.")).toBeTruthy();
   });
 
   it("opens without navigation and restores focus on Escape", async () => {

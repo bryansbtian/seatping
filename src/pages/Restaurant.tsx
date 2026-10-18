@@ -20,6 +20,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SEO from "@/components/SEO";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -489,7 +490,7 @@ export default function RestaurantPage() {
         <div role="status" aria-label="Loading Restaurant">
           <div aria-hidden="true">
             <Skeleton className="h-56 w-full rounded-none sm:h-72 md:h-96" />
-            <div className="container mx-auto grid max-w-7xl gap-8 px-4 py-8 md:py-10 lg:grid-cols-3">
+            <div className="container mx-auto grid max-w-7xl gap-8 px-4 pt-8 md:pt-10 lg:grid-cols-3">
               <div className="space-y-6 lg:col-span-2">
                 <Skeleton className="h-9 w-2/3" />
                 <Skeleton className="h-4 w-1/2" />
@@ -682,7 +683,7 @@ export default function RestaurantPage() {
         )}
       </div>
 
-      <div className="container mx-auto max-w-7xl px-4 py-8 md:py-10">
+      <div className="container mx-auto max-w-7xl px-4 pt-8 md:pt-10">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <div className="flex items-start justify-between gap-3">
@@ -739,28 +740,26 @@ export default function RestaurantPage() {
                   {visibleSections.map((s) => {
                     const isActive = activeSection === s.id;
                     let sectionAriaCurrent: "true" | undefined;
-                    let sectionClass: string;
+                    let sectionVariant: "default" | "outline";
                     if (isActive) {
                       sectionAriaCurrent = "true";
-                      sectionClass = "border-slate-900 bg-slate-900 text-white";
+                      sectionVariant = "default";
                     } else {
                       sectionAriaCurrent = undefined;
-                      sectionClass =
-                        "border-slate-200 bg-white text-slate-700 hover:border-slate-900 hover:text-slate-900";
+                      sectionVariant = "outline";
                     }
                     return (
-                      <button
+                      <Button
                         key={s.id}
                         type="button"
+                        variant={sectionVariant}
+                        size="sm"
                         onClick={() => scrollToSection(s.id)}
                         aria-current={sectionAriaCurrent}
-                        className={cn(
-                          "shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition",
-                          sectionClass,
-                        )}
+                        className="shrink-0"
                       >
                         {s.label}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -817,14 +816,11 @@ export default function RestaurantPage() {
                     <p className="text-sm text-slate-600">Menu from {r.name}.</p>
                   </div>
                   {r.menuUrl && (
-                    <a
-                      href={normalizeUrl(r.menuUrl)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex h-12 items-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-medium text-slate-900 transition-colors hover:border-slate-300 hover:bg-slate-50"
-                    >
-                      View Full Menu
-                    </a>
+                    <Button asChild variant="outline" size="lg">
+                      <a href={normalizeUrl(r.menuUrl)} target="_blank" rel="noopener noreferrer">
+                        View Full Menu
+                      </a>
+                    </Button>
                   )}
                   {r.menu.length > 0 && <MenuList items={r.menu} fallbackCurrency={r.currency} />}
                 </section>
@@ -1025,34 +1021,30 @@ function SaveButton({
   className?: string;
 }) {
   let label: string;
-  let savedClass: string;
+  let variant: "secondary" | "outline";
   if (saved) {
     label = "Saved";
-    savedClass = "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100";
+    variant = "secondary";
   } else {
     label = "Save";
-    savedClass =
-      "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50";
+    variant = "outline";
   }
   return (
-    <button
+    <Button
       type="button"
+      variant={variant}
       onClick={onClick}
       disabled={busy}
       aria-pressed={saved}
       aria-label={label}
-      className={cn(
-        "inline-flex items-center gap-2 rounded-full border p-2 text-sm font-medium transition-colors disabled:opacity-60 sm:px-4 sm:py-2",
-        savedClass,
-        className,
-      )}
+      className={className}
     >
       <HugeiconsIcon
         icon={FavouriteIcon}
         className={cn("h-4 w-4", saved && "fill-rose-500 text-rose-500")}
       />
       <span className="hidden sm:inline">{label}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -1340,12 +1332,7 @@ function MenuList({
 
       {collapsible && (
         <div className="flex justify-center">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setExpanded((v) => !v)}
-            className="rounded-full px-6"
-          >
+          <Button type="button" variant="outline" onClick={() => setExpanded((v) => !v)}>
             {expandToggleLabel}
           </Button>
         </div>
@@ -1531,11 +1518,7 @@ function ReviewCard({
 
   let headerTrailing: React.ReactNode;
   if (isOwn) {
-    headerTrailing = (
-      <span className="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
-        Your Review
-      </span>
-    );
+    headerTrailing = <Badge variant="neutral">Your Review</Badge>;
   } else {
     headerTrailing = (
       <div className="flex shrink-0 items-center gap-1.5">

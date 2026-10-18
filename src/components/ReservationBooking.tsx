@@ -13,7 +13,11 @@ import {
 import { getRestaurantImageProps } from "@/lib/restaurantImages";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { SLOT_BUTTON_BASE_CLASS, SLOT_BUTTON_COMPACT_CLASS } from "@/lib/slotButton";
+import {
+  SLOT_BUTTON_BASE_CLASS,
+  SLOT_BUTTON_COMPACT_CLASS,
+  SLOT_BUTTON_SELECTED_CLASS,
+} from "@/lib/slotButton";
 import { analytics } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import TimeSlotsSkeleton from "@/components/TimeSlotsSkeleton";
@@ -252,7 +256,7 @@ export default function ReservationBooking({
               }
               let slotClass: string;
               if (selected) {
-                slotClass = "border-slate-900 bg-slate-900 text-white";
+                slotClass = SLOT_BUTTON_SELECTED_CLASS;
               } else if (s.available) {
                 slotClass = "border-slate-200 bg-white text-slate-700 hover:border-slate-400";
               } else {
@@ -269,7 +273,7 @@ export default function ReservationBooking({
                     setFullNotice("");
                   }}
                   title={slotTitle}
-                  className={cn(SLOT_BUTTON_BASE_CLASS, "px-2", slotClass)}
+                  className={cn(SLOT_BUTTON_BASE_CLASS, slotClass, "px-2")}
                 >
                   {s.label}
                 </button>
@@ -565,7 +569,7 @@ function BookingModal({
         {slots.map((s) => {
           let slotClass: string;
           if (s.time === time) {
-            slotClass = "border-slate-900 bg-slate-900 text-white";
+            slotClass = SLOT_BUTTON_SELECTED_CLASS;
           } else if (s.available) {
             slotClass = "border-slate-200 bg-white text-slate-700 hover:border-slate-400";
           } else {
@@ -578,7 +582,7 @@ function BookingModal({
               type="button"
               disabled={!s.available}
               onClick={() => setTime(s.time)}
-              className={cn(SLOT_BUTTON_BASE_CLASS, SLOT_BUTTON_COMPACT_CLASS, "px-1", slotClass)}
+              className={cn(SLOT_BUTTON_BASE_CLASS, SLOT_BUTTON_COMPACT_CLASS, slotClass, "px-1")}
             >
               {s.label}
             </button>

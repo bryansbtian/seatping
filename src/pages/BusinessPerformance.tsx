@@ -171,7 +171,7 @@ const BusinessPerformance = () => {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [data, setData] = useState<PerformanceResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(locationId));
   const [error, setError] = useState<string | null>(null);
   const [showUsedOnly, setShowUsedOnly] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
@@ -448,6 +448,7 @@ const BusinessPerformance = () => {
                 <button
                   type="button"
                   data-testid="perf-tables-used"
+                  aria-pressed={showUsedOnly}
                   onClick={() => setShowUsedOnly(true)}
                   className={cn(
                     "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
@@ -460,6 +461,7 @@ const BusinessPerformance = () => {
                 <button
                   type="button"
                   data-testid="perf-tables-all"
+                  aria-pressed={!showUsedOnly}
                   onClick={() => setShowUsedOnly(false)}
                   className={cn(
                     "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
@@ -540,6 +542,7 @@ const BusinessPerformance = () => {
                 key={key}
                 type="button"
                 data-testid={`perf-preset-${key}`}
+                aria-pressed={preset === key}
                 onClick={() => choosePreset(key)}
                 className={cn(
                   "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors max-sm:flex-1 max-sm:px-2 max-[425px]:text-xs max-[325px]:px-1.5 max-[325px]:text-micro",

@@ -92,6 +92,55 @@ describe("useBusinessSession", () => {
 });
 
 describe("BusinessSessionProvider location context", () => {
+  it("reports account loading until the first response succeeds", async () => {
+    let finish = (_value: ReturnType<typeof businessMe>) => {};
+    apiMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { result } = renderHook(() => useBusinessSession(), { wrapper });
+
+    expect(result.current.loadingMe).toBe(true);
+    expect(result.current.meError).toBe(false);
+    expect(result.current.me).toBeNull();
+    await act(async () => {
+      finish(businessMe([location("loc-1", "Loaded Location")]));
+    });
+    expect(result.current.loadingMe).toBe(false);
+    expect(result.current.meError).toBe(false);
+    expect(result.current.currentLocation?.displayName).toBe("Loaded Location");
+  });
+
+  it("reports initial failure and clears the error after a successful retry", async () => {
+    apiMock.mockRejectedValueOnce(new ApiError("Unavailable", 503));
+    const { result } = renderHook(() => useBusinessSession(), { wrapper });
+
+    await waitFor(() => expect(result.current.loadingMe).toBe(false));
+    expect(result.current.meError).toBe(true);
+    expect(result.current.me).toBeNull();
+
+    await act(async () => {
+      await result.current.refreshMe();
+    });
+    expect(result.current.loadingMe).toBe(false);
+    expect(result.current.meError).toBe(false);
+    expect(result.current.me?.name).toBe("Demo Restaurant");
+  });
+
+  it.each([null, undefined, "invalid", []])(
+    "reports an account error for an invalid user payload %j",
+    async (user) => {
+      apiMock.mockResolvedValueOnce({ user });
+      const { result } = renderHook(() => useBusinessSession(), { wrapper });
+
+      await waitFor(() => expect(result.current.loadingMe).toBe(false));
+      expect(result.current.meError).toBe(true);
+      expect(result.current.me).toBeNull();
+    },
+  );
+
   it("does not overwrite a saved Settings update with an older poll response", async () => {
     const { result } = renderHook(() => useBusinessSession(), { wrapper });
     await waitFor(() => expect(result.current.me).not.toBeNull());

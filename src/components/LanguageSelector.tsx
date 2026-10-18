@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { Label } from "@/components/ui/label";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useLang, type Lang } from "@/lib/i18n";
 
@@ -36,28 +41,27 @@ export default function LanguageSelector() {
 
   return (
     <div className="max-w-sm space-y-1.5">
-      <Label htmlFor="language" className="text-sm md:text-base">
-        {t("settings.language.label")}
-      </Label>
-      <div className="relative">
-        <select
-          id="language"
-          value={lang}
-          disabled={saving}
-          onChange={(e) => onChange(e.target.value as Lang)}
-          className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
-        >
+      <Label htmlFor="language">{t("settings.language.label")}</Label>
+      <Select
+        value={lang}
+        disabled={saving}
+        onValueChange={(next) => {
+          if (next === "en" || next === "id") {
+            void onChange(next);
+          }
+        }}
+      >
+        <SelectTrigger id="language">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
           {OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
+            <SelectItem key={o.value} value={o.value}>
               {o.label}
-            </option>
+            </SelectItem>
           ))}
-        </select>
-        <HugeiconsIcon
-          icon={ArrowDown01Icon}
-          className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"
-        />
-      </div>
+        </SelectContent>
+      </Select>
     </div>
   );
 }

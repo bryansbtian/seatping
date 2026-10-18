@@ -5,10 +5,11 @@ import { ArrowDown01Icon, Clock01Icon, Tick02Icon } from "@hugeicons/core-free-i
 
 import { cn } from "@/lib/utils";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import { ALL_DAY_TIME_OPTIONS, formatTimeLabel } from "@/components/timeOptions";
 
 export const FLAT_FIELD =
-  "border-0 rounded-none shadow-none px-3 text-sm max-[360px]:px-2 max-[360px]:text-xs md:border md:border-slate-200 md:rounded-xl md:px-4 md:text-sm";
+  "border-0 rounded-none shadow-none px-3 text-body max-[360px]:px-2 max-[360px]:text-caption md:border md:border-slate-200 md:rounded-control md:px-4 md:text-body";
 
 export const FieldTrigger = React.forwardRef<
   HTMLButtonElement,
@@ -46,17 +47,16 @@ export const FieldTrigger = React.forwardRef<
     );
   }
   return (
-    <button
+    <Button
       ref={ref}
       type="button"
-      className={cn(
-        "inline-flex h-12 w-full items-center justify-between gap-2.5 rounded-xl border border-slate-200 bg-white px-4 text-left text-sm font-medium text-slate-900 transition-colors hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900/10 data-[state=open]:border-slate-900/40 data-[state=open]:ring-2 data-[state=open]:ring-slate-900/10 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:bg-white",
-        className,
-      )}
+      variant="outline"
+      size="lg"
+      className={cn("w-full justify-between gap-2.5 px-3 text-left", className)}
       {...props}
     >
       {triggerBody}
-    </button>
+    </Button>
   );
 });
 FieldTrigger.displayName = "FieldTrigger";

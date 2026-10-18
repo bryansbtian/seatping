@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -75,7 +76,7 @@ export default function DemoBookingModal({
   const [slots, setSlots] = useState<string[]>([]);
   const [selected, setSelected] = useState("");
   const [hour12, setHour12] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [refresh, setRefresh] = useState(0);
@@ -392,19 +393,21 @@ export default function DemoBookingModal({
                 if (value) {
                   label = "12h";
                 }
+                let variant: "default" | "outline" = "outline";
+                if (hour12 === value) {
+                  variant = "default";
+                }
                 return (
-                  <button
+                  <Button
                     key={label}
                     type="button"
+                    size="sm"
+                    variant={variant}
                     aria-pressed={hour12 === value}
                     onClick={() => setHour12(value)}
-                    className={cn(
-                      "rounded-lg px-2 py-1.5 text-label focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
-                      hour12 === value && "bg-white shadow-sm",
-                    )}
                   >
                     {label}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -419,10 +422,19 @@ export default function DemoBookingModal({
               {t("demo.noSlots")}
             </p>
           )}
-          {!noSlotsAvailable && !day && (
+          {loading && (
+            <div role="status" aria-label={t("common.loading")}>
+              <div aria-hidden="true" className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <Skeleton key={index} className="control-lg rounded-control" />
+                ))}
+              </div>
+            </div>
+          )}
+          {!loading && !noSlotsAvailable && !day && (
             <p className="text-body text-ink-subtle">{t("demo.chooseDay")}</p>
           )}
-          {!noSlotsAvailable && day && (
+          {!loading && !noSlotsAvailable && day && (
             <p className="mb-4 text-body text-ink-subtle">
               {new Intl.DateTimeFormat(locale, {
                 weekday: "long",
@@ -431,7 +443,7 @@ export default function DemoBookingModal({
               }).format(day)}
             </p>
           )}
-          {!noSlotsAvailable && day && daySlots.length === 0 && (
+          {!loading && !noSlotsAvailable && day && daySlots.length === 0 && (
             <p role="status" className="text-body text-ink-subtle">
               {t("demo.noTimes")}
             </p>
@@ -441,7 +453,7 @@ export default function DemoBookingModal({
               <Button
                 key={slot}
                 variant="outline"
-                className="h-11 rounded-control hover:border-slate-900"
+                size="lg"
                 onClick={() => {
                   setSelected(slot);
                   setError("");
@@ -555,9 +567,11 @@ export default function DemoBookingModal({
             </section>
             {mainContent}
           </div>
-          <DialogPrimitive.Close className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-ink-subtle transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
-            <span className="sr-only">{t("demo.close")}</span>
+          <DialogPrimitive.Close asChild>
+            <Button variant="ghost" size="icon" className="absolute right-3 top-3">
+              <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
+              <span className="sr-only">{t("demo.close")}</span>
+            </Button>
           </DialogPrimitive.Close>
         </DialogPrimitive.Content>
       </DialogPortal>

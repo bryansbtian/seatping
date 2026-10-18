@@ -35,6 +35,8 @@ function persistLocationId(locationId: string) {
 
 export function BusinessSessionProvider({ children }: { children: ReactNode }) {
   const [me, setMeState] = useState<BusinessMe | null>(null);
+  const [loadingMe, setLoadingMe] = useState(true);
+  const [meError, setMeError] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(() =>
     readStoredLocationId(),
   );
@@ -62,13 +64,21 @@ export function BusinessSessionProvider({ children }: { children: ReactNode }) {
     }
     const controller = lifecycle.current;
     const version = mutationVersion.current;
+    setLoadingMe(true);
+    setMeError(false);
     const request = (async () => {
       try {
         const res = await api("/auth/business/me", { signal: controller?.signal });
+        if (!res?.user || typeof res.user !== "object" || Array.isArray(res.user)) {
+          throw new Error("Business account unavailable");
+        }
         if (!controller?.signal.aborted && version === mutationVersion.current) {
           setMeState(res.user);
         }
       } catch (error) {
+        if (!controller?.signal.aborted) {
+          setMeError(true);
+        }
         if (
           !controller?.signal.aborted &&
           error instanceof ApiError &&
@@ -82,6 +92,9 @@ export function BusinessSessionProvider({ children }: { children: ReactNode }) {
           } catch {}
         }
       } finally {
+        if (!controller?.signal.aborted) {
+          setLoadingMe(false);
+        }
         if (inFlight.current === request) {
           inFlight.current = null;
         }
@@ -134,6 +147,8 @@ export function BusinessSessionProvider({ children }: { children: ReactNode }) {
 
     return {
       me,
+      loadingMe,
+      meError,
       setMe,
       refreshMe,
       locations,
@@ -142,7 +157,7 @@ export function BusinessSessionProvider({ children }: { children: ReactNode }) {
       selectedLocationId,
       selectLocation,
     };
-  }, [me, setMe, refreshMe, locations, selectedLocationId, selectLocation]);
+  }, [me, loadingMe, meError, setMe, refreshMe, locations, selectedLocationId, selectLocation]);
 
   return (
     <BusinessSessionContext.Provider value={value}>{children}</BusinessSessionContext.Provider>

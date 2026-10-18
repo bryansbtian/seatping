@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Skeleton } from "./ui/skeleton";
+import ListSkeleton from "./ListSkeleton";
 import { useLang } from "@/lib/i18n";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
@@ -105,22 +106,37 @@ export function CustomAudienceBuilder({
   const [description, setDescription] = useState(existing?.description || "");
 
   const [selectedGuests, setSelectedGuests] = useState<any[]>([]);
+  const [loadingSelectedGuests, setLoadingSelectedGuests] = useState(
+    Boolean(existing?.filters?.guestIds?.length && locationId),
+  );
   const [guestSearch, setGuestSearch] = useState("");
   const [guestSearchResults, setGuestSearchResults] = useState<any[]>([]);
   const [isSearchingGuests, setIsSearchingGuests] = useState(false);
   const [showGuestDropdown, setShowGuestDropdown] = useState(false);
 
   useEffect(() => {
-    if (existing?.filters?.guestIds?.length && locationId) {
-      const ids = existing.filters.guestIds.join(",");
-      api(`/api/guests?locationId=${locationId}&ids=${ids}`)
-        .then((data) => {
-          if (data.guests) {
-            setSelectedGuests(data.guests);
-          }
-        })
-        .catch((e) => console.error("Failed to fetch selected guests", e));
+    if (!existing?.filters?.guestIds?.length || !locationId) {
+      setLoadingSelectedGuests(false);
+      return;
     }
+    let cancelled = false;
+    setLoadingSelectedGuests(true);
+    const ids = existing.filters.guestIds.join(",");
+    api(`/api/guests?locationId=${locationId}&ids=${ids}`)
+      .then((data) => {
+        if (!cancelled && data.guests) {
+          setSelectedGuests(data.guests);
+        }
+      })
+      .catch((e) => console.error("Failed to fetch selected guests", e))
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingSelectedGuests(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [existing, locationId]);
 
   useEffect(() => {
@@ -596,7 +612,8 @@ export function CustomAudienceBuilder({
                   )}
               </div>
 
-              {selectedGuests.length > 0 && (
+              {loadingSelectedGuests && <ListSkeleton rows={3} className="p-0 md:p-0" />}
+              {!loadingSelectedGuests && selectedGuests.length > 0 && (
                 <div className="bg-slate-50 border rounded p-3 flex flex-col gap-2">
                   <div className="text-sm font-medium text-slate-600">
                     Selected Guests ({selectedGuests.length})
@@ -620,7 +637,7 @@ export function CustomAudienceBuilder({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                          className="text-slate-400"
                           onClick={() => removeGuest(guest.id)}
                         >
                           <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
@@ -636,11 +653,19 @@ export function CustomAudienceBuilder({
           <div className="bg-slate-50 border rounded-lg p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-sm">Audience Preview</span>
-              <Button variant="outline" size="sm" onClick={handlePreview} disabled={isPreviewing}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePreview}
+                disabled={isPreviewing || loadingSelectedGuests}
+              >
                 {previewButtonLabel}
               </Button>
             </div>
 
+            {isPreviewing && previewCount === null && (
+              <ListSkeleton rows={3} className="p-0 md:p-0" />
+            )}
             {previewCount !== null && (
               <p className="text-sm text-slate-600">
                 This group currently matches <strong>{previewCount}</strong> guest
@@ -707,13 +732,15 @@ export function CustomAudienceBuilder({
                 </div>
 
                 {previewGuests.length > PREVIEW_VISIBLE && (
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => setPreviewExpanded((v) => !v)}
-                    className="self-start text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                    className="self-start"
                   >
                     {previewToggleLabel}
-                  </button>
+                  </Button>
                 )}
               </>
             )}
@@ -724,7 +751,7 @@ export function CustomAudienceBuilder({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving || loadingSelectedGuests}>
             {saveButtonLabel}
           </Button>
         </DialogFooter>

@@ -1478,7 +1478,8 @@ describe("admitting and seating from the floor", () => {
 
     const countdown = await screen.findByTestId("admitted-countdown-queue-2");
     expect(countdown.textContent).toBe("Expired");
-    expect(countdown.className).toContain("text-micro");
+    expect(countdown.className).toContain("h-badge");
+    expect(countdown.className).toContain("rounded-badge");
   });
 
   it("shows the smart assign suggestion for an admitted party", async () => {

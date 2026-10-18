@@ -10,7 +10,7 @@ import { ALL_DAY_TIME_OPTIONS } from "@/components/timeOptions";
 import { SearchSuggestInput } from "@/components/SearchSuggestInput";
 
 const FIELD_CLASS =
-  "h-12 min-w-0 rounded-none border-0 bg-background px-3 text-sm text-foreground shadow-none hover:border-input hover:bg-muted/50 focus:ring-ring/20 data-[state=open]:border-ring max-[360px]:px-2 max-[360px]:text-xs [&_.text-caption]:hidden lg:bg-transparent lg:text-label lg:[&_.text-caption]:block";
+  "min-w-0 rounded-none border-0 bg-background px-3 text-sm text-foreground shadow-none hover:border-input hover:bg-muted/50 focus:ring-ring/20 data-[state=open]:border-ring max-[360px]:px-2 max-[360px]:text-xs [&_.text-caption]:hidden lg:bg-transparent lg:text-label lg:[&_.text-caption]:block";
 const PEOPLE_OPTIONS = [...Array.from({ length: 20 }, (_, i) => String(i + 1)), "large"];
 
 function peopleLabel(value: string): string {
@@ -76,17 +76,14 @@ export default function RestaurantSearchBar({
       className="rounded-2xl border border-input bg-background p-3 shadow-sm max-[360px]:p-2 sm:p-6 lg:rounded-xl lg:p-2 lg:shadow-none"
     >
       <div className="flex min-w-0 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_200px_136px_144px_108px] lg:items-center lg:gap-0">
-        <div className="relative order-3 min-w-0 border-t border-border lg:order-1 lg:border-0 lg:pt-5">
-          <span className="pointer-events-none absolute left-9 top-1 hidden text-caption text-ink-subtle lg:block">
-            Restaurant, Cuisine Or Area
-          </span>
+        <div className="relative order-3 min-w-0 border-t border-border lg:order-1 lg:border-0">
           <SearchSuggestInput
             value={query}
             onChange={onQueryChange}
             date={date}
             time={time}
             people={people}
-            inputClassName="h-12 rounded-none border-0 bg-transparent text-body text-foreground shadow-none placeholder:text-sm placeholder:text-ink-subtle focus-visible:bg-muted/50 focus-visible:ring-ring focus-visible:ring-offset-0 max-[360px]:placeholder:text-xs sm:placeholder:text-base lg:h-7 lg:rounded-control lg:placeholder:text-body"
+            inputClassName="control-lg rounded-none border-0 bg-transparent text-body text-foreground shadow-none placeholder:text-sm placeholder:text-ink-subtle focus-visible:bg-muted/50 focus-visible:ring-ring focus-visible:ring-offset-0 max-[360px]:placeholder:text-xs sm:placeholder:text-base lg:h-6 lg:rounded-control lg:placeholder:text-body"
           />
         </div>
         <div className="order-1 flex items-stretch lg:contents">
@@ -172,7 +169,7 @@ export default function RestaurantSearchBar({
           <Button
             type="submit"
             size="lg"
-            className="h-12 w-full rounded-xl px-8 lg:control-lg lg:rounded-control lg:px-3 dark:border-primary dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+            className="w-full lg:px-3 dark:border-primary dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
           >
             <HugeiconsIcon icon={Search01Icon} className="size-4" />
             Search

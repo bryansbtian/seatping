@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { invalidateRestaurantData } from "@/lib/queryClient";
@@ -97,7 +98,7 @@ type LocationReviewsProps = {
 const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) => {
   const { toast } = useToast();
   const { t } = useLang();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(location?.id));
   const [error, setError] = useState<string | null>(null);
   const [reviews, setReviews] = useState<Review[] | null>(null);
 
@@ -280,8 +281,8 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
 
   if (loading) {
     return (
-      <div data-testid="reviews-loading">
-        <ListSkeleton label={t("rev.loading")} />
+      <div data-testid="reviews-loading" className="flex flex-1 flex-col">
+        <ListSkeleton fill label={t("rev.loading")} />
       </div>
     );
   }
@@ -413,18 +414,18 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
         <div className="flex flex-wrap gap-2" data-testid="reviews-chips">
           {CHIP_KEYS.map(([key, labelKey]) => {
             const selected = chip === key;
+            let filterVariant: "default" | "outline" = "outline";
+            if (selected) {
+              filterVariant = "default";
+            }
             return (
-              <button
+              <Button
                 key={key}
                 type="button"
                 aria-pressed={selected}
                 data-testid={`reviews-chip-${key}`}
                 onClick={() => setChip(key)}
-                className={cn(
-                  "control-md inline-flex items-center gap-2 rounded-control border px-3.5 text-label font-medium transition-colors",
-                  selected && "border-slate-900 bg-slate-900 text-white",
-                  !selected && "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-                )}
+                variant={filterVariant}
               >
                 {t(labelKey)}
                 <span
@@ -436,7 +437,7 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
                 >
                   {counts[key]}
                 </span>
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -570,33 +571,33 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
                             >
                               {restaurantName}
                             </span>
-                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-micro font-medium uppercase tracking-wide text-slate-600">
-                              {t("rev.ownerBadge")}
-                            </span>
+                            <Badge variant="neutral">{t("rev.ownerBadge")}</Badge>
                             <span className="text-xs text-slate-500">
                               {formatReviewDate(r.businessReplyCreatedAt)}
                             </span>
                           </div>
                           <div className="flex shrink-0 items-center gap-3">
-                            <button
+                            <Button
                               type="button"
                               disabled={isSubmitting}
                               data-testid={`review-edit-${r.id}`}
                               onClick={() => startReply(r.id, r.businessReply)}
-                              className="text-xs font-medium text-indigo-600 transition-colors hover:text-indigo-800 disabled:opacity-60"
+                              variant="outline"
+                              size="sm"
                             >
                               {t("rev.editReply")}
-                            </button>
+                            </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <button
+                                <Button
                                   type="button"
                                   disabled={isSubmitting}
                                   data-testid={`review-delete-${r.id}`}
-                                  className="text-xs font-medium text-indigo-600 transition-colors hover:text-indigo-800 disabled:opacity-60"
+                                  variant="destructiveOutline"
+                                  size="sm"
                                 >
                                   {t("rev.delete")}
-                                </button>
+                                </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent className="max-w-sm">
                                 <AlertDialogHeader>

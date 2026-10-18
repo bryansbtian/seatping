@@ -27,7 +27,7 @@ const Terms = () => {
         </div>
       </section>
 
-      <section className="px-4 pb-16">
+      <section className="px-4">
         <div className="container mx-auto max-w-4xl">
           <Card className="border rounded-2xl shadow-sm bg-card/80 backdrop-blur-sm">
             <CardContent className="prose prose-neutral max-w-none text-foreground text-sm sm:text-base">

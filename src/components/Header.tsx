@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Search01Icon } from "@hugeicons/core-free-icons";
+import { Menu01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
@@ -149,12 +149,12 @@ const Header = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Restaurants, Cuisines, Or Areas"
                 aria-label="Search restaurants"
-                className="h-10 rounded-full border-slate-200 pl-9 pr-24"
+                className="control-lg border-slate-200 pl-9 pr-24"
               />
               <Button
                 type="submit"
                 size="sm"
-                className="absolute right-1 top-1 h-8 rounded-full px-4"
+                className="absolute right-1 top-1/2 -translate-y-1/2 px-4"
               >
                 Search
               </Button>
@@ -224,13 +224,15 @@ function CustomerProfile({
           >
             View Profile
           </Link>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            role="menuitem"
             onClick={onLogout}
-            className="block w-full text-left px-3 py-2 text-sm text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
+            className="w-full justify-start"
           >
             Log Out
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -248,23 +250,17 @@ function MobileMenu({
 }) {
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="icon"
         aria-label="Open menu"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="sm:hidden inline-flex items-center justify-center rounded-xl border border-border px-3 py-2 text-sm"
+        className="sm:hidden"
       >
-        <span className="sr-only">Open menu</span>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M4 7h16M4 12h16M4 17h16"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </svg>
-      </button>
+        <HugeiconsIcon icon={Menu01Icon} className="h-4 w-4" />
+      </Button>
       {open && (
         <div
           role="menu"

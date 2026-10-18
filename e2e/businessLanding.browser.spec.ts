@@ -33,16 +33,15 @@ for (const viewport of [
       has: page.getByRole("heading", { name: "Turn Every Arrival Into Smooth Service" }),
     });
     await expect(finalCta).toHaveCSS("border-bottom-width", "0px");
-    expect(
-      await finalCta.evaluate((element) =>
-        Number.parseFloat(getComputedStyle(element).paddingBottom),
-      ),
-    ).toBeLessThanOrEqual(40);
-    expect(
-      await footer.evaluate((element) => Number.parseFloat(getComputedStyle(element).paddingTop)),
-    ).toBeLessThanOrEqual(32);
-
+    await expect(finalCta).toHaveCSS("padding-bottom", "0px");
+    let expectedGap = 48;
+    if (viewport.width >= 1024) {
+      expectedGap = 72;
+    } else if (viewport.width >= 768) {
+      expectedGap = 64;
+    }
     await footer.getByRole("link", { name: "Terms of Service" }).scrollIntoViewIfNeeded();
+    await expect(footer).toHaveCSS("padding-top", `${expectedGap}px`);
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
     await footerLink.click();
 

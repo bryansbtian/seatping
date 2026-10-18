@@ -213,7 +213,7 @@ export function SearchSuggestInput({
         onBlur={() => setOpen(false)}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
-        className={cn("h-12 w-full pl-9 max-[360px]:pl-8", inputClassName)}
+        className={cn("control-lg w-full pl-9 max-[360px]:pl-8", inputClassName)}
         aria-label="Search restaurants, cuisines, or areas"
         role="combobox"
         aria-expanded={showDropdown}

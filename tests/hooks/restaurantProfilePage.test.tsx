@@ -131,6 +131,28 @@ beforeEach(() => {
 });
 
 describe("public restaurant review and image rendering", () => {
+  it("uses the shared save control and preserves its pressed state after saving", async () => {
+    state.customer = true;
+    render(view());
+    const save = screen.getByRole("button", { name: "Save", exact: true });
+
+    expect(save.classList.contains("rounded-control")).toBe(true);
+    expect(save.classList.contains("control-md")).toBe(true);
+    expect(save.getAttribute("aria-pressed")).toBe("false");
+    await waitFor(() => expect(state.api).toHaveBeenCalledOnce());
+    fireEvent.click(save);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Saved", exact: true }).getAttribute("aria-pressed"),
+      ).toBe("true"),
+    );
+    expect(state.api).toHaveBeenCalledWith(
+      "/auth/me/saved-locations",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
   it("replaces the restaurant skeleton with booking controls after the profile loads", () => {
     const profile = state.profile;
     state.profile = undefined;

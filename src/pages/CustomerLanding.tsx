@@ -71,16 +71,15 @@ const CustomerLanding = () => {
   let featuredContent;
   if (loadingFeatured) {
     featuredContent = (
-      <div role="status" aria-label="Loading Featured Restaurants" className="overflow-hidden">
-        <div aria-hidden="true" className="flex -ml-4">
-          {Array.from({ length: 3 }, (_, index) => (
-            <div
-              key={index}
-              className="min-w-0 shrink-0 pl-4 basis-[88%] sm:basis-[70%] lg:basis-1/2 xl:basis-1/3"
-            >
-              <RestaurantCardSkeleton />
-            </div>
-          ))}
+      <div role="status" aria-label="Loading Featured Restaurants">
+        <div aria-hidden="true" className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          <RestaurantCardSkeleton />
+          <div className="hidden lg:block">
+            <RestaurantCardSkeleton />
+          </div>
+          <div className="hidden xl:block">
+            <RestaurantCardSkeleton />
+          </div>
         </div>
       </div>
     );
@@ -274,7 +273,7 @@ const CustomerLanding = () => {
         </div>
       </div>
 
-      <section id="featured" className="scroll-mt-24 py-16 md:py-24 px-4">
+      <section id="featured" className="scroll-mt-24 pt-16 md:pt-24 px-4">
         <div className="container mx-auto max-w-7xl">
           <Carousel opts={{ align: "start" }} className="w-full">
             <div className="mb-8 flex items-end justify-between gap-4">
@@ -288,8 +287,8 @@ const CustomerLanding = () => {
               </div>
               {!loadingFeatured && featured.length > 0 && (
                 <div className="hidden shrink-0 items-center gap-2 self-end sm:flex">
-                  <CarouselPrevious className="static h-9 w-9 translate-x-0 translate-y-0 sm:h-10 sm:w-10" />
-                  <CarouselNext className="static h-9 w-9 translate-x-0 translate-y-0 sm:h-10 sm:w-10" />
+                  <CarouselPrevious className="static translate-x-0 translate-y-0" />
+                  <CarouselNext className="static translate-x-0 translate-y-0" />
                 </div>
               )}
             </div>

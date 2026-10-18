@@ -30,6 +30,48 @@ function searchResponse(restaurants: SearchResult[], requestUrl: string) {
   };
 }
 
+for (const path of ["/business/dashboard", "/blog/unknown", "/unknown/nested/page"]) {
+  test(`unknown route ${path} opens 404 without restaurant requests or skeletons`, async ({
+    page,
+  }) => {
+    const restaurantRequests: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/restaurants/")) {
+        restaurantRequests.push(request.url());
+      }
+    });
+    await page.goto(path);
+    await expect(page.getByRole("heading", { name: /We couldn’t find/ })).toBeVisible();
+    await expect(page.getByRole("status")).toHaveCount(0);
+    await expect(page.locator(".animate-pulse")).toHaveCount(0);
+    expect(restaurantRequests).toEqual([]);
+    expect(new URL(page.url()).pathname).toBe(path);
+  });
+}
+
+test("missing restaurant shows 404 after validation without restaurant skeletons", async ({
+  page,
+}) => {
+  let release = () => {};
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/restaurants/missing/location-123?version=2", async (route) => {
+    await pending;
+    await route.fulfill({ status: 404, json: { error: "Restaurant not found" } });
+  });
+  try {
+    await page.goto("/missing/location-123");
+    await expect(page.getByRole("status")).toHaveText("Loading Page");
+    await expect(page.locator(".animate-pulse")).toHaveCount(0);
+    release();
+    await expect(page.getByRole("heading", { name: /We couldn’t find/ })).toBeVisible();
+    await expect(page.getByRole("status")).toHaveCount(0);
+  } finally {
+    release();
+  }
+});
+
 for (const width of [390, 768, 1440]) {
   test(`featured error card spans the section and retries at ${width}px`, async ({
     page,
@@ -114,7 +156,7 @@ test("featured restaurant skeletons stay within the viewport and resolve to card
   }
 });
 
-test("search and restaurant details replace skeletons when their requests complete", async ({
+test("search replaces skeletons and restaurant details wait for a valid profile", async ({
   page,
 }, testInfo) => {
   let releaseSearch = () => {};
@@ -147,9 +189,9 @@ test("search and restaurant details replace skeletons when their requests comple
     await expect(page.getByRole("article")).toHaveCount(3);
     await expect(searchSkeleton).toHaveCount(0);
     await page.getByRole("link", { name: "View Bistro Downtown" }).click();
-    const profileSkeleton = page.getByRole("status", { name: "Loading Restaurant", exact: true });
-    await expect(profileSkeleton).toBeVisible();
-    await expect(profileSkeleton).toHaveText("");
+    const profileLoading = page.getByRole("status");
+    await expect(profileLoading).toHaveText("Loading Page");
+    await expect(page.locator(".animate-pulse")).toHaveCount(0);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
@@ -159,7 +201,7 @@ test("search and restaurant details replace skeletons when their requests comple
     });
     releaseProfile();
     await expect(page.getByRole("heading", { name: "Bistro Downtown", level: 1 })).toBeVisible();
-    await expect(profileSkeleton).toHaveCount(0);
+    await expect(profileLoading).toHaveCount(0);
   } finally {
     releaseSearch();
     releaseProfile();

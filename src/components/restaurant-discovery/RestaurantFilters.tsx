@@ -7,6 +7,7 @@ import {
   Tick02Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -18,7 +19,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 import {
   countActiveFilters,
   EMPTY_FILTERS,
@@ -26,11 +26,6 @@ import {
   RATING_OPTIONS,
   type RestaurantFilters as Filters,
 } from "@/lib/restaurantDiscovery";
-
-const CHIP_CLASS =
-  "control-md inline-flex min-w-0 items-center justify-center gap-1.5 rounded-control border px-3 text-label font-normal transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
-const NEUTRAL_CLASS = "border-border bg-background text-ink hover:bg-muted";
-const SELECTED_CLASS = "border-primary bg-primary text-primary-foreground";
 
 export function SelectFilter({
   label,
@@ -48,9 +43,9 @@ export function SelectFilter({
   active?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  let stateClass = NEUTRAL_CLASS;
+  let variant: "default" | "outline" = "outline";
   if (active) {
-    stateClass = SELECTED_CLASS;
+    variant = "default";
   }
   const selected = options.find((option) => option.value === current)?.label;
   let triggerLabel = label;
@@ -60,14 +55,15 @@ export function SelectFilter({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
+        <Button
           type="button"
+          variant={variant}
           aria-label={`${label}: ${triggerLabel}`}
-          className={cn(CHIP_CLASS, "max-w-full", stateClass)}
+          className="min-w-0 max-w-full"
         >
           <span className="truncate">{triggerLabel}</span>
           <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5 shrink-0" />
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
@@ -118,19 +114,20 @@ function ToggleChip({
   onClick: () => void;
   children: ReactNode;
 }) {
-  let stateClass = NEUTRAL_CLASS;
+  let variant: "default" | "outline" = "outline";
   if (active) {
-    stateClass = SELECTED_CLASS;
+    variant = "default";
   }
   return (
-    <button
+    <Button
       type="button"
+      variant={variant}
       aria-pressed={active}
       onClick={onClick}
-      className={cn(CHIP_CLASS, "shrink-0", stateClass)}
+      className="shrink-0"
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -259,19 +256,20 @@ export default function RestaurantFilters({
           </ToggleChip>
         </div>
         <SheetTrigger asChild>
-          <button type="button" className={cn(CHIP_CLASS, NEUTRAL_CLASS, "shrink-0 md:ml-auto")}>
+          <Button type="button" variant="outline" className="shrink-0 md:ml-auto">
             <HugeiconsIcon icon={SlidersHorizontalIcon} className="size-3.5" />
             <span className="md:hidden">Filters</span>
             <span className="hidden md:inline">All Filters</span>
             {count > 0 && (
-              <span
+              <Badge
+                variant="neutral"
                 aria-label={`${count} active filters`}
-                className="inline-flex h-badge min-w-5 items-center justify-center rounded-badge bg-primary px-1 text-caption text-primary-foreground"
+                className="min-w-5 justify-center px-1"
               >
                 {count}
-              </span>
+              </Badge>
             )}
-          </button>
+          </Button>
         </SheetTrigger>
         <div className="flex flex-wrap gap-2 md:hidden">
           <ToggleChip
@@ -297,12 +295,13 @@ export default function RestaurantFilters({
           <SheetTitle className="flex items-center gap-2">
             Filters
             {count > 0 && (
-              <span
+              <Badge
+                variant="neutral"
                 aria-label={`${count} active filters`}
-                className="inline-flex h-badge min-w-5 items-center justify-center rounded-badge bg-muted px-1.5 text-caption text-ink"
+                className="min-w-5 justify-center px-1.5"
               >
                 {count}
-              </span>
+              </Badge>
             )}
           </SheetTitle>
           <SheetClose asChild>

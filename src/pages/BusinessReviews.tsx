@@ -94,6 +94,7 @@ const BusinessReviews = () => {
                 key={key}
                 type="button"
                 data-testid={`reviews-range-${key}`}
+                aria-pressed={range === key}
                 onClick={() => chooseRange(key)}
                 className={cn(
                   "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors max-sm:flex-1 max-sm:px-2 max-[425px]:text-xs max-[325px]:px-1.5 max-[325px]:text-micro",

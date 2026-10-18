@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
-import { SLOT_BUTTON_BASE_CLASS } from "@/lib/slotButton";
+import { SLOT_BUTTON_BASE_CLASS, SLOT_BUTTON_SELECTED_CLASS } from "@/lib/slotButton";
 import NotFound from "@/pages/NotFound";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -241,7 +241,7 @@ export default function ManageReservation() {
           let slotClass =
             "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300 line-through";
           if (s.time === time) {
-            slotClass = "border-slate-900 bg-slate-900 text-white";
+            slotClass = SLOT_BUTTON_SELECTED_CLASS;
           } else if (s.available) {
             slotClass = "border-slate-200 bg-white text-slate-700 hover:border-slate-400";
           }
@@ -251,7 +251,7 @@ export default function ManageReservation() {
               type="button"
               disabled={!s.available}
               onClick={() => setTime(s.time)}
-              className={cn(SLOT_BUTTON_BASE_CLASS, "px-1", slotClass)}
+              className={cn(SLOT_BUTTON_BASE_CLASS, slotClass, "px-1")}
             >
               {s.label}
             </button>

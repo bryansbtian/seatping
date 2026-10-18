@@ -94,11 +94,11 @@ const LiveTableDetail = ({
       actions.push(
         <Button
           key="seat-reserved"
-          className="h-9 w-full text-xs md:h-10 md:text-sm"
+          className="w-full"
           disabled={busy}
           onClick={() => onSeatReserved(upcoming.id)}
         >
-          <HugeiconsIcon icon={UserAdd01Icon} className="mr-2 h-4 w-4" />
+          <HugeiconsIcon icon={UserAdd01Icon} className="h-4 w-4" />
           {t("floor.live.seatReserved")}
         </Button>,
       );
@@ -107,11 +107,11 @@ const LiveTableDetail = ({
       actions.push(
         <Button
           key="seat-recommended"
-          className="h-9 w-full text-xs md:h-10 md:text-sm"
+          className="w-full"
           disabled={busy}
           onClick={() => onSeatParty(table.id, recommended.id, recommended.partySize)}
         >
-          <HugeiconsIcon icon={UserAdd01Icon} className="mr-2 h-4 w-4" />
+          <HugeiconsIcon icon={UserAdd01Icon} className="h-4 w-4" />
           {t("floor.live.seatNamed", { name: recommended.name })}
         </Button>,
       );
@@ -120,7 +120,7 @@ const LiveTableDetail = ({
       <Button
         key="choose-party"
         variant="outline"
-        className="h-9 w-full text-xs md:h-10 md:text-sm"
+        className="w-full"
         disabled={busy}
         onClick={() => setPicker((previous) => togglePicker(previous, "seat"))}
       >
@@ -133,21 +133,21 @@ const LiveTableDetail = ({
     actions.push(
       <Button
         key="complete"
-        className="h-9 w-full text-xs md:h-10 md:text-sm"
+        className="w-full"
         disabled={busy}
         onClick={() => onCompleteVisit(current.id)}
       >
-        <HugeiconsIcon icon={CheckCheckIcon} className="mr-2 h-4 w-4" />
+        <HugeiconsIcon icon={CheckCheckIcon} className="h-4 w-4" />
         {t("floor.live.completeVisit")}
       </Button>,
       <Button
         key="move"
         variant="outline"
-        className="h-9 w-full text-xs md:h-10 md:text-sm"
+        className="w-full"
         disabled={busy}
         onClick={() => setPicker((previous) => togglePicker(previous, "move"))}
       >
-        <HugeiconsIcon icon={ArrowDataTransferHorizontalIcon} className="mr-2 h-4 w-4" />
+        <HugeiconsIcon icon={ArrowDataTransferHorizontalIcon} className="h-4 w-4" />
         {t("floor.live.moveParty")}
       </Button>,
     );
@@ -157,11 +157,11 @@ const LiveTableDetail = ({
     actions.push(
       <Button
         key="available"
-        className="h-9 w-full text-xs md:h-10 md:text-sm"
+        className="w-full"
         disabled={busy}
         onClick={() => onMarkAvailable(table.id)}
       >
-        <HugeiconsIcon icon={SparklesIcon} className="mr-2 h-4 w-4" />
+        <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4" />
         {t("floor.live.markAvailable")}
       </Button>,
     );
@@ -172,11 +172,11 @@ const LiveTableDetail = ({
       <Button
         key="cleaning"
         variant="outline"
-        className="h-9 w-full text-xs md:h-10 md:text-sm"
+        className="w-full"
         disabled={busy}
         onClick={() => onMarkCleaning(table.id)}
       >
-        <HugeiconsIcon icon={SparklesIcon} className="mr-2 h-4 w-4" />
+        <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4" />
         {t("floor.live.markCleaning")}
       </Button>,
     );
@@ -191,11 +191,11 @@ const LiveTableDetail = ({
       <Button
         key="block"
         variant="outline"
-        className="h-9 w-full text-xs md:h-10 md:text-sm"
+        className="w-full"
         disabled={busy}
         onClick={() => onToggleBlocked(table.id, !table.isBlocked)}
       >
-        <HugeiconsIcon icon={BanIcon} className="mr-2 h-4 w-4" />
+        <HugeiconsIcon icon={BanIcon} className="h-4 w-4" />
         {blockLabel}
       </Button>,
     );

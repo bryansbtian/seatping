@@ -116,7 +116,7 @@ export default function QueueBusiness() {
     }
   }, [locationId]);
 
-  const [loadingAddresses, setLoadingAddresses] = useState(false);
+  const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<AddressOption | null>(null);
   const [invalidLink, setInvalidLink] = useState(false);
   const [businessName, setBusinessName] = useState("");
@@ -673,6 +673,37 @@ export default function QueueBusiness() {
 
   if (invalidLink) {
     return <NotFound />;
+  }
+
+  if (loadingAddresses) {
+    return (
+      <>
+        <Header />
+        <div data-page-background="queue" className="flex min-h-screen flex-col">
+          <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10">
+            <Card
+              role="status"
+              aria-label="Loading Queue"
+              className="w-full max-w-xl border-0 bg-card/80 shadow-2xl backdrop-blur-sm"
+            >
+              <CardHeader aria-hidden="true" className="items-center space-y-3">
+                <Skeleton className="h-7 w-48 max-w-full" />
+                <Skeleton className="h-4 w-64 max-w-full" />
+              </CardHeader>
+              <CardContent aria-hidden="true" className="space-y-5">
+                {Array.from({ length: 3 }, (_, index) => (
+                  <div key={index} className="space-y-2">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-11 w-full rounded-control" />
+                  </div>
+                ))}
+                <Skeleton className="h-11 w-full rounded-control" />
+              </CardContent>
+            </Card>
+          </main>
+        </div>
+      </>
+    );
   }
 
   let cardTitleText: string;

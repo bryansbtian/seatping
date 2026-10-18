@@ -298,7 +298,7 @@ export default function SearchResults() {
           />
         </div>
       </section>
-      <main className={`${SHELL_CLASS} flex-1 py-6 md:py-8`} aria-busy={loading}>
+      <main className={`${SHELL_CLASS} pt-6 md:pt-8`} aria-busy={loading}>
         <div className="mb-5 flex min-w-0 flex-wrap items-center justify-between gap-3 md:mb-6">
           <h2
             aria-live="polite"

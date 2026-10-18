@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
@@ -495,9 +496,9 @@ const BusinessGuests = () => {
                     {t("guests.filters")}
                   </span>
                   {activeFilterCount > 0 && (
-                    <span className="ml-2 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold w-5 h-5">
+                    <Badge variant="info" className="ml-2">
                       {activeFilterCount}
-                    </span>
+                    </Badge>
                   )}
                 </Button>
               </div>
@@ -508,11 +509,9 @@ const BusinessGuests = () => {
                     {t("guests.status")}
                   </span>
                   {(["all", "new", "returning"] as TypeFilter[]).map((tf) => {
-                    let typeChipClass: string;
+                    let typeChipVariant: "default" | "outline" = "outline";
                     if (typeFilter === tf) {
-                      typeChipClass = "border-indigo-300 bg-indigo-100 text-indigo-700";
-                    } else {
-                      typeChipClass = "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+                      typeChipVariant = "default";
                     }
                     let typeChipLabel: string;
                     if (tf === "all") {
@@ -523,14 +522,16 @@ const BusinessGuests = () => {
                       typeChipLabel = t("guests.filter.returning");
                     }
                     return (
-                      <button
+                      <Button
                         key={tf}
                         type="button"
                         onClick={() => setTypeFilter(tf)}
-                        className={`control-sm inline-flex items-center rounded-control border px-3 text-label font-medium transition-colors ${typeChipClass}`}
+                        variant={typeChipVariant}
+                        size="sm"
+                        aria-pressed={typeFilter === tf}
                       >
                         {typeChipLabel}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -562,34 +563,30 @@ const BusinessGuests = () => {
                       {t("guests.tags")}
                     </span>
                     {filterableTags.map((tag) => {
-                      let tagBadgeClass: string;
+                      let tagVariant: "default" | "outline" = "outline";
                       if (tagFilters.includes(tag)) {
-                        tagBadgeClass = "ring-2 ring-indigo-400 ring-offset-1";
-                      } else {
-                        tagBadgeClass = "opacity-70 hover:opacity-100";
+                        tagVariant = "default";
                       }
                       return (
-                        <button
+                        <Button
                           key={tag}
                           type="button"
                           onClick={() => toggleTagFilter(tag)}
-                          className="focus:outline-none"
+                          variant={tagVariant}
+                          size="sm"
+                          aria-pressed={tagFilters.includes(tag)}
                         >
-                          <GuestTagBadge tag={tag} className={tagBadgeClass} />
-                        </button>
+                          {tag}
+                        </Button>
                       );
                     })}
                   </div>
                 )}
 
                 {activeFilterCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
-                  >
+                  <Button type="button" onClick={clearFilters} variant="ghost" size="sm">
                     {t("guests.clearFilters")}
-                  </button>
+                  </Button>
                 )}
               </div>
             </CardContent>
@@ -648,21 +645,15 @@ function FilterToggle({
   label: string;
   icon?: React.ReactNode;
 }) {
-  let toggleStateClass: string;
+  let toggleVariant: "default" | "outline" = "outline";
   if (active) {
-    toggleStateClass = "border-indigo-300 bg-indigo-100 text-indigo-700";
-  } else {
-    toggleStateClass = "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+    toggleVariant = "default";
   }
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`control-sm inline-flex items-center gap-1.5 rounded-control border px-3 text-label font-medium transition-colors ${toggleStateClass}`}
-    >
+    <Button type="button" onClick={onClick} variant={toggleVariant} size="sm" aria-pressed={active}>
       {icon}
       {label}
-    </button>
+    </Button>
   );
 }
 
@@ -721,11 +712,7 @@ function GuestsTable({
               }
               let upcomingCell: React.ReactNode;
               if (g.upcomingReservationCount > 0) {
-                upcomingCell = (
-                  <span className="inline-flex items-center justify-center min-w-[1.5rem] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
-                    {g.upcomingReservationCount}
-                  </span>
-                );
+                upcomingCell = <Badge variant="info">{g.upcomingReservationCount}</Badge>;
               } else {
                 upcomingCell = <span className="text-slate-400">--</span>;
               }
@@ -871,7 +858,7 @@ function GuestsTable({
 
 function LoadingState() {
   const { t } = useLang();
-  return <ListSkeleton rows={5} label={t("guests.loading")} />;
+  return <ListSkeleton fill rows={5} label={t("guests.loading")} />;
 }
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -1166,15 +1153,16 @@ function GuestDetailDrawer({
             {availableSuggestions.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {availableSuggestions.map((tag) => (
-                  <button
+                  <Button
                     key={tag}
                     type="button"
                     disabled={tagBusy}
                     onClick={() => addTag(tag)}
-                    className="inline-flex h-badge items-center rounded-badge border border-dashed border-slate-300 px-2 text-caption font-medium text-ink-subtle transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-50"
+                    variant="outline"
+                    size="sm"
                   >
                     + {tag}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -1196,7 +1184,6 @@ function GuestDetailDrawer({
                 size="sm"
                 onClick={saveNotes}
                 disabled={savingNotes || notes === (g.notes || "")}
-                className="text-xs sm:text-sm"
               >
                 {saveNotesLabel}
               </Button>

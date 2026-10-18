@@ -347,26 +347,30 @@ const AssignTableDialog = ({
                 </span>
               </span>
               {combining && joinable.length > 0 && (
-                <button
+                <Button
                   type="button"
                   disabled={busy}
                   data-testid="assign-join-toggle"
                   onClick={leaveCombining}
-                  className="shrink-0 text-xs font-medium text-slate-700 underline underline-offset-2 hover:text-slate-900 disabled:opacity-60"
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0"
                 >
                   {t("floor.assign.useOneTable")}
-                </button>
+                </Button>
               )}
               {!combining && candidates.length > 0 && joinable.length > 0 && (
-                <button
+                <Button
                   type="button"
                   disabled={busy}
                   data-testid="assign-join-toggle"
                   onClick={enterCombining}
-                  className="shrink-0 text-xs font-medium text-slate-700 underline underline-offset-2 hover:text-slate-900 disabled:opacity-60"
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0"
                 >
                   {t("floor.assign.joinTablesInstead")}
-                </button>
+                </Button>
               )}
             </span>
           </DialogDescription>

@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { uploadBanner, uploadPhoto } from "@/lib/imageUpload";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -637,8 +638,7 @@ export default function RestaurantProfileEditor({
             disabled={bannerUploading}
             onClick={() => bannerInputRef.current?.click()}
           >
-            <HugeiconsIcon icon={Upload01Icon} size={16} className="mr-2" />{" "}
-            {t("rpe.banner.replace")}
+            <HugeiconsIcon icon={Upload01Icon} size={16} /> {t("rpe.banner.replace")}
           </Button>
           <Button
             type="button"
@@ -647,8 +647,7 @@ export default function RestaurantProfileEditor({
             disabled={bannerUploading}
             onClick={removeBanner}
           >
-            <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />{" "}
-            {t("rpe.banner.remove")}
+            <HugeiconsIcon icon={Delete02Icon} size={16} /> {t("rpe.banner.remove")}
           </Button>
         </div>
       </div>
@@ -677,14 +676,14 @@ export default function RestaurantProfileEditor({
   if (photosUploading) {
     photosUploadButtonContent = (
       <>
-        <HugeiconsIcon icon={Loading02Icon} size={16} className="mr-2 animate-spin" />{" "}
+        <HugeiconsIcon icon={Loading02Icon} size={16} className="animate-spin" />{" "}
         {t("rpe.photos.uploading")}
       </>
     );
   } else {
     photosUploadButtonContent = (
       <>
-        <HugeiconsIcon icon={Upload01Icon} size={16} className="mr-2" /> {t("rpe.photos.upload")}
+        <HugeiconsIcon icon={Upload01Icon} size={16} /> {t("rpe.photos.upload")}
       </>
     );
   }
@@ -706,14 +705,16 @@ export default function RestaurantProfileEditor({
                 alt={p.altText || "Restaurant photo"}
                 className="h-28 w-full object-cover"
               />
-              <button
+              <Button
                 type="button"
+                variant="destructiveOutline"
+                size="icon"
                 onClick={() => removePhoto(p.id)}
-                className="absolute right-1 top-1 rounded-md bg-white/90 p-1 text-red-600 shadow hover:bg-white"
+                className="absolute right-1 top-1"
                 aria-label="Remove photo"
               >
                 <HugeiconsIcon icon={Delete02Icon} size={14} />
-              </button>
+              </Button>
             </div>
             <Input
               value={p.altText || ""}
@@ -756,17 +757,9 @@ export default function RestaurantProfileEditor({
 
   let publishStatusBadge: React.ReactNode;
   if (isPublished) {
-    publishStatusBadge = (
-      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-        {t("rpe.preview.published")}
-      </span>
-    );
+    publishStatusBadge = <Badge variant="success">{t("rpe.preview.published")}</Badge>;
   } else {
-    publishStatusBadge = (
-      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-        {t("rpe.preview.draft")}
-      </span>
-    );
+    publishStatusBadge = <Badge variant="neutral">{t("rpe.preview.draft")}</Badge>;
   }
 
   let saveButtonLabel: string;
@@ -1722,7 +1715,7 @@ function MenuSection({
         {!form && (
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={openAdd} className="w-full sm:w-auto">
-              <HugeiconsIcon icon={Add01Icon} size={16} className="mr-2" /> {t("rpe.menu.addItem")}
+              <HugeiconsIcon icon={Add01Icon} size={16} /> {t("rpe.menu.addItem")}
             </Button>
             {menu.length > 0 && (
               <ConfirmModal
@@ -1740,8 +1733,7 @@ function MenuSection({
                 }}
                 trigger={
                   <Button type="button" variant="destructiveOutline" className="w-full sm:w-auto">
-                    <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />{" "}
-                    {t("rpe.menu.clear")}
+                    <HugeiconsIcon icon={Delete02Icon} size={16} /> {t("rpe.menu.clear")}
                   </Button>
                 }
               />

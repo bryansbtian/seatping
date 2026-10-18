@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Restaurant02Icon, StarIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import RestaurantCardContent from "@/components/RestaurantCardContent";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,10 +47,10 @@ function RestaurantImage({ restaurant }: { restaurant: SearchResult }) {
     <div className="relative aspect-[4/3] overflow-hidden bg-muted">
       {content}
       {restaurant.featured && (
-        <span className="absolute left-3 top-3 inline-flex h-badge items-center gap-1 rounded-badge bg-background px-2 text-caption font-medium text-foreground shadow-sm">
+        <Badge variant="neutral" className="absolute left-3 top-3 shadow-sm">
           <HugeiconsIcon icon={StarIcon} className="size-3" />
           Featured
-        </span>
+        </Badge>
       )}
     </div>
   );

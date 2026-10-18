@@ -183,15 +183,11 @@ const ReservationSearchBar = () => {
           time={time}
           people={people}
           className="border-t border-slate-200 md:border-t-0"
-          inputClassName="rounded-none border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-slate-50 md:rounded-xl md:border md:border-slate-200 md:bg-transparent md:focus-visible:ring-2 md:focus-visible:ring-offset-2 md:focus-visible:bg-transparent placeholder:text-sm max-[360px]:placeholder:text-xs sm:placeholder:text-base"
+          inputClassName="rounded-none border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-slate-50 md:rounded-control md:border md:border-slate-200 md:bg-transparent md:focus-visible:ring-2 md:focus-visible:ring-offset-2 md:focus-visible:bg-transparent placeholder:text-sm max-[360px]:placeholder:text-xs sm:placeholder:text-base"
         />
 
         <div className="border-t border-slate-200 pt-3 md:border-t-0 md:pt-0 md:contents">
-          <Button
-            type="submit"
-            size="lg"
-            className="h-12 w-full rounded-xl px-8 md:col-span-full xl:col-auto"
-          >
+          <Button type="submit" size="lg" className="w-full md:col-span-full xl:col-auto">
             <HugeiconsIcon icon={Search01Icon} className="h-4 w-4" />
             <span className="font-medium">Search</span>
           </Button>
