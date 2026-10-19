@@ -205,6 +205,9 @@ or grow the page just to fit placeholder rows.
 Buttons and pills on every new or updated page must follow the Business Portal design.
 Use the shared `Button` component and its existing variants and sizes for actions and
 filters. Use `Badge` tone variants or the shared status pill styles for status labels.
+Filter and Sort action triggers use the shared `FilterButton` and `SortButton` components
+from `src/components/ui/collection-controls.tsx`. These use the borderless ghost style and
+consistent icons. Label the filter action `Filter`, never `Filters` or `All Filters`.
 Reuse the existing control height, radius, typography, spacing, hover, focus, and disabled
 states. Do not introduce custom button colors, pill shapes, or competing control styles.
 Preserve the existing grouped, segmented tab design for page navigation and date ranges,

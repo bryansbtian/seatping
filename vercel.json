@@ -33,6 +33,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/admin/customer",
+      "destination": "/api/server"
+    },
+    {
       "source": "/admin/:path*",
       "destination": "/api/server"
     },

@@ -1,7 +1,7 @@
-import { invalidateRestaurantConfiguration } from "@/lib/queryClient";
 import { useState, useEffect, useCallback } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { FilterButton } from "@/components/ui/collection-controls";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,17 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -37,13 +26,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import FeaturedRestaurantsManager from "@/components/FeaturedRestaurantsManager";
 import CampaignTemplatesAdmin from "@/components/CampaignTemplatesAdmin";
+import CustomerManagementAdmin from "@/components/CustomerManagementAdmin";
 import AdminLogin from "@/components/AdminLogin";
 import AdminLayout from "@/components/AdminLayout";
 import RouteLoading from "@/components/RouteLoading";
 import ListSkeleton from "@/components/ListSkeleton";
 import BusinessEmptyState from "@/components/BusinessEmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Ticket01Icon, UsersRoundIcon } from "@hugeicons/core-free-icons";
+import { SelectFilter } from "@/components/restaurant-discovery/RestaurantFilters";
+import { Cancel01Icon, Search01Icon, Ticket01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import SEO from "@/components/SEO";
 import { formatEnteredPhone } from "@shared/phone";
 
@@ -79,6 +79,22 @@ interface Ticket {
   updatedAt: string;
 }
 
+function ticketCategory(ticket: Ticket): string {
+  if (
+    ticket.type === "feedback" &&
+    ["support", "bug", "ux", "billing"].includes(ticket.data?.feedbackType || "")
+  ) {
+    return "support";
+  }
+  return ticket.type;
+}
+
+const TICKET_CATEGORIES = [
+  { value: "all", label: "All" },
+  { value: "support", label: "Support" },
+  { value: "feedback", label: "Feedback" },
+];
+
 interface TicketStats {
   total: number;
   open: number;
@@ -87,39 +103,6 @@ interface TicketStats {
   sales: number;
   feedback: number;
 }
-
-interface CustomerLocation {
-  address: string;
-  displayName?: string | null;
-  credits: number;
-}
-
-interface CustomerRecord {
-  name: string;
-  username: string;
-  email: string;
-  phone: string;
-  trial: boolean;
-  trialDurationDays: number;
-  maxLocations: number;
-  baseCredits: number;
-  creditsStartedAt: string | null;
-  locations: CustomerLocation[];
-}
-
-type CustomerLocationDraft = Omit<CustomerLocation, "credits"> & {
-  credits: number | "";
-};
-
-type CustomerDraft = Omit<
-  CustomerRecord,
-  "trialDurationDays" | "maxLocations" | "baseCredits" | "locations"
-> & {
-  trialDurationDays: number | "";
-  maxLocations: number | "";
-  baseCredits: number | "";
-  locations: CustomerLocationDraft[];
-};
 
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -130,7 +113,7 @@ const Admin = () => {
 
   let section = "tickets";
   let pageTitle = "Ticket Management";
-  let pageDescription = "Manage support tickets, sales inquiries, and customer feedback.";
+  let pageDescription = "Manage support tickets and customer feedback.";
   if (pathname.toLowerCase().replace(/\/$/, "") === "/admin/customers") {
     section = "customer";
     pageTitle = "Customer Management";
@@ -138,7 +121,7 @@ const Admin = () => {
   } else if (pathname.toLowerCase().replace(/\/$/, "") === "/admin/featured") {
     section = "featured";
     pageTitle = "Featured Restaurants";
-    pageDescription = "Choose and manage the restaurants featured on SeatPing.";
+    pageDescription = "Manage which restaurants appear on the homepage.";
   } else if (pathname.toLowerCase().replace(/\/$/, "") === "/admin/templates") {
     section = "campaigns";
     pageTitle = "Campaign Templates";
@@ -146,20 +129,15 @@ const Admin = () => {
   }
 
   const [searchUsername, setSearchUsername] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerRecord | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [customerError, setCustomerError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editDraft, setEditDraft] = useState<CustomerDraft | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
   const [statsError, setStatsError] = useState(false);
   const [stats, setStats] = useState<TicketStats | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [ticketFiltersOpen, setTicketFiltersOpen] = useState(false);
+  const [ticketSort, setTicketSort] = useState("newest");
+  const [ticketSearch, setTicketSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [filter, setFilter] = useState({
     status: "all",
@@ -196,7 +174,11 @@ const Admin = () => {
         params.append("status", filter.status);
       }
       if (filter.type !== "all") {
-        params.append("type", filter.type);
+        let type = filter.type;
+        if (type === "support") {
+          type = "feedback";
+        }
+        params.append("type", type);
       }
       if (filter.priority !== "all") {
         params.append("priority", filter.priority);
@@ -207,7 +189,11 @@ const Admin = () => {
         throw new Error("Failed to load tickets");
       }
       const data = await response.json();
-      setTickets(data.tickets);
+      let nextTickets: Ticket[] = data.tickets;
+      if (filter.type === "support" || filter.type === "feedback") {
+        nextTickets = nextTickets.filter((ticket) => ticketCategory(ticket) === filter.type);
+      }
+      setTickets(nextTickets);
     } catch {
       setTicketsError("Tickets could not be loaded. Please try again.");
     } finally {
@@ -286,234 +272,13 @@ const Admin = () => {
       });
     } catch {}
     setIsAuthenticated(false);
-    setSelectedCustomer(null);
-    setEditDraft(null);
     setSearchUsername("");
     setSelectedTicket(null);
     setTickets([]);
     setStats(null);
     setIsDialogOpen(false);
-    setIsConfirmOpen(false);
     setResponseForm({ message: "", responderName: "" });
     navigate("/admin", { replace: true });
-  };
-
-  const handleSearchCustomer = async () => {
-    const trimmed = searchUsername.trim();
-    if (!trimmed) {
-      toast({
-        title: "Error",
-        description: "Please enter a business username",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSearching(true);
-    setCustomerError(null);
-    setSelectedCustomer(null);
-    setIsEditing(false);
-    setEditDraft(null);
-
-    try {
-      const response = await fetch(`/admin/customer/${encodeURIComponent(trimmed)}`);
-
-      if (response.status === 404) {
-        setCustomerError("No customer found with this username.");
-        return;
-      }
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        const message = data?.error || "Failed to fetch customer";
-        setCustomerError(message);
-        toast({
-          title: "Error",
-          description: message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const data = await response.json();
-      setSelectedCustomer(data.customer);
-    } catch (error) {
-      const message = "Network error occurred";
-      setCustomerError(message);
-      toast({
-        title: "Error",
-        description: message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const startEditing = () => {
-    if (!selectedCustomer) {
-      return;
-    }
-    setEditDraft({
-      ...selectedCustomer,
-      locations: selectedCustomer.locations.map((l) => ({ ...l })),
-    });
-    setIsEditing(true);
-  };
-
-  const cancelEditing = () => {
-    setIsEditing(false);
-    setEditDraft(null);
-  };
-
-  const updateDraftNumber = (
-    key: "trialDurationDays" | "maxLocations" | "baseCredits",
-    raw: string,
-  ) => {
-    if (!editDraft) {
-      return;
-    }
-    if (raw === "") {
-      setEditDraft({ ...editDraft, [key]: "" });
-      return;
-    }
-    const parsed = parseInt(raw, 10);
-    if (Number.isNaN(parsed) || parsed < 0) {
-      return;
-    }
-    setEditDraft({ ...editDraft, [key]: parsed });
-  };
-
-  const updateDraftBoolean = (key: "trial", value: boolean) => {
-    if (!editDraft) {
-      return;
-    }
-    setEditDraft({ ...editDraft, [key]: value });
-  };
-
-  const updateDraftString = (key: "name" | "username" | "email" | "phone", value: string) => {
-    if (!editDraft) {
-      return;
-    }
-    setEditDraft({ ...editDraft, [key]: value });
-  };
-
-  const updateDraftLocation = (index: number, key: "credits", raw: string) => {
-    if (!editDraft) {
-      return;
-    }
-    let parsed: number | "" = "";
-    if (raw !== "") {
-      parsed = parseInt(raw, 10);
-      if (Number.isNaN(parsed) || parsed < 0) {
-        return;
-      }
-    }
-    const next = editDraft.locations.map((loc, i) => {
-      if (i === index) {
-        return { ...loc, [key]: parsed };
-      }
-      return loc;
-    });
-    setEditDraft({ ...editDraft, locations: next });
-  };
-
-  const updateDraftLocationAddress = (index: number, value: string) => {
-    if (!editDraft) {
-      return;
-    }
-    const next = editDraft.locations.map((loc, i) => {
-      if (i === index) {
-        return { ...loc, address: value };
-      }
-      return loc;
-    });
-    setEditDraft({ ...editDraft, locations: next });
-  };
-
-  const handleSaveCustomer = async () => {
-    if (!editDraft || !selectedCustomer) {
-      return;
-    }
-
-    const { trialDurationDays, maxLocations, baseCredits } = editDraft;
-    if (
-      trialDurationDays === "" ||
-      maxLocations === "" ||
-      baseCredits === "" ||
-      editDraft.locations.some((l) => l.credits === "")
-    ) {
-      setIsConfirmOpen(false);
-      toast({
-        title: "Error",
-        description:
-          "Trial duration, max locations, base credits, and location credits cannot be blank",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const response = await fetch(
-        `/admin/customer/${encodeURIComponent(selectedCustomer.username)}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: editDraft.name,
-            username: editDraft.username,
-            email: editDraft.email,
-            phone: editDraft.phone,
-            trial: editDraft.trial,
-            trialDurationDays,
-            maxLocations,
-            baseCredits,
-            locations: editDraft.locations.map((l) => ({
-              address: l.address,
-              credits: Number(l.credits),
-            })),
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        toast({
-          title: "Error",
-          description: data?.error || "Failed to update customer",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const data = await response.json();
-      setSelectedCustomer(data.customer);
-      void invalidateRestaurantConfiguration();
-      setSearchUsername(data.customer.username);
-      setIsEditing(false);
-      setEditDraft(null);
-      setIsConfirmOpen(false);
-      toast({
-        title: "Success",
-        description: "Customer updated successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Network error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const formatBoolean = (value: boolean) => {
-    if (value) {
-      return "Yes";
-    }
-    return "No";
   };
 
   const formatDate = (value: string | null) => {
@@ -692,27 +457,6 @@ const Admin = () => {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
-  let searchCustomerLabel: string;
-  if (isSearching) {
-    searchCustomerLabel = "Searching...";
-  } else {
-    searchCustomerLabel = "Search Customer";
-  }
-
-  let saveChangesLabel: string;
-  if (isSaving) {
-    saveChangesLabel = "Saving...";
-  } else {
-    saveChangesLabel = "Save Changes";
-  }
-
-  let confirmButtonLabel: string;
-  if (isSaving) {
-    confirmButtonLabel = "Saving...";
-  } else {
-    confirmButtonLabel = "Confirm";
-  }
-
   let sendResponseLabel: string;
   if (isLoading) {
     sendResponseLabel = "Sending...";
@@ -720,258 +464,70 @@ const Admin = () => {
     sendResponseLabel = "Send Response";
   }
 
-  let customerEditActions: React.ReactNode;
-  if (!isEditing) {
-    customerEditActions = <Button onClick={startEditing}>Edit Customer</Button>;
-  } else {
-    customerEditActions = (
-      <>
-        <Button variant="outline" onClick={cancelEditing} disabled={isSaving}>
-          Cancel
-        </Button>
-        <Button onClick={() => setIsConfirmOpen(true)} disabled={isSaving}>
-          {saveChangesLabel}
-        </Button>
-      </>
-    );
+  const hasTicketFilters =
+    filter.type !== "all" || filter.status !== "all" || filter.priority !== "all";
+  let ticketEmptyDescription =
+    "Support tickets and customer feedback will appear here when they arrive.";
+  if (hasTicketFilters) {
+    ticketEmptyDescription = "No tickets match your filters. Clear them to see all tickets.";
   }
 
-  let trialChangeMessage = "";
-  if (editDraft) {
-    if (editDraft.trial) {
-      trialChangeMessage = "Trial ON: credits cycle will be cleared";
-    } else {
-      trialChangeMessage = "Trial OFF: credits cycle starts now, refills next month";
-    }
+  let clearTicketViewLabel = "Clear Filters";
+  if (ticketSearch.trim()) {
+    ticketEmptyDescription =
+      "No tickets match your search. Try another search or clear your search and filters.";
+    clearTicketViewLabel = "Clear Search And Filters";
   }
 
-  let nameField: React.ReactNode = null;
-  let usernameField: React.ReactNode = null;
-  let emailField: React.ReactNode = null;
-  let phoneField: React.ReactNode = null;
-  let trialField: React.ReactNode = null;
-  let trialDurationField: React.ReactNode = null;
-  let maxLocationsField: React.ReactNode = null;
-  let baseCreditsField: React.ReactNode = null;
-  let creditsStartedText = "-";
-  let locationsDescription = "";
-  let locationsContent: React.ReactNode = null;
+  let activeTicketFilterCount = 0;
+  if (filter.status !== "all") {
+    activeTicketFilterCount += 1;
+  }
+  if (filter.priority !== "all") {
+    activeTicketFilterCount += 1;
+  }
 
-  if (selectedCustomer) {
-    if (isEditing && editDraft) {
-      nameField = (
-        <Input value={editDraft.name} onChange={(e) => updateDraftString("name", e.target.value)} />
-      );
-    } else {
-      nameField = (
-        <p className="text-sm md:text-base font-medium break-words">
-          {selectedCustomer.name || "-"}
-        </p>
-      );
+  const normalizedTicketSearch = ticketSearch.trim().toLowerCase();
+  const searchedTickets = tickets.filter((ticket) => {
+    return [
+      ticket.ticketNumber,
+      ticket.subject,
+      ticket.senderName,
+      ticket.senderEmail,
+      ticket.businessName,
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(normalizedTicketSearch);
+  });
+  const sortedTickets = [...searchedTickets].sort((first, second) => {
+    const createdDifference =
+      new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime();
+    if (ticketSort === "oldest") {
+      return -createdDifference;
     }
-
-    if (isEditing && editDraft) {
-      usernameField = (
-        <Input
-          value={editDraft.username}
-          onChange={(e) => updateDraftString("username", e.target.value)}
-        />
-      );
-    } else {
-      usernameField = (
-        <p className="text-sm md:text-base font-medium break-words">
-          {selectedCustomer.username || "-"}
-        </p>
-      );
-    }
-
-    if (isEditing && editDraft) {
-      emailField = (
-        <Input
-          type="email"
-          value={editDraft.email}
-          onChange={(e) => updateDraftString("email", e.target.value)}
-        />
-      );
-    } else {
-      emailField = (
-        <p className="text-sm md:text-base font-medium break-words">
-          {selectedCustomer.email || "-"}
-        </p>
-      );
-    }
-
-    if (isEditing && editDraft) {
-      phoneField = (
-        <Input
-          value={editDraft.phone}
-          onChange={(e) => updateDraftString("phone", e.target.value)}
-        />
-      );
-    } else {
-      phoneField = (
-        <p className="text-sm md:text-base font-medium break-words">
-          {formatEnteredPhone(selectedCustomer.phone) || "-"}
-        </p>
-      );
-    }
-
-    if (isEditing && editDraft) {
-      trialField = (
-        <div className="flex items-center gap-3 pt-1">
-          <Switch
-            checked={editDraft.trial}
-            onCheckedChange={(v) => updateDraftBoolean("trial", v)}
-          />
-          <span className="text-sm">{formatBoolean(editDraft.trial)}</span>
-        </div>
-      );
-    } else {
-      trialField = (
-        <p className="text-sm md:text-base font-medium">{formatBoolean(selectedCustomer.trial)}</p>
-      );
-    }
-
-    if (isEditing && editDraft) {
-      trialDurationField = (
-        <Input
-          type="number"
-          min={0}
-          value={editDraft.trialDurationDays}
-          onChange={(e) => updateDraftNumber("trialDurationDays", e.target.value)}
-        />
-      );
-    } else {
-      trialDurationField = (
-        <p className="text-sm md:text-base font-medium">
-          {selectedCustomer.trialDurationDays ?? 0}
-        </p>
-      );
-    }
-
-    if (isEditing && editDraft) {
-      maxLocationsField = (
-        <Input
-          type="number"
-          min={0}
-          value={editDraft.maxLocations}
-          onChange={(e) => updateDraftNumber("maxLocations", e.target.value)}
-        />
-      );
-    } else {
-      maxLocationsField = (
-        <p className="text-sm md:text-base font-medium">{selectedCustomer.maxLocations ?? 0}</p>
-      );
-    }
-
-    if (isEditing && editDraft) {
-      baseCreditsField = (
-        <Input
-          type="number"
-          min={0}
-          value={editDraft.baseCredits}
-          onChange={(e) => updateDraftNumber("baseCredits", e.target.value)}
-        />
-      );
-    } else {
-      baseCreditsField = (
-        <p className="text-sm md:text-base font-medium">{selectedCustomer.baseCredits ?? 0}</p>
-      );
-    }
-
-    if (selectedCustomer.creditsStartedAt) {
-      creditsStartedText = formatDate(selectedCustomer.creditsStartedAt);
-    } else {
-      creditsStartedText = "-";
-    }
-
-    if (selectedCustomer.locations.length === 0) {
-      locationsDescription = "No locations registered";
-    } else {
-      let locationCountSuffix: string;
-      if (selectedCustomer.locations.length === 1) {
-        locationCountSuffix = "";
-      } else {
-        locationCountSuffix = "s";
+    if (ticketSort === "priority") {
+      const priorities: Record<string, number> = { high: 3, medium: 2, low: 1 };
+      const priorityDifference =
+        (priorities[second.priority || "low"] || 0) - (priorities[first.priority || "low"] || 0);
+      if (priorityDifference !== 0) {
+        return priorityDifference;
       }
-      locationsDescription = `${selectedCustomer.locations.length} location${locationCountSuffix}`;
     }
-
-    if (selectedCustomer.locations.length === 0) {
-      locationsContent = (
-        <p className="text-sm text-muted-foreground">
-          This business has not added any locations yet.
-        </p>
-      );
-    } else {
-      let locationsToRender: (CustomerLocation | CustomerLocationDraft)[];
-      if (isEditing && editDraft) {
-        locationsToRender = editDraft.locations;
-      } else {
-        locationsToRender = selectedCustomer.locations;
-      }
-      locationsContent = (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {locationsToRender.map((location, idx) => {
-            let addressField: React.ReactNode;
-            if (isEditing && editDraft) {
-              addressField = (
-                <Input
-                  value={location.address}
-                  onChange={(e) => updateDraftLocationAddress(idx, e.target.value)}
-                />
-              );
-            } else {
-              addressField = (
-                <p className="text-sm md:text-base font-medium break-words">
-                  {location.address || "-"}
-                </p>
-              );
-            }
-
-            let locationCreditsField: React.ReactNode;
-            if (isEditing && editDraft) {
-              locationCreditsField = (
-                <Input
-                  type="number"
-                  min={0}
-                  value={location.credits}
-                  onChange={(e) => updateDraftLocation(idx, "credits", e.target.value)}
-                />
-              );
-            } else {
-              locationCreditsField = (
-                <p className="text-sm md:text-base font-medium">{location.credits}</p>
-              );
-            }
-
-            return (
-              <div key={idx} className="rounded-lg border bg-muted/30 p-4 space-y-3">
-                <div>
-                  <Label className="text-muted-foreground">Address</Label>
-                  {addressField}
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Credits</Label>
-                  {locationCreditsField}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      );
-    }
-  }
+    return createdDifference;
+  });
 
   return (
     <AdminLayout onLogout={handleLogout}>
       <SEO title={`${pageTitle} | SeatPing Admin`} description={pageDescription} />
       <div className="flex min-h-full flex-col">
-        <div className="container mx-auto flex w-full flex-1 flex-col gap-6 px-4 py-8">
-          <div className="shrink-0">
-            <h1 className="text-xl font-semibold text-ink md:text-2xl">{pageTitle}</h1>
-            <p className="mt-1 text-body text-ink-subtle">{pageDescription}</p>
-          </div>
+        <div className="container mx-auto flex w-full flex-1 flex-col gap-6 px-4 py-8 text-body text-ink">
+          {section !== "featured" && (
+            <div className="shrink-0">
+              <h1 className="text-xl font-semibold text-ink md:text-2xl">{pageTitle}</h1>
+              <p className="mt-1 text-body text-ink-subtle">{pageDescription}</p>
+            </div>
+          )}
 
           {section === "tickets" && (
             <div className="flex flex-1 flex-col gap-6">
@@ -979,15 +535,21 @@ const Admin = () => {
                 <div
                   role="status"
                   aria-label="Loading Ticket Statistics"
-                  className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6"
+                  className="grid grid-cols-2 rounded-lg border border-border bg-card shadow-sm sm:grid-cols-[2fr_1fr_1fr]"
                 >
-                  {Array.from({ length: 6 }, (_, index) => (
-                    <Card key={index} aria-hidden="true">
-                      <CardContent className="space-y-4 p-6">
-                        <Skeleton className="h-4 w-16" />
-                        <Skeleton className="h-7 w-12" />
-                      </CardContent>
-                    </Card>
+                  <div aria-hidden="true" className="col-span-2 space-y-3 p-4 sm:col-span-1 sm:p-5">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-7 w-12" />
+                  </div>
+                  {["resolved", "total"].map((key) => (
+                    <div
+                      key={key}
+                      aria-hidden="true"
+                      className="space-y-3 border-t border-border p-4 last:border-l sm:border-l sm:border-t-0 sm:p-5"
+                    >
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-6 w-10" />
+                    </div>
                   ))}
                 </div>
               )}
@@ -1006,404 +568,304 @@ const Admin = () => {
                 </div>
               )}
               {stats && !statsError && (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-label font-medium text-ink-subtle">
-                        Total
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-semibold">{stats.total}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-label font-medium text-ink-subtle">Open</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-semibold text-red-600">{stats.open}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-label font-medium text-ink-subtle">
-                        In Progress
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-semibold text-indigo-600">
-                        {stats.inProgress}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-label font-medium text-ink-subtle">
-                        Closed
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-semibold text-green-600">{stats.closed}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-label font-medium text-ink-subtle">
-                        Sales
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-semibold">{stats.sales}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-label font-medium text-ink-subtle">
-                        Feedback
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-semibold">{stats.feedback}</div>
-                    </CardContent>
-                  </Card>
-                </div>
+                <Card
+                  role="region"
+                  aria-label="Ticket Overview"
+                  className="grid grid-cols-2 sm:grid-cols-[2fr_1fr_1fr]"
+                >
+                  <div className="col-span-2 p-4 sm:col-span-1 sm:p-5">
+                    <h2 className="text-label text-ink">Needs Attention</h2>
+                    <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums text-ink">
+                      {stats.open + stats.inProgress}
+                    </p>
+                  </div>
+                  <div className="border-t border-border p-4 sm:border-l sm:border-t-0 sm:p-5">
+                    <h2 className="text-label text-ink-subtle">Resolved</h2>
+                    <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums text-ink">
+                      {stats.closed}
+                    </p>
+                  </div>
+                  <div className="border-l border-t border-border p-4 sm:border-t-0 sm:p-5">
+                    <h2 className="text-label text-ink-subtle">Total Tickets</h2>
+                    <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums text-ink">
+                      {stats.total}
+                    </p>
+                  </div>
+                </Card>
               )}
 
-              <Card data-testid="admin-content-card" className="flex flex-1 flex-col">
-                <CardHeader className="border-b border-border p-4 md:p-6">
-                  <CardTitle>Filters</CardTitle>
-                </CardHeader>
+              <Card
+                data-testid="admin-content-card"
+                role="region"
+                aria-label="Ticket Results"
+                className="flex flex-1 flex-col"
+              >
                 <CardContent className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-                  <div className="flex flex-wrap gap-4">
-                    <div className="w-full sm:w-40">
-                      <Select
-                        value={filter.status}
-                        onValueChange={(value) => setFilter({ ...filter, status: value })}
+                  <Sheet open={ticketFiltersOpen} onOpenChange={setTicketFiltersOpen}>
+                    <div className="flex min-w-0 flex-col items-start gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between">
+                      <div
+                        role="group"
+                        aria-label="Ticket Categories"
+                        className="flex min-w-0 flex-wrap items-center gap-2"
                       >
-                        <SelectTrigger aria-label="Filter by Status">
-                          <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Status</SelectItem>
-                          <SelectItem value="open">Open</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="closed">Closed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="w-full sm:w-40">
-                      <Select
-                        value={filter.type}
-                        onValueChange={(value) => setFilter({ ...filter, type: value })}
+                        {TICKET_CATEGORIES.map(({ value, label }) => {
+                          let variant: "default" | "outline" = "outline";
+                          if (filter.type === value) {
+                            variant = "default";
+                          }
+                          return (
+                            <Button
+                              key={value}
+                              variant={variant}
+                              size="sm"
+                              className="shrink-0"
+                              aria-pressed={filter.type === value}
+                              onClick={() => setFilter({ ...filter, type: value })}
+                            >
+                              {label}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      <div
+                        role="group"
+                        aria-label="Ticket Controls"
+                        className="flex max-w-full items-center gap-2 md:ml-auto"
                       >
-                        <SelectTrigger aria-label="Filter by Type">
-                          <SelectValue placeholder="Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Types</SelectItem>
-                          <SelectItem value="sales">Sales</SelectItem>
-                          <SelectItem value="feedback">Feedback</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        <SheetTrigger asChild>
+                          <FilterButton className="shrink-0" aria-label="Filter">
+                            Filter
+                            {activeTicketFilterCount > 0 && (
+                              <Badge
+                                variant="neutral"
+                                aria-label={`${activeTicketFilterCount} Active Filters`}
+                                className="min-w-5 justify-center px-1"
+                              >
+                                {activeTicketFilterCount}
+                              </Badge>
+                            )}
+                          </FilterButton>
+                        </SheetTrigger>
+                        <SelectFilter
+                          label="Sort By"
+                          kind="sort"
+                          size="sm"
+                          current={ticketSort}
+                          clearable={false}
+                          options={[
+                            { value: "newest", label: "Newest First" },
+                            { value: "oldest", label: "Oldest First" },
+                            { value: "priority", label: "Highest Priority" },
+                          ]}
+                          onChange={(value) => {
+                            if (value) {
+                              setTicketSort(value);
+                            }
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full sm:w-40">
-                      <Select
-                        value={filter.priority}
-                        onValueChange={(value) => setFilter({ ...filter, priority: value })}
-                      >
-                        <SelectTrigger aria-label="Filter by Priority">
-                          <SelectValue placeholder="Priority" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Priorities</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="low">Low</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <SheetContent
+                      side="bottom"
+                      hideClose
+                      className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden rounded-t-2xl p-0 data-[state=open]:duration-200 data-[state=closed]:duration-150 motion-reduce:animate-none md:bottom-auto md:left-1/2 md:top-1/2 md:w-[28rem] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl"
+                    >
+                      <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3">
+                        <SheetTitle>Filter</SheetTitle>
+                        <SheetClose asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="control-lg"
+                            aria-label="Close Filters"
+                          >
+                            <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
+                          </Button>
+                        </SheetClose>
+                      </div>
+                      <SheetDescription className="sr-only">
+                        Filter tickets by status and priority.
+                      </SheetDescription>
+                      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-5">
+                        {[
+                          {
+                            key: "status",
+                            label: "Status",
+                            options: [
+                              { value: "all", label: "All Statuses" },
+                              { value: "open", label: "Open" },
+                              { value: "in_progress", label: "In Progress" },
+                              { value: "closed", label: "Closed" },
+                            ],
+                          },
+                          {
+                            key: "priority",
+                            label: "Priority",
+                            options: [
+                              { value: "all", label: "All Priorities" },
+                              { value: "high", label: "High" },
+                              { value: "medium", label: "Medium" },
+                              { value: "low", label: "Low" },
+                            ],
+                          },
+                        ].map(({ key, label, options }) => {
+                          let current = filter.status;
+                          if (key === "priority") {
+                            current = filter.priority;
+                          }
+                          return (
+                            <fieldset key={key} className="min-w-0">
+                              <legend className="mb-3 text-label text-ink">{label}</legend>
+                              <div className="flex flex-wrap gap-2">
+                                {options.map(({ value, label: optionLabel }) => {
+                                  let variant: "default" | "outline" = "outline";
+                                  if (current === value) {
+                                    variant = "default";
+                                  }
+                                  return (
+                                    <Button
+                                      key={value}
+                                      variant={variant}
+                                      aria-pressed={current === value}
+                                      onClick={() =>
+                                        setFilter((previous) => ({ ...previous, [key]: value }))
+                                      }
+                                    >
+                                      {optionLabel}
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            </fieldset>
+                          );
+                        })}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3 border-t border-border bg-background p-4">
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          className="px-4"
+                          disabled={activeTicketFilterCount === 0}
+                          onClick={() =>
+                            setFilter((previous) => ({
+                              ...previous,
+                              status: "all",
+                              priority: "all",
+                            }))
+                          }
+                        >
+                          Clear Filters
+                        </Button>
+                        <SheetClose asChild>
+                          <Button size="lg" className="min-w-0 flex-1 px-4">
+                            Show Tickets
+                          </Button>
+                        </SheetClose>
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                  <div className="relative">
+                    <HugeiconsIcon
+                      icon={Search01Icon}
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                    />
+                    <Input
+                      aria-label="Search Tickets"
+                      value={ticketSearch}
+                      onChange={(event) => setTicketSearch(event.target.value)}
+                      placeholder="Search by ticket, subject, business, or sender"
+                      className="pl-9"
+                    />
                   </div>
-
-                  {ticketsLoading && (
-                    <ListSkeleton fill label="Loading Tickets" className="p-0 md:p-0" />
-                  )}
-                  {!ticketsLoading && ticketsError && (
-                    <div role="alert" className="flex flex-1 flex-col">
+                  <div className="flex flex-1 flex-col">
+                    {ticketsLoading && (
+                      <ListSkeleton fill label="Loading Tickets" className="p-0 md:p-0" />
+                    )}
+                    {!ticketsLoading && ticketsError && (
+                      <div role="alert" className="flex flex-1 flex-col">
+                        <BusinessEmptyState
+                          icon={Ticket01Icon}
+                          title="Unable To Load Tickets"
+                          body={ticketsError}
+                        >
+                          <Button variant="outline" onClick={fetchTickets}>
+                            Retry Tickets
+                          </Button>
+                        </BusinessEmptyState>
+                      </div>
+                    )}
+                    {!ticketsLoading && !ticketsError && sortedTickets.length === 0 && (
                       <BusinessEmptyState
                         icon={Ticket01Icon}
-                        title="Unable To Load Tickets"
-                        body={ticketsError}
+                        title="No Tickets Found"
+                        body={ticketEmptyDescription}
                       >
-                        <Button variant="outline" onClick={fetchTickets}>
-                          Retry Tickets
-                        </Button>
-                      </BusinessEmptyState>
-                    </div>
-                  )}
-                  {!ticketsLoading && !ticketsError && tickets.length === 0 && (
-                    <BusinessEmptyState
-                      icon={Ticket01Icon}
-                      title="No Tickets Found"
-                      body="New tickets will appear here. Try changing your filters to find another ticket."
-                    />
-                  )}
-                  {!ticketsLoading && !ticketsError && tickets.length > 0 && (
-                    <div className="space-y-4">
-                      {tickets.map((ticket) => (
-                        <Card key={ticket.id}>
-                          <button
-                            type="button"
-                            className="block w-full rounded-xl text-left transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            onClick={() => handleViewTicket(ticket.ticketNumber)}
+                        {(hasTicketFilters || ticketSearch.trim()) && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setTicketSearch("");
+                              setFilter({ type: "all", status: "all", priority: "all" });
+                            }}
                           >
-                            <CardContent className="p-4 md:p-6">
-                              <div className="flex justify-between items-start">
-                                <div className="min-w-0 flex-1 space-y-2 break-words">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <h3 className="text-title font-medium text-ink">
+                            {clearTicketViewLabel}
+                          </Button>
+                        )}
+                      </BusinessEmptyState>
+                    )}
+                    {!ticketsLoading && !ticketsError && sortedTickets.length > 0 && (
+                      <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
+                        {sortedTickets.map((ticket) => {
+                          const category = ticketCategory(ticket);
+                          return (
+                            <li key={ticket.id}>
+                              <button
+                                type="button"
+                                className="flex w-full flex-col items-start justify-between gap-1 px-4 py-3 text-left transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:flex-row sm:items-center sm:gap-3"
+                                onClick={() => handleViewTicket(ticket.ticketNumber)}
+                              >
+                                <div className="min-w-0 w-full flex-1 sm:w-auto">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <h3
+                                      className="min-w-0 truncate text-title text-ink"
+                                      title={ticket.subject}
+                                    >
                                       {ticket.subject}
                                     </h3>
                                     {getStatusBadge(ticket.status)}
                                     {getPriorityBadge(ticket.priority)}
-                                    <Badge variant="neutral">
-                                      {ticket.type.charAt(0).toUpperCase() + ticket.type.slice(1)}
-                                    </Badge>
                                   </div>
-                                  <p className="text-sm text-muted-foreground">
-                                    {ticket.ticketNumber} • From: {ticket.senderName} (
-                                    {ticket.senderEmail})
-                                    {ticket.businessName && ` • ${ticket.businessName}`}
-                                  </p>
-                                  <p className="text-sm">
-                                    Created: {new Date(ticket.createdAt).toLocaleString()}
+                                  <p
+                                    className="mt-0.5 truncate text-caption text-ink-subtle"
+                                    title={`${ticket.senderName} (${ticket.senderEmail})`}
+                                  >
+                                    {ticket.businessName || ticket.senderName} ·{" "}
+                                    {ticket.ticketNumber} ·{" "}
+                                    {category.charAt(0).toUpperCase() + category.slice(1)}
                                   </p>
                                 </div>
-                              </div>
-                            </CardContent>
-                          </button>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
+                                <time
+                                  dateTime={ticket.createdAt}
+                                  title={new Date(ticket.createdAt).toLocaleString()}
+                                  className="shrink-0 text-caption text-slate-400"
+                                >
+                                  {formatDate(ticket.createdAt)}
+                                </time>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </div>
           )}
 
           {section === "customer" && (
-            <Card data-testid="admin-content-card" className="flex flex-1 flex-col">
-              <CardHeader className="border-b border-border p-4 md:p-6">
-                <CardTitle>Customer Management</CardTitle>
-                <CardDescription>Search and view business account details</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="searchUsername">Business Username</Label>
-                    <Input
-                      id="searchUsername"
-                      type="text"
-                      value={searchUsername}
-                      onChange={(e) => setSearchUsername(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleSearchCustomer();
-                        }
-                      }}
-                      placeholder="Enter business username"
-                    />
-                  </div>
-
-                  <Button
-                    className="w-full sm:w-auto"
-                    onClick={handleSearchCustomer}
-                    disabled={isSearching}
-                  >
-                    {searchCustomerLabel}
-                  </Button>
-                </div>
-
-                {isSearching && (
-                  <ListSkeleton fill label="Searching Customers" className="p-0 md:p-0" />
-                )}
-
-                {!selectedCustomer && !isSearching && !customerError && (
-                  <BusinessEmptyState
-                    icon={UsersRoundIcon}
-                    title="Find a Business Account"
-                    body="Search for a business username to view and manage its account, locations, and credits."
-                  />
-                )}
-
-                {customerError === "No customer found with this username." && !isSearching && (
-                  <BusinessEmptyState
-                    icon={UsersRoundIcon}
-                    title="No Customer Found"
-                    body="Try another business username to find the account you need."
-                  />
-                )}
-
-                {customerError &&
-                  customerError !== "No customer found with this username." &&
-                  !isSearching && (
-                    <Card>
-                      <CardContent className="p-6 text-center text-muted-foreground">
-                        {customerError}
-                      </CardContent>
-                    </Card>
-                  )}
-
-                {selectedCustomer && !isSearching && (
-                  <div className="space-y-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          Viewing Customer:{" "}
-                          <span className="font-medium text-foreground">
-                            {selectedCustomer.username}
-                          </span>
-                        </p>
-                      </div>
-                      <div className="flex gap-2">{customerEditActions}</div>
-                    </div>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Account Information</CardTitle>
-                        <CardDescription>Business contact and identity details</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label className="text-muted-foreground">Name</Label>
-                            {nameField}
-                          </div>
-                          <div>
-                            <Label className="text-muted-foreground">Username</Label>
-                            {usernameField}
-                          </div>
-                          <div>
-                            <Label className="text-muted-foreground">Email</Label>
-                            {emailField}
-                          </div>
-                          <div>
-                            <Label className="text-muted-foreground">Phone</Label>
-                            {phoneField}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Trial & Access</CardTitle>
-                        <CardDescription>
-                          Turn Trial off to activate paid access. Credits start then and refill
-                          monthly
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          <div>
-                            <Label className="text-muted-foreground">Trial</Label>
-                            {trialField}
-                          </div>
-                          <div>
-                            <Label className="text-muted-foreground">Trial Duration (Days)</Label>
-                            {trialDurationField}
-                          </div>
-                          <div>
-                            <Label className="text-muted-foreground">Max Locations</Label>
-                            {maxLocationsField}
-                          </div>
-                          <div>
-                            <Label className="text-muted-foreground">Base Credits</Label>
-                            {baseCreditsField}
-                          </div>
-                          <div>
-                            <Label className="text-muted-foreground">Credits Cycle Started</Label>
-                            <p className="text-sm md:text-base font-medium">{creditsStartedText}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Set automatically when Trial is turned off.
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Locations</CardTitle>
-                        <CardDescription>{locationsDescription}</CardDescription>
-                      </CardHeader>
-                      <CardContent>{locationsContent}</CardContent>
-                    </Card>
-                  </div>
-                )}
-
-                <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Confirm Changes</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {editDraft && selectedCustomer && (
-                          <>
-                            Apply these changes to{" "}
-                            <span className="font-medium">{selectedCustomer.username}</span>
-                            ?
-                            <br />
-                            <br />
-                            Name: {editDraft.name}
-                            <br />
-                            Username: {editDraft.username}
-                            {editDraft.username !== selectedCustomer.username && (
-                              <span className="text-amber-600"> (rename, must be unique)</span>
-                            )}
-                            <br />
-                            Email: {editDraft.email}
-                            {editDraft.email !== selectedCustomer.email && (
-                              <span className="text-amber-600"> (changed, must be unique)</span>
-                            )}
-                            <br />
-                            Phone: {formatEnteredPhone(editDraft.phone)}
-                            <br />
-                            <br />
-                            Trial: {formatBoolean(editDraft.trial)}
-                            <br />
-                            Trial Duration: {editDraft.trialDurationDays} days
-                            <br />
-                            Max Locations: {editDraft.maxLocations}
-                            <br />
-                            Base Credits: {editDraft.baseCredits}
-                            {editDraft.trial !== selectedCustomer.trial && (
-                              <>
-                                <br />
-                                <span className="text-amber-600">{trialChangeMessage}</span>
-                              </>
-                            )}
-                            {editDraft.locations.length > 0 && (
-                              <>
-                                <br />
-                                <br />
-                                Location addresses and per-location credits will also be updated.
-                              </>
-                            )}
-                          </>
-                        )}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleSaveCustomer} disabled={isSaving}>
-                        {confirmButtonLabel}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </CardContent>
-            </Card>
+            <CustomerManagementAdmin search={searchUsername} onSearchChange={setSearchUsername} />
           )}
 
           {section === "featured" && <FeaturedRestaurantsManager />}
@@ -1490,7 +952,7 @@ const Admin = () => {
                     {selectedTicket.type === "sales" && selectedTicket.data && (
                       <div className="space-y-2">
                         <Label>Sales Details</Label>
-                        <div className="bg-muted p-4 rounded-md space-y-1 text-sm">
+                        <div className="bg-muted p-4 rounded-md space-y-1 text-body">
                           {selectedTicket.data.businessWebsite && (
                             <p>
                               <strong>Website:</strong> {selectedTicket.data.businessWebsite}
@@ -1528,7 +990,7 @@ const Admin = () => {
                     {selectedTicket.type === "feedback" && selectedTicket.data && (
                       <div className="space-y-2">
                         <Label>Feedback Details</Label>
-                        <div className="bg-muted p-4 rounded-md space-y-1 text-sm">
+                        <div className="bg-muted p-4 rounded-md space-y-1 text-body">
                           {selectedTicket.data.feedbackType && (
                             <p>
                               <strong>Type:</strong> {selectedTicket.data.feedbackType}
@@ -1557,7 +1019,7 @@ const Admin = () => {
                           <div key={idx} className={`p-4 rounded-md ${messageToneClass}`}>
                             <div className="flex justify-between items-start mb-2">
                               <p className="font-semibold">{msg.sender}</p>
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-caption text-muted-foreground">
                                 {new Date(msg.timestamp).toLocaleString()}
                               </p>
                             </div>

@@ -127,9 +127,9 @@ const Header = ({
   }
 
   return (
-    <header className="fixed top-0 left-0 right-[var(--removed-body-scroll-bar-size,0px)] z-50 bg-background/80 backdrop-blur-md border-b border-border">
-      <div className="container mx-auto px-4 py-3 sm:py-4 flex items-center justify-between relative">
-        <Link to={logoTo} className="text-2xl font-semibold text-slate-900">
+    <header className="fixed top-0 left-0 right-[var(--removed-body-scroll-bar-size,0px)] z-50 h-[61px] bg-background/80 backdrop-blur-md border-b border-border sm:h-[65px]">
+      <div className="container relative mx-auto flex h-[60px] items-center justify-between px-4 sm:h-16">
+        <Link to={logoTo} className="shrink-0 text-2xl font-semibold text-slate-900">
           SeatPing
         </Link>
 
@@ -188,24 +188,22 @@ function CustomerProfile({
   }, [menuOpen]);
 
   return (
-    <div className="relative">
-      <button
+    <div className="relative min-w-0 shrink-0">
+      <Button
         type="button"
+        variant="ghost"
         aria-label="Open profile menu"
         aria-expanded={menuOpen}
         onClick={(e) => {
           e.stopPropagation();
           setMenuOpen((v) => !v);
         }}
-        className="flex items-center gap-2 rounded-full bg-background transition-colors hover:bg-slate-50 sm:border sm:border-border sm:px-2 sm:py-1.5 sm:pr-3"
+        className="h-9 w-9 shrink-0 rounded-full p-0"
       >
-        <span className="grid h-9 w-9 place-items-center rounded-full bg-slate-900 text-sm font-semibold text-white sm:h-8 sm:w-8">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-slate-900 text-body font-semibold text-white">
           {initial}
         </span>
-        <span className="hidden max-w-[10rem] truncate text-sm font-medium text-slate-900 sm:inline-block">
-          {displayName}
-        </span>
-      </button>
+      </Button>
 
       {menuOpen && (
         <div

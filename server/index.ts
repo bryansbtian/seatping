@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 
 import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
+import adminCustomersRouter from "./routes/adminCustomers.js";
 import demoRouter from "./routes/demo.js";
 import feedbackRouter from "./routes/feedback.js";
 import ticketsRouter from "./routes/tickets.js";
@@ -140,6 +141,7 @@ if (process.env.NODE_ENV === "production") {
     },
   );
 }
+app.use("/admin/customer", adminCustomersRouter);
 app.use("/admin", adminRouter);
 app.use("/api/demo", demoRouter);
 app.use("/api/feedback", feedbackRouter);

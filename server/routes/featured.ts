@@ -7,7 +7,7 @@ router.get("/", async (_req, res) => {
   try {
     const rows = await prisma.featuredRestaurant.findMany({
       where: { isActive: true },
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }, { id: "asc" }],
       include: {
         business: { select: { username: true, name: true } },
         location: {

@@ -5,9 +5,12 @@ export default defineConfig({
   testDir: "./e2e",
   testMatch: [
     "adminPortal.browser.spec.ts",
+    "customerHeader.browser.spec.ts",
+    "featuredRestaurantsAdmin.browser.spec.ts",
     "designAudit.browser.spec.ts",
     "footer.browser.spec.ts",
     "businessLanding.browser.spec.ts",
+    "businessLoadingFill.browser.spec.ts",
     "demoBooking.browser.spec.ts",
     "browser-background.spec.ts",
     "restaurantDiscovery.browser.spec.ts",

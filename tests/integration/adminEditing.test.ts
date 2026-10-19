@@ -474,7 +474,13 @@ describe("featured restaurant validation", () => {
   it("refuses to feature the same location twice", async () => {
     const { business, location } = await seedBusinessWithLocation();
     const payload = { businessId: business.id, locationId: location.id };
-    await (await api()).post("/admin/featured-restaurants").set("Cookie", admin()).send(payload);
+    const created = await (
+      await api()
+    )
+      .post("/admin/featured-restaurants")
+      .set("Cookie", admin())
+      .send(payload);
+    expect(created.status).toBe(200);
 
     const res = await (
       await api()
@@ -561,6 +567,7 @@ describe("featured restaurant validation", () => {
       .post("/admin/featured-restaurants")
       .set("Cookie", admin())
       .send({ businessId: business.id, locationId: location.id });
+    expect(created.status).toBe(200);
     const id = created.body.featured.id;
 
     const order = await (

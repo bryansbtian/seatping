@@ -1,4 +1,5 @@
 import express from "express";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { computeNextRefillDate } from "../lib/trial.js";
 import { withBusinessCreditLock } from "../lib/businessCreditLock.js";
@@ -307,7 +308,21 @@ function pickLocation(loc: any) {
   };
 }
 
-function serializeFeatured(f: any) {
+function serializeFeatured(
+  f: Prisma.FeaturedRestaurantGetPayload<{ include: { business: true; location: true } }>,
+) {
+  let restaurantName =
+    f.business?.name || f.location?.displayName || f.location?.name || "Restaurant";
+  const profile = f.location?.restaurantProfile;
+  if (
+    profile &&
+    typeof profile === "object" &&
+    !Array.isArray(profile) &&
+    typeof profile.displayName === "string" &&
+    profile.displayName.trim()
+  ) {
+    restaurantName = profile.displayName.trim();
+  }
   let sortOrder = 0;
   if (typeof f.sortOrder === "number") {
     sortOrder = f.sortOrder;
@@ -329,6 +344,7 @@ function serializeFeatured(f: any) {
     id: f.id,
     businessId: f.businessId,
     locationId: f.locationId,
+    name: restaurantName,
     isActive: f.isActive ?? true,
     sortOrder,
     createdAt: f.createdAt,
@@ -381,60 +397,75 @@ router.get("/businesses/:businessId/locations", async (req, res) => {
   }
 });
 
+router.use("/featured-restaurants", (_req, res, next) => {
+  if (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD_HASH) {
+    return res.status(503).json({ error: "Admin access is not configured" });
+  }
+  next();
+});
+
+const featuredOrder: Prisma.FeaturedRestaurantOrderByWithRelationInput[] = [
+  { sortOrder: "asc" },
+  { createdAt: "desc" },
+  { id: "asc" },
+];
+
+class FeaturedMutationError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+async function withFeaturedLock<T>(work: (tx: Prisma.TransactionClient) => Promise<T>) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('seatping.featured-restaurants'))`;
+    return work(tx);
+  });
+}
+
+function featuredError(res: express.Response, error: unknown) {
+  if (error instanceof FeaturedMutationError) {
+    return res.status(error.status).json({ error: error.message });
+  }
+  if (typeof error === "object" && error !== null && "code" in error) {
+    if (error.code === "P2002") {
+      return res.status(409).json({ error: "This location is already a featured restaurant" });
+    }
+    if (error.code === "P2025" || error.code === "P2003") {
+      return res.status(409).json({
+        error: "Featured restaurants changed. Refresh the list and try again.",
+      });
+    }
+  }
+  console.error("[admin] featured restaurant operation failed");
+  return res.status(500).json({ error: "Internal server error" });
+}
+
 router.get("/featured-restaurants", async (_req, res) => {
   try {
     const rows = await prisma.featuredRestaurant.findMany({
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      orderBy: featuredOrder,
       include: { business: true, location: true },
     });
     return res.json({ featured: rows.map(serializeFeatured) });
-  } catch (error: any) {
-    console.error("[admin] list featured error:", error?.message || error);
-    return res.status(500).json({ error: "Internal server error" });
+  } catch (error) {
+    return featuredError(res, error);
   }
 });
 
 router.post("/featured-restaurants", async (req, res) => {
   try {
     const { businessId, locationId, sortOrder, isActive } = req.body || {};
-
-    if (!ENTITY_ID_RE.test(String(businessId || ""))) {
+    if (typeof businessId !== "string" || !ENTITY_ID_RE.test(businessId)) {
       return res.status(400).json({ error: "A valid businessId is required" });
     }
-    if (!ENTITY_ID_RE.test(String(locationId || ""))) {
+    if (typeof locationId !== "string" || !ENTITY_ID_RE.test(locationId)) {
       return res.status(400).json({ error: "A valid locationId is required" });
     }
-
-    const business = await prisma.business.findUnique({
-      where: { id: businessId },
-      select: { id: true },
-    });
-    if (!business) {
-      return res.status(404).json({ error: "Business not found" });
-    }
-
-    const location = await prisma.location.findUnique({
-      where: { id: locationId },
-      select: { id: true, businessId: true },
-    });
-    if (!location) {
-      return res.status(404).json({ error: "Location not found" });
-    }
-    if (location.businessId !== businessId) {
-      return res
-        .status(400)
-        .json({ error: "That location does not belong to the selected business" });
-    }
-
-    const existing = await prisma.featuredRestaurant.findUnique({
-      where: { locationId },
-      select: { id: true },
-    });
-    if (existing) {
-      return res.status(409).json({ error: "This location is already a featured restaurant" });
-    }
-
-    let order = 0;
+    let order: number | undefined;
     if (sortOrder !== undefined) {
       if (typeof sortOrder !== "number" || !Number.isFinite(sortOrder)) {
         return res.status(400).json({ error: "sortOrder must be a number" });
@@ -448,15 +479,81 @@ router.post("/featured-restaurants", async (req, res) => {
       }
       active = isActive;
     }
-
-    const created = await prisma.featuredRestaurant.create({
-      data: { businessId, locationId, sortOrder: order, isActive: active },
-      include: { business: true, location: true },
+    const created = await withFeaturedLock(async (tx) => {
+      const business = await tx.business.findUnique({
+        where: { id: businessId },
+        select: { id: true },
+      });
+      if (!business) {
+        throw new FeaturedMutationError(404, "Business not found");
+      }
+      const location = await tx.location.findUnique({
+        where: { id: locationId },
+        select: { id: true, businessId: true },
+      });
+      if (!location) {
+        throw new FeaturedMutationError(404, "Location not found");
+      }
+      if (location.businessId !== businessId) {
+        throw new FeaturedMutationError(
+          400,
+          "That location does not belong to the selected business",
+        );
+      }
+      const existing = await tx.featuredRestaurant.findUnique({
+        where: { locationId },
+        select: { id: true },
+      });
+      if (existing) {
+        throw new FeaturedMutationError(409, "This location is already a featured restaurant");
+      }
+      if (order === undefined) {
+        const last = await tx.featuredRestaurant.aggregate({ _max: { sortOrder: true } });
+        order = (last._max.sortOrder ?? -1) + 1;
+      }
+      return tx.featuredRestaurant.create({
+        data: { businessId, locationId, sortOrder: order, isActive: active },
+        include: { business: true, location: true },
+      });
     });
     return res.json({ featured: serializeFeatured(created) });
-  } catch (error: any) {
-    console.error("[admin] create featured error:", error?.message || error);
-    return res.status(500).json({ error: "Internal server error" });
+  } catch (error) {
+    return featuredError(res, error);
+  }
+});
+
+router.patch("/featured-restaurants/reorder", async (req, res) => {
+  const ids: unknown = req.body?.ids;
+  if (
+    !Array.isArray(ids) ||
+    !ids.every((id): id is string => typeof id === "string" && ENTITY_ID_RE.test(id))
+  ) {
+    return res.status(400).json({ error: "ids must be an array of valid featured restaurant IDs" });
+  }
+  if (new Set(ids).size !== ids.length) {
+    return res.status(400).json({ error: "Each featured restaurant must appear exactly once" });
+  }
+  try {
+    const rows = await withFeaturedLock(async (tx) => {
+      const current = await tx.featuredRestaurant.findMany({ select: { id: true } });
+      const currentIds = new Set(current.map((row) => row.id));
+      if (ids.length !== current.length || ids.some((id) => !currentIds.has(id))) {
+        throw new FeaturedMutationError(
+          409,
+          "Featured restaurants changed. Refresh the list and try again.",
+        );
+      }
+      for (const [sortOrder, id] of ids.entries()) {
+        await tx.featuredRestaurant.update({ where: { id }, data: { sortOrder } });
+      }
+      return tx.featuredRestaurant.findMany({
+        orderBy: featuredOrder,
+        include: { business: true, location: true },
+      });
+    });
+    return res.json({ featured: rows.map(serializeFeatured) });
+  } catch (error) {
+    return featuredError(res, error);
   }
 });
 
@@ -467,8 +564,7 @@ router.patch("/featured-restaurants/:id", async (req, res) => {
       return res.status(404).json({ error: "Featured restaurant not found" });
     }
     const { sortOrder, isActive } = req.body || {};
-    const data: Record<string, unknown> = {};
-
+    const data: Prisma.FeaturedRestaurantUpdateInput = {};
     if (sortOrder !== undefined) {
       if (typeof sortOrder !== "number" || !Number.isFinite(sortOrder)) {
         return res.status(400).json({ error: "sortOrder must be a number" });
@@ -484,24 +580,23 @@ router.patch("/featured-restaurants/:id", async (req, res) => {
     if (Object.keys(data).length === 0) {
       return res.status(400).json({ error: "No editable fields provided" });
     }
-
-    const existing = await prisma.featuredRestaurant.findUnique({
-      where: { id },
-      select: { id: true },
-    });
-    if (!existing) {
-      return res.status(404).json({ error: "Featured restaurant not found" });
-    }
-
-    const updated = await prisma.featuredRestaurant.update({
-      where: { id },
-      data,
-      include: { business: true, location: true },
+    const updated = await withFeaturedLock(async (tx) => {
+      const existing = await tx.featuredRestaurant.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!existing) {
+        throw new FeaturedMutationError(404, "Featured restaurant not found");
+      }
+      return tx.featuredRestaurant.update({
+        where: { id },
+        data,
+        include: { business: true, location: true },
+      });
     });
     return res.json({ featured: serializeFeatured(updated) });
-  } catch (error: any) {
-    console.error("[admin] update featured error:", error?.message || error);
-    return res.status(500).json({ error: "Internal server error" });
+  } catch (error) {
+    return featuredError(res, error);
   }
 });
 
@@ -511,18 +606,19 @@ router.delete("/featured-restaurants/:id", async (req, res) => {
     if (!ENTITY_ID_RE.test(id)) {
       return res.status(404).json({ error: "Featured restaurant not found" });
     }
-    const existing = await prisma.featuredRestaurant.findUnique({
-      where: { id },
-      select: { id: true },
+    await withFeaturedLock(async (tx) => {
+      const existing = await tx.featuredRestaurant.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!existing) {
+        throw new FeaturedMutationError(404, "Featured restaurant not found");
+      }
+      await tx.featuredRestaurant.delete({ where: { id } });
     });
-    if (!existing) {
-      return res.status(404).json({ error: "Featured restaurant not found" });
-    }
-    await prisma.featuredRestaurant.delete({ where: { id } });
     return res.json({ ok: true });
-  } catch (error: any) {
-    console.error("[admin] delete featured error:", error?.message || error);
-    return res.status(500).json({ error: "Internal server error" });
+  } catch (error) {
+    return featuredError(res, error);
   }
 });
 

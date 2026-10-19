@@ -1,11 +1,22 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { FilterButton } from "@/components/ui/collection-controls";
 import ListSkeleton from "@/components/ListSkeleton";
 import BusinessEmptyState from "@/components/BusinessEmptyState";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { SelectFilter } from "@/components/restaurant-discovery/RestaurantFilters";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +29,7 @@ import { TemplateStatusBadge } from "@/components/CampaignBadges";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Megaphone01Icon, Refresh01Icon, Search01Icon } from "@hugeicons/core-free-icons";
+import { Cancel01Icon, Megaphone01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 
 type AdminTemplate = {
   id: string;
@@ -72,14 +83,30 @@ function fmtDate(value: string | null): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function templateTimestamp(template: AdminTemplate): number {
+  if (template.approvalStatus !== "DRAFT" && template.submittedAt) {
+    const submitted = new Date(template.submittedAt).getTime();
+    if (Number.isFinite(submitted)) {
+      return submitted;
+    }
+  }
+  const created = new Date(template.createdAt).getTime();
+  if (Number.isFinite(created)) {
+    return created;
+  }
+  return 0;
+}
+
 const CampaignTemplatesAdmin = () => {
   const [templates, setTemplates] = useState<AdminTemplate[]>([]);
-  const [counts, setCounts] = useState<Record<string, number>>({});
   const [status, setStatus] = useState("ALL");
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<AdminTemplate | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [dateFilter, setDateFilter] = useState("all");
+  const [sort, setSort] = useState("newest");
 
   useEffect(() => {
     const h = setTimeout(() => setDebounced(search.trim()), 300);
@@ -98,7 +125,6 @@ const CampaignTemplatesAdmin = () => {
     api(`/admin/campaign-templates?${params.toString()}`)
       .then((d) => {
         setTemplates(d?.templates ?? []);
-        setCounts(d?.counts ?? {});
       })
       .catch(() => setTemplates([]))
       .finally(() => setLoading(false));
@@ -108,28 +134,63 @@ const CampaignTemplatesAdmin = () => {
     fetchTemplates();
   }, [fetchTemplates]);
 
-  let refreshIconClass: string;
-  if (loading) {
-    refreshIconClass = "animate-spin";
-  } else {
-    refreshIconClass = "";
+  let activeFilterCount = 0;
+  if (dateFilter !== "all") {
+    activeFilterCount += 1;
+  }
+  const now = Date.now();
+  const visibleTemplates = templates
+    .filter((template) => {
+      if (dateFilter !== "all") {
+        const timestamp = templateTimestamp(template);
+        const cutoff = now - Number(dateFilter) * 24 * 60 * 60 * 1000;
+        if (timestamp < cutoff || timestamp > now) {
+          return false;
+        }
+      }
+      return true;
+    })
+    .sort((first, second) => {
+      const difference = templateTimestamp(second) - templateTimestamp(first);
+      if (sort === "oldest") {
+        return -difference;
+      }
+      if (sort === "name") {
+        const nameDifference = first.name.localeCompare(second.name, undefined, {
+          sensitivity: "base",
+        });
+        if (nameDifference !== 0) {
+          return nameDifference;
+        }
+      }
+      return difference;
+    });
+  const clearFilters = () => {
+    setDateFilter("all");
+  };
+  let emptyDescription =
+    "Business-submitted campaign templates will appear here. Try changing your filters or search.";
+  if (activeFilterCount > 0) {
+    emptyDescription = "No templates match your filters. Clear them to see more templates.";
   }
 
   let templatesContent: ReactNode;
   if (loading) {
     templatesContent = <ListSkeleton fill label="Loading Templates" className="p-0 md:p-0" />;
-  } else if (templates.length === 0) {
+  } else if (visibleTemplates.length === 0) {
     templatesContent = (
-      <BusinessEmptyState
-        icon={Megaphone01Icon}
-        title="No Templates Found"
-        body="Business-submitted campaign templates will appear here. Try changing your filters or search."
-      />
+      <BusinessEmptyState icon={Megaphone01Icon} title="No Templates Found" body={emptyDescription}>
+        {activeFilterCount > 0 && (
+          <Button variant="outline" onClick={clearFilters}>
+            Clear Filters
+          </Button>
+        )}
+      </BusinessEmptyState>
     );
   } else {
     templatesContent = (
       <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden">
-        {templates.map((t) => {
+        {visibleTemplates.map((t) => {
           let purposeSuffix: string;
           if (t.purpose) {
             purposeSuffix = ` · ${t.purpose}`;
@@ -137,7 +198,7 @@ const CampaignTemplatesAdmin = () => {
             purposeSuffix = "";
           }
           let submittedLabel: string;
-          if (t.submittedAt) {
+          if (t.approvalStatus !== "DRAFT" && t.submittedAt) {
             submittedLabel = `Submitted ${fmtDate(t.submittedAt)}`;
           } else {
             submittedLabel = fmtDate(t.createdAt);
@@ -146,19 +207,21 @@ const CampaignTemplatesAdmin = () => {
             <button
               key={t.id}
               onClick={() => setSelected(t)}
-              className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between gap-3"
+              className="flex w-full flex-col items-start justify-between gap-1 px-4 py-3 text-left transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:flex-row sm:items-center sm:gap-3"
             >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-slate-800 truncate">{t.name}</span>
+              <div className="min-w-0 w-full flex-1 sm:w-auto">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="min-w-0 truncate text-title text-ink" title={t.name}>
+                    {t.name}
+                  </h3>
                   <TemplateStatusBadge status={t.approvalStatus} />
                 </div>
-                <div className="text-xs text-slate-500 mt-0.5 truncate">
+                <div className="mt-0.5 truncate text-caption text-ink-subtle">
                   {t.business?.name || t.businessUsername || "Unknown business"}
                   {purposeSuffix}
                 </div>
               </div>
-              <span className="text-xs text-slate-400 shrink-0">{submittedLabel}</span>
+              <span className="shrink-0 text-caption text-slate-400">{submittedLabel}</span>
             </button>
           );
         })}
@@ -167,57 +230,157 @@ const CampaignTemplatesAdmin = () => {
   }
 
   return (
-    <Card data-testid="admin-content-card" className="flex flex-1 flex-col">
-      <CardHeader className="border-b border-slate-200 p-4 md:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="space-y-1.5">
-            <CardTitle>Campaign Templates</CardTitle>
-            <CardDescription>
-              Review and approve business-submitted custom templates.
-            </CardDescription>
-          </div>
-          <Button variant="outline" size="sm" onClick={fetchTemplates} disabled={loading}>
-            <HugeiconsIcon icon={Refresh01Icon} className={`w-4 h-4 ${refreshIconClass}`} />
-            Refresh
-          </Button>
-        </div>
-      </CardHeader>
+    <Card
+      data-testid="admin-content-card"
+      role="region"
+      aria-label="Campaign Template Results"
+      className="flex flex-1 flex-col"
+    >
       <CardContent className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-        <div className="flex flex-wrap items-center gap-2">
-          {STATUS_FILTERS.map((f) => {
-            let filterVariant: "default" | "outline";
-            if (status === f.key) {
-              filterVariant = "default";
-            } else {
-              filterVariant = "outline";
-            }
-            let filterCountLabel: string;
-            if (f.key !== "ALL" && counts[f.key]) {
-              filterCountLabel = ` (${counts[f.key]})`;
-            } else {
-              filterCountLabel = "";
-            }
-            return (
-              <Button
-                key={f.key}
-                type="button"
+        <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <div className="flex min-w-0 flex-col items-start gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between">
+            <div
+              role="group"
+              aria-label="Template Statuses"
+              className="flex min-w-0 flex-wrap items-center gap-2"
+            >
+              {STATUS_FILTERS.map((f) => {
+                let filterVariant: "default" | "outline";
+                if (status === f.key) {
+                  filterVariant = "default";
+                } else {
+                  filterVariant = "outline";
+                }
+                return (
+                  <Button
+                    key={f.key}
+                    type="button"
+                    size="sm"
+                    variant={filterVariant}
+                    aria-pressed={status === f.key}
+                    onClick={() => setStatus(f.key)}
+                  >
+                    {f.label}
+                  </Button>
+                );
+              })}
+            </div>
+            <div
+              role="group"
+              aria-label="Template Controls"
+              className="flex max-w-full items-center gap-2 md:ml-auto"
+            >
+              <SheetTrigger asChild>
+                <FilterButton className="shrink-0" aria-label="Filter">
+                  Filter
+                  {activeFilterCount > 0 && (
+                    <Badge
+                      variant="neutral"
+                      aria-label={`${activeFilterCount} Active Filters`}
+                      className="min-w-5 justify-center px-1"
+                    >
+                      {activeFilterCount}
+                    </Badge>
+                  )}
+                </FilterButton>
+              </SheetTrigger>
+              <SelectFilter
+                label="Sort By"
+                kind="sort"
                 size="sm"
-                variant={filterVariant}
-                aria-pressed={status === f.key}
-                onClick={() => setStatus(f.key)}
+                current={sort}
+                clearable={false}
+                options={[
+                  { value: "newest", label: "Newest First" },
+                  { value: "oldest", label: "Oldest First" },
+                  { value: "name", label: "Template Name" },
+                ]}
+                onChange={(value) => {
+                  if (value) {
+                    setSort(value);
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <SheetContent
+            side="bottom"
+            hideClose
+            className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden rounded-t-2xl p-0 data-[state=open]:duration-200 data-[state=closed]:duration-150 motion-reduce:animate-none md:bottom-auto md:left-1/2 md:top-1/2 md:w-[28rem] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl"
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3">
+              <SheetTitle>Filter</SheetTitle>
+              <SheetClose asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="control-lg"
+                  aria-label="Close Filters"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
+                </Button>
+              </SheetClose>
+            </div>
+            <SheetDescription className="sr-only">
+              Filter campaign templates by date.
+            </SheetDescription>
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-5">
+              <fieldset className="min-w-0">
+                <legend className="mb-3 text-label text-ink">Date</legend>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: "all", label: "Any Time" },
+                    { value: "7", label: "Last 7 Days" },
+                    { value: "30", label: "Last 30 Days" },
+                    { value: "90", label: "Last 90 Days" },
+                  ].map(({ value, label }) => {
+                    let variant: "default" | "outline" = "outline";
+                    if (dateFilter === value) {
+                      variant = "default";
+                    }
+                    return (
+                      <Button
+                        key={value}
+                        variant={variant}
+                        aria-pressed={dateFilter === value}
+                        onClick={() => setDateFilter(value)}
+                      >
+                        {label}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 text-caption text-ink-subtle">
+                  Uses submission dates, or creation dates for drafts.
+                </p>
+              </fieldset>
+            </div>
+            <div className="flex shrink-0 items-center gap-3 border-t border-border bg-background p-4">
+              <Button
+                variant="outline"
+                size="lg"
+                className="px-4"
+                disabled={activeFilterCount === 0}
+                onClick={clearFilters}
               >
-                {f.label}
-                {filterCountLabel}
+                Clear Filters
               </Button>
-            );
-          })}
-        </div>
+              <SheetClose asChild>
+                <Button size="lg" className="min-w-0 flex-1 px-4">
+                  Show Templates
+                </Button>
+              </SheetClose>
+            </div>
+          </SheetContent>
+        </Sheet>
         <div className="relative">
           <HugeiconsIcon
             icon={Search01Icon}
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
           />
           <Input
+            aria-label="Search Campaign Templates"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by business, template name, or content"
@@ -334,7 +497,7 @@ function ReviewDialog({
     );
   } else {
     templateSlugContent = (
-      <span className="text-sm font-medium text-slate-800 flex-1 min-w-0 break-words">--</span>
+      <span className="text-body font-medium text-slate-800 flex-1 min-w-0 break-words">--</span>
     );
   }
 
@@ -352,36 +515,44 @@ function ReviewDialog({
     ctaUrlSuffix = "";
   }
 
+  let submissionSuffix = "";
+  if (template.approvalStatus !== "DRAFT" && template.submittedAt) {
+    const submittedDate = fmtDate(template.submittedAt);
+    if (submittedDate !== "--") {
+      submissionSuffix = ` · Submitted ${submittedDate}`;
+    }
+  }
+
   return (
     <Dialog open={!!template} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+        <DialogHeader className="min-w-0">
+          <DialogTitle className="flex min-w-0 flex-wrap items-center gap-2 pr-6">
             {template.name}
             <TemplateStatusBadge status={template.approvalStatus} />
           </DialogTitle>
           <DialogDescription>
-            {template.business?.name || template.businessUsername} · Submitted{" "}
-            {fmtDate(template.submittedAt)}
+            {template.business?.name || template.businessUsername}
+            {submissionSuffix}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-indigo-500 w-32 shrink-0">Template Name</span>
-            <span className="text-sm font-medium text-slate-800 flex-1 min-w-0 break-words">
+        <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+          <div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
+            <span className="text-label text-ink-subtle w-32 shrink-0">Template Name</span>
+            <span className="text-body font-medium text-slate-800 flex-1 min-w-0 break-words">
               {template.name}
             </span>
           </div>
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-indigo-500 w-32 shrink-0">Template Username</span>
+          <div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
+            <span className="text-label text-ink-subtle w-32 shrink-0">Template Username</span>
             {templateSlugContent}
           </div>
         </div>
 
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-slate-800">Submitted Content</h4>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2 text-sm">
+        <div className="min-w-0 space-y-3">
+          <h4 className="text-title font-medium text-ink">Template Content</h4>
+          <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2 text-body">
             <Row
               label="Business"
               value={`${template.business?.name ?? template.businessUsername ?? "--"}${businessUsernameSuffix}`}
@@ -389,7 +560,7 @@ function ReviewDialog({
             {template.locationId && <Row label="Location ID" value={template.locationId} />}
             {template.purpose && <Row label="Campaign Goal" value={template.purpose} />}
             <div>
-              <div className="text-xs text-slate-500">Main Message</div>
+              <div className="text-label text-slate-500">Main Message</div>
               <Button
                 type="button"
                 variant="outline"
@@ -405,13 +576,13 @@ function ReviewDialog({
               <Row label="CTA" value={`${template.ctaText ?? ""}${ctaUrlSuffix}`} />
             )}
             {template.variables.length > 0 && (
-              <div className="flex gap-2">
-                <span className="text-xs text-slate-500 w-24 shrink-0 pt-1">Variables</span>
+              <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:gap-2">
+                <span className="text-label text-slate-500 w-24 shrink-0 pt-1">Variables</span>
                 <div className="flex flex-wrap gap-1.5 min-w-0">
                   {template.variables.map((v) => (
                     <code
                       key={v}
-                      className="text-xs font-mono text-indigo-700 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5"
+                      className="max-w-full whitespace-pre-wrap break-words text-caption font-mono text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-0.5"
                     >
                       {`{{${v}}}`}
                     </code>
@@ -420,12 +591,12 @@ function ReviewDialog({
               </div>
             )}
             {Object.keys(template.exampleValues || {}).length > 0 && (
-              <div className="flex gap-2">
-                <span className="text-xs text-slate-500 w-24 shrink-0 pt-1">Example Values</span>
+              <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:gap-2">
+                <span className="text-label text-slate-500 w-24 shrink-0 pt-1">Example Values</span>
                 <div className="flex flex-col gap-1 min-w-0">
                   {Object.entries(template.exampleValues).map(([k, v]) => (
-                    <div key={k} className="flex items-center gap-1.5 text-xs min-w-0">
-                      <code className="font-mono text-indigo-700 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5 shrink-0">
+                    <div key={k} className="flex min-w-0 flex-wrap items-center gap-1.5 text-label">
+                      <code className="max-w-full whitespace-pre-wrap break-words font-mono text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-0.5 shrink-0">
                         {`{{${k}}}`}
                       </code>
                       <span className="text-slate-400 shrink-0">→</span>
@@ -437,25 +608,30 @@ function ReviewDialog({
             )}
           </div>
 
-          <div className="pt-1">
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button onClick={approve} disabled={busy} variant="success" className="flex-1">
-                Approve
-              </Button>
-              <Button
-                onClick={() => setRejectOpen(true)}
-                disabled={busy}
-                variant="destructiveOutline"
-                className="flex-1"
-              >
-                Reject
-              </Button>
+          {template.approvalStatus !== "DRAFT" && (
+            <div className="pt-1">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button onClick={approve} disabled={busy} className="sm:flex-1">
+                  Approve
+                </Button>
+                <Button
+                  onClick={() => setRejectOpen(true)}
+                  disabled={busy}
+                  variant="destructiveOutline"
+                  className="sm:flex-1"
+                >
+                  Reject
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </DialogContent>
 
-      <Dialog open={rejectOpen} onOpenChange={(o) => !busy && setRejectOpen(o)}>
+      <Dialog
+        open={rejectOpen && template.approvalStatus !== "DRAFT"}
+        onOpenChange={(o) => !busy && setRejectOpen(o)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Reject Template</DialogTitle>
@@ -464,7 +640,7 @@ function ReviewDialog({
             </DialogDescription>
           </DialogHeader>
           <div>
-            <Label className="text-xs">Business-Facing Rejection Reason</Label>
+            <Label className="text-label">Business-Facing Rejection Reason</Label>
             <Textarea
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
@@ -489,8 +665,8 @@ function ReviewDialog({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex gap-2">
-      <span className="text-xs text-slate-500 w-24 shrink-0">{label}</span>
+    <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:gap-2">
+      <span className="text-label text-slate-500 w-24 shrink-0">{label}</span>
       <span className="text-slate-800 break-words min-w-0">{value}</span>
     </div>
   );

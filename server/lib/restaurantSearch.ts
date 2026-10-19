@@ -97,6 +97,18 @@ function selected(value: unknown): string | null {
   return text(value) || null;
 }
 
+function selections(value: unknown): string[] {
+  let values: unknown[] = [];
+  if (typeof value === "string") {
+    values = [value];
+  } else if (Array.isArray(value)) {
+    values = value;
+  }
+  return Array.from(
+    new Set(values.filter((item): item is string => typeof item === "string" && item.length > 0)),
+  );
+}
+
 function enabled(value: unknown): boolean {
   return value === "1" || value === "true";
 }
@@ -120,19 +132,21 @@ export function restaurantSearchOptions(query: Record<string, unknown>): Restaur
   if (requestedSort) {
     sort = requestedSort;
   }
-  let minRating: number | null = null;
-  const rating = Number(text(query.minRating));
-  if (text(query.minRating) && Number.isFinite(rating) && rating >= 0 && rating <= 5) {
-    minRating = rating;
-  }
+  const minRating = Array.from(
+    new Set(
+      selections(query.minRating)
+        .map(Number)
+        .filter((rating) => Number.isFinite(rating) && rating >= 0 && rating <= 5),
+    ),
+  );
   return {
     query: text(query.query).trim(),
     versionTwo,
     limit,
     page,
     sort,
-    cuisine: selected(query.cuisine),
-    price: selected(query.price),
+    cuisine: selections(query.cuisine),
+    price: selections(query.price),
     minRating,
     location: selected(query.location),
     queue: enabled(query.queue),
@@ -171,14 +185,14 @@ export function buildRestaurantSearchQuery(
 ): Prisma.Sql {
   const filters: Prisma.Sql[] = [];
   if (options.versionTwo) {
-    if (options.cuisine) {
-      filters.push(Prisma.sql`cuisine = ${options.cuisine}`);
+    if (options.cuisine.length > 0) {
+      filters.push(Prisma.sql`cuisine IN (${Prisma.join(options.cuisine)})`);
     }
-    if (options.price) {
-      filters.push(Prisma.sql`"priceRange" = ${options.price}`);
+    if (options.price.length > 0) {
+      filters.push(Prisma.sql`"priceRange" IN (${Prisma.join(options.price)})`);
     }
-    if (options.minRating !== null) {
-      filters.push(Prisma.sql`rating >= ${options.minRating}`);
+    if (options.minRating.length > 0) {
+      filters.push(Prisma.sql`rating >= ${Math.min(...options.minRating)}`);
     }
     if (options.location) {
       filters.push(Prisma.sql`"areaLabel" = ${options.location}`);

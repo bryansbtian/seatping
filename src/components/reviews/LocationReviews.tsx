@@ -1,15 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import * as SelectPrimitive from "@radix-ui/react-select";
 import { invalidateRestaurantData } from "@/lib/queryClient";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { SortButton } from "@/components/ui/collection-controls";
 import { Textarea } from "@/components/ui/textarea";
 import ListSkeleton from "@/components/ListSkeleton";
 import {
@@ -281,9 +277,14 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
 
   if (loading) {
     return (
-      <div data-testid="reviews-loading" className="flex flex-1 flex-col">
-        <ListSkeleton fill label={t("rev.loading")} />
-      </div>
+      <Card
+        data-testid="reviews-loading"
+        className="flex flex-1 flex-col border border-slate-200 bg-white shadow-sm"
+      >
+        <CardContent className="flex flex-1 flex-col p-0">
+          <ListSkeleton fill label={t("rev.loading")} className="[&_.animate-pulse]:bg-slate-200" />
+        </CardContent>
+      </Card>
     );
   }
 
@@ -443,15 +444,13 @@ const LocationReviews = ({ location, range, from, to }: LocationReviewsProps) =>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <span className="text-xs text-slate-500 md:text-sm">{t("rev.sortLabel")}</span>
           <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
-            <SelectTrigger
-              aria-label={t("rev.sort.aria")}
-              data-testid="reviews-sort"
-              className="w-auto min-w-[10rem] rounded-xl"
-            >
-              <SelectValue />
-            </SelectTrigger>
+            <SelectPrimitive.Trigger asChild>
+              <SortButton aria-label={t("rev.sort.aria")} data-testid="reviews-sort">
+                {t("rev.sortLabel")}
+                <SelectValue className="sr-only" />
+              </SortButton>
+            </SelectPrimitive.Trigger>
             <SelectContent>
               {SORT_KEYS.map(([key, labelKey]) => (
                 <SelectItem key={key} value={key}>

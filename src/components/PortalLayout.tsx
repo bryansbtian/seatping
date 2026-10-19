@@ -53,7 +53,7 @@ const PortalLayout = ({
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 hidden border-r border-sidebar-border bg-sidebar transition-[width] duration-200 lg:block",
-          collapsed && "w-16",
+          collapsed && "w-12",
           !collapsed && "w-64",
         )}
       >
@@ -63,7 +63,7 @@ const PortalLayout = ({
       <div
         className={cn(
           "flex h-screen flex-col overflow-hidden transition-[padding] duration-200",
-          collapsed && "lg:pl-16",
+          collapsed && "lg:pl-12",
           !collapsed && "lg:pl-64",
         )}
       >

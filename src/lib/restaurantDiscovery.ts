@@ -23,9 +23,9 @@ export const PRICE_OPTIONS = ["$", "$$", "$$$", "$$$$"];
 export const RATING_OPTIONS = [3.5, 4, 4.5];
 
 export const EMPTY_FILTERS: RestaurantFilters = {
-  cuisine: null,
-  price: null,
-  minRating: null,
+  cuisine: [],
+  price: [],
+  minRating: [],
   location: null,
   queue: false,
   reservations: false,
@@ -33,15 +33,19 @@ export const EMPTY_FILTERS: RestaurantFilters = {
 };
 
 export function filtersFromSearchParams(params: URLSearchParams): RestaurantFilters {
-  let minRating: number | null = null;
-  const rating = Number(params.get("minRating"));
-  if (params.has("minRating") && Number.isFinite(rating) && rating >= 0 && rating <= 5) {
-    minRating = rating;
-  }
+  const minRating = Array.from(
+    new Set(
+      params
+        .getAll("minRating")
+        .filter(Boolean)
+        .map(Number)
+        .filter((rating) => Number.isFinite(rating) && rating >= 0 && rating <= 5),
+    ),
+  );
   const enabled = (name: string) => params.get(name) === "1" || params.get(name) === "true";
   return {
-    cuisine: params.get("cuisine") || null,
-    price: params.get("price") || null,
+    cuisine: Array.from(new Set(params.getAll("cuisine").filter(Boolean))),
+    price: Array.from(new Set(params.getAll("price").filter(Boolean))),
     location: params.get("location") || null,
     minRating,
     queue: enabled("queue"),
@@ -80,12 +84,14 @@ export function filterSearchParams(
   ] as const) {
     const value = filters[name];
     next.delete(name);
-    if (value !== null && value !== false && value !== "") {
-      if (value === true) {
-        next.set(name, "1");
-      } else {
-        next.set(name, String(value));
+    if (Array.isArray(value)) {
+      for (const selected of value) {
+        next.append(name, String(selected));
       }
+    } else if (value === true) {
+      next.set(name, "1");
+    } else if (typeof value === "string" && value) {
+      next.set(name, value);
     }
   }
   return next;
@@ -96,7 +102,15 @@ export function areaLabel(restaurant: SearchResult): string {
 }
 
 export function countActiveFilters(filters: RestaurantFilters): number {
-  return Object.values(filters).filter((value) => value !== null && value !== false).length;
+  return Object.values(filters).reduce<number>((count, value) => {
+    if (Array.isArray(value)) {
+      return count + value.length;
+    }
+    if (value !== null && value !== false) {
+      return count + 1;
+    }
+    return count;
+  }, 0);
 }
 
 export function filterRestaurants(
@@ -104,15 +118,21 @@ export function filterRestaurants(
   filters: RestaurantFilters,
 ): SearchResult[] {
   return results.filter((restaurant) => {
-    if (filters.cuisine && restaurant.cuisine !== filters.cuisine) {
-      return false;
-    }
-    if (filters.price && restaurant.priceRange !== filters.price) {
+    if (
+      filters.cuisine.length > 0 &&
+      (!restaurant.cuisine || !filters.cuisine.includes(restaurant.cuisine))
+    ) {
       return false;
     }
     if (
-      filters.minRating !== null &&
-      (restaurant.rating === null || restaurant.rating < filters.minRating)
+      filters.price.length > 0 &&
+      (!restaurant.priceRange || !filters.price.includes(restaurant.priceRange))
+    ) {
+      return false;
+    }
+    if (
+      filters.minRating.length > 0 &&
+      (restaurant.rating === null || restaurant.rating < Math.min(...filters.minRating))
     ) {
       return false;
     }
