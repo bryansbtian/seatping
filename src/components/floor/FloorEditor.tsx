@@ -563,10 +563,11 @@ const FloorEditor = ({ locationId }: { locationId: string }) => {
       <Card
         role="status"
         aria-label={t("common.loading")}
-        className="border border-slate-200 bg-white shadow-sm"
+        data-testid="floor-editor-loading"
+        className="flex flex-1 flex-col border border-slate-200 bg-white shadow-sm"
       >
-        <CardContent className="p-6">
-          <Skeleton aria-hidden="true" className="h-64 rounded-xl" />
+        <CardContent className="flex flex-1 flex-col p-4 sm:p-6">
+          <Skeleton aria-hidden="true" className="min-h-40 flex-1 rounded-xl bg-slate-200" />
         </CardContent>
       </Card>
     );

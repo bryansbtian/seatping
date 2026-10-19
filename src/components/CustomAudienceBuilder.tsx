@@ -399,7 +399,7 @@ export function CustomAudienceBuilder({
           </div>
 
           <div className="border-t pt-4">
-            <h3 className="font-semibold text-lg mb-4">Filters</h3>
+            <h3 className="font-semibold text-lg mb-4">Filter</h3>
 
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">

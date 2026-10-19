@@ -349,32 +349,71 @@ describe("shared restaurant filters", () => {
 
     expect(queueFilter.getAttribute("aria-pressed")).toBe("true");
     await waitFor(() => expect(screen.getAllByRole("article")).toHaveLength(2));
-    const filterCount = screen.getByRole("button", { name: /FiltersAll Filters/ });
+    const filterCount = screen.getByRole("button", { name: /^Filter/ });
     expect(within(filterCount).getByLabelText("1 active filters").className).toContain(
       "rounded-badge",
     );
   });
 
-  it("applies cuisine, price, rating, location, and availability in the sheet and resets all", async () => {
+  it("keeps multiple selections in category popovers, the sheet, requests, and browser history", async () => {
     await loadedPage();
-    fireEvent.click(screen.getByRole("button", { name: /FiltersAll Filters/ }));
-    const sheet = await screen.findByRole("dialog", { name: "Filters" });
+    fireEvent.click(screen.getByRole("button", { name: "Cuisine: Cuisine" }));
+    const cuisine = screen.getByRole("dialog", { name: "Cuisine", exact: true });
+    fireEvent.click(within(cuisine).getByRole("button", { name: "Japanese", exact: true }));
+    fireEvent.click(within(cuisine).getByRole("button", { name: "Italian", exact: true }));
+    expect(
+      within(cuisine)
+        .getByRole("button", { name: "Japanese", exact: true })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(
+      within(cuisine)
+        .getByRole("button", { name: "Italian", exact: true })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    fireEvent.keyDown(cuisine, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Cuisine", exact: true })).toBeNull(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^Filter/ }));
+    const sheet = await screen.findByRole("dialog", { name: /^Filter/ });
+    for (const name of ["$", "$$$", "4.0+", "4.5+"]) {
+      fireEvent.click(within(sheet).getByRole("button", { name, exact: true }));
+    }
+    expect(await within(sheet).findByRole("button", { name: "Show 1 Restaurant" })).toBeTruthy();
+    const request = new URL(apiMock.mock.calls.at(-1)?.[0] as string, "http://localhost")
+      .searchParams;
+    expect(request.getAll("cuisine")).toEqual(["Japanese", "Italian"]);
+    expect(request.getAll("price")).toEqual(["$", "$$$"]);
+    expect(request.getAll("minRating")).toEqual(["4", "4.5"]);
+    expect(within(sheet).queryByText("Location", { exact: true })).toBeNull();
+    fireEvent.click(within(sheet).getByRole("button", { name: "Show 1 Restaurant" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back", exact: true }));
+    await waitFor(() =>
+      expect(screen.getByTestId("route").textContent).not.toContain("minRating=4.5"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Forward", exact: true }));
+    await waitFor(() => expect(screen.getByTestId("route").textContent).toContain("minRating=4.5"));
+  });
+
+  it("applies cuisine, price, rating, and availability in the sheet and resets all", async () => {
+    await loadedPage();
+    fireEvent.click(screen.getByRole("button", { name: /^Filter/ }));
+    const sheet = await screen.findByRole("dialog", { name: "Filter" });
     fireEvent.click(within(sheet).getByRole("button", { name: "Japanese", exact: true }));
     fireEvent.click(within(sheet).getByRole("button", { name: "$$", exact: true }));
     fireEvent.click(within(sheet).getByRole("button", { name: "4.5+", exact: true }));
-    fireEvent.change(within(sheet).getByRole("combobox", { name: "Location" }), {
-      target: { value: "Downtown" },
-    });
+    expect(within(sheet).queryByRole("combobox", { name: "Location" })).toBeNull();
     for (const name of ["Queue Available", "Reservations Available", "Open Now"]) {
       fireEvent.click(within(sheet).getByRole("switch", { name }));
     }
-    expect(within(sheet).getByLabelText("7 active filters")).toBeTruthy();
+    expect(within(sheet).getByLabelText("6 active filters")).toBeTruthy();
     expect(await within(sheet).findByRole("button", { name: "Show 1 Restaurant" })).toBeTruthy();
     fireEvent.click(within(sheet).getByRole("button", { name: "Clear All" }));
     expect(await within(sheet).findByRole("button", { name: "Show 3 Restaurants" })).toBeTruthy();
     expect(within(sheet).queryByLabelText(/active filters/)).toBeNull();
     fireEvent.click(within(sheet).getByRole("button", { name: "Show 3 Restaurants" }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Filters" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Filter" })).toBeNull());
     expect(screen.getAllByRole("article")).toHaveLength(3);
   });
 });

@@ -506,12 +506,6 @@
   }
 }
 
-@media (max-width: 320px) {
-  html {
-    font-size: var(--font-size-sm);
-  }
-}
-
 .premium-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgb(203 213 225) transparent;

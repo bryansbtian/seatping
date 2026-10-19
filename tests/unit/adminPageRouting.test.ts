@@ -42,6 +42,8 @@ let app: express.Express;
 beforeAll(async () => {
   vi.stubEnv("NODE_ENV", "production");
   vi.stubEnv("VERCEL", "1");
+  vi.stubEnv("ADMIN_USERNAME", "test-admin");
+  vi.stubEnv("ADMIN_PASSWORD_HASH", "test-only-hash");
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(express.response, "sendFile").mockImplementation(function () {
     this.type("html").send('<html><body><div id="root"></div></body></html>');
@@ -67,6 +69,7 @@ describe("Admin Page Routing", () => {
   });
 
   it.each([
+    "/admin/customer",
     "/admin/featured-restaurants",
     "/admin/campaign-templates",
     "/admin/customer/demo",
@@ -142,6 +145,7 @@ describe("Admin Page Routing", () => {
     }
     for (const apiPath of [
       "/admin/customer",
+      "/admin/customer?page=1&search=demo",
       "/admin/customer/demo",
       "/admin/featured-restaurants",
       "/admin/campaign-templates",

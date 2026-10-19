@@ -27,9 +27,9 @@ export type SortKey =
   "recommended" | "rating" | "reviews" | "name-az" | "name-za" | "price-asc" | "price-desc";
 
 export type RestaurantFilters = {
-  cuisine: string | null;
-  price: string | null;
-  minRating: number | null;
+  cuisine: string[];
+  price: string[];
+  minRating: number[];
   location: string | null;
   queue: boolean;
   reservations: boolean;
@@ -63,14 +63,13 @@ export function restaurantSearchParams(request: RestaurantSearchRequest): URLSea
   if (request.sort !== "recommended") {
     params.set("sort", request.sort);
   }
-  for (const name of ["cuisine", "price", "location"] as const) {
-    const value = request[name];
-    if (value) {
-      params.set(name, value);
+  for (const name of ["cuisine", "price", "minRating"] as const) {
+    for (const value of request[name]) {
+      params.append(name, String(value));
     }
   }
-  if (request.minRating !== null) {
-    params.set("minRating", String(request.minRating));
+  if (request.location) {
+    params.set("location", request.location);
   }
   for (const name of ["queue", "reservations", "openNow"] as const) {
     if (request[name]) {

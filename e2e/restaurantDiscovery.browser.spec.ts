@@ -517,6 +517,29 @@ for (const width of [320, 375, 390, 430, 768, 1024, 1440, 1920]) {
     await page.setViewportSize({ width, height: 960 });
     await page.goto("/search/Test%20City?date=2027-10-16&time=19%3A00&partySize=3");
     await expect(page.getByRole("article")).toHaveCount(3);
+    const controls = page.getByRole("group", { name: "Restaurant Controls" });
+    const filterBounds = (await controls
+      .getByRole("button", { name: "Filter", exact: true })
+      .boundingBox())!;
+    const sortBounds = (await controls
+      .getByRole("button", { name: "Sort By: Recommended", exact: true })
+      .boundingBox())!;
+    expect(sortBounds.x).toBeGreaterThan(filterBounds.x + filterBounds.width);
+    expect(Math.abs(sortBounds.y - filterBounds.y)).toBeLessThanOrEqual(1);
+    const rightGap = await controls.evaluate(
+      (element) =>
+        element.parentElement!.getBoundingClientRect().right -
+        element.getBoundingClientRect().right,
+    );
+    expect(Math.abs(rightGap)).toBeLessThanOrEqual(1);
+    if (width < 768) {
+      const controlsBounds = (await controls.boundingBox())!;
+      expect(Math.abs(filterBounds.x - controlsBounds.x)).toBeLessThanOrEqual(1);
+      const quickFilterBounds = (await page
+        .getByRole("button", { name: "Open Now", exact: true })
+        .boundingBox())!;
+      expect(filterBounds.y).toBeGreaterThanOrEqual(quickFilterBounds.y + quickFilterBounds.height);
+    }
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
@@ -573,7 +596,7 @@ test("mobile filters apply live, clear, trap focus, and return focus on Escape",
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/search/Test%20City");
   await expect(page.getByRole("article")).toHaveCount(3);
-  const trigger = page.getByRole("button", { name: "Filters", exact: true });
+  const trigger = page.getByRole("button", { name: "Filter", exact: true });
   await trigger.click();
   const sheet = page.getByRole("dialog");
   await expect(sheet).toBeVisible();
@@ -590,9 +613,9 @@ test("mobile filters apply live, clear, trap focus, and return focus on Escape",
   await page.screenshot({ path: testInfo.outputPath("filters-390.png"), animations: "disabled" });
   await page.keyboard.press("Escape");
   await expect(sheet).not.toBeVisible();
-  await expect(page.getByRole("button", { name: "Filters 2" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Filter 2" })).toBeFocused();
   await expect(page.getByRole("article")).toHaveCount(1);
-  await page.getByRole("button", { name: "Filters 2" }).click();
+  await page.getByRole("button", { name: "Filter 2" }).click();
   await sheet.getByRole("button", { name: "Clear All" }).click();
   await expect(sheet.getByRole("button", { name: "Show 3 Restaurants" })).toBeVisible();
   await sheet.getByRole("button", { name: "Close Filters" }).click();
@@ -604,7 +627,7 @@ test("filters sheet keeps its footer visible at 320px with short height", async 
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto("/search");
   await expect(page.getByRole("article")).toHaveCount(3);
-  await page.getByRole("button", { name: "Filters", exact: true }).click();
+  await page.getByRole("button", { name: "Filter", exact: true }).click();
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByRole("button", { name: "Show 3 Restaurants" })).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
@@ -651,7 +674,7 @@ test("desktop sorting and mobile filters share state after resizing", async ({ p
   await page.getByRole("button", { name: "Cuisine: Cuisine" }).click();
   await page.getByRole("button", { name: "Italian", exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("button", { name: "Filters 1" }).click();
+  await page.getByRole("button", { name: "Filter 1" }).click();
   await expect(
     page.getByRole("dialog").getByRole("button", { name: "Italian", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
@@ -687,7 +710,7 @@ test("long names and locations fit mobile cards and selected filters", async ({ 
       json: searchResponse(
         [
           restaurant({ name: longName, shortAddress: longLocation, area: longLocation }),
-          restaurant({ locationId: "loc-2", name: "Short Name" }),
+          restaurant({ locationId: "loc-2", name: "Short Name", cuisine: "Other Cuisine" }),
         ],
         route.request().url(),
       ),
@@ -697,11 +720,11 @@ test("long names and locations fit mobile cards and selected filters", async ({ 
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/search");
     await expect(page.getByRole("article")).toHaveCount(2);
-    await page.getByRole("button", { name: "Filters", exact: true }).click();
-    await page
-      .getByRole("dialog")
-      .getByRole("combobox", { name: "Location" })
-      .selectOption(longLocation);
+    await page.getByRole("button", { name: "Filter", exact: true }).click();
+    await expect(page.getByRole("dialog").getByRole("combobox", { name: "Location" })).toHaveCount(
+      0,
+    );
+    await page.getByRole("dialog").getByRole("button", { name: "Japanese", exact: true }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Show 1 Restaurant" }).click();
     await expect(page.getByRole("article")).toHaveCount(1);
     expect(
@@ -753,3 +776,58 @@ test("successful profile images fill the card and disabled services cannot navig
     await expect(page.getByRole("link", { name }).locator("svg")).toHaveCount(0);
   }
 });
+
+for (const width of [390, 1440]) {
+  test(`restaurant filters preserve multiple selections at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/search/Test%20City");
+    await expect(page.getByRole("article")).toHaveCount(3);
+    await page.getByRole("button", { name: "Filter", exact: true }).click();
+    const panel = page.getByRole("dialog");
+    await expect(panel.getByText("Location", { exact: true })).toHaveCount(0);
+    for (const name of ["Japanese", "Italian", "$", "$$$", "4.0+", "4.5+"]) {
+      await panel.getByRole("button", { name, exact: true }).click();
+    }
+    await expect(panel.getByRole("button", { name: "Show 1 Restaurant" })).toBeVisible();
+    for (const name of ["Japanese", "Italian", "$", "$$$", "4.0+", "4.5+"]) {
+      await expect(panel.getByRole("button", { name, exact: true })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    }
+    await page.screenshot({
+      path: testInfo.outputPath(`restaurant-multiple-filters-${width}.png`),
+      animations: "disabled",
+    });
+    await panel.getByRole("button", { name: "Show 1 Restaurant" }).click();
+    await expect(page.getByRole("article", { name: "Garden Bistro" })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("article", { name: "Garden Bistro" })).toBeVisible();
+    const params = new URL(page.url()).searchParams;
+    expect(params.getAll("cuisine")).toEqual(["Japanese", "Italian"]);
+    expect(params.getAll("price")).toEqual(["$", "$$$"]);
+    expect(params.getAll("minRating")).toEqual(["4", "4.5"]);
+    if (width >= 768) {
+      await page.getByRole("button", { name: "Cuisine: Cuisine (2)", exact: true }).click();
+      const cuisine = page.getByRole("dialog", { name: "Cuisine", exact: true });
+      await cuisine.getByRole("button", { name: "Italian", exact: true }).click();
+      await expect(cuisine.getByRole("button", { name: "Japanese", exact: true })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      await expect(cuisine.getByRole("button", { name: "Italian", exact: true })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+      await page.keyboard.press("Escape");
+      await expect(cuisine).not.toBeVisible();
+      await page.goBack();
+      await expect(page.getByRole("article", { name: "Garden Bistro" })).toBeVisible();
+    }
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+  });
+}

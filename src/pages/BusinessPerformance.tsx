@@ -12,7 +12,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ChartAnalysisIcon } from "@hugeicons/core-free-icons";
 import BusinessEmptyState from "@/components/BusinessEmptyState";
-import RouteLoading from "@/components/RouteLoading";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DateField } from "@/components/DateField";
 import { localDateStr } from "@/lib/localDate";
 import { useBusinessSession } from "@/lib/businessSession";
@@ -233,7 +233,36 @@ const BusinessPerformance = () => {
   if (!locationId) {
     body = <p className="text-sm text-slate-600">{t("perf.noLocation")}</p>;
   } else if (loading && !data) {
-    body = <RouteLoading label={t("perf.loading")} className="p-0 sm:px-0" />;
+    body = (
+      <div
+        role="status"
+        aria-label={t("perf.loading")}
+        aria-live="polite"
+        data-testid="performance-loading"
+        className="flex flex-1 flex-col gap-4 [&_.animate-pulse]:bg-slate-200"
+      >
+        <div aria-hidden="true" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Card key={index} className="border border-slate-200 bg-white shadow-sm">
+              <CardContent className="space-y-2 p-3 sm:p-4">
+                <Skeleton className="h-3 w-2/3" />
+                <Skeleton className="h-6 w-1/2" />
+                <Skeleton className="hidden h-3 w-3/4 sm:block" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card
+          aria-hidden="true"
+          className="flex min-h-24 flex-1 flex-col border border-slate-200 bg-white shadow-sm"
+        >
+          <CardContent className="flex flex-1 flex-col gap-4 p-4 sm:p-6">
+            <Skeleton className="h-4 w-36 max-w-full shrink-0" />
+            <Skeleton className="min-h-8 w-full flex-1" />
+          </CardContent>
+        </Card>
+      </div>
+    );
   } else if (error) {
     body = (
       <Card className="border border-rose-200 bg-rose-50 shadow-sm">

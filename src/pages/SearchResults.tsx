@@ -125,7 +125,6 @@ export default function SearchResults() {
   }, [activeQuery]);
 
   const cuisines = facets.cuisines;
-  const locations = facets.locations;
   const visible = results;
   const activeCount = countActiveFilters(filters);
   const location = searchLocation(results, activeQuery, filters);
@@ -291,10 +290,27 @@ export default function SearchResults() {
             filters={filters}
             setFilters={setFilters}
             cuisines={cuisines}
-            locations={locations}
             resultCount={resultCount}
             loading={loading}
             error={error}
+            actions={
+              <SelectFilter
+                label="Sort By"
+                kind="sort"
+                current={sort}
+                options={SORT_OPTIONS.map(({ key, label }) => ({ value: key, label }))}
+                onChange={(value) => {
+                  const option = SORT_OPTIONS.find(({ key }) => key === value);
+                  if (option) {
+                    const params = new URLSearchParams(searchParams);
+                    params.delete("page");
+                    params.set("sort", option.key);
+                    setSearchParams(params);
+                  }
+                }}
+                clearable={false}
+              />
+            }
           />
         </div>
       </section>
@@ -307,24 +323,6 @@ export default function SearchResults() {
           >
             {summaryContent}
           </h2>
-          <div className="flex max-w-full items-center gap-2">
-            <span className="hidden shrink-0 text-caption text-ink-subtle md:inline">Sort By</span>
-            <SelectFilter
-              label="Sort By"
-              current={sort}
-              options={SORT_OPTIONS.map(({ key, label }) => ({ value: key, label }))}
-              onChange={(value) => {
-                const option = SORT_OPTIONS.find(({ key }) => key === value);
-                if (option) {
-                  const params = new URLSearchParams(searchParams);
-                  params.delete("page");
-                  params.set("sort", option.key);
-                  setSearchParams(params);
-                }
-              }}
-              clearable={false}
-            />
-          </div>
         </div>
         {content}
         {!loading && !error && totalPages > 1 && (

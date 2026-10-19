@@ -132,7 +132,7 @@ describe("Shared Portal Layout", () => {
     const sidebar = screen.getByRole("complementary");
     expect(sidebar.className).toContain("w-64");
     fireEvent.click(screen.getByRole("button", { name: "Collapse Sidebar" }));
-    expect(sidebar.className).toContain("w-16");
+    expect(sidebar.className).toContain("w-12");
     expect(localStorage.getItem(adminCollapsedKey)).toBe("true");
     expect(localStorage.getItem(businessCollapsedKey)).toBe("false");
 

@@ -52,9 +52,9 @@ describe("restaurant discovery request contract", () => {
       }),
     ).toMatchObject({
       query: "Sushi",
-      cuisine: "Japanese",
-      price: "$$",
-      minRating: 4.5,
+      cuisine: ["Japanese"],
+      price: ["$$"],
+      minRating: [4.5],
       location: "City",
       queue: true,
       reservations: true,
@@ -65,10 +65,43 @@ describe("restaurant discovery request contract", () => {
       restaurantSearchOptions({ query: ["bad"], cuisine: {}, minRating: "6", sort: "SQL" }),
     ).toMatchObject({
       query: "",
-      cuisine: null,
-      minRating: null,
+      cuisine: [],
+      minRating: [],
       sort: "recommended",
     });
+  });
+
+  it("round trips multiple selections and parameterizes alternatives within each filter group", () => {
+    const filters = {
+      ...EMPTY_FILTERS,
+      cuisine: ["Japanese", "Italian"],
+      price: ["$", "$$$"],
+      minRating: [4, 4.5],
+    };
+    const params = filterSearchParams(new URLSearchParams("date=2027-01-01"), filters);
+    expect(filtersFromSearchParams(params)).toEqual(filters);
+    const request = restaurantSearchParams({
+      query: "Dinner",
+      page: 1,
+      sort: "rating",
+      ...filters,
+    });
+    expect(request.getAll("cuisine")).toEqual(filters.cuisine);
+    expect(request.getAll("price")).toEqual(filters.price);
+    expect(request.getAll("minRating")).toEqual(["4", "4.5"]);
+    const options = restaurantSearchOptions({
+      version: "2",
+      cuisine: ["Japanese", "Italian", "Japanese", {}],
+      price: ["$", "$$$"],
+      minRating: ["4", "4.5", "bad", "6"],
+    });
+    expect(options).toMatchObject(filters);
+    const statement = buildRestaurantSearchQuery(options);
+    expect(statement.values).toEqual(
+      expect.arrayContaining(["Japanese", "Italian", "$", "$$$", 4]),
+    );
+    expect(statement.sql).toContain(" IN (");
+    expect(statement.sql).not.toContain("Japanese");
   });
 
   it("keeps literal wildcards and SQL payloads out of the query text", () => {
@@ -103,9 +136,9 @@ describe("restaurant discovery request contract", () => {
     });
     const filters = {
       ...EMPTY_FILTERS,
-      cuisine: "A & B",
-      price: "$$",
-      minRating: 4.5,
+      cuisine: ["A & B"],
+      price: ["$$"],
+      minRating: [4.5],
       queue: true,
     };
     const params = filterSearchParams(original, filters);

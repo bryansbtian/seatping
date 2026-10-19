@@ -1242,7 +1242,10 @@ function HistoryTab({
     );
   }
   return (
-    <Card className="bg-white border border-slate-200 rounded-xl shadow-sm">
+    <Card
+      data-testid="campaign-history-card"
+      className="flex flex-1 flex-col bg-white border border-slate-200 rounded-xl shadow-sm"
+    >
       <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
         <div className="space-y-1.5">
           <CardTitle className="text-slate-800">{t("camp.tab.history")}</CardTitle>
@@ -1254,7 +1257,7 @@ function HistoryTab({
           <HugeiconsIcon icon={Refresh01Icon} className={`w-4 h-4 ${refreshIconClass}`} />
         </Button>
       </CardHeader>
-      <CardContent className="p-0">{historyBody}</CardContent>
+      <CardContent className="flex flex-1 flex-col p-0">{historyBody}</CardContent>
     </Card>
   );
 }

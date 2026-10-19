@@ -2,18 +2,21 @@ import { Badge } from "@/components/ui/badge";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
+import { FilterButton } from "@/components/ui/collection-controls";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
 import ListSkeleton from "@/components/ListSkeleton";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetDescription,
+  SheetTrigger,
+  SheetClose,
 } from "@/components/ui/sheet";
+import { SelectFilter, FilterGroup } from "@/components/restaurant-discovery/RestaurantFilters";
 import { StatusBadge } from "@/components/StatusBadge";
 import { GuestStatusBadge, GuestTagBadge } from "@/components/GuestBadge";
 import BusinessEmptyState from "@/components/BusinessEmptyState";
@@ -27,13 +30,13 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Add01Icon,
   Call02Icon,
+  Cancel01Icon,
   Download01Icon,
   InboxIcon,
   Mail01Icon,
   NotebookIcon,
   Refresh01Icon,
   Search01Icon,
-  SlidersHorizontalIcon,
 } from "@hugeicons/core-free-icons";
 import Papa from "papaparse";
 
@@ -194,6 +197,7 @@ const BusinessGuests = () => {
   const [hasNotes, setHasNotes] = useState(false);
   const [hasNoShow, setHasNoShow] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [guestSort, setGuestSort] = useState("recent");
 
   const [guests, setGuests] = useState<GuestRow[]>([]);
   const [locationTimezone, setLocationTimezone] = useState<string | undefined>(undefined);
@@ -333,11 +337,27 @@ const BusinessGuests = () => {
     setSelectedId(null);
   }, [locationId]);
 
+  const sortedGuests = useMemo(() => {
+    return [...guests].sort((first, second) => {
+      if (guestSort === "name") {
+        return guestName(first).localeCompare(guestName(second), undefined, {
+          sensitivity: "base",
+        });
+      }
+      if (guestSort === "visits" && first.totalVisits !== second.totalVisits) {
+        return second.totalVisits - first.totalVisits;
+      }
+      const firstVisit = Date.parse(first.lastVisitAt || "") || 0;
+      const secondVisit = Date.parse(second.lastVisitAt || "") || 0;
+      return secondVisit - firstVisit;
+    });
+  }, [guests, guestSort]);
+
   const exportCsv = useCallback(() => {
     if (!guests.length) {
       return;
     }
-    const rows = guests.map((g) => {
+    const rows = sortedGuests.map((g) => {
       let statusLabel: string;
       if (g.returning) {
         statusLabel = "Returning";
@@ -392,30 +412,7 @@ const BusinessGuests = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [guests, locationTimezone, currentLocationLabel]);
-
-  let filtersVisibilityClass: string;
-  if (filtersOpen) {
-    filtersVisibilityClass = "block";
-  } else {
-    filtersVisibilityClass = "hidden";
-  }
-
-  let guestsHeading: string;
-  if (currentLocationLabel) {
-    guestsHeading = t("guests.atLocation", { label: currentLocationLabel });
-  } else {
-    guestsHeading = t("guests.heading");
-  }
-
-  let guestsCountText: React.ReactNode;
-  if (loading) {
-    guestsCountText = <Skeleton as="span" aria-hidden="true" className="inline-block h-4 w-24" />;
-  } else if (guests.length === 1) {
-    guestsCountText = t("guests.countOne", { n: guests.length });
-  } else {
-    guestsCountText = t("guests.countMany", { n: guests.length });
-  }
+  }, [guests, sortedGuests, locationTimezone, currentLocationLabel]);
 
   let refreshSpinClass: string;
   if (loading) {
@@ -453,7 +450,7 @@ const BusinessGuests = () => {
   } else {
     guestsPanel = (
       <GuestsTable
-        guests={guests}
+        guests={sortedGuests}
         timeZone={locationTimezone}
         onSelect={(id) => setSelectedId(id)}
       />
@@ -470,156 +467,189 @@ const BusinessGuests = () => {
             <p className="text-gray-600 text-sm md:text-base">{t("guests.subtitle")}</p>
           </div>
 
-          <Card className="bg-white border border-slate-200 rounded-xl shadow-sm mb-6">
-            <CardContent className="p-4 md:p-5 space-y-4">
-              <div className="flex flex-col md:flex-row gap-3">
-                <div className="relative flex-1">
-                  <HugeiconsIcon
-                    icon={Search01Icon}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
-                  />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={t("guests.search.placeholder")}
-                    className="pl-9 bg-slate-50 border-slate-200 rounded-xl"
-                  />
-                </div>
-
-                <Button
-                  variant="outline"
-                  className="md:hidden justify-between"
-                  onClick={() => setFiltersOpen((v) => !v)}
-                >
-                  <span className="flex items-center gap-2">
-                    <HugeiconsIcon icon={SlidersHorizontalIcon} className="w-4 h-4" />
-                    {t("guests.filters")}
-                  </span>
-                  {activeFilterCount > 0 && (
-                    <Badge variant="info" className="ml-2">
-                      {activeFilterCount}
-                    </Badge>
-                  )}
-                </Button>
-              </div>
-
-              <div className={`${filtersVisibilityClass} md:block space-y-3`}>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-label font-medium text-ink-subtle mr-1">
-                    {t("guests.status")}
-                  </span>
-                  {(["all", "new", "returning"] as TypeFilter[]).map((tf) => {
-                    let typeChipVariant: "default" | "outline" = "outline";
-                    if (typeFilter === tf) {
-                      typeChipVariant = "default";
-                    }
-                    let typeChipLabel: string;
-                    if (tf === "all") {
-                      typeChipLabel = t("guests.filter.all");
-                    } else if (tf === "new") {
-                      typeChipLabel = t("guests.filter.new");
-                    } else {
-                      typeChipLabel = t("guests.filter.returning");
-                    }
-                    return (
-                      <Button
-                        key={tf}
-                        type="button"
-                        onClick={() => setTypeFilter(tf)}
-                        variant={typeChipVariant}
-                        size="sm"
-                        aria-pressed={typeFilter === tf}
-                      >
-                        {typeChipLabel}
-                      </Button>
-                    );
-                  })}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-medium text-slate-500 mr-1">
-                    {t("guests.showOnly")}
-                  </span>
-                  <FilterToggle
-                    active={hasUpcoming}
-                    onClick={() => setHasUpcoming((v) => !v)}
-                    label={t("guests.filter.hasUpcoming")}
-                  />
-                  <FilterToggle
-                    active={hasNotes}
-                    onClick={() => setHasNotes((v) => !v)}
-                    label={t("guests.filter.hasNotes")}
-                  />
-                  <FilterToggle
-                    active={hasNoShow}
-                    onClick={() => setHasNoShow((v) => !v)}
-                    label={t("guests.filter.noShowHistory")}
-                  />
-                </div>
-
-                {filterableTags.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-medium text-slate-500 mr-1 mt-0.5">
-                      {t("guests.tags")}
-                    </span>
-                    {filterableTags.map((tag) => {
-                      let tagVariant: "default" | "outline" = "outline";
-                      if (tagFilters.includes(tag)) {
-                        tagVariant = "default";
-                      }
-                      return (
+          <Card
+            data-testid="guest-crm-card"
+            className="flex min-w-0 flex-1 flex-col rounded-xl border border-slate-200 bg-white shadow-sm"
+          >
+            <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0 border-b border-slate-200 p-3 md:p-4">
+              <div className="flex shrink-0 items-center gap-1">
+                <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+                  <SheetTrigger asChild>
+                    <FilterButton aria-label={t("guests.filterButton")}>
+                      {t("guests.filterButton")}
+                      {activeFilterCount > 0 && (
+                        <Badge variant="neutral">{activeFilterCount}</Badge>
+                      )}
+                    </FilterButton>
+                  </SheetTrigger>
+                  <SheetContent
+                    side="bottom"
+                    hideClose
+                    className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden rounded-t-2xl p-0 data-[state=open]:duration-200 data-[state=closed]:duration-150 motion-reduce:animate-none md:bottom-auto md:left-1/2 md:top-1/2 md:w-[28rem] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl"
+                  >
+                    <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3">
+                      <SheetTitle>{t("guests.filters")}</SheetTitle>
+                      <SheetClose asChild>
                         <Button
-                          key={tag}
-                          type="button"
-                          onClick={() => toggleTagFilter(tag)}
-                          variant={tagVariant}
-                          size="sm"
-                          aria-pressed={tagFilters.includes(tag)}
+                          variant="ghost"
+                          size="icon"
+                          className="control-lg"
+                          aria-label={t("guests.closeFilter")}
                         >
-                          {tag}
+                          <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
                         </Button>
-                      );
-                    })}
-                  </div>
-                )}
+                      </SheetClose>
+                    </div>
+                    <SheetDescription className="sr-only">
+                      {t("guests.filterDescription")}
+                    </SheetDescription>
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5">
+                      <div className="space-y-6">
+                        <FilterGroup label={t("guests.status")}>
+                          {(["all", "new", "returning"] as TypeFilter[]).map((tf) => {
+                            let typeChipVariant: "default" | "outline" = "outline";
+                            if (typeFilter === tf) {
+                              typeChipVariant = "default";
+                            }
+                            let typeChipLabel: string;
+                            if (tf === "all") {
+                              typeChipLabel = t("guests.filter.all");
+                            } else if (tf === "new") {
+                              typeChipLabel = t("guests.filter.new");
+                            } else {
+                              typeChipLabel = t("guests.filter.returning");
+                            }
+                            return (
+                              <Button
+                                key={tf}
+                                type="button"
+                                onClick={() => setTypeFilter(tf)}
+                                variant={typeChipVariant}
+                                size="sm"
+                                aria-pressed={typeFilter === tf}
+                              >
+                                {typeChipLabel}
+                              </Button>
+                            );
+                          })}
+                        </FilterGroup>
 
-                {activeFilterCount > 0 && (
-                  <Button type="button" onClick={clearFilters} variant="ghost" size="sm">
-                    {t("guests.clearFilters")}
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                        <FilterGroup label={t("guests.showOnly")}>
+                          <FilterToggle
+                            active={hasUpcoming}
+                            onClick={() => setHasUpcoming((v) => !v)}
+                            label={t("guests.filter.hasUpcoming")}
+                          />
+                          <FilterToggle
+                            active={hasNotes}
+                            onClick={() => setHasNotes((v) => !v)}
+                            label={t("guests.filter.hasNotes")}
+                          />
+                          <FilterToggle
+                            active={hasNoShow}
+                            onClick={() => setHasNoShow((v) => !v)}
+                            label={t("guests.filter.noShowHistory")}
+                          />
+                        </FilterGroup>
 
-          <Card className="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
-            <CardHeader className="border-b border-slate-200 p-4 md:p-6 flex-row items-center justify-between space-y-0">
-              <div>
-                <CardTitle className="text-slate-800">{guestsHeading}</CardTitle>
-                <CardDescription className="text-sm">{guestsCountText}</CardDescription>
+                        {filterableTags.length > 0 && (
+                          <FilterGroup label={t("guests.tags")}>
+                            {filterableTags.map((tag) => {
+                              let tagVariant: "default" | "outline" = "outline";
+                              if (tagFilters.includes(tag)) {
+                                tagVariant = "default";
+                              }
+                              return (
+                                <Button
+                                  key={tag}
+                                  type="button"
+                                  onClick={() => toggleTagFilter(tag)}
+                                  variant={tagVariant}
+                                  size="sm"
+                                  aria-pressed={tagFilters.includes(tag)}
+                                >
+                                  {tag}
+                                </Button>
+                              );
+                            })}
+                          </FilterGroup>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3 border-t border-border bg-background p-4">
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        className="px-4"
+                        disabled={activeFilterCount === 0}
+                        onClick={clearFilters}
+                      >
+                        {t("guests.clearFilters")}
+                      </Button>
+                      <SheetClose asChild>
+                        <Button size="lg" className="min-w-0 flex-1 px-4">
+                          {t("guests.showGuests")}
+                        </Button>
+                      </SheetClose>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+                <SelectFilter
+                  label={t("guests.sort")}
+                  kind="sort"
+                  size="sm"
+                  current={guestSort}
+                  clearable={false}
+                  options={[
+                    { value: "recent", label: t("guests.sort.recent") },
+                    { value: "visits", label: t("guests.sort.visits") },
+                    { value: "name", label: t("guests.sort.name") },
+                  ]}
+                  onChange={(value) => {
+                    if (value) {
+                      setGuestSort(value);
+                    }
+                  }}
+                />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="relative order-last w-full min-w-0 md:order-none md:w-auto md:flex-1">
+                <HugeiconsIcon
+                  icon={Search01Icon}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+                />
+                <Input
+                  aria-label={t("guests.search.placeholder")}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t("guests.search.placeholder")}
+                  className="pl-9"
+                />
+              </div>
+
+              <div className="ml-auto flex shrink-0 items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={exportCsv}
+                  aria-label={t("guests.export")}
                   disabled={loading || guests.length === 0}
                 >
                   <HugeiconsIcon icon={Download01Icon} className="w-4 h-4" />
-                  <span className="hidden sm:inline ml-2">{t("guests.export")}</span>
+                  <span className="hidden sm:inline">{t("guests.export")}</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={fetchGuests}
+                  aria-label={t("common.refresh")}
                   disabled={loading || !locationId}
                 >
                   <HugeiconsIcon icon={Refresh01Icon} className={`w-4 h-4 ${refreshSpinClass}`} />
-                  <span className="hidden sm:inline ml-2">{t("common.refresh")}</span>
+                  <span className="hidden sm:inline">{t("common.refresh")}</span>
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="flex flex-1 flex-col p-0">{guestsPanel}</CardContent>
+            <CardContent className="flex min-w-0 flex-1 flex-col p-0">{guestsPanel}</CardContent>
           </Card>
         </div>
       </div>
@@ -677,7 +707,7 @@ function GuestsTable({
               <th className="px-6 font-medium">{t("guests.col.contact")}</th>
               <th className="px-6 font-medium">{t("guests.col.tags")}</th>
               <th className="px-6 font-medium text-center">{t("guests.col.totalVisits")}</th>
-              <th className="px-6 font-medium">{t("guests.col.lastVisit")}</th>
+              <th className="px-6 font-medium text-center">{t("guests.col.lastVisit")}</th>
               <th className="px-6 font-medium text-center">{t("guests.col.upcoming")}</th>
               <th className="px-6 font-medium text-center">{t("guests.col.notes")}</th>
               <th className="px-6 font-medium text-center">{t("guests.col.actions")}</th>
@@ -770,7 +800,7 @@ function GuestsTable({
                   <td className="px-6 py-2 text-center font-medium text-ink tabular-nums">
                     {g.totalVisits}
                   </td>
-                  <td className="px-6 py-2 text-ink whitespace-nowrap">
+                  <td className="px-6 py-2 text-center text-ink whitespace-nowrap">
                     {fmtDate(g.lastVisitAt, timeZone)}
                   </td>
                   <td className="px-6 py-2 text-center tabular-nums">{upcomingCell}</td>

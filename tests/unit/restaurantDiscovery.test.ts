@@ -11,9 +11,9 @@ import { restaurant, SEARCH_RESTAURANTS } from "../helpers/searchRestaurants.js"
 
 describe("restaurant discovery filters", () => {
   it.each([
-    [{ cuisine: "Japanese" }, ["loc-1", "loc-3"]],
-    [{ price: "$$$" }, ["loc-2"]],
-    [{ minRating: 4.5 }, ["loc-1"]],
+    [{ cuisine: ["Japanese"] }, ["loc-1", "loc-3"]],
+    [{ price: ["$$$"] }, ["loc-2"]],
+    [{ minRating: [4.5] }, ["loc-1"]],
     [{ location: "Riverside" }, ["loc-2"]],
     [{ queue: true }, ["loc-1", "loc-3"]],
     [{ reservations: true }, ["loc-1", "loc-2"]],
@@ -27,7 +27,7 @@ describe("restaurant discovery filters", () => {
   });
 
   it("combines filters and clears them without mutating results", () => {
-    const filters = { ...EMPTY_FILTERS, cuisine: "Japanese", reservations: true, queue: true };
+    const filters = { ...EMPTY_FILTERS, cuisine: ["Japanese"], reservations: true, queue: true };
     expect(filterRestaurants(SEARCH_RESTAURANTS, filters)).toEqual([SEARCH_RESTAURANTS[0]]);
     expect(filterRestaurants(SEARCH_RESTAURANTS, EMPTY_FILTERS)).toEqual(SEARCH_RESTAURANTS);
     expect(SEARCH_RESTAURANTS).toHaveLength(3);
@@ -37,24 +37,24 @@ describe("restaurant discovery filters", () => {
     expect(countActiveFilters(EMPTY_FILTERS)).toBe(0);
     expect(
       countActiveFilters({
-        cuisine: "Japanese",
-        price: "$$",
-        minRating: 4.5,
+        cuisine: ["Japanese"],
+        price: ["$$"],
+        minRating: [4.5],
         location: "Downtown",
         queue: true,
         reservations: true,
         openNow: true,
       }),
     ).toBe(7);
-    expect(countActiveFilters({ ...EMPTY_FILTERS, minRating: 3.5, openNow: true })).toBe(2);
+    expect(countActiveFilters({ ...EMPTY_FILTERS, minRating: [3.5], openNow: true })).toBe(2);
   });
 
   it("excludes unknown ratings, prices, cuisines, and hours from corresponding filters", () => {
     const missing = restaurant({ cuisine: null, priceRange: null, rating: null, openNow: null });
     for (const filter of [
-      { cuisine: "Japanese" },
-      { price: "$" },
-      { minRating: 3.5 },
+      { cuisine: ["Japanese"] },
+      { price: ["$"] },
+      { minRating: [3.5] },
       { openNow: true },
     ]) {
       expect(filterRestaurants([missing], { ...EMPTY_FILTERS, ...filter })).toEqual([]);

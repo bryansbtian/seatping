@@ -66,7 +66,7 @@ const BusinessSidebar = ({
 
   let headerClass = "flex items-center justify-between gap-2 px-3 pb-5 pt-4";
   if (collapsed) {
-    headerClass = "flex flex-col-reverse items-center gap-2 px-2 pb-5 pt-4";
+    headerClass = "flex flex-col-reverse items-center gap-2 px-1.5 py-3";
   }
 
   const settingsActive = isActiveNavPath(pathname, BUSINESS_SETTINGS_ITEM.to);
@@ -168,7 +168,7 @@ const BusinessSidebar = ({
         {headerAction}
       </div>
 
-      <nav className={cn("flex-1 overflow-y-auto px-3 pb-2", collapsed && "space-y-0.5")}>
+      <nav className={cn("flex-1 overflow-y-auto px-3 pb-2", collapsed && "space-y-0.5 px-1.5")}>
         {BUSINESS_NAV_GROUPS.map((group) => (
           <div key={group.labelKey} className={cn("mb-2", collapsed && "mb-0")}>
             <p
@@ -204,7 +204,7 @@ const BusinessSidebar = ({
                       title={itemTitle}
                       className={cn(
                         "flex h-row items-center gap-3 rounded-control px-3 text-label font-normal transition-colors duration-150",
-                        collapsed && "justify-center px-2",
+                        collapsed && "control-md justify-center px-0",
                         active && "bg-sidebar-accent text-sidebar-accent-foreground",
                         !active &&
                           "text-sidebar-foreground hover:bg-sidebar-hover hover:text-sidebar-accent-foreground",
@@ -221,7 +221,7 @@ const BusinessSidebar = ({
         ))}
       </nav>
 
-      <div className="border-t border-sidebar-border px-3 py-3">
+      <div className={cn("border-t border-sidebar-border px-3 py-3", collapsed && "px-1.5")}>
         {!collapsed && (
           <div className="mt-2 flex items-center gap-2 px-3 py-1.5">
             <div className="min-w-0 flex-1">
@@ -253,7 +253,7 @@ const BusinessSidebar = ({
             aria-current={settingsAriaCurrent}
             title={settingsLabel}
             className={cn(
-              "mt-2 flex h-row w-full items-center justify-center rounded-control font-normal transition-colors duration-150",
+              "flex control-md w-full items-center justify-center rounded-control font-normal transition-colors duration-150",
               settingsToneClass,
             )}
           >
@@ -268,7 +268,7 @@ const BusinessSidebar = ({
           title={t("nav.logout")}
           className={cn(
             "flex h-row w-full items-center gap-3 rounded-control px-3 text-label font-normal text-sidebar-foreground transition-colors duration-150 hover:bg-sidebar-hover hover:text-sidebar-accent-foreground",
-            collapsed && "mt-2 justify-center px-2",
+            collapsed && "control-md justify-center px-0",
           )}
         >
           <HugeiconsIcon icon={LogoutSquare01Icon} className="h-4 w-4 shrink-0" />

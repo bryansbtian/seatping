@@ -69,6 +69,16 @@ function defaultFetch(input: RequestInfo | URL) {
   if (url === "/tickets/SP-101") {
     return Promise.resolve(jsonResponse({ ticket }));
   }
+  if (url.startsWith("/admin/customer?")) {
+    return Promise.resolve(
+      jsonResponse({
+        customers: [{ ...customer, id: "business-1", locationCount: 1 }],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+      }),
+    );
+  }
   if (url === "/admin/customer/example-restaurant") {
     return Promise.resolve(jsonResponse({ customer }));
   }
@@ -158,7 +168,7 @@ describe("Admin Portal Authentication", () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse({ authenticated: true }, 503));
     renderAdmin("/admin/customers");
     expect(await screen.findByLabelText("Username")).toBeTruthy();
-    expect(screen.queryByLabelText("Business Username")).toBeNull();
+    expect(screen.queryByLabelText("Search Business Accounts")).toBeNull();
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
@@ -196,7 +206,7 @@ describe("Admin Portal Authentication", () => {
     });
     renderAdmin("/admin/customers");
     await completeLogin();
-    expect(await screen.findByLabelText("Business Username")).toBeTruthy();
+    expect(await screen.findByLabelText("Search Business Accounts")).toBeTruthy();
     expect(fetch).toHaveBeenCalledWith("/auth/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -314,7 +324,7 @@ describe("Admin Portal Sections", () => {
     const customerLink = await screen.findByRole("link", { name: "Customer Management" });
     expect(customerLink.getAttribute("aria-current")).toBe("page");
     expect(screen.queryByRole("tab", { name: "Customer Management" })).toBeNull();
-    fireEvent.change(screen.getByLabelText("Business Username"), {
+    fireEvent.change(screen.getByLabelText("Search Business Accounts"), {
       target: { value: "example-restaurant" },
     });
     fireEvent.click(screen.getByRole("link", { name: "Featured Restaurants" }));
@@ -327,29 +337,223 @@ describe("Admin Portal Sections", () => {
     expect(await screen.findByText("Campaign Template Controls")).toBeTruthy();
     expect(screen.getByLabelText("Current Route").textContent).toBe("/admin/templates");
     fireEvent.click(customerLink);
-    expect((await screen.findByLabelText("Business Username")) as HTMLInputElement).toHaveProperty(
-      "value",
-      "example-restaurant",
-    );
+    expect(
+      (await screen.findByLabelText("Search Business Accounts")) as HTMLInputElement,
+    ).toHaveProperty("value", "example-restaurant");
   });
 
-  it("preserves ticket statistics and sends status, type, and priority filters to the API", async () => {
+  it("summarizes attention and resolved totals and sends status, category, and priority filters to the API", async () => {
     renderAdmin();
     await screen.findByText("Reservation Support");
-    for (const name of ["Total", "Open", "In Progress", "Closed", "Sales", "Feedback"]) {
-      expect(screen.getByRole("heading", { name, exact: true })).toBeTruthy();
-    }
-    for (const [index, option] of [
-      [0, "Open"],
-      [1, "Feedback"],
-      [2, "High"],
-    ] as const) {
-      fireEvent.click(screen.getAllByRole("combobox")[index]);
-      fireEvent.click(await screen.findByRole("option", { name: option, exact: true }));
-    }
+    const overview = screen.getByRole("region", { name: "Ticket Overview" });
+    expect(
+      within(overview).getByRole("heading", { name: "Needs Attention" }).nextElementSibling
+        ?.textContent,
+    ).toBe("3");
+    expect(
+      within(overview).getByRole("heading", { name: "Resolved" }).nextElementSibling?.textContent,
+    ).toBe("3");
+    expect(
+      within(overview).getByRole("heading", { name: "Total Tickets" }).nextElementSibling
+        ?.textContent,
+    ).toBe("6");
+    const categories = screen.getByRole("group", { name: "Ticket Categories" });
+    fireEvent.click(within(categories).getByRole("button", { name: "Support", exact: true }));
+    expect(screen.queryByRole("button", { name: "All Statuses" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Filter", exact: true }));
+    const dialog = await screen.findByRole("dialog", { name: "Filter" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Open", exact: true }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "High", exact: true }));
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith("/tickets?status=open&type=feedback&priority=high"),
     );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Show Tickets" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Filter" })).toBeNull());
+    expect(
+      within(screen.getByRole("button", { name: "Filter", exact: true })).getByLabelText(
+        "2 Active Filters",
+      ),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Filter", exact: true }));
+    const reopened = await screen.findByRole("dialog", { name: "Filter" });
+    expect(
+      within(reopened)
+        .getByRole("button", { name: "Open", exact: true })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(
+      within(reopened)
+        .getByRole("button", { name: "High", exact: true })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    fireEvent.click(within(reopened).getByRole("button", { name: "Clear Filters", exact: true }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/tickets?type=feedback"));
+    expect(
+      (within(reopened).getByRole("button", { name: "Clear Filters" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    fireEvent.click(within(reopened).getByRole("button", { name: "Close Filters" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Filter" })).toBeNull());
+    expect(
+      within(categories)
+        .getByRole("button", { name: "Support", exact: true })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    fireEvent.click(within(categories).getByRole("button", { name: "All", exact: true }));
+    await waitFor(() => expect(fetch).toHaveBeenLastCalledWith("/tickets?"));
+    expect(
+      screen.getByRole("button", { name: "All", exact: true }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("removes the sales category and shows only counts in the overview", async () => {
+    renderAdmin();
+    await screen.findByText("Reservation Support");
+    const categories = screen.getByRole("group", { name: "Ticket Categories" });
+    expect(
+      within(categories)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["All", "Support", "Feedback"]);
+    const overview = screen.getByRole("region", { name: "Ticket Overview" });
+    expect(within(overview).queryByText(/Open|In Progress/)).toBeNull();
+    expect(
+      within(screen.getByRole("region", { name: "Ticket Results" })).queryByRole("heading", {
+        name: /^\d+ Tickets?$/,
+      }),
+    ).toBeNull();
+    expect(screen.getByRole("button", { name: "Sort By: Newest First" })).toBeTruthy();
+  });
+
+  it("sorts loaded tickets by date and priority without changing their data", async () => {
+    const loadedTickets = [
+      {
+        ...ticket,
+        id: "old",
+        subject: "Older Request",
+        priority: "high",
+        createdAt: "2026-10-01T12:00:00.000Z",
+      },
+      {
+        ...ticket,
+        id: "new",
+        subject: "Newer Request",
+        priority: "low",
+        createdAt: "2026-10-03T12:00:00.000Z",
+      },
+      {
+        ...ticket,
+        id: "middle",
+        subject: "Middle Request",
+        priority: "high",
+        createdAt: "2026-10-02T12:00:00.000Z",
+      },
+    ];
+    vi.mocked(fetch).mockImplementation((input) => {
+      if (String(input).startsWith("/tickets?")) {
+        return Promise.resolve(jsonResponse({ tickets: loadedTickets }));
+      }
+      return defaultFetch(input);
+    });
+    renderAdmin();
+    await screen.findByRole("heading", { name: "Newer Request", exact: true });
+    const results = screen.getByRole("region", { name: "Ticket Results" });
+    const subjects = () =>
+      within(results)
+        .getAllByRole("listitem")
+        .map((item) => within(item).getByRole("heading").textContent);
+    expect(subjects()).toEqual(["Newer Request", "Middle Request", "Older Request"]);
+    fireEvent.click(screen.getByRole("button", { name: "Sort By: Newest First" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Oldest First", exact: true }));
+    expect(subjects()).toEqual(["Older Request", "Middle Request", "Newer Request"]);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Oldest First", exact: true })).toBeNull(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Sort By: Oldest First" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Highest Priority", exact: true }));
+    expect(subjects()).toEqual(["Middle Request", "Older Request", "Newer Request"]);
+    expect(loadedTickets.map((item) => item.subject)).toEqual([
+      "Older Request",
+      "Newer Request",
+      "Middle Request",
+    ]);
+  });
+
+  it("searches tickets by subject, number, sender, and business and resets empty searches", async () => {
+    renderAdmin();
+    await screen.findByRole("heading", { name: "Reservation Support" });
+    const input = screen.getByRole("textbox", { name: "Search Tickets" });
+    for (const value of [" reservation ", "SP-101", "TEST OPERATOR", "operator@example.test"]) {
+      fireEvent.change(input, { target: { value } });
+      expect(screen.getByRole("heading", { name: "Reservation Support" })).toBeTruthy();
+    }
+    fireEvent.change(input, { target: { value: "unmatched inquiry" } });
+    expect(screen.getByRole("heading", { name: "No Tickets Found" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Reservation Support" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Clear Search And Filters" }));
+    await screen.findByRole("heading", { name: "Reservation Support" });
+    expect((input as HTMLInputElement).value).toBe("");
+    expect(
+      screen.getByRole("button", { name: "All", exact: true }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("groups support subtypes without changing stored feedback ticket types", async () => {
+    const supportTickets = ["support", "bug", "ux", "billing"].map((feedbackType) => ({
+      ...ticket,
+      id: feedbackType,
+      subject: `${feedbackType} Help`,
+      data: { feedbackType },
+    }));
+    const feedbackTickets: Array<
+      Omit<typeof ticket, "data"> & { data: { feedbackType: string } | null }
+    > = ["feature", "other"].map((feedbackType) => ({
+      ...ticket,
+      id: feedbackType,
+      subject: `${feedbackType} Feedback`,
+      data: { feedbackType },
+    }));
+    feedbackTickets.push({ ...ticket, id: "legacy", subject: "Legacy Feedback", data: null });
+    vi.mocked(fetch).mockImplementation((input) => {
+      if (String(input).startsWith("/tickets?")) {
+        return Promise.resolve(jsonResponse({ tickets: [...supportTickets, ...feedbackTickets] }));
+      }
+      return defaultFetch(input);
+    });
+    renderAdmin();
+    await screen.findByText("bug Help");
+    const categories = screen.getByRole("group", { name: "Ticket Categories" });
+    fireEvent.click(within(categories).getByRole("button", { name: "Support", exact: true }));
+    await waitFor(() => expect(screen.queryByText("feature Feedback")).toBeNull());
+    for (const support of supportTickets) {
+      expect(screen.getByRole("heading", { name: support.subject })).toBeTruthy();
+    }
+    expect(fetch).toHaveBeenCalledWith("/tickets?type=feedback");
+    fireEvent.click(within(categories).getByRole("button", { name: "Feedback", exact: true }));
+    await screen.findByText("feature Feedback");
+    for (const support of supportTickets) {
+      expect(screen.queryByRole("heading", { name: support.subject })).toBeNull();
+    }
+    expect(screen.getByText("Legacy Feedback")).toBeTruthy();
+  });
+
+  it("distinguishes an empty inbox from an empty filtered result and resets filters", async () => {
+    vi.mocked(fetch).mockImplementation((input) => {
+      if (String(input).startsWith("/tickets?")) {
+        return Promise.resolve(jsonResponse({ tickets: [] }));
+      }
+      return defaultFetch(input);
+    });
+    renderAdmin();
+    await screen.findByRole("heading", { name: "No Tickets Found" });
+    expect(screen.getByText(/will appear here when they arrive/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "New Ticket" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Support", exact: true }));
+    await screen.findByText("No tickets match your filters. Clear them to see all tickets.");
+    const emptyState = screen.getByRole("heading", { name: "No Tickets Found" }).parentElement!;
+    fireEvent.click(within(emptyState).getByRole("button", { name: "Clear Filters" }));
+    await screen.findByText(/will appear here when they arrive/);
+    expect(fetch).toHaveBeenCalledWith("/tickets?");
   });
 
   it("preserves ticket detail, status update, and team response operations", async () => {
@@ -397,56 +601,214 @@ describe("Admin Portal Sections", () => {
     );
   });
 
-  it("prompts for a customer search before fetching business account details", async () => {
+  it("loads business accounts in a table and fetches account details only when editing", async () => {
     renderAdmin("/admin/customers");
-
-    expect(await screen.findByRole("heading", { name: "Find a Business Account" })).toBeTruthy();
+    expect(await screen.findByRole("table")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Edit example-restaurant" })).toBeTruthy();
     expect(
-      screen.getByText(
-        "Search for a business username to view and manage its account, locations, and credits.",
-      ),
-    ).toBeTruthy();
+      vi.mocked(fetch).mock.calls.some(([input]) => String(input).startsWith("/admin/customer?")),
+    ).toBe(true);
     expect(
       vi.mocked(fetch).mock.calls.some(([input]) => String(input).startsWith("/admin/customer/")),
     ).toBe(false);
   });
 
-  it("shows a customer empty state for a missing account and keeps API errors distinct", async () => {
-    let customerStatus = 404;
+  it("keeps empty account results distinct from request failures and supports retry", async () => {
+    let status = 200;
     vi.mocked(fetch).mockImplementation((input) => {
-      if (String(input) === "/admin/customer/missing-business") {
+      if (String(input).startsWith("/admin/customer?")) {
+        return Promise.resolve(jsonResponse({ customers: [], total: 0, pageSize: 25 }, status));
+      }
+      return defaultFetch(input);
+    });
+    renderAdmin("/admin/customers");
+    expect(await screen.findByRole("heading", { name: "No Accounts Found" })).toBeTruthy();
+    status = 503;
+    fireEvent.change(screen.getByLabelText("Search Business Accounts"), {
+      target: { value: "missing" },
+    });
+    expect(await screen.findByRole("heading", { name: "Unable To Load Accounts" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "No Accounts Found" })).toBeNull();
+    status = 200;
+    fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
+    expect(await screen.findByRole("heading", { name: "No Accounts Found" })).toBeTruthy();
+  });
+
+  it("appends accounts on scroll and resets the collection for search, access, and sort", async () => {
+    let intersect = () => {};
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        constructor(callback: IntersectionObserverCallback) {
+          intersect = () =>
+            callback(
+              [{ isIntersecting: true } as IntersectionObserverEntry],
+              this as unknown as IntersectionObserver,
+            );
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    vi.mocked(fetch).mockImplementation((input) => {
+      if (String(input).startsWith("/admin/customer?")) {
         return Promise.resolve(
-          jsonResponse({ error: "Account lookup unavailable" }, customerStatus),
+          jsonResponse({
+            customers: [{ ...customer, id: String(input), name: String(input), locationCount: 1 }],
+            total: 26,
+            pageSize: 25,
+          }),
         );
       }
       return defaultFetch(input);
     });
     renderAdmin("/admin/customers");
-    fireEvent.change(await screen.findByLabelText("Business Username"), {
-      target: { value: "missing-business" },
+    await screen.findByRole("table");
+    expect(screen.queryByRole("button", { name: "Next", exact: true })).toBeNull();
+    act(() => intersect());
+    await waitFor(() =>
+      expect(String(vi.mocked(fetch).mock.calls.at(-1)?.[0])).toContain("page=2"),
+    );
+    await waitFor(() =>
+      expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(3),
+    );
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
     });
-    fireEvent.click(screen.getByRole("button", { name: "Search Customer" }));
+    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(3);
+    fireEvent.click(screen.getByRole("button", { name: "Filter", exact: true }));
+    fireEvent.click(await screen.findByRole("button", { name: "Trial", exact: true }));
+    await waitFor(() =>
+      expect(String(vi.mocked(fetch).mock.calls.at(-1)?.[0])).toContain("page=1&access=trial"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Show Accounts" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Filter" })).toBeNull());
+    await screen.findByRole("table");
+    fireEvent.click(screen.getByRole("button", { name: "Sort By: Newest First" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Business Name", exact: true }));
+    fireEvent.change(screen.getByLabelText("Search Business Accounts"), {
+      target: { value: "dinner & guests" },
+    });
+    await waitFor(() =>
+      expect(String(vi.mocked(fetch).mock.calls.at(-1)?.[0])).toContain(
+        "page=1&access=trial&sort=name&search=dinner+%26+guests",
+      ),
+    );
+  });
 
-    expect(await screen.findByRole("heading", { name: "No Customer Found" })).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Find a Business Account" })).toBeNull();
+  it("preserves loaded accounts after a failed scroll request and retries the failed batch", async () => {
+    let intersect = () => {};
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        constructor(callback: IntersectionObserverCallback) {
+          intersect = () =>
+            callback(
+              [{ isIntersecting: true } as IntersectionObserverEntry],
+              this as unknown as IntersectionObserver,
+            );
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    let fail = true;
+    vi.mocked(fetch).mockImplementation((input) => {
+      if (String(input).includes("page=2")) {
+        if (fail) {
+          return Promise.resolve(jsonResponse({}, 503));
+        }
+        return Promise.resolve(
+          jsonResponse({
+            customers: [
+              { ...customer, id: "business-2", name: "Second Business", locationCount: 1 },
+            ],
+            total: 2,
+            pageSize: 1,
+          }),
+        );
+      }
+      if (String(input).startsWith("/admin/customer?")) {
+        return Promise.resolve(
+          jsonResponse({
+            customers: [{ ...customer, id: "business-1", locationCount: 1 }],
+            total: 2,
+            pageSize: 1,
+          }),
+        );
+      }
+      return defaultFetch(input);
+    });
+    renderAdmin("/admin/customers");
+    await screen.findByRole("table");
+    act(() => intersect());
+    await screen.findByRole("alert");
+    expect(screen.getByText(customer.name)).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Unable To Load Accounts" })).toBeNull();
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
+    expect(await screen.findByText("Second Business")).toBeTruthy();
+    expect(screen.getByText(customer.name)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    await waitFor(() => expect(screen.queryByText("Second Business")).toBeNull());
+  });
 
-    customerStatus = 503;
-    fireEvent.click(screen.getByRole("button", { name: "Search Customer" }));
+  it("shows an export failure without downloading an incomplete account collection", async () => {
+    renderAdmin("/admin/customers");
+    await screen.findByRole("table");
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({}, 503));
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await waitFor(() =>
+      expect(mocks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Export Failed", variant: "destructive" }),
+      ),
+    );
+    expect((screen.getByRole("button", { name: "Export" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+    expect(screen.getByRole("table")).toBeTruthy();
+  });
 
-    expect(await screen.findByText("Account lookup unavailable")).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "No Customer Found" })).toBeNull();
+  it("cancels drafts and retains edited fields after a rejected save", async () => {
+    vi.mocked(fetch).mockImplementation((input, init) => {
+      if (init?.method === "PATCH") {
+        return Promise.resolve(
+          jsonResponse({ error: "Email is already in use by another account" }, 409),
+        );
+      }
+      return defaultFetch(input);
+    });
+    renderAdmin("/admin/customers");
+    fireEvent.click(await screen.findByRole("button", { name: "Edit example-restaurant" }));
+    const email = await screen.findByLabelText("Email");
+    fireEvent.change(email, { target: { value: "new@example.test" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel", exact: true }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Edit example-restaurant" }));
+    expect(await screen.findByDisplayValue(customer.email)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "conflict@example.test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm", exact: true }));
+    await waitFor(() =>
+      expect(mocks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({ description: "Email is already in use by another account" }),
+      ),
+    );
+    expect(screen.getByDisplayValue("conflict@example.test")).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Edit Customer" })).toBeTruthy();
   });
 
   it("keeps customer lookup, blank numeric edits, validation, and confirmed saves operational", async () => {
     renderAdmin("/admin/customers");
-    fireEvent.change(await screen.findByLabelText("Business Username"), {
-      target: { value: " example-restaurant " },
-    });
-    fireEvent.keyDown(screen.getByLabelText("Business Username"), { key: "Enter" });
-    expect(await screen.findByText("Example Restaurant")).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Find a Business Account" })).toBeNull();
-    expect(fetch).toHaveBeenCalledWith("/admin/customer/example-restaurant");
-    fireEvent.click(screen.getByRole("button", { name: "Edit Customer" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit example-restaurant" }));
+    await screen.findByLabelText("Base Credits");
+    expect(fetch).toHaveBeenCalledWith(
+      "/admin/customer/example-restaurant",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     const baseCredits = screen.getByDisplayValue("100");
     fireEvent.change(baseCredits, { target: { value: "" } });
     expect((baseCredits as HTMLInputElement).value).toBe("");

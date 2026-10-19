@@ -43,7 +43,7 @@ const AdminSidebar = ({
 
   let headerClass = "flex items-center justify-between gap-2 px-3 pb-5 pt-4";
   if (collapsed) {
-    headerClass = "flex items-center justify-center px-2 pb-5 pt-4";
+    headerClass = "flex items-center justify-center px-1.5 py-3";
   }
 
   return (
@@ -76,7 +76,10 @@ const AdminSidebar = ({
         {headerAction}
       </div>
 
-      <nav aria-label="Admin Navigation" className="flex-1 overflow-y-auto px-3 pb-2">
+      <nav
+        aria-label="Admin Navigation"
+        className={cn("flex-1 overflow-y-auto px-3 pb-2", collapsed && "px-1.5")}
+      >
         <ul className="space-y-0.5">
           {NAV_ITEMS.map((item) => {
             let active = isActiveNavPath(currentPath, item.to);
@@ -103,7 +106,7 @@ const AdminSidebar = ({
                   title={itemTitle}
                   className={cn(
                     "flex h-row items-center gap-3 rounded-control px-3 text-label font-normal transition-colors duration-150",
-                    collapsed && "justify-center px-2",
+                    collapsed && "control-md justify-center px-0",
                     active && "bg-sidebar-accent text-sidebar-accent-foreground",
                     !active &&
                       "text-sidebar-foreground hover:bg-sidebar-hover hover:text-sidebar-accent-foreground",
@@ -118,14 +121,14 @@ const AdminSidebar = ({
         </ul>
       </nav>
 
-      <div className="border-t border-sidebar-border px-3 py-3">
+      <div className={cn("border-t border-sidebar-border px-3 py-3", collapsed && "px-1.5")}>
         <button
           type="button"
           onClick={onLogout}
           title="Log Out"
           className={cn(
             "flex h-row w-full items-center gap-3 rounded-control px-3 text-label font-normal text-sidebar-foreground transition-colors duration-150 hover:bg-sidebar-hover hover:text-sidebar-accent-foreground",
-            collapsed && "mt-2 justify-center px-2",
+            collapsed && "control-md justify-center px-0",
           )}
         >
           <HugeiconsIcon icon={LogoutSquare01Icon} className="h-4 w-4 shrink-0" />
