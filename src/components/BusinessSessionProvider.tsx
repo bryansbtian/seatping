@@ -9,6 +9,7 @@ import {
 } from "react";
 import { api, ApiError } from "@/lib/api";
 import { useVisiblePolling } from "@/hooks/useVisiblePolling";
+import { resetSessionQueries } from "@/lib/queryClient";
 import {
   BusinessSessionContext,
   LOCATION_STORAGE_KEY,
@@ -90,6 +91,7 @@ export function BusinessSessionProvider({ children }: { children: ReactNode }) {
           try {
             localStorage.removeItem(LOCATION_STORAGE_KEY);
           } catch {}
+          await resetSessionQueries();
         }
       } finally {
         if (!controller?.signal.aborted) {

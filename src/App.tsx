@@ -188,6 +188,9 @@ const App = () => (
                 <Route path="customers" element={<></>} />
                 <Route path="featured" element={<></>} />
                 <Route path="templates" element={<></>} />
+                <Route path="blog" element={<></>} />
+                <Route path="blog/new" element={<></>} />
+                <Route path="blog/:id/edit" element={<></>} />
               </Route>
 
               {reservedRoutePrefixes.map((prefix) => (

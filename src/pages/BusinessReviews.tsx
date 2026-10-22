@@ -115,7 +115,9 @@ const BusinessReviews = () => {
             </DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700">{t("perf.range.from")}</label>
+                <label className="text-sm font-medium text-slate-700 max-sm:text-label max-sm:font-medium">
+                  {t("perf.range.from")}
+                </label>
                 <DateField
                   value={draftFrom}
                   onChange={setDraftFrom}
@@ -127,7 +129,9 @@ const BusinessReviews = () => {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700">{t("perf.range.to")}</label>
+                <label className="text-sm font-medium text-slate-700 max-sm:text-label max-sm:font-medium">
+                  {t("perf.range.to")}
+                </label>
                 <DateField
                   value={draftTo}
                   onChange={setDraftTo}

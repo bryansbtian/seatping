@@ -31,7 +31,7 @@ async function seedTicket(overrides: Record<string, unknown> = {}) {
 }
 
 beforeAll(async () => {
-  await seedTicket({ type: "sales", status: "closed", priority: "high" });
+  await seedTicket({ status: "closed", priority: "high" });
   await seedTicket({ status: "in_progress", priority: "medium" });
 });
 
@@ -69,13 +69,13 @@ describe("listing tickets", () => {
     const res = await (
       await api()
     )
-      .get("/tickets?status=closed&type=sales&priority=high")
+      .get("/tickets?status=closed&type=feedback&priority=high")
       .set("Cookie", adminCookie());
 
     expect(res.status).toBe(200);
     for (const ticket of res.body.tickets) {
       expect(ticket.status).toBe("closed");
-      expect(ticket.type).toBe("sales");
+      expect(ticket.type).toBe("feedback");
       expect(ticket.priority).toBe("high");
     }
   });
@@ -94,8 +94,27 @@ describe("listing tickets", () => {
     expect(res.body.stats.open).toEqual(expect.any(Number));
     expect(res.body.stats.inProgress).toEqual(expect.any(Number));
     expect(res.body.stats.closed).toEqual(expect.any(Number));
-    expect(res.body.stats.sales).toEqual(expect.any(Number));
+    expect(res.body.stats).not.toHaveProperty("sales");
     expect(res.body.stats.feedback).toEqual(expect.any(Number));
+    const db = getTestPrisma();
+    expect(res.body.stats.total).toBe(await db.ticket.count());
+    expect(res.body.stats.open).toBe(await db.ticket.count({ where: { status: "open" } }));
+    expect(res.body.stats.inProgress).toBe(
+      await db.ticket.count({ where: { status: "in_progress" } }),
+    );
+    expect(res.body.stats.closed).toBe(await db.ticket.count({ where: { status: "closed" } }));
+    expect(res.body.stats.feedback).toBe(await db.ticket.count({ where: { type: "feedback" } }));
+  });
+  it("loads conversations only when opening a ticket", async () => {
+    const ticket = await seedTicket();
+    const client = await api();
+    const listing = await client.get("/tickets").set("Cookie", adminCookie());
+    expect(listing.status).toBe(200);
+    expect(
+      listing.body.tickets.find((entry: { id: string }) => entry.id === ticket.id).messages,
+    ).toEqual([]);
+    const detail = await client.get(`/tickets/${ticket.ticketNumber}`).set("Cookie", adminCookie());
+    expect(detail.body.ticket.messages[0].message).toBe("The queue position stopped refreshing.");
   });
 });
 
@@ -253,22 +272,22 @@ describe("responding to a ticket", () => {
     expect(messages).toHaveLength(2);
     expect(messages[1].isTeamResponse).toBe(true);
     expect(messages[1].message).toBe("We have shipped a fix.");
-    expect(sinks().email.at(-1)?.to).toBe(ticket.senderEmail);
+    await expect.poll(() => sinks().email.at(-1)?.to).toBe(ticket.senderEmail);
     expect(sinks().email.at(-1)?.from).toBe("sender@test.invalid");
     expect(sinks().email.at(-1)?.subject).toContain(ticket.ticketNumber);
   });
 
-  it("titles the reply after a sales inquiry", async () => {
-    const ticket = await seedTicket({ type: "sales" });
+  it("titles the reply after support feedback", async () => {
+    const ticket = await seedTicket({ data: { feedbackType: "support" } });
 
     await (
       await api()
     )
       .post(`/tickets/${ticket.ticketNumber}/respond`)
       .set("Cookie", adminCookie())
-      .send({ message: "Happy to set up a demo.", responderName: "Bryan" });
+      .send({ message: "Happy to help with your campaign.", responderName: "Bryan" });
 
-    expect(sinks().email.at(-1)?.html).toContain("Sales Inquiry");
+    await expect.poll(() => sinks().email.at(-1)?.html).toContain("Response To Your Feedback");
   });
 
   it("rejects a reply with no message", async () => {

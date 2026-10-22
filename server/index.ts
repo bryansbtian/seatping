@@ -9,6 +9,8 @@ import { fileURLToPath } from "url";
 
 import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
+import { syncTicketInbox } from "./lib/ticketInbox.js";
+import adminBlogRouter from "./routes/adminBlog.js";
 import adminCustomersRouter from "./routes/adminCustomers.js";
 import demoRouter from "./routes/demo.js";
 import feedbackRouter from "./routes/feedback.js";
@@ -51,6 +53,7 @@ app.use(
 
 app.use("/api/jobs", jobsRouter);
 
+app.use("/api/admin/blog", express.json({ limit: "1mb" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -135,12 +138,22 @@ app.get("/api/health", async (_req, res) => {
 app.use("/auth", authRouter);
 if (process.env.NODE_ENV === "production") {
   app.get(
-    ["/admin", "/admin/dashboard", "/admin/customers", "/admin/featured", "/admin/templates"],
+    [
+      "/admin",
+      "/admin/dashboard",
+      "/admin/customers",
+      "/admin/featured",
+      "/admin/templates",
+      "/admin/blog",
+      "/admin/blog/new",
+      "/admin/blog/:id/edit",
+    ],
     (_req, res) => {
       res.sendFile(path.join(__dirname, "../../dist/index.html"));
     },
   );
 }
+app.use("/api/admin/blog", adminBlogRouter);
 app.use("/admin/customer", adminCustomersRouter);
 app.use("/admin", adminRouter);
 app.use("/api/demo", demoRouter);
@@ -178,7 +191,9 @@ if (process.env.VERCEL !== "1") {
     console.log(`[api] listening on http://localhost:${PORT}`);
     logRateLimitStatus();
   });
+}
 
+if (process.env.VERCEL !== "1" && process.env.NODE_ENV !== "development") {
   const DAILY_MS = 24 * 60 * 60 * 1000;
   runDailyCreditRefillSweep().catch((err) =>
     console.error("[CREDIT-SWEEP] initial run failed:", err),
@@ -198,6 +213,10 @@ if (process.env.VERCEL !== "1") {
       console.error("[RESERVATION-REMINDER] scheduled run failed:", err),
     );
   }, REMINDER_MS);
+
+  setInterval(() => {
+    void syncTicketInbox().catch(() => console.error("[TICKET-EMAIL] sync failed"));
+  }, 60 * 1000);
 
   const CAMPAIGN_SWEEP_MS = 60 * 1000;
   setInterval(() => {

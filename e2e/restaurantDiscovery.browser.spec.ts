@@ -477,7 +477,21 @@ test("restaurant visit actions stay side by side without icons or the removed in
       animations: "disabled",
     });
     await book.click();
-    await expect(page.getByRole("dialog", { name: "Book a Table" })).toBeVisible();
+    const bookingDialog = page.getByRole("dialog", { name: "Book a Table" });
+    await expect(bookingDialog).toBeVisible();
+    if (width < 640) {
+      const title = bookingDialog.getByRole("heading", { name: "Book a Table", exact: true });
+      await expect(title).toHaveCSS("font-size", "15px");
+      await expect(title).toHaveCSS("font-weight", "500");
+      for (const label of await bookingDialog.locator("label").all()) {
+        await expect(label).toHaveCSS("font-size", "12px");
+        await expect(label).toHaveCSS("font-weight", "500");
+      }
+      await expect(bookingDialog).toHaveCSS("font-size", "13px");
+      await expect
+        .poll(() => bookingDialog.evaluate((element) => element.scrollWidth - element.clientWidth))
+        .toBeLessThanOrEqual(1);
+    }
   }
 });
 
@@ -485,9 +499,7 @@ test("unavailable times notice has equal spacing above and below", async ({ page
   await page.setViewportSize({ width: 390, height: 844 });
   await mockRestaurantVisit(page, false);
   await page.goto("/bistro/loc-1?date=2027-10-16&time=18%3A00&partySize=3");
-  const notice = page.getByText(
-    "No times are available for this number of guests on this date. Try another date or a smaller party.",
-  );
+  const notice = page.getByText("Try another date or a smaller party to find an available time.");
   await expect(notice).toBeVisible();
   const topGap = await notice.evaluate((element) => {
     const slots = element.previousElementSibling;

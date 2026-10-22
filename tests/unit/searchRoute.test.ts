@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
-import supertest from "supertest";
+import { serveApp } from "../helpers/app.js";
 
 const queryRaw = vi.hoisted(() => vi.fn());
 vi.mock("../../server/lib/prisma.js", () => ({ prisma: { $queryRaw: queryRaw } }));
@@ -14,10 +14,16 @@ vi.mock("../../server/lib/restaurantCollation.js", async (importOriginal) => {
 const searchRouter = (await import("../../server/routes/search.js")).default;
 let ipCounter = 0;
 
-function searchApp() {
+function createApp() {
   const app = express();
   app.use("/api/search", searchRouter);
-  return supertest(app);
+  return app;
+}
+
+const client = await serveApp(createApp());
+
+function searchApp() {
+  return client;
 }
 
 async function search(extra = "") {

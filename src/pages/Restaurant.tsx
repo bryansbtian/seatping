@@ -629,9 +629,7 @@ export default function RestaurantPage() {
     reviewsSummaryBlock = <ReviewsSummary rating={r.rating ?? 0} count={r.reviewCount} />;
   } else {
     reviewsSummaryBlock = (
-      <p className="text-sm text-slate-500">
-        No reviews yet. Be the first to share your experience.
-      </p>
+      <p className="text-sm text-slate-500">Be the first to share your experience.</p>
     );
   }
 
@@ -884,7 +882,7 @@ export default function RestaurantPage() {
                 )}
                 {reviewQuery.isError && (
                   <p role="alert" className="text-sm text-red-600">
-                    Unable To Load More Reviews. Please Try Again.
+                    Please try again to load more reviews.
                   </p>
                 )}
               </section>
@@ -1563,7 +1561,7 @@ function ReviewCard({
               onClick={onEdit}
               className="ml-auto h-7 gap-1 px-2 text-xs text-slate-600 hover:text-slate-900"
             >
-              <HugeiconsIcon icon={Edit03Icon} className="h-3.5 w-3.5" />
+              <HugeiconsIcon icon={Edit03Icon} className="size-4" />
               Edit
             </Button>
           )}

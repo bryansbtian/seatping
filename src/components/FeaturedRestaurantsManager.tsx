@@ -112,7 +112,7 @@ export default function FeaturedRestaurantsManager() {
       <BusinessEmptyState
         icon={StarIcon}
         title="Unable To Load Featured Restaurants"
-        body="We couldn't load featured restaurants right now. Please try again."
+        body="Please try again to load featured restaurants."
       >
         <Button variant="outline" onClick={() => setRevision((value) => value + 1)}>
           Try Again

@@ -373,7 +373,7 @@ export function CustomAudienceBuilder({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto max-sm:text-body">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
@@ -391,6 +391,7 @@ export function CustomAudienceBuilder({
           <div className="flex flex-col gap-2">
             <Label>Description (Optional)</Label>
             <Textarea
+              className="h-20 min-h-20 resize-y"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g. Guests who visit often and spend well."
@@ -399,7 +400,9 @@ export function CustomAudienceBuilder({
           </div>
 
           <div className="border-t pt-4">
-            <h3 className="font-semibold text-lg mb-4">Filter</h3>
+            <h3 className="font-semibold text-lg mb-4 max-sm:text-title max-sm:font-medium">
+              Filter
+            </h3>
 
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
@@ -410,7 +413,7 @@ export function CustomAudienceBuilder({
                       variant="outline"
                       role="combobox"
                       aria-expanded={tagPopoverOpen}
-                      className="w-full justify-between h-auto min-h-10 text-left px-3 py-2 font-normal"
+                      className="w-full justify-between h-auto min-h-10 text-left px-3 py-2 font-normal max-sm:text-base"
                     >
                       <div className="flex flex-wrap items-center gap-1.5">
                         {tagsTriggerContent}
@@ -549,7 +552,9 @@ export function CustomAudienceBuilder({
           </div>
 
           <div className="border-t pt-4">
-            <h3 className="font-semibold text-lg mb-1">Manually Selected Guests</h3>
+            <h3 className="font-semibold text-lg mb-1 max-sm:text-title max-sm:font-medium">
+              Manually Selected Guests
+            </h3>
             <p className="text-sm text-slate-500 mb-4">
               Search and add specific guests to this group.
             </p>
@@ -652,7 +657,9 @@ export function CustomAudienceBuilder({
 
           <div className="bg-slate-50 border rounded-lg p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-sm">Audience Preview</span>
+              <span className="font-semibold text-sm max-sm:text-title max-sm:font-medium">
+                Audience Preview
+              </span>
               <Button
                 variant="outline"
                 size="sm"
@@ -678,7 +685,7 @@ export function CustomAudienceBuilder({
                 <p className="text-sm font-medium text-slate-600">
                   No Guests Match This Group Yet.
                 </p>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-400 mt-1 max-sm:text-body max-sm:font-normal">
                   Try adjusting the filters or adding guests manually.
                 </p>
               </div>

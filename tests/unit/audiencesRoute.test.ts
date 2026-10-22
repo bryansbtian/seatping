@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import cookieParser from "cookie-parser";
-import supertest from "supertest";
+import { serveApp } from "../helpers/app.js";
 import { signJwt } from "../../server/lib/auth.js";
 
 const savedAudienceFindMany = vi.fn();
@@ -35,12 +35,18 @@ const audiencesRouter = (await import("../../server/routes/audiences.js")).defau
 
 const ORIGINAL_ENV = { ...process.env };
 
-function app() {
+function createApp() {
   const server = express();
   server.use(cookieParser());
   server.use(express.json());
   server.use("/api/audiences", audiencesRouter);
-  return supertest(server);
+  return server;
+}
+
+const client = await serveApp(createApp());
+
+function app() {
+  return client;
 }
 
 function cookie(businessId = "biz-1"): string {

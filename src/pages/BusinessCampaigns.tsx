@@ -214,7 +214,7 @@ function DateField({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <FieldTrigger icon={Calendar01Icon} className="bg-slate-50">
+        <FieldTrigger icon={Calendar01Icon} className="min-w-0 bg-slate-50">
           {triggerLabel}
         </FieldTrigger>
       </PopoverTrigger>
@@ -1344,6 +1344,7 @@ function CampaignBuilderDialog({
   onSaved: () => void;
   onSent: (sendMode: string) => void;
 }) {
+  const { t } = useLang();
   const { toast } = useToast();
 
   const [campaignId, setCampaignId] = useState<string | null>(existing?.id ?? null);
@@ -1743,14 +1744,10 @@ function CampaignBuilderDialog({
 
   let templateSection: React.ReactNode;
   if (usableTemplates.length === 0) {
-    templateSection = (
-      <p className="text-sm text-slate-500">
-        No usable templates yet. SeatPing templates load automatically.
-      </p>
-    );
+    templateSection = <p className="text-sm text-slate-500">{t("camp.empty.templates.body")}</p>;
   } else {
     templateSection = (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+      <div className="min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
         {usableTemplates.map((tpl) => {
           const selected = tpl.id === templateId;
           let cardClass: string;
@@ -1775,13 +1772,15 @@ function CampaignBuilderDialog({
                   ...prev,
                 }));
               }}
-              className={`text-left rounded-xl border p-3 flex flex-col h-full transition-colors ${cardClass}`}
+              className={`min-w-0 text-left rounded-xl border p-3 flex flex-col h-full transition-colors ${cardClass}`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <span className="font-medium text-slate-800 text-sm line-clamp-2">{tpl.name}</span>
+              <div className="min-w-0 flex flex-wrap items-start justify-between gap-2">
+                <span className="min-w-0 break-words font-medium text-slate-800 text-sm line-clamp-2">
+                  {tpl.name}
+                </span>
                 {templateBadge}
               </div>
-              <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-[2rem]">
+              <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-[2rem] max-sm:text-body max-sm:font-normal">
                 {tpl.purpose || ""}
               </p>
             </button>
@@ -1814,15 +1813,15 @@ function CampaignBuilderDialog({
     previewContent = (
       <div className="rounded-xl border border-slate-200 overflow-hidden">
         {channel === "EMAIL" && preview.subject && (
-          <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 text-xs">
+          <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 text-xs max-sm:text-body max-sm:font-normal">
             <span className="text-slate-500">Subject:</span>{" "}
             <span className="font-medium text-slate-800">{preview.subject}</span>
           </div>
         )}
-        <div className="p-4 text-sm text-slate-700 whitespace-pre-wrap bg-white">
+        <div className="p-4 text-sm text-slate-700 whitespace-pre-wrap break-words bg-white">
           {preview.text}
         </div>
-        <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex items-center gap-3 flex-wrap">
+        <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex items-center gap-3 flex-wrap max-sm:text-body max-sm:font-normal">
           <span className="flex items-center gap-1">
             <HugeiconsIcon icon={channelIcon} className="w-3.5 h-3.5" /> SeatPing on behalf of your
             restaurant
@@ -1859,7 +1858,7 @@ function CampaignBuilderDialog({
     <>
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
         <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
-          <DialogHeader>
+          <DialogHeader className="space-y-2 pr-6 text-left">
             <DialogTitle>{dialogTitle}</DialogTitle>
             <DialogDescription>
               Sending as SeatPing on behalf of your restaurant to your guests.
@@ -1868,7 +1867,7 @@ function CampaignBuilderDialog({
 
           <div className="space-y-5">
             <Section step={1} title="Channel">
-              <div className="flex gap-1.5 sm:gap-2">
+              <div className="grid min-w-0 grid-cols-3 gap-1.5 sm:gap-2">
                 {(["SMS", "WHATSAPP", "EMAIL"] as Channel[]).map((ch) => {
                   const icon = CHANNEL_META[ch].icon;
                   let channelButtonVariant: "default" | "outline" = "outline";
@@ -1882,7 +1881,7 @@ function CampaignBuilderDialog({
                       type="button"
                       variant={channelButtonVariant}
                       aria-pressed={channel === ch}
-                      className="min-w-0 flex-1 px-2 sm:px-3"
+                      className="min-w-0 w-full gap-1 px-1 sm:gap-2 sm:px-3"
                     >
                       <HugeiconsIcon icon={icon} className="w-4 h-4 shrink-0" />
                       <span className="truncate">{CHANNEL_META[ch].label}</span>
@@ -1890,13 +1889,16 @@ function CampaignBuilderDialog({
                   );
                 })}
               </div>
-              <p className="text-xs text-slate-500 mt-1.5">{channelHint}</p>
+              <p className="text-xs text-slate-500 mt-1.5 max-sm:text-body max-sm:font-normal">
+                {channelHint}
+              </p>
             </Section>
 
             <Section step={2} title="Audience">
-              <div className="relative">
+              <div className="relative min-w-0">
                 <select
-                  className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  aria-label="Audience"
+                  className="control-md min-w-0 max-w-full w-full appearance-none bg-slate-50 border border-slate-200 rounded-control px-3 pr-8 text-body focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   value={audienceType}
                   onChange={(e) => setAudienceType(e.target.value)}
                 >
@@ -1922,7 +1924,7 @@ function CampaignBuilderDialog({
                 </select>
                 <HugeiconsIcon
                   icon={ArrowDown01Icon}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
                 />
               </div>
 
@@ -1953,15 +1955,15 @@ function CampaignBuilderDialog({
 
               {audiencePreview && (
                 <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-slate-700">
+                  <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                    <span className="min-w-0 break-words font-medium text-slate-700">
                       {audiencePreview.audienceName}
                     </span>
-                    <span className="text-indigo-700 font-semibold">
+                    <span className="shrink-0 text-indigo-700 font-semibold">
                       {audiencePreview.recipientCount} {recipientCountLabel}
                     </span>
                   </div>
-                  <div className="text-xs text-slate-500 mt-1">
+                  <div className="text-xs text-slate-500 mt-1 max-sm:text-body max-sm:font-normal">
                     {audiencePreview.total} Matched · {audiencePreview.excludedCount} Excluded
                     {audiencePreview.excludedCount > 0 && (
                       <span>
@@ -1986,7 +1988,7 @@ function CampaignBuilderDialog({
                 <div className="space-y-2">
                   {editableVars.map((v) => (
                     <div key={v}>
-                      <label className="text-xs font-medium text-slate-600 capitalize">
+                      <label className="text-xs font-medium text-slate-600 capitalize max-sm:text-label max-sm:font-medium">
                         {v.replace(/_/g, " ")}
                       </label>
                       <Input
@@ -2011,17 +2013,20 @@ function CampaignBuilderDialog({
             </Section>
 
             <div>
-              <label className="text-xs font-medium text-slate-600">Campaign Name</label>
+              <label htmlFor="campaign-name" className="text-label font-medium text-slate-600">
+                Campaign Name
+              </label>
               <Input
+                id="campaign-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. June win-back"
-                className="bg-slate-50 border-slate-200 mt-1"
+                className="bg-slate-50 border-slate-200 mt-2"
               />
             </div>
 
             <Section step={timingStep} title="Timing">
-              <div className="flex gap-2">
+              <div className="grid min-w-0 grid-cols-3 gap-2">
                 {(
                   [
                     ["NOW", "Send Now"],
@@ -2040,7 +2045,7 @@ function CampaignBuilderDialog({
                       type="button"
                       variant={modeButtonVariant}
                       aria-pressed={sendMode === mode}
-                      className="min-w-0 flex-1 truncate px-2 sm:px-3"
+                      className="min-w-0 truncate px-2 sm:px-3"
                     >
                       {label}
                     </Button>
@@ -2049,16 +2054,18 @@ function CampaignBuilderDialog({
               </div>
 
               {sendMode !== "NOW" && (
-                <p className="text-xs text-slate-500 mt-2">
+                <p className="text-xs text-slate-500 mt-2 max-sm:text-body max-sm:font-normal">
                   Time Zone: <span className="font-medium">{timezone}</span>
                 </p>
               )}
 
               {sendMode === "SCHEDULED" && (
-                <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="grid min-w-0 grid-cols-1 gap-4 mt-2 sm:grid-cols-2">
                   <div>
-                    <label className="text-xs text-slate-500">Date</label>
-                    <div className="mt-1">
+                    <label className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium">
+                      Date
+                    </label>
+                    <div className="min-w-0 mt-2">
                       <DateField
                         value={schedDate}
                         onChange={setSchedDate}
@@ -2067,14 +2074,16 @@ function CampaignBuilderDialog({
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500">Time</label>
-                    <div className="mt-1">
+                    <label className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium">
+                      Time
+                    </label>
+                    <div className="min-w-0 mt-2">
                       <TimeSelect
                         value={schedTime || "09:00"}
                         onChange={setSchedTime}
                         options={ALL_DAY_TIME_OPTIONS}
                         portal={false}
-                        className="bg-slate-50"
+                        className="min-w-0 bg-slate-50"
                       />
                     </div>
                   </div>
@@ -2082,8 +2091,8 @@ function CampaignBuilderDialog({
               )}
 
               {sendMode === "RECURRING" && (
-                <div className="space-y-2 mt-2">
-                  <div className="flex gap-2">
+                <div className="min-w-0 space-y-4 mt-4">
+                  <div className="grid min-w-0 grid-cols-3 gap-2">
                     {(["DAILY", "WEEKLY", "MONTHLY"] as const).map((f) => {
                       let freqButtonVariant: "default" | "outline" = "outline";
                       if (recurFreq === f) {
@@ -2097,17 +2106,19 @@ function CampaignBuilderDialog({
                           variant={freqButtonVariant}
                           size="sm"
                           aria-pressed={recurFreq === f}
-                          className="flex-1 capitalize"
+                          className="min-w-0 truncate px-2 capitalize sm:px-3"
                         >
                           {f.toLowerCase()}
                         </Button>
                       );
                     })}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="text-xs text-slate-500">Start Date</label>
-                      <div className="mt-1">
+                      <label className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium">
+                        Start Date
+                      </label>
+                      <div className="min-w-0 mt-2">
                         <DateField
                           value={recurStartDate}
                           onChange={setRecurStartDate}
@@ -2116,20 +2127,24 @@ function CampaignBuilderDialog({
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs text-slate-500">Send Time</label>
-                      <div className="mt-1">
+                      <label className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium">
+                        Send Time
+                      </label>
+                      <div className="min-w-0 mt-2">
                         <TimeSelect
                           value={recurStartTime || "09:00"}
                           onChange={setRecurStartTime}
                           options={ALL_DAY_TIME_OPTIONS}
                           portal={false}
-                          className="bg-slate-50"
+                          className="min-w-0 bg-slate-50"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs text-slate-500">End Date (Optional)</label>
-                      <div className="mt-1">
+                      <label className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium">
+                        End Date (Optional)
+                      </label>
+                      <div className="min-w-0 mt-2">
                         <DateField
                           value={recurEndDate}
                           onChange={setRecurEndDate}
@@ -2138,30 +2153,41 @@ function CampaignBuilderDialog({
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs text-slate-500">Guest Send Cooldown (Days)</label>
+                      <label className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium">
+                        Guest Send Cooldown (Days)
+                      </label>
                       <Input
                         type="number"
                         min={1}
                         value={recurWindow}
                         onChange={(e) => setRecurWindow(e.target.value)}
-                        className="h-12 rounded-xl bg-slate-50 border-slate-200 px-4 text-sm font-medium mt-1"
+                        className="min-w-0 bg-slate-50 border-slate-200 mt-2"
                       />
                     </div>
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-400 max-sm:text-body max-sm:font-normal">
                     The audience is recalculated on every run, opt-outs are always respected, and a
                     guest won't be re-sent within the window above.
                   </p>
                 </div>
               )}
 
-              {timingError && <p className="text-xs text-red-600 mt-2">{timingError}</p>}
+              {timingError && (
+                <p className="text-xs text-red-600 mt-2 max-sm:text-body max-sm:font-normal">
+                  {timingError}
+                </p>
+              )}
             </Section>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 pt-1 items-center">
-            <div className="flex flex-1 gap-2 w-full">
-              <Button variant="outline" onClick={saveDraft} disabled={saving} className="flex-1">
+            <div className="flex min-w-0 w-full flex-col gap-2 sm:flex-1 sm:flex-row">
+              <Button
+                variant="outline"
+                onClick={saveDraft}
+                disabled={saving}
+                className="shrink-0 sm:flex-1"
+              >
                 <HugeiconsIcon icon={FloppyDiskIcon} className="w-4 h-4 mr-1.5" />
                 {saveDraftLabel}
               </Button>
@@ -2174,7 +2200,7 @@ function CampaignBuilderDialog({
                   }
                 }}
                 disabled={!canLaunch || sending}
-                className="flex-1"
+                className="min-w-0 shrink-0 sm:flex-1"
               >
                 <HugeiconsIcon icon={SentIcon} className="w-4 h-4 mr-1.5" />
                 {launchButtonLabel}
@@ -2299,12 +2325,14 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section>
+    <section className="min-w-0">
       <div className="flex items-center gap-2 mb-2">
         <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-caption font-semibold flex items-center justify-center">
           {step}
         </span>
-        <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
+        <h4 className="text-sm font-semibold text-slate-800 max-sm:text-title max-sm:font-medium">
+          {title}
+        </h4>
       </div>
       {children}
     </section>
@@ -2380,7 +2408,9 @@ function ManualGuestPicker({
         >
           <div className="min-w-0">
             <div className="text-sm font-medium text-slate-700 truncate">{g.name}</div>
-            <div className="text-xs text-slate-400 truncate">{g.contact}</div>
+            <div className="text-xs text-slate-400 truncate max-sm:text-body max-sm:font-normal">
+              {g.contact}
+            </div>
           </div>
           {selectedIds.has(g.id) && (
             <HugeiconsIcon
@@ -2432,7 +2462,7 @@ function ManualGuestPicker({
       <div className="max-h-44 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
         {guestListContent}
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-500 max-sm:text-body max-sm:font-normal">
         {selected.length} {selectedGuestWord} selected.
       </p>
     </div>
@@ -2616,7 +2646,7 @@ function TemplateBuilderDialog({
       <Button
         onClick={saveApprovedEdit}
         disabled={busy || !!bodyError || !!exampleError}
-        className="flex-1"
+        className="w-full shrink-0 sm:w-auto sm:flex-1"
       >
         <HugeiconsIcon icon={SentIcon} className="w-4 h-4 mr-1.5" />
         {busyLabel}
@@ -2629,7 +2659,7 @@ function TemplateBuilderDialog({
           variant="outline"
           onClick={saveDraft}
           disabled={busy || !!bodyError}
-          className="flex-1"
+          className="w-full shrink-0 sm:w-auto sm:flex-1"
         >
           <HugeiconsIcon icon={FloppyDiskIcon} className="w-4 h-4 mr-1.5" />
           {saveDraftLabel}
@@ -2637,7 +2667,7 @@ function TemplateBuilderDialog({
         <Button
           onClick={submitForReview}
           disabled={busy || !!bodyError || !!exampleError}
-          className="flex-1"
+          className="w-full shrink-0 sm:w-auto sm:flex-1"
         >
           <HugeiconsIcon icon={SentIcon} className="w-4 h-4 mr-1.5" />
           Submit For Review
@@ -2649,7 +2679,7 @@ function TemplateBuilderDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className="space-y-2 pr-6 text-left">
           <DialogTitle>{builderTitle}</DialogTitle>
           <DialogDescription>
             Submit one general template request. SeatPing prepares it for SMS, WhatsApp, and Email.
@@ -2703,7 +2733,11 @@ function TemplateBuilderDialog({
               placeholder="Hi {{First Name}}, ... Use {{Variable Name}} for personalization."
               className={`bg-slate-50 min-h-[100px] ${bodyFieldClass}`}
             />
-            {bodyError && <p className="text-xs text-red-600 mt-1">{bodyError}</p>}
+            {bodyError && (
+              <p className="text-xs text-red-600 mt-1 max-sm:text-body max-sm:font-normal">
+                {bodyError}
+              </p>
+            )}
           </Field>
           <Field label="Variables (Optional, Comma-Separated)">
             <Input
@@ -2712,7 +2746,7 @@ function TemplateBuilderDialog({
               placeholder="offer, highlight"
               className="bg-slate-50 border-slate-200"
             />
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-400 mt-1 max-sm:text-body max-sm:font-normal">
               Use lowercase names with underscores (e.g. order_id). first_name and your restaurant
               name are filled automatically.
             </p>
@@ -2730,7 +2764,7 @@ function TemplateBuilderDialog({
                   }
                   return (
                     <div key={v} className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500 w-28 shrink-0 capitalize">
+                      <span className="text-xs text-slate-500 w-28 shrink-0 capitalize max-sm:text-label max-sm:font-medium">
                         {v.replace(/_/g, " ")}
                       </span>
                       <Input
@@ -2747,12 +2781,16 @@ function TemplateBuilderDialog({
                   );
                 })}
               </div>
-              {exampleError && <p className="text-xs text-red-600 mt-1.5">{exampleError}</p>}
+              {exampleError && (
+                <p className="text-xs text-red-600 mt-1.5 max-sm:text-body max-sm:font-normal">
+                  {exampleError}
+                </p>
+              )}
             </Field>
           )}
         </div>
 
-        <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3 text-xs text-indigo-700">
+        <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3 text-xs text-indigo-700 max-sm:text-body max-sm:font-normal">
           SeatPing will review this template and prepare it for SMS, WhatsApp, and Email.
         </div>
 
@@ -2773,11 +2811,11 @@ function Field({
 }) {
   return (
     <div>
-      <label className="text-xs font-medium text-slate-600">
+      <label className="text-xs font-medium text-slate-600 max-sm:text-label max-sm:font-medium">
         {label}
         {required && <span className="text-red-500"> *</span>}
       </label>
-      <div className="mt-1">{children}</div>
+      <div className="mt-2">{children}</div>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import BusinessSessionProvider from "@/components/BusinessSessionProvider";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import RouteLoading from "@/components/RouteLoading";
+import BusinessOverviewLoading from "@/components/BusinessOverviewLoading";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSession } from "@/hooks/useSession";
@@ -11,16 +12,21 @@ import { useLang } from "@/lib/i18n";
 
 function BusinessGuard({ children }: { children: ReactNode }) {
   const session = useSession();
+  const { pathname } = useLocation();
   const { me, loadingMe, meError, refreshMe } = useBusinessSession();
   const { t } = useLang();
+  let loadingContent = <RouteLoading />;
+  if (pathname === "/business/overview") {
+    loadingContent = <BusinessOverviewLoading />;
+  }
   if (session === undefined) {
-    return <RouteLoading />;
+    return loadingContent;
   }
   if (!session.business) {
     return <Navigate to="/business/login" replace />;
   }
   if (!me && loadingMe) {
-    return <RouteLoading />;
+    return loadingContent;
   }
   if (!me && meError) {
     return (

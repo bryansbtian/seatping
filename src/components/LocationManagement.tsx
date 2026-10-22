@@ -379,7 +379,7 @@ export default function LocationManagement({
                   className="w-full justify-center sm:w-auto md:w-10 md:px-0 xl:w-auto xl:px-4"
                   onClick={() => setEditing(location)}
                 >
-                  <HugeiconsIcon icon={Edit03Icon} size={16} />
+                  <HugeiconsIcon icon={Edit03Icon} className="size-4" />
                   <span className="md:hidden xl:inline" data-testid="loc-edit-label">
                     {t("loc.editProfile")}
                   </span>
@@ -560,9 +560,9 @@ export default function LocationManagement({
           }
         }}
       >
-        <DialogContent className="max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-2xl sm:max-w-2xl">
-          <DialogHeader className="text-left">
-            <DialogTitle>{t("loc.editProfile")}</DialogTitle>
+        <DialogContent className="grid-cols-[minmax(0,1fr)] max-h-[85dvh] overflow-y-auto overflow-x-hidden rounded-2xl text-body text-ink sm:max-w-2xl">
+          <DialogHeader className="min-w-0 text-left [overflow-wrap:anywhere]">
+            <DialogTitle className="pr-8">{t("loc.editProfile")}</DialogTitle>
             <DialogDescription>{editing?.displayName || editing?.address}</DialogDescription>
           </DialogHeader>
           {editing && (
@@ -615,7 +615,9 @@ export default function LocationManagement({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-sm">{t("loc.qrModal.queueLink")}</Label>
+              <Label className="text-sm max-sm:text-label max-sm:font-medium">
+                {t("loc.qrModal.queueLink")}
+              </Label>
               <code className="block break-all rounded-md bg-gray-100 px-3 py-2 font-mono text-xs text-indigo-600">
                 {queueLinkText}
               </code>

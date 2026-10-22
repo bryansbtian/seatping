@@ -27,7 +27,7 @@ export default class RouteErrorBoundary extends Component<Props, State> {
     let description = "Please reload the page and try again.";
     if (isChunkLoadError(this.state.error)) {
       title = "This Page Needs An Update";
-      description = "A new version may be available. Reload the page to continue.";
+      description = "Reload the page to continue with the latest version.";
     }
     return (
       <div role="alert" className="mx-auto max-w-lg px-6 py-16 text-center">

@@ -1,6 +1,6 @@
 import express from "express";
 import cookieParser from "cookie-parser";
-import request from "supertest";
+import { serveApp } from "../helpers/app.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { signJwt } from "../../server/lib/auth.js";
 import adminRouter from "../../server/routes/admin.js";
@@ -47,6 +47,7 @@ const app = express()
   .use(cookieParser())
   .use("/admin", adminRouter)
   .use("/api/featured-restaurants", featuredRouter);
+const client = await serveApp(app);
 const firstId = "featured-one";
 const secondId = "featured-two";
 const thirdId = "featured-three";
@@ -118,20 +119,20 @@ describe("Featured Restaurant Authorization", () => {
       vi.stubEnv(key, "");
       const cookie = adminCookie();
       const responses = await Promise.all([
-        request(app).get("/admin/featured-restaurants").set("Cookie", cookie),
-        request(app)
+        client.get("/admin/featured-restaurants").set("Cookie", cookie),
+        client
           .post("/admin/featured-restaurants")
           .set("Cookie", cookie)
           .send({ businessId, locationId }),
-        request(app)
+        client
           .patch("/admin/featured-restaurants/reorder")
           .set("Cookie", cookie)
           .send({ ids: [firstId] }),
-        request(app)
+        client
           .patch(`/admin/featured-restaurants/${firstId}`)
           .set("Cookie", cookie)
           .send({ isActive: false }),
-        request(app).delete(`/admin/featured-restaurants/${firstId}`).set("Cookie", cookie),
+        client.delete(`/admin/featured-restaurants/${firstId}`).set("Cookie", cookie),
       ]);
       expect(responses.map((response) => response.status)).toEqual([503, 503, 503, 503, 503]);
       expect(mocks.findMany).not.toHaveBeenCalled();
@@ -150,19 +151,19 @@ describe("Featured Restaurant Authorization", () => {
         cookie = `sp_auth_customer=${signJwt({ accountType: "customer", sub: "customer-one" })}`;
       }
       const responses = await Promise.all([
-        request(app)
+        client
           .post("/admin/featured-restaurants")
           .set("Cookie", cookie)
           .send({ businessId, locationId }),
-        request(app)
+        client
           .patch("/admin/featured-restaurants/reorder")
           .set("Cookie", cookie)
           .send({ ids: [firstId] }),
-        request(app)
+        client
           .patch(`/admin/featured-restaurants/${firstId}`)
           .set("Cookie", cookie)
           .send({ isActive: false }),
-        request(app).delete(`/admin/featured-restaurants/${firstId}`).set("Cookie", cookie),
+        client.delete(`/admin/featured-restaurants/${firstId}`).set("Cookie", cookie),
       ]);
       expect(responses.map((response) => response.status)).toEqual([401, 401, 401, 401]);
       expect(mocks.transaction).not.toHaveBeenCalled();
@@ -181,9 +182,7 @@ describe("Featured Restaurant Names", () => {
     const restaurant = row();
     restaurant.location.restaurantProfile = profile;
     mocks.findMany.mockResolvedValueOnce([restaurant]);
-    const response = await request(app)
-      .get("/admin/featured-restaurants")
-      .set("Cookie", adminCookie());
+    const response = await client.get("/admin/featured-restaurants").set("Cookie", adminCookie());
     expect(response.status).toBe(200);
     expect(response.body.featured[0].name).toBe(expected);
     expect(response.body.featured[0].business.name).toBe("Example Restaurant");
@@ -196,7 +195,7 @@ describe("Featured Restaurant Reordering", () => {
     mocks.findMany
       .mockResolvedValueOnce([{ id: firstId }, { id: secondId }, { id: thirdId }])
       .mockResolvedValueOnce([row(secondId, 0, false), row(thirdId, 1), row(firstId, 2)]);
-    const response = await request(app)
+    const response = await client
       .patch("/admin/featured-restaurants/reorder")
       .set("Cookie", adminCookie())
       .send({ ids: [secondId, thirdId, firstId] });
@@ -236,7 +235,7 @@ describe("Featured Restaurant Reordering", () => {
     { ids: ["short"] },
     { ids: [firstId, firstId] },
   ])("rejects malformed or duplicated ordering %j", async (body) => {
-    const response = await request(app)
+    const response = await client
       .patch("/admin/featured-restaurants/reorder")
       .set("Cookie", adminCookie())
       .send(body);
@@ -248,7 +247,7 @@ describe("Featured Restaurant Reordering", () => {
     "rejects stale membership without updating any positions: %j",
     async (...ids) => {
       mocks.findMany.mockResolvedValue([{ id: firstId }, { id: secondId }]);
-      const response = await request(app)
+      const response = await client
         .patch("/admin/featured-restaurants/reorder")
         .set("Cookie", adminCookie())
         .send({ ids });
@@ -259,7 +258,7 @@ describe("Featured Restaurant Reordering", () => {
   );
 
   it("allows an empty order only when the featured list is empty", async () => {
-    const response = await request(app)
+    const response = await client
       .patch("/admin/featured-restaurants/reorder")
       .set("Cookie", adminCookie())
       .send({ ids: [] });
@@ -272,7 +271,7 @@ describe("Featured Restaurant Reordering", () => {
     mocks.update
       .mockResolvedValueOnce(row())
       .mockRejectedValueOnce(new Error("database-private-reason"));
-    const response = await request(app)
+    const response = await client
       .patch("/admin/featured-restaurants/reorder")
       .set("Cookie", adminCookie())
       .send({ ids: [secondId, firstId] });
@@ -285,7 +284,7 @@ describe("Featured Restaurant Reordering", () => {
 
 describe("Featured Restaurant Mutations", () => {
   it("appends new restaurants after the largest saved order and defaults to active", async () => {
-    const response = await request(app)
+    const response = await client
       .post("/admin/featured-restaurants")
       .set("Cookie", adminCookie())
       .send({ businessId, locationId });
@@ -302,7 +301,7 @@ describe("Featured Restaurant Mutations", () => {
 
   it("starts the first saved restaurant at zero", async () => {
     mocks.aggregate.mockResolvedValue({ _max: { sortOrder: null } });
-    await request(app)
+    await client
       .post("/admin/featured-restaurants")
       .set("Cookie", adminCookie())
       .send({ businessId, locationId });
@@ -312,7 +311,7 @@ describe("Featured Restaurant Mutations", () => {
   });
 
   it("preserves explicit numerical API ordering and inactive creation", async () => {
-    await request(app)
+    await client
       .post("/admin/featured-restaurants")
       .set("Cookie", adminCookie())
       .send({ businessId, locationId, sortOrder: 4.8, isActive: false });
@@ -328,7 +327,7 @@ describe("Featured Restaurant Mutations", () => {
     [{ businessId, locationId, isActive: "yes" }, 400],
     [{ businessId, locationId, sortOrder: "1" }, 400],
   ])("validates new entries before opening a transaction: %j", async (body, status) => {
-    const response = await request(app)
+    const response = await client
       .post("/admin/featured-restaurants")
       .set("Cookie", adminCookie())
       .send(body);
@@ -338,13 +337,13 @@ describe("Featured Restaurant Mutations", () => {
 
   it("rejects missing businesses and locations", async () => {
     mocks.business.mockResolvedValueOnce(null);
-    const noBusiness = await request(app)
+    const noBusiness = await client
       .post("/admin/featured-restaurants")
       .set("Cookie", adminCookie())
       .send({ businessId, locationId });
     expect(noBusiness.status).toBe(404);
     mocks.location.mockResolvedValueOnce(null);
-    const noLocation = await request(app)
+    const noLocation = await client
       .post("/admin/featured-restaurants")
       .set("Cookie", adminCookie())
       .send({ businessId, locationId });
@@ -354,13 +353,13 @@ describe("Featured Restaurant Mutations", () => {
 
   it("enforces location ownership and existing featured membership", async () => {
     mocks.location.mockResolvedValueOnce({ id: locationId, businessId: "another-business" });
-    const wrongOwner = await request(app)
+    const wrongOwner = await client
       .post("/admin/featured-restaurants")
       .set("Cookie", adminCookie())
       .send({ businessId, locationId });
     expect(wrongOwner.status).toBe(400);
     mocks.findUnique.mockResolvedValueOnce({ id: firstId });
-    const duplicate = await request(app)
+    const duplicate = await client
       .post("/admin/featured-restaurants")
       .set("Cookie", adminCookie())
       .send({ businessId, locationId });
@@ -370,7 +369,7 @@ describe("Featured Restaurant Mutations", () => {
 
   it("saves active changes without changing order and shares the reorder lock", async () => {
     mocks.findUnique.mockResolvedValue({ id: firstId });
-    const response = await request(app)
+    const response = await client
       .patch(`/admin/featured-restaurants/${firstId}`)
       .set("Cookie", adminCookie())
       .send({ isActive: false });
@@ -388,7 +387,7 @@ describe("Featured Restaurant Mutations", () => {
 
   it("retains legacy per-entry sort updates", async () => {
     mocks.findUnique.mockResolvedValue({ id: firstId });
-    const response = await request(app)
+    const response = await client
       .patch(`/admin/featured-restaurants/${firstId}`)
       .set("Cookie", adminCookie())
       .send({ sortOrder: 5.9 });
@@ -398,7 +397,7 @@ describe("Featured Restaurant Mutations", () => {
 
   it("removes entries under the same ordering lock", async () => {
     mocks.findUnique.mockResolvedValue({ id: firstId });
-    const response = await request(app)
+    const response = await client
       .delete(`/admin/featured-restaurants/${firstId}`)
       .set("Cookie", adminCookie());
     expect(response.status).toBe(200);
@@ -410,11 +409,11 @@ describe("Featured Restaurant Mutations", () => {
   });
 
   it("keeps missing updates and removals distinct from successful actions", async () => {
-    const updated = await request(app)
+    const updated = await client
       .patch(`/admin/featured-restaurants/${firstId}`)
       .set("Cookie", adminCookie())
       .send({ isActive: false });
-    const removed = await request(app)
+    const removed = await client
       .delete(`/admin/featured-restaurants/${firstId}`)
       .set("Cookie", adminCookie());
     expect(updated.status).toBe(404);
@@ -427,7 +426,7 @@ describe("Featured Restaurant Mutations", () => {
     "returns a conflict for concurrent membership changes: %j",
     async (error) => {
       mocks.transaction.mockRejectedValue(error);
-      const response = await request(app)
+      const response = await client
         .post("/admin/featured-restaurants")
         .set("Cookie", adminCookie())
         .send({ businessId, locationId });
@@ -439,9 +438,7 @@ describe("Featured Restaurant Mutations", () => {
 describe("Featured Restaurant Listing", () => {
   it("returns the saved deterministic order in the admin list", async () => {
     mocks.findMany.mockResolvedValue([row(secondId, 0), row(firstId, 1)]);
-    const response = await request(app)
-      .get("/admin/featured-restaurants")
-      .set("Cookie", adminCookie());
+    const response = await client.get("/admin/featured-restaurants").set("Cookie", adminCookie());
     expect(response.status).toBe(200);
     expect(response.body.featured.map((entry: { id: string }) => entry.id)).toEqual([
       secondId,
@@ -455,7 +452,7 @@ describe("Featured Restaurant Listing", () => {
 
   it("requests only active entries in the identical saved order for the homepage", async () => {
     mocks.findMany.mockResolvedValue([row(secondId, 0), row(firstId, 1)]);
-    const response = await request(app).get("/api/featured-restaurants");
+    const response = await client.get("/api/featured-restaurants");
     expect(response.status).toBe(200);
     expect(response.body.featured.map((entry: { id: string }) => entry.id)).toEqual([
       secondId,

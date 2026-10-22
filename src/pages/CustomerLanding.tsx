@@ -88,7 +88,7 @@ const CustomerLanding = () => {
       <div role="alert" className="w-full rounded-xl border border-border bg-card p-8 text-center">
         <h3 className="text-title text-foreground">Unable To Load Featured Restaurants</h3>
         <p className="mt-2 text-body text-ink-subtle">
-          We couldn't load featured restaurants right now. Please try again.
+          Please try again to load featured restaurants.
         </p>
         <Button variant="outline" onClick={() => void featuredQuery.refetch()} className="mt-4">
           Try Again
@@ -100,8 +100,7 @@ const CustomerLanding = () => {
       <div className="max-w-2xl rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 md:p-12 text-left">
         <p className="text-lg font-semibold text-slate-900">No featured restaurants yet.</p>
         <p className="mt-2 text-sm text-slate-500">
-          New dining spots are coming soon. Check back later to discover places to book, queue, and
-          enjoy.
+          Check back soon for new places to book a table or join a queue.
         </p>
       </div>
     );

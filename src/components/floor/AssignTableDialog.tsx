@@ -124,7 +124,10 @@ const AssignTableDialog = ({
 
   if (!combining && candidates.length > 0) {
     body = (
-      <ul className="max-h-72 space-y-2 overflow-y-auto pr-1" data-testid="assign-table-options">
+      <ul
+        className="min-w-0 max-h-72 space-y-2 overflow-y-auto pr-1"
+        data-testid="assign-table-options"
+      >
         {candidates.map((candidate) => {
           const selected = chosen?.id === candidate.id;
 
@@ -150,10 +153,12 @@ const AssignTableDialog = ({
             trailing = (
               <span
                 data-testid="assign-recommended-badge"
-                className="flex h-badge shrink-0 items-center gap-1 rounded-badge bg-slate-900 px-2 text-caption font-medium text-white"
+                role="img"
+                aria-label={t("floor.assign.recommended")}
+                title={t("floor.assign.recommended")}
+                className="flex h-badge w-5 shrink-0 items-center justify-center rounded-badge bg-slate-900 text-white"
               >
                 <HugeiconsIcon icon={StarIcon} className="h-3 w-3" aria-hidden="true" />
-                {t("floor.assign.recommended")}
               </span>
             );
           }
@@ -167,16 +172,16 @@ const AssignTableDialog = ({
                 aria-pressed={selected}
                 onClick={() => setChosen(candidate)}
                 className={cn(
-                  "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
+                  "flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
                   selected && "border-slate-900 bg-slate-50",
                   !selected && "border-slate-200 hover:bg-slate-50",
                   "disabled:cursor-not-allowed disabled:opacity-60",
                 )}
               >
-                <span className="flex min-w-0 items-center gap-2">
+                <span className="flex min-w-0 flex-1 items-center gap-2">
                   {swatch}
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-slate-800">
+                    <span className="block truncate text-sm font-semibold text-slate-800 max-sm:font-medium">
                       {candidate.name}
                     </span>
                     <span className="block truncate text-caption text-slate-500">
@@ -196,7 +201,10 @@ const AssignTableDialog = ({
 
   if (combining) {
     body = (
-      <ul className="max-h-72 space-y-2 overflow-y-auto pr-1" data-testid="assign-join-options">
+      <ul
+        className="min-w-0 max-h-72 space-y-2 overflow-y-auto pr-1"
+        data-testid="assign-join-options"
+      >
         {joinable.map((option) => {
           const selected = joined.includes(option.id);
           const otherRoom = Boolean(lockedRoomId) && option.roomId !== lockedRoomId;
@@ -210,13 +218,13 @@ const AssignTableDialog = ({
                 aria-pressed={selected}
                 onClick={() => toggleJoined(option.id)}
                 className={cn(
-                  "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
+                  "flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
                   selected && "border-slate-900 bg-slate-50",
                   !selected && "border-slate-200 hover:bg-slate-50",
                   "disabled:cursor-not-allowed disabled:opacity-60",
                 )}
               >
-                <span className="flex min-w-0 items-center gap-2">
+                <span className="flex min-w-0 flex-1 items-center gap-2">
                   <span
                     aria-hidden="true"
                     className={cn(
@@ -228,7 +236,7 @@ const AssignTableDialog = ({
                     {selected && <HugeiconsIcon icon={Tick02Icon} className="h-3 w-3" />}
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-slate-800">
+                    <span className="block truncate text-sm font-semibold text-slate-800 max-sm:font-medium">
                       {option.name}
                     </span>
                     <span className="block truncate text-caption text-slate-500">
@@ -284,7 +292,7 @@ const AssignTableDialog = ({
     currentNote = (
       <p
         data-testid="assign-current-table"
-        className="rounded-xl bg-indigo-50 px-3 py-2 text-xs text-indigo-900"
+        className="rounded-xl bg-indigo-50 px-3 py-2 text-xs text-indigo-900 max-sm:text-body"
         role="status"
       >
         {t("floor.assign.currentTable", { table: target.currentTableName })}
@@ -295,7 +303,10 @@ const AssignTableDialog = ({
   let note = null;
   if (!combining && chosen) {
     note = (
-      <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600" role="status">
+      <p
+        className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 max-sm:text-body"
+        role="status"
+      >
         {t("floor.assign.summary", {
           name: target.name,
           n: target.partySize,
@@ -318,7 +329,7 @@ const AssignTableDialog = ({
       <p
         data-testid="assign-join-summary"
         className={cn(
-          "rounded-xl px-3 py-2 text-xs",
+          "rounded-xl px-3 py-2 text-xs max-sm:text-body",
           enoughSeats && picked.length > 0 && "bg-slate-50 text-slate-600",
           (!enoughSeats || picked.length === 0) && "bg-amber-50 text-amber-800",
         )}
@@ -376,7 +387,7 @@ const AssignTableDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           {currentNote}
 
           {body}

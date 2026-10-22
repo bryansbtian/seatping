@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
-import supertest from "supertest";
+import { serveApp } from "../helpers/app.js";
 
 const userFindUnique = vi.fn();
 const userUpdate = vi.fn();
@@ -20,10 +20,16 @@ vi.mock("../../server/lib/prisma.js", () => {
 const { syncCustomerQueue } = await import("../../server/lib/queueSync.js");
 const featuredRouter = (await import("../../server/routes/featured.js")).default;
 
-function featuredApp() {
+function createApp() {
   const app = express();
   app.use("/api/featured-restaurants", featuredRouter);
-  return supertest(app);
+  return app;
+}
+
+const client = await serveApp(createApp());
+
+function featuredApp() {
+  return client;
 }
 
 function savedActivity(): Array<Record<string, any>> {

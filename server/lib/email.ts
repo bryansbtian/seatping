@@ -29,12 +29,16 @@ export interface EmailOptions {
   html: string;
   from?: string;
   replyTo?: string;
+  messageId?: string;
+  inReplyTo?: string;
+  references?: string[];
 }
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL?.trim();
 
 export interface EmailSendResult {
   ok: boolean;
+  deliveryUncertain?: boolean;
   recipient: string;
   messageId: string | null;
   response: string | null;
@@ -79,6 +83,9 @@ export const sendEmailDetailed = async (
         subject: string;
         html: string;
         replyTo?: string;
+        messageId?: string;
+        inReplyTo?: string;
+        references?: string[];
       } = {
         from: options.from || FROM_ADDRESS,
         to: options.to,
@@ -89,6 +96,15 @@ export const sendEmailDetailed = async (
         mailOptions.replyTo = options.replyTo;
       }
 
+      if (options.messageId) {
+        mailOptions.messageId = options.messageId;
+      }
+      if (options.inReplyTo) {
+        mailOptions.inReplyTo = options.inReplyTo;
+      }
+      if (options.references?.length) {
+        mailOptions.references = options.references;
+      }
       const info: any = await transporter.sendMail(mailOptions);
       const accepted: string[] = (info.accepted || []).map((a: any) => String(a));
       const rejected: string[] = (info.rejected || []).map((a: any) => String(a));
@@ -160,6 +176,7 @@ export const sendEmailDetailed = async (
     rejected: [options.to],
     envelope: null,
     error: lastError?.message || String(lastError) || "Unknown send error",
+    deliveryUncertain: true,
   };
 };
 
@@ -914,6 +931,7 @@ export const sendFeedbackConfirmationEmail = async (
   userName: string,
   ticketNumber: string,
   subject: string,
+  messageId?: string,
 ): Promise<boolean> => {
   let followUp = `Hold onto your ticket ID (<strong>${esc(ticketNumber)}</strong>) if you need to follow up.`;
   if (SUPPORT_EMAIL) {
@@ -936,6 +954,8 @@ export const sendFeedbackConfirmationEmail = async (
   return sendEmail({
     to: userEmail,
     subject: `Feedback Received: ${ticketNumber}`,
+    messageId,
+    replyTo: FROM_ADDRESS,
     html,
     from: FROM_ADDRESS,
   });

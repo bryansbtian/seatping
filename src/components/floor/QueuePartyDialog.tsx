@@ -55,7 +55,10 @@ const QueuePartyDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600" role="status">
+        <p
+          className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 max-sm:text-body"
+          role="status"
+        >
           {t("floor.live.waitingActionBody")}
         </p>
 

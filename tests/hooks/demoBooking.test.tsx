@@ -259,10 +259,8 @@ describe("demo booking dialog", () => {
     expect(
       within(screen.getByRole("region", { name: "Available Times" })).getByRole("status")
         .textContent,
-    ).toBe("No meeting slots are available right now. Please check back later.");
-    expect(
-      screen.queryByText("Calendar availability could not be verified. Please try again later."),
-    ).toBeNull();
+    ).toBe("Check back later for available meeting slots.");
+    expect(screen.queryByText("Please try again later to check calendar availability.")).toBeNull();
     expect(screen.queryByRole("button", { name: "Try Again" })).toBeNull();
     const days = Array.from(screen.getByRole("grid").querySelectorAll<HTMLButtonElement>("button"));
     expect(days.every((day) => day.disabled)).toBe(true);

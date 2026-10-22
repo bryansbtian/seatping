@@ -7,6 +7,7 @@ import {
   LogoutSquare01Icon,
   Megaphone01Icon,
   StarIcon,
+  BookOpen01Icon,
   UsersRoundIcon,
 } from "@hugeicons/core-free-icons";
 import type { PortalSidebarProps } from "@/components/PortalLayout";
@@ -22,6 +23,7 @@ const NAV_ITEMS: { to: string; label: string; icon: IconSvgElement }[] = [
   { to: "/admin/customers", label: "Customer Management", icon: UsersRoundIcon },
   { to: "/admin/featured", label: "Featured Restaurants", icon: StarIcon },
   { to: "/admin/templates", label: "Campaign Templates", icon: Megaphone01Icon },
+  { to: "/admin/blog", label: "Blog Management", icon: BookOpen01Icon },
 ];
 
 const AdminSidebar = ({

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
-import supertest from "supertest";
+import { serveApp } from "../helpers/app.js";
 
 const processNotification = vi.fn();
 const verify = vi.fn();
@@ -28,7 +28,7 @@ async function jobsApp() {
   const router = (await import("../../server/routes/jobs.js")).default;
   const app = express();
   app.use("/api/jobs", router);
-  return supertest(app);
+  return serveApp(app);
 }
 
 function job() {
@@ -184,7 +184,7 @@ describe("qstash worker behind another body parser", () => {
     const app = express();
     app.use(parser);
     app.use("/api/jobs", router);
-    return supertest(app);
+    return serveApp(app);
   }
 
   it("verifies a body a json parser already consumed", async () => {

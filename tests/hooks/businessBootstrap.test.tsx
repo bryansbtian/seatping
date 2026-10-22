@@ -47,6 +47,32 @@ afterEach(() => {
 });
 
 describe("business initialization", () => {
+  it("returns a stale business session to login when its account is missing", async () => {
+    let sessionExpired = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((path: RequestInfo | URL) => {
+        if (String(path) === "/auth/session") {
+          let business: { name: string } | null = { name: "Previous Business" };
+          if (sessionExpired) {
+            business = null;
+          }
+          return Promise.resolve(new Response(JSON.stringify({ customer: null, business })));
+        }
+        if (String(path) === "/auth/business/me") {
+          sessionExpired = true;
+          return Promise.resolve(
+            new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 }),
+          );
+        }
+        return Promise.resolve(new Response(JSON.stringify({ language: "en" })));
+      }),
+    );
+    renderDashboard();
+    expect(await screen.findByRole("heading", { name: "Business Login" })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("keeps account placeholders hidden when authentication finishes before the account request", async () => {
     let finishAccount = (_value: Response) => {};
     vi.stubGlobal(

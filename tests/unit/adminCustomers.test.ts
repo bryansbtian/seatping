@@ -1,6 +1,6 @@
 import express from "express";
 import cookieParser from "cookie-parser";
-import request from "supertest";
+import { serveApp } from "../helpers/app.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { signJwt } from "../../server/lib/auth.js";
 import router from "../../server/routes/adminCustomers.js";
@@ -15,6 +15,7 @@ vi.mock("../../server/lib/prisma.js", () => ({
 }));
 
 const app = express().use(cookieParser()).use("/admin/customer", router);
+const client = await serveApp(app);
 const account = {
   id: "business-1",
   name: "Example",
@@ -47,8 +48,8 @@ afterEach(() => {
 
 describe("Admin Account Listing", () => {
   it("requires a separate admin cookie", async () => {
-    const unauthenticated = await request(app).get("/admin/customer");
-    const business = await request(app)
+    const unauthenticated = await client.get("/admin/customer");
+    const business = await client
       .get("/admin/customer")
       .set(
         "Cookie",
@@ -63,14 +64,14 @@ describe("Admin Account Listing", () => {
     "fails closed when %s is missing",
     async (key) => {
       vi.stubEnv(key, "");
-      const response = await request(app).get("/admin/customer").set("Cookie", adminCookie());
+      const response = await client.get("/admin/customer").set("Cookie", adminCookie());
       expect(response.status).toBe(503);
       expect(mocks.findMany).not.toHaveBeenCalled();
     },
   );
 
   it("returns paginated safe account fields and batches location counts", async () => {
-    const response = await request(app).get("/admin/customer?page=2").set("Cookie", adminCookie());
+    const response = await client.get("/admin/customer?page=2").set("Cookie", adminCookie());
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       customers: [{ ...account, createdAt: account.createdAt.toISOString(), locationCount: 2 }],
@@ -105,7 +106,7 @@ describe("Admin Account Listing", () => {
   });
 
   it("searches all contact and identity fields while applying access and stable ordering", async () => {
-    await request(app)
+    await client
       .get("/admin/customer?search=%20DINNER%20&access=paid&sort=name")
       .set("Cookie", adminCookie());
     const query = mocks.findMany.mock.calls[0][0];
@@ -117,7 +118,7 @@ describe("Admin Account Listing", () => {
     });
     expect(query.orderBy).toEqual([{ name: "asc" }, { id: "asc" }]);
     expect(mocks.count).toHaveBeenCalledWith({ where: query.where });
-    await request(app).get("/admin/customer?access=trial&sort=oldest").set("Cookie", adminCookie());
+    await client.get("/admin/customer?access=trial&sort=oldest").set("Cookie", adminCookie());
     expect(mocks.findMany).toHaveBeenLastCalledWith(
       expect.objectContaining({
         where: { trial: true },
@@ -137,9 +138,7 @@ describe("Admin Account Listing", () => {
     "sort=unknown",
     `search=${"x".repeat(201)}`,
   ])("rejects invalid input %s", async (query) => {
-    const response = await request(app)
-      .get(`/admin/customer?${query}`)
-      .set("Cookie", adminCookie());
+    const response = await client.get(`/admin/customer?${query}`).set("Cookie", adminCookie());
     expect(response.status).toBe(400);
     expect(mocks.findMany).not.toHaveBeenCalled();
   });
@@ -147,7 +146,7 @@ describe("Admin Account Listing", () => {
   it("handles empty pages without a location query", async () => {
     mocks.findMany.mockResolvedValue([]);
     mocks.count.mockResolvedValue(0);
-    const response = await request(app).get("/admin/customer").set("Cookie", adminCookie());
+    const response = await client.get("/admin/customer").set("Cookie", adminCookie());
     expect(response.status).toBe(200);
     expect(response.body.customers).toEqual([]);
     expect(mocks.groupBy).not.toHaveBeenCalled();
@@ -156,7 +155,7 @@ describe("Admin Account Listing", () => {
   it("does not expose database failure details", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.findMany.mockRejectedValue(new Error("Database unavailable"));
-    const response = await request(app).get("/admin/customer").set("Cookie", adminCookie());
+    const response = await client.get("/admin/customer").set("Cookie", adminCookie());
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ error: "Unable to load business accounts" });
   });

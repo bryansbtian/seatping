@@ -13,8 +13,7 @@ Restaurant discovery uses existing search API data for cuisine, price, rating, l
 ```bash
 cp .env.example .env
 npm ci
-npx prisma generate
-npx prisma migrate deploy
+npm run db:dev
 ```
 
 ### Test Database (First Time Only)

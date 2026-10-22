@@ -63,6 +63,20 @@ afterEach(() => {
 });
 
 describe("lazy routes", () => {
+  it("fills available page height with a responsive list when requested", () => {
+    render(<RouteLoading fill label="Loading Admin Page" className="min-h-screen" />);
+
+    const loading = screen.getByRole("status", { name: "Loading Admin Page" });
+    expect(loading.className).toContain("flex-1");
+    expect(loading.className).toContain("min-h-screen");
+    const hidden = loading.querySelector('[aria-hidden="true"]');
+    const rows = hidden?.querySelector('[role="status"]');
+    expect(rows?.className).toContain("flex-1");
+    expect(rows?.firstElementChild?.className).toContain("absolute");
+    expect(loading.querySelector(".h-52")).toBeNull();
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+  });
+
   it("announces an accessible loading state until a route module resolves", async () => {
     let finish = (_value: { default: () => JSX.Element }) => {};
     const Page = lazyRoute(

@@ -80,8 +80,8 @@ const Blog = () => {
             Under Construction
           </h1>
           <p className="mx-auto mt-4 max-w-md text-body leading-relaxed text-slate-600 sm:text-base">
-            We’re building a home for ideas on smarter queues, smoother service, and better guest
-            relationships. Check back soon.
+            Ideas for smarter queues, smoother service, and better guest relationships are coming
+            soon.
           </p>
           <Button asChild variant="outline" className="mt-7">
             <Link to="/">

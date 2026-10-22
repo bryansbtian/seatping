@@ -1,7 +1,7 @@
 import express from "express";
 import fs from "node:fs";
 import path from "node:path";
-import request from "supertest";
+import { serveApp } from "../helpers/app.js";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { signJwt } from "../../server/lib/auth.js";
 
@@ -37,7 +37,7 @@ const PAGE_PATHS = [
   "/admin/templates",
 ];
 
-let app: express.Express;
+let client: Awaited<ReturnType<typeof serveApp>>;
 
 beforeAll(async () => {
   vi.stubEnv("NODE_ENV", "production");
@@ -48,7 +48,8 @@ beforeAll(async () => {
   vi.spyOn(express.response, "sendFile").mockImplementation(function () {
     this.type("html").send('<html><body><div id="root"></div></body></html>');
   });
-  app = (await import("../../server/index.js")).default;
+  const app = (await import("../../server/index.js")).default;
+  client = await serveApp(app);
 });
 
 afterAll(() => {
@@ -58,7 +59,7 @@ afterAll(() => {
 
 describe("Admin Page Routing", () => {
   it.each(PAGE_PATHS)("serves the SPA for direct GET requests to %s", async (pagePath) => {
-    const response = await request(app).get(pagePath);
+    const response = await client.get(pagePath);
 
     expect(response.status).toBe(200);
     expect(response.type).toBe("text/html");
@@ -76,7 +77,7 @@ describe("Admin Page Routing", () => {
     "/admin/unknown",
     "/admin/dashboard/unknown",
   ])("keeps the admin guard for %s", async (apiPath) => {
-    const response = await request(app).get(apiPath);
+    const response = await client.get(apiPath);
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ error: "Unauthorized" });
@@ -86,7 +87,7 @@ describe("Admin Page Routing", () => {
     const token = signJwt({ accountType: "admin", sub: "admin-routing-fixture" });
 
     for (const apiPath of ["/admin/featured-restaurants", "/admin/campaign-templates"]) {
-      const response = await request(app).get(apiPath).set("Cookie", `sp_auth_admin=${token}`);
+      const response = await client.get(apiPath).set("Cookie", `sp_auth_admin=${token}`);
 
       expect(response.status).toBe(200);
       expect(response.type).toBe("application/json");
@@ -95,7 +96,7 @@ describe("Admin Page Routing", () => {
 
   it("preserves separate admin authentication for API requests", async () => {
     const token = signJwt({ accountType: "business", sub: "business-routing-fixture" });
-    const response = await request(app)
+    const response = await client
       .get("/admin/featured-restaurants")
       .set("Cookie", `sp_auth_business=${token}`);
 
@@ -104,7 +105,7 @@ describe("Admin Page Routing", () => {
   });
 
   it.each(PAGE_PATHS)("does not expose non-GET requests to %s as a page", async (pagePath) => {
-    const response = await request(app).post(pagePath);
+    const response = await client.post(pagePath);
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ error: "Unauthorized" });
@@ -154,5 +155,40 @@ describe("Admin Page Routing", () => {
     ]) {
       expect(matchingProxies(apiPath)).toHaveLength(1);
     }
+  });
+});
+
+describe("Blog Page Routing", () => {
+  it.each(["/admin/blog", "/admin/blog/new", "/admin/blog/post-1/edit"])(
+    "serves %s as an admin page without exposing a public blog",
+    async (pagePath) => {
+      const response = await client.get(pagePath);
+      expect(response.status).toBe(200);
+      expect(response.type).toBe("text/html");
+    },
+  );
+  it("keeps the separate blog API protected", async () => {
+    const response = await client.get("/api/admin/blog");
+    expect(response.status).toBe(401);
+    expect(response.type).toBe("application/json");
+  });
+  it("places blog page and API rewrites before the broad admin rewrite", async () => {
+    const config = JSON.parse(
+      fs.readFileSync(path.resolve(process.cwd(), "vercel.json"), "utf8"),
+    ) as { rewrites: { source: string; destination: string }[] };
+    const adminIndex = config.rewrites.findIndex((rewrite) => rewrite.source === "/admin/:path*");
+    const pages = config.rewrites.findIndex((rewrite) => rewrite.source === "/admin/blog/:path*");
+    const apiIndex = config.rewrites.findIndex(
+      (rewrite) => rewrite.source === "/api/admin/blog/:path*",
+    );
+    expect(pages).toBeGreaterThanOrEqual(0);
+    expect(apiIndex).toBeGreaterThanOrEqual(0);
+    expect(pages).toBeLessThan(adminIndex);
+    expect(config.rewrites[pages].destination).toBe("/index.html");
+    expect(config.rewrites[apiIndex].destination).toBe("/api/server");
+    const { default: viteConfig } = await import("../../vite.config.js");
+    const vite = viteConfig({ command: "serve", mode: "development" });
+    expect(vite.server?.proxy?.["/api/admin/blog"]).toBeTruthy();
+    expect(vite.server?.proxy?.["/admin/blog"]).toBeUndefined();
   });
 });

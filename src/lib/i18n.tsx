@@ -20,10 +20,10 @@ const en = {
   "demo.timeFormat": "Time Format",
   "demo.chooseDay": "Choose an available date to see meeting times.",
   "demo.loading": "Checking calendar availability...",
-  "demo.noAvailability": "No available dates this month. Please try the next month.",
-  "demo.noTimes": "No times remain on this date. Please choose another date.",
-  "demo.noSlots": "No meeting slots are available right now. Please check back later.",
-  "demo.unavailable": "Calendar availability could not be verified. Please try again later.",
+  "demo.noAvailability": "Try next month to find an available date.",
+  "demo.noTimes": "Choose another date to find an available time.",
+  "demo.noSlots": "Check back later for available meeting slots.",
+  "demo.unavailable": "Please try again later to check calendar availability.",
   "demo.bookingError": "We could not book this time. Check your details and try again later.",
   "demo.uncertain":
     "We could not confirm the booking result. Please check your calendar invitation before trying another time.",
@@ -322,7 +322,7 @@ const en = {
 
   "page.comingSoon.title": "Coming Soon",
   "page.comingSoon.body":
-    "This page is part of the upcoming Floor Management release. Its workflow still lives on the Overview page for now.",
+    "Use the Overview page for this workflow until Floor Management is available.",
 
   "camp.title": "Campaigns",
   "camp.subtitle": "Send SeatPing-branded SMS, WhatsApp, and Email campaigns to your guests.",
@@ -517,7 +517,7 @@ const en = {
   "guests.stat.noShows": "No-Shows",
   "guests.stat.cancelled": "Cancelled",
   "guests.summary": "Summary",
-  "guests.summary.empty": "New guest. More history will appear after future visits.",
+  "guests.summary.empty": "Guest history will appear after future visits.",
   "guests.noTags": "No Tags Yet",
   "guests.addTag.placeholder": "Add A Tag",
   "guests.internalNotes": "Internal Notes",
@@ -784,7 +784,7 @@ const en = {
   "rpe.menu.description": "Description",
   "rpe.menu.description.ph": "A short description (optional)",
   "rpe.menu.saveItem": "Save Item",
-  "rpe.menu.empty": "No menu items yet. Add your first highlight item.",
+  "rpe.menu.empty": "Add your first menu highlight.",
   "rpe.menu.edit": "Edit",
   "rpe.menu.delete": "Delete",
   "rpe.menu.clearTitle": "Clear Menu?",
@@ -929,10 +929,10 @@ const id: Partial<Record<TKey, string>> = {
   "demo.timeFormat": "Format Waktu",
   "demo.chooseDay": "Pilih tanggal yang tersedia untuk melihat waktu pertemuan.",
   "demo.loading": "Memeriksa ketersediaan kalender...",
-  "demo.noAvailability": "Tidak ada tanggal tersedia bulan ini. Silakan coba bulan berikutnya.",
-  "demo.noTimes": "Tidak ada waktu tersisa pada tanggal ini. Silakan pilih tanggal lain.",
-  "demo.noSlots": "Belum ada jadwal pertemuan yang tersedia. Silakan periksa kembali nanti.",
-  "demo.unavailable": "Ketersediaan kalender tidak dapat diverifikasi. Silakan coba lagi nanti.",
+  "demo.noAvailability": "Coba bulan berikutnya untuk menemukan tanggal yang tersedia.",
+  "demo.noTimes": "Pilih tanggal lain untuk menemukan waktu yang tersedia.",
+  "demo.noSlots": "Periksa kembali nanti untuk melihat jadwal pertemuan yang tersedia.",
+  "demo.unavailable": "Coba lagi nanti untuk memeriksa ketersediaan kalender.",
   "demo.bookingError": "Pemesanan gagal. Periksa data Anda dan coba lagi nanti.",
   "demo.uncertain":
     "Hasil pemesanan belum dapat dipastikan. Periksa undangan kalender sebelum mencoba waktu lain.",
@@ -1013,8 +1013,7 @@ const id: Partial<Record<TKey, string>> = {
   "perf.tables.empty.title": "Belum Ada Meja",
   "perf.tables.empty.body": "Tambahkan meja di Denah untuk mulai melacak pemakaiannya.",
   "perf.empty.title": "Belum Ada Data Layanan",
-  "perf.empty.body":
-    "Tidak ada layanan pada rentang ini. Pilih rentang lain untuk melihat riwayat.",
+  "perf.empty.body": "Pilih rentang lain untuk melihat riwayat layanan lokasi ini.",
   "floor.live.noMatch": "Tidak Ada Yang Cocok",
   "floor.live.noCapacity": "Tidak Ada Meja Yang Muat",
   "floor.live.noCapacityBody": "Tidak ada meja tunggal yang muat untuk tamu ini.",
@@ -1231,7 +1230,7 @@ const id: Partial<Record<TKey, string>> = {
 
   "page.comingSoon.title": "Segera Hadir",
   "page.comingSoon.body":
-    "Halaman ini adalah bagian dari rilis Manajemen Denah mendatang. Untuk saat ini alur kerjanya masih berada di halaman Ringkasan.",
+    "Gunakan halaman Ringkasan untuk alur kerja ini sampai Manajemen Denah tersedia.",
 
   "camp.title": "Kampanye",
   "camp.subtitle": "Kirim kampanye SMS, WhatsApp, dan Email berlabel SeatPing ke tamu Anda.",
@@ -1412,8 +1411,7 @@ const id: Partial<Record<TKey, string>> = {
   "guests.stat.noShows": "Tidak Hadir",
   "guests.stat.cancelled": "Dibatalkan",
   "guests.summary": "Ringkasan",
-  "guests.summary.empty":
-    "Tamu baru. Riwayat lebih lanjut akan muncul setelah kunjungan berikutnya.",
+  "guests.summary.empty": "Riwayat tamu akan muncul setelah kunjungan berikutnya.",
   "guests.noTags": "Belum Ada Tag",
   "guests.addTag.placeholder": "Tambah Tag",
   "guests.internalNotes": "Catatan Internal",
@@ -1687,7 +1685,7 @@ const id: Partial<Record<TKey, string>> = {
   "rpe.menu.description": "Deskripsi",
   "rpe.menu.description.ph": "Deskripsi singkat (opsional)",
   "rpe.menu.saveItem": "Simpan Item",
-  "rpe.menu.empty": "Belum ada item menu. Tambahkan item unggulan pertama Anda.",
+  "rpe.menu.empty": "Tambahkan item unggulan pertama Anda.",
   "rpe.menu.edit": "Edit",
   "rpe.menu.delete": "Hapus",
   "rpe.menu.clearTitle": "Bersihkan Menu?",

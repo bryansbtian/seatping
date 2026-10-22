@@ -8,6 +8,9 @@ export type EmailSend = {
   html: string;
   from?: string;
   replyTo?: string;
+  messageId?: string;
+  inReplyTo?: string;
+  references?: string[];
 };
 export type CloudinaryUpload = { folder: string };
 

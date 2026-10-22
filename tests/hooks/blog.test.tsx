@@ -13,7 +13,11 @@ describe("Blog construction page", () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole("heading", { name: "Under Construction", level: 1 })).toBeTruthy();
-    expect(screen.getByText(/Check back soon\./)).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Ideas for smarter queues, smoother service, and better guest relationships are coming soon.",
+      ),
+    ).toBeTruthy();
     expect(screen.getAllByRole("contentinfo")).toHaveLength(1);
     const resources = within(screen.getByRole("navigation", { name: "Resources" }));
     expect(resources.getByRole("link", { name: "Blog" }).getAttribute("href")).toBe("/blog");

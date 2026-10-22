@@ -282,8 +282,7 @@ export default function ReservationBooking({
           </div>
           {slotsLoaded && !anyAvailable && (
             <p className="text-xs text-amber-600">
-              No times are available for this number of guests on this date. Try another date or a
-              smaller party.
+              Try another date or a smaller party to find an available time.
             </p>
           )}
           {fullNotice &&
@@ -555,17 +554,21 @@ function BookingModal({
   let modalTimeContent: JSX.Element;
   if (partySize === "larger") {
     modalTimeContent = (
-      <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 max-[320px]:p-2.5 max-[320px]:text-xs text-sm text-slate-600">
+      <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 max-[320px]:p-2.5 text-sm max-sm:text-body text-slate-600">
         For larger parties, please contact the restaurant directly.
       </div>
     );
   } else if (loadingSlots) {
     modalTimeContent = <TimeSlotsSkeleton />;
   } else if (slots.length === 0) {
-    modalTimeContent = <AvailabilityEmptyState notice={availabilityNotice} />;
+    modalTimeContent = (
+      <div className="max-sm:[&_p]:text-body max-sm:[&_p]:font-normal">
+        <AvailabilityEmptyState notice={availabilityNotice} />
+      </div>
+    );
   } else {
     modalTimeContent = (
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-4 gap-1.5 max-sm:grid-cols-3">
         {slots.map((s) => {
           let slotClass: string;
           if (s.time === time) {
@@ -582,7 +585,12 @@ function BookingModal({
               type="button"
               disabled={!s.available}
               onClick={() => setTime(s.time)}
-              className={cn(SLOT_BUTTON_BASE_CLASS, SLOT_BUTTON_COMPACT_CLASS, slotClass, "px-1")}
+              className={cn(
+                SLOT_BUTTON_BASE_CLASS,
+                SLOT_BUTTON_COMPACT_CLASS,
+                slotClass,
+                "px-1 max-sm:text-label max-sm:font-medium",
+              )}
             >
               {s.label}
             </button>
@@ -598,7 +606,9 @@ function BookingModal({
       <div className="space-y-4">
         <div className="flex flex-col items-center text-center">
           <HugeiconsIcon icon={CheckmarkCircle02Icon} className="h-12 w-12 text-emerald-500" />
-          <DialogTitle className="mt-3 text-lg">Reservation Confirmed</DialogTitle>
+          <DialogTitle className="mt-3 text-lg max-sm:text-title max-sm:font-medium">
+            Reservation Confirmed
+          </DialogTitle>
           <DialogDescription className="mt-1">
             {`You're booked at ${restaurantName}.`}
           </DialogDescription>
@@ -612,15 +622,17 @@ function BookingModal({
         </div>
 
         <div className="rounded-lg border border-slate-200 p-3">
-          <p className="text-xs font-medium text-slate-700">Manage Your Reservation</p>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="text-xs font-medium text-slate-700 max-sm:text-label">
+            Manage Your Reservation
+          </p>
+          <p className="mt-0.5 text-xs text-slate-500 max-sm:text-body max-sm:font-normal">
             Use this link to change or cancel, no account needed.
           </p>
           <div className="mt-2 flex items-center gap-2">
             <Input
               readOnly
               value={manageUrl || ""}
-              className="h-9 text-xs"
+              className="h-9 text-xs max-sm:text-base"
               onFocus={(e) => e.currentTarget.select()}
             />
             <Button
@@ -656,39 +668,45 @@ function BookingModal({
     dialogBody = (
       <>
         <DialogHeader>
-          <DialogTitle className="max-[320px]:text-base text-lg">Book a Table</DialogTitle>
-          <DialogDescription className="max-[320px]:text-xs text-sm">
+          <DialogTitle className="text-lg max-sm:text-title max-sm:font-medium">
+            Book a Table
+          </DialogTitle>
+          <DialogDescription className="text-sm max-sm:text-body">
             {restaurantName}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1">
-              <Label className="max-[320px]:text-micro text-xs text-slate-500">
+              <Label className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium">
                 Number of Guests
               </Label>
               <PartyField
                 value={partySize}
                 onChange={setPartySize}
                 max={maxParty}
-                className="max-[320px]:h-9 max-[320px]:text-caption"
+                className="max-sm:text-base max-sm:font-normal"
               />
             </div>
             <div className="space-y-1">
-              <Label className="max-[320px]:text-micro text-xs text-slate-500">Date</Label>
+              <Label className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium">
+                Date
+              </Label>
               <DateField
                 value={date}
                 onChange={setDate}
                 todayStr={todayStr}
                 maxDateStr={maxDateStr}
-                className="max-[320px]:h-9 max-[320px]:text-caption"
+                className="max-sm:text-base max-sm:font-normal"
               />
             </div>
           </div>
 
           <div className="space-y-1">
-            <Label className="max-[320px]:text-micro text-xs text-slate-500">Time</Label>
+            <Label className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium">
+              Time
+            </Label>
             {modalTimeContent}
           </div>
 
@@ -696,7 +714,7 @@ function BookingModal({
             <div className="pt-2">
               <Button
                 asChild
-                className="w-full h-10 text-sm sm:h-11 sm:text-base"
+                className="w-full h-10 text-sm max-sm:text-label max-sm:font-medium sm:h-11 sm:text-base"
                 variant="default"
               >
                 <Link to="/search">Explore Other Restaurants</Link>
@@ -708,11 +726,11 @@ function BookingModal({
             <>
               <div className="border-t border-slate-100" />
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
                 <div className="space-y-1">
                   <Label
                     htmlFor="bk-first"
-                    className="max-[320px]:text-micro text-xs text-slate-500"
+                    className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium"
                   >
                     First Name
                   </Label>
@@ -720,13 +738,13 @@ function BookingModal({
                     id="bk-first"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="max-[320px]:h-8 max-[320px]:text-caption"
+                    className="max-sm:text-base"
                   />
                 </div>
                 <div className="space-y-1">
                   <Label
                     htmlFor="bk-last"
-                    className="max-[320px]:text-micro text-xs text-slate-500"
+                    className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium"
                   >
                     Last Name
                   </Label>
@@ -734,13 +752,16 @@ function BookingModal({
                     id="bk-last"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="max-[320px]:h-8 max-[320px]:text-caption"
+                    className="max-sm:text-base"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="bk-email" className="max-[320px]:text-micro text-xs text-slate-500">
+                <Label
+                  htmlFor="bk-email"
+                  className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium"
+                >
                   Email
                 </Label>
                 <Input
@@ -749,15 +770,18 @@ function BookingModal({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="max-[320px]:h-8 max-[320px]:text-caption"
+                  className="max-sm:text-base"
                 />
-                <p className="max-[320px]:text-micro text-xs text-slate-400">
+                <p className="text-xs text-slate-400 max-sm:text-body max-sm:font-normal">
                   We'll send your confirmation and manage link here.
                 </p>
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="bk-notes" className="max-[320px]:text-micro text-xs text-slate-500">
+                <Label
+                  htmlFor="bk-notes"
+                  className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium"
+                >
                   Notes (Optional)
                 </Label>
                 <Textarea
@@ -766,12 +790,12 @@ function BookingModal({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Allergies, special requests, seating preference…"
-                  className="max-[320px]:min-h-0 max-[320px]:text-caption"
+                  className="h-20 min-h-20 resize-y max-sm:text-base"
                 />
               </div>
 
               {settings.cancellationPolicy && (
-                <p className="rounded-md bg-slate-50 p-2.5 max-[320px]:p-2 max-[320px]:text-micro text-xs text-slate-500">
+                <p className="rounded-md bg-slate-50 p-2.5 max-[320px]:p-2 text-xs text-slate-500 max-sm:text-body max-sm:font-normal">
                   <span className="font-medium text-slate-600">Policy: </span>
                   {settings.cancellationPolicy}
                 </p>
@@ -793,7 +817,9 @@ function BookingModal({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-2xl p-0 max-sm:overflow-hidden max-sm:p-0 sm:max-w-md">
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">{dialogBody}</div>
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6 max-sm:text-body">
+          {dialogBody}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -802,7 +828,7 @@ function BookingModal({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-slate-500">{label}</span>
+      <span className="text-slate-500 max-sm:text-label max-sm:font-medium">{label}</span>
       <span className="font-medium text-slate-900">{value}</span>
     </div>
   );

@@ -1107,7 +1107,7 @@ function ProfileReviewCard({
               aria-label="Edit review"
               className="h-8 w-8 text-muted-foreground hover:text-slate-900"
             >
-              <HugeiconsIcon icon={Edit03Icon} className="h-4 w-4" />
+              <HugeiconsIcon icon={Edit03Icon} className="size-4" />
             </Button>
             <Button
               variant="destructiveOutline"

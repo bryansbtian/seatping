@@ -241,6 +241,34 @@
 }
 
 @layer components {
+  @media (max-width: 639px) {
+    :is([role="dialog"], [role="alertdialog"]) {
+      --font-size-title: 0.9375rem;
+      --font-size-body: 0.8125rem;
+      --line-height-body: 1.125rem;
+      --font-size-label: 0.75rem;
+      --font-size-sm: 0.8125rem;
+      --font-size-base: 0.8125rem;
+      --font-size-lg: 0.9375rem;
+      --font-size-xl: 1.0625rem;
+      --font-size-2xl: 1.375rem;
+      --touch-height: 2rem;
+      --touch-height-lg: 2rem;
+    }
+
+    :is([role="dialog"], [role="alertdialog"])
+      :is(.control-sm, .control-md, .control-lg):not(.h-auto) {
+      min-height: var(--touch-height-sm);
+      flex-shrink: 0;
+    }
+
+    :is([role="dialog"], [role="alertdialog"])
+      :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select, [role="combobox"]) {
+      font-size: var(--font-size-body);
+      line-height: var(--line-height-body);
+    }
+  }
+
   .control-sm {
     height: var(--touch-height-sm);
   }

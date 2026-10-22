@@ -1297,7 +1297,8 @@ router.get("/business/me", businessMeTiming, requireBusiness, async (req, res) =
 
     const me = await assembleBusinessMe(businessId);
     if (!me) {
-      return res.status(404).json({ error: "Not found" });
+      clearAuthCookie(res, "business");
+      return res.status(401).json({ error: "Unauthorized" });
     }
     return res.json({ user: me });
   } catch (err: any) {
