@@ -4,6 +4,9 @@
   "installCommand": "npm install && npx prisma generate",
   "devCommand": "npm run dev",
   "rewrites": [
+    { "source": "/api/cron/ticket-email", "destination": "/api/server" },
+    { "source": "/api/admin/blog/:path*", "destination": "/api/server" },
+    { "source": "/admin/blog/:path*", "destination": "/index.html" },
     {
       "source": "/api/demo/:path*",
       "destination": "/api/server"

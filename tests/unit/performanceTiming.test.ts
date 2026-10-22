@@ -1,5 +1,5 @@
 import express from "express";
-import supertest from "supertest";
+import { serveApp } from "../helpers/app.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { businessMeTiming, measureDatabase } from "../../server/lib/performanceTiming.js";
 
@@ -26,7 +26,7 @@ describe("performance timing privacy and sampling", () => {
   it("does not measure or log by default", async () => {
     vi.stubEnv("PERFORMANCE_TIMINGS", "");
     const log = vi.spyOn(console, "info").mockImplementation(() => {});
-    await supertest(app()).get("/");
+    await (await serveApp(app())).get("/");
     expect(log).not.toHaveBeenCalled();
   });
 
@@ -34,7 +34,9 @@ describe("performance timing privacy and sampling", () => {
     vi.stubEnv("PERFORMANCE_TIMINGS", "1");
     vi.stubEnv("PERFORMANCE_SAMPLE_RATE", "1");
     const log = vi.spyOn(console, "info").mockImplementation(() => {});
-    await supertest(app())
+    await (
+      await serveApp(app())
+    )
       .get("/?email=private@example.invalid&token=private-token")
       .set("Cookie", "session=private-cookie");
     expect(log).toHaveBeenCalledTimes(1);
@@ -56,7 +58,7 @@ describe("performance timing privacy and sampling", () => {
     vi.stubEnv("PERFORMANCE_TIMINGS", "1");
     vi.stubEnv("PERFORMANCE_SAMPLE_RATE", "1");
     const log = vi.spyOn(console, "info").mockImplementation(() => {});
-    await Promise.all([supertest(app()).get("/"), supertest(app()).get("/")]);
+    await Promise.all([(await serveApp(app())).get("/"), (await serveApp(app())).get("/")]);
     expect(log).toHaveBeenCalledTimes(2);
     for (const [output] of log.mock.calls) {
       expect(JSON.parse(String(output)).database["credit.expire"].affectedRows).toBe(2);
@@ -67,7 +69,7 @@ describe("performance timing privacy and sampling", () => {
     vi.stubEnv("PERFORMANCE_TIMINGS", "1");
     vi.stubEnv("PERFORMANCE_SAMPLE_RATE", "0");
     const log = vi.spyOn(console, "info").mockImplementation(() => {});
-    await supertest(app()).get("/");
+    await (await serveApp(app())).get("/");
     expect(log).not.toHaveBeenCalled();
   });
 
@@ -76,7 +78,7 @@ describe("performance timing privacy and sampling", () => {
     vi.stubEnv("PERFORMANCE_SAMPLE_RATE", "invalid");
     vi.spyOn(Math, "random").mockReturnValue(0.5);
     const log = vi.spyOn(console, "info").mockImplementation(() => {});
-    await supertest(app()).get("/");
+    await (await serveApp(app())).get("/");
     expect(log).not.toHaveBeenCalled();
   });
 
@@ -94,7 +96,7 @@ describe("performance timing privacy and sampling", () => {
       ).rejects.toThrow("private-data");
       res.sendStatus(500);
     });
-    await supertest(server).get("/");
+    await (await serveApp(server)).get("/");
     expect(log.mock.calls[0][0]).not.toContain("private-data");
     expect(JSON.parse(String(log.mock.calls[0][0])).database["credit.expire"].calls).toBe(1);
   });

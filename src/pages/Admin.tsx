@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { FilterButton } from "@/components/ui/collection-controls";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,7 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import FeaturedRestaurantsManager from "@/components/FeaturedRestaurantsManager";
 import CampaignTemplatesAdmin from "@/components/CampaignTemplatesAdmin";
@@ -44,8 +43,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import TicketConversation from "@/components/TicketConversation";
+import type { TicketChatMessage } from "@shared/tickets";
 import SEO from "@/components/SEO";
 import { formatEnteredPhone } from "@shared/phone";
+import { cn } from "@/lib/utils";
+
+const BlogManagement = lazy(() => import("@/components/blog/BlogManagement"));
+const BlogEditor = lazy(() => import("@/components/blog/BlogEditor"));
 
 interface Ticket {
   id: string;
@@ -59,21 +64,10 @@ interface Ticket {
   senderPhone?: string;
   businessName?: string;
   data: {
-    businessWebsite?: string;
-    locations?: string | number;
-    smsPerMonth?: string | number;
-    customersPerDay?: string | number;
-    useCase?: string;
-    budget?: string;
     feedbackType?: string;
     severity?: string;
   } | null;
-  messages: Array<{
-    sender: string;
-    message: string;
-    timestamp: string;
-    isTeamResponse: boolean;
-  }>;
+  messages: TicketChatMessage[];
   assignedTo?: string;
   createdAt: string;
   updatedAt: string;
@@ -89,6 +83,13 @@ function ticketCategory(ticket: Ticket): string {
   return ticket.type;
 }
 
+function formatTicketValue(value: string): string {
+  return value
+    .replace(/[_-]+/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 const TICKET_CATEGORIES = [
   { value: "all", label: "All" },
   { value: "support", label: "Support" },
@@ -100,7 +101,6 @@ interface TicketStats {
   open: number;
   inProgress: number;
   closed: number;
-  sales: number;
   feedback: number;
 }
 
@@ -128,6 +128,12 @@ const Admin = () => {
     pageDescription = "Review and manage campaign templates across business accounts.";
   }
 
+  if (/^\/admin\/blog(?:\/|$)/i.test(pathname)) {
+    section = "blog";
+    pageTitle = "Blog Management";
+    pageDescription = "Write, organize, and manage your articles.";
+  }
+
   const [searchUsername, setSearchUsername] = useState("");
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
@@ -139,14 +145,11 @@ const Admin = () => {
   const [ticketSort, setTicketSort] = useState("newest");
   const [ticketSearch, setTicketSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [ticketTab, setTicketTab] = useState("details");
   const [filter, setFilter] = useState({
     status: "all",
     type: "all",
     priority: "all",
-  });
-  const [responseForm, setResponseForm] = useState({
-    message: "",
-    responderName: "",
   });
 
   const { toast } = useToast();
@@ -195,18 +198,23 @@ const Admin = () => {
       }
       setTickets(nextTickets);
     } catch {
-      setTicketsError("Tickets could not be loaded. Please try again.");
+      setTicketsError("Please try again to load your tickets.");
     } finally {
       setTicketsLoading(false);
     }
   }, [filter]);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchStats();
+    if (isAuthenticated && section === "tickets") {
       fetchTickets();
     }
-  }, [isAuthenticated, fetchTickets]);
+  }, [isAuthenticated, fetchTickets, section]);
+
+  useEffect(() => {
+    if (isAuthenticated && section === "tickets") {
+      fetchStats();
+    }
+  }, [isAuthenticated, section]);
 
   useEffect(() => {
     let active = true;
@@ -277,7 +285,6 @@ const Admin = () => {
     setTickets([]);
     setStats(null);
     setIsDialogOpen(false);
-    setResponseForm({ message: "", responderName: "" });
     navigate("/admin", { replace: true });
   };
 
@@ -302,6 +309,7 @@ const Admin = () => {
       if (response.ok) {
         const data = await response.json();
         setSelectedTicket(data.ticket);
+        setTicketTab("details");
         setIsDialogOpen(true);
       }
     } catch (error) {
@@ -326,6 +334,7 @@ const Admin = () => {
           title: "Success",
           description: "Ticket status updated",
         });
+        fetchStats();
         fetchTickets();
         if (selectedTicket?.ticketNumber === ticketNumber) {
           const data = await response.json();
@@ -369,52 +378,6 @@ const Admin = () => {
     }
   };
 
-  const handleRespond = async () => {
-    if (!selectedTicket || !responseForm.message || !responseForm.responderName) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/tickets/${selectedTicket.ticketNumber}/respond`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(responseForm),
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Response sent successfully",
-        });
-        setResponseForm({ message: "", responderName: "" });
-        fetchTickets();
-        const data = await response.json();
-        setSelectedTicket(data.ticket);
-      } else {
-        const error = await response.json();
-        toast({
-          title: "Error",
-          description: error.error || "Failed to send response",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Network error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "warning" | "info" | "success"> = {
       open: "warning",
@@ -446,7 +409,7 @@ const Admin = () => {
   };
 
   if (checkingSession) {
-    return <RouteLoading label="Checking Admin Session" />;
+    return <RouteLoading fill label="Checking Admin Session" className="min-h-screen" />;
   }
 
   if (!isAuthenticated) {
@@ -457,25 +420,17 @@ const Admin = () => {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
-  let sendResponseLabel: string;
-  if (isLoading) {
-    sendResponseLabel = "Sending...";
-  } else {
-    sendResponseLabel = "Send Response";
-  }
-
   const hasTicketFilters =
     filter.type !== "all" || filter.status !== "all" || filter.priority !== "all";
   let ticketEmptyDescription =
     "Support tickets and customer feedback will appear here when they arrive.";
   if (hasTicketFilters) {
-    ticketEmptyDescription = "No tickets match your filters. Clear them to see all tickets.";
+    ticketEmptyDescription = "Clear your filters to see all tickets.";
   }
 
   let clearTicketViewLabel = "Clear Filters";
   if (ticketSearch.trim()) {
-    ticketEmptyDescription =
-      "No tickets match your search. Try another search or clear your search and filters.";
+    ticketEmptyDescription = "Try another search or clear your search and filters.";
     clearTicketViewLabel = "Clear Search And Filters";
   }
 
@@ -529,6 +484,23 @@ const Admin = () => {
             </div>
           )}
 
+          {section === "blog" && (
+            <Suspense
+              fallback={
+                <RouteLoading
+                  fill
+                  label="Loading Blog Management"
+                  className="max-w-none p-0 sm:px-0"
+                />
+              }
+            >
+              {pathname.toLowerCase().replace(/\/$/, "") === "/admin/blog" && <BlogManagement />}
+              {pathname.toLowerCase().replace(/\/$/, "") !== "/admin/blog" && (
+                <BlogEditor id={pathname.split("/")[3]} />
+              )}
+            </Suspense>
+          )}
+
           {section === "tickets" && (
             <div className="flex flex-1 flex-col gap-6">
               {!stats && !statsError && (
@@ -560,7 +532,7 @@ const Admin = () => {
                 >
                   <h3 className="text-title text-foreground">Unable To Load Ticket Statistics</h3>
                   <p className="mt-2 text-body text-ink-subtle">
-                    We couldn't load ticket statistics right now. Please try again.
+                    Please try again to load ticket statistics.
                   </p>
                   <Button variant="outline" onClick={fetchStats} className="mt-4">
                     Try Again
@@ -780,7 +752,7 @@ const Admin = () => {
                   </div>
                   <div className="flex flex-1 flex-col">
                     {ticketsLoading && (
-                      <ListSkeleton fill label="Loading Tickets" className="p-0 md:p-0" />
+                      <ListSkeleton fill label="Loading Tickets" className="min-h-10 p-0 md:p-0" />
                     )}
                     {!ticketsLoading && ticketsError && (
                       <div role="alert" className="flex flex-1 flex-col">
@@ -822,13 +794,13 @@ const Admin = () => {
                             <li key={ticket.id}>
                               <button
                                 type="button"
-                                className="flex w-full flex-col items-start justify-between gap-1 px-4 py-3 text-left transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:flex-row sm:items-center sm:gap-3"
+                                className="flex w-full flex-col items-start justify-between gap-1 p-4 text-left transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:flex-row sm:items-center sm:gap-3 sm:py-3"
                                 onClick={() => handleViewTicket(ticket.ticketNumber)}
                               >
                                 <div className="min-w-0 w-full flex-1 sm:w-auto">
-                                  <div className="flex flex-wrap items-center gap-2">
+                                  <div className="flex items-center gap-2 sm:flex-wrap">
                                     <h3
-                                      className="min-w-0 truncate text-title text-ink"
+                                      className="min-w-0 flex-1 truncate text-body font-medium text-ink sm:flex-initial"
                                       title={ticket.subject}
                                     >
                                       {ticket.subject}
@@ -836,19 +808,28 @@ const Admin = () => {
                                     {getStatusBadge(ticket.status)}
                                     {getPriorityBadge(ticket.priority)}
                                   </div>
-                                  <p
-                                    className="mt-0.5 truncate text-caption text-ink-subtle"
-                                    title={`${ticket.senderName} (${ticket.senderEmail})`}
-                                  >
-                                    {ticket.businessName || ticket.senderName} ·{" "}
-                                    {ticket.ticketNumber} ·{" "}
-                                    {category.charAt(0).toUpperCase() + category.slice(1)}
-                                  </p>
+                                  <div className="mt-0.5 flex min-w-0 items-center gap-2">
+                                    <p
+                                      className="min-w-0 flex-1 truncate text-caption text-ink-subtle"
+                                      title={`${ticket.senderName} (${ticket.senderEmail})`}
+                                    >
+                                      {ticket.businessName || ticket.senderName} ·{" "}
+                                      {ticket.ticketNumber} ·{" "}
+                                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                                    </p>
+                                    <time
+                                      dateTime={ticket.createdAt}
+                                      title={new Date(ticket.createdAt).toLocaleString()}
+                                      className="shrink-0 text-caption text-slate-400 sm:hidden"
+                                    >
+                                      {formatDate(ticket.createdAt)}
+                                    </time>
+                                  </div>
                                 </div>
                                 <time
                                   dateTime={ticket.createdAt}
                                   title={new Date(ticket.createdAt).toLocaleString()}
-                                  className="shrink-0 text-caption text-slate-400"
+                                  className="hidden shrink-0 text-caption text-slate-400 sm:block"
                                 >
                                   {formatDate(ticket.createdAt)}
                                 </time>
@@ -873,206 +854,164 @@ const Admin = () => {
           {section === "campaigns" && <CampaignTemplatesAdmin />}
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{selectedTicket?.subject}</DialogTitle>
+            <DialogContent
+              className={cn(
+                "grid-cols-[minmax(0,1fr)] max-h-[85dvh] overflow-x-hidden overflow-y-auto rounded-2xl text-body text-ink sm:max-w-2xl",
+                ticketTab === "messages" &&
+                  "h-[85dvh] grid-rows-[auto_minmax(0,1fr)] overflow-hidden max-sm:overflow-hidden sm:h-[min(800px,85dvh)] sm:grid-rows-[auto_minmax(0,1fr)_auto] sm:overflow-hidden",
+              )}
+            >
+              <DialogHeader className="min-w-0 text-left [overflow-wrap:anywhere]">
+                <DialogTitle
+                  title={selectedTicket?.subject}
+                  className={cn("pr-8", ticketTab === "messages" && "max-sm:line-clamp-2")}
+                >
+                  {selectedTicket?.subject}
+                </DialogTitle>
                 <DialogDescription>Ticket #{selectedTicket?.ticketNumber}</DialogDescription>
               </DialogHeader>
 
               {selectedTicket && (
-                <Tabs defaultValue="details" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="details">Details</TabsTrigger>
-                    <TabsTrigger value="messages">Messages</TabsTrigger>
-                    <TabsTrigger value="respond">Respond</TabsTrigger>
+                <Tabs
+                  value={ticketTab}
+                  onValueChange={setTicketTab}
+                  className="flex min-h-0 min-w-0 flex-col"
+                >
+                  <TabsList
+                    className="grid w-full shrink-0 grid-cols-2"
+                    aria-label="Ticket Sections"
+                  >
+                    <TabsTrigger
+                      value="details"
+                      className="data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-none"
+                    >
+                      Details
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="messages"
+                      className="data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-none"
+                    >
+                      Messages
+                    </TabsTrigger>
                   </TabsList>
-
-                  <TabsContent value="details" className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Status</Label>
-                        <Select
-                          value={selectedTicket.status}
-                          onValueChange={(value) =>
-                            handleUpdateStatus(selectedTicket.ticketNumber, value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="open">Open</SelectItem>
-                            <SelectItem value="in_progress">In Progress</SelectItem>
-                            <SelectItem value="closed">Closed</SelectItem>
-                          </SelectContent>
-                        </Select>
+                  <TabsContent value="details" className="mt-4 min-w-0">
+                    <section aria-label="Ticket Details" className="min-w-0 space-y-4">
+                      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="grid min-w-0 gap-2">
+                          <Label htmlFor="ticket-status">Status</Label>
+                          <Select
+                            value={selectedTicket.status}
+                            onValueChange={(value) =>
+                              handleUpdateStatus(selectedTicket.ticketNumber, value)
+                            }
+                          >
+                            <SelectTrigger
+                              id="ticket-status"
+                              className="max-sm:h-8 max-sm:text-body"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="open">Open</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="closed">Closed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid min-w-0 gap-2">
+                          <Label htmlFor="ticket-priority">Priority</Label>
+                          <Select
+                            value={selectedTicket.priority || "low"}
+                            onValueChange={(value) =>
+                              handleUpdatePriority(selectedTicket.ticketNumber, value)
+                            }
+                          >
+                            <SelectTrigger
+                              id="ticket-priority"
+                              className="max-sm:h-8 max-sm:text-body"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="low">Low</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                      <div>
-                        <Label>Priority</Label>
-                        <Select
-                          value={selectedTicket.priority || "low"}
-                          onValueChange={(value) =>
-                            handleUpdatePriority(selectedTicket.ticketNumber, value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label>Contact Information</Label>
-                      <div className="bg-muted p-4 rounded-md space-y-1">
-                        <p>
-                          <strong>Name:</strong> {selectedTicket.senderName}
-                        </p>
-                        <p>
-                          <strong>Email:</strong> {selectedTicket.senderEmail}
-                        </p>
-                        {selectedTicket.senderPhone && (
+                      <div className="min-w-0 space-y-2">
+                        <Label>Contact Information</Label>
+                        <div className="min-w-0 bg-muted p-4 rounded-md space-y-1 [overflow-wrap:anywhere]">
                           <p>
-                            <strong>Phone:</strong> {formatEnteredPhone(selectedTicket.senderPhone)}
+                            <strong>Name:</strong> {selectedTicket.senderName}
                           </p>
-                        )}
-                        {selectedTicket.businessName && (
                           <p>
-                            <strong>Business:</strong> {selectedTicket.businessName}
+                            <strong>Email:</strong> {selectedTicket.senderEmail}
                           </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {selectedTicket.type === "sales" && selectedTicket.data && (
-                      <div className="space-y-2">
-                        <Label>Sales Details</Label>
-                        <div className="bg-muted p-4 rounded-md space-y-1 text-body">
-                          {selectedTicket.data.businessWebsite && (
+                          {selectedTicket.senderPhone && (
                             <p>
-                              <strong>Website:</strong> {selectedTicket.data.businessWebsite}
+                              <strong>Phone:</strong>{" "}
+                              {formatEnteredPhone(selectedTicket.senderPhone)}
                             </p>
                           )}
-                          {selectedTicket.data.locations && (
+                          {selectedTicket.businessName && (
                             <p>
-                              <strong>Locations:</strong> {selectedTicket.data.locations}
-                            </p>
-                          )}
-                          {selectedTicket.data.smsPerMonth && (
-                            <p>
-                              <strong>SMS/Month:</strong> {selectedTicket.data.smsPerMonth}
-                            </p>
-                          )}
-                          {selectedTicket.data.customersPerDay && (
-                            <p>
-                              <strong>Customers/Day:</strong> {selectedTicket.data.customersPerDay}
-                            </p>
-                          )}
-                          {selectedTicket.data.useCase && (
-                            <p>
-                              <strong>Use Case:</strong> {selectedTicket.data.useCase}
-                            </p>
-                          )}
-                          {selectedTicket.data.budget && (
-                            <p>
-                              <strong>Budget:</strong> {selectedTicket.data.budget}
+                              <strong>Business:</strong> {selectedTicket.businessName}
                             </p>
                           )}
                         </div>
                       </div>
-                    )}
 
-                    {selectedTicket.type === "feedback" && selectedTicket.data && (
-                      <div className="space-y-2">
-                        <Label>Feedback Details</Label>
-                        <div className="bg-muted p-4 rounded-md space-y-1 text-body">
-                          {selectedTicket.data.feedbackType && (
-                            <p>
-                              <strong>Type:</strong> {selectedTicket.data.feedbackType}
-                            </p>
-                          )}
-                          {selectedTicket.data.severity && (
-                            <p>
-                              <strong>Severity:</strong> {selectedTicket.data.severity}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="messages" className="space-y-4">
-                    <div className="space-y-4">
-                      {selectedTicket.messages.map((msg, idx) => {
-                        let messageToneClass: string;
-                        if (msg.isTeamResponse) {
-                          messageToneClass = "bg-indigo-50 border-l-4 border-indigo-500";
-                        } else {
-                          messageToneClass = "bg-muted";
-                        }
-                        return (
-                          <div key={idx} className={`p-4 rounded-md ${messageToneClass}`}>
-                            <div className="flex justify-between items-start mb-2">
-                              <p className="font-semibold">{msg.sender}</p>
-                              <p className="text-caption text-muted-foreground">
-                                {new Date(msg.timestamp).toLocaleString()}
+                      {selectedTicket.type === "feedback" && selectedTicket.data && (
+                        <div className="min-w-0 space-y-2">
+                          <Label>Feedback Details</Label>
+                          <div className="min-w-0 bg-muted p-4 rounded-md space-y-1 text-body [overflow-wrap:anywhere]">
+                            {selectedTicket.data.feedbackType && (
+                              <p>
+                                <strong>Type:</strong>{" "}
+                                {formatTicketValue(selectedTicket.data.feedbackType)}
                               </p>
-                            </div>
-                            <p className="whitespace-pre-wrap">{msg.message}</p>
+                            )}
+                            {selectedTicket.data.severity && (
+                              <p>
+                                <strong>Severity:</strong>{" "}
+                                {formatTicketValue(selectedTicket.data.severity)}
+                              </p>
+                            )}
                           </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      )}
+                    </section>
                   </TabsContent>
-
-                  <TabsContent value="respond" className="space-y-4">
-                    <div className="space-y-4">
-                      <div>
-                        <Label>Your Name</Label>
-                        <Input
-                          value={responseForm.responderName}
-                          onChange={(e) =>
-                            setResponseForm({
-                              ...responseForm,
-                              responderName: e.target.value,
-                            })
+                  <TabsContent
+                    value="messages"
+                    forceMount
+                    hidden={ticketTab !== "messages"}
+                    className="mt-4 min-h-0 min-w-0 flex-1 data-[state=inactive]:hidden"
+                  >
+                    <TicketConversation
+                      active={ticketTab === "messages"}
+                      ticketNumber={selectedTicket.ticketNumber}
+                      messages={selectedTicket.messages}
+                      onRefresh={(ticket) =>
+                        setSelectedTicket((current) => {
+                          if (current?.ticketNumber === ticket.ticketNumber) {
+                            return { ...current, ...ticket };
                           }
-                          placeholder="Enter your name"
-                        />
-                      </div>
-                      <div>
-                        <Label>Response Message</Label>
-                        <Textarea
-                          value={responseForm.message}
-                          onChange={(e) =>
-                            setResponseForm({
-                              ...responseForm,
-                              message: e.target.value,
-                            })
-                          }
-                          placeholder="Type your response here..."
-                          rows={8}
-                        />
-                      </div>
-                    </div>
+                          return current;
+                        })
+                      }
+                    />
                   </TabsContent>
                 </Tabs>
               )}
 
-              <DialogFooter>
+              <DialogFooter className={cn(ticketTab === "messages" && "max-sm:hidden")}>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Close
                 </Button>
-                {selectedTicket && (
-                  <Button onClick={handleRespond} disabled={isLoading}>
-                    {sendResponseLabel}
-                  </Button>
-                )}
               </DialogFooter>
             </DialogContent>
           </Dialog>

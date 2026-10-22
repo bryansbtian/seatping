@@ -32,6 +32,18 @@ test("books from the landing page without navigating on desktop and mobile", asy
   await trigger.click();
   const dialog = page.getByRole("dialog", { name: "Discover SeatPing" });
   await expect(dialog).toBeVisible();
+  let titleFont = "16px";
+  if (page.viewportSize()!.width < 640) {
+    titleFont = "15px";
+  }
+  await expect(dialog.getByRole("heading", { name: "Discover SeatPing", exact: true })).toHaveCSS(
+    "font-size",
+    titleFont,
+  );
+  await expect(dialog.getByRole("heading", { name: "Discover SeatPing", exact: true })).toHaveCSS(
+    "font-weight",
+    "500",
+  );
   await expect(page).toHaveURL(/\/business$/);
   const timezone = page.getByRole("combobox", { name: "Timezone", exact: true });
   if (!(await timezone.textContent())?.includes("America/New York")) {
@@ -172,12 +184,10 @@ test("shows calendar errors without selectable dates", async ({ page }) => {
   await page.goto("/business");
   await page.getByRole("button", { name: "Book a Demo" }).first().click();
   const times = page.getByRole("region", { name: "Available Times" });
-  await expect(times).toContainText(
-    "No meeting slots are available right now. Please check back later.",
-  );
+  await expect(times).toContainText("Check back later for available meeting slots.");
   await expect(page.getByRole("button", { name: "Try Again" })).toHaveCount(0);
   await expect(
-    page.getByText("Calendar availability could not be verified. Please try again later."),
+    page.getByText("Please try again later to check calendar availability."),
   ).toHaveCount(0);
   await expect(page.getByRole("grid").locator("button:enabled")).toHaveCount(0);
   const alert = times.getByRole("status");

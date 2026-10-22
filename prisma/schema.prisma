@@ -188,21 +188,23 @@ model FeaturedRestaurant {
 }
 
 model Ticket {
-  id           String   @id @default(cuid())
-  ticketNumber String   @unique
-  type         String
-  status       String   @default("open")
-  priority     String?
-  subject      String
-  senderName   String
-  senderEmail  String
-  senderPhone  String?
-  businessName String?
-  data         Json
-  messages     Json     @default("[]")
-  assignedTo   String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String          @id @default(cuid())
+  ticketNumber  String          @unique
+  type          String
+  status        String          @default("open")
+  priority      String?
+  subject       String
+  senderName    String
+  senderEmail   String
+  senderPhone   String?
+  businessName  String?
+  data          Json
+  messages      Json            @default("[]")
+  assignedTo    String?
+  emailThreadId String?         @unique
+  thread        TicketMessage[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   @@index([status])
   @@index([type])
@@ -774,4 +776,75 @@ model FloorZone {
   @@index([locationId])
   @@index([businessId])
   @@map("floor_zones")
+}
+
+model BlogPost {
+  id            String     @id @default(cuid())
+  title         String     @default("")
+  slug          String     @unique
+  excerpt       String     @default("")
+  content       Json
+  coverUrl      String     @default("")
+  coverAlt      String     @default("")
+  author        String     @default("SeatPing Team")
+  category      String     @default("")
+  categoryColor String     @default("info")
+  tags          String[]   @default([])
+  status        BlogStatus @default(DRAFT)
+  revision      Int        @default(1)
+  publishedAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([status, updatedAt])
+  @@map("blog_posts")
+}
+
+enum BlogStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model BlogMedia {
+  id        String   @id
+  kind      String
+  url       String?
+  createdAt DateTime @default(now())
+
+  @@map("blog_media")
+}
+
+model TicketMessage {
+  id             String    @id @default(cuid())
+  ticketId       String
+  ticket         Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender         String
+  senderEmail    String?
+  message        String
+  quotedText     String?
+  isTeamResponse Boolean
+  status         String    @default("RECEIVED")
+  emailMessageId String?   @unique
+  inReplyTo      String?
+  references     String[]  @default([])
+  requestId      String?   @unique
+  sendStartedAt  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([ticketId, createdAt])
+  @@index([status, createdAt])
+  @@map("ticket_messages")
+}
+
+model TicketInboxSync {
+  id          String    @id
+  uidValidity String    @default("")
+  lastUid     Int       @default(0)
+  leaseOwner  String?
+  leaseUntil  DateTime?
+  lastSyncAt  DateTime?
+  hasError    Boolean   @default(false)
+
+  @@map("ticket_inbox_sync")
 }

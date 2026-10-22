@@ -192,6 +192,10 @@ Use the existing visual style: dark navy, white, subtle borders, clean SaaS feel
 cards and modern spacing. No orange primary CTAs, no overly playful restaurant imagery, and
 chair or ping icon treatments stay minimal and consistent.
 
+Edit actions that display an icon use Hugeicons `Edit03Icon`, matching the restaurant review
+Edit action.
+Render it with `HugeiconsIcon` and `className="size-4"` throughout the product.
+
 Every new page that fetches data must show an accessible skeleton loader while its initial
 request is pending. Reuse `Skeleton`, `ListSkeleton`, or `RouteLoading` and match the final
 content layout. Full-height cards must have skeletons that fill the available content area,
@@ -252,6 +256,68 @@ blur or submit, and normalize to a number (or null or undefined when optional) b
 
 Business operator UI under `/business/*` supports English and Indonesian. Do not hardcode new
 business-facing copy without considering the i18n pattern.
+
+Resizable textareas must allow vertical resizing and must not shrink below their default
+height. Set matching initial and minimum heights, preserve the minimum at every breakpoint,
+and prevent horizontal resizing from overflowing the layout.
+
+All mobile dialogs across the repository must follow the Ticket Details modal in Admin
+Ticket Management (`src/pages/Admin.tsx`) as the approved design reference. Reuse the shared
+Dialog or AlertDialog components and `modalMobileClasses` instead of creating separate
+mobile modal designs. Keep headers left aligned unless the user explicitly requests a
+centered header, reserve space for the close button beside the title, and wrap long titles,
+identifiers, and contact information. The centered Campaign Template Review header is an
+intentional exception, with the status pill below the title on mobile and beside the title
+on desktop. Apply the same mobile layout and typography to custom dialog shells.
+
+- Mobile below `sm`: preserve `modalMobileClasses`, with 16px viewport gutters, a maximum
+  width of 448px, 16px padding, 16px corner radius, and a maximum height of 85dvh. Scroll
+  vertically inside the dialog and never overflow horizontally. Stack form fields and footer
+  actions in one column, with 8px between actions.
+- Desktop: use 24px padding, 16px corner radius, a maximum height of 85dvh, and a maximum
+  width of 672px for standard forms. Use a wider dialog only when its content requires it.
+  Arrange related fields in two columns where useful and align footer actions to the right.
+- On desktop: use `text-title font-medium` for dialog and section titles
+  (16px/20px, weight 500), `text-body` for descriptions and content (14px/20px, weight 400),
+  `text-label font-medium` for labels and actions (13px/16px, weight 500), and `text-caption`
+  for supporting metadata. Use `text-ink` and `text-ink-subtle` for hierarchy.
+- Mobile dialogs and sheets inherit the smaller type tokens scoped to `role="dialog"`
+  and `role="alertdialog"` in `src/index.css`: 15px titles, 13px body text and input values,
+  12px labels and actions, and 11px supporting metadata. Keep titles, labels, and actions
+  at weight 500 and body text at weight 400. Reuse the shared type classes so custom
+  dialog shells inherit this scale without changing typography outside mobile dialogs.
+- Mobile modal inputs and dropdowns use compact 32px controls with `text-body` (13px,
+  weight 400), matching Ticket Details and Edit Customer. Action buttons use 32px controls
+  with `text-label font-medium` (12px, weight 500). Keep 8px between labels and controls,
+  16px between fields, and 20px between form sections. Preserve multiline textarea minimum
+  heights and desktop control sizing. Do not make controls taller than the compact type
+  scale requires.
+- Stacked modal footer buttons must retain their full control height. Use `shrink-0`
+  and apply `flex-1` only to horizontal desktop rows, never to mobile column actions.
+- Chat dialogs may keep their composer fixed within the dialog while the message thread
+  scrolls independently. Keep a reachable close control, a visible composer, and a usable
+  thread at narrow widths and short viewport heights.
+- Dialog navigation uses the shared `Tabs`, `TabsList`, and `TabsTrigger` components.
+  Match Business Campaigns with one full-width pale gray rounded track, equal-width tabs,
+  a navy (`bg-slate-900`) active tab with white text, muted inactive text, no active shadow,
+  and the shared focus states.
+  Keep labels at `text-label font-medium` on desktop and mobile, with the shared control
+  heights and 4px track padding. Preserve arrow-key navigation and visible focus.
+
+Mobile operational lists must follow the Business Campaigns History row layout. Keep the
+item title and its status or channel badges on one line, with the title taking the remaining
+width and badges retaining their full size. Use `min-w-0`, `truncate`, and a shrinking title
+to show an ellipsis instead of wrapping or overflowing. Keep the full title available in the
+detail view and its `title` attribute. Place secondary metadata below in `text-caption`,
+truncate long metadata, and keep dates or supplementary results on a compact subsequent
+line. Use `text-body font-medium` for item names and the shared badge tones and sizes.
+Preserve the existing desktop layout when adapting a list for mobile.
+
+Blog authoring stays on the main article canvas. Keep the title, excerpt, author, editable
+category pill, cover controls, and incremental footer tags there instead of adding an article
+settings sidebar. Category colors use shared badge tones and persist with the article. Generate
+slugs from titles with unique suffixes when necessary, and derive cover alt text from the uploaded
+filename without its extension.
 
 ## Environment Variables
 

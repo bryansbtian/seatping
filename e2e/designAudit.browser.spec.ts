@@ -199,6 +199,10 @@ test("business settings use standard language, timezone, and time controls with 
     await expect(language).toHaveText("English");
     await page.getByRole("button", { name: "Edit Restaurant Profile", exact: true }).click();
     const dialog = page.getByRole("dialog");
+    if (width < 640) {
+      controlHeight = "32px";
+      largeControlHeight = "32px";
+    }
     const timezone = dialog.getByRole("combobox", { name: "Timezone", exact: true });
     await timezone.scrollIntoViewIfNeeded();
     await expect(timezone).toHaveCSS("height", controlHeight);
@@ -218,6 +222,136 @@ test("business settings use standard language, timezone, and time controls with 
     await dialog.getByRole("button", { name: "Close", exact: true }).click();
   }
 });
+
+for (const width of [320, 390, 1440]) {
+  test(`restaurant profile editor keeps cards and controls inside the modal at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await mockBusiness(page);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/business/settings");
+    await page.getByRole("button", { name: "Edit Restaurant Profile", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Edit Restaurant Profile", exact: true });
+    await expect(dialog).toBeVisible();
+    await expect
+      .poll(() => dialog.evaluate((element) => element.scrollWidth - element.clientWidth))
+      .toBeLessThanOrEqual(1);
+    let expectedWidth = 672;
+    let expectedPadding = "24px";
+    let expectedInputFont = "14px";
+    let expectedTitleFont = "16px";
+    let expectedBodyFont = "14px";
+    let expectedLabelFont = "13px";
+    const expectedControlHeight = "32px";
+    if (width < 640) {
+      expectedWidth = width - 32;
+      expectedPadding = "16px";
+      expectedInputFont = "13px";
+      expectedTitleFont = "15px";
+      expectedBodyFont = "13px";
+      expectedLabelFont = "12px";
+    }
+    await expect
+      .poll(() =>
+        dialog.evaluate(
+          (element) =>
+            element.getAnimations().filter((animation) => animation.playState === "running").length,
+        ),
+      )
+      .toBe(0);
+    await expect
+      .poll(async () => {
+        const bounds = await dialog.boundingBox();
+        if (!bounds) {
+          return Number.POSITIVE_INFINITY;
+        }
+        return Math.max(
+          Math.abs(bounds.width - expectedWidth),
+          Math.abs(bounds.x - (width - bounds.width) / 2),
+          bounds.height - 844 * 0.85,
+        );
+      })
+      .toBeLessThanOrEqual(1);
+    await expect(dialog).toHaveCSS("padding", expectedPadding);
+    await expect(dialog).toHaveCSS("border-radius", "16px");
+    const title = dialog.getByRole("heading", { name: "Edit Restaurant Profile", exact: true });
+    await expect(title).toHaveCSS("font-size", expectedTitleFont);
+    await expect(title).toHaveCSS("line-height", "20px");
+    await expect(title).toHaveCSS("font-weight", "500");
+    await expect(title).toHaveCSS("font-family", /Inter/);
+    const sectionTitles = dialog.locator(".shadow-sm.border > div > h3");
+    expect(await sectionTitles.count()).toBeGreaterThanOrEqual(8);
+    for (const heading of await sectionTitles.all()) {
+      await expect(heading).toHaveCSS("font-size", expectedTitleFont);
+      await expect(heading).toHaveCSS("font-weight", "500");
+      const description = heading.locator("..").locator(":scope > p").first();
+      await expect(description).toHaveCSS("font-size", expectedBodyFont);
+      await expect(description).toHaveCSS("font-weight", "400");
+    }
+    await expect(
+      dialog.getByText("This information powers your customer-facing restaurant page.", {
+        exact: true,
+      }),
+    ).toHaveCSS("font-size", expectedBodyFont);
+    const labels = dialog.locator("label");
+    expect(await labels.count()).toBeGreaterThan(15);
+    for (const label of await labels.all()) {
+      await expect(label).toHaveCSS("font-size", expectedLabelFont);
+      await expect(label).toHaveCSS("font-weight", "500");
+    }
+    const inputs = dialog.locator('input:not([type="file"]), textarea');
+    expect(await inputs.count()).toBeGreaterThan(15);
+    for (const input of await inputs.all()) {
+      await expect(input).toHaveCSS("font-size", expectedInputFont);
+    }
+    const name = dialog.getByLabel("Restaurant Name", { exact: true });
+    await expect(name).toHaveCSS("height", expectedControlHeight);
+    const description = dialog.getByLabel("About / Description", { exact: true });
+    const originalHeight = await description.evaluate(
+      (element) => element.getBoundingClientRect().height,
+    );
+    await description.evaluate((element) => {
+      element.style.height = "1px";
+    });
+    expect(await description.evaluate((element) => element.getBoundingClientRect().height)).toBe(
+      originalHeight,
+    );
+    await expect(description).toHaveCSS("resize", "vertical");
+    const clippedElements = await dialog.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return Array.from(
+        element.querySelectorAll<HTMLElement>(
+          'label, input:not([type="file"]), textarea, button, [role="combobox"], h3, p, .shadow-sm.border',
+        ),
+      )
+        .filter((candidate) => {
+          const rectangle = candidate.getBoundingClientRect();
+          return rectangle.width > 0 && rectangle.height > 0;
+        })
+        .filter((candidate) => {
+          const rectangle = candidate.getBoundingClientRect();
+          return rectangle.left < bounds.left + 15 || rectangle.right > bounds.right - 15;
+        })
+        .map((candidate) => ({
+          tag: candidate.tagName,
+          text: candidate.textContent?.trim().slice(0, 80),
+        }));
+    });
+    expect(clippedElements).toEqual([]);
+    const save = dialog.getByRole("button", { name: "Save Changes", exact: true });
+    await save.scrollIntoViewIfNeeded();
+    await expect(save).toBeInViewport();
+    await expectNoHorizontalOverflow(page);
+    await dialog.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await page.screenshot({
+      path: testInfo.outputPath(`restaurant-profile-modal-${width}.png`),
+      animations: "disabled",
+    });
+  });
+}
 
 test("selected restaurant booking times keep readable contrast while hovered", async ({
   page,

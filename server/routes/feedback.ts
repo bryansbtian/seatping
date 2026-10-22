@@ -1,5 +1,6 @@
 import express from "express";
 import { sendFeedbackEmail, sendFeedbackConfirmationEmail, FeedbackData } from "../lib/email.js";
+import { ticketEmailMessageId } from "../lib/ticketMessages.js";
 import { prisma } from "../lib/prisma.js";
 import { generateTicketNumber } from "../lib/tickets.js";
 import { limitGuard, clientIp, HOURS } from "../lib/rateLimit.js";
@@ -37,7 +38,7 @@ router.post("/submit", express.json(), async (req, res) => {
       return res.status(500).json({ error: "Failed to send feedback email" });
     }
 
-    const ticketNumber = await generateTicketNumber("FEEDBACK");
+    const ticketNumber = await generateTicketNumber();
 
     let priority = data.severity;
     if (!priority) {
@@ -51,6 +52,16 @@ router.post("/submit", express.json(), async (req, res) => {
     const ticket = await prisma.ticket.create({
       data: {
         ticketNumber,
+        emailThreadId: ticketEmailMessageId(),
+        thread: {
+          create: {
+            sender: data.name,
+            senderEmail: data.email,
+            message: data.message,
+            isTeamResponse: false,
+            status: "RECEIVED",
+          },
+        },
         type: "feedback",
         status: "open",
         priority,
@@ -76,6 +87,7 @@ router.post("/submit", express.json(), async (req, res) => {
       data.name,
       ticket.ticketNumber,
       data.subject,
+      ticket.emailThreadId || undefined,
     );
     if (!confirmationSent) {
       console.error("[feedback] Failed to send confirmation email to user");

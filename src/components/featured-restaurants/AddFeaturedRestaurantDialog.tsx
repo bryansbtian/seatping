@@ -230,7 +230,7 @@ export default function AddFeaturedRestaurantDialog({ open, onOpenChange, onAdde
     );
   } else if (results && results.length === 0) {
     searchContent = (
-      <p className="text-body text-ink-subtle">No businesses found. Try another username.</p>
+      <p className="text-body text-ink-subtle">Try another username to find a business.</p>
     );
   } else if (results && !business) {
     searchContent = (

@@ -70,6 +70,7 @@ export default function ListSkeleton({
         className={cn(
           !fill && "space-y-4",
           fill && "absolute inset-0 flex flex-col justify-between gap-4",
+          fill && rowCount === 1 && "justify-end",
         )}
         style={innerStyle}
       >

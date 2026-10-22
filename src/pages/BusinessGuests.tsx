@@ -172,7 +172,11 @@ function initials(name: string): string {
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
-  return <h4 className="text-sm font-semibold text-slate-800 mb-2.5">{children}</h4>;
+  return (
+    <h4 className="text-sm font-semibold text-slate-800 mb-2.5 max-sm:text-title max-sm:font-medium">
+      {children}
+    </h4>
+  );
 }
 
 const BusinessGuests = () => {
@@ -1084,7 +1088,7 @@ function GuestDetailDrawer({
           <SheetDescription>{g.location.label}</SheetDescription>
         </SheetHeader>
 
-        <div className="p-4 sm:p-6 space-y-6">
+        <div className="min-w-0 w-full p-4 sm:p-6 space-y-6">
           <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm p-4 sm:p-5">
             <div className="flex items-start gap-4">
               <div className="w-16 h-16 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-xl font-semibold shrink-0">
@@ -1092,7 +1096,7 @@ function GuestDetailDrawer({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-lg sm:text-xl font-semibold text-slate-800 truncate">
+                  <h3 className="text-lg sm:text-xl font-semibold text-slate-800 truncate max-sm:text-title max-sm:font-medium">
                     {name}
                   </h3>
                   <GuestStatusBadge returning={g.returning} />
@@ -1154,7 +1158,7 @@ function GuestDetailDrawer({
 
           <section>
             <SectionHeading>{t("guests.summary")}</SectionHeading>
-            <p className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-3">
+            <p className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-3 [overflow-wrap:anywhere]">
               {g.summary || t("guests.summary.empty")}
             </p>
           </section>
@@ -1163,7 +1167,7 @@ function GuestDetailDrawer({
             <SectionHeading>{t("guests.tags")}</SectionHeading>
             <div className="flex flex-wrap gap-1.5 mb-2">{tagListContent}</div>
             <form
-              className="flex gap-2"
+              className="flex min-w-0 items-center gap-2"
               onSubmit={(e) => {
                 e.preventDefault();
                 addTag(newTag);
@@ -1173,10 +1177,16 @@ function GuestDetailDrawer({
                 value={newTag}
                 onChange={(e) => setNewTag(e.target.value)}
                 placeholder={t("guests.addTag.placeholder")}
-                className="h-9 bg-slate-50 border-slate-200 text-xs sm:text-sm"
+                className="min-w-0 flex-1 h-9 bg-slate-50 border-slate-200 text-xs sm:text-sm max-sm:h-8 max-sm:text-body max-sm:font-normal"
                 disabled={tagBusy}
               />
-              <Button type="submit" size="sm" disabled={tagBusy || !newTag.trim()}>
+              <Button
+                type="submit"
+                size="icon"
+                className="shrink-0 h-9 w-9 max-sm:h-8 max-sm:w-8"
+                aria-label={t("guests.addTag.placeholder")}
+                disabled={tagBusy || !newTag.trim()}
+              >
                 <HugeiconsIcon icon={Add01Icon} className="w-4 h-4" />
               </Button>
             </form>
@@ -1190,6 +1200,7 @@ function GuestDetailDrawer({
                     onClick={() => addTag(tag)}
                     variant="outline"
                     size="sm"
+                    className="max-w-full h-auto min-h-8 whitespace-normal [overflow-wrap:anywhere]"
                   >
                     + {tag}
                   </Button>
@@ -1207,7 +1218,7 @@ function GuestDetailDrawer({
                 notesDirtyRef.current = true;
               }}
               placeholder={t("guests.notes.placeholder")}
-              className="bg-slate-50 border-slate-200 min-h-[90px] text-xs sm:text-sm"
+              className="min-w-0 max-w-full bg-slate-50 border-slate-200 h-[90px] min-h-[90px] resize-y text-xs sm:text-sm max-sm:text-body max-sm:font-normal"
             />
             <div className="flex justify-end mt-2">
               <Button

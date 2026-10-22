@@ -102,7 +102,7 @@ const CampaignTemplatesAdmin = () => {
   const [status, setStatus] = useState("ALL");
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<AdminTemplate | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState("all");
@@ -168,15 +168,16 @@ const CampaignTemplatesAdmin = () => {
   const clearFilters = () => {
     setDateFilter("all");
   };
-  let emptyDescription =
-    "Business-submitted campaign templates will appear here. Try changing your filters or search.";
+  let emptyDescription = "Try changing your filters or search to find campaign templates.";
   if (activeFilterCount > 0) {
-    emptyDescription = "No templates match your filters. Clear them to see more templates.";
+    emptyDescription = "Clear your filters to see more templates.";
   }
 
   let templatesContent: ReactNode;
   if (loading) {
-    templatesContent = <ListSkeleton fill label="Loading Templates" className="p-0 md:p-0" />;
+    templatesContent = (
+      <ListSkeleton fill label="Loading Templates" className="min-h-10 p-0 md:p-0" />
+    );
   } else if (visibleTemplates.length === 0) {
     templatesContent = (
       <BusinessEmptyState icon={Megaphone01Icon} title="No Templates Found" body={emptyDescription}>
@@ -207,14 +208,19 @@ const CampaignTemplatesAdmin = () => {
             <button
               key={t.id}
               onClick={() => setSelected(t)}
-              className="flex w-full flex-col items-start justify-between gap-1 px-4 py-3 text-left transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:flex-row sm:items-center sm:gap-3"
+              className="flex w-full flex-col items-start justify-between gap-1 p-4 text-left transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:flex-row sm:items-center sm:gap-3 sm:py-3"
             >
               <div className="min-w-0 w-full flex-1 sm:w-auto">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="min-w-0 truncate text-title text-ink" title={t.name}>
+                <div className="flex min-w-0 items-center gap-2 sm:flex-wrap">
+                  <h3
+                    className="min-w-0 flex-1 truncate text-body font-medium text-ink sm:flex-initial"
+                    title={t.name}
+                  >
                     {t.name}
                   </h3>
-                  <TemplateStatusBadge status={t.approvalStatus} />
+                  <span className="shrink-0">
+                    <TemplateStatusBadge status={t.approvalStatus} />
+                  </span>
                 </div>
                 <div className="mt-0.5 truncate text-caption text-ink-subtle">
                   {t.business?.name || t.businessUsername || "Unknown business"}
@@ -490,7 +496,7 @@ function ReviewDialog({
         size="sm"
         onClick={() => copyText(template.slug!, "Username")}
         title="Click to copy username"
-        className="h-auto min-w-0 flex-1 justify-start whitespace-normal break-words px-2 py-1 text-left"
+        className="h-auto min-w-0 flex-1 justify-start whitespace-normal break-words px-0 py-0 text-left text-body font-medium text-slate-800"
       >
         {template.slug}
       </Button>
@@ -526,11 +532,13 @@ function ReviewDialog({
   return (
     <Dialog open={!!template} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
-        <DialogHeader className="min-w-0">
-          <DialogTitle className="flex min-w-0 flex-wrap items-center gap-2 pr-6">
-            {template.name}
-            <TemplateStatusBadge status={template.approvalStatus} />
-          </DialogTitle>
+        <DialogHeader className="min-w-0 text-center sm:text-center [overflow-wrap:anywhere]">
+          <div className="flex min-w-0 flex-col items-center justify-center gap-2 px-8 sm:flex-row">
+            <DialogTitle className="min-w-0">{template.name}</DialogTitle>
+            <div className="flex shrink-0 justify-center">
+              <TemplateStatusBadge status={template.approvalStatus} />
+            </div>
+          </div>
           <DialogDescription>
             {template.business?.name || template.businessUsername}
             {submissionSuffix}
@@ -539,13 +547,17 @@ function ReviewDialog({
 
         <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
           <div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
-            <span className="text-label text-ink-subtle w-32 shrink-0">Template Name</span>
+            <span className="text-label text-ink-subtle w-32 shrink-0 max-sm:font-medium">
+              Template Name
+            </span>
             <span className="text-body font-medium text-slate-800 flex-1 min-w-0 break-words">
               {template.name}
             </span>
           </div>
           <div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
-            <span className="text-label text-ink-subtle w-32 shrink-0">Template Username</span>
+            <span className="text-label text-ink-subtle w-32 shrink-0 max-sm:font-medium">
+              Template Username
+            </span>
             {templateSlugContent}
           </div>
         </div>
@@ -560,7 +572,7 @@ function ReviewDialog({
             {template.locationId && <Row label="Location ID" value={template.locationId} />}
             {template.purpose && <Row label="Campaign Goal" value={template.purpose} />}
             <div>
-              <div className="text-label text-slate-500">Main Message</div>
+              <div className="text-label text-slate-500 max-sm:font-medium">Main Message</div>
               <Button
                 type="button"
                 variant="outline"
@@ -577,7 +589,9 @@ function ReviewDialog({
             )}
             {template.variables.length > 0 && (
               <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:gap-2">
-                <span className="text-label text-slate-500 w-24 shrink-0 pt-1">Variables</span>
+                <span className="text-label text-slate-500 w-24 shrink-0 pt-1 max-sm:font-medium">
+                  Variables
+                </span>
                 <div className="flex flex-wrap gap-1.5 min-w-0">
                   {template.variables.map((v) => (
                     <code
@@ -592,7 +606,9 @@ function ReviewDialog({
             )}
             {Object.keys(template.exampleValues || {}).length > 0 && (
               <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:gap-2">
-                <span className="text-label text-slate-500 w-24 shrink-0 pt-1">Example Values</span>
+                <span className="text-label text-slate-500 w-24 shrink-0 pt-1 max-sm:font-medium">
+                  Example Values
+                </span>
                 <div className="flex flex-col gap-1 min-w-0">
                   {Object.entries(template.exampleValues).map(([k, v]) => (
                     <div key={k} className="flex min-w-0 flex-wrap items-center gap-1.5 text-label">
@@ -666,7 +682,7 @@ function ReviewDialog({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:gap-2">
-      <span className="text-label text-slate-500 w-24 shrink-0">{label}</span>
+      <span className="text-label text-slate-500 w-24 shrink-0 max-sm:font-medium">{label}</span>
       <span className="text-slate-800 break-words min-w-0">{value}</span>
     </div>
   );

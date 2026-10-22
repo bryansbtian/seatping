@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import cookieParser from "cookie-parser";
-import supertest from "supertest";
+import { serveApp } from "../helpers/app.js";
 import { signJwt } from "../../server/lib/auth.js";
 
 const userFindUnique = vi.fn();
@@ -42,12 +42,18 @@ const ORIGINAL_ENV = { ...process.env };
 const LOC = "0123456789abcdef01234567";
 const REVIEW = "76543210fedcba9876543210";
 
-function app() {
+function createApp() {
   const server = express();
   server.use(cookieParser());
   server.use(express.json());
   server.use("/auth", authRouter);
-  return supertest(server);
+  return server;
+}
+
+const client = await serveApp(createApp());
+
+function app() {
+  return client;
 }
 
 function cookie(id = "cust-1"): string {

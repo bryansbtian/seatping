@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import cookieParser from "cookie-parser";
-import supertest from "supertest";
+import { serveApp } from "../helpers/app.js";
 import { signJwt } from "../../server/lib/auth.js";
 
 const locationFindMany = vi.fn();
@@ -49,12 +49,18 @@ const guestsRouter = (await import("../../server/routes/guests.js")).default;
 
 const ORIGINAL_ENV = { ...process.env };
 
-function app() {
+function createApp() {
   const server = express();
   server.use(cookieParser());
   server.use(express.json());
   server.use("/api/guests", guestsRouter);
-  return supertest(server);
+  return server;
+}
+
+const client = await serveApp(createApp());
+
+function app() {
+  return client;
 }
 
 function cookie(businessId = "biz-1"): string {

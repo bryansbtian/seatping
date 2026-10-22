@@ -1,3 +1,4 @@
+import { syncTicketInbox } from "../lib/ticketInbox.js";
 import { Router, type Request, type Response } from "express";
 import expressRateLimit from "express-rate-limit";
 import { runReservationReminderSweep } from "../lib/reservationReminders.js";
@@ -30,6 +31,17 @@ function authorized(req: Request): boolean {
   const header = req.header("authorization") || "";
   return header === `Bearer ${secret}`;
 }
+
+router.all("/ticket-email", cronBurstLimiter, async (req: Request, res: Response) => {
+  if (!authorized(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  try {
+    return res.json({ ok: true, ...(await syncTicketInbox()) });
+  } catch {
+    return res.status(502).json({ error: "Ticket email sync failed" });
+  }
+});
 
 router.all("/reservation-reminders", cronBurstLimiter, async (req: Request, res: Response) => {
   if (!authorized(req)) {

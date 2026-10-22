@@ -23,6 +23,8 @@ import { maskEmail, maskPhone } from "./redact.js";
 export type NotificationChannel = "sms" | "whatsapp" | "email";
 
 export type NotificationJob =
+  | { type: "ticket_reply"; messageId: string }
+  | { type: "ticket_email_sync" }
   | {
       type: "queue_join";
       channel: NotificationChannel;
@@ -239,6 +241,27 @@ async function sendCampaignSms(digits: string, text: string): Promise<string | n
 
 export async function processNotification(job: NotificationJob): Promise<void> {
   switch (job.type) {
+    case "ticket_reply": {
+      const { deliverTicketReply, failTicketReply } = await import("./ticketMessages.js");
+      const reply = await prisma.ticketMessage.findUnique({
+        where: { id: job.messageId },
+        include: { ticket: true },
+      });
+      if (!reply || reply.status !== "PENDING") {
+        return;
+      }
+      if (!(await withinDailyRecipientCap("email", reply.ticket.senderEmail))) {
+        await failTicketReply(reply.id);
+        return;
+      }
+      await deliverTicketReply(job.messageId);
+      return;
+    }
+    case "ticket_email_sync": {
+      const { syncTicketInbox } = await import("./ticketInbox.js");
+      await syncTicketInbox();
+      return;
+    }
     case "queue_join": {
       if (job.channel === "sms") {
         await sendSms(

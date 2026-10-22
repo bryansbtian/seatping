@@ -41,12 +41,14 @@ describe("Admin Sidebar", () => {
     ["/admin/customers", "Customer Management"],
     ["/admin/featured", "Featured Restaurants"],
     ["/admin/templates", "Campaign Templates"],
+    ["/admin/blog", "Blog Management"],
+    ["/admin/blog/post-1/edit", "Blog Management"],
   ])("marks the current section on %s", (route, label) => {
     renderLayout(route);
 
     const nav = screen.getByRole("navigation", { name: "Admin Navigation" });
     const links = within(nav).getAllByRole("link");
-    expect(links).toHaveLength(4);
+    expect(links).toHaveLength(5);
     expect(within(nav).getByRole("link", { name: label }).getAttribute("aria-current")).toBe(
       "page",
     );

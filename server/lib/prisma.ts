@@ -1,4 +1,7 @@
 import { PrismaClient } from "@prisma/client";
+import { guardDevelopmentDatabase } from "./developmentDatabase.js";
+
+guardDevelopmentDatabase();
 
 function buildDatasourceUrl(): string | undefined {
   const raw = process.env.DATABASE_URL;
@@ -18,11 +21,22 @@ function buildDatasourceUrl(): string | undefined {
   return `${raw}${sep}connection_limit=${connectionLimit}`;
 }
 
-const globalForPrisma = global as unknown as { prisma?: PrismaClient };
+const globalForPrisma = global as unknown as {
+  prisma?: PrismaClient;
+  prismaDatasourceUrl?: string;
+  prismaEnvironment?: string;
+};
 
 const datasourceUrl = buildDatasourceUrl();
 
 let prismaClient = globalForPrisma.prisma;
+if (
+  process.env.NODE_ENV === "development" &&
+  (globalForPrisma.prismaDatasourceUrl !== datasourceUrl ||
+    globalForPrisma.prismaEnvironment !== "development")
+) {
+  prismaClient = undefined;
+}
 if (!prismaClient) {
   if (datasourceUrl) {
     prismaClient = new PrismaClient({
@@ -37,3 +51,5 @@ if (!prismaClient) {
 export const prisma = prismaClient;
 
 globalForPrisma.prisma = prisma;
+globalForPrisma.prismaDatasourceUrl = datasourceUrl;
+globalForPrisma.prismaEnvironment = process.env.NODE_ENV;

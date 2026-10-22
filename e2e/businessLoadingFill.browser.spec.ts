@@ -65,6 +65,91 @@ async function expectFilledLoading(page: Page, loading: Locator) {
 }
 
 for (const width of [320, 390, 1440]) {
+  test(`overview placeholders fill the viewport while its account loads at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 768 });
+    await mockBusinessSession(page);
+    let release = () => {};
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route("**/auth/business/me", async (route) => {
+      await pending;
+      await route.fulfill({
+        json: {
+          user: {
+            id: "business-fixture",
+            name: "Example Restaurant",
+            locations: [
+              { id: "location-fixture", displayName: "PIK Avenue", address: "Example Street" },
+            ],
+          },
+        },
+      });
+    });
+    try {
+      await page.goto("/business/overview");
+      const loading = page.getByTestId("overview-loading");
+      await expect(loading.getByRole("status", { name: "Loading Page" })).toBeVisible();
+      await expect(page.getByRole("alert")).toHaveCount(0);
+      for (const height of [768, 568, 320, 1024]) {
+        await page.setViewportSize({ width, height });
+        await expect
+          .poll(() =>
+            loading.evaluate((element) => {
+              const bounds = element.getBoundingClientRect();
+              const placeholders = Array.from(element.querySelectorAll(".animate-pulse")).filter(
+                (placeholder) => placeholder.getBoundingClientRect().height > 0,
+              );
+              const status = element.querySelector("[role='status']")!;
+              const inner = status.firstElementChild!;
+              const innerBounds = inner.getBoundingClientRect();
+              const styles = getComputedStyle(inner);
+              const lastRow = inner.lastElementChild!.getBoundingClientRect();
+              const expectedBottom = innerBounds.bottom - Number.parseFloat(styles.paddingBottom);
+              return {
+                top: bounds.top,
+                viewportFilled: Math.abs(bounds.bottom - window.innerHeight) <= 1,
+                rowsFilled: Math.abs(lastRow.bottom - expectedBottom) <= 1,
+                pageFits:
+                  document.documentElement.scrollHeight <= window.innerHeight + 1 &&
+                  document.documentElement.scrollWidth <= window.innerWidth + 1,
+                clipped: placeholders
+                  .filter((placeholder) => {
+                    const rectangle = placeholder.getBoundingClientRect();
+                    return (
+                      rectangle.top < bounds.top ||
+                      rectangle.bottom > bounds.bottom ||
+                      rectangle.left < bounds.left ||
+                      rectangle.right > bounds.right
+                    );
+                  })
+                  .map((placeholder) => {
+                    const box = placeholder.getBoundingClientRect();
+                    return {
+                      x: box.x,
+                      y: box.y,
+                      width: box.width,
+                      height: box.height,
+                      viewport: window.innerHeight,
+                    };
+                  }),
+              };
+            }),
+          )
+          .toEqual({ top: 0, viewportFilled: true, rowsFilled: true, pageFits: true, clipped: [] });
+      }
+      release();
+      await expect(loading).toHaveCount(0);
+      await expect(
+        page.getByRole("heading", { name: "Hello Example Restaurant!" }).filter({ visible: true }),
+      ).toBeVisible();
+    } finally {
+      release();
+    }
+  });
+
   test(`business loading surfaces fill the remaining workspace at ${width}px`, async ({
     page,
   }, testInfo) => {

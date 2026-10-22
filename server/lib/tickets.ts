@@ -1,6 +1,6 @@
 import { prisma } from "./prisma.js";
 
-export async function generateTicketNumber(type: "SALES" | "FEEDBACK"): Promise<string> {
+export async function generateTicketNumber(): Promise<string> {
   const date = new Date();
   const dateStr = date.toISOString().split("T")[0].replace(/-/g, "");
 
@@ -9,10 +9,10 @@ export async function generateTicketNumber(type: "SALES" | "FEEDBACK"): Promise<
 
   const count = await prisma.ticket.count({
     where: {
-      type: type.toLowerCase(),
+      type: "feedback",
       createdAt: { gte: startOfDay, lte: endOfDay },
     },
   });
 
-  return `${type}-${dateStr}-${String(count + 1).padStart(4, "0")}`;
+  return `FEEDBACK-${dateStr}-${String(count + 1).padStart(4, "0")}`;
 }

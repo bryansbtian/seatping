@@ -103,6 +103,25 @@ describe("prisma datasource url", () => {
 });
 
 describe("prisma client reuse", () => {
+  it("rejects hosted development connections before creating a Prisma client", async () => {
+    process.env.NODE_ENV = "development";
+    process.env.DATABASE_URL = "postgresql://u:p@prod.example.test/seatping_dev";
+    process.env.DIRECT_URL = process.env.DATABASE_URL;
+    await expect(loadPrisma()).rejects.toThrow("Development cannot connect");
+    expect(constructed).toHaveLength(0);
+  });
+  it("does not reuse a client from another environment during development", async () => {
+    process.env.NODE_ENV = "development";
+    process.env.DATABASE_URL = "postgresql://u:p@localhost:5434/seatping_dev";
+    process.env.DIRECT_URL = process.env.DATABASE_URL;
+    vi.resetModules();
+    constructed.length = 0;
+    (globalThis as GlobalWithPrisma).prisma = { marker: "unverified-client" };
+    const mod = await import("../../server/lib/prisma.js");
+    expect(constructed).toHaveLength(1);
+    expect(mod.prisma).not.toEqual({ marker: "unverified-client" });
+    expect(lastOptions().datasourceUrl).toContain("localhost:5434/seatping_dev");
+  });
   it("builds exactly one client per process", async () => {
     await loadPrisma();
 

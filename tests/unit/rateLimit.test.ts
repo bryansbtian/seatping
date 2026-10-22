@@ -325,6 +325,14 @@ describe("the redis backend", () => {
 
     expect(mod.rateLimitBackend).toBe("redis");
   });
+  it("keeps development limits local even when production Redis credentials are present", async () => {
+    process.env.NODE_ENV = "development";
+    const mod = await loadRedisModule();
+    expect(mod.rateLimitBackend).toBe("memory");
+    expect(await mod.consumeQuota("development", "recipient", 60000, 1)).toBe(true);
+    expect(await mod.consumeQuota("development", "recipient", 60000, 1)).toBe(false);
+    expect(limit).not.toHaveBeenCalled();
+  });
 
   it("allows a request redis says is under the limit", async () => {
     limit.mockResolvedValue({ success: true, reset: Date.now() + 1_000 });

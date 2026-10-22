@@ -117,7 +117,7 @@ export function SearchSuggestInput({
     } else if (error) {
       dropdownContent = (
         <div className="px-4 py-3 text-sm text-slate-500 dark:text-ink-subtle">
-          Couldn't load suggestions. Press Search to continue.
+          Press Search to continue without suggestions.
         </div>
       );
     } else if (suggestions.length === 0) {

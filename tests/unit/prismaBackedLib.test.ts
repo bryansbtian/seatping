@@ -51,7 +51,7 @@ describe("generateTicketNumber", () => {
     vi.setSystemTime(new Date("2026-08-12T09:00:00.000Z"));
     ticketCount.mockResolvedValue(0);
 
-    await expect(generateTicketNumber("SALES")).resolves.toBe("SALES-20260812-0001");
+    await expect(generateTicketNumber()).resolves.toBe("FEEDBACK-20260812-0001");
   });
 
   it("continues the daily sequence", async () => {
@@ -59,13 +59,13 @@ describe("generateTicketNumber", () => {
     vi.setSystemTime(new Date("2026-08-12T09:00:00.000Z"));
     ticketCount.mockResolvedValue(41);
 
-    await expect(generateTicketNumber("FEEDBACK")).resolves.toBe("FEEDBACK-20260812-0042");
+    await expect(generateTicketNumber()).resolves.toBe("FEEDBACK-20260812-0042");
   });
 
   it("counts only tickets of the same type within the day", async () => {
     ticketCount.mockResolvedValue(0);
 
-    await generateTicketNumber("FEEDBACK");
+    await generateTicketNumber();
 
     const where = ticketCount.mock.calls[0][0].where;
     expect(where.type).toBe("feedback");

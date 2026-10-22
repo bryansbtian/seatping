@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
-import supertest from "supertest";
+import { serveApp } from "../helpers/app.js";
 
 const runReservationReminderSweep = vi.fn();
 const runDailyCreditRefillSweep = vi.fn();
@@ -32,7 +32,7 @@ async function cronApp() {
   const router = (await import("../../server/routes/cron.js")).default;
   const app = express();
   app.use("/api/cron", router);
-  return supertest(app);
+  return serveApp(app);
 }
 
 beforeEach(() => {

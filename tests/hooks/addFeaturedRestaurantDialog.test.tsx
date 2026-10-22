@@ -116,10 +116,10 @@ describe("Add Featured Restaurant Dialog", () => {
     fireEvent.change(screen.getByLabelText("Business Username"), { target: { value: "example" } });
     fireEvent.keyDown(screen.getByLabelText("Business Username"), { key: "Enter" });
     expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Search unavailable");
-    expect(screen.queryByText("No businesses found. Try another username.")).toBeNull();
+    expect(screen.queryByText("Try another username to find a business.")).toBeNull();
     mocks.api.mockResolvedValueOnce({ businesses: [] });
     fireEvent.click(screen.getByRole("button", { name: "Search", exact: true }));
-    expect(await screen.findByText("No businesses found. Try another username.")).toBeTruthy();
+    expect(await screen.findByText("Try another username to find a business.")).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 

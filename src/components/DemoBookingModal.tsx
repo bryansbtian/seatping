@@ -218,7 +218,11 @@ export default function DemoBookingModal({
         aria-live="polite"
       >
         <HugeiconsIcon icon={CheckmarkCircle02Icon} className="h-10 w-10 text-emerald-600" />
-        <h2 ref={heading} tabIndex={-1} className="text-title text-ink outline-none">
+        <h2
+          ref={heading}
+          tabIndex={-1}
+          className="text-title text-ink outline-none max-sm:font-medium"
+        >
           {t("demo.confirmed")}
         </h2>
         <p className="text-body text-ink-subtle">{t("demo.invitation")}</p>
@@ -382,7 +386,7 @@ export default function DemoBookingModal({
           aria-label={t("demo.times")}
         >
           <div className="mb-5 flex items-center justify-between gap-3 lg:pr-8">
-            <h2 className="text-title">{t("demo.times")}</h2>
+            <h2 className="text-title max-sm:font-medium">{t("demo.times")}</h2>
             <div
               className="flex rounded-control bg-slate-100 p-1"
               role="group"
@@ -413,12 +417,18 @@ export default function DemoBookingModal({
             </div>
           </div>
           {notice && (
-            <p role="status" className="mb-3 text-body leading-relaxed text-ink-subtle">
+            <p
+              role="status"
+              className="mb-3 text-body leading-relaxed text-ink-subtle max-sm:leading-5"
+            >
               {notice}
             </p>
           )}
           {noSlotsAvailable && (
-            <p role="status" className="pb-1 text-body leading-relaxed text-ink-subtle">
+            <p
+              role="status"
+              className="pb-1 text-body leading-relaxed text-ink-subtle max-sm:leading-5"
+            >
               {t("demo.noSlots")}
             </p>
           )}
@@ -487,6 +497,7 @@ export default function DemoBookingModal({
           className={cn(
             "fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] max-w-6xl [translate:-50%_-50%] overflow-y-auto rounded-3xl border border-slate-200 bg-white text-ink shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-[0.98] data-[state=closed]:zoom-out-[0.98] data-[state=open]:slide-in-from-bottom-2 data-[state=closed]:slide-out-to-bottom-1 [animation-duration:250ms] data-[state=closed]:[animation-duration:150ms] ease-out motion-reduce:animate-none",
             hasMeeting && "max-w-4xl",
+            "max-sm:text-body max-sm:font-normal",
           )}
         >
           <div
@@ -507,8 +518,10 @@ export default function DemoBookingModal({
               >
                 SeatPing
               </div>
-              <DialogTitle className="mb-3 text-title">{t("demo.title")}</DialogTitle>
-              <DialogDescription className="leading-relaxed">
+              <DialogTitle className="mb-3 text-title max-sm:font-medium">
+                {t("demo.title")}
+              </DialogTitle>
+              <DialogDescription className="leading-relaxed max-sm:leading-5">
                 {t("demo.description")}
               </DialogDescription>
               <section
@@ -551,7 +564,7 @@ export default function DemoBookingModal({
                       ariaLabel={t("demo.timezone")}
                       searchPlaceholder={t("demo.searchTimezone")}
                       emptyText={t("demo.noTimezone")}
-                      className="control-lg min-w-0 rounded-control text-label font-normal text-ink-subtle"
+                      className="control-lg min-w-0 rounded-control text-label font-normal text-ink-subtle max-sm:text-base"
                       onChange={(zone) => {
                         if (zone === timezone) {
                           return;

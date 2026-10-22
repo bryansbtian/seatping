@@ -81,9 +81,7 @@ describe("Admin Campaign Templates", () => {
 
     expect(await screen.findByRole("heading", { name: "No Templates Found" })).toBeTruthy();
     expect(
-      screen.getByText(
-        "Business-submitted campaign templates will appear here. Try changing your filters or search.",
-      ),
+      screen.getByText("Try changing your filters or search to find campaign templates."),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "All" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByRole("button", { name: "Refresh" })).toBeNull();
@@ -426,9 +424,7 @@ describe("Admin Featured Restaurants Empty State", () => {
     expect(
       await screen.findByRole("heading", { name: "Unable To Load Featured Restaurants" }),
     ).toBeTruthy();
-    expect(
-      screen.getByText("We couldn't load featured restaurants right now. Please try again."),
-    ).toBeTruthy();
+    expect(screen.getByText("Please try again to load featured restaurants.")).toBeTruthy();
     expect(screen.queryByText("Internal server error")).toBeNull();
     expect(screen.queryByRole("heading", { name: "No Featured Restaurants Yet" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Try Again" }));

@@ -1,4 +1,5 @@
-import { beforeEach } from "vitest";
+import { afterAll, beforeEach } from "vitest";
+import { closeTestServers } from "../helpers/app.js";
 import { loadTestEnv } from "../helpers/loadTestEnv.js";
 import { resetExternalMocks } from "./externalMocks.js";
 
@@ -13,3 +14,5 @@ process.env.EMAIL_USER = "sender@test.invalid";
 beforeEach(() => {
   resetExternalMocks();
 });
+
+afterAll(closeTestServers);

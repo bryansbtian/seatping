@@ -594,23 +594,23 @@ export default function RestaurantProfileEditor({
     }
   };
 
-  const cardCls = "bg-white rounded-xl border border-slate-200 shadow-sm";
-  const sectionDesc = "text-gray-600 text-sm md:text-base";
+  const cardCls = "min-w-0 bg-white rounded-xl border border-slate-200 shadow-sm";
+  const sectionDesc = "text-body text-ink-subtle";
 
   let bannerUploadButtonContent: React.ReactNode;
   if (bannerUploading) {
     bannerUploadButtonContent = (
       <>
         <HugeiconsIcon icon={Loading02Icon} className="h-7 w-7 animate-spin" />
-        <span className="text-sm font-medium">{t("rpe.banner.uploading")}</span>
+        <span className="text-body font-medium">{t("rpe.banner.uploading")}</span>
       </>
     );
   } else {
     bannerUploadButtonContent = (
       <>
         <HugeiconsIcon icon={ImageAdd01Icon} className="h-7 w-7" />
-        <span className="text-sm font-medium">{t("rpe.banner.upload")}</span>
-        <span className="text-xs text-slate-400">{t("rpe.banner.recommend")}</span>
+        <span className="text-body font-medium">{t("rpe.banner.upload")}</span>
+        <span className="text-caption text-slate-400">{t("rpe.banner.recommend")}</span>
       </>
     );
   }
@@ -690,7 +690,7 @@ export default function RestaurantProfileEditor({
 
   let photosContent: React.ReactNode;
   if (photos.length === 0) {
-    photosContent = <p className="text-sm text-muted-foreground">{t("rpe.photos.none")}</p>;
+    photosContent = <p className="text-body text-ink-subtle">{t("rpe.photos.none")}</p>;
   } else {
     photosContent = (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -721,7 +721,7 @@ export default function RestaurantProfileEditor({
               onChange={(e) => setPhotoAltLocal(p.id, e.target.value)}
               onBlur={(e) => savePhotoAlt(p.id, e.target.value)}
               placeholder={t("rpe.photos.altPlaceholder")}
-              className="h-8 rounded-none border-0 border-t text-xs focus-visible:ring-0"
+              className="min-w-0 rounded-none border-0 border-t focus-visible:ring-0"
             />
           </div>
         ))}
@@ -770,15 +770,15 @@ export default function RestaurantProfileEditor({
   }
 
   return (
-    <div className="space-y-5 md:space-y-6">
+    <div className="min-w-0 space-y-5 text-body text-ink [overflow-wrap:anywhere] md:space-y-6">
       <Card className={cardCls}>
-        <CardHeader className="p-4 md:p-6">
+        <CardHeader className="min-w-0 p-4 md:p-6">
           <CardTitle className="text-slate-800">{t("rpe.overview.title")}</CardTitle>
           <CardDescription className={sectionDesc}>{t("rpe.overview.desc")}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 p-4 md:p-6 pt-0">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
+        <CardContent className="min-w-0 space-y-4 p-4 md:p-6 pt-0">
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="displayName">{t("rpe.field.restaurantName")}</Label>
               <Input
                 id="displayName"
@@ -786,9 +786,9 @@ export default function RestaurantProfileEditor({
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder={t("rpe.field.restaurantName.ph")}
               />
-              <p className="text-xs text-muted-foreground">{t("rpe.field.restaurantName.help")}</p>
+              <p className="text-caption text-ink-subtle">{t("rpe.field.restaurantName.help")}</p>
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="shortAddress">{t("rpe.field.shortAddress")}</Label>
               <Input
                 id="shortAddress"
@@ -796,11 +796,11 @@ export default function RestaurantProfileEditor({
                 onChange={(e) => setShortAddress(e.target.value)}
                 placeholder={t("rpe.field.shortAddress.ph")}
               />
-              <p className="text-xs text-muted-foreground">{t("rpe.field.shortAddress.help")}</p>
+              <p className="text-caption text-ink-subtle">{t("rpe.field.shortAddress.help")}</p>
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="tagline">{t("rpe.field.tagline")}</Label>
             <Input
               id="tagline"
@@ -810,10 +810,11 @@ export default function RestaurantProfileEditor({
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="description">{t("rpe.field.description")}</Label>
             <Textarea
               id="description"
+              className="h-32 min-h-32 min-w-0 resize-y"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
@@ -821,8 +822,8 @@ export default function RestaurantProfileEditor({
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
+          <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="min-w-0 space-y-2">
               <Label>{t("rpe.field.cuisine")}</Label>
               <Select value={cuisine} onValueChange={setCuisine}>
                 <SelectTrigger>
@@ -837,7 +838,7 @@ export default function RestaurantProfileEditor({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label>{t("rpe.field.priceRange")}</Label>
               <Select value={priceRange} onValueChange={setPriceRange}>
                 <SelectTrigger>
@@ -852,7 +853,7 @@ export default function RestaurantProfileEditor({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label>{t("rpe.field.currency")}</Label>
               <Select value={currency} onValueChange={setCurrency}>
                 <SelectTrigger>
@@ -872,20 +873,24 @@ export default function RestaurantProfileEditor({
       </Card>
 
       <Card className={cardCls}>
-        <CardHeader className="p-4 md:p-6">
+        <CardHeader className="min-w-0 p-4 md:p-6">
           <CardTitle className="text-slate-800">{t("rpe.hours.title")}</CardTitle>
           <CardDescription className={sectionDesc}>{t("rpe.hours.desc")}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 p-4 md:p-6 pt-0">
+        <CardContent className="min-w-0 space-y-3 p-4 md:p-6 pt-0">
           <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-medium text-slate-800">{t("rpe.hours.timezone")}</p>
-              <p className="text-xs text-muted-foreground">{t("rpe.hours.timezoneHelp")}</p>
+            <div className="min-w-0">
+              <p className="text-label font-medium text-ink">{t("rpe.hours.timezone")}</p>
+              <p className="text-caption text-ink-subtle">{t("rpe.hours.timezoneHelp")}</p>
             </div>
-            <TimezoneSelect value={timezone} onChange={setTimezone} className="w-full sm:w-72" />
+            <TimezoneSelect
+              value={timezone}
+              onChange={setTimezone}
+              className="w-full min-w-0 sm:w-72 [&>span]:min-w-0"
+            />
           </div>
 
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             {DAYS.map((d) => {
               const day = openingHours[d];
               const setDay = (patch: Partial<DayHours>) =>
@@ -896,9 +901,9 @@ export default function RestaurantProfileEditor({
               return (
                 <div
                   key={d}
-                  className="grid grid-cols-2 items-center gap-x-3 gap-y-3 py-2 sm:grid-cols-[7rem_1fr_auto]"
+                  className="grid min-w-0 grid-cols-2 items-center gap-x-3 gap-y-3 py-2 sm:grid-cols-[7rem_minmax(0,1fr)_auto]"
                 >
-                  <span className="font-medium capitalize text-slate-800">
+                  <span className="text-label font-medium capitalize text-ink">
                     {t(`rpe.day.${d}` as TKey)}
                   </span>
                   <div className="justify-self-end sm:order-3">
@@ -910,7 +915,7 @@ export default function RestaurantProfileEditor({
                   </div>
                   <div
                     className={cn(
-                      "col-span-2 flex flex-col gap-2 sm:col-span-1 sm:flex-row sm:items-center sm:order-2",
+                      "col-span-2 flex min-w-0 flex-col gap-2 sm:col-span-1 sm:flex-row sm:items-center sm:order-2",
                       !day.enabled && "opacity-50",
                     )}
                   >
@@ -935,7 +940,7 @@ export default function RestaurantProfileEditor({
                       className="w-full min-w-0 sm:flex-1"
                     />
                     {!day.enabled && (
-                      <span className="shrink-0 text-xs font-medium text-slate-400 sm:ml-1">
+                      <span className="shrink-0 text-caption font-medium text-slate-400 sm:ml-1">
                         {t("rpe.hours.closed")}
                       </span>
                     )}
@@ -948,15 +953,15 @@ export default function RestaurantProfileEditor({
       </Card>
 
       <Card className={cardCls}>
-        <CardHeader className="p-4 md:p-6">
+        <CardHeader className="min-w-0 p-4 md:p-6">
           <CardTitle className="text-slate-800">{t("rpe.res.title")}</CardTitle>
           <CardDescription className={sectionDesc}>{t("rpe.res.desc")}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 p-4 md:p-6 pt-0">
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-4">
-            <div>
-              <p className="font-medium text-gray-800">{t("rpe.res.enable")}</p>
-              <p className="text-xs text-muted-foreground">{t("rpe.res.enableHelp")}</p>
+        <CardContent className="min-w-0 space-y-4 p-4 md:p-6 pt-0">
+          <div className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-slate-200 p-4">
+            <div className="min-w-0">
+              <p className="text-label font-medium text-ink">{t("rpe.res.enable")}</p>
+              <p className="text-caption text-ink-subtle">{t("rpe.res.enableHelp")}</p>
             </div>
             <Switch checked={reservationsEnabled} onCheckedChange={setReservationsEnabled} />
           </div>
@@ -964,7 +969,7 @@ export default function RestaurantProfileEditor({
           {reservationsEnabled && (
             <div className="space-y-4 border-t border-slate-200 pt-4">
               <p className={sectionDesc}>{t("rpe.res.controlHelp")}</p>
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 <Label>{t("rpe.res.hours")}</Label>
                 <div className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3 sm:flex-row sm:items-center">
                   <TimeSelect
@@ -975,7 +980,7 @@ export default function RestaurantProfileEditor({
                     aria-label="Reservation start time"
                     className="w-full min-w-0 sm:flex-1"
                   />
-                  <span className="shrink-0 text-center text-sm text-slate-400">
+                  <span className="shrink-0 text-center text-body text-slate-400">
                     {t("rpe.res.to")}
                   </span>
                   <TimeSelect
@@ -987,11 +992,11 @@ export default function RestaurantProfileEditor({
                     className="w-full min-w-0 sm:flex-1"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">{t("rpe.res.hoursHelp")}</p>
+                <p className="text-caption text-ink-subtle">{t("rpe.res.hoursHelp")}</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
+              <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="min-w-0 space-y-2">
                   <Label htmlFor="maxPartySize">{t("rpe.res.maxPartySize")}</Label>
                   <Input
                     id="maxPartySize"
@@ -1000,9 +1005,9 @@ export default function RestaurantProfileEditor({
                     value={reservationSettings.maxPartySize}
                     onChange={(e) => setRS({ maxPartySize: toNumberOrBlank(e.target.value) })}
                   />
-                  <p className="text-xs text-muted-foreground">{t("rpe.res.maxPartySizeHelp")}</p>
+                  <p className="text-caption text-ink-subtle">{t("rpe.res.maxPartySizeHelp")}</p>
                 </div>
-                <div className="space-y-2">
+                <div className="min-w-0 space-y-2">
                   <Label htmlFor="maxPerHour">{t("rpe.res.maxPerHour")}</Label>
                   <Input
                     id="maxPerHour"
@@ -1015,9 +1020,9 @@ export default function RestaurantProfileEditor({
                       })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">{t("rpe.res.maxPerHourHelp")}</p>
+                  <p className="text-caption text-ink-subtle">{t("rpe.res.maxPerHourHelp")}</p>
                 </div>
-                <div className="space-y-2">
+                <div className="min-w-0 space-y-2">
                   <Label htmlFor="bookingWindow">{t("rpe.res.bookingWindow")}</Label>
                   <Input
                     id="bookingWindow"
@@ -1030,9 +1035,9 @@ export default function RestaurantProfileEditor({
                       })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">{t("rpe.res.bookingWindowHelp")}</p>
+                  <p className="text-caption text-ink-subtle">{t("rpe.res.bookingWindowHelp")}</p>
                 </div>
-                <div className="space-y-2">
+                <div className="min-w-0 space-y-2">
                   <Label htmlFor="minNotice">{t("rpe.res.minNotice")}</Label>
                   <Input
                     id="minNotice"
@@ -1045,9 +1050,9 @@ export default function RestaurantProfileEditor({
                       })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">{t("rpe.res.minNoticeHelp")}</p>
+                  <p className="text-caption text-ink-subtle">{t("rpe.res.minNoticeHelp")}</p>
                 </div>
-                <div className="space-y-2">
+                <div className="min-w-0 space-y-2">
                   <Label htmlFor="defaultDuration">{t("rpe.res.duration")}</Label>
                   <Input
                     id="defaultDuration"
@@ -1061,9 +1066,9 @@ export default function RestaurantProfileEditor({
                       })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">{t("rpe.res.durationHelp")}</p>
+                  <p className="text-caption text-ink-subtle">{t("rpe.res.durationHelp")}</p>
                 </div>
-                <div className="space-y-2">
+                <div className="min-w-0 space-y-2">
                   <Label htmlFor="holdTime">{t("rpe.res.hold")}</Label>
                   <Input
                     id="holdTime"
@@ -1077,20 +1082,21 @@ export default function RestaurantProfileEditor({
                       })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">{t("rpe.res.holdHelp")}</p>
+                  <p className="text-caption text-ink-subtle">{t("rpe.res.holdHelp")}</p>
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 <Label htmlFor="cancellationPolicy">{t("rpe.res.cancellation")}</Label>
                 <Textarea
                   id="cancellationPolicy"
+                  className="h-24 min-h-24 min-w-0 resize-y"
                   value={reservationSettings.cancellationPolicy}
                   onChange={(e) => setRS({ cancellationPolicy: e.target.value })}
                   rows={3}
                   placeholder={t("rpe.res.cancellation.ph")}
                 />
-                <p className="text-xs text-muted-foreground">{t("rpe.res.cancellationHelp")}</p>
+                <p className="text-caption text-ink-subtle">{t("rpe.res.cancellationHelp")}</p>
               </div>
             </div>
           )}
@@ -1098,11 +1104,11 @@ export default function RestaurantProfileEditor({
       </Card>
 
       <Card className={cardCls}>
-        <CardHeader className="p-4 md:p-6">
+        <CardHeader className="min-w-0 p-4 md:p-6">
           <CardTitle className="text-slate-800">{t("rpe.banner.title")}</CardTitle>
           <CardDescription className={sectionDesc}>{t("rpe.banner.desc")}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 p-4 md:p-6 pt-0">
+        <CardContent className="min-w-0 space-y-4 p-4 md:p-6 pt-0">
           <input
             ref={bannerInputRef}
             type="file"
@@ -1116,13 +1122,13 @@ export default function RestaurantProfileEditor({
       </Card>
 
       <Card className={cardCls}>
-        <CardHeader className="p-4 md:p-6">
+        <CardHeader className="min-w-0 p-4 md:p-6">
           <CardTitle className="text-slate-800">{t("rpe.photos.title")}</CardTitle>
           <CardDescription className={sectionDesc}>
             {t("rpe.photos.desc", { n: photos.length, max: MAX_PHOTOS })}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 p-4 md:p-6 pt-0">
+        <CardContent className="min-w-0 space-y-4 p-4 md:p-6 pt-0">
           <input
             ref={photosInputRef}
             type="file"
@@ -1132,7 +1138,7 @@ export default function RestaurantProfileEditor({
             onChange={onPhotosSelected}
           />
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">{remainingSlotsText}</p>
+            <p className="text-body text-ink-subtle">{remainingSlotsText}</p>
             <Button
               type="button"
               variant="outline"
@@ -1159,12 +1165,12 @@ export default function RestaurantProfileEditor({
       />
 
       <Card className={cardCls}>
-        <CardHeader className="p-4 md:p-6">
+        <CardHeader className="min-w-0 p-4 md:p-6">
           <CardTitle className="text-slate-800">{t("rpe.details.title")}</CardTitle>
           <CardDescription className={sectionDesc}>{t("rpe.details.desc")}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 p-4 md:p-6 pt-0">
-          <div className="space-y-2">
+        <CardContent className="min-w-0 space-y-4 p-4 md:p-6 pt-0">
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="address">{t("rpe.details.address")}</Label>
             <Input
               id="address"
@@ -1173,8 +1179,8 @@ export default function RestaurantProfileEditor({
               placeholder={t("rpe.details.address.ph")}
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
+          <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="area">{t("rpe.details.area")}</Label>
               <Input
                 id="area"
@@ -1183,17 +1189,17 @@ export default function RestaurantProfileEditor({
                 placeholder={t("rpe.details.area.ph")}
               />
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="city">{t("rpe.details.city")}</Label>
               <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} />
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="country">{t("rpe.details.country")}</Label>
               <Input id="country" value={country} onChange={(e) => setCountry(e.target.value)} />
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+          <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="rp-phone">{t("rpe.details.phone")}</Label>
               <Input
                 id="rp-phone"
@@ -1202,7 +1208,7 @@ export default function RestaurantProfileEditor({
                 placeholder="+62 21 1234 5678"
               />
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="website">{t("rpe.details.website")}</Label>
               <Input
                 id="website"
@@ -1211,7 +1217,7 @@ export default function RestaurantProfileEditor({
                 placeholder="https://..."
               />
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="instagram">{t("rpe.details.instagram")}</Label>
               <Input
                 id="instagram"
@@ -1220,7 +1226,7 @@ export default function RestaurantProfileEditor({
                 placeholder="@yourhandle"
               />
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="maps">{t("rpe.details.maps")}</Label>
               <Input
                 id="maps"
@@ -1234,39 +1240,39 @@ export default function RestaurantProfileEditor({
       </Card>
 
       <Card className={cardCls}>
-        <CardHeader className="p-4 md:p-6">
+        <CardHeader className="min-w-0 p-4 md:p-6">
           <CardTitle className="text-slate-800">{t("rpe.preview.title")}</CardTitle>
           <CardDescription className={sectionDesc}>{t("rpe.preview.desc")}</CardDescription>
         </CardHeader>
-        <CardContent className="p-4 md:p-6 pt-0">
+        <CardContent className="min-w-0 p-4 md:p-6 pt-0">
           <div className="overflow-hidden rounded-xl border">
             {previewCoverContent}
             <div className="space-y-2 p-4">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-xl font-semibold text-gray-900">
+                <h3 className="min-w-0 text-title font-medium text-ink sm:text-xl sm:font-semibold">
                   {displayName || t("rpe.preview.yourRestaurant")}
                 </h3>
                 {publishStatusBadge}
               </div>
-              <p className="text-sm text-gray-500">
+              <p className="text-body text-gray-500">
                 {[cuisine, priceRange, [area, city].filter(Boolean).join(", ")]
                   .filter(Boolean)
                   .join(" · ") || t("rpe.preview.placeholder")}
               </p>
-              {address && <p className="text-sm text-gray-600">{address}</p>}
-              {description && <p className="text-sm text-gray-700">{description}</p>}
+              {address && <p className="text-body text-gray-600">{address}</p>}
+              {description && <p className="text-body text-gray-700">{description}</p>}
             </div>
           </div>
         </CardContent>
       </Card>
 
       <Card className={cardCls}>
-        <CardContent className="flex flex-col gap-4 p-4 md:p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+        <CardContent className="flex min-w-0 flex-col gap-4 p-4 md:p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
             <Switch checked={isPublished} onCheckedChange={setIsPublished} />
-            <div>
-              <p className="font-medium text-gray-800">{t("rpe.publish.title")}</p>
-              <p className="text-xs text-muted-foreground">{t("rpe.publish.help")}</p>
+            <div className="min-w-0">
+              <p className="text-label font-medium text-ink">{t("rpe.publish.title")}</p>
+              <p className="text-caption text-ink-subtle">{t("rpe.publish.help")}</p>
             </div>
           </div>
           <Button onClick={save} disabled={saving} className="w-full sm:w-auto">
@@ -1514,13 +1520,13 @@ function MenuSection({
 
   return (
     <Card className={cardCls}>
-      <CardHeader className="p-4 md:p-6">
+      <CardHeader className="min-w-0 p-4 md:p-6">
         <CardTitle className="text-slate-800">{t("rpe.menu.title")}</CardTitle>
         <CardDescription className={sectionDesc}>{t("rpe.menu.desc")}</CardDescription>
-        <p className="text-xs text-muted-foreground md:text-sm">{t("rpe.menu.subdesc")}</p>
+        <p className="text-caption text-ink-subtle">{t("rpe.menu.subdesc")}</p>
       </CardHeader>
-      <CardContent className="space-y-4 p-4 md:p-6 pt-0">
-        <div className="space-y-1.5">
+      <CardContent className="min-w-0 space-y-4 p-4 md:p-6 pt-0">
+        <div className="min-w-0 space-y-2">
           <Label htmlFor="menu-url">{t("rpe.menu.link")}</Label>
           <Input
             id="menu-url"
@@ -1530,12 +1536,12 @@ function MenuSection({
             value={menuUrl}
             onChange={(e) => setMenuUrl(e.target.value)}
           />
-          <p className="text-xs text-muted-foreground">{t("rpe.menu.linkHelp")}</p>
+          <p className="text-caption text-ink-subtle">{t("rpe.menu.linkHelp")}</p>
         </div>
 
         <div className="flex items-center gap-3 py-1">
           <span className="h-px flex-1 bg-slate-200" />
-          <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+          <span className="text-caption font-medium uppercase tracking-wide text-slate-400">
             {t("rpe.menu.orHighlight")}
           </span>
           <span className="h-px flex-1 bg-slate-200" />
@@ -1544,10 +1550,10 @@ function MenuSection({
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+              <p className="flex items-center gap-1.5 text-label font-medium text-gray-800">
                 <HugeiconsIcon icon={Upload01Icon} size={15} /> {t("rpe.menu.uploadCsv")}
               </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">{t("rpe.menu.csvInclude")}</p>
+              <p className="mt-0.5 text-caption text-ink-subtle">{t("rpe.menu.csvInclude")}</p>
             </div>
             <input
               ref={csvInputRef}
@@ -1568,16 +1574,18 @@ function MenuSection({
           </div>
           {csvError && (
             <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
-              <p className="text-sm font-semibold text-red-600">{csvError.title}</p>
-              <p className="mt-0.5 text-xs text-red-600">{csvError.detail}</p>
+              <p className="text-label font-medium text-red-600">{csvError.title}</p>
+              <p className="mt-0.5 text-caption text-red-600">{csvError.detail}</p>
             </div>
           )}
-          {csvSuccess && <p className="mt-3 text-sm font-medium text-emerald-600">{csvSuccess}</p>}
+          {csvSuccess && (
+            <p className="mt-3 text-body font-medium text-emerald-600">{csvSuccess}</p>
+          )}
         </div>
 
         <div className="flex items-center gap-3 py-1">
           <span className="h-px flex-1 bg-slate-200" />
-          <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+          <span className="text-caption font-medium uppercase tracking-wide text-slate-400">
             {t("rpe.menu.orOneAtATime")}
           </span>
           <span className="h-px flex-1 bg-slate-200" />
@@ -1585,9 +1593,9 @@ function MenuSection({
 
         {form && (
           <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 shadow-sm">
-            <p className="text-sm font-semibold text-gray-800">{menuFormTitle}</p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
+            <p className="text-label font-medium text-gray-800">{menuFormTitle}</p>
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="min-w-0 space-y-2">
                 <Label htmlFor="menu-name">{t("rpe.menu.itemName")}</Label>
                 <Input
                   id="menu-name"
@@ -1597,7 +1605,7 @@ function MenuSection({
                   autoFocus
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-2">
                 <Label htmlFor="menu-category">{t("rpe.menu.category")}</Label>
                 <Input
                   id="menu-category"
@@ -1606,7 +1614,7 @@ function MenuSection({
                   onChange={(e) => setDraft({ category: e.target.value })}
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-2">
                 <Label htmlFor="menu-price">{t("rpe.menu.price", { currency })}</Label>
                 <Input
                   id="menu-price"
@@ -1626,10 +1634,11 @@ function MenuSection({
                 />
               </div>
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="menu-description">{t("rpe.menu.description")}</Label>
               <Textarea
                 id="menu-description"
+                className="h-20 min-h-20 min-w-0 resize-y"
                 placeholder={t("rpe.menu.description.ph")}
                 rows={2}
                 value={form.draft.description || ""}
@@ -1654,16 +1663,16 @@ function MenuSection({
 
         {menu.length === 0 && !form && (
           <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
-            <p className="text-sm text-muted-foreground">{t("rpe.menu.empty")}</p>
+            <p className="text-body text-ink-subtle">{t("rpe.menu.empty")}</p>
           </div>
         )}
 
         {groups.map((group) => (
-          <div key={group.category} className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div key={group.category} className="min-w-0 space-y-2">
+            <p className="text-caption font-medium uppercase tracking-wide text-slate-500">
               {group.category}
             </p>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               {group.items.map(({ item, index }) => (
                 <div
                   key={index}
@@ -1672,15 +1681,15 @@ function MenuSection({
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <p className="font-semibold text-gray-800 break-words">{item.name}</p>
+                        <p className="text-body font-medium text-ink break-words">{item.name}</p>
                         {formatMenuPrice(item.price, item.currency || currency) && (
-                          <span className="text-sm font-medium text-slate-600">
+                          <span className="text-body font-medium text-slate-600">
                             {formatMenuPrice(item.price, item.currency || currency)}
                           </span>
                         )}
                       </div>
                       {item.description && (
-                        <p className="mt-1 text-sm text-slate-500 break-words">
+                        <p className="mt-1 text-body text-slate-500 break-words">
                           {item.description}
                         </p>
                       )}
@@ -1693,7 +1702,7 @@ function MenuSection({
                         onClick={() => openEdit(index)}
                         className="flex-1 gap-1.5 sm:flex-none"
                       >
-                        <HugeiconsIcon icon={Edit03Icon} size={14} /> {t("rpe.menu.edit")}
+                        <HugeiconsIcon icon={Edit03Icon} className="size-4" /> {t("rpe.menu.edit")}
                       </Button>
                       <Button
                         type="button"
@@ -1713,7 +1722,7 @@ function MenuSection({
         ))}
 
         {!form && (
-          <div className="flex gap-2">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
             <Button type="button" variant="outline" onClick={openAdd} className="w-full sm:w-auto">
               <HugeiconsIcon icon={Add01Icon} size={16} /> {t("rpe.menu.addItem")}
             </Button>

@@ -4,7 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Cancel01Icon,
   Download01Icon,
-  Edit02Icon,
+  Edit03Icon,
   Refresh01Icon,
   Search01Icon,
   UsersRoundIcon,
@@ -128,7 +128,7 @@ export default function CustomerManagementAdmin({
           signal: controller.signal,
         });
         if (!response.ok) {
-          throw new Error("Unable to load business accounts. Please try again.");
+          throw new Error("Please try again to load business accounts.");
         }
         const data = await response.json();
         if (controller.signal.aborted) {
@@ -151,7 +151,7 @@ export default function CustomerManagementAdmin({
         }
       } catch {
         if (!controller.signal.aborted) {
-          setError("Unable to load business accounts. Please try again.");
+          setError("Please try again to load business accounts.");
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -285,8 +285,7 @@ export default function CustomerManagementAdmin({
   } else if (rows.length === 0) {
     let body = "Business accounts will appear here once they register.";
     if (query || access !== "all") {
-      body =
-        "No accounts match your search or access filter. Try another search or clear the filters.";
+      body = "Try another search or clear your filters to find business accounts.";
     }
     content = <BusinessEmptyState icon={UsersRoundIcon} title="No Accounts Found" body={body} />;
   } else {
@@ -359,7 +358,7 @@ export default function CustomerManagementAdmin({
                       aria-label={`Edit ${account.username}`}
                       onClick={() => setEditing(account.username)}
                     >
-                      <HugeiconsIcon icon={Edit02Icon} className="size-4" />
+                      <HugeiconsIcon icon={Edit03Icon} className="size-4" />
                       Edit
                     </Button>
                   </td>
@@ -486,7 +485,7 @@ export default function CustomerManagementAdmin({
               />
               <Input
                 aria-label="Search Business Accounts"
-                placeholder="Search By Business, Username, Email, Or Phone"
+                placeholder="Search by business, username, email, or phone"
                 maxLength={200}
                 value={search}
                 onChange={(event) => onSearchChange(event.target.value)}
@@ -695,9 +694,9 @@ function CustomerEditor({
         }
       }}
     >
-      <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Customer</DialogTitle>
+      <DialogContent className="max-h-[85dvh] grid-cols-[minmax(0,1fr)] overflow-y-auto overflow-x-hidden rounded-2xl text-body text-ink sm:max-w-2xl">
+        <DialogHeader className="min-w-0 text-left [overflow-wrap:anywhere]">
+          <DialogTitle className="pr-8">Edit Customer</DialogTitle>
           <DialogDescription>
             Update the account, access, locations, and credits for {username}.
           </DialogDescription>
@@ -705,7 +704,7 @@ function CustomerEditor({
         {loading && <ListSkeleton label="Loading Account Details" />}
         {!loading && error && (
           <div role="alert" className="space-y-3 text-body text-ink-subtle">
-            <p>Unable to load this account. Please try again.</p>
+            <p>Please try again to load this account.</p>
             <Button variant="outline" onClick={() => setAttempt((value) => value + 1)}>
               Try Again
             </Button>
@@ -713,9 +712,9 @@ function CustomerEditor({
         )}
         {!loading && !error && draft && original && (
           <>
-            <fieldset disabled={saving} className="min-w-0 space-y-6">
+            <fieldset disabled={saving} className="min-w-0 space-y-5">
               <section className="space-y-3">
-                <h3 className="text-title text-ink">Account Information</h3>
+                <h3 className="text-title font-medium text-ink">Account Information</h3>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {(
                     [
@@ -729,6 +728,7 @@ function CustomerEditor({
                       <Label htmlFor={`customer-${key}`}>{label}</Label>
                       <Input
                         id={`customer-${key}`}
+                        className="max-sm:h-8 max-sm:text-body"
                         type={type}
                         value={draft[key]}
                         onChange={(event) => setDraft({ ...draft, [key]: event.target.value })}
@@ -738,7 +738,7 @@ function CustomerEditor({
                 </div>
               </section>
               <section className="space-y-3 border-t border-border pt-5">
-                <h3 className="text-title text-ink">Trial & Access</h3>
+                <h3 className="text-title font-medium text-ink">Trial & Access</h3>
                 <div className="flex items-center gap-3">
                   <Switch
                     id="customer-trial"
@@ -762,6 +762,7 @@ function CustomerEditor({
                       <Label htmlFor={`customer-${key}`}>{label}</Label>
                       <Input
                         id={`customer-${key}`}
+                        className="max-sm:h-8 max-sm:text-body"
                         type="number"
                         min={0}
                         value={draft[key]}
@@ -778,7 +779,7 @@ function CustomerEditor({
                 )}
               </section>
               <section className="space-y-3 border-t border-border pt-5">
-                <h3 className="text-title text-ink">Locations</h3>
+                <h3 className="text-title font-medium text-ink">Locations</h3>
                 {draft.locations.length === 0 && (
                   <p className="text-body text-ink-subtle">
                     This business has not added any locations yet.
@@ -787,9 +788,9 @@ function CustomerEditor({
                 {draft.locations.map((location, index) => (
                   <div
                     key={index}
-                    className="space-y-3 rounded-xl border border-border bg-slate-50 p-4"
+                    className="min-w-0 space-y-3 rounded-xl border border-border bg-slate-50 p-4 [overflow-wrap:anywhere]"
                   >
-                    <h4 className="text-label text-ink">
+                    <h4 className="text-label font-medium text-ink">
                       {location.displayName || `Location ${index + 1}`}
                     </h4>
                     <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
@@ -797,6 +798,7 @@ function CustomerEditor({
                         <Label htmlFor={`customer-address-${index}`}>Address</Label>
                         <Input
                           id={`customer-address-${index}`}
+                          className="max-sm:h-8 max-sm:text-body"
                           value={location.address}
                           onChange={(event) =>
                             setDraft({
@@ -815,6 +817,7 @@ function CustomerEditor({
                         <Label htmlFor={`customer-credits-${index}`}>Credits</Label>
                         <Input
                           id={`customer-credits-${index}`}
+                          className="max-sm:h-8 max-sm:text-body"
                           type="number"
                           min={0}
                           value={location.credits}
@@ -843,7 +846,7 @@ function CustomerEditor({
                 ))}
               </section>
             </fieldset>
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:space-x-0">
               <Button variant="outline" disabled={saving} onClick={onClose}>
                 Cancel
               </Button>
@@ -859,8 +862,8 @@ function CustomerEditor({
                 }
               }}
             >
-              <AlertDialogContent>
-                <AlertDialogHeader>
+              <AlertDialogContent className="min-w-0 text-body [overflow-wrap:anywhere]">
+                <AlertDialogHeader className="text-left">
                   <AlertDialogTitle>Confirm Changes</AlertDialogTitle>
                   <AlertDialogDescription asChild>
                     <div className="space-y-3 text-body text-ink-subtle">

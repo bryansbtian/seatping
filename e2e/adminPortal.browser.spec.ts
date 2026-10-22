@@ -20,7 +20,7 @@ async function mockAdminApi(page: Page, authenticated = true) {
   });
   await page.route("**/tickets/stats", (route) =>
     route.fulfill({
-      json: { stats: { total: 0, open: 0, inProgress: 0, closed: 0, sales: 0, feedback: 0 } },
+      json: { stats: { total: 0, open: 0, inProgress: 0, closed: 0, feedback: 0 } },
     }),
   );
   await page.route(/\/tickets\?/, (route) => route.fulfill({ json: { tickets: [] } }));
@@ -562,11 +562,72 @@ test("admin campaign filters use standard buttons and preserve status requests",
   }
 });
 
-for (const width of [390, 1440]) {
+for (const width of [320, 390, 1440]) {
+  test(`admin session and lazy page skeletons reach the bottom at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await mockAdminApi(page);
+    let releaseSession = () => {};
+    let releaseModule = () => {};
+    const sessionPending = new Promise<void>((resolve) => {
+      releaseSession = resolve;
+    });
+    const modulePending = new Promise<void>((resolve) => {
+      releaseModule = resolve;
+    });
+    await page.route("**/auth/admin/session", async (route) => {
+      await sessionPending;
+      await route.fulfill({ json: { authenticated: true } });
+    });
+    await page.route("**/src/components/blog/BlogManagement.tsx*", async (route) => {
+      await modulePending;
+      await route.continue();
+    });
+    try {
+      await page.goto("/admin/blog");
+      const session = page.getByRole("status", { name: "Checking Admin Session", exact: true });
+      await expect(session).toBeVisible();
+      await expect
+        .poll(() =>
+          session.evaluate((element) => {
+            const bounds = element.getBoundingClientRect();
+            const lastRow = element.querySelector('[role="status"] > div')!.lastElementChild!;
+            const lastRowBounds = lastRow.getBoundingClientRect();
+            return (
+              bounds.height >= window.innerHeight &&
+              lastRowBounds.bottom >= window.innerHeight - 65 &&
+              lastRowBounds.bottom <= window.innerHeight
+            );
+          }),
+        )
+        .toBe(true);
+      releaseSession();
+      const module = page.getByRole("status", { name: "Loading Blog Management", exact: true });
+      await expect(module).toBeVisible();
+      await expect
+        .poll(() =>
+          module.evaluate((element) => {
+            const bounds = element.getBoundingClientRect();
+            const lastRow = element.querySelector('[role="status"] > div')!.lastElementChild!;
+            const lastRowBounds = lastRow.getBoundingClientRect();
+            return (
+              Math.abs(window.innerHeight - bounds.bottom - 32) <= 1 &&
+              lastRowBounds.bottom >= bounds.bottom - 25 &&
+              lastRowBounds.bottom <= bounds.bottom
+            );
+          }),
+        )
+        .toBe(true);
+      await expectNoOverflow(page);
+    } finally {
+      releaseSession();
+      releaseModule();
+    }
+  });
+
   test(`admin loading skeletons cover the remaining card without expanding the page at ${width}px`, async ({
     page,
   }, testInfo) => {
-    await page.setViewportSize({ width, height: 1000 });
+    await page.setViewportSize({ width, height: 768 });
     await mockAdminApi(page);
     for (const section of [
       {
@@ -601,6 +662,18 @@ for (const width of [390, 1440]) {
         json: { templates: [], counts: {} },
         status: 200,
       },
+      {
+        path: "/admin/blog",
+        api: /\/api\/admin\/blog\?/,
+        label: "Loading Blog Posts",
+        emptyTitle: "No Blogs Yet",
+        json: {
+          posts: [],
+          filters: { categories: [], authors: [], tags: [] },
+          stats: { total: 0, drafts: 0, published: 0 },
+        },
+        status: 200,
+      },
     ]) {
       let release = () => {};
       const pending = new Promise<void>((resolve) => {
@@ -631,11 +704,19 @@ for (const width of [390, 1440]) {
               const firstRowBounds = inner.firstElementChild!.getBoundingClientRect();
               const lastRowBounds = inner.lastElementChild!.getBoundingClientRect();
               return (
-                bounds.height >= 223 &&
+                bounds.height >= 39 &&
+                Math.abs(window.innerHeight - cardBounds.bottom - 32) <= 1 &&
                 cardBounds.bottom - bounds.bottom <= 25 &&
                 firstRowBounds.top >= innerBounds.top + paddingTop - 1 &&
                 lastRowBounds.bottom >= innerBounds.bottom - paddingBottom - 1 &&
-                lastRowBounds.bottom <= innerBounds.bottom - paddingBottom + 1
+                lastRowBounds.bottom <= innerBounds.bottom - paddingBottom + 1 &&
+                Array.from(inner.children).every((row) => {
+                  const rowBounds = row.getBoundingClientRect();
+                  return (
+                    rowBounds.top >= innerBounds.top + paddingTop - 1 &&
+                    rowBounds.bottom <= innerBounds.bottom - paddingBottom + 1
+                  );
+                })
               );
             }),
           )
@@ -676,7 +757,7 @@ for (const width of [390, 1440]) {
         return route.fulfill({ status: 503, json: { error: internalError } });
       }
       return route.fulfill({
-        json: { stats: { total: 0, open: 0, inProgress: 0, closed: 0, sales: 0, feedback: 0 } },
+        json: { stats: { total: 0, open: 0, inProgress: 0, closed: 0, feedback: 0 } },
       });
     });
     await page.route(/\/tickets\?/, (route) => {
@@ -741,11 +822,13 @@ for (const width of [390, 1440]) {
 
 for (const width of [320, 390, 768, 1440]) {
   test(`ticket workspace filters and rows fit at ${width}px`, async ({ page }, testInfo) => {
+    const ticketSubject =
+      "Help With Reservation Availability For A Large Group Visiting Our Restaurant Next Weekend";
     await page.setViewportSize({ width, height: 1000 });
     await mockAdminApi(page);
     await page.route("**/tickets/stats", (route) =>
       route.fulfill({
-        json: { stats: { total: 8, open: 3, inProgress: 2, closed: 3, sales: 2, feedback: 6 } },
+        json: { stats: { total: 8, open: 3, inProgress: 2, closed: 3, feedback: 6 } },
       }),
     );
     await page.route(/\/tickets\?/, (route) =>
@@ -758,7 +841,7 @@ for (const width of [320, 390, 768, 1440]) {
               type: "feedback",
               status: "open",
               priority: "high",
-              subject: "Help With Reservation Availability",
+              subject: ticketSubject,
               senderName: "Test Operator",
               senderEmail: "operator@example.test",
               businessName: "Example Restaurant",
@@ -791,9 +874,37 @@ for (const width of [320, 390, 768, 1440]) {
     expect(values[2]).toEqual(values[0]);
 
     const card = page.getByTestId("admin-content-card");
-    await expect(
-      card.getByRole("heading", { name: "Help With Reservation Availability" }),
-    ).toBeVisible();
+    const subject = card.getByRole("heading", { name: ticketSubject });
+    await expect(subject).toBeVisible();
+    await expect(subject).toHaveCSS("font-size", "14px");
+    await expect(subject).toHaveCSS("font-weight", "500");
+    await expect(subject).toHaveCSS("color", "rgb(52, 66, 86)");
+    if (width < 640) {
+      await expect(subject).toHaveCSS("white-space", "nowrap");
+      await expect(subject).toHaveCSS("text-overflow", "ellipsis");
+      expect(await subject.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+        true,
+      );
+      const row = subject.locator("xpath=ancestor::button");
+      const firstLine = subject.locator("..");
+      const subjectBounds = (await subject.boundingBox())!;
+      for (const label of ["Open", "High"]) {
+        const badgeBounds = (await firstLine.getByText(label, { exact: true }).boundingBox())!;
+        expect(badgeBounds.x).toBeGreaterThanOrEqual(subjectBounds.x + subjectBounds.width);
+        expect(
+          Math.abs(
+            badgeBounds.y + badgeBounds.height / 2 - subjectBounds.y - subjectBounds.height / 2,
+          ),
+        ).toBeLessThanOrEqual(1);
+      }
+      const metadataBounds = (await row.locator("p").boundingBox())!;
+      const timeBounds = (await row.locator("time:visible").boundingBox())!;
+      expect(metadataBounds.y).toBeGreaterThanOrEqual(subjectBounds.y + subjectBounds.height);
+      expect(Math.abs(metadataBounds.y - timeBounds.y)).toBeLessThanOrEqual(1);
+      expect(await row.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+        false,
+      );
+    }
     for (const label of ["All", "Support", "Feedback"]) {
       const button = card.getByRole("button", { name: label, exact: true });
       await expect(button).toBeInViewport();
@@ -824,16 +935,12 @@ for (const width of [320, 390, 768, 1440]) {
     const search = card.getByRole("textbox", { name: "Search Tickets" });
     await expect(search).toBeVisible();
     await search.fill("example restaurant");
-    await expect(
-      card.getByRole("heading", { name: "Help With Reservation Availability" }),
-    ).toBeVisible();
+    await expect(card.getByRole("heading", { name: ticketSubject })).toBeVisible();
     await search.fill("missing ticket");
     await expect(card.getByRole("heading", { name: "No Tickets Found" })).toBeVisible();
     await card.getByRole("button", { name: "Clear Search And Filters" }).click();
     await expect(search).toHaveValue("");
-    await expect(
-      card.getByRole("heading", { name: "Help With Reservation Availability" }),
-    ).toBeVisible();
+    await expect(card.getByRole("heading", { name: ticketSubject })).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath(`ticket-workspace-${width}.png`),
       animations: "disabled",
@@ -966,6 +1073,8 @@ for (const width of [390, 1440]) {
   test(`campaign review uses neutral surfaces and truthful submission metadata at ${width}px`, async ({
     page,
   }, testInfo) => {
+    const templateTitle =
+      "Birthday Treat For Returning Restaurant Guests Celebrating With Friends And Family";
     await page.setViewportSize({ width, height: 1000 });
     await mockAdminApi(page);
     let approvalStatus = "DRAFT";
@@ -975,7 +1084,7 @@ for (const width of [390, 1440]) {
           templates: [
             {
               id: "review-template",
-              name: "Birthday Treat",
+              name: templateTitle,
               slug: "birthday_treat",
               approvalStatus,
               businessUsername: "demo",
@@ -1009,6 +1118,28 @@ for (const width of [390, 1440]) {
         approvalStatus = status;
         await page.reload();
       }
+      const templateName = page.getByRole("heading", { name: templateTitle, exact: true });
+      await expect(templateName).toHaveCSS("font-size", "14px");
+      await expect(templateName).toHaveCSS("font-weight", "500");
+      await expect(templateName).toHaveCSS("color", "rgb(52, 66, 86)");
+      if (width < 640) {
+        await expect(templateName).toHaveCSS("white-space", "nowrap");
+        await expect(templateName).toHaveCSS("text-overflow", "ellipsis");
+        expect(
+          await templateName.evaluate((element) => element.scrollWidth > element.clientWidth),
+        ).toBe(true);
+        const firstLine = templateName.locator("..");
+        const titleBounds = (await templateName.boundingBox())!;
+        const badgeBounds = (await firstLine.locator("h3 + span").boundingBox())!;
+        expect(badgeBounds.x).toBeGreaterThanOrEqual(titleBounds.x + titleBounds.width);
+        expect(
+          Math.abs(badgeBounds.y + badgeBounds.height / 2 - titleBounds.y - titleBounds.height / 2),
+        ).toBeLessThanOrEqual(1);
+        const row = templateName.locator("xpath=ancestor::button");
+        expect(await row.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+          false,
+        );
+      }
       await page.getByRole("button", { name: /Birthday Treat/ }).click();
       const dialog = page.getByRole("dialog", { name: /Birthday Treat/ });
       await expect(dialog).toBeVisible();
@@ -1018,6 +1149,57 @@ for (const width of [390, 1440]) {
       ).toBeVisible();
       const metadata = dialog.getByText("Template Name", { exact: true }).locator("../..");
       await expect(metadata).toHaveCSS("background-color", "rgb(248, 250, 252)");
+      const title = dialog.getByRole("heading", { name: templateTitle, exact: true });
+      const pill = title.locator("..").locator(":scope > div").first();
+      await expect(title).toHaveCSS("text-align", "center");
+      await expect(title.locator("../..").locator(":scope > p")).toHaveCSS("text-align", "center");
+      await expect(pill).toHaveCSS("justify-content", "center");
+      await expect
+        .poll(() =>
+          title.evaluate((element, mobile) => {
+            const titleBounds = element.getBoundingClientRect();
+            const pillBounds = element.nextElementSibling!.getBoundingClientRect();
+            if (mobile) {
+              return pillBounds.y >= titleBounds.bottom;
+            }
+            return (
+              pillBounds.x >= titleBounds.right + 7.5 &&
+              Math.abs(
+                pillBounds.y + pillBounds.height / 2 - titleBounds.y - titleBounds.height / 2,
+              ) <= 1
+            );
+          }, width < 640),
+        )
+        .toBe(true);
+      const nameValue = metadata.getByText(templateTitle, { exact: true });
+      const usernameValue = metadata.getByRole("button", { name: "birthday_treat", exact: true });
+      let expectedValueFont = "14px";
+      let expectedValueLineHeight = "20px";
+      if (width < 640) {
+        expectedValueFont = "13px";
+        expectedValueLineHeight = "18px";
+      }
+      for (const value of [nameValue, usernameValue]) {
+        await expect(value).toHaveCSS("font-size", expectedValueFont);
+        await expect(value).toHaveCSS("font-weight", "500");
+        await expect(value).toHaveCSS("line-height", expectedValueLineHeight);
+      }
+      const spacing = await metadata.evaluate((element) =>
+        Array.from(element.children).map((row) => {
+          const label = row.children[0].getBoundingClientRect();
+          const value = row.children[1].getBoundingClientRect();
+          return {
+            left: value.left,
+            verticalGap: value.top - label.bottom,
+            gap: getComputedStyle(row).gap,
+          };
+        }),
+      );
+      expect(Math.abs(spacing[0].left - spacing[1].left)).toBeLessThanOrEqual(1);
+      expect(spacing[0].gap).toBe(spacing[1].gap);
+      if (width < 640) {
+        expect(Math.abs(spacing[0].verticalGap - spacing[1].verticalGap)).toBeLessThanOrEqual(1);
+      }
       for (const code of await dialog.locator("code").all()) {
         await expect(code).toHaveCSS("color", "rgb(51, 65, 85)");
         await expect(code).toHaveCSS("background-color", "rgb(255, 255, 255)");
@@ -1128,6 +1310,42 @@ for (const width of [320, 390, 1440]) {
     await edit.click();
     const dialog = page.getByRole("dialog", { name: "Edit Customer" });
     await expect(dialog.getByLabel("Name", { exact: true })).toHaveValue("Example Restaurant");
+    if (width < 640) {
+      await expect
+        .poll(() =>
+          dialog.evaluate(
+            (element) =>
+              element.getAnimations().filter((animation) => animation.playState === "running")
+                .length,
+          ),
+        )
+        .toBe(0);
+      const bounds = (await dialog.boundingBox())!;
+      expect(Math.abs(bounds.width - Math.min(width - 32, 448))).toBeLessThanOrEqual(1);
+      expect(Math.abs(bounds.x - (width - bounds.width) / 2)).toBeLessThanOrEqual(1);
+      expect(bounds.y).toBeGreaterThanOrEqual(0);
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(1000);
+      expect(bounds.height).toBeLessThanOrEqual(851);
+      await expect(dialog).toHaveCSS("padding", "16px");
+      await expect(dialog).toHaveCSS("border-radius", "16px");
+      await expect(dialog.getByRole("heading", { name: "Edit Customer", exact: true })).toHaveCSS(
+        "font-size",
+        "15px",
+      );
+      for (const input of await dialog
+        .locator('input:not([type="checkbox"]):not([type="hidden"])')
+        .all()) {
+        await expect(input).toHaveCSS("font-size", "13px");
+        await expect(input).toHaveCSS("height", "32px");
+      }
+      await expect(dialog.locator("label").filter({ hasText: /^Name$/ })).toHaveCSS(
+        "font-size",
+        "12px",
+      );
+      expect(await dialog.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+        false,
+      );
+    }
     await dialog.getByLabel("Name", { exact: true }).fill("Updated Restaurant");
     await dialog.getByLabel("Base Credits", { exact: true }).fill("450");
     await page.screenshot({
@@ -1428,3 +1646,261 @@ for (const width of [390, 1440]) {
     await expectNoOverflow(page);
   });
 }
+
+test("ticket conversations show email replies as a chat", async ({ page }, testInfo) => {
+  await mockAdminApi(page);
+  const ticket = {
+    id: "ticket-chat",
+    ticketNumber: "FEEDBACK-CHAT-001",
+    type: "feedback",
+    status: "open",
+    priority: "medium",
+    subject: "Refund request due to inability to send WhatsApp messages to Indonesian numbers",
+    senderName: "Guest",
+    senderEmail: "restaurant.customer.with.a.long.email.address@example.test",
+    createdAt: "2026-10-19T10:00:00.000Z",
+    updatedAt: "2026-10-19T10:00:00.000Z",
+    data: { feedbackType: "bug", severity: "medium" },
+    messages: [
+      {
+        id: "initial",
+        sender: "Guest",
+        message: "Please help with my booking.",
+        timestamp: "2026-10-19T10:00:00.000Z",
+        isTeamResponse: false,
+        status: "RECEIVED",
+        quotedText: "",
+      },
+    ],
+  };
+  await page.route(/\/tickets\?/, (route) => route.fulfill({ json: { tickets: [ticket] } }));
+  await page.route("**/tickets/email/status", (route) =>
+    route.fulfill({
+      json: { configured: true, lastSyncAt: "2026-10-19T10:00:00.000Z", hasError: false },
+    }),
+  );
+  await page.route("**/tickets/FEEDBACK-CHAT-001", (route) => route.fulfill({ json: { ticket } }));
+  await page.route("**/tickets/FEEDBACK-CHAT-001/respond", (route) => {
+    const body = route.request().postDataJSON();
+    expect(body.requestId).toMatch(/^[\w-]{36}$/);
+    ticket.messages.push({
+      id: "reply",
+      sender: body.responderName,
+      message: body.message,
+      timestamp: new Date().toISOString(),
+      isTeamResponse: true,
+      status: "SENT",
+      quotedText: "",
+    });
+    return route.fulfill({ json: { ticket } });
+  });
+  await page.goto("/admin/dashboard");
+  await page.getByText(ticket.subject, { exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("tab")).toHaveCount(2);
+  await expect(dialog.getByRole("region", { name: "Ticket Details" })).toContainText("Medium");
+  await dialog.getByRole("tab", { name: "Details", exact: true }).click();
+  await expect(dialog.getByRole("tab", { name: "Details", exact: true })).toHaveCSS(
+    "background-color",
+    "rgb(15, 23, 42)",
+  );
+  await expect(dialog.getByRole("tab", { name: "Details", exact: true })).toHaveCSS(
+    "color",
+    "rgb(255, 255, 255)",
+  );
+  if (testInfo.project.name === "webkit-mobile") {
+    for (const { width, height } of [
+      { width: 320, height: 568 },
+      { width: 320, height: 844 },
+      { width: 390, height: 844 },
+      { width: 600, height: 844 },
+    ]) {
+      await page.setViewportSize({ width, height });
+      await expect
+        .poll(() =>
+          dialog.evaluate(
+            (element) =>
+              element.getAnimations().filter((animation) => animation.playState === "running")
+                .length,
+          ),
+        )
+        .toBe(0);
+      await expect
+        .poll(() => dialog.evaluate((element) => element.scrollWidth - element.clientWidth))
+        .toBeLessThanOrEqual(1);
+      const bounds = (await dialog.boundingBox())!;
+      expect(Math.abs(bounds.width - Math.min(width - 32, 448))).toBeLessThanOrEqual(1);
+      expect(Math.abs(bounds.x - (width - bounds.width) / 2)).toBeLessThanOrEqual(1);
+      expect(bounds.height).toBeLessThanOrEqual(height * 0.85 + 1);
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+      await expect(dialog).toHaveCSS("padding", "16px");
+      await expect(dialog).toHaveCSS("border-radius", "16px");
+      const title = dialog.getByRole("heading", { name: ticket.subject });
+      await expect(title).toHaveCSS("font-size", "15px");
+      await expect(title).toHaveCSS("line-height", "20px");
+      await expect(title).toHaveCSS("font-weight", "500");
+      await expect(title).toHaveCSS("font-family", /Inter/);
+      await expect(dialog.getByText(`Ticket #${ticket.ticketNumber}`, { exact: true })).toHaveCSS(
+        "font-size",
+        "13px",
+      );
+      const details = dialog.getByRole("region", { name: "Ticket Details" });
+      await expect(details.getByText(ticket.senderEmail, { exact: false })).toHaveCSS(
+        "font-size",
+        "13px",
+      );
+      for (const label of ["Status", "Priority"]) {
+        await expect(dialog.locator("label").filter({ hasText: label })).toHaveCSS(
+          "font-size",
+          "12px",
+        );
+        const control = dialog.getByRole("combobox", { name: label, exact: true });
+        await expect(control).toHaveCSS("font-size", "13px");
+        await expect(control).toHaveCSS("height", "32px");
+      }
+      const titleRight = await title.evaluate((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return range.getBoundingClientRect().right;
+      });
+      const closeBounds = (await dialog
+        .getByRole("button", { name: "Close", exact: true })
+        .last()
+        .boundingBox())!;
+      expect(titleRight).toBeLessThanOrEqual(closeBounds.x);
+      await page.screenshot({ path: testInfo.outputPath(`ticket-details-${width}x${height}.png`) });
+    }
+  }
+  for (const label of ["Status", "Priority"]) {
+    const control = dialog.getByRole("combobox", { name: label, exact: true });
+    const field = control.locator("..");
+    const labelBounds = (await field.locator("label").boundingBox())!;
+    const controlBounds = (await control.boundingBox())!;
+    expect(Math.abs(controlBounds.y - labelBounds.y - labelBounds.height - 8)).toBeLessThanOrEqual(
+      1,
+    );
+  }
+  await expect(dialog.getByRole("log", { name: "Ticket Conversation" })).not.toBeVisible();
+  await dialog.getByRole("tab", { name: "Messages", exact: true }).click();
+  await expect(dialog.getByRole("tab", { name: "Messages", exact: true })).toHaveCSS(
+    "background-color",
+    "rgb(15, 23, 42)",
+  );
+  await expect(dialog.getByRole("tab", { name: "Messages", exact: true })).toHaveCSS(
+    "color",
+    "rgb(255, 255, 255)",
+  );
+  const log = dialog.getByRole("log", { name: "Ticket Conversation" });
+  await expect(log).toContainText("Please help with my booking.");
+  const responseBox = dialog.getByLabel("Response Message");
+  const composer = responseBox.locator("xpath=ancestor::form");
+  const sendResponse = dialog.getByRole("button", { name: "Send Response", exact: true });
+  await expect(composer).toHaveAttribute("novalidate", "");
+  await expect(responseBox).not.toHaveAttribute("required", "");
+  await expect(dialog.getByLabel("Your Name")).toHaveValue("SeatPing Team");
+  await expect(
+    dialog.getByText("Replies are emailed to the customer in this conversation."),
+  ).toHaveCount(0);
+  await sendResponse.click();
+  await expect(composer.getByRole("alert")).toHaveText("Enter a response before sending.");
+  await expect(composer.locator(":invalid")).toHaveCount(0);
+  if (testInfo.project.name === "webkit-mobile") {
+    for (const { width, height } of [
+      { width: 320, height: 568 },
+      { width: 320, height: 844 },
+      { width: 390, height: 844 },
+      { width: 600, height: 844 },
+    ]) {
+      await page.setViewportSize({ width, height });
+      await expect(log.getByText("Please help with my booking.", { exact: true })).toHaveCSS(
+        "font-size",
+        "13px",
+      );
+      await expect(responseBox).toHaveCSS("font-size", "13px");
+      await expect(responseBox).toHaveCSS("height", "128px");
+      await expect(dialog.getByLabel("Your Name")).toHaveCSS("height", "32px");
+      await expect(dialog.getByLabel("Your Name")).toHaveCSS("font-size", "13px");
+      await expect(sendResponse).toHaveCSS("height", "32px");
+      await expect(sendResponse).toHaveCSS("font-size", "12px");
+      const footerSpacing = await composer.evaluate((element) => {
+        const name = element
+          .querySelector<HTMLInputElement>("#ticket-responder-name")!
+          .getBoundingClientRect();
+        const send = element
+          .querySelector<HTMLButtonElement>('button[aria-label="Send Response"]')!
+          .getBoundingClientRect();
+        return { gap: send.left - name.right, alignment: Math.abs(name.top - send.top) };
+      });
+      expect(footerSpacing.gap).toBeGreaterThanOrEqual(7.5);
+      expect(footerSpacing.alignment).toBeLessThanOrEqual(1);
+      await expect
+        .poll(() => dialog.evaluate((element) => element.scrollWidth - element.clientWidth))
+        .toBeLessThanOrEqual(1);
+      await expect(log).toHaveCSS("overflow-y", "auto");
+      await expect
+        .poll(() =>
+          dialog.evaluate((element) => {
+            const bounds = element.getBoundingClientRect();
+            const logBounds = element.querySelector("[role='log']")!.getBoundingClientRect();
+            const controls = element.querySelectorAll(
+              "textarea, input[aria-label='Your Name'], button[aria-label='Send Response']",
+            );
+            return {
+              threadVisible: logBounds.height > 40,
+              controlsInside: Array.from(controls).every((control) => {
+                const controlBounds = control.getBoundingClientRect();
+                return (
+                  controlBounds.left >= bounds.left + 16 &&
+                  controlBounds.right <= bounds.right - 16 &&
+                  controlBounds.top >= logBounds.bottom &&
+                  controlBounds.bottom <= bounds.bottom - 16
+                );
+              }),
+            };
+          }),
+        )
+        .toEqual({ threadVisible: true, controlsInside: true });
+      for (const control of [responseBox, dialog.getByLabel("Your Name"), sendResponse]) {
+        await expect(control).toBeInViewport();
+      }
+      await page.screenshot({
+        path: testInfo.outputPath(`ticket-messages-${width}x${height}.png`),
+      });
+    }
+  }
+  const initialHeight = (await responseBox.boundingBox())!.height;
+  await expect(responseBox).toHaveCSS("resize", "vertical");
+  await responseBox.evaluate((element) => {
+    element.style.height = "20px";
+  });
+  expect((await responseBox.boundingBox())!.height).toBe(initialHeight);
+  await responseBox.evaluate((element) => {
+    element.style.height = "200px";
+  });
+  expect((await responseBox.boundingBox())!.height).toBeGreaterThan(initialHeight);
+  await responseBox.evaluate((element) => {
+    element.style.height = "";
+  });
+  await dialog.getByLabel("Your Name").fill("Support");
+  await dialog.getByLabel("Response Message").fill("Your booking is confirmed.");
+  await dialog.getByRole("tab", { name: "Details", exact: true }).click();
+  await dialog.getByRole("tab", { name: "Messages", exact: true }).click();
+  await expect(dialog.getByLabel("Response Message")).toHaveValue("Your booking is confirmed.");
+  await dialog.getByRole("button", { name: "Send Response", exact: true }).click();
+  await expect(log).toContainText("Your booking is confirmed.");
+  await expect(dialog.getByLabel("Response Message")).toHaveValue("");
+  ticket.messages.push({
+    id: "incoming",
+    sender: "Guest",
+    message: "Thank you, that works!",
+    timestamp: new Date().toISOString(),
+    isTeamResponse: false,
+    status: "RECEIVED",
+    quotedText: "> Your booking is confirmed.",
+  });
+  await expect(log).toContainText("Thank you, that works!", { timeout: 10000 });
+  await log.getByRole("button", { name: "Quoted Email" }).click();
+  await expect(log.getByText("> Your booking is confirmed.", { exact: true })).toBeVisible();
+  await expectNoOverflow(page);
+});

@@ -59,7 +59,7 @@ function defaultFetch(input: RequestInfo | URL) {
   if (url === "/tickets/stats") {
     return Promise.resolve(
       jsonResponse({
-        stats: { total: 6, open: 1, inProgress: 2, closed: 3, sales: 4, feedback: 2 },
+        stats: { total: 6, open: 1, inProgress: 2, closed: 3, feedback: 2 },
       }),
     );
   }
@@ -207,6 +207,9 @@ describe("Admin Portal Authentication", () => {
     renderAdmin("/admin/customers");
     await completeLogin();
     expect(await screen.findByLabelText("Search Business Accounts")).toBeTruthy();
+    expect(screen.getByLabelText("Search Business Accounts").getAttribute("placeholder")).toBe(
+      "Search by business, username, email, or phone",
+    );
     expect(fetch).toHaveBeenCalledWith("/auth/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -292,7 +295,7 @@ describe("Admin Portal Sections", () => {
     });
     renderAdmin();
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("Tickets could not be loaded");
+    expect(alert.textContent).toContain("Please try again to load your tickets.");
     unavailable = false;
     fireEvent.click(within(alert).getByRole("button", { name: "Retry Tickets" }));
     expect(await screen.findByRole("heading", { name: "No Tickets Found" })).toBeTruthy();
@@ -369,6 +372,9 @@ describe("Admin Portal Sections", () => {
     );
     fireEvent.click(within(dialog).getByRole("button", { name: "Show Tickets" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Filter" })).toBeNull());
+    expect(
+      vi.mocked(fetch).mock.calls.filter(([input]) => input === "/tickets/stats"),
+    ).toHaveLength(1);
     expect(
       within(screen.getByRole("button", { name: "Filter", exact: true })).getByLabelText(
         "2 Active Filters",
@@ -549,7 +555,7 @@ describe("Admin Portal Sections", () => {
     expect(screen.getByText(/will appear here when they arrive/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "New Ticket" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Support", exact: true }));
-    await screen.findByText("No tickets match your filters. Clear them to see all tickets.");
+    await screen.findByText("Clear your filters to see all tickets.");
     const emptyState = screen.getByRole("heading", { name: "No Tickets Found" }).parentElement!;
     fireEvent.click(within(emptyState).getByRole("button", { name: "Clear Filters" }));
     await screen.findByText(/will appear here when they arrive/);
@@ -578,25 +584,42 @@ describe("Admin Portal Sections", () => {
         body: JSON.stringify({ status: "closed" }),
       }),
     );
-    fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Respond" }), {
+    expect(within(dialog).getAllByRole("tab")).toHaveLength(2);
+    expect(within(dialog).getByRole("region", { name: "Ticket Details" })).toBeTruthy();
+    expect(within(dialog).queryByRole("log", { name: "Ticket Conversation" })).toBeNull();
+    expect(within(dialog).getByText("Type:", { exact: true }).parentElement?.textContent).toBe(
+      "Type: Support",
+    );
+    expect(within(dialog).getByText("Severity:", { exact: true }).parentElement?.textContent).toBe(
+      "Severity: Medium",
+    );
+    fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Messages", exact: true }), {
       button: 0,
       ctrlKey: false,
     });
-    fireEvent.change(await within(dialog).findByPlaceholderText("Enter your name"), {
+    expect(within(dialog).getByRole("log", { name: "Ticket Conversation" })).toBeTruthy();
+    fireEvent.change(await within(dialog).findByLabelText("Your Name"), {
       target: { value: "Test Admin" },
     });
-    fireEvent.change(within(dialog).getByPlaceholderText("Type your response here..."), {
+    fireEvent.change(within(dialog).getByLabelText("Response Message"), {
       target: { value: "We can help with your reservation." },
     });
+    fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Details", exact: true }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Messages", exact: true }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    expect(within(dialog).getByDisplayValue("We can help with your reservation.")).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: "Send Response" }));
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith("/tickets/SP-101/respond", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: "We can help with your reservation.",
-          responderName: "Test Admin",
-        }),
+        credentials: "include",
+        body: expect.stringContaining("We can help with your reservation."),
       }),
     );
   });

@@ -13,7 +13,7 @@ const callSites = ["src/components/ReservationBooking.tsx", "src/pages/ManageRes
 
 function slotGridCount(file: string) {
   const source = readFileSync(path.join(root, file), "utf8");
-  return (source.match(/cn\(SLOT_BUTTON_BASE_CLASS/g) ?? []).length;
+  return (source.match(/cn\(\s*SLOT_BUTTON_BASE_CLASS/g) ?? []).length;
 }
 
 describe("time slot buttons", () => {

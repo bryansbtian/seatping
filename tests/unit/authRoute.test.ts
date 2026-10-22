@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import cookieParser from "cookie-parser";
-import supertest from "supertest";
+import { serveApp } from "../helpers/app.js";
 import bcrypt from "bcrypt";
 import { signJwt } from "../../server/lib/auth.js";
 
@@ -118,12 +118,18 @@ const ADMIN_PASSWORD = "AdminPassw0rd!";
 let ipCounter = 0;
 let recoveryCounter = 0;
 
-function app() {
+function createApp() {
   const server = express();
   server.use(cookieParser());
   server.use(express.json());
   server.use("/auth", authRouter);
-  return supertest(server);
+  return server;
+}
+
+const client = await serveApp(createApp());
+
+function app() {
+  return client;
 }
 
 function freshEmail(): string {
@@ -822,12 +828,15 @@ describe("business signup and login", () => {
     expect(res.status).toBe(500);
   });
 
-  it("reports a missing business profile", async () => {
+  it("expires the business session when its account is missing", async () => {
     assembleBusinessMe.mockResolvedValue(null);
 
     const res = await app().get("/auth/business/me").set("Cookie", businessCookie());
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
+    expect(res.headers["set-cookie"]).toEqual(
+      expect.arrayContaining([expect.stringContaining("sp_auth_business=;")]),
+    );
   });
 
   it("reports a server error on the business profile", async () => {

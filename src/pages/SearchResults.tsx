@@ -191,9 +191,7 @@ export default function SearchResults() {
     content = (
       <div role="alert" className="rounded-xl border border-border bg-card p-8 text-center">
         <h3 className="text-title text-foreground">Unable To Load Restaurants</h3>
-        <p className="mt-2 text-body text-ink-subtle">
-          We couldn't load restaurants right now. Please try again.
-        </p>
+        <p className="mt-2 text-body text-ink-subtle">Please try again to load restaurants.</p>
         <Button
           variant="outline"
           onClick={() => void search.refetch()}

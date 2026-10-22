@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import cookieParser from "cookie-parser";
-import supertest from "supertest";
+import { serveApp } from "../helpers/app.js";
 
 const businessFindUnique = vi.fn();
 const locationFindFirst = vi.fn();
@@ -79,12 +79,18 @@ const LOC = "0123456789abcdef01234567";
 let ipCounter = 0;
 let emailCounter = 0;
 
-function app() {
+function createApp() {
   const server = express();
   server.use(cookieParser());
   server.use(express.json());
   server.use("/api/reservations", reservationsRouter);
-  return supertest(server);
+  return server;
+}
+
+const client = await serveApp(createApp());
+
+function app() {
+  return client;
 }
 
 function freshIp(): string {
