@@ -9,6 +9,8 @@ import RouteLoading from "../../src/components/RouteLoading.js";
 import { lazyRoute } from "../../src/lib/lazyRoute.js";
 
 vi.mock("@/components/AnalyticsRouteTracker", () => ({ default: () => null }));
+vi.mock("@/components/Header", () => ({ default: () => null }));
+vi.mock("@/components/Footer", () => ({ default: () => null }));
 vi.mock("@/components/ui/toaster", () => ({ Toaster: () => null }));
 vi.mock("@/components/ui/sonner", () => ({ Toaster: () => null }));
 vi.mock("@/components/LanguageProvider", () => ({
@@ -269,7 +271,7 @@ describe("lazy routes", () => {
     expect(window.location.pathname).toBe(path);
   });
 
-  it("checks a potential restaurant URL without skeletons and shows 404 when it is missing", async () => {
+  it("shows the restaurant skeleton while checking a potential restaurant URL and then shows 404", async () => {
     let finish = (_value: Response) => {};
     vi.mocked(fetch).mockImplementation(
       () =>
@@ -278,8 +280,8 @@ describe("lazy routes", () => {
         }),
     );
     const { container } = renderAt("/missing/location-123");
-    expect(screen.getByRole("status").textContent).toBe("Loading Page");
-    expect(container.querySelector(".animate-pulse")).toBeNull();
+    expect(screen.getByRole("status", { name: "Loading Restaurant" }).textContent).toBe("");
+    expect(container.querySelector(".animate-pulse")).toBeTruthy();
     expect(screen.queryByRole("heading")).toBeNull();
     await act(async () => {
       finish(new Response(JSON.stringify({ error: "Restaurant not found" }), { status: 404 }));

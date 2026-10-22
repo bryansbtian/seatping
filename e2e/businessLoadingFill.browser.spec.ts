@@ -65,6 +65,68 @@ async function expectFilledLoading(page: Page, loading: Locator) {
 }
 
 for (const width of [320, 390, 1440]) {
+  test(`business pages show the shared no locations card at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 768 });
+    await mockBusinessSession(page);
+    await page.route("**/auth/business/me", (route) =>
+      route.fulfill({
+        json: { user: { id: "business-fixture", name: "Example Restaurant", locations: [] } },
+      }),
+    );
+    const operationalRequests: string[] = [];
+    page.on("request", (request) => {
+      const path = new URL(request.url()).pathname;
+      if (path.startsWith("/api/")) {
+        operationalRequests.push(path);
+      }
+    });
+    for (const section of [
+      "overview",
+      "queue",
+      "reservations",
+      "floor",
+      "guests",
+      "reviews",
+      "campaigns",
+      "performance",
+    ]) {
+      await page.goto(`/business/${section}`);
+      const empty = page.getByTestId("business-no-locations");
+      await expect(empty.getByRole("heading", { name: "No Locations Yet" })).toBeVisible();
+      await expect(
+        empty.getByText(
+          "Add a location to start tracking guests from reservations and waitlist joins.",
+        ),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("main").getByText(/Choose a location|Select a location/),
+      ).toHaveCount(0);
+      const layout = await empty.evaluate((element) => {
+        const card = element.getBoundingClientRect();
+        const main = element.closest("main")!.getBoundingClientRect();
+        const container = element.closest(".container")!;
+        const bottomPadding = Number.parseFloat(getComputedStyle(container).paddingBottom);
+        return {
+          bottomGap: Math.abs(main.bottom - card.bottom - bottomPadding),
+          withinViewport: card.left >= 0 && card.right <= window.innerWidth,
+          overflows: document.documentElement.scrollWidth > window.innerWidth,
+        };
+      });
+      expect(layout.bottomGap).toBeLessThanOrEqual(2);
+      expect(layout.withinViewport).toBe(true);
+      expect(layout.overflows).toBe(false);
+      if (section === "queue") {
+        await page.screenshot({ path: testInfo.outputPath(`no-locations-${width}.png`) });
+      }
+    }
+    expect(operationalRequests).toEqual([]);
+    await page.goto("/business/settings");
+    await expect(page.getByRole("heading", { name: "Location Management" })).toBeVisible();
+    await expect(page.getByTestId("business-no-locations")).toHaveCount(0);
+  });
+
   test(`overview placeholders fill the viewport while its account loads at ${width}px`, async ({
     page,
   }) => {
