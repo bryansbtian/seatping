@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useParams } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/App.js";
@@ -121,19 +121,34 @@ describe("catch-all routing", () => {
     expect(screen.queryAllByTestId("dotted-seating-illustration")).toHaveLength(0);
   });
 
-  it("keeps resolving the known dynamic restaurant route", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          restaurant: { reviews: [], reviewsPage: { nextCursor: null, hasMore: false } },
-        }),
-      ),
-    );
+  it("shows the restaurant skeleton while resolving the known dynamic restaurant route", async () => {
+    let release = (_response: Response) => {};
+    const pending = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    vi.mocked(fetch).mockImplementation((input) => {
+      if (String(input).startsWith("/api/restaurants/")) {
+        return pending;
+      }
+      return emptySession();
+    });
     renderAppAt("/demo-restaurant/location-1");
 
+    const skeleton = await screen.findByRole("status", { name: "Loading Restaurant" });
+    expect(skeleton.textContent).toBe("");
+    expect(skeleton.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Loading Page")).toBeNull();
     expect(screen.queryAllByTestId("dotted-seating-illustration")).toHaveLength(0);
+    await act(async () => {
+      release(
+        Response.json({
+          restaurant: { reviews: [], reviewsPage: { nextCursor: null, hasMore: false } },
+        }),
+      );
+    });
     await waitFor(() => {
       expect(screen.getByText("Restaurant Route: demo-restaurant/location-1")).toBeTruthy();
     });
+    expect(screen.queryByRole("status", { name: "Loading Restaurant" })).toBeNull();
   });
 });

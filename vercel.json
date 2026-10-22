@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "npx prisma migrate deploy && npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install && npx prisma generate",
   "devCommand": "npm run dev",

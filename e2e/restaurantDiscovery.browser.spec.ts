@@ -49,7 +49,7 @@ for (const path of ["/business/dashboard", "/blog/unknown", "/unknown/nested/pag
   });
 }
 
-test("missing restaurant shows 404 after validation without restaurant skeletons", async ({
+test("missing restaurant replaces the restaurant skeleton with 404 after validation", async ({
   page,
 }) => {
   let release = () => {};
@@ -62,8 +62,10 @@ test("missing restaurant shows 404 after validation without restaurant skeletons
   });
   try {
     await page.goto("/missing/location-123");
-    await expect(page.getByRole("status")).toHaveText("Loading Page");
-    await expect(page.locator(".animate-pulse")).toHaveCount(0);
+    const skeleton = page.getByRole("status", { name: "Loading Restaurant" });
+    await expect(skeleton).toBeVisible();
+    await expect(skeleton).toHaveText("");
+    await expect(skeleton.locator(".animate-pulse").first()).toBeVisible();
     release();
     await expect(page.getByRole("heading", { name: /We couldn’t find/ })).toBeVisible();
     await expect(page.getByRole("status")).toHaveCount(0);
@@ -189,9 +191,18 @@ test("search replaces skeletons and restaurant details wait for a valid profile"
     await expect(page.getByRole("article")).toHaveCount(3);
     await expect(searchSkeleton).toHaveCount(0);
     await page.getByRole("link", { name: "View Bistro Downtown" }).click();
-    const profileLoading = page.getByRole("status");
-    await expect(profileLoading).toHaveText("Loading Page");
-    await expect(page.locator(".animate-pulse")).toHaveCount(0);
+    const profileLoading = page.getByRole("status", { name: "Loading Restaurant" });
+    await expect(profileLoading).toHaveText("");
+    await expect(profileLoading.locator(".animate-pulse").first()).toBeVisible();
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    expect(
+      await profileLoading.locator(".animate-pulse").evaluateAll((elements) =>
+        elements.every((element) => {
+          const bounds = element.getBoundingClientRect();
+          return bounds.left >= 0 && bounds.right <= window.innerWidth;
+        }),
+      ),
+    ).toBe(true);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);

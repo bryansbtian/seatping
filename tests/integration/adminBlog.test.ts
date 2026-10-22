@@ -90,6 +90,20 @@ const fields = () => ({
 });
 
 describe("Admin Blog API", () => {
+  it("returns zero counts and empty filters when no posts exist", async () => {
+    const response = await (
+      await api()
+    )
+      .get("/api/admin/blog?search=&status=ALL&sort=updated&category=&author=&tag=")
+      .set("Cookie", adminCookie());
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      posts: [],
+      stats: { total: 0, drafts: 0, published: 0 },
+      filters: { categories: [], authors: [], tags: [] },
+    });
+  });
+
   it("rejects anonymous, customer, and business sessions for reads and mutations", async () => {
     for (const cookie of ["", customerCookie("guest"), businessCookie("business")]) {
       for (const method of ["get", "post", "put", "delete"] as const) {

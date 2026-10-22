@@ -151,18 +151,13 @@ export default function BlogManagement() {
             className="min-w-0 border-t p-4 last:border-l first:col-span-2 first:border-t-0 sm:border-l sm:border-t-0 sm:p-5 sm:first:col-span-1 sm:first:border-l-0"
           >
             <p className="text-label text-ink-subtle">{item.label}</p>
-            {item.value !== undefined && (
+            {(item.value !== undefined || query.isError) && (
               <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums text-ink">
-                {item.value}
+                {item.value ?? 0}
               </p>
             )}
             {item.value === undefined && !query.isError && (
               <Skeleton className="mt-2 h-7 w-10 sm:h-8" />
-            )}
-            {item.value === undefined && query.isError && (
-              <p className="mt-2 text-3xl">
-                <span className="text-caption text-ink-subtle">Unavailable</span>
-              </p>
             )}
           </div>
         ))}
@@ -353,7 +348,7 @@ export default function BlogManagement() {
               <BusinessEmptyState
                 icon={BookOpen01Icon}
                 title="Unable To Load Blogs"
-                body="Please try again to load blog posts."
+                body={errorMessage(query.error)}
               >
                 <Button variant="outline" onClick={() => void query.refetch()}>
                   Retry
