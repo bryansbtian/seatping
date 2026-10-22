@@ -303,8 +303,14 @@ for (const [name, path, heading] of [
 for (const path of ["/help", "/", "/#featured"]) {
   test(`Featured Restaurants scrolls below the header from ${path}`, async ({ page }) => {
     await page.goto(path, { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => document.fonts.ready);
+    if (path !== "/help") {
+      await expect(page.getByText("No featured restaurants yet.")).toBeVisible();
+    }
     await page.getByRole("contentinfo").getByRole("link", { name: "Featured Restaurants" }).click();
     await expect(page).toHaveURL("/#featured");
+    await expect(page.getByText("No featured restaurants yet.")).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
     await expect(
       page.getByRole("heading", { name: "Featured Restaurants", exact: true }),
     ).toBeInViewport();
@@ -312,13 +318,39 @@ for (const path of ["/help", "/", "/#featured"]) {
       .poll(() =>
         page.locator("#featured").evaluate((element) => element.getBoundingClientRect().top),
       )
-      .toBeGreaterThanOrEqual(80);
-    const top = await page
-      .locator("#featured")
-      .evaluate((element) => element.getBoundingClientRect().top);
-    expect(top).toBeLessThanOrEqual(100);
+      .toBeCloseTo(96, 0);
   });
 }
+
+test("Featured Restaurants stays below the header when loading finishes after navigation", async ({
+  page,
+}) => {
+  let release = () => {};
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/featured-restaurants", async (route) => {
+    await pending;
+    await route.fulfill({ json: { featured: [] } });
+  });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page.getByRole("status", { name: "Loading Featured Restaurants" })).toBeVisible();
+  await page.getByRole("contentinfo").getByRole("link", { name: "Featured Restaurants" }).click();
+  await expect(page).toHaveURL("/#featured");
+  await expect
+    .poll(() =>
+      page.locator("#featured").evaluate((element) => element.getBoundingClientRect().top),
+    )
+    .toBeCloseTo(96, 0);
+  release();
+  await expect(page.getByText("No featured restaurants yet.")).toBeVisible();
+  await expect
+    .poll(() =>
+      page.locator("#featured").evaluate((element) => element.getBoundingClientRect().top),
+    )
+    .toBeCloseTo(96, 0);
+});
 
 test("footer supports keyboard focus and an accessible LinkedIn icon", async ({
   page,
