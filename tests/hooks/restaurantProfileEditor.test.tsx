@@ -51,28 +51,33 @@ beforeEach(() => {
 });
 
 describe("Restaurant Profile Editor", () => {
-  it("fills location details from saved Google Maps data and saves them with Bar selected", async () => {
-    render(<RestaurantProfileEditor location={location} onSaved={vi.fn()} />);
-    expect(input("Area / Neighborhood").value).toBe("Williamsburg");
-    expect(input("City").value).toBe("New York");
-    expect(input("Country").value).toBe("United States");
-    expect(input("Google Maps URL").value).toBe(location.googleMapsUrl);
+  it.each(["Bar", "Indian", "Peruvian", "Latin"])(
+    "fills location details from saved Google Maps data and saves them with %s selected",
+    async (cuisine) => {
+      render(<RestaurantProfileEditor location={location} onSaved={vi.fn()} />);
+      expect(input("Area / Neighborhood").value).toBe("Williamsburg");
+      expect(input("City").value).toBe("New York");
+      expect(input("Country").value).toBe("United States");
+      expect(input("Google Maps URL").value).toBe(location.googleMapsUrl);
 
-    fireEvent.keyDown(screen.getByRole("combobox", { name: "Cuisine Type" }), { key: "ArrowDown" });
-    const bar = await screen.findByRole("option", { name: "Bar", exact: true });
-    fireEvent.click(bar);
-    fireEvent.change(input("Area / Neighborhood"), { target: { value: "South Williamsburg" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
-    await waitFor(() => expect(mocks.api).toHaveBeenCalledOnce());
-    const payload = JSON.parse(mocks.api.mock.calls[0][1].body);
-    expect(payload.restaurantProfile.cuisineTypes).toEqual(["Bar"]);
-    expect(payload.restaurantProfile.details).toMatchObject({
-      area: "South Williamsburg",
-      city: "New York",
-      country: "United States",
-      googleMapsUrl: location.googleMapsUrl,
-    });
-  });
+      fireEvent.keyDown(screen.getByRole("combobox", { name: "Cuisine Type" }), {
+        key: "ArrowDown",
+      });
+      const option = await screen.findByRole("option", { name: cuisine, exact: true });
+      fireEvent.click(option);
+      fireEvent.change(input("Area / Neighborhood"), { target: { value: "South Williamsburg" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+      await waitFor(() => expect(mocks.api).toHaveBeenCalledOnce());
+      const payload = JSON.parse(mocks.api.mock.calls[0][1].body);
+      expect(payload.restaurantProfile.cuisineTypes).toEqual([cuisine]);
+      expect(payload.restaurantProfile.details).toMatchObject({
+        area: "South Williamsburg",
+        city: "New York",
+        country: "United States",
+        googleMapsUrl: location.googleMapsUrl,
+      });
+    },
+  );
 
   it("preserves profile overrides and leaves missing geography blank", () => {
     const view = render(
