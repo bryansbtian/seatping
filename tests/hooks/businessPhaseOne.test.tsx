@@ -129,3 +129,24 @@ describe("Phase 1 overview trial behavior", () => {
     expect(apiMock).not.toHaveBeenCalled();
   });
 });
+
+it("keeps both overview empty-state icons and their circles from shrinking", async () => {
+  render(
+    <BusinessSessionContext.Provider value={context()}>
+      <BusinessOverview />
+    </BusinessSessionContext.Provider>,
+  );
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1);
+  });
+  for (const name of ["No Peak Hours Yet", "No Wait-Time Data Yet"]) {
+    const title = screen.getByRole("heading", { name });
+    const circle = title.previousElementSibling;
+    expect(circle?.classList.contains("h-12")).toBe(true);
+    expect(circle?.classList.contains("w-12")).toBe(true);
+    expect(circle?.classList.contains("shrink-0")).toBe(true);
+    const icon = circle?.querySelector("svg");
+    expect(icon?.classList.contains("h-6")).toBe(true);
+    expect(icon?.classList.contains("w-6")).toBe(true);
+  }
+});

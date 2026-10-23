@@ -207,7 +207,13 @@ describe("reading a restaurant profile with reviews", () => {
           menu: [{ name: "Nasi Goreng" }],
           menuUrl: "https://test.invalid/menu",
           openingHours: { monday: "09:00-22:00" },
-          details: { phone: "+15550001111", city: "Profile City" },
+          details: {
+            phone: "+15550001111",
+            city: "Profile City",
+            instagram: "@sample.restaurant",
+            facebook: "https://www.facebook.com/sample.restaurant",
+            tiktok: "https://www.tiktok.com/@sample.restaurant",
+          },
           isPublished: true,
         },
       },
@@ -223,6 +229,9 @@ describe("reading a restaurant profile with reviews", () => {
     expect(res.body.restaurant.menuUrl).toBe("https://test.invalid/menu");
     expect(res.body.restaurant.phone).toBe("+15550001111");
     expect(res.body.restaurant.city).toBe("Profile City");
+    expect(res.body.restaurant.instagram).toBe("@sample.restaurant");
+    expect(res.body.restaurant.facebook).toBe("https://www.facebook.com/sample.restaurant");
+    expect(res.body.restaurant.tiktok).toBe("https://www.tiktok.com/@sample.restaurant");
   });
 
   it("tolerates a location with no restaurant profile at all", async () => {

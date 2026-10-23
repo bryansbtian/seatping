@@ -49,6 +49,8 @@ const profile: RestaurantProfile = {
   phone: null,
   website: null,
   instagram: null,
+  facebook: null,
+  tiktok: null,
   openingHours: null,
   bannerImageUrl: null,
   photos: [],

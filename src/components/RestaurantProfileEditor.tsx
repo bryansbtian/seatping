@@ -6,6 +6,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { CountryCodeSelect } from "@/components/CountryCodeSelect";
+import { PhoneNumberInput } from "@/components/PhoneNumberInput";
+import { COUNTRY_CODES, splitPhone } from "@shared/countryCodes";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -24,7 +27,6 @@ import {
   Delete02Icon,
   Image01Icon,
   ImageAdd01Icon,
-  Loading02Icon,
   Edit03Icon,
   Upload01Icon,
 } from "@hugeicons/core-free-icons";
@@ -45,6 +47,7 @@ const CUISINE_OPTIONS = [
   "Western",
   "Seafood",
   "Café",
+  "Bar",
   "Fine Dining",
   "Casual Dining",
   "Dessert",
@@ -81,6 +84,10 @@ type DayHours = { enabled: boolean; open: string; close: string };
 type LocationLike = {
   id: string;
   address?: string;
+  area?: string | null;
+  city?: string | null;
+  country?: string | null;
+  googleMapsUrl?: string | null;
   displayName?: string | null;
   queueEnabled?: boolean;
   reservationsEnabled?: boolean;
@@ -188,13 +195,27 @@ export default function RestaurantProfileEditor({
   const [currency, setCurrency] = useState<string>(rp.currency || "IDR");
 
   const [address, setAddress] = useState<string>(details.address || location.address || "");
-  const [area, setArea] = useState<string>(details.area || "");
-  const [city, setCity] = useState<string>(details.city || "Jakarta");
-  const [country, setCountry] = useState<string>(details.country || "Indonesia");
-  const [phone, setPhone] = useState<string>(details.phone || "");
+  const [area, setArea] = useState<string>(details.area || location.area || "");
+  const [city, setCity] = useState<string>(details.city || location.city || "");
+  const [country, setCountry] = useState<string>(details.country || location.country || "");
+  const initialPhone = splitPhone(details.phone || "");
+  const [phoneCountryCode, setPhoneCountryCode] = useState<string>(() => {
+    if (details.phone?.trim().startsWith("+")) {
+      return initialPhone.dial;
+    }
+    const countryOption = COUNTRY_CODES.find(
+      (option) => option.name.toLowerCase() === country.trim().toLowerCase(),
+    );
+    return countryOption?.dial || initialPhone.dial;
+  });
+  const [phone, setPhone] = useState<string>(initialPhone.number);
   const [website, setWebsite] = useState<string>(details.website || "");
   const [instagram, setInstagram] = useState<string>(details.instagram || "");
-  const [googleMapsUrl, setGoogleMapsUrl] = useState<string>(details.googleMapsUrl || "");
+  const [facebook, setFacebook] = useState<string>(details.facebook || "");
+  const [tiktok, setTiktok] = useState<string>(details.tiktok || "");
+  const [googleMapsUrl, setGoogleMapsUrl] = useState<string>(
+    details.googleMapsUrl || location.googleMapsUrl || "",
+  );
 
   let initialBanner: Banner = null;
   if (location.bannerImageUrl) {
@@ -421,32 +442,6 @@ export default function RestaurantProfileEditor({
     }
   };
 
-  const setPhotoAltLocal = (photoId: string, altText: string) =>
-    setPhotos((p) =>
-      p.map((ph) => {
-        if (ph.id === photoId) {
-          return { ...ph, altText };
-        }
-        return ph;
-      }),
-    );
-
-  const savePhotoAlt = async (photoId: string, altText: string) => {
-    try {
-      const res = await api(`/api/locations/${location.id}/photos/${photoId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ altText }),
-      });
-      onMediaChange?.(res.user);
-    } catch (e: any) {
-      toast({
-        title: t("rpe.toast.altFailed.title"),
-        description: e?.message || t("common.pleaseTryAgain"),
-        variant: "destructive",
-      });
-    }
-  };
-
   const save = async () => {
     if (!displayName.trim()) {
       toast({
@@ -476,6 +471,11 @@ export default function RestaurantProfileEditor({
     let selectedCuisineTypes: string[] = [];
     if (cuisine) {
       selectedCuisineTypes = [cuisine];
+    }
+    let savedPhone = "";
+    const phoneDigits = phone.replace(/\D/g, "");
+    if (phoneDigits) {
+      savedPhone = `${phoneCountryCode}${phoneDigits}`;
     }
     const restaurantProfile = {
       ...rpRest,
@@ -511,9 +511,11 @@ export default function RestaurantProfileEditor({
         area: area.trim(),
         city: city.trim(),
         country: country.trim(),
-        phone: phone.trim(),
+        phone: savedPhone,
         website: website.trim(),
         instagram: instagram.trim(),
+        facebook: facebook.trim(),
+        tiktok: tiktok.trim(),
         googleMapsUrl: googleMapsUrl.trim(),
       },
       openingHours: { timezone, ...openingHours },
@@ -600,10 +602,9 @@ export default function RestaurantProfileEditor({
   let bannerUploadButtonContent: React.ReactNode;
   if (bannerUploading) {
     bannerUploadButtonContent = (
-      <>
-        <HugeiconsIcon icon={Loading02Icon} className="h-7 w-7 animate-spin" />
-        <span className="text-body font-medium">{t("rpe.banner.uploading")}</span>
-      </>
+      <span role="status" className="text-body font-medium">
+        {t("rpe.banner.uploading")}
+      </span>
     );
   } else {
     bannerUploadButtonContent = (
@@ -624,8 +625,10 @@ export default function RestaurantProfileEditor({
             <img src={banner.url} alt="Location banner" className="h-full w-full object-cover" />
           </div>
           {bannerUploading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
-              <HugeiconsIcon icon={Loading02Icon} className="mr-2 h-5 w-5 animate-spin" />{" "}
+            <div
+              role="status"
+              className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"
+            >
               {t("rpe.banner.uploading")}
             </div>
           )}
@@ -674,12 +677,7 @@ export default function RestaurantProfileEditor({
 
   let photosUploadButtonContent: React.ReactNode;
   if (photosUploading) {
-    photosUploadButtonContent = (
-      <>
-        <HugeiconsIcon icon={Loading02Icon} size={16} className="animate-spin" />{" "}
-        {t("rpe.photos.uploading")}
-      </>
-    );
+    photosUploadButtonContent = <span role="status">{t("rpe.photos.uploading")}</span>;
   } else {
     photosUploadButtonContent = (
       <>
@@ -716,13 +714,6 @@ export default function RestaurantProfileEditor({
                 <HugeiconsIcon icon={Delete02Icon} size={14} />
               </Button>
             </div>
-            <Input
-              value={p.altText || ""}
-              onChange={(e) => setPhotoAltLocal(p.id, e.target.value)}
-              onBlur={(e) => savePhotoAlt(p.id, e.target.value)}
-              placeholder={t("rpe.photos.altPlaceholder")}
-              className="min-w-0 rounded-none border-0 border-t focus-visible:ring-0"
-            />
           </div>
         ))}
       </div>
@@ -826,7 +817,7 @@ export default function RestaurantProfileEditor({
             <div className="min-w-0 space-y-2">
               <Label>{t("rpe.field.cuisine")}</Label>
               <Select value={cuisine} onValueChange={setCuisine}>
-                <SelectTrigger>
+                <SelectTrigger aria-label={t("rpe.field.cuisine")}>
                   <SelectValue placeholder={t("rpe.field.cuisine.ph")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -1201,12 +1192,20 @@ export default function RestaurantProfileEditor({
           <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 gap-4">
             <div className="min-w-0 space-y-2">
               <Label htmlFor="rp-phone">{t("rpe.details.phone")}</Label>
-              <Input
-                id="rp-phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+62 21 1234 5678"
-              />
+              <div className="flex min-w-0 gap-2">
+                <CountryCodeSelect
+                  value={phoneCountryCode}
+                  onChange={setPhoneCountryCode}
+                  ariaLabel={t("rpe.details.phoneCountryCode")}
+                />
+                <PhoneNumberInput
+                  id="rp-phone"
+                  countryCode={phoneCountryCode}
+                  value={phone}
+                  onValueChange={setPhone}
+                  className="min-w-0 flex-1"
+                />
+              </div>
             </div>
             <div className="min-w-0 space-y-2">
               <Label htmlFor="website">{t("rpe.details.website")}</Label>
@@ -1215,6 +1214,15 @@ export default function RestaurantProfileEditor({
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
                 placeholder="https://..."
+              />
+            </div>
+            <div className="min-w-0 space-y-2">
+              <Label htmlFor="maps">{t("rpe.details.maps")}</Label>
+              <Input
+                id="maps"
+                value={googleMapsUrl}
+                onChange={(e) => setGoogleMapsUrl(e.target.value)}
+                placeholder="https://maps.google.com/..."
               />
             </div>
             <div className="min-w-0 space-y-2">
@@ -1227,14 +1235,26 @@ export default function RestaurantProfileEditor({
               />
             </div>
             <div className="min-w-0 space-y-2">
-              <Label htmlFor="maps">{t("rpe.details.maps")}</Label>
+              <Label htmlFor="facebook">{t("rpe.details.facebook")}</Label>
               <Input
-                id="maps"
-                value={googleMapsUrl}
-                onChange={(e) => setGoogleMapsUrl(e.target.value)}
-                placeholder="https://maps.google.com/..."
+                id="facebook"
+                value={facebook}
+                onChange={(e) => setFacebook(e.target.value)}
+                placeholder="@yourhandle"
               />
             </div>
+            <div className="min-w-0 space-y-2">
+              <Label htmlFor="tiktok">{t("rpe.details.tiktok")}</Label>
+              <Input
+                id="tiktok"
+                value={tiktok}
+                onChange={(e) => setTiktok(e.target.value)}
+                placeholder="@yourhandle"
+              />
+            </div>
+            <p className="text-caption text-ink-subtle md:col-span-2">
+              {t("rpe.details.socialHelp")}
+            </p>
           </div>
         </CardContent>
       </Card>

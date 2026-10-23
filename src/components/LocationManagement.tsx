@@ -46,6 +46,9 @@ interface Location {
   name?: string | null;
   displayName?: string | null;
   address: string;
+  area?: string | null;
+  city?: string | null;
+  country?: string | null;
   shortAddress?: string | null;
   googleMapsUrl?: string | null;
   queue?: unknown[];
@@ -95,17 +98,6 @@ export default function LocationManagement({
   const [editing, setEditing] = useState<Location | null>(null);
   const [qrLocation, setQrLocation] = useState<Location | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const toggleExpanded = (id: string) =>
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
 
   const locations: Location[] = me?.locations || [];
   const maxLocations = me?.maxLocations ?? 1;
@@ -290,14 +282,6 @@ export default function LocationManagement({
       <div className="space-y-3">
         {locations.map((location: Location, index: number) => {
           const short = location.shortAddress || deriveShortAddress(location.address);
-          const isExpanded = expandedIds.has(location.id);
-          const hasFullMore = Boolean(location.address && location.address.trim() !== short.trim());
-          let fullAddressToggleLabel: string;
-          if (isExpanded) {
-            fullAddressToggleLabel = t("loc.hideFullAddress");
-          } else {
-            fullAddressToggleLabel = t("loc.viewFullAddress");
-          }
           return (
             <div
               key={location.id || index}
@@ -328,41 +312,12 @@ export default function LocationManagement({
                   )}
 
                   {location.address && (
-                    <>
-                      <p
-                        className="mt-1 text-xs md:text-sm text-gray-500 truncate"
-                        title={location.address}
-                      >
-                        {short}
-                      </p>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                        {hasFullMore && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleExpanded(location.id)}
-                            aria-expanded={isExpanded}
-                          >
-                            {fullAddressToggleLabel}
-                          </Button>
-                        )}
-                        {location.googleMapsUrl && (
-                          <Button variant="ghost" size="sm" asChild>
-                            <a
-                              href={location.googleMapsUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {t("loc.viewOnMaps")}
-                            </a>
-                          </Button>
-                        )}
-                      </div>
-                      {isExpanded && (
-                        <p className="mt-1 text-xs text-gray-500 break-words">{location.address}</p>
-                      )}
-                    </>
+                    <p
+                      className="mt-1 text-xs md:text-sm text-gray-500 truncate"
+                      title={location.address}
+                    >
+                      {short}
+                    </p>
                   )}
                 </div>
               </div>

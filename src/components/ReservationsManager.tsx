@@ -259,10 +259,12 @@ export default function ReservationsManager({
       </CardHeader>
 
       <CardContent className="flex flex-1 flex-col p-4 md:p-6">
-        {!reservationsEnabled && (
-          <p className="rounded-control border border-dashed border-slate-200 bg-slate-50 p-4 text-body text-ink-subtle">
-            {t("res.enableHint")}
-          </p>
+        {!reservationsEnabled && visible.length === 0 && (
+          <BusinessEmptyState
+            icon={CalendarClockIcon}
+            title={t("res.notEnabled")}
+            body={t("res.enableHint")}
+          />
         )}
 
         {reservationsEnabled && visible.length === 0 && (

@@ -36,6 +36,7 @@ import { EditReviewDialog, type EditableReview } from "@/components/EditReviewDi
 import { formatTimeLabel } from "@/components/timeOptions";
 import ReservationBooking from "@/components/ReservationBooking";
 import { formatEnteredPhone } from "@shared/phone";
+import { socialProfileLink } from "@/lib/socialProfiles";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
   Call02Icon,
@@ -45,6 +46,8 @@ import {
   GlobeIcon,
   Image01Icon,
   InstagramIcon,
+  Facebook01Icon,
+  TiktokIcon,
   Restaurant02Icon,
   Location01Icon,
   Edit03Icon,
@@ -435,6 +438,9 @@ export default function RestaurantPage() {
       Boolean(restaurant.address) ||
       Boolean(restaurant.phone) ||
       Boolean(restaurant.website) ||
+      Boolean(restaurant.instagram) ||
+      Boolean(restaurant.facebook) ||
+      Boolean(restaurant.tiktok) ||
       restaurant.cuisineTypes.length > 0 ||
       Boolean(restaurant.priceRange) ||
       Boolean(restaurant.openingHours);
@@ -859,7 +865,7 @@ export default function RestaurantPage() {
                   {r.phone && (
                     <DetailRow
                       icon={Call02Icon}
-                      label="Phone number"
+                      label="Phone Number"
                       value={
                         <a
                           href={`tel:${r.phone}`}
@@ -896,9 +902,9 @@ export default function RestaurantPage() {
                       }
                     />
                   )}
-                  {r.instagram && (
-                    <DetailRow icon={InstagramIcon} label="Instagram" value={r.instagram} />
-                  )}
+                  <SocialProfileRow platform="instagram" value={r.instagram} />
+                  <SocialProfileRow platform="facebook" value={r.facebook} />
+                  <SocialProfileRow platform="tiktok" value={r.tiktok} />
                 </div>
 
                 {r.openingHours && (
@@ -917,7 +923,7 @@ export default function RestaurantPage() {
                     </div>
                     {r.openingHours.timezone && (
                       <p className="mt-2 text-xs text-slate-400">
-                        Timezone: {r.openingHours.timezone}
+                        Timezone: {r.openingHours.timezone.replace(/_/g, " ")}
                       </p>
                     )}
                   </div>
@@ -1555,5 +1561,36 @@ function ReviewCard({
         </div>
       )}
     </div>
+  );
+}
+
+function SocialProfileRow({
+  platform,
+  value,
+}: {
+  platform: "instagram" | "facebook" | "tiktok";
+  value: string | null;
+}) {
+  const profile = socialProfileLink(platform, value);
+  if (!profile) {
+    return null;
+  }
+  const icons = { instagram: InstagramIcon, facebook: Facebook01Icon, tiktok: TiktokIcon };
+  const labels = { instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok" };
+  return (
+    <DetailRow
+      icon={icons[platform]}
+      label={labels[platform]}
+      value={
+        <a
+          href={profile.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-slate-900 underline-offset-4 hover:underline break-all"
+        >
+          {profile.handle}
+        </a>
+      }
+    />
   );
 }
