@@ -1,99 +1,147 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowLeft02Icon } from "@hugeicons/core-free-icons";
+import { BookOpen01Icon } from "@hugeicons/core-free-icons";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SEO from "@/components/SEO";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import BlogCard from "@/components/blog/BlogCard";
+import PublicBlogLoading from "@/components/blog/PublicBlogLoading";
+import { publicBlogRequest } from "@/lib/publicBlogApi";
+import { BLOG_DESCRIPTION, BLOG_TITLE, type PublicBlogList } from "@shared/publicBlog";
 
-const Blog = () => {
+export default function Blog() {
+  const [params] = useSearchParams();
+  const category = params.get("category") || "";
+  const page = Math.max(1, Math.min(100000, Math.floor(Number(params.get("page"))) || 1));
+  const query = useQuery({
+    queryKey: ["public-blog", category, page],
+    queryFn: ({ signal }) =>
+      publicBlogRequest<PublicBlogList>(
+        `?${new URLSearchParams({ category, page: String(page) })}`,
+        signal,
+      ),
+    retry: false,
+  });
+  const pagePath = (nextPage: number, nextCategory = category) => {
+    const search = new URLSearchParams();
+    if (nextCategory) {
+      search.set("category", nextCategory);
+    }
+    if (nextPage > 1) {
+      search.set("page", String(nextPage));
+    }
+    if (search.size) {
+      return `/blog?${search}`;
+    }
+    return "/blog";
+  };
   return (
-    <div className="flex min-h-screen flex-col bg-white">
-      <SEO
-        title="Blog | SeatPing"
-        description="The SeatPing blog is under construction. Ideas for smarter queues, smoother service, and better guest relationships are on the way."
-        canonical="/blog"
-      />
+    <div className="flex min-h-screen flex-col bg-white text-ink">
+      <SEO title="Blog | SeatPing" description={BLOG_DESCRIPTION} canonical={pagePath(page)} />
       <Header />
-      <main className="flex flex-1 items-end justify-center px-6 pt-28 sm:pt-32">
-        <div className="w-full max-w-xl text-center">
-          <svg
-            data-construction="true"
-            aria-hidden="true"
-            focusable="false"
-            viewBox="0 0 320 200"
-            fill="none"
-            className="mx-auto mb-8 w-64 max-w-full text-slate-900 sm:w-72"
-          >
-            <path d="M24 180H296" stroke="#e2e8f0" strokeWidth="2" strokeLinecap="round" />
-            <path
-              d="M76 180V30H100V180M76 150L100 126L76 102L100 78L76 54M76 30L100 54"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M44 58V44H258V58H44ZM100 30L258 44M88 30L44 44"
-              fill="#f1f5f9"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinejoin="round"
-            />
-            <path d="M64 180H112" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            <g data-construction-load="true">
-              <path d="M218 58V100M198 116L218 100L238 116" stroke="currentColor" strokeWidth="2" />
-              <rect
-                x="198"
-                y="116"
-                width="40"
-                height="22"
-                rx="3"
-                fill="#e2e8f0"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-            </g>
-            <rect
-              x="166"
-              y="158"
-              width="40"
-              height="22"
-              rx="3"
-              fill="#f1f5f9"
-              stroke="#94a3b8"
-              strokeWidth="2"
-            />
-            <rect
-              x="210"
-              y="158"
-              width="40"
-              height="22"
-              rx="3"
-              fill="#f1f5f9"
-              stroke="#94a3b8"
-              strokeWidth="2"
-            />
-          </svg>
-          <p className="mb-3 text-label font-medium text-slate-500">SeatPing Blog</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-            Under Construction
+      <main className="container mx-auto flex min-h-svh flex-1 flex-col px-4 pt-24 sm:pt-28">
+        <header className="mb-10 sm:mb-14">
+          <p className="mb-4 text-label font-medium text-ink-subtle">BLOG</p>
+          <h1 className="max-w-4xl text-3xl font-semibold leading-[1.12] tracking-tight sm:text-4xl lg:text-5xl">
+            {BLOG_TITLE}
           </h1>
-          <p className="mx-auto mt-4 max-w-md text-body leading-relaxed text-slate-600 sm:text-base">
-            Ideas for smarter queues, smoother service, and better guest relationships are coming
-            soon.
+          <p className="mt-6 max-w-2xl text-base leading-relaxed text-ink-subtle sm:text-lg">
+            {BLOG_DESCRIPTION}
           </p>
-          <Button asChild variant="outline" className="mt-7">
-            <Link to="/">
-              <HugeiconsIcon icon={ArrowLeft02Icon} className="h-4 w-4" aria-hidden="true" />
-              Back to Home
-            </Link>
-          </Button>
-        </div>
+        </header>
+        {query.isPending && <PublicBlogLoading />}
+        {query.isError && (
+          <div
+            role="alert"
+            className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center"
+          >
+            <h2 className="text-title">Unable To Load Articles</h2>
+            <p className="text-body text-ink-subtle">Please try again in a moment.</p>
+            <Button variant="outline" onClick={() => void query.refetch()}>
+              Try Again
+            </Button>
+          </div>
+        )}
+        {query.isSuccess && (
+          <>
+            <nav
+              aria-label="Blog Categories"
+              className="mb-6 flex gap-1 overflow-x-auto border-b border-slate-200"
+            >
+              {["", ...query.data.categories].map((item) => {
+                let current: "page" | undefined;
+                if (item === category) {
+                  current = "page";
+                }
+                return (
+                  <Button
+                    key={item}
+                    asChild
+                    static
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "shrink-0 rounded-none border-0 border-b-2 border-transparent px-4 text-ink-subtle hover:bg-transparent hover:text-ink",
+                      item === category && "border-b-slate-900 text-ink",
+                    )}
+                  >
+                    <Link to={pagePath(1, item)} aria-current={current}>
+                      {item || "All"}
+                    </Link>
+                  </Button>
+                );
+              })}
+            </nav>
+            {query.data.posts.length === 0 && (
+              <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
+                <HugeiconsIcon
+                  icon={BookOpen01Icon}
+                  className="size-8 text-slate-400"
+                  aria-hidden="true"
+                />
+                <h2 className="text-title">No Articles Yet</h2>
+                <p className="max-w-sm text-body text-ink-subtle">
+                  New stories and practical guides will appear here once they’re published.
+                </p>
+                {(category || page > 1) && (
+                  <Button asChild variant="outline">
+                    <Link to="/blog">View All Articles</Link>
+                  </Button>
+                )}
+              </div>
+            )}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {query.data.posts.map((post) => (
+                <BlogCard key={post.slug} post={post} />
+              ))}
+            </div>
+            {query.data.totalPages > 1 && (
+              <nav
+                aria-label="Blog Pagination"
+                className="mt-10 flex items-center justify-center gap-4"
+              >
+                {page > 1 && (
+                  <Button asChild variant="outline">
+                    <Link to={pagePath(page - 1)}>Previous</Link>
+                  </Button>
+                )}
+                <span className="text-caption text-ink-subtle">
+                  Page {page} of {query.data.totalPages}
+                </span>
+                {page < query.data.totalPages && (
+                  <Button asChild variant="outline">
+                    <Link to={pagePath(page + 1)}>Next</Link>
+                  </Button>
+                )}
+              </nav>
+            )}
+          </>
+        )}
       </main>
       <Footer />
     </div>
   );
-};
-
-export default Blog;
+}

@@ -1,43 +1,168 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Blog from "../../src/pages/Blog.js";
+import BlogArticle from "../../src/pages/BlogArticle.js";
+import BlogCover from "../../src/components/blog/BlogCover.js";
+import { newBlogFields } from "../../shared/blog.js";
+import { BLOG_TITLE } from "../../shared/publicBlog.js";
 
 vi.mock("@/components/Header", () => ({ default: () => <header>SeatPing</header> }));
-
-describe("Blog construction page", () => {
-  it("explains the construction state and includes the public footer", () => {
-    render(
-      <MemoryRouter initialEntries={["/blog"]}>
-        <Blog />
-      </MemoryRouter>,
-    );
-    expect(screen.getByRole("heading", { name: "Under Construction", level: 1 })).toBeTruthy();
-    expect(
-      screen.getByText(
-        "Ideas for smarter queues, smoother service, and better guest relationships are coming soon.",
-      ),
-    ).toBeTruthy();
-    expect(screen.getAllByRole("contentinfo")).toHaveLength(1);
-    const resources = within(screen.getByRole("navigation", { name: "Resources" }));
-    expect(resources.getByRole("link", { name: "Blog" }).getAttribute("href")).toBe("/blog");
-    expect(document.title).toBe("Blog | SeatPing");
-    expect(document.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe(
-      "https://www.seatping.biz/blog",
-    );
-    expect(screen.getByRole("main").querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
-  });
-
-  it("lets visitors return to the homepage", () => {
-    render(
-      <MemoryRouter initialEntries={["/blog"]}>
+const post = {
+  ...newBlogFields(),
+  title: "Better Guest Experiences",
+  slug: "better-guests",
+  category: "Guides",
+  content: {
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text: "A practical guest guide." }] }],
+  },
+  publishedAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-02T00:00:00.000Z",
+};
+function mount(path = "/blog") {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/blog" element={<Blog />} />
-          <Route path="/" element={<p>Public Homepage</p>} />
+          <Route path="/blog/:slug" element={<BlogArticle />} />
         </Routes>
-      </MemoryRouter>,
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+beforeEach(() => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+});
+afterEach(() => vi.unstubAllGlobals());
+
+describe("Public Blog", () => {
+  it("fills the initial request with an accessible skeleton without showing an empty state", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise(() => {})),
     );
-    fireEvent.click(screen.getByRole("link", { name: "Back to Home" }));
-    expect(screen.getByText("Public Homepage")).toBeTruthy();
+    mount();
+    expect(screen.getByRole("status", { name: "Loading Blog Posts" })).toBeTruthy();
+    expect(screen.queryByText("No Articles Yet")).toBeNull();
+    expect(screen.getByText("BLOG")).toBeTruthy();
+  });
+  it("shows published cards, follows category links and opens an article", async () => {
+    const fetcher = vi.fn((url: string) => {
+      if (url.endsWith("/related")) {
+        return Promise.resolve(Response.json({ posts: [] }));
+      }
+      if (url.startsWith("/api/blog/better-guests")) {
+        return Promise.resolve(Response.json({ post }));
+      }
+      return Promise.resolve(
+        Response.json({
+          posts: [{ ...post, readingMinutes: 1 }],
+          categories: ["Guides"],
+          page: 1,
+          totalPages: 1,
+        }),
+      );
+    });
+    vi.stubGlobal("fetch", fetcher);
+    mount();
+    await screen.findByRole("heading", { name: post.title });
+    fireEvent.click(
+      within(screen.getByRole("navigation", { name: "Blog Categories" })).getByRole("link", {
+        name: "Guides",
+      }),
+    );
+    await waitFor(() =>
+      expect(fetcher).toHaveBeenCalledWith("/api/blog?category=Guides&page=1", expect.any(Object)),
+    );
+    fireEvent.click(await screen.findByRole("link", { name: new RegExp(post.title) }));
+    await screen.findByText("A practical guest guide.");
+    expect(document.title).toBe(`${post.title} | SeatPing`);
+    expect(JSON.parse(document.getElementById("page-structured-data")!.textContent!)["@type"]).toBe(
+      "BlogPosting",
+    );
+    expect(screen.getAllByRole("contentinfo").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("link", { name: "Back To Blogs" }));
+    await screen.findByRole("heading", { name: BLOG_TITLE });
+    await waitFor(() => expect(document.getElementById("page-structured-data")).toBeNull());
+  });
+  it("keeps request errors distinct from an empty publication list and retries", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("", { status: 503 }))
+      .mockResolvedValue(Response.json({ posts: [], categories: [], page: 1, totalPages: 0 }));
+    vi.stubGlobal("fetch", fetcher);
+    mount();
+    await screen.findByRole("heading", { name: "Unable To Load Articles" });
+    expect(screen.queryByText("No Articles Yet")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
+    await screen.findByText("No Articles Yet");
+  });
+  it("renders an article skeleton while loading and a missing article state for a 404", async () => {
+    let finish = (_response: Response) => {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve;
+          }),
+      ),
+    );
+    mount("/blog/missing");
+    expect(screen.getByRole("status", { name: "Loading Article" })).toBeTruthy();
+    finish(new Response("", { status: 404 }));
+    await screen.findByRole("heading", { name: "Article Not Found" });
+    expect(document.querySelector('meta[name="robots"]')?.getAttribute("content")).toBe(
+      "noindex, follow",
+    );
+  });
+  it("keeps an article service failure distinct from a missing article", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 503 })));
+    mount("/blog/unavailable");
+    await screen.findByRole("heading", { name: "Unable To Load This Article" });
+    expect(screen.queryByText("Article Not Found")).toBeNull();
+  });
+});
+
+describe("Cover Image Editing", () => {
+  it.each(["Backspace", "Delete"])("removes the cover with %s", (key) => {
+    const remove = vi.fn();
+    render(
+      <BlogCover
+        url="https://example.com/cover.jpg"
+        alt="Cover"
+        readOnly={false}
+        disabled={false}
+        onRemove={remove}
+      />,
+    );
+    const cover = screen.getByRole("textbox", { name: "Cover Image" });
+    fireEvent.click(cover);
+    fireEvent.keyDown(cover, { key });
+    expect(remove).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+  it("keeps preview covers read only", () => {
+    render(
+      <BlogCover
+        url="https://example.com/cover.jpg"
+        alt="Cover"
+        readOnly
+        disabled={false}
+        onRemove={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.getByRole("img", { name: "Cover" })).toBeTruthy();
   });
 });

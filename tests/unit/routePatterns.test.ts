@@ -58,11 +58,14 @@ describe("express route patterns", () => {
     expect(rejected).toEqual([]);
   });
 
-  it("keeps a SPA fallback in server/index.ts that matches the root and nested paths", async () => {
+  it("keeps the SEO page fallback mounted and matching root and nested paths", async () => {
     const source = fs.readFileSync(path.resolve(process.cwd(), "server/index.ts"), "utf-8");
-    const match = source.match(
-      /app\.get\(\s*"([^"]*)",\s*\(req, res\) => \{\s*\n\s*if \(indexTemplate/,
+    expect(source).toContain("app.use(createSeoPagesRouter(pageTemplate))");
+    const routerSource = fs.readFileSync(
+      path.resolve(process.cwd(), "server/routes/seoPages.ts"),
+      "utf-8",
     );
+    const match = routerSource.match(/router\.get\(\s*"([^"]*)"/);
     expect(match).not.toBeNull();
 
     const app = express();

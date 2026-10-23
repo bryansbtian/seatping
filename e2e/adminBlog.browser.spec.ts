@@ -271,7 +271,11 @@ test("uploads a cover on the canvas and generates its alt text from the filename
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
-  await page.getByRole("button", { name: "Remove Cover", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Change Cover", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Remove Cover", exact: true })).toHaveCount(0);
+  await page.getByRole("textbox", { name: "Cover Image", exact: true }).click();
+  await page.keyboard.press("Backspace");
+  await expect(page.getByRole("button", { name: "Add Cover Image", exact: true })).toBeVisible();
   await expect.poll(() => state.posts[0]?.coverUrl).toBe("");
   expect(state.posts[0]?.coverAlt).toBe("");
 });

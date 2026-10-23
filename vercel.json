@@ -4,9 +4,38 @@
   "installCommand": "npm install && npx prisma generate",
   "devCommand": "npm run dev",
   "rewrites": [
-    { "source": "/api/cron/ticket-email", "destination": "/api/server" },
-    { "source": "/api/admin/blog/:path*", "destination": "/api/server" },
-    { "source": "/admin/blog/:path*", "destination": "/index.html" },
+    {
+      "source": "/",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/blog/:path*",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/blog",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/blog/:path*",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/cron/ticket-email",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/admin/blog/:path*",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/admin/blog/:path*",
+      "destination": "/api/server"
+    },
     {
       "source": "/api/demo/:path*",
       "destination": "/api/server"
@@ -17,23 +46,23 @@
     },
     {
       "source": "/admin",
-      "destination": "/index.html"
+      "destination": "/api/server"
     },
     {
       "source": "/admin/dashboard",
-      "destination": "/index.html"
+      "destination": "/api/server"
     },
     {
       "source": "/admin/customers",
-      "destination": "/index.html"
+      "destination": "/api/server"
     },
     {
       "source": "/admin/featured",
-      "destination": "/index.html"
+      "destination": "/api/server"
     },
     {
       "source": "/admin/templates",
-      "destination": "/index.html"
+      "destination": "/api/server"
     },
     {
       "source": "/admin/customer",
@@ -133,7 +162,7 @@
     },
     {
       "source": "/:path*",
-      "destination": "/index.html"
+      "destination": "/api/server"
     }
   ],
   "crons": [
@@ -148,5 +177,124 @@
       "maxDuration": 60,
       "includeFiles": "dist/index.html"
     }
-  }
+  },
+  "headers": [
+    {
+      "source": "/admin/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/auth/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/business/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/profile",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/queue/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/reservations/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/tickets/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/search/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/login",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/signup",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/forgot",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/reset",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    }
+  ]
 }

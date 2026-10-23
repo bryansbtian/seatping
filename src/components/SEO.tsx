@@ -19,6 +19,8 @@ type SEOProps = {
   image?: string;
   canonical?: string;
   type?: string;
+  robots?: string;
+  structuredData?: Record<string, unknown>;
 };
 
 function absoluteUrl(value: string): string {
@@ -62,10 +64,25 @@ export default function SEO({
   image = CUSTOMER_IMAGE,
   canonical,
   type = "website",
+  robots = "index, follow",
+  structuredData,
 }: SEOProps) {
   useEffect(() => {
     document.title = title;
     setMeta("name", "description", description);
+    setMeta("name", "robots", robots);
+    let structured = document.getElementById("page-structured-data");
+    if (structuredData) {
+      if (!structured) {
+        structured = document.createElement("script");
+        structured.id = "page-structured-data";
+        structured.setAttribute("type", "application/ld+json");
+        document.head.appendChild(structured);
+      }
+      structured.textContent = JSON.stringify(structuredData).replace(/</g, "\\u003c");
+    } else {
+      structured?.remove();
+    }
 
     setMeta("property", "og:title", ogTitle ?? title);
     setMeta("property", "og:description", ogDescription ?? description);
@@ -82,7 +99,7 @@ export default function SEO({
       setCanonical(href);
       setMeta("property", "og:url", href);
     }
-  }, [title, description, ogTitle, ogDescription, image, canonical, type]);
+  }, [title, description, ogTitle, ogDescription, image, canonical, type, robots, structuredData]);
 
   return null;
 }

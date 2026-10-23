@@ -6,6 +6,7 @@ export default defineConfig({
   testMatch: [
     "adminPortal.browser.spec.ts",
     "adminBlog.browser.spec.ts",
+    "publicBlog.browser.spec.ts",
     "customerHeader.browser.spec.ts",
     "featuredRestaurantsAdmin.browser.spec.ts",
     "designAudit.browser.spec.ts",

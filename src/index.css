@@ -305,26 +305,6 @@
 }
 
 @layer utilities {
-  @keyframes construction-swing {
-    0%,
-    100% {
-      transform: rotate(0deg);
-    }
-    25% {
-      transform: rotate(8deg);
-    }
-    75% {
-      transform: rotate(-8deg);
-    }
-  }
-
-  @media (prefers-reduced-motion: no-preference) {
-    [data-construction-load] {
-      transform-origin: 218px 58px;
-      animation: construction-swing 4s ease-in-out infinite;
-    }
-  }
-
   .hover\:pause-animation:hover {
     animation-play-state: paused;
   }

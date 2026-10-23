@@ -180,39 +180,6 @@ for (const [path, heading] of [
   });
 }
 
-for (const width of [390, 1440]) {
-  test(`Blog construction page is responsive and respects reduced motion at ${width}px`, async ({
-    page,
-  }, testInfo) => {
-    await page.setViewportSize({ width, height: 900 });
-    await page.emulateMedia({ reducedMotion: "no-preference" });
-    await page.goto("/blog", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: "Under Construction" })).toBeVisible();
-    const load = page.locator("[data-construction-load]");
-    await expect(load).toHaveCSS("animation-name", "construction-swing");
-    await expect(load).toHaveCSS("animation-iteration-count", "infinite");
-    const brickGap = await load.evaluate((element) => {
-      const ground = Array.from(element.parentElement!.querySelectorAll(":scope > rect"));
-      const top = Math.min(...ground.map((brick) => brick.getBoundingClientRect().top));
-      return top - element.getBoundingClientRect().bottom;
-    });
-    expect(brickGap).toBeGreaterThan(0);
-    const initial = await load.evaluate((element) => getComputedStyle(element).transform);
-    await expect
-      .poll(() => load.evaluate((element) => getComputedStyle(element).transform))
-      .not.toBe(initial);
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    await expect(load).toHaveCSS("animation-name", "none");
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
-    ).toBe(false);
-    await expect(page.getByRole("contentinfo")).toHaveCount(1);
-    await page.screenshot({ path: testInfo.outputPath(`blog-${width}.png`), fullPage: true });
-    await page.getByRole("link", { name: "Back to Home", exact: true }).click();
-    await expect(page).toHaveURL("/");
-  });
-}
-
 for (const width of [320, 390, 768, 1024, 1440, 1923]) {
   test(`footer fits and stacks at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
@@ -277,7 +244,7 @@ for (const [name, path, heading] of [
   ["Find Restaurants", "/search", "Search Restaurants"],
   ["SeatPing for Business", "/business", "Run Your Front of House From One Place"],
   ["Business Login", "/business/login", "Business Log In"],
-  ["Blog", "/blog", "Under Construction"],
+  ["Blog", "/blog", "Stories For Better Guest Experiences"],
   ["Help & FAQ", "/help", "Help & FAQ"],
   ["Feedback", "/feedback", "Tell Us What We Can Improve"],
   ["Privacy Policy", "/policy", "Privacy Policy"],

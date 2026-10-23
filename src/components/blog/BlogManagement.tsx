@@ -118,7 +118,7 @@ export default function BlogManagement() {
     }
   }
   let confirmLabel = "Publish";
-  let confirmDescription = "Mark this article as Published. Public blog pages are not enabled yet.";
+  let confirmDescription = "Publish this article on the SeatPing blog.";
   let confirmVariant: "default" | "destructive" = "default";
   if (confirmation?.action === "delete") {
     confirmLabel = "Delete";
