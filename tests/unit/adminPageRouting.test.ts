@@ -45,8 +45,12 @@ beforeAll(async () => {
   vi.stubEnv("ADMIN_USERNAME", "test-admin");
   vi.stubEnv("ADMIN_PASSWORD_HASH", "test-only-hash");
   vi.spyOn(console, "log").mockImplementation(() => {});
-  vi.spyOn(express.response, "sendFile").mockImplementation(function () {
-    this.type("html").send('<html><body><div id="root"></div></body></html>');
+  const readFile = fs.readFileSync;
+  vi.spyOn(fs, "readFileSync").mockImplementation((file, options) => {
+    if (String(file).endsWith("/dist/index.html")) {
+      return '<html><head><!-- SEO:START --><!-- SEO:END --></head><body><div id="root"></div></body></html>';
+    }
+    return readFile(file, options);
   });
   const app = (await import("../../server/index.js")).default;
   client = await serveApp(app);
@@ -64,9 +68,9 @@ describe("Admin Page Routing", () => {
     expect(response.status).toBe(200);
     expect(response.type).toBe("text/html");
     expect(response.text).toContain('id="root"');
-    expect(express.response.sendFile).toHaveBeenCalledWith(
-      expect.stringMatching(/\/dist\/index\.html$/),
-    );
+    expect(response.headers["x-robots-tag"]).toBe("noindex, follow");
+    expect(response.text).toContain('name="robots" content="noindex, follow"');
+    expect(response.text).toContain("<title>Admin | SeatPing</title>");
   });
 
   it.each([
@@ -124,7 +128,7 @@ describe("Admin Page Routing", () => {
 
       expect(pageIndex).toBeGreaterThan(-1);
       expect(pageIndex).toBeLessThan(apiIndex);
-      expect(config.rewrites[pageIndex].destination).toBe("/index.html");
+      expect(config.rewrites[pageIndex].destination).toBe("/api/server");
     }
   });
 
@@ -184,7 +188,7 @@ describe("Blog Page Routing", () => {
     expect(pages).toBeGreaterThanOrEqual(0);
     expect(apiIndex).toBeGreaterThanOrEqual(0);
     expect(pages).toBeLessThan(adminIndex);
-    expect(config.rewrites[pages].destination).toBe("/index.html");
+    expect(config.rewrites[pages].destination).toBe("/api/server");
     expect(config.rewrites[apiIndex].destination).toBe("/api/server");
     const { default: viteConfig } = await import("../../vite.config.js");
     const vite = viteConfig({ command: "serve", mode: "development" });

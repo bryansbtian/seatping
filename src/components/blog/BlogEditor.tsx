@@ -29,6 +29,7 @@ import RichTextEditor from "./RichTextEditor";
 import UploadProgress from "./UploadProgress";
 import CanvasTextarea from "./CanvasTextarea";
 import BlogEditorLoading from "./BlogEditorLoading";
+import BlogCover from "./BlogCover";
 
 export default function BlogEditor({ id }: { id: string }) {
   const [post, setPost] = useState<BlogPost | null>(null);
@@ -174,8 +175,8 @@ function EditorForm({ initial }: { initial: BlogPost }) {
     }
   }
   async function cover(file: File) {
-    if (!file.type.startsWith("image/")) {
-      setError("Choose an image for the cover.");
+    if (!file.type.startsWith("image/") && !["video/mp4", "video/webm"].includes(file.type)) {
+      setError("Choose an image or video for the cover.");
       return;
     }
     setUploading(true);
@@ -465,33 +466,13 @@ function EditorForm({ initial }: { initial: BlogPost }) {
               </div>
             </header>
             {fields.coverUrl && (
-              <div className="mb-5 space-y-2">
-                <img
-                  src={fields.coverUrl}
-                  alt={fields.coverAlt}
-                  className="aspect-[16/9] w-full rounded-xl object-cover"
-                />
-                {!preview && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={uploading || busy}
-                      onClick={() => coverInput.current?.click()}
-                    >
-                      Change Cover
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={uploading || busy}
-                      onClick={() => change({ ...fieldsRef.current, coverUrl: "", coverAlt: "" })}
-                    >
-                      Remove Cover
-                    </Button>
-                  </div>
-                )}
-              </div>
+              <BlogCover
+                url={fields.coverUrl}
+                alt={fields.coverAlt}
+                readOnly={preview}
+                disabled={uploading || busy}
+                onRemove={() => change({ ...fieldsRef.current, coverUrl: "", coverAlt: "" })}
+              />
             )}
             {!fields.coverUrl && !preview && (
               <Button
@@ -510,7 +491,7 @@ function EditorForm({ initial }: { initial: BlogPost }) {
                 aria-label="Upload Cover Image"
                 className="sr-only"
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
+                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
                 onChange={(event) => {
                   const file = event.target.files?.[0];
                   if (file) {
@@ -685,5 +666,5 @@ function publicationDescription(status: string) {
   if (status === "DRAFT") {
     return "Move this article back to Draft. You can publish it again later.";
   }
-  return "Save your latest edits and mark this article as Published. Public blog pages are not enabled yet.";
+  return "Save your latest edits and publish this article on the SeatPing blog.";
 }

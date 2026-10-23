@@ -1,3 +1,4 @@
+import { isPrivatePath } from "../shared/pageMeta.js";
 import "dotenv/config";
 
 import express from "express";
@@ -11,6 +12,8 @@ import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
 import { syncTicketInbox } from "./lib/ticketInbox.js";
 import adminBlogRouter from "./routes/adminBlog.js";
+import publicBlogRouter from "./routes/publicBlog.js";
+import { createBlogPagesRouter, sitemapRouter } from "./routes/blogPages.js";
 import adminCustomersRouter from "./routes/adminCustomers.js";
 import demoRouter from "./routes/demo.js";
 import feedbackRouter from "./routes/feedback.js";
@@ -33,6 +36,7 @@ import { runDueCampaignsSweep } from "./lib/campaignRunner.js";
 import { logRateLimitStatus, rateLimit } from "./lib/rateLimit.js";
 import { logEnvStatus } from "./lib/envCheck.js";
 import { injectSeo } from "./lib/pageMeta.js";
+import { createSeoPagesRouter } from "./routes/seoPages.js";
 import { prisma } from "./lib/prisma.js";
 
 logEnvStatus();
@@ -50,6 +54,13 @@ app.use(
     credentials: true,
   }),
 );
+
+app.use((req, res, next) => {
+  if (isPrivatePath(req.path)) {
+    res.set("X-Robots-Tag", "noindex, follow");
+  }
+  next();
+});
 
 app.use("/api/jobs", jobsRouter);
 
@@ -148,12 +159,23 @@ if (process.env.NODE_ENV === "production") {
       "/admin/blog/new",
       "/admin/blog/:id/edit",
     ],
-    (_req, res) => {
-      res.sendFile(path.join(__dirname, "../../dist/index.html"));
+    (req, res) => {
+      res.set("X-Robots-Tag", "noindex, follow");
+      res.set("Cache-Control", "no-store");
+      res
+        .type("html")
+        .send(
+          injectSeo(
+            fs.readFileSync(path.join(__dirname, "../../dist/index.html"), "utf-8"),
+            req.path,
+          ),
+        );
     },
   );
 }
 app.use("/api/admin/blog", adminBlogRouter);
+app.use("/api/blog", publicBlogRouter);
+app.use(sitemapRouter);
 app.use("/admin/customer", adminCustomersRouter);
 app.use("/admin", adminRouter);
 app.use("/api/demo", demoRouter);
@@ -171,18 +193,18 @@ app.use("/api/audiences", audiencesRouter);
 app.use("/api/cron", cronRouter);
 app.use("/tickets", ticketsRouter);
 
-if (process.env.NODE_ENV === "production") {
-  const distPath = path.join(__dirname, "../../dist");
-  app.use(express.static(distPath));
-
-  let indexTemplate: string | null = null;
-  app.get("/{*splat}", (req, res) => {
-    if (indexTemplate === null) {
-      indexTemplate = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
-    }
-    res.status(200).type("html").send(injectSeo(indexTemplate, req.path));
-  });
+const distPath = path.join(__dirname, "../../dist");
+function pageTemplate(): string {
+  if (process.env.NODE_ENV === "production") {
+    return fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
+  }
+  return fs.readFileSync(path.resolve("index.html"), "utf-8");
 }
+app.use(createBlogPagesRouter(pageTemplate));
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(distPath, { index: false }));
+}
+app.use(createSeoPagesRouter(pageTemplate));
 
 const PORT = Number(process.env.PORT || 4000);
 

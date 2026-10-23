@@ -30,7 +30,7 @@ function searchResponse(restaurants: SearchResult[], requestUrl: string) {
   };
 }
 
-for (const path of ["/business/dashboard", "/blog/unknown", "/unknown/nested/page"]) {
+for (const path of ["/business/dashboard", "/unknown/nested/page"]) {
   test(`unknown route ${path} opens 404 without restaurant requests or skeletons`, async ({
     page,
   }) => {
@@ -48,6 +48,49 @@ for (const path of ["/business/dashboard", "/blog/unknown", "/unknown/nested/pag
     expect(new URL(page.url()).pathname).toBe(path);
   });
 }
+
+test("missing blog article resolves to its noindex 404 without restaurant requests", async ({
+  page,
+}) => {
+  const restaurantRequests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/api/restaurants/")) {
+      restaurantRequests.push(request.url());
+    }
+  });
+  let release = () => {};
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/blog/unknown", async (route) => {
+    await pending;
+    await route.fulfill({ status: 404, json: { error: "Article not found" } });
+  });
+  try {
+    await page.goto("/blog/unknown");
+    await expect(page.getByRole("status", { name: "Loading Article" })).toBeVisible();
+    await expect(page.getByRole("status", { name: "Loading Restaurant" })).toHaveCount(0);
+    const response = page.waitForResponse(
+      (result) => new URL(result.url()).pathname === "/api/blog/unknown",
+    );
+    release();
+    expect((await response).status()).toBe(404);
+    await expect(
+      page.getByRole("heading", { name: "Article Not Found", exact: true, level: 1 }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back To Blogs" })).toHaveAttribute(
+      "href",
+      "/blog",
+    );
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, follow");
+    await expect(page.getByRole("status")).toHaveCount(0);
+    await expect(page.locator(".animate-pulse")).toHaveCount(0);
+    expect(restaurantRequests).toEqual([]);
+    expect(new URL(page.url()).pathname).toBe("/blog/unknown");
+  } finally {
+    release();
+  }
+});
 
 test("missing restaurant replaces the restaurant skeleton with 404 after validation", async ({
   page,

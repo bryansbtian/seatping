@@ -49,6 +49,7 @@ const Terms = lazyRoute(() => import("./pages/Terms"));
 const Feedback = lazyRoute(() => import("./pages/Feedback"));
 const Help = lazyRoute(() => import("./pages/Help"));
 const Blog = lazyRoute(() => import("./pages/Blog"));
+const BlogArticle = lazyRoute(() => import("./pages/BlogArticle"));
 const QueueBusiness = lazyRoute(() => import("./pages/QueueBusiness"));
 const ManageReservation = lazyRoute(() => import("./pages/ManageReservation"));
 const SearchResults = lazyRoute(() => import("./pages/SearchResults"));
@@ -163,6 +164,7 @@ const App = () => (
               <Route path="/feedback" element={<Feedback />} />
               <Route path="/help" element={<Help />} />
               <Route path="/blog" element={<Blog />} />
+              <Route path="/blog/:slug" element={<BlogArticle />} />
 
               <Route
                 element={

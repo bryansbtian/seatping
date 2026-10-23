@@ -256,7 +256,7 @@ describe("lazy routes", () => {
     "/terms/unknown",
     "/feedback/unknown",
     "/help/unknown",
-    "/blog/unknown",
+    "/blog/unknown/nested",
     "/api/unknown",
     "/auth/unknown",
     "/tickets/unknown",
@@ -295,6 +295,28 @@ describe("lazy routes", () => {
       "/api/restaurants/missing/location-123?version=2",
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
+  });
+
+  it("resolves blog article URLs through the public blog API instead of the restaurant route", async () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ error: "Article not found." }), { status: 404 }),
+    );
+    renderAt("/blog/unknown");
+    await screen.findByRole("heading", { name: "Article Not Found" });
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/blog/unknown",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(
+      vi.mocked(fetch).mock.calls.some(([url]) => String(url).startsWith("/api/restaurants/")),
+    ).toBe(false);
   });
 
   it("validates each restaurant when navigating between restaurant URLs", async () => {

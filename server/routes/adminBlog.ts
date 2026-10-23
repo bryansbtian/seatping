@@ -254,11 +254,15 @@ router.put("/:id", async (req, res) => {
             if (current.status === "PUBLISHED") {
               validatePublication(fields);
             }
+            let slug = current.slug;
+            if (!current.publishedAt) {
+              slug = await articleSlug(tx, fields.title, current.id, current.slug);
+            }
             return tx.blogPost.update({
               where: { id: current.id, revision },
               data: {
                 ...fields,
-                slug: await articleSlug(tx, fields.title, current.id, current.slug),
+                slug,
                 revision: { increment: 1 },
               },
             });

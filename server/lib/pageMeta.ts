@@ -1,49 +1,5 @@
-export const SITE_URL = "https://www.seatping.biz";
-
-export type PageMeta = {
-  title: string;
-  description: string;
-  image: string;
-  url: string;
-  type: string;
-};
-
-const CUSTOMER: Omit<PageMeta, "url"> = {
-  title: "SeatPing | Find Restaurants, Book Tables, and Join Queues",
-  description:
-    "Discover restaurants, check availability, book tables, and join queues with SeatPing.",
-  image: `${SITE_URL}/display2.jpeg`,
-  type: "website",
-};
-
-const BUSINESS: Omit<PageMeta, "url"> = {
-  title: "SeatPing for Business | Queues, Reservations, and Guest CRM",
-  description:
-    "Manage queues, reservations, Guest CRM, and campaigns from one simple dashboard built for restaurants and service businesses.",
-  image: `${SITE_URL}/display.jpeg`,
-  type: "website",
-};
-
-export function isBusinessPath(pathname: string): boolean {
-  return pathname === "/business" || pathname.startsWith("/business/");
-}
-
-export function metaForPath(pathname: string): PageMeta {
-  let base: Omit<PageMeta, "url">;
-  if (isBusinessPath(pathname)) {
-    base = BUSINESS;
-  } else {
-    base = CUSTOMER;
-  }
-  const clean = pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
-  let path: string;
-  if (clean === "/") {
-    path = "/";
-  } else {
-    path = clean;
-  }
-  return { ...base, url: `${SITE_URL}${path}` };
-}
+import { metaForPath, type PageMeta } from "../../shared/pageMeta.js";
+export { SITE_URL, metaForPath, isBusinessPath, type PageMeta } from "../../shared/pageMeta.js";
 
 function attr(value: string): string {
   return value
@@ -58,10 +14,10 @@ export function renderSeoTags(meta: PageMeta): string {
   const d = attr(meta.description);
   const img = attr(meta.image);
   const url = attr(meta.url);
-  return [
+  const tags = [
     `<title>${t}</title>`,
     `<meta name="description" content="${d}" />`,
-    `<meta name="author" content="SeatPing" />`,
+    `<meta name="author" content="${attr(meta.author || "SeatPing")}" />`,
     `<meta property="og:title" content="${t}" />`,
     `<meta property="og:description" content="${d}" />`,
     `<meta property="og:type" content="${attr(meta.type)}" />`,
@@ -73,17 +29,37 @@ export function renderSeoTags(meta: PageMeta): string {
     `<meta name="twitter:description" content="${d}" />`,
     `<meta name="twitter:image" content="${img}" />`,
     `<link rel="canonical" href="${url}" />`,
-  ].join("\n    ");
+  ];
+  if (meta.publishedAt) {
+    tags.push(`<meta property="article:published_time" content="${attr(meta.publishedAt)}" />`);
+  }
+  if (meta.updatedAt) {
+    tags.push(`<meta property="article:modified_time" content="${attr(meta.updatedAt)}" />`);
+  }
+  if (meta.robots) {
+    tags.push(`<meta name="robots" content="${attr(meta.robots)}" />`);
+  }
+  if (meta.structuredData) {
+    const json = JSON.stringify(meta.structuredData).replace(/</g, "\\u003c");
+    tags.push(`<script id="page-structured-data" type="application/ld+json">${json}</script>`);
+  }
+  return tags.join("\n    ");
 }
 
 const SEO_BLOCK_RE = /<!-- SEO:START -->[\s\S]*?<!-- SEO:END -->/;
 
-export function injectSeo(template: string, pathname: string): string {
+export function injectSeo(
+  template: string,
+  pathname: string,
+  meta = metaForPath(pathname),
+): string {
   if (!SEO_BLOCK_RE.test(template)) {
     return template;
   }
-  const block = `<!-- SEO:START -->\n    ${renderSeoTags(
-    metaForPath(pathname),
-  )}\n    <!-- SEO:END -->`;
-  return template.replace(SEO_BLOCK_RE, block);
+  const block = `<!-- SEO:START -->\n    ${renderSeoTags(meta)}\n    <!-- SEO:END -->`;
+  const withoutStaticSchemas = template.replace(
+    /<script\b[^>]*type="application\/ld\+json"[^>]*>[\s\S]*?<\/script>/g,
+    "",
+  );
+  return withoutStaticSchemas.replace(SEO_BLOCK_RE, () => block);
 }
