@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type {
   RestaurantProfile,
@@ -310,6 +310,53 @@ it("displays timezone names with spaces", () => {
   render(view());
   expect(screen.getByText("Timezone: America/New York")).toBeTruthy();
   expect(screen.queryByText("Timezone: America/New_York")).toBeNull();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("restaurant opening status", () => {
+  it.each([
+    ["2026-10-23T15:59:00-04:00", "Closed · Opens at 4:00 PM"],
+    ["2026-10-23T16:00:00-04:00", "Open · Closes at 2:00 AM"],
+    ["2026-10-23T23:23:00-04:00", "Open · Closes at 2:00 AM"],
+    ["2026-10-24T00:00:00-04:00", "Open · Closes at 2:00 AM"],
+    ["2026-10-24T01:59:00-04:00", "Open · Closes at 2:00 AM"],
+    ["2026-10-24T02:00:00-04:00", "Closed · Opens at 4:00 PM"],
+    ["2026-10-24T16:00:00-04:00", "Open · Closes at 3:00 AM"],
+    ["2026-10-25T02:59:00-04:00", "Open · Closes at 3:00 AM"],
+    ["2026-10-25T03:00:00-04:00", "Closed · Opens Tomorrow at 10:00 AM"],
+    ["2026-10-26T00:00:00-04:00", "Closed · Opens at 10:00 AM"],
+    ["2026-10-26T10:00:00-04:00", "Open · Closes at 9:00 PM"],
+    ["2026-10-26T21:00:00-04:00", "Closed · Opens Tomorrow at 12:00 AM"],
+    ["2026-10-27T00:00:00-04:00", "Open 24 Hours"],
+    ["2026-10-27T23:59:00-04:00", "Open 24 Hours"],
+    ["2026-10-28T12:00:00-04:00", "Closed · Opens Friday at 4:00 PM"],
+  ])("shows the correct status at %s", (at, expected) => {
+    if (!state.profile) {
+      throw new Error("Restaurant profile is missing");
+    }
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(at));
+    state.profile.openingHours = {
+      timezone: "America/New_York",
+      monday: { enabled: true, open: "10:00", close: "21:00" },
+      tuesday: { enabled: true, open: "00:00", close: "00:00" },
+      wednesday: { enabled: false, open: "10:00", close: "21:00" },
+      thursday: { enabled: false, open: "10:00", close: "21:00" },
+      friday: { enabled: true, open: "16:00", close: "02:00" },
+      saturday: { enabled: true, open: "16:00", close: "03:00" },
+      sunday: { enabled: false, open: "16:00", close: "23:00" },
+    } as RestaurantProfile["openingHours"];
+    render(view());
+    const status = screen.getByText(expected, { selector: "span.font-medium" });
+    if (expected.startsWith("Open")) {
+      expect(status.classList.contains("text-green-600")).toBe(true);
+    } else {
+      expect(status.classList.contains("text-red-600")).toBe(true);
+    }
+  });
 });
 
 it("uses Title Case for the Phone Number label", () => {
