@@ -31,17 +31,36 @@ const CustomerLanding = () => {
     if (hash !== "#featured") {
       return;
     }
-    const frame = requestAnimationFrame(() => {
-      const section = document.getElementById("featured");
-      if (section) {
+    const section = document.getElementById("featured");
+    if (!section || !section.parentElement) {
+      return;
+    }
+    let frame = 0;
+    const alignSection = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
         const offset = Number.parseFloat(getComputedStyle(section).scrollMarginTop);
         window.scrollTo({
           top: window.scrollY + section.getBoundingClientRect().top - offset,
           behavior: "instant",
         });
+      });
+    };
+    const observer = new ResizeObserver(alignSection);
+    observer.observe(section);
+    observer.observe(section.parentElement);
+    const stopAligning = () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      for (const event of ["wheel", "touchstart", "pointerdown", "keydown"]) {
+        window.removeEventListener(event, stopAligning);
       }
-    });
-    return () => cancelAnimationFrame(frame);
+    };
+    for (const event of ["wheel", "touchstart", "pointerdown", "keydown"]) {
+      window.addEventListener(event, stopAligning, { passive: true });
+    }
+    alignSection();
+    return stopAligning;
   }, [hash, key]);
 
   const featuredQuery = useFeaturedRestaurants();
