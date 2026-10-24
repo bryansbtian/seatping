@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../helpers/app.js";
 import { getTestPrisma } from "../helpers/db.js";
-import { calculateDemoSlots, dateInTimezone, DEMO_SLOT_MS } from "../../shared/demoBooking.js";
+import { dateInTimezone, DEMO_SLOT_MS } from "../../shared/demoBooking.js";
 import {
   calendarAccessToken,
   calendarBusy,
@@ -20,7 +20,9 @@ vi.mock("../../server/lib/googleCalendar.js", async (importOriginal) => {
   };
 });
 
-describe("demo booking API with PostgreSQL", () => {
+const bookingDates = ["2026-10-01T12:00:00Z", "2026-10-24T01:00:00Z", "2026-12-25T22:00:00Z"];
+
+describe.each(bookingDates)("demo booking API with PostgreSQL at %s", (now) => {
   const calendarId = "demo-integration@test.invalid";
   let start: string;
   let month: string;
@@ -42,6 +44,8 @@ describe("demo booking API with PostgreSQL", () => {
       .set("X-Forwarded-For", `198.51.100.${counter + 1}`)
       .send(body);
   beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(now));
     vi.mocked(calendarConfig).mockReturnValue({
       calendarId,
       clientId: "placeholder",
@@ -54,13 +58,21 @@ describe("demo booking API with PostgreSQL", () => {
       meetLink: "https://meet.google.com/abc-defg-hij",
     });
     const future = new Date(Date.now() + 7 * 86_400_000);
-    month = dateInTimezone(future, "America/New_York").slice(0, 7);
-    start = calculateDemoSlots(month, "America/New_York", [], future)[0];
+    future.setUTCHours(14, 0, 0, 0);
+    while (future.getUTCDay() === 0 || future.getUTCDay() === 6) {
+      future.setUTCDate(future.getUTCDate() + 1);
+    }
+    start = future.toISOString();
+    month = dateInTimezone(start, "America/New_York").slice(0, 7);
     await getTestPrisma().demoBooking.deleteMany({ where: { calendarId } });
   });
   afterEach(async () => {
-    await getTestPrisma().demoBooking.deleteMany({ where: { calendarId } });
-    vi.clearAllMocks();
+    try {
+      await getTestPrisma().demoBooking.deleteMany({ where: { calendarId } });
+    } finally {
+      vi.useRealTimers();
+      vi.clearAllMocks();
+    }
   });
 
   it("returns only verified availability without exposing busy events", async () => {
@@ -74,6 +86,7 @@ describe("demo booking API with PostgreSQL", () => {
       .query({ month, timezone: "America/New_York" });
     expect(res.status).toBe(200);
     expect(res.headers["cache-control"]).toBe("no-store");
+    expect(res.body.slots.length).toBeGreaterThan(0);
     expect(res.body.slots).not.toContain(start);
     expect(Object.keys(res.body)).toEqual(["slots"]);
   });
