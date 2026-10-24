@@ -49,6 +49,8 @@ export type RestaurantProfile = {
   phone: string | null;
   website: string | null;
   instagram: string | null;
+  facebook: string | null;
+  tiktok: string | null;
   openingHours: RestaurantOpeningHours | null;
   bannerImageUrl: string | null;
   photos: RestaurantPhoto[];

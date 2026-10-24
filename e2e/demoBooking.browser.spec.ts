@@ -1,6 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 test.setTimeout(60_000);
+test.use({ timezoneId: "America/New_York" });
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-10-01T12:00:00Z"));
@@ -8,8 +9,12 @@ test.beforeEach(async ({ page }) => {
     route.fulfill({ json: { customer: null, business: null } }),
   );
   await page.route("**/api/demo/availability?*", (route) => {
-    let slots = ["2026-10-02T13:00:00.000Z", "2026-10-02T13:15:00.000Z"];
-    if (route.request().url().includes("2026-11")) {
+    const month = new URL(route.request().url()).searchParams.get("month");
+    let slots: string[] = [];
+    if (month === "2026-10") {
+      slots = ["2026-10-02T13:00:00.000Z", "2026-10-02T13:15:00.000Z"];
+    }
+    if (month === "2026-11") {
       slots = ["2026-11-02T14:00:00.000Z"];
     }
     return route.fulfill({ json: { slots } });
@@ -25,6 +30,15 @@ test.beforeEach(async ({ page }) => {
     }),
   );
 });
+
+async function fillBookingDetails(page: Page) {
+  await page.goto("/business");
+  await page.getByRole("button", { name: "Book a Demo" }).first().click();
+  await page.getByRole("grid").getByRole("gridcell", { name: "2", exact: true }).click();
+  await page.getByRole("button", { name: "9:00 AM", exact: true }).click();
+  await page.getByLabel("Full Name", { exact: true }).fill("Test Guest");
+  await page.getByLabel("Email Address", { exact: true }).fill("guest@test.invalid");
+}
 
 test("books from the landing page without navigating on desktop and mobile", async ({ page }) => {
   await page.goto("/business");
@@ -112,7 +126,19 @@ test("books from the landing page without navigating on desktop and mobile", asy
     animations: "disabled",
     path: `performance-artifacts/demo-details-${test.info().project.name}.png`,
   });
-  await page.getByRole("button", { name: "Confirm Booking" }).click();
+  const [booking] = await Promise.all([
+    page.waitForRequest("**/api/demo/book"),
+    page.getByRole("button", { name: "Confirm Booking" }).click(),
+  ]);
+  expect(booking.method()).toBe("POST");
+  expect(booking.postDataJSON()).toEqual({
+    start: "2026-10-02T13:00:00.000Z",
+    timezone: "America/New_York",
+    name: "Test Guest",
+    email: "guest@test.invalid",
+    company: "Test Bistro",
+    notes: "A short note.",
+  });
   await expect(page.getByRole("heading", { name: "Your Demo Is Booked" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open Google Meet" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Done", exact: true })).toHaveCount(0);
@@ -209,6 +235,67 @@ test("shows calendar errors without selectable dates", async ({ page }) => {
     path: `performance-artifacts/demo-error-${test.info().project.name}.png`,
   });
 });
+
+test("refreshes availability after a conflict and books a different slot with the entered details", async ({
+  page,
+}) => {
+  let submissions = 0;
+  await page.route("**/api/demo/book", async (route) => {
+    submissions += 1;
+    if (submissions === 1) {
+      await page.route("**/api/demo/availability?*", (availability) =>
+        availability.fulfill({ json: { slots: ["2026-10-02T13:15:00.000Z"] } }),
+      );
+      return route.fulfill({ status: 409, json: { error: "Conflict" } });
+    }
+    return route.fulfill({
+      status: 201,
+      json: {
+        start: "2026-10-02T13:15:00.000Z",
+        end: "2026-10-02T13:30:00.000Z",
+        meetLink: null,
+      },
+    });
+  });
+  await fillBookingDetails(page);
+  await page.getByRole("button", { name: "Confirm Booking" }).click();
+  await expect(
+    page.getByText("This time is no longer available. Please choose another slot."),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your Demo Is Booked" })).toHaveCount(0);
+  await page.getByRole("grid").getByRole("gridcell", { name: "2", exact: true }).click();
+  await expect(page.getByRole("button", { name: "9:00 AM", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "9:15 AM", exact: true }).click();
+  await expect(page.getByLabel("Full Name", { exact: true })).toHaveValue("Test Guest");
+  await expect(page.getByLabel("Email Address", { exact: true })).toHaveValue("guest@test.invalid");
+  const [booking] = await Promise.all([
+    page.waitForRequest("**/api/demo/book"),
+    page.getByRole("button", { name: "Confirm Booking" }).click(),
+  ]);
+  expect(booking.postDataJSON().start).toBe("2026-10-02T13:15:00.000Z");
+  await expect(page.getByRole("heading", { name: "Your Demo Is Booked" })).toBeVisible();
+  expect(submissions).toBe(2);
+});
+
+for (const failure of ["uncertain response", "network failure"]) {
+  test(`blocks duplicate submissions after ${failure}`, async ({ page }) => {
+    let submissions = 0;
+    await page.route("**/api/demo/book", (route) => {
+      submissions += 1;
+      if (failure === "network failure") {
+        return route.abort("failed");
+      }
+      return route.fulfill({ status: 503, json: { uncertain: true } });
+    });
+    await fillBookingDetails(page);
+    await page.getByRole("button", { name: "Confirm Booking" }).click();
+    await expect(page.getByRole("dialog").getByRole("alert")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Your Demo Is Booked" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Confirm Booking" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Back", exact: true })).toBeDisabled();
+    expect(submissions).toBe(1);
+  });
+}
 
 test("uses the shared timezone picker and returns focus without closing the booking dialog", async ({
   page,

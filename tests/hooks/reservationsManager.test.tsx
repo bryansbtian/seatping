@@ -32,7 +32,12 @@ function reservation(id: string, overrides: Partial<Reservation> = {}): Reservat
   };
 }
 
-function renderManager(reservations: Reservation[], onUpdated = vi.fn(), lang: Lang = "en") {
+function renderManager(
+  reservations: Reservation[],
+  onUpdated = vi.fn(),
+  lang: Lang = "en",
+  reservationsEnabled = true,
+) {
   return render(
     <LangContext.Provider
       value={{
@@ -47,7 +52,7 @@ function renderManager(reservations: Reservation[], onUpdated = vi.fn(), lang: L
         reservations={reservations}
         businessUsername="example-restaurant"
         locationId="location-1"
-        reservationsEnabled
+        reservationsEnabled={reservationsEnabled}
         timeZone="UTC"
         onUpdated={onUpdated}
       />
@@ -147,4 +152,20 @@ describe("Reservation Management Controls", () => {
     );
     expect(onUpdated).not.toHaveBeenCalled();
   });
+});
+
+it.each<Lang>(["en", "id"])("shows a centered disabled-reservations state in %s", (lang) => {
+  renderManager([], vi.fn(), lang, false);
+  const title = screen.getByRole("heading", { name: translate(lang, "res.notEnabled") });
+  expect(title.parentElement?.classList.contains("flex-1")).toBe(true);
+  expect(title.parentElement?.classList.contains("items-center")).toBe(true);
+  expect(title.parentElement?.querySelector("svg")).toBeTruthy();
+  expect(screen.getByText(translate(lang, "res.enableHint"))).toBeTruthy();
+  expect(screen.queryByText(translate(lang, "res.empty.title"))).toBeNull();
+});
+
+it("keeps existing reservations manageable when new reservations are disabled", () => {
+  renderManager([reservation("existing")], vi.fn(), "en", false);
+  expect(screen.getByText("Guest existing")).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "Reservations Not Enabled" })).toBeNull();
 });

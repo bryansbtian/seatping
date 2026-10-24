@@ -109,6 +109,8 @@ beforeEach(() => {
     phone: null,
     website: null,
     instagram: null,
+    facebook: null,
+    tiktok: null,
     openingHours: null,
     bannerImageUrl: "https://images.unsplash.com/hero?w=2400",
     photos: [{ id: "photo-1", url: "https://images.unsplash.com/photo-1" }],
@@ -270,4 +272,52 @@ describe("public restaurant review and image rendering", () => {
     expect(photo.getAttribute("loading")).toBe("lazy");
     expect(photo.getAttribute("srcset")).toContain("1200w");
   });
+});
+
+it.each([false, true])("renders social handles as profile links, full URLs: %s", (fullUrls) => {
+  if (!state.profile) {
+    throw new Error("Restaurant profile is missing");
+  }
+  state.profile.instagram = "@sample.instagram";
+  state.profile.facebook = "sample.facebook";
+  state.profile.tiktok = "@sample.tiktok";
+  if (fullUrls) {
+    state.profile.instagram = "https://www.instagram.com/sample.instagram/?ref=share";
+    state.profile.facebook = "https://www.facebook.com/sample.facebook/";
+    state.profile.tiktok = "https://www.tiktok.com/@sample.tiktok?lang=en";
+  }
+  render(view());
+  for (const [name, href] of [
+    ["sample.instagram", "https://www.instagram.com/sample.instagram"],
+    ["sample.facebook", "https://www.facebook.com/sample.facebook"],
+    ["sample.tiktok", "https://www.tiktok.com/@sample.tiktok"],
+  ]) {
+    const link = screen.getByRole("link", { name });
+    expect(link.getAttribute("href")).toBe(href);
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+  }
+  expect(screen.getByRole("button", { name: "Details", exact: true })).toBeTruthy();
+});
+
+it("displays timezone names with spaces", () => {
+  if (!state.profile) {
+    throw new Error("Restaurant profile is missing");
+  }
+  state.profile.openingHours = {
+    timezone: "America/New_York",
+  } as RestaurantProfile["openingHours"];
+  render(view());
+  expect(screen.getByText("Timezone: America/New York")).toBeTruthy();
+  expect(screen.queryByText("Timezone: America/New_York")).toBeNull();
+});
+
+it("uses Title Case for the Phone Number label", () => {
+  if (!state.profile) {
+    throw new Error("Restaurant profile is missing");
+  }
+  state.profile.phone = "+17183024427";
+  render(view());
+  expect(screen.getByText("Phone Number")).toBeTruthy();
+  expect(screen.queryByText("Phone number")).toBeNull();
 });

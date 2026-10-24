@@ -99,6 +99,8 @@ function publicProfile(rp: any) {
       phone: details.phone ?? null,
       website: details.website ?? null,
       instagram: details.instagram ?? null,
+      facebook: details.facebook ?? null,
+      tiktok: details.tiktok ?? null,
       googleMapsUrl: details.googleMapsUrl ?? null,
     },
     isPublished: Boolean(safe.isPublished),
@@ -218,6 +220,8 @@ router.get("/:businessUsername/:locationId", async (req, res) => {
         phone: profile.details.phone,
         website: profile.details.website,
         instagram: profile.details.instagram,
+        facebook: profile.details.facebook,
+        tiktok: profile.details.tiktok,
 
         openingHours: profile.openingHours,
 

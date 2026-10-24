@@ -310,6 +310,12 @@ test("Featured Restaurants stays below the header when loading finishes after na
       page.locator("#featured").evaluate((element) => element.getBoundingClientRect().top),
     )
     .toBeCloseTo(96, 0);
+  await page.setViewportSize({ width: 1000, height: 720 });
+  await expect
+    .poll(() =>
+      page.locator("#featured").evaluate((element) => element.getBoundingClientRect().top),
+    )
+    .toBeCloseTo(96, 0);
   release();
   await expect(page.getByText("No featured restaurants yet.")).toBeVisible();
   await expect
@@ -317,6 +323,38 @@ test("Featured Restaurants stays below the header when loading finishes after na
       page.locator("#featured").evaluate((element) => element.getBoundingClientRect().top),
     )
     .toBeCloseTo(96, 0);
+});
+
+test("Featured Restaurants preserves user scrolling while loading finishes", async ({
+  page,
+  isMobile,
+}) => {
+  let release = () => {};
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/featured-restaurants", async (route) => {
+    await pending;
+    await route.fulfill({ json: { featured: [] } });
+  });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("status", { name: "Loading Featured Restaurants" })).toBeVisible();
+  await page.getByRole("contentinfo").getByRole("link", { name: "Featured Restaurants" }).click();
+  await expect
+    .poll(() =>
+      page.locator("#featured").evaluate((element) => element.getBoundingClientRect().top),
+    )
+    .toBeCloseTo(96, 0);
+  if (isMobile) {
+    await page.keyboard.press("Home");
+  } else {
+    await page.mouse.wheel(0, -2000);
+  }
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  release();
+  await expect(page.getByText("No featured restaurants yet.")).toBeVisible();
+  await page.setViewportSize({ width: 1000, height: 720 });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
 });
 
 test("footer supports keyboard focus and an accessible LinkedIn icon", async ({

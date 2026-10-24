@@ -233,3 +233,26 @@ describe("Add Location with an international place", () => {
     },
   );
 });
+
+it("keeps the location address visible without address expansion or Maps actions", () => {
+  render(
+    <LocationManagement
+      me={{
+        locations: [
+          {
+            id: "new-york",
+            displayName: "New York",
+            address: "174 Broadway, Brooklyn, NY 11211, USA",
+            googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=174+Broadway",
+          },
+        ],
+      }}
+      onChanged={vi.fn()}
+    />,
+  );
+  expect(screen.getByText("174 Broadway, Brooklyn").title).toBe(
+    "174 Broadway, Brooklyn, NY 11211, USA",
+  );
+  expect(screen.queryByRole("button", { name: /Full Address/ })).toBeNull();
+  expect(screen.queryByRole("link", { name: "View on Maps" })).toBeNull();
+});
