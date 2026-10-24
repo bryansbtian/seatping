@@ -146,6 +146,23 @@ function getRestaurantStatus(
     currentDayName = todayDayKey();
   }
 
+  const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const currentIndex = days.indexOf(currentDayName);
+  const previous = openingHours[days[(currentIndex + 6) % 7]];
+  if (
+    previous?.enabled &&
+    previous.open &&
+    previous.close &&
+    previous.close < previous.open &&
+    currentHourMinute < previous.close
+  ) {
+    return {
+      isOpen: true,
+      text: `Open · Closes at ${formatTimeLabel(previous.close)}`,
+      color: "text-green-600 font-medium",
+    };
+  }
+
   const today = openingHours[currentDayName];
   if (today?.enabled && today.open && today.close) {
     if (today.open === "00:00" && today.close === "00:00") {
@@ -155,7 +172,10 @@ function getRestaurantStatus(
         color: "text-green-600 font-medium",
       };
     }
-    if (currentHourMinute >= today.open && currentHourMinute < today.close) {
+    if (
+      currentHourMinute >= today.open &&
+      (today.close < today.open || currentHourMinute < today.close)
+    ) {
       return {
         isOpen: true,
         text: `Open · Closes at ${formatTimeLabel(today.close)}`,
@@ -179,8 +199,6 @@ function getRestaurantStatus(
     };
   }
 
-  const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-  const currentIndex = days.indexOf(currentDayName);
   for (let i = 1; i <= 7; i++) {
     const nextDay = days[(currentIndex + i) % 7];
     const hours = openingHours[nextDay];
