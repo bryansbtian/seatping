@@ -125,6 +125,58 @@ async function insertBlock(body: Locator, name: string) {
   await body.press("Enter");
 }
 
+test("scrolling stops at the article canvas bottom", async ({ page }) => {
+  const state = await workspace(page);
+  const timestamp = new Date().toISOString();
+  state.posts.push({
+    ...newBlogFields(),
+    id: "long-article",
+    title: "Managing Restaurant Guests",
+    slug: "managing-restaurant-guests",
+    tags: ["Guest Experience"],
+    content: {
+      type: "doc",
+      content: Array.from({ length: 40 }, (_, index) => ({
+        type: "paragraph",
+        content: [{ type: "text", text: `Restaurant guest experience paragraph ${index + 1}.` }],
+      })),
+    },
+    status: "DRAFT",
+    revision: 1,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    publishedAt: null,
+  });
+  await page.goto("/admin/blog/long-article/edit");
+  await expect(page.getByRole("textbox", { name: "Article Body" })).toBeVisible();
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const preview of [false, true]) {
+      if (preview) {
+        await page.getByRole("button", { name: "Preview", exact: true }).click();
+      }
+      const main = page.getByRole("main");
+      await expect(main).toHaveCSS("overscroll-behavior-y", "none");
+      await main.evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      await expect(page.getByRole("group", { name: "Article Tags" })).toBeInViewport();
+      const bottomGap = await page.locator("article").evaluate((element) => {
+        const main = element.closest("main")!;
+        return main.getBoundingClientRect().bottom - element.getBoundingClientRect().bottom;
+      });
+      expect(bottomGap).toBeGreaterThanOrEqual(0);
+      expect(bottomGap).toBeLessThanOrEqual(33);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight),
+      ).toBeLessThanOrEqual(1);
+      if (preview) {
+        await page.getByRole("button", { name: "Continue Editing", exact: true }).click();
+      }
+    }
+  }
+});
+
 test("authors, saves, previews, reloads formatting, publishes, filters, duplicates, and deletes", async ({
   page,
 }) => {

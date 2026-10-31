@@ -100,7 +100,7 @@ const PortalLayout = ({
           </div>
         </header>
 
-        <main className="flex flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable]">
+        <main className="flex flex-1 flex-col overflow-y-auto overscroll-y-none [scrollbar-gutter:stable]">
           <div className="bp-shell flex-1">{children}</div>
         </main>
       </div>
