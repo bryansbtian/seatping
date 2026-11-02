@@ -508,6 +508,7 @@ test("mobile search follows the homepage layout and cards use its photo proporti
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/search");
   await expect(page.getByRole("article")).toHaveCount(3);
+  await page.evaluate(() => document.fonts.ready);
   const discoveryLayout = await mobileSearchLayout(page.getByRole("search"));
   const discoveryButton = await buttonStyle(
     page.getByRole("link", { name: "Book Table at Bistro Downtown" }),
@@ -540,6 +541,7 @@ test("mobile search follows the homepage layout and cards use its photo proporti
     has: page.getByRole("combobox", { name: "Search restaurants, cuisines, or areas" }),
   });
   await expect(homepageForm).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
   const homepageLayout = await mobileSearchLayout(homepageForm);
   expect(discoveryLayout.height).toBe(homepageLayout.height);
   expect(discoveryLayout.radius).toBe(homepageLayout.radius);

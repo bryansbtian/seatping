@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { fromBase64, toBase64 } from "lib0/buffer";
+import { Awareness, encodeAwarenessUpdate } from "y-protocols/awareness";
 import { BlogCollaboration, type BlogSyncTransport } from "../../src/lib/blogCollaboration.js";
 import {
   createBlogDocument,
+  changeBlogDocument,
   readBlogDocument,
   type BlogSyncResponse,
 } from "../../shared/blogCollaboration.js";
@@ -51,6 +53,7 @@ afterEach(async () => {
   await Promise.resolve();
   server.destroy();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 const transport: BlogSyncTransport = async (method, payload) => {
@@ -71,8 +74,8 @@ const transport: BlogSyncTransport = async (method, payload) => {
     peers: [],
   } satisfies BlogSyncResponse;
 };
-async function connect() {
-  const provider = new BlogCollaboration(initial, transport);
+async function connect(send: BlogSyncTransport = transport) {
+  const provider = new BlogCollaboration(initial, send);
   providers.push(provider);
   provider.start();
   await vi.waitFor(() => expect(provider.snapshot.ready).toBe(true));
@@ -132,5 +135,219 @@ describe("Blog Collaboration Client", () => {
     await provider.save();
     expect(provider.snapshot.dirty).toBe(false);
     expect(readBlogDocument(server).author).toBe("Alex");
+  });
+
+  it("refuses synchronization before starting or after stopping", async () => {
+    const provider = new BlogCollaboration(initial, transport);
+    providers.push(provider);
+    expect(() => provider.awareness).toThrow("still connecting");
+    await expect(provider.sync()).rejects.toThrow("still connecting");
+    provider.start();
+    await vi.waitFor(() => expect(provider.snapshot.ready).toBe(true));
+    provider.stop();
+    await expect(provider.sync()).rejects.toThrow("still connecting");
+  });
+
+  it("retries a failed initial connection and debounces local edits", async () => {
+    vi.useFakeTimers();
+    const send = vi.fn<BlogSyncTransport>().mockRejectedValue("Offline");
+    const provider = new BlogCollaboration(initial, send);
+    providers.push(provider);
+    provider.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(provider.snapshot.ready).toBe(false);
+    expect(provider.snapshot.error).toContain("Connection lost");
+    send.mockImplementation(transport);
+    await vi.advanceTimersByTimeAsync(750);
+    expect(provider.snapshot.ready).toBe(true);
+    const before = provider.snapshot.fields;
+    provider.change({ ...before, title: "Latest Draft" }, before);
+    await vi.advanceTimersByTimeAsync(149);
+    expect(readBlogDocument(server).title).toBe("Draft");
+    await vi.advanceTimersByTimeAsync(1);
+    expect(readBlogDocument(server).title).toBe("Latest Draft");
+    expect(provider.snapshot.dirty).toBe(false);
+  });
+
+  it("ignores an initialization response after the provider stops", async () => {
+    const response = await transport("GET");
+    const pending = Promise.withResolvers<BlogSyncResponse>();
+    const provider = new BlogCollaboration(initial, () => pending.promise);
+    providers.push(provider);
+    provider.start();
+    provider.stop();
+    pending.resolve(response);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(provider.snapshot.ready).toBe(false);
+    expect(provider.snapshot.connected).toBe(false);
+  });
+
+  it("drains edits added while an explicit save is in flight", async () => {
+    const pending = Promise.withResolvers<void>();
+    let hold = false;
+    const send: BlogSyncTransport = async (method, payload) => {
+      if (method === "POST" && hold) {
+        hold = false;
+        await pending.promise;
+      }
+      return transport(method, payload);
+    };
+    const provider = await connect(send);
+    provider.change({ ...provider.snapshot.fields, title: "First" }, provider.snapshot.fields);
+    hold = true;
+    const saving = provider.save();
+    await Promise.resolve();
+    expect(provider.snapshot.saving).toBe(true);
+    const firstSync = provider.sync();
+    expect(provider.sync()).toBe(firstSync);
+    provider.change({ ...provider.snapshot.fields, title: "Latest" }, provider.snapshot.fields);
+    pending.resolve();
+    await saving;
+    expect(readBlogDocument(server).title).toBe("Latest");
+    expect(provider.snapshot.dirty).toBe(false);
+  });
+
+  it("keeps the latest accepted revision when older sync responses arrive", async () => {
+    const provider = await connect();
+    provider.acceptPost({ ...initial, revision: 5, status: "PUBLISHED" });
+    provider.acceptPost({ ...initial, revision: 2 });
+    await provider.sync();
+    expect(provider.snapshot.post.revision).toBe(5);
+    expect(provider.snapshot.post.status).toBe("PUBLISHED");
+  });
+
+  it("blocks saves until recovered edits are explicitly discarded", async () => {
+    storage.set(
+      "seatping.blog.recovery.blog-collaboration-unit",
+      JSON.stringify({ ...newBlogFields(), title: "Recovered" }),
+    );
+    const provider = await connect();
+    expect(provider.snapshot.recovery).toMatchObject({ title: "Recovered" });
+    await expect(provider.save()).rejects.toThrow("Restore or discard");
+    provider.discardRecovery();
+    expect(provider.snapshot.recovery).toBeNull();
+    expect(storage.has("seatping.blog.recovery.blog-collaboration-unit")).toBe(false);
+    await provider.save();
+    expect(readBlogDocument(server).title).toBe("Draft");
+  });
+
+  it.each(["invalid json", JSON.stringify({ title: 42 })])(
+    "ignores invalid legacy recovery: %s",
+    async (stored) => {
+      storage.set("seatping.blog.recovery.blog-collaboration-unit", stored);
+      const provider = await connect();
+      expect(provider.snapshot.recovery).toBeNull();
+      expect(provider.snapshot.fields.title).toBe("Draft");
+    },
+  );
+
+  it("restores legacy content, tags, and metadata into the shared document", async () => {
+    const fields = {
+      ...newBlogFields(),
+      title: "Recovered Article",
+      category: "Guides",
+      tags: ["Operations"],
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "Recovered Content" }] }],
+      },
+    };
+    storage.set("seatping.blog.recovery.blog-collaboration-unit", JSON.stringify(fields));
+    const provider = await connect();
+    provider.restore();
+    await provider.save();
+    expect(readBlogDocument(server)).toMatchObject({
+      title: fields.title,
+      category: fields.category,
+      tags: fields.tags,
+      content: fields.content,
+    });
+    provider.restore();
+    expect(provider.snapshot.recovery).toBeNull();
+  });
+
+  it("delivers subscriptions once per microtask and supports unsubscribing", async () => {
+    const provider = await connect();
+    const listener = vi.fn();
+    const unsubscribe = provider.subscribe(listener);
+    provider.acceptPost({ ...initial, revision: 2 });
+    provider.acceptPost({ ...initial, revision: 3 });
+    await Promise.resolve();
+    expect(listener).toHaveBeenCalledOnce();
+    unsubscribe();
+    provider.acceptPost({ ...initial, revision: 4 });
+    await Promise.resolve();
+    expect(listener).toHaveBeenCalledOnce();
+  });
+
+  it("resolves anonymous identity collisions and removes departed peers", async () => {
+    const peerDocument = new Y.Doc();
+    peerDocument.clientID = 1;
+    const awareness = new Awareness(peerDocument);
+    let peers: BlogSyncResponse["peers"] = [];
+    try {
+      const provider = await connect(async (method, payload) => ({
+        ...(await transport(method, payload)),
+        peers,
+      }));
+      const original = provider.snapshot.user;
+      awareness.setLocalState({ user: original });
+      peers = [{ clientId: 1, awareness: toBase64(encodeAwarenessUpdate(awareness, [1])) }];
+      await provider.sync();
+      expect(provider.snapshot.peers).toEqual([{ clientId: 1, ...original }]);
+      expect(provider.snapshot.user.name).not.toBe(original.name);
+      expect(provider.snapshot.user.color).not.toBe(original.color);
+      awareness.setLocalState({ user: { name: "Invalid", color: "invalid" } });
+      peers = [{ clientId: 1, awareness: toBase64(encodeAwarenessUpdate(awareness, [1])) }];
+      await provider.sync();
+      expect(provider.snapshot.peers).toEqual([]);
+      peers = [];
+      await provider.sync();
+      expect(provider.awareness.getStates().has(1)).toBe(false);
+    } finally {
+      awareness.destroy();
+      peerDocument.destroy();
+    }
+  });
+
+  it("reports an invalid local document without losing the last valid fields", async () => {
+    const provider = await connect();
+    provider.document.getMap("metadata").set("categoryColor", "invalid");
+    expect(provider.snapshot.error).toContain("Check the article fields");
+    expect(provider.snapshot.fields.categoryColor).toBe(initial.categoryColor);
+  });
+
+  it("provides a fallback message for unexpected synchronization failures", async () => {
+    const provider = await connect(async (method, payload) => {
+      if (method === "POST" && offline) {
+        throw "Offline";
+      }
+      return transport(method, payload);
+    });
+    offline = true;
+    await expect(provider.sync()).rejects.toBe("Offline");
+    expect(provider.snapshot.error).toContain("Connection lost");
+    expect(provider.snapshot.connected).toBe(false);
+  });
+});
+
+describe("Shared Blog Document Changes", () => {
+  it("replaces only changed text, metadata, tags, and content", () => {
+    const before = { ...initial, title: "A middle ending", tags: ["Keep", "Remove"] };
+    const document = createBlogDocument(before);
+    const next = { ...before, title: "A new ending", coverAlt: "New Cover", tags: ["Keep", "Add"] };
+    try {
+      changeBlogDocument(document, next, before);
+      expect(readBlogDocument(document)).toMatchObject({
+        title: next.title,
+        coverAlt: next.coverAlt,
+        tags: ["Keep", "Add"],
+      });
+      document.getMap("metadata").delete("category");
+      expect(() => readBlogDocument(document)).toThrow();
+    } finally {
+      document.destroy();
+    }
   });
 });
