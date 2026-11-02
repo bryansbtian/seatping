@@ -23,7 +23,7 @@ function RestaurantImage({ restaurant }: { restaurant: SearchResult }) {
       <HugeiconsIcon icon={Restaurant02Icon} className="size-8" />
     </div>
   );
-  if (url && failedUrl !== url) {
+  if (url && url !== "/placeholder.svg" && failedUrl !== url) {
     content = (
       <>
         {loadedUrl !== url && <Skeleton className="absolute inset-0 rounded-none" />}

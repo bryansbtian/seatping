@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { restaurant } from "../tests/helpers/searchRestaurants.js";
 
-const catalog = Array.from({ length: 23 }, (_, index) =>
+const catalog = Array.from({ length: 27 }, (_, index) =>
   restaurant({
     locationId: `loc-${index + 1}`,
     name: `Restaurant ${String(index + 1).padStart(2, "0")}`,
@@ -35,12 +35,12 @@ async function guestFixtures(page: Page) {
     }
     return route.fulfill({
       json: {
-        results: matching.slice((current - 1) * 10, current * 10),
+        results: matching.slice((current - 1) * 12, current * 12),
         total: matching.length,
         page: current,
-        limit: 10,
-        totalPages: Math.ceil(matching.length / 10),
-        hasMore: current * 10 < matching.length,
+        limit: 12,
+        totalPages: Math.ceil(matching.length / 12),
+        hasMore: current * 12 < matching.length,
         facets: { cuisines: ["Japanese"], locations: ["Downtown"] },
       },
     });
@@ -102,35 +102,94 @@ test.beforeEach(async ({ page }) => {
   await guestFixtures(page);
 });
 
-test("restaurant pages contain ten results and preserve navigation state through browser history", async ({
+for (const width of [320, 1440]) {
+  test(`compact pagination fits ninety-nine pages at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.route("**/api/search/restaurants**", (route) => {
+      const current = Number(new URL(route.request().url()).searchParams.get("page") || "1");
+      return route.fulfill({
+        json: {
+          results: catalog.slice(0, 12),
+          total: 1188,
+          page: current,
+          limit: 12,
+          totalPages: 99,
+          hasMore: current < 99,
+        },
+      });
+    });
+    await page.goto("/search?page=5");
+    const pagination = page.getByRole("navigation", { name: "Restaurant Pages" });
+    await expect(pagination).toBeVisible();
+    await pagination.scrollIntoViewIfNeeded();
+    await expect(pagination.getByRole("button", { name: /^Page / })).toHaveText([
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "99",
+    ]);
+    await expect(pagination.getByText("…", { exact: true })).toBeVisible();
+    const active = pagination.getByRole("button", { name: "Page 5", exact: true });
+    await expect(active).toHaveAttribute("aria-current", "page");
+    await expect(active).toHaveCSS("border-radius", "9999px");
+    await expect(active).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(active).toHaveCSS("color", "rgb(79, 70, 229)");
+    expect(
+      await pagination.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        return (
+          bounds.left >= 0 &&
+          bounds.right <= window.innerWidth &&
+          document.documentElement.scrollWidth <= window.innerWidth
+        );
+      }),
+    ).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`pagination-${width}.png`) });
+    const previous = pagination.getByRole("button", { name: "Previous", exact: true });
+    await previous.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/page=4/);
+    await expect(pagination.getByRole("button", { name: "Page 4", exact: true })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await pagination.getByRole("button", { name: "Page 99", exact: true }).click();
+    await expect(page).toHaveURL(/page=99/);
+    await expect(pagination.getByRole("button", { name: "Next", exact: true })).toBeDisabled();
+  });
+}
+
+test("restaurant pages contain twelve results and preserve navigation state through browser history", async ({
   page,
 }) => {
   await page.goto("/search?date=2027-10-16&time=18%3A00&partySize=4");
-  await expect(page.getByRole("article")).toHaveCount(10);
+  await expect(page.getByRole("article")).toHaveCount(12);
   await expect(page.getByRole("article").first()).toHaveAccessibleName("Restaurant 01");
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("article").first()).toHaveAccessibleName("Restaurant 11");
-  await expect(page.getByRole("article")).toHaveCount(10);
+  await expect(page.getByRole("article").first()).toHaveAccessibleName("Restaurant 13");
+  await expect(page.getByRole("article")).toHaveCount(12);
   await expect(page).toHaveURL(/partySize=4&page=2/);
   await page.getByRole("button", { name: "Page 3", exact: true }).click();
   await expect(page.getByRole("article")).toHaveCount(3);
   await expect(page.getByRole("button", { name: "Next", exact: true })).toBeDisabled();
   await page.goBack();
-  await expect(page.getByRole("article").first()).toHaveAccessibleName("Restaurant 11");
+  await expect(page.getByRole("article").first()).toHaveAccessibleName("Restaurant 13");
   await page.goBack();
   await expect(page.getByRole("article").first()).toHaveAccessibleName("Restaurant 01");
   await page.goForward();
-  await expect(page.getByRole("article").first()).toHaveAccessibleName("Restaurant 11");
+  await expect(page.getByRole("article").first()).toHaveAccessibleName("Restaurant 13");
   await expect(page.getByRole("button", { name: "Number of guests: 4 Guests" })).toBeVisible();
 });
 
 test("global sorting resets the page while retaining booking selections", async ({ page }) => {
   await page.goto("/search?page=2&date=2027-10-16&time=18%3A00&partySize=4");
-  await expect(page.getByRole("article").first()).toHaveAccessibleName("Restaurant 11");
+  await expect(page.getByRole("article").first()).toHaveAccessibleName("Restaurant 13");
   await page.getByRole("button", { name: "Sort By: Recommended" }).click();
   await page.getByRole("button", { name: "Name Z-A", exact: true }).click();
-  await expect(page.getByRole("article").first()).toHaveAccessibleName("Restaurant 23");
-  await expect(page.getByRole("article")).toHaveCount(10);
+  await expect(page.getByRole("article").first()).toHaveAccessibleName("Restaurant 27");
+  await expect(page.getByRole("article")).toHaveCount(12);
   await expect(page).toHaveURL(/partySize=4&sort=name-za/);
   expect(new URL(page.url()).searchParams.has("page")).toBe(false);
 });

@@ -28,7 +28,7 @@ const RESERVATIONS = [
   reservation("no-show", "No-Show Guest", "2026-10-17", "no_show"),
 ];
 
-async function mockBusiness(page: Page) {
+async function mockBusiness(page: Page, locationOverrides: Record<string, unknown> = {}) {
   const user = {
     id: "business-design-audit",
     name: "Example Restaurant",
@@ -53,6 +53,7 @@ async function mockBusiness(page: Page) {
             monday: { enabled: true, open: "09:00", close: "22:00" },
           },
         },
+        ...locationOverrides,
       },
     ],
   };
@@ -100,6 +101,282 @@ async function expectNoHorizontalOverflow(page: Page) {
   );
 }
 
+for (const width of [320, 390, 1440]) {
+  test(`queue contact ellipses and overview chart labels fit at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    const email = "guest.with.a.very.long.email.address.for.mobile@example.test";
+    const waiting = {
+      id: "queue-email",
+      firstName: "Alex",
+      lastName: "Morgan",
+      joinedAt: "2026-10-17T10:30:00Z",
+      numGuests: 2,
+      notificationMethod: "email",
+      email,
+    };
+    await mockBusiness(page, {
+      credits: 0,
+      queue: [waiting],
+      reservations: [
+        {
+          ...reservation("email-reservation", "Long Email Guest", "2026-10-17", "confirmed"),
+          email,
+        },
+      ],
+      removedCustomers: ["removed", "left"].map((status) => ({
+        ...waiting,
+        id: status,
+        firstName: "Jordan",
+        lastName: status,
+        status,
+        leftAt: "2026-10-17T11:00:00Z",
+        removedAt: "2026-10-17T11:00:00Z",
+      })),
+      admittedCustomers: Array.from({ length: 8 }, (_, index) => {
+        const joined = new Date(Date.UTC(2026, 9, 16, 9 + index));
+        const wait = [3, 7, 12, 20, 40][index % 5];
+        return {
+          ...waiting,
+          id: `served-${index}`,
+          finalStatus: "served",
+          joinedAt: joined.toISOString(),
+          admittedAt: new Date(joined.getTime() + wait * 60000).toISOString(),
+        };
+      }),
+    });
+    await page.route("**/api/floor/**", (route) =>
+      route.fulfill({ json: { rooms: [], waitingParties: [], upcomingReservations: [] } }),
+    );
+    await page.route("**/queue-etas", (route) => route.fulfill({ json: { etas: [] } }));
+    await page.goto("/business/overview");
+    const creditTitle = page.getByRole("heading", { name: "No Credits Available", exact: true });
+    await expect(creditTitle).toBeVisible();
+    const creditBanner = page.locator(".bg-red-600").filter({ has: creditTitle });
+    await expect(creditBanner).toHaveCSS("background-image", "none");
+    await expect(creditBanner).toHaveCSS("background-color", "rgb(220, 38, 38)");
+    const contacts = page.getByText(`Email: ${email}`, { exact: true });
+    await expect(contacts).toHaveCount(2);
+    for (const contact of await contacts.all()) {
+      await expect(contact).toHaveAttribute("title", `Email: ${email}`);
+      await expect(contact).toHaveCSS("text-overflow", "ellipsis");
+      await expect(contact).toHaveCSS("white-space", "nowrap");
+      if (width === 320) {
+        expect(await contact.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+          true,
+        );
+      }
+    }
+    for (const testId of ["overview-peak-hours", "overview-wait-distribution"]) {
+      const chart = page.getByTestId(testId);
+      await expect(chart).toBeVisible();
+      const labelsFit = await chart.locator("li").evaluateAll((items) =>
+        items.every((item) => {
+          const label = item.lastElementChild;
+          if (!(label instanceof HTMLElement)) {
+            return false;
+          }
+          const range = document.createRange();
+          range.selectNodeContents(label);
+          const text = range.getBoundingClientRect();
+          const bounds = item.getBoundingClientRect();
+          return (
+            text.left >= bounds.left - 1 &&
+            text.right <= bounds.right + 1 &&
+            label.scrollHeight <= label.clientHeight
+          );
+        }),
+      );
+      expect(labelsFit).toBe(true);
+      if (width === 320 && testId === "overview-peak-hours") {
+        const hourLabel = chart.locator('span[title="1 PM"] > span:visible');
+        const lineBreak = await hourLabel.evaluate((element) => {
+          const text = element.firstChild;
+          if (!(text instanceof Text)) {
+            return 0;
+          }
+          const range = document.createRange();
+          range.setStart(text, 0);
+          range.setEnd(text, 1);
+          const firstLine = range.getBoundingClientRect().top;
+          range.setStart(text, 2);
+          range.setEnd(text, 4);
+          return range.getBoundingClientRect().top - firstLine;
+        });
+        expect(lineBreak).toBeGreaterThanOrEqual(15);
+      }
+      await chart.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: testInfo.outputPath(`${testId}-${width}.png`) });
+    }
+    await expectNoHorizontalOverflow(page);
+    await page.goto("/business/queue");
+    const queueContact = page
+      .getByTestId("queue-row-queue-email")
+      .getByText(`Email: ${email}`, { exact: true });
+    await expect(queueContact).toHaveAttribute("title", `Email: ${email}`);
+    await expect(queueContact).toHaveCSS("text-overflow", "ellipsis");
+    await expect(queueContact).toHaveCSS("white-space", "nowrap");
+    if (width === 320) {
+      expect(
+        await queueContact.evaluate((element) => element.scrollWidth > element.clientWidth),
+      ).toBe(true);
+    }
+    await expectNoHorizontalOverflow(page);
+    await page.goto("/business/reservations");
+    const reservationContact = page.getByText(email, { exact: true });
+    await expect(reservationContact).toHaveAttribute("title", email);
+    await expect(reservationContact).toHaveCSS("text-overflow", "ellipsis");
+    await expect(reservationContact).toHaveCSS("white-space", "nowrap");
+    const actions = page.getByRole("button", { name: /^(Mark Arrived|No-Show|Cancel)$/ });
+    await expect(actions).toHaveCount(3);
+    let actionFontSize = "13px";
+    if (width < 640) {
+      actionFontSize = "11px";
+    }
+    for (const action of await actions.all()) {
+      await expect(action).toHaveCSS("font-size", actionFontSize);
+      await expect(action).toHaveCSS("white-space", "nowrap");
+    }
+    const bounds = await actions.evaluateAll((buttons) =>
+      buttons.map((button) => {
+        const rect = button.getBoundingClientRect();
+        const text = document.createRange();
+        text.selectNodeContents(button);
+        return {
+          top: rect.top,
+          height: rect.height,
+          textFits: button.scrollHeight <= button.clientHeight,
+          textWidthFits: button.scrollWidth <= button.clientWidth,
+          textHeight: text.getBoundingClientRect().height,
+        };
+      }),
+    );
+    expect(
+      Math.max(...bounds.map((box) => box.top)) - Math.min(...bounds.map((box) => box.top)),
+    ).toBeLessThan(1);
+    for (const box of bounds) {
+      expect(box.height).toBeGreaterThanOrEqual(28);
+      expect(box.textFits).toBe(true);
+      expect(box.textWidthFits).toBe(true);
+      expect(box.textHeight).toBeLessThan(20);
+    }
+    if (width === 320) {
+      expect(
+        await reservationContact.evaluate((element) => element.scrollWidth > element.clientWidth),
+      ).toBe(true);
+    }
+    await actions.first().scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`reservation-actions-${width}.png`) });
+    await expectNoHorizontalOverflow(page);
+  });
+}
+
+for (const width of [320, 390, 1440]) {
+  test(`campaign manage menus and shared pill alignment at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await mockBusiness(page);
+    const statuses = ["DRAFT", "READY", "CANCELLED", "SCHEDULED", "RECURRING", "PAUSED"];
+    const campaigns = statuses.map((status, index) => ({
+      id: `campaign-${status}`,
+      name: `${status} Campaign`,
+      status,
+      channel: ["SMS", "WHATSAPP", "EMAIL"][index % 3],
+      templateId: "template",
+      templateName: "Welcome Guests",
+      audienceType: "all_guests",
+      audienceLabel: "All Guests",
+      audienceConfig: {},
+      templateValues: {},
+      recipientCount: 12,
+      recurrenceFrequency: "WEEKLY",
+      nextRunAtLabel: "Nov 3, 2026, 12:24 AM",
+      createdAt: "2026-10-17T12:00:00Z",
+    }));
+    await page.route("**/api/campaigns/meta", (route) =>
+      route.fulfill({
+        json: { locations: [], channels: ["SMS", "WHATSAPP", "EMAIL"], audiences: [] },
+      }),
+    );
+    await page.route("**/api/campaigns/templates", (route) =>
+      route.fulfill({ json: { templates: [] } }),
+    );
+    await page.route("**/api/audiences**", (route) => route.fulfill({ json: { audiences: [] } }));
+    await page.route("**/api/campaigns?**", (route) => route.fulfill({ json: { campaigns } }));
+    await page.goto("/business/campaigns");
+    await expect(
+      page.getByRole("button", { name: "Manage DRAFT Campaign", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
+    if (width < 768) {
+      const timing = "Weekly · Next Nov 3, 2026, 12:24 AM";
+      const summary = page.getByTitle(timing, { exact: true });
+      await expect(summary).toHaveText(timing);
+      await expect(summary).toHaveCSS("white-space", "nowrap");
+      await expect(summary).toHaveCSS("text-overflow", "ellipsis");
+    }
+    if (width >= 768) {
+      await expect(
+        page.getByRole("columnheader", { name: "Actions", exact: true }).locator("span"),
+      ).toHaveClass("sr-only");
+    }
+    const expected = [
+      ["Edit"],
+      ["Edit"],
+      ["Edit"],
+      ["Cancel"],
+      ["Pause", "Cancel"],
+      ["Resume", "Cancel"],
+    ];
+    for (const [index, status] of statuses.entries()) {
+      await page.getByRole("button", { name: `Manage ${status} Campaign`, exact: true }).click();
+      const menu = page.getByRole("menu");
+      await expect(menu.getByRole("menuitem")).toHaveText(expected[index]);
+      await expect(menu).toBeFocused();
+      await expect(page.locator("body")).toHaveCSS("pointer-events", "none");
+      await expect(menu).toHaveCSS("pointer-events", "auto");
+      await menu.press("Escape");
+      await expect(menu).toHaveCount(0);
+      await expect(page.locator("body")).toHaveCSS("pointer-events", "auto");
+    }
+    const badges = page.locator(".h-badge:visible");
+    const alignment = await badges.evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const style = getComputedStyle(node);
+        const text = node.querySelector("span");
+        if (!text) {
+          throw new Error("Missing Badge Text");
+        }
+        const box = node.getBoundingClientRect();
+        const content = text.getBoundingClientRect();
+        return {
+          height: box.height,
+          paddingTop: style.paddingTop,
+          paddingBottom: style.paddingBottom,
+          trim: getComputedStyle(text).getPropertyValue("text-box-trim"),
+          difference: Math.abs(content.top - box.top - (box.bottom - content.bottom)),
+        };
+      }),
+    );
+    expect(alignment.length).toBeGreaterThan(0);
+    for (const badge of alignment) {
+      expect(badge.height).toBe(20);
+      expect(badge.paddingTop).toBe(badge.paddingBottom);
+      expect(badge.trim).toBe("trim-both");
+      expect(badge.difference).toBeLessThan(0.1);
+    }
+    await expectNoHorizontalOverflow(page);
+    await page.getByRole("button", { name: "Manage RECURRING Campaign", exact: true }).click();
+    await page.screenshot({ path: testInfo.outputPath(`campaign-manage-${width}.png`) });
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Manage DRAFT Campaign", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Edit Campaign", exact: true })).toBeVisible();
+  });
+}
+
 test("reservation filters use standard buttons and badges while preserving each reservation bucket", async ({
   page,
 }, testInfo) => {
@@ -126,7 +403,7 @@ test("reservation filters use standard buttons and badges while preserving each 
       await expect(filter).toHaveCSS("height", buttonHeight);
       await expect(filter).toHaveCSS("border-radius", "10px");
       await expect(filter).toHaveCSS("font-size", "13px");
-      const count = filter.getByText("1", { exact: true });
+      const count = filter.locator(".h-badge").filter({ hasText: /^1$/ });
       await expect(count).toHaveCSS("height", "20px");
       await expect(count).toHaveCSS("border-radius", "6px");
       if (label === "Today") {

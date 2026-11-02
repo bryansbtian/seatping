@@ -340,11 +340,13 @@ function ContactLine({ r }: { r: Reservation }) {
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 text-label text-ink-subtle">
-      <HugeiconsIcon icon={icon} className="h-3.5 w-3.5" />
-      <span className="capitalize">{contactMethodLabel}</span>
-      <span className="text-slate-400">·</span>
-      <span className="truncate">{value}</span>
+    <span className="flex min-w-0 w-full items-center gap-1.5 text-label text-ink-subtle">
+      <HugeiconsIcon icon={icon} className="h-3.5 w-3.5 shrink-0" />
+      <span className="shrink-0 capitalize">{contactMethodLabel}</span>
+      <span className="shrink-0 text-slate-400">·</span>
+      <span className="min-w-0 flex-1 truncate" title={value}>
+        {value}
+      </span>
     </span>
   );
 }
@@ -393,9 +395,9 @@ function ReservationCard({
   }
 
   return (
-    <div className="min-h-row-lg rounded-control border border-slate-200 p-4">
+    <div className="min-h-row-lg rounded-control border border-slate-200 p-3 sm:p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-medium text-slate-800 text-body">{r.name}</p>
             <StatusBadge status={r.status} label={tStatus(r.status)} />
@@ -422,7 +424,13 @@ function ReservationCard({
       </div>
 
       {actions.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div
+          className={cn(
+            "mt-3 grid grid-cols-[1.6fr_1.2fr_1fr] gap-1 sm:flex sm:flex-wrap sm:gap-2",
+            actions.length === 1 && "grid-cols-1",
+            actions.length === 2 && "grid-cols-2",
+          )}
+        >
           {actions.map((a) => {
             let buttonVariant: "destructiveOutline" | "default";
             if (a.variant === "destructive") {
@@ -447,7 +455,7 @@ function ReservationCard({
                 variant={buttonVariant}
                 disabled={busy}
                 onClick={() => onChange(r, a.status)}
-                className="text-label"
+                className="min-w-0 whitespace-nowrap px-0.5 text-caption leading-none sm:px-3 sm:text-label sm:leading-4"
               >
                 {buttonContent}
               </Button>

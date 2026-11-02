@@ -311,6 +311,7 @@ const QueueManager = ({
       <ul className="space-y-3" data-testid="queue-list">
         {queueRows.map((row, index) => {
           const waited = waitedMinutes(row.joinedAt, now);
+          const contact = contactLine(row);
           let joinedLabel = t("dash.justNow");
           if (waited !== null && waited > 0 && waited < 60) {
             joinedLabel = t("dash.minAgo", { n: waited });
@@ -335,7 +336,7 @@ const QueueManager = ({
           return (
             <li key={legacyKey(row)} data-testid={`queue-row-${row.id}`}>
               <div className="flex min-h-row-lg flex-col gap-3 rounded-control bg-slate-50 p-3 transition-colors hover:bg-slate-100 md:flex-row md:items-center md:justify-between md:px-4">
-                <div className="flex min-w-0 items-start gap-3 md:gap-4">
+                <div className="flex min-w-0 items-start gap-3 md:flex-1 md:gap-4">
                   <span className="mt-0.5 inline-flex h-badge shrink-0 items-center justify-center rounded-badge border border-slate-200 bg-white px-2 text-caption font-medium leading-none tabular-nums text-slate-700 shadow-sm">
                     #{index + 1}
                   </span>
@@ -349,9 +350,9 @@ const QueueManager = ({
                       <span className="text-slate-400">&middot;</span>
                       <span>{t(guestCountKey(row.numGuests), { n: row.numGuests })}</span>
                     </div>
-                    {contactLine(row) && (
-                      <p className="mt-1 break-all text-label text-ink-subtle">
-                        {contactLine(row)}
+                    {contact && (
+                      <p className="mt-1 truncate text-label text-ink-subtle" title={contact}>
+                        {contact}
                       </p>
                     )}
                     {etaLabel && (

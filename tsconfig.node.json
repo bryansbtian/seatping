@@ -19,6 +19,7 @@
   "include": [
     "vite.config.ts",
     "prisma.config.ts",
+    "scripts/e2e-ports.ts",
     "scripts/setup-development.ts",
     "scripts/copy-production-to-local.ts"
   ]

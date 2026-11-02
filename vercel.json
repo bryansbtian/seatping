@@ -5,6 +5,10 @@
   "devCommand": "npm run dev",
   "rewrites": [
     {
+      "source": "/api/admin/blog-collaboration/:path*",
+      "destination": "/api/server"
+    },
+    {
       "source": "/",
       "destination": "/api/server"
     },

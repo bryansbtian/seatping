@@ -331,6 +331,11 @@ const en = {
   "camp.tab.audiences": "Audiences",
   "camp.tab.history": "History",
   "camp.newCampaign": "New Campaign",
+  "camp.manage": "Manage",
+  "camp.manageCampaign": "Manage {name}",
+  "camp.edit": "Edit",
+  "camp.pause": "Pause",
+  "camp.resume": "Resume",
   "camp.newTemplate": "New Custom Template",
   "camp.location": "Location",
   "camp.empty.campaigns.title": "No Campaigns Yet",
@@ -381,7 +386,7 @@ const en = {
   "banner.trialExpiredShort.title": "Your trial has expired",
   "banner.trialExpiredShort.body":
     "Please contact SeatPing to continue using your business dashboard.",
-  "banner.noCredits.title": "⚠️ No Credits Available",
+  "banner.noCredits.title": "No Credits Available",
   "banner.noCredits.body":
     "You have no credits available. Please contact SeatPing to top up credits or adjust your account.",
 
@@ -1240,6 +1245,11 @@ const id: Partial<Record<TKey, string>> = {
   "camp.tab.audiences": "Audiens",
   "camp.tab.history": "Riwayat",
   "camp.newCampaign": "Kampanye Baru",
+  "camp.manage": "Kelola",
+  "camp.manageCampaign": "Kelola {name}",
+  "camp.edit": "Edit",
+  "camp.pause": "Jeda",
+  "camp.resume": "Lanjutkan",
   "camp.newTemplate": "Templat Kustom Baru",
   "camp.location": "Lokasi",
   "camp.empty.campaigns.title": "Belum Ada Kampanye",
@@ -1276,7 +1286,7 @@ const id: Partial<Record<TKey, string>> = {
   "banner.trialExpiredShort.title": "Masa uji coba Anda telah berakhir",
   "banner.trialExpiredShort.body":
     "Silakan hubungi SeatPing untuk terus menggunakan dasbor bisnis Anda.",
-  "banner.noCredits.title": "⚠️ Tidak Ada Kredit Tersedia",
+  "banner.noCredits.title": "Tidak Ada Kredit Tersedia",
   "banner.noCredits.body":
     "Anda tidak memiliki kredit tersedia. Silakan hubungi SeatPing untuk menambah kredit atau menyesuaikan akun Anda.",
 

@@ -1,5 +1,5 @@
 export const PILL_BASE_CLASS =
-  "shrink-0 inline-flex h-badge items-center rounded-badge border-transparent px-2 text-caption font-medium leading-none";
+  "shrink-0 inline-flex h-badge items-center rounded-badge border-transparent px-2 py-0 text-caption font-medium leading-none";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pending",

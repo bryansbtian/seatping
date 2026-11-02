@@ -792,6 +792,7 @@ const BusinessOverview = () => {
         data={peakHoursData.map((slot: any) => ({
           key: slot.hour,
           label: slot.hour,
+          mobileLabel: slot.hour.replace(" ", "\n"),
           value: slot.customers,
         }))}
       />
@@ -820,7 +821,7 @@ const BusinessOverview = () => {
 
           {me && me.trial === false && currentLocation && currentLocation.credits === 0 && (
             <div className="mb-6">
-              <div className="bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+              <div className="rounded-xl bg-red-600 p-4 text-white shadow-lg md:p-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
                   <div>
                     <h3 className="text-lg md:text-xl font-semibold">
@@ -1033,13 +1034,14 @@ const BusinessOverview = () => {
                       guestCountKey = "dash.guestMany";
                     }
                     const statusBadge = <StatusBadge status={leftStatus} label={leftStatusLabel} />;
+                    const contact = notificationContact(customer);
                     return (
                       <div
                         key={index}
                         className="flex min-h-row-lg flex-col space-y-1.5 md:flex-row md:items-center md:justify-between md:space-y-0 p-3 md:px-4 bg-gray-50 rounded-control"
                       >
-                        <div className="flex items-start md:items-center">
-                          <div className="flex-1">
+                        <div className="flex min-w-0 items-start md:flex-1 md:items-center">
+                          <div className="min-w-0 flex-1">
                             <h3 className="font-medium text-slate-800 text-body">
                               {customer.firstName} {customer.lastName}
                             </h3>
@@ -1056,9 +1058,12 @@ const BusinessOverview = () => {
                               </span>
                             </div>
 
-                            {notificationContact(customer) && (
-                              <p className="text-label text-ink-subtle mt-1 break-all">
-                                {notificationContact(customer)}
+                            {contact && (
+                              <p
+                                className="mt-1 truncate text-label text-ink-subtle"
+                                title={contact}
+                              >
+                                {contact}
                               </p>
                             )}
                             <div className="mt-1.5 md:hidden">{statusBadge}</div>

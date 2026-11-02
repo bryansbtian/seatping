@@ -12,6 +12,7 @@ import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
 import { syncTicketInbox } from "./lib/ticketInbox.js";
 import adminBlogRouter from "./routes/adminBlog.js";
+import adminBlogCollaborationRouter from "./routes/adminBlogCollaboration.js";
 import publicBlogRouter from "./routes/publicBlog.js";
 import { createBlogPagesRouter, sitemapRouter } from "./routes/blogPages.js";
 import adminCustomersRouter from "./routes/adminCustomers.js";
@@ -65,6 +66,7 @@ app.use((req, res, next) => {
 app.use("/api/jobs", jobsRouter);
 
 app.use("/api/admin/blog", express.json({ limit: "1mb" }));
+app.use("/api/admin/blog-collaboration", express.json({ limit: "3mb" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -123,6 +125,7 @@ app.use((req, res, next) => {
   if (
     req.path.startsWith("/api/cron") ||
     req.path.startsWith("/api/jobs") ||
+    req.path.startsWith("/api/admin/blog-collaboration/") ||
     (req.method === "GET" && CUSTOMER_POLL_EXEMPT_RE.test(req.path))
   ) {
     return next();
@@ -174,6 +177,7 @@ if (process.env.NODE_ENV === "production") {
   );
 }
 app.use("/api/admin/blog", adminBlogRouter);
+app.use("/api/admin/blog-collaboration", adminBlogCollaborationRouter);
 app.use("/api/blog", publicBlogRouter);
 app.use(sitemapRouter);
 app.use("/admin/customer", adminCustomersRouter);

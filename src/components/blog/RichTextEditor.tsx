@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import { EditorContent, useEditor, type Editor, type EditorOptions } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { blogExtensions } from "./extensions";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
+import { blogUserSchema } from "@shared/blogCollaboration";
+import type { BlogCollaboration } from "@/lib/blogCollaboration";
 import UploadProgress from "./UploadProgress";
 import {
   blogContentSchema,
@@ -28,6 +32,7 @@ import "./blog.css";
 type SlashState = { from: number; to: number; query: string; left: number; top: number };
 type BlockAction = { label: string; description: string; run: (editor: Editor) => void };
 type Props = {
+  collaboration?: BlogCollaboration;
   content: BlogNode;
   onChange?: (content: BlogNode) => void;
   readOnly?: boolean;
@@ -36,13 +41,53 @@ type Props = {
 };
 
 export default function RichTextEditor({
+  collaboration,
   content,
   onChange,
   readOnly = false,
   onUploading,
   onValidityChange,
 }: Props) {
-  const extensions = useMemo(blogExtensions, []);
+  const extensions = useMemo(() => {
+    const extensions = blogExtensions(Boolean(collaboration));
+    if (collaboration) {
+      extensions.push(Collaboration.configure({ document: collaboration.document }));
+      extensions.push(
+        CollaborationCaret.configure({
+          provider: collaboration,
+          user: collaboration.snapshot.user,
+          render: (raw: Record<string, unknown>) => {
+            const user = blogUserSchema.parse(raw);
+            const caret = document.createElement("span");
+            caret.className = "collaboration-carets__caret";
+            caret.style.borderColor = user.color;
+            caret.setAttribute("aria-hidden", "true");
+            const label = document.createElement("span");
+            label.className = "collaboration-carets__label";
+            label.style.backgroundColor = user.color;
+            label.textContent = user.name;
+            caret.append(label);
+            return caret;
+          },
+          selectionRender: (raw: Record<string, unknown>) => {
+            const user = blogUserSchema.parse(raw);
+            return {
+              nodeName: "span",
+              class: "blog-collaboration-selection",
+              style: `background-color: ${user.color}30`,
+              "data-collaborator": user.name,
+              title: `${user.name}'s Selection`,
+            };
+          },
+        }),
+      );
+    }
+    return extensions;
+  }, [collaboration]);
+  let initialContent: BlogNode | undefined = content;
+  if (collaboration) {
+    initialContent = undefined;
+  }
   const [slash, setSlash] = useState<SlashState | null>(null);
   const [active, setActive] = useState(0);
   const [dialog, setDialog] = useState("");
@@ -61,6 +106,7 @@ export default function RichTextEditor({
   });
   const insertRef = useRef<(files: File[], position?: number) => void>(() => {});
   const linkRef = useRef<() => void>(() => {});
+  const chooseRef = useRef<(block: BlockAction) => void>(() => {});
   const updateSlash = (editor: Editor) => {
     const { $from, empty } = editor.state.selection;
     const before = $from.parent.textBetween(0, $from.parentOffset, "", "");
@@ -79,12 +125,8 @@ export default function RichTextEditor({
     });
     setActive(0);
   };
-  const editor = useEditor({
-    extensions,
-    content,
-    editable: !readOnly,
-    shouldRerenderOnTransaction: true,
-    editorProps: {
+  const editorProps = useMemo<EditorOptions["editorProps"]>(
+    () => ({
       attributes: {
         class: "blog-content outline-none",
         role: "textbox",
@@ -134,7 +176,7 @@ export default function RichTextEditor({
         }
         if (event.key === "Enter" && menu.items[menu.active]) {
           event.preventDefault();
-          choose(menu.items[menu.active]);
+          chooseRef.current(menu.items[menu.active]);
           return true;
         }
         return false;
@@ -159,7 +201,16 @@ export default function RichTextEditor({
         }
         return doc.body.innerHTML;
       },
-    },
+    }),
+    [],
+  );
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions,
+    content: initialContent,
+    editable: !readOnly,
+    shouldRerenderOnTransaction: true,
+    editorProps,
     onUpdate: ({ editor }) => {
       const result = blogContentSchema.safeParse(editor.getJSON());
       onValidityChange?.(result.success);
@@ -336,6 +387,7 @@ export default function RichTextEditor({
     setSlash(null);
     block.run(editor);
   }
+  chooseRef.current = choose;
   function applyDialog() {
     if (!editor) {
       return;

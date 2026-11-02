@@ -67,6 +67,21 @@ afterEach(() => {
 });
 
 describe("Phase 1 overview trial behavior", () => {
+  it("shows the no-credits banner without an emoji on a solid red surface", () => {
+    const value = context({ trial: false });
+    value.currentLocation!.credits = 0;
+    render(
+      <BusinessSessionContext.Provider value={value}>
+        <BusinessOverview />
+      </BusinessSessionContext.Provider>,
+    );
+    const title = screen.getByRole("heading", { name: "No Credits Available", exact: true });
+    expect(title.textContent).toBe("No Credits Available");
+    const banner = title.closest(".bg-red-600");
+    expect(banner).not.toBeNull();
+    expect(banner?.className).not.toContain("gradient");
+  });
+
   it.each([0, 123])("bounds expired-trial renders with a server balance of %i", async (credits) => {
     const value = context();
     value.currentLocation!.credits = credits;

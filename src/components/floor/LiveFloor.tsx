@@ -550,12 +550,12 @@ const LiveFloor = ({ locationId, onDataChange }: LiveFloorProps) => {
                           {party.name}
                         </span>
                       </span>
-                      <span
+                      <Badge
                         data-testid={`admitted-countdown-${party.id}`}
                         className={cn(PILL_BASE_CLASS, "shrink-0 tabular-nums", countdownTone)}
                       >
                         {countdownLabel}
-                      </span>
+                      </Badge>
                     </button>
                   </li>
                 );

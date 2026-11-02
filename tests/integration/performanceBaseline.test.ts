@@ -5,6 +5,7 @@ import { afterAll, beforeEach, expect, it, vi } from "vitest";
 import { clearTestDatabase, getTestPrisma } from "../helpers/db.js";
 import { freshTestIp, serveApp } from "../helpers/app.js";
 import { seedBusiness } from "../helpers/seed.js";
+import { RESTAURANT_PAGE_SIZE } from "../../shared/restaurantDiscovery.js";
 
 const measured = vi.hoisted(() => ({ durationMs: 0, count: 0 }));
 
@@ -72,8 +73,10 @@ it("captures isolated HTTP search timings, bytes and SQL counts", async () => {
     }
     for (const versionTwo of contracts) {
       let version = "";
+      let expectedCount = 10;
       if (versionTwo) {
         version = "&version=2";
+        expectedCount = RESTAURANT_PAGE_SIZE;
       }
       const durations: number[] = [];
       const databaseDurations: number[] = [];
@@ -89,7 +92,7 @@ it("captures isolated HTTP search timings, bytes and SQL counts", async () => {
         const duration = performance.now() - started;
         expect(response.status).toBe(200);
         expect(response.body.total).toBe(locations);
-        expect(response.body.results).toHaveLength(10);
+        expect(response.body.results).toHaveLength(expectedCount);
         if (index >= 5) {
           durations.push(duration);
           databaseDurations.push(measured.durationMs);

@@ -160,7 +160,7 @@ const CustomerLanding = () => {
           }
 
           let bannerContent;
-          if (r.bannerImageUrl) {
+          if (r.bannerImageUrl && r.bannerImageUrl !== "/placeholder.svg") {
             bannerContent = (
               <img
                 {...getRestaurantImageProps(
@@ -170,12 +170,16 @@ const CustomerLanding = () => {
                 )}
                 alt={r.name}
                 loading="lazy"
-                className="h-full w-full object-cover"
+                className="absolute inset-0 h-full w-full object-cover"
               />
             );
           } else {
             bannerContent = (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
+              <div
+                role="img"
+                aria-label={`Photo unavailable for ${r.name}`}
+                className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400"
+              >
                 <HugeiconsIcon icon={Restaurant02Icon} className="h-8 w-8" />
               </div>
             );
@@ -220,7 +224,9 @@ const CustomerLanding = () => {
                 role={cardRole}
                 aria-label={cardAriaLabel}
               >
-                <div className="relative aspect-[4/3] bg-slate-100">{bannerContent}</div>
+                <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-slate-100">
+                  {bannerContent}
+                </div>
 
                 <RestaurantCardContent
                   name={r.name}

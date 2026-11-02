@@ -6,13 +6,14 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { requireAdmin } from "../lib/auth.js";
 import { assertCloudinaryConfigured } from "../lib/cloudinary.js";
+import { blogFieldsSchema, newBlogFields } from "../../shared/blog.js";
 import {
-  blogFieldsSchema,
-  blogSlug,
-  blogText,
-  newBlogFields,
-  type BlogFields,
-} from "../../shared/blog.js";
+  articleSlug,
+  BlogEditorUpgradeError,
+  currentFields,
+  publicBlogPost,
+  validatePublication,
+} from "../lib/blogPosts.js";
 
 const router = express.Router();
 router.use((_req, res, next) => {
@@ -25,6 +26,12 @@ router.use((_req, res, next) => {
 router.use(requireAdmin);
 
 function failure(res: express.Response, error: unknown) {
+  if (error instanceof BlogEditorUpgradeError) {
+    return res.status(409).json({
+      error: "This article now uses shared editing. Reload the editor to continue safely.",
+      code: "COLLABORATION_REQUIRED",
+    });
+  }
   if (error instanceof z.ZodError) {
     return res.status(400).json({ error: error.issues[0]?.message || "Invalid article" });
   }
@@ -81,7 +88,11 @@ router.get("/", async (req, res) => {
       orderBy = { title: "asc" };
     }
     const [posts, counts, metadata] = await Promise.all([
-      prisma.blogPost.findMany({ where, orderBy, omit: { content: true } }),
+      prisma.blogPost.findMany({
+        where,
+        orderBy,
+        omit: { content: true, collaborationState: true },
+      }),
       prisma.blogPost.groupBy({ by: ["status"], _count: true }),
       prisma.blogPost.findMany({ select: { category: true, author: true, tags: true } }),
     ]);
@@ -114,7 +125,7 @@ router.post("/", async (_req, res) => {
         content: newBlogFields().content,
       },
     });
-    return res.status(201).json({ post });
+    return res.status(201).json({ post: publicBlogPost(post) });
   } catch (error) {
     return failure(res, error);
   }
@@ -211,31 +222,11 @@ router.get("/:id", async (req, res) => {
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
-    return res.json({ post });
+    return res.json({ post: publicBlogPost(post) });
   } catch (error) {
     return failure(res, error);
   }
 });
-
-async function articleSlug(
-  tx: Prisma.TransactionClient,
-  title: string,
-  id: string,
-  fallback: string,
-) {
-  const base = blogSlug(title) || fallback;
-  let slug = base;
-  let suffix = 2;
-  while (true) {
-    const existing = await tx.blogPost.findUnique({ where: { slug }, select: { id: true } });
-    if (!existing || existing.id === id) {
-      return slug;
-    }
-    const ending = `-${suffix}`;
-    slug = `${base.slice(0, 160 - ending.length).replace(/-+$/g, "")}${ending}`;
-    suffix += 1;
-  }
-}
 
 router.put("/:id", async (req, res) => {
   try {
@@ -247,9 +238,13 @@ router.put("/:id", async (req, res) => {
       try {
         post = await prisma
           .$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT "id" FROM "blog_posts" WHERE "id" = ${req.params.id} FOR UPDATE`;
             const current = await tx.blogPost.findUnique({ where: { id: req.params.id } });
             if (!current || current.revision !== revision) {
               return null;
+            }
+            if (current.collaborationState) {
+              throw new BlogEditorUpgradeError();
             }
             if (current.status === "PUBLISHED") {
               validatePublication(fields);
@@ -291,7 +286,7 @@ router.put("/:id", async (req, res) => {
         code: "REVISION_CONFLICT",
       });
     }
-    return res.json({ post });
+    return res.json({ post: publicBlogPost(post) });
   } catch (error) {
     return failure(res, error);
   }
@@ -318,7 +313,7 @@ router.post("/:id/duplicate", async (req, res) => {
     const post = await prisma.blogPost.create({
       data: { ...fields, slug: fields.slug, content: fields.content },
     });
-    return res.status(201).json({ post });
+    return res.status(201).json({ post: publicBlogPost(post) });
   } catch (error) {
     return failure(res, error);
   }
@@ -351,7 +346,7 @@ router.post("/:id/status", async (req, res) => {
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
-    return res.json({ post });
+    return res.json({ post: publicBlogPost(post) });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
       return res.status(409).json({ error: "Post changed. Reload before changing its status." });
@@ -359,22 +354,6 @@ router.post("/:id/status", async (req, res) => {
     return failure(res, error);
   }
 });
-
-function validatePublication(fields: BlogFields) {
-  if (!fields.title || !fields.author || !blogText(fields.content).trim()) {
-    throw new z.ZodError([
-      {
-        code: "custom",
-        path: [],
-        message: "Add a title, author, and article content before publishing.",
-      },
-    ]);
-  }
-}
-
-function currentFields(post: Record<string, unknown>) {
-  return Object.fromEntries(Object.keys(newBlogFields()).map((key) => [key, post[key]]));
-}
 
 router.delete("/:id", async (req, res) => {
   try {

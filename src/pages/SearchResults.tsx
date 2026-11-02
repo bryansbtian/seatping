@@ -15,6 +15,7 @@ import Footer from "@/components/Footer";
 import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Pagination } from "@/components/ui/pagination";
 import RestaurantCardSkeleton from "@/components/restaurant-discovery/RestaurantCardSkeleton";
 import { ALL_DAY_TIME_OPTIONS } from "@/components/timeOptions";
 import RestaurantSearchBar from "@/components/restaurant-discovery/RestaurantSearchBar";
@@ -324,48 +325,19 @@ export default function SearchResults() {
         </div>
         {content}
         {!loading && !error && totalPages > 1 && (
-          <nav
-            aria-label="Restaurant Pages"
-            className="mt-8 flex flex-wrap items-center justify-center gap-2"
-          >
-            <Button variant="outline" disabled={page <= 1} onClick={() => changePage(page - 1)}>
-              Previous
-            </Button>
-            {paginationPages(page, totalPages).map((number) => (
-              <Button
-                key={number}
-                variant="outline"
-                aria-label={`Page ${number}`}
-                aria-current={number === page}
-                onClick={() => changePage(number)}
-              >
-                {number}
-              </Button>
-            ))}
-            <span className="text-caption text-ink-subtle">
-              Page {page} Of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              disabled={page >= totalPages}
-              onClick={() => changePage(page + 1)}
-            >
-              Next
-            </Button>
-          </nav>
+          <div className="mt-8">
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={changePage}
+              label="Restaurant Pages"
+            />
+          </div>
         )}
       </main>
       <Footer />
     </div>
   );
-}
-
-function paginationPages(page: number, total: number): number[] {
-  const pages = new Set([1, total]);
-  for (let number = Math.max(1, page - 2); number <= Math.min(total, page + 2); number++) {
-    pages.add(number);
-  }
-  return Array.from(pages).sort((a, b) => a - b);
 }
 
 function ResultsSkeleton() {

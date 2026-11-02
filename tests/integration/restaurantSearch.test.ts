@@ -54,28 +54,28 @@ beforeEach(() => clearTestDatabase());
 afterAll(() => disconnectTestPrisma());
 
 describe("PostgreSQL restaurant pagination", () => {
-  it("returns exactly ten per page with accurate totals, stable ties, and a partial final page", async () => {
-    const { locations } = await catalog(23);
+  it("returns exactly twelve per page with accurate totals, stable ties, and a partial final page", async () => {
+    const { locations } = await catalog(27);
     const first = await search();
     const second = await search({ page: "2" });
     const last = await search({ page: "3" });
     expect(first.status).toBe(200);
     expect(first.body).toMatchObject({
-      total: 23,
+      total: 27,
       page: 1,
-      limit: 10,
+      limit: 12,
       totalPages: 3,
       hasMore: true,
     });
-    expect(first.body.results).toHaveLength(10);
-    expect(second.body.results).toHaveLength(10);
+    expect(first.body.results).toHaveLength(12);
+    expect(second.body.results).toHaveLength(12);
     expect(last.body.results).toHaveLength(3);
     expect(last.body.hasMore).toBe(false);
     const all = [first, second, last].flatMap((response) =>
       response.body.results.map((row: { locationId: string }) => row.locationId),
     );
     expect(all).toEqual(locations.map((row) => row.id));
-    expect((await search({ page: "99" })).body).toMatchObject({ results: [], total: 23, page: 99 });
+    expect((await search({ page: "99" })).body).toMatchObject({ results: [], total: 27, page: 99 });
   });
 
   it("filters the full catalog before pagination and returns global query facets", async () => {
@@ -95,16 +95,16 @@ describe("PostgreSQL restaurant pagination", () => {
       location: "Rare District",
     });
     expect(filtered.body.total).toBe(13);
-    expect(filtered.body.results).toHaveLength(10);
+    expect(filtered.body.results).toHaveLength(12);
     expect(filtered.body.facets.cuisines).toEqual(["Japanese", "Rare Cuisine"]);
     expect(filtered.body.facets.locations).toEqual(["Common", "Rare District"]);
     const pageTwo = await search({ cuisine: "Rare Cuisine", page: "2" });
-    expect(pageTwo.body.results).toHaveLength(3);
+    expect(pageTwo.body.results).toHaveLength(1);
     expect((await search({ cuisine: "Thai" })).body.total).toBe(0);
   });
 
   it("globally orders featured restaurants before pagination with inactive features ignored", async () => {
-    const { business, locations } = await catalog(22);
+    const { business, locations } = await catalog(24);
     for (const location of locations.slice(11)) {
       await db.featuredRestaurant.create({
         data: { locationId: location.id, businessId: business.id },
@@ -115,7 +115,7 @@ describe("PostgreSQL restaurant pagination", () => {
       data: { isActive: false },
     });
     const response = await search();
-    expect(response.body.results).toHaveLength(10);
+    expect(response.body.results).toHaveLength(12);
     expect(response.body.results.every((row: { featured: boolean }) => row.featured)).toBe(true);
     expect(response.body.results.map((row: { locationId: string }) => row.locationId)).toEqual(
       locations.slice(12).map((row) => row.id),
@@ -403,7 +403,7 @@ describe("database opening-hours filtering", () => {
       ),
     );
     expect(rows[0].total).toBe(13);
-    expect(rows[0].results).toHaveLength(10);
+    expect(rows[0].results).toHaveLength(12);
     expect(rows[0].results.every((row) => row.openNow)).toBe(true);
   });
 

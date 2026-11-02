@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { axisLabelStep, MAX_AXIS_LABELS } from "@/lib/chartAxis";
 import { compactNumber } from "@/lib/formatNumber";
 import { cn } from "@/lib/utils";
@@ -5,6 +6,7 @@ import { cn } from "@/lib/utils";
 export type BarDatum = {
   key: string;
   label: string;
+  mobileLabel?: string;
   value: number;
   tooltip?: string;
 };
@@ -33,6 +35,15 @@ const BarSeries = ({
         const barHeight = Math.max(4, Math.round((datum.value / peak) * height));
         const showLabel = index % step === 0;
         const tooltip = datum.tooltip ?? `${datum.label}: ${datum.value}`;
+        let label: ReactNode = datum.label;
+        if (datum.mobileLabel) {
+          label = (
+            <>
+              <span className="whitespace-pre-line sm:hidden">{datum.mobileLabel}</span>
+              <span className="hidden sm:inline">{datum.label}</span>
+            </>
+          );
+        }
 
         return (
           <li key={datum.key} className="flex min-w-0 flex-1 flex-col items-center gap-1">
@@ -52,8 +63,11 @@ const BarSeries = ({
               )}
               style={{ height: `${barHeight}px` }}
             />
-            <span className="h-4 truncate text-caption text-slate-500">
-              {showLabel && datum.label}
+            <span
+              className="h-8 w-full whitespace-normal break-words text-center text-caption text-slate-500 sm:h-4 sm:truncate"
+              title={datum.label}
+            >
+              {showLabel && label}
             </span>
           </li>
         );

@@ -3,18 +3,21 @@ import { spawnSync } from "node:child_process";
 import { setTimeout } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { PrismaClient } from "@prisma/client";
 import { assertLocalDevelopmentDatabase } from "../server/lib/developmentDatabase.js";
-import { seedDevelopmentData } from "../server/lib/developmentSeed.js";
 
 function run(command: string, args: string[]): void {
   const result = spawnSync(command, args, { stdio: "inherit", env: process.env });
   if (result.error || result.status !== 0) {
+    if (args.includes("generate")) {
+      throw new Error(
+        "Prisma client generation failed. Stop npm run dev and Prisma Studio, then retry npm run db:dev.",
+      );
+    }
     throw new Error("Local development database setup failed.");
   }
 }
 
-async function setupDevelopment(): Promise<void> {
+export async function setupDevelopment(): Promise<void> {
   if (process.env.NODE_ENV !== "development") {
     throw new Error("Run local database setup with NODE_ENV=development.");
   }
@@ -58,6 +61,11 @@ async function setupDevelopment(): Promise<void> {
       run("docker", ["start", container]);
     }
   }
+  const prismaEntry = fileURLToPath(
+    new URL("../node_modules/prisma/build/index.js", import.meta.url),
+  );
+  run(process.execPath, [prismaEntry, "generate"]);
+  const { PrismaClient } = await import("@prisma/client");
   const probeUrl = new URL(datasourceUrl);
   probeUrl.searchParams.set("connect_timeout", "2");
   const db = new PrismaClient({ datasourceUrl: probeUrl.toString(), log: [] });
@@ -78,11 +86,16 @@ async function setupDevelopment(): Promise<void> {
   } finally {
     await db.$disconnect();
   }
-  const prismaEntry = path.resolve("node_modules/prisma/build/index.js");
   run(process.execPath, [prismaEntry, "migrate", "deploy"]);
-  run(process.execPath, [prismaEntry, "generate"]);
+  const { seedDevelopmentData } = await import("../server/lib/developmentSeed.js");
   await seedDevelopmentData(datasourceUrl);
-  console.log("Local demo database is ready at localhost:5434/seatping_dev. Run npm run dev.");
+  console.log(`Local demo database is ready at ${url.host}${url.pathname}. Run npm run dev.`);
+  console.log(
+    "Business logins: demo-restaurant-1 and demo-restaurant-2. Customer logins: demo-diner and demo-diner-2.",
+  );
+  console.log(
+    "Demo accounts use your configured local admin password. No notifications were sent.",
+  );
 }
 
 const invokedPath = process.argv[1];
