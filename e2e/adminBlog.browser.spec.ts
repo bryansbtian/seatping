@@ -469,7 +469,117 @@ test("switching between editing and preview preserves the article layout", async
   }
 });
 
-test("scrolling stops at the article canvas bottom", async ({ page }) => {
+for (const paragraphs of [1, 40]) {
+  test(`editor has one content-sized scroll area with ${paragraphs} paragraphs`, async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(60_000);
+    const state = await workspace(page);
+    const timestamp = new Date().toISOString();
+    const coverUrl = "https://images.example.test/scroll-cover.png";
+    await page.route(coverUrl, (route) =>
+      route.fulfill({
+        contentType: "image/png",
+        body: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN2kAAAAASUVORK5CYII=",
+          "base64",
+        ),
+      }),
+    );
+    state.posts.push({
+      ...newBlogFields(),
+      id: "scroll-layout",
+      coverUrl,
+      coverAlt: "Dining Room",
+      title: "Restaurant Guests",
+      slug: "restaurant-guests",
+      tags: ["Guest Experience"],
+      content: {
+        type: "doc",
+        content: Array.from({ length: paragraphs }, (_, index) => ({
+          type: "paragraph",
+          content: [{ type: "text", text: `Guest experience paragraph ${index + 1}.` }],
+        })),
+      },
+      status: "DRAFT",
+      revision: 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      publishedAt: null,
+    });
+    for (const width of [320, 390, 768, 1440]) {
+      let height = 1000;
+      if (paragraphs === 1) {
+        height = 1600;
+      }
+      await page.setViewportSize({ width, height });
+      await page.goto("/admin/blog/scroll-layout/edit");
+      const body = page.getByRole("textbox", { name: "Article Body" });
+      await expect(body).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      await expect(page.locator("article img")).toBeVisible();
+      await expect
+        .poll(() => page.evaluate(() => document.documentElement.scrollHeight - innerHeight))
+        .toBeLessThanOrEqual(1);
+      if (paragraphs === 1) {
+        expect((await body.boundingBox())!.height).toBeLessThan(150);
+      }
+      const main = page.getByRole("main");
+      const sidebar = page.locator("aside");
+      const sidebarBefore = await sidebar.boundingBox();
+      for (const preview of [false, true]) {
+        if (preview) {
+          await page.getByRole("button", { name: "Preview", exact: true }).click();
+        }
+        const scrollOwners = await page.evaluate(() =>
+          Array.from(document.querySelectorAll("body *"))
+            .filter(
+              (element) =>
+                ["auto", "scroll"].includes(getComputedStyle(element).overflowY) &&
+                element.scrollHeight > element.clientHeight + 1,
+            )
+            .map((element) => element.tagName),
+        );
+        if (paragraphs === 1) {
+          expect(scrollOwners).toEqual([]);
+        } else {
+          expect(scrollOwners).toEqual(["MAIN"]);
+        }
+        await main.evaluate((element) => {
+          element.scrollTop = element.scrollHeight;
+        });
+        await expect(page.getByRole("group", { name: "Article Tags" })).toBeInViewport();
+        if (paragraphs > 1) {
+          const bottomGap = await page
+            .locator("article")
+            .evaluate(
+              (element) =>
+                element.closest("main")!.getBoundingClientRect().bottom -
+                element.getBoundingClientRect().bottom,
+            );
+          expect(Math.abs(bottomGap - 32)).toBeLessThanOrEqual(1);
+        }
+        if (width >= 1024) {
+          await expect(sidebar).toHaveCSS("position", "fixed");
+          expect(await sidebar.boundingBox()).toEqual(sidebarBefore);
+        } else {
+          await expect(
+            page.getByRole("button", { name: "Open Menu", exact: true }),
+          ).toBeInViewport();
+        }
+        expect(
+          await page.evaluate(() => document.documentElement.scrollHeight - innerHeight),
+        ).toBeLessThanOrEqual(1);
+      }
+      await page.screenshot({
+        path: testInfo.outputPath(`editor-bottom-${width}.png`),
+        animations: "disabled",
+      });
+    }
+  });
+}
+
+test("scrolling stops at the article canvas bottom", async ({ page }, testInfo) => {
   const state = await workspace(page);
   const timestamp = new Date().toISOString();
   state.posts.push({
@@ -500,13 +610,15 @@ test("scrolling stops at the article canvas bottom", async ({ page }) => {
         await page.getByRole("button", { name: "Preview", exact: true }).click();
       }
       const main = page.getByRole("main");
-      await expect(main).toHaveCSS("overscroll-behavior-y", "none");
+      await expect(main).toHaveCSS("overflow-y", "auto");
       await main.evaluate((element) => {
         element.scrollTop = element.scrollHeight;
       });
       await expect(page.getByRole("group", { name: "Article Tags" })).toBeInViewport();
-      await page.mouse.move(width / 2, 850);
-      await page.mouse.wheel(0, 1000);
+      if (testInfo.project.name !== "webkit-mobile") {
+        await page.mouse.move(width / 2, 850);
+        await page.mouse.wheel(0, 1000);
+      }
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
       const bottomGap = await page.locator("article").evaluate((element) => {
         const main = element.closest("main")!;

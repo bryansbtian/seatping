@@ -334,7 +334,7 @@ function EditorForm({ initial }: { initial: BlogPost }) {
         </div>
       )}
       <div className="min-w-0">
-        <article className="min-w-0 rounded-2xl border bg-white px-4 py-6 shadow-sm sm:px-10 sm:py-10 lg:px-12">
+        <article className="relative min-w-0 rounded-2xl border bg-white px-4 py-6 shadow-sm sm:px-10 sm:py-10 lg:px-12 [&_.blog-content]:min-h-0">
           <div className="mx-auto max-w-4xl">
             <header className="mb-8 space-y-6 sm:mb-12 sm:space-y-8">
               <div className="control-sm flex items-center gap-3">
