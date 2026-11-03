@@ -49,7 +49,7 @@ const PortalLayout = ({
   }, [pathname]);
 
   return (
-    <div data-page-background="business" className="h-screen overflow-hidden">
+    <div data-page-background="business" className="h-dvh overflow-hidden">
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 hidden border-r border-sidebar-border bg-sidebar transition-[width] duration-200 lg:block",
@@ -62,7 +62,7 @@ const PortalLayout = ({
 
       <div
         className={cn(
-          "flex h-screen flex-col overflow-hidden transition-[padding] duration-200",
+          "flex h-full min-h-0 flex-col overflow-hidden transition-[padding] duration-200",
           collapsed && "lg:pl-12",
           !collapsed && "lg:pl-64",
         )}
@@ -100,7 +100,7 @@ const PortalLayout = ({
           </div>
         </header>
 
-        <main className="flex flex-1 flex-col overflow-y-auto overscroll-y-none [scrollbar-gutter:stable]">
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-none [scrollbar-gutter:stable]">
           <div className="bp-shell flex-1">{children}</div>
         </main>
       </div>

@@ -165,10 +165,35 @@ describe("Admin Blog Collaboration Requests", () => {
     expect(db.blogPost.update).not.toHaveBeenCalled();
   });
 
-  it("rejects updates that add unknown shared roots", async () => {
+  it.each(["untrusted", "__tiptap_position_migrations:root:untrusted"])(
+    "rejects updates that add an unknown shared root: %s",
+    async (root) => {
+      await client.get(path).set("Cookie", cookie());
+      const document = replica();
+      document.getMap(root).set("value", "Unexpected");
+      const response = await client
+        .post(path)
+        .set("Cookie", cookie())
+        .send({
+          ...payload(document),
+          update: toBase64(Y.encodeStateAsUpdate(document)),
+        });
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain("shared article update is invalid");
+    },
+  );
+
+  it("accepts editor position migrations with article updates", async () => {
     await client.get(path).set("Cookie", cookie());
     const document = replica();
-    document.getMap("untrusted").set("value", "Unexpected");
+    document.getMap("__tiptap_position_migrations:root:default").set("migration", {
+      version: 1,
+      client: document.clientID,
+      clock: 0,
+      seen: [],
+      transfers: [],
+    });
+    document.getText("title").insert(0, "Updated ");
     const response = await client
       .post(path)
       .set("Cookie", cookie())
@@ -176,8 +201,8 @@ describe("Admin Blog Collaboration Requests", () => {
         ...payload(document),
         update: toBase64(Y.encodeStateAsUpdate(document)),
       });
-    expect(response.status).toBe(400);
-    expect(response.body.error).toContain("shared article update is invalid");
+    expect(response.status).toBe(200);
+    expect(stored.title).toBe("Updated Shared Article");
   });
 
   it("rejects malformed version vectors", async () => {

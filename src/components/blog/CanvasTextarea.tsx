@@ -11,6 +11,7 @@ export default function CanvasTextarea({ value, className, ...props }: TextareaP
       return;
     }
     let width = element.clientWidth;
+    let frame = 0;
     const fit = () => {
       element.style.height = "0px";
       element.style.height = `${element.scrollHeight}px`;
@@ -19,11 +20,15 @@ export default function CanvasTextarea({ value, className, ...props }: TextareaP
     const observer = new ResizeObserver(() => {
       if (width !== element.clientWidth) {
         width = element.clientWidth;
-        fit();
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(fit);
       }
     });
     observer.observe(element);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
   }, [value]);
 
   return (

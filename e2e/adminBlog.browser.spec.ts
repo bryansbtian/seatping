@@ -330,6 +330,145 @@ async function insertBlock(body: Locator, name: string) {
   await body.press("Enter");
 }
 
+test("mobile recovery actions share one row below the recovery message", async ({ page }) => {
+  const state = await workspace(page);
+  const timestamp = new Date().toISOString();
+  state.posts.push({
+    ...newBlogFields(),
+    id: "mobile-recovery",
+    title: "Saved Article",
+    slug: "saved-article",
+    status: "DRAFT",
+    revision: 1,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    publishedAt: null,
+  });
+  await page.addInitScript(
+    (fields) => {
+      sessionStorage.setItem("seatping.blog.recovery.mobile-recovery", JSON.stringify(fields));
+    },
+    { ...newBlogFields(), title: "Recovered Article" },
+  );
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/admin/blog/mobile-recovery/edit");
+    const alert = page.getByRole("alert");
+    const message = alert.locator("p");
+    await expect(message).toHaveText(
+      "Restore unsaved edits from this tab or keep the server version.",
+    );
+    const restore = alert.getByRole("button", { name: "Restore Edits", exact: true });
+    const keep = alert.getByRole("button", { name: "Use Server Version", exact: true });
+    const messageBounds = await message.boundingBox();
+    const restoreBounds = await restore.boundingBox();
+    const keepBounds = await keep.boundingBox();
+    expect(messageBounds).not.toBeNull();
+    expect(restoreBounds).not.toBeNull();
+    expect(keepBounds).not.toBeNull();
+    expect(restoreBounds!.y).toBeGreaterThanOrEqual(messageBounds!.y + messageBounds!.height);
+    expect(restoreBounds!.y).toBe(keepBounds!.y);
+    expect(keepBounds!.x).toBeGreaterThanOrEqual(restoreBounds!.x + restoreBounds!.width);
+    expect(keepBounds!.x + keepBounds!.width).toBeLessThanOrEqual(width);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+    ).toBeLessThanOrEqual(0);
+  }
+  await page.getByRole("button", { name: "Restore Edits", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "Article Title" })).toHaveValue(
+    "Recovered Article",
+  );
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("switching between editing and preview preserves the article layout", async ({ page }) => {
+  const state = await workspace(page);
+  const timestamp = new Date().toISOString();
+  const coverUrl = "https://images.example.test/preview-cover.png";
+  await page.route(coverUrl, (route) =>
+    route.fulfill({
+      contentType: "image/png",
+      body: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN2kAAAAASUVORK5CYII=",
+        "base64",
+      ),
+    }),
+  );
+  state.posts.push({
+    ...newBlogFields(),
+    id: "stable-preview",
+    title: "QR Code Waitlist for Restaurants: How It Works and How to Set It Up",
+    excerpt:
+      "Learn how to set up a QR code waitlist for your restaurant, reduce crowded waiting areas, and let guests join the queue from their phones without downloading an app.",
+    author: "SeatPing Team",
+    category: "Restaurant Operations",
+    coverUrl,
+    coverAlt: "Dining Room",
+    content: {
+      type: "doc",
+      content: Array.from({ length: 30 }, () => ({
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: "A longer article about helping restaurant guests wait comfortably.",
+          },
+        ],
+      })),
+    },
+    tags: ["queues"],
+    slug: "stable-preview",
+    status: "DRAFT",
+    revision: 1,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    publishedAt: null,
+  });
+  await page.goto("/admin/blog/stable-preview/edit");
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    let sidebarPadding = "0px";
+    if (width >= 1024) {
+      sidebarPadding = "256px";
+    }
+    await expect(page.getByRole("main").locator("..")).toHaveCSS("padding-left", sidebarPadding);
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+    });
+    const title = page.getByRole("textbox", { name: "Article Title" });
+    await expect(title).toBeVisible();
+    await expect
+      .poll(() => title.evaluate((element) => element.scrollHeight <= element.clientHeight + 1))
+      .toBe(true);
+    await page.getByRole("main").evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    const geometry = () =>
+      page.locator("article").evaluate((article) => {
+        const elements = [
+          article,
+          article.querySelector("header"),
+          article.querySelector("img"),
+          article.querySelector(".blog-content"),
+        ];
+        return elements.map((element) => {
+          const bounds = element!.getBoundingClientRect();
+          return { x: bounds.x, y: bounds.y, width: bounds.width };
+        });
+      });
+    const editing = await geometry();
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await expect(page.getByRole("heading", { name: state.posts[0].title })).toBeVisible();
+    await expect.poll(geometry).toEqual(editing);
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await expect(title).toBeVisible();
+    await expect.poll(geometry).toEqual(editing);
+  }
+});
+
 test("scrolling stops at the article canvas bottom", async ({ page }) => {
   const state = await workspace(page);
   const timestamp = new Date().toISOString();
@@ -354,7 +493,7 @@ test("scrolling stops at the article canvas bottom", async ({ page }) => {
   });
   await page.goto("/admin/blog/long-article/edit");
   await expect(page.getByRole("textbox", { name: "Article Body" })).toBeVisible();
-  for (const width of [390, 1440]) {
+  for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     for (const preview of [false, true]) {
       if (preview) {
@@ -366,6 +505,9 @@ test("scrolling stops at the article canvas bottom", async ({ page }) => {
         element.scrollTop = element.scrollHeight;
       });
       await expect(page.getByRole("group", { name: "Article Tags" })).toBeInViewport();
+      await page.mouse.move(width / 2, 850);
+      await page.mouse.wheel(0, 1000);
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
       const bottomGap = await page.locator("article").evaluate((element) => {
         const main = element.closest("main")!;
         return main.getBoundingClientRect().bottom - element.getBoundingClientRect().bottom;
@@ -376,7 +518,7 @@ test("scrolling stops at the article canvas bottom", async ({ page }) => {
         await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight),
       ).toBeLessThanOrEqual(1);
       if (preview) {
-        await page.getByRole("button", { name: "Continue Editing", exact: true }).click();
+        await page.getByRole("button", { name: "Edit", exact: true }).click();
       }
     }
   }
@@ -439,7 +581,7 @@ test("authors, saves, previews, reloads formatting, publishes, filters, duplicat
   await page.getByRole("button", { name: "Preview", exact: true }).click();
   await expect(page.getByRole("heading", { name: "The Guest Experience" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();
-  await page.getByRole("button", { name: "Continue Editing" }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.reload();
   await expect(body.locator("h2")).toHaveText("Welcome");
   await expect(body.locator("strong")).toHaveText("Better service");
