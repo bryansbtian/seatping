@@ -12,6 +12,7 @@ describe("demo booking dialog", () => {
   const fetchMock = vi.fn<typeof fetch>();
   const scrollIntoView = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
   beforeEach(() => {
+    vi.stubEnv("TZ", "America/New_York");
     Object.defineProperty(Element.prototype, "scrollIntoView", {
       configurable: true,
       value: vi.fn(),
@@ -54,9 +55,10 @@ describe("demo booking dialog", () => {
     }
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
-  async function openDialog() {
+  async function openDialog(timezone = "America/New_York") {
     render(
       <DemoBookingProvider>
         <Trigger />
@@ -71,26 +73,8 @@ describe("demo booking dialog", () => {
         "false",
       ),
     );
-    if (
-      !screen
-        .getByRole("combobox", { name: "Timezone", exact: true })
-        .textContent?.includes("America/New York")
-    ) {
-      fireEvent.click(screen.getByRole("combobox", { name: "Timezone", exact: true }));
-      fireEvent.change(screen.getByPlaceholderText("Search timezone or city..."), {
-        target: { value: "New York" },
-      });
-      fireEvent.click(await screen.findByRole("option", { name: /America\/New York/ }));
-      await waitFor(() =>
-        expect(document.activeElement).toBe(
-          screen.getByRole("combobox", { name: "Timezone", exact: true }),
-        ),
-      );
-    }
-    await waitFor(() =>
-      expect(screen.getByRole("region", { name: "Select A Date" }).getAttribute("aria-busy")).toBe(
-        "false",
-      ),
+    expect(screen.getByRole("combobox", { name: "Timezone", exact: true }).textContent).toContain(
+      timezone.replaceAll("_", " "),
     );
     return trigger;
   }
@@ -153,6 +137,19 @@ describe("demo booking dialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close", exact: true }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
+
+  it.each(["America/New_York", "UTC", "Asia/Jakarta"])(
+    "uses the browser timezone for initial availability: %s",
+    async (timezone) => {
+      vi.stubEnv("TZ", timezone);
+      await openDialog(timezone);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/demo/availability?month=2026-10&timezone=${encodeURIComponent(timezone)}`,
+        expect.objectContaining({ cache: "no-store" }),
+      );
+    },
+  );
 
   it("changes timezone through the shared picker and keeps the booking dialog open", async () => {
     await openDialog();
