@@ -27,7 +27,15 @@ export const BLOG_COFFEES = [
 ] as const;
 export const BLOG_PRESENCE_TTL = 15_000;
 export const BLOG_FRAGMENT = "default";
-export const BLOG_ROOTS = [BLOG_FRAGMENT, "metadata", "title", "excerpt", "author", "tags"];
+export const BLOG_ROOTS = [
+  BLOG_FRAGMENT,
+  `__tiptap_position_migrations:root:${BLOG_FRAGMENT}`,
+  "metadata",
+  "title",
+  "excerpt",
+  "author",
+  "tags",
+];
 const schema = getSchema(blogExtensions(true));
 const textFields = ["title", "excerpt", "author"] as const;
 const scalarFields = ["slug", "coverUrl", "coverAlt", "category", "categoryColor"] as const;

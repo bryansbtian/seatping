@@ -1,6 +1,9 @@
 import { Editor } from "@tiptap/core";
+import Collaboration from "@tiptap/extension-collaboration";
 import { afterEach, describe, expect, it } from "vitest";
 import { blogExtensions } from "../../shared/blogEditorExtensions.js";
+import { BLOG_ROOTS, createBlogDocument } from "../../shared/blogCollaboration.js";
+import { newBlogFields } from "../../shared/blog.js";
 
 const editors: Editor[] = [];
 
@@ -17,6 +20,30 @@ afterEach(() => {
 });
 
 describe("Blog Editor Extensions", () => {
+  it("keeps paragraph splits within the shared document roots accepted by the server", () => {
+    const document = createBlogDocument({
+      ...newBlogFields(),
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "Hello world" }] }],
+      },
+    });
+    const instance = new Editor({
+      extensions: [...blogExtensions(true), Collaboration.configure({ document })],
+    });
+    editors.push(instance);
+    try {
+      instance.commands.setTextSelection(6);
+      expect(instance.commands.splitBlock()).toBe(true);
+      expect(instance.getJSON().content).toHaveLength(2);
+      expect([...document.share.keys()].filter((key) => !BLOG_ROOTS.includes(key))).toEqual([]);
+    } finally {
+      instance.destroy();
+      editors.pop();
+      document.destroy();
+    }
+  });
+
   it("renders image captions, alignment, and safe media sources", () => {
     const instance = editor({
       type: "doc",

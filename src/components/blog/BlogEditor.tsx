@@ -24,6 +24,7 @@ import {
   type BlogPost,
 } from "@shared/blog";
 import { blogRequest, uploadBlogMedia } from "@/lib/blogApi";
+import { cn } from "@/lib/utils";
 import { errorMessage } from "@/hooks/useBlogAutosave";
 import { useBlogCollaboration } from "@/hooks/useBlogCollaboration";
 import BlogCollaborators from "./BlogCollaborators";
@@ -206,7 +207,7 @@ function EditorForm({ initial }: { initial: BlogPost }) {
   }
   let previewLabel = "Preview";
   if (preview) {
-    previewLabel = "Continue Editing";
+    previewLabel = "Edit";
   }
   const disabled = busy || uploading || !validContent || form.saving || Boolean(form.recovery);
   if (!form.ready) {
@@ -305,30 +306,38 @@ function EditorForm({ initial }: { initial: BlogPost }) {
       {form.recovery && (
         <div
           role="alert"
-          className="flex flex-wrap items-center gap-3 rounded-control border bg-white p-4"
+          className="flex flex-col items-start gap-3 rounded-control border bg-white p-4 sm:flex-row sm:flex-wrap sm:items-center"
         >
-          <p className="flex-1 text-body">
-            Unsaved edits from this tab are available. Restore them or keep the server version.
+          <p className="text-body sm:flex-1">
+            Restore unsaved edits from this tab or keep the server version.
           </p>
-          <Button
-            size="sm"
-            onClick={() => {
-              form.restore();
-              setEditorVersion((value) => value + 1);
-            }}
-          >
-            Restore Edits
-          </Button>
-          <Button variant="outline" size="sm" onClick={form.discardRecovery}>
-            Use Server Version
-          </Button>
+          <div className="flex max-w-full items-center gap-2">
+            <Button
+              size="sm"
+              className="shrink-0 px-2 sm:px-3"
+              onClick={() => {
+                form.restore();
+                setEditorVersion((value) => value + 1);
+              }}
+            >
+              Restore Edits
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 px-2 sm:px-3"
+              onClick={form.discardRecovery}
+            >
+              Use Server Version
+            </Button>
+          </div>
         </div>
       )}
       <div className="min-w-0">
         <article className="min-w-0 rounded-2xl border bg-white px-4 py-6 shadow-sm sm:px-10 sm:py-10 lg:px-12">
           <div className="mx-auto max-w-4xl">
             <header className="mb-8 space-y-6 sm:mb-12 sm:space-y-8">
-              <div className="flex items-center gap-3">
+              <div className="control-sm flex items-center gap-3">
                 {preview && (
                   <Badge
                     variant={fields.categoryColor}
@@ -396,48 +405,56 @@ function EditorForm({ initial }: { initial: BlogPost }) {
                   {readingMinutes(fields.content)} Min Read
                 </span>
               </div>
-              {preview && (
-                <h1 className="text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl lg:text-5xl">
-                  {fields.title || "Untitled Article"}
-                </h1>
-              )}
-              {!preview && (
+              <div className="grid min-w-0">
                 <CanvasTextarea
                   aria-label="Article Title"
+                  aria-hidden={preview}
                   placeholder="Your Article Title"
                   value={fields.title}
                   maxLength={240}
-                  disabled={busy}
+                  disabled={busy || preview}
                   onChange={(event) => {
                     const title = event.target.value;
                     change({ ...fields, title, slug: blogSlug(title) || initial.slug });
                   }}
-                  className="min-h-10 rounded-none border-0 p-0 text-3xl font-semibold leading-[1.1] tracking-tight shadow-none focus-visible:ring-0 sm:min-h-12 sm:text-4xl lg:text-5xl"
+                  className={cn(
+                    "col-start-1 row-start-1 min-h-10 rounded-none border-0 p-0 text-3xl font-semibold leading-[1.1] tracking-tight shadow-none focus-visible:ring-0 sm:min-h-12 sm:text-4xl lg:text-5xl",
+                    preview && "invisible",
+                  )}
                 />
-              )}
-              {preview && fields.excerpt && (
-                <p className="text-base leading-relaxed text-ink-subtle sm:text-lg lg:text-xl">
-                  {fields.excerpt}
-                </p>
-              )}
-              {!preview && (
+                {preview && (
+                  <h1 className="col-start-1 row-start-1 min-h-10 whitespace-pre-wrap break-words text-3xl font-semibold leading-[1.1] tracking-tight sm:min-h-12 sm:text-4xl lg:text-5xl">
+                    {fields.title || "Untitled Article"}
+                  </h1>
+                )}
+              </div>
+              <div className="grid min-w-0">
                 <CanvasTextarea
                   aria-label="Excerpt"
+                  aria-hidden={preview}
                   placeholder="Add a short introduction to your article..."
                   value={fields.excerpt}
                   maxLength={1000}
-                  disabled={busy}
+                  disabled={busy || preview}
                   onChange={(event) => update("excerpt", event.target.value)}
-                  className="min-h-7 rounded-none border-0 p-0 text-base leading-relaxed text-ink-subtle shadow-none focus-visible:ring-0 sm:text-lg lg:text-xl"
+                  className={cn(
+                    "col-start-1 row-start-1 min-h-7 rounded-none border-0 p-0 text-base leading-relaxed text-ink-subtle shadow-none focus-visible:ring-0 sm:text-lg lg:text-xl",
+                    preview && "invisible",
+                  )}
                 />
-              )}
+                {preview && (
+                  <p className="col-start-1 row-start-1 min-h-7 whitespace-pre-wrap break-words text-base leading-relaxed text-ink-subtle sm:text-lg lg:text-xl">
+                    {fields.excerpt}
+                  </p>
+                )}
+              </div>
               <div className="flex items-center gap-3 text-body sm:gap-4">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-100 font-medium">
                   {fields.author.charAt(0) || "S"}
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
                   {preview && (
-                    <p className="break-words font-medium sm:max-w-64">
+                    <p className="flex min-h-7 items-center break-words font-medium sm:max-w-64">
                       {fields.author || "SeatPing Team"}
                     </p>
                   )}
@@ -611,12 +628,12 @@ function EditorForm({ initial }: { initial: BlogPost }) {
         </article>
       </div>
       <Dialog open={publishDialog} onOpenChange={setPublishDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{actionLabel} Article?</DialogTitle>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto rounded-2xl sm:max-w-2xl">
+          <DialogHeader className="text-left">
+            <DialogTitle className="break-words pr-6">{actionLabel} Article?</DialogTitle>
             <DialogDescription>{publicationDescription(targetStatus)}</DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:space-x-0">
             <Button variant="outline" onClick={() => setPublishDialog(false)} disabled={busy}>
               Cancel
             </Button>
@@ -634,15 +651,15 @@ function EditorForm({ initial }: { initial: BlogPost }) {
           }
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Leave With Unsaved Changes?</DialogTitle>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto rounded-2xl sm:max-w-2xl">
+          <DialogHeader className="text-left">
+            <DialogTitle className="break-words pr-6">Leave With Unsaved Changes?</DialogTitle>
             <DialogDescription>
               Your latest edits have not been saved to the server. A recovery copy will remain in
               this tab.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:space-x-0">
             <Button variant="outline" onClick={() => setLeaveTo("")}>
               Keep Editing
             </Button>

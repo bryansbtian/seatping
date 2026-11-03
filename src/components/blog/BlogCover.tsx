@@ -40,7 +40,7 @@ export default function BlogCover({
         tabIndex={0}
         contentEditable
         suppressContentEditableWarning
-        className="min-w-0 rounded-xl caret-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="min-w-0 rounded-xl text-[0px] leading-none caret-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         onClick={(event) => {
           const range = document.createRange();
           range.selectNodeContents(event.currentTarget);
@@ -75,7 +75,7 @@ export default function BlogCover({
           alt={alt}
           contentEditable={false}
           draggable={false}
-          className="inline-block aspect-[16/9] w-[calc(100%-2px)] rounded-xl object-cover align-bottom"
+          className="inline-block aspect-[16/9] w-full rounded-xl object-cover align-bottom"
         />
         {"\u200b"}
       </div>
