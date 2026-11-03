@@ -28,6 +28,9 @@ function persistLang(lang: Lang) {
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(() => readStoredLang());
   const [ready, setReady] = useState(false);
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
   const langRef = useRef(lang);
   langRef.current = lang;
 

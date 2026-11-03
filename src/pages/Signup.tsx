@@ -1,5 +1,6 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "@/lib/publicNavigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,8 @@ import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 
 const Signup = () => {
+  const { t: tp } = usePublicLanguage();
+
   const [formData, setFormData] = useState({
     name: "",
     username: "",
@@ -54,33 +57,33 @@ const Signup = () => {
     };
 
     if (!formData.name) {
-      newErrors.name = "Name is required";
+      newErrors.name = tp("Name is required");
     }
     if (!formData.username) {
-      newErrors.username = "Username is required";
+      newErrors.username = tp("Username is required");
     } else if (formData.username.length < 3) {
-      newErrors.username = "Username must be at least 3 characters";
+      newErrors.username = tp("Username must be at least 3 characters");
     }
     if (!formData.email) {
-      newErrors.email = "Email is required";
+      newErrors.email = tp("Email is required");
     }
     if (formData.phone && formData.phone.replace(/\D/g, "").length < 6) {
-      newErrors.phone = "Phone must be at least 6 digits";
+      newErrors.phone = tp("Phone must be at least 6 digits");
     }
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = tp("Password is required");
     } else if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 chars";
+      newErrors.password = tp("Password must be at least 8 chars");
     }
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
+      newErrors.confirmPassword = tp("Please confirm your password");
     }
     if (
       formData.password &&
       formData.confirmPassword &&
       formData.password !== formData.confirmPassword
     ) {
-      newErrors.confirmPassword = "Passwords don't match";
+      newErrors.confirmPassword = tp("Passwords don't match");
     }
 
     setErrors(newErrors);
@@ -110,14 +113,14 @@ const Signup = () => {
 
       await resetSessionQueries();
       toast({
-        title: "Account created!",
-        description: `Welcome, ${res.user.name}`,
+        title: tp("Account created!"),
+        description: tp(`Welcome, ${res.user.name}`),
       });
       navigate("/");
     } catch (err: any) {
       toast({
-        title: "Sign up failed",
-        description: err?.message || "Please try again.",
+        title: tp("Sign up failed"),
+        description: tp(err?.message || tp("Please try again.")),
         variant: "destructive",
       });
     } finally {
@@ -127,14 +130,18 @@ const Signup = () => {
 
   let submitLabel: string;
   if (loading) {
-    submitLabel = "Creating...";
+    submitLabel = tp("Creating...");
   } else {
-    submitLabel = "Sign Up";
+    submitLabel = tp("Sign Up");
   }
 
   return (
     <>
-      <SEO title="Sign Up | SeatPing" description={CUSTOMER_DESCRIPTION} canonical="/signup" />
+      <SEO
+        title={tp("Sign Up | SeatPing")}
+        description={CUSTOMER_DESCRIPTION}
+        canonical="/signup"
+      />
       <Header />
       <div
         data-page-background="auth"
@@ -142,15 +149,15 @@ const Signup = () => {
       >
         <Card className="w-full max-w-md lg:max-w-2xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
           <CardHeader className="space-y-2 px-6 pb-6 pt-8 text-center sm:px-10 sm:pt-10">
-            <CardTitle className="text-3xl text-primary">Create Your Account</CardTitle>
+            <CardTitle className="text-3xl text-primary">{tp("Create Your Account")}</CardTitle>
             <CardDescription className="text-sm sm:text-base">
-              Join SeatPing to discover restaurants and skip the wait
+              {tp("Join SeatPing to discover restaurants and skip the wait")}
             </CardDescription>
           </CardHeader>
           <CardContent className="px-6 pb-8 sm:px-10 sm:pb-10">
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="name">{tp("Full Name")}</Label>
                 <Input
                   id="name"
                   name="name"
@@ -163,7 +170,7 @@ const Signup = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">{tp("Username")}</Label>
                 <Input
                   id="username"
                   name="username"
@@ -176,7 +183,7 @@ const Signup = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{tp("Email")}</Label>
                 <Input
                   id="email"
                   name="email"
@@ -191,7 +198,8 @@ const Signup = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="phone">
-                  Phone Number <span className="font-normal text-muted-foreground">(Optional)</span>
+                  {tp("Phone Number")}{" "}
+                  <span className="font-normal text-muted-foreground">{tp("(Optional)")}</span>
                 </Label>
                 <div className="flex gap-2">
                   <CountryCodeSelect
@@ -217,7 +225,7 @@ const Signup = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{tp("Password")}</Label>
                 <Input
                   id="password"
                   name="password"
@@ -231,7 +239,7 @@ const Signup = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">{tp("Confirm Password")}</Label>
                 <Input
                   id="confirmPassword"
                   name="confirmPassword"
@@ -253,9 +261,9 @@ const Signup = () => {
 
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
-                Already have an account?{" "}
+                {tp("Already have an account?")}{" "}
                 <Link to="/login" className="text-primary hover:underline">
-                  Log In
+                  {tp("Log In")}
                 </Link>
               </p>
             </div>

@@ -2,6 +2,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { usePublicLanguage } from "@/lib/publicLanguage";
 
 type PaginationProps = {
   page: number;
@@ -45,16 +46,17 @@ export function Pagination({
   onPageChange,
   label = "Pagination",
 }: PaginationProps) {
+  const { t } = usePublicLanguage();
   if (totalPages <= 1) {
     return null;
   }
   return (
-    <nav aria-label={label} className="flex items-center justify-center gap-0 sm:gap-1">
+    <nav aria-label={t(label)} className="flex items-center justify-center gap-0 sm:gap-1">
       <Button
         variant="ghost"
         size="icon"
         className={cn(CONTROL_CLASS, "[&_svg]:size-5")}
-        aria-label="Previous"
+        aria-label={t("Previous")}
         disabled={page <= 1}
         onClick={() => onPageChange(page - 1)}
       >
@@ -81,7 +83,7 @@ export function Pagination({
             key={item}
             variant="ghost"
             size="icon"
-            aria-label={`Page ${item}`}
+            aria-label={t("Page {page}", { page: item })}
             aria-current={current}
             onClick={() => onPageChange(item)}
             className={cn(CONTROL_CLASS, item === page && "text-indigo-600 hover:text-indigo-600")}
@@ -94,14 +96,14 @@ export function Pagination({
         variant="ghost"
         size="icon"
         className={cn(CONTROL_CLASS, "[&_svg]:size-5")}
-        aria-label="Next"
+        aria-label={t("Next")}
         disabled={page >= totalPages}
         onClick={() => onPageChange(page + 1)}
       >
         <HugeiconsIcon icon={ArrowRight01Icon} className="size-5" />
       </Button>
       <span role="status" aria-live="polite" className="sr-only">
-        Page {page} of {totalPages}
+        {t("Page {page} of {total}", { page, total: totalPages })}
       </span>
     </nav>
   );

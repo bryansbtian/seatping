@@ -1,3 +1,4 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useEffect, useRef, useState } from "react";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
@@ -106,12 +107,16 @@ export function BentoFeatureCard({
 }
 
 export function ReservationFeatureCard(props: BentoCardProps) {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <BentoFeatureCard
       icon={CalendarDaysIcon}
-      title="Reservation Management"
+      title={tp("Reservation Management")}
       className="md:max-lg:row-start-4"
-      description="Take bookings in advance, set capacity per hour, and let Smart Table Assignment pair each booking with a table that fits before guests arrive."
+      description={tp(
+        "Take bookings in advance, set capacity per hour, and let Smart Table Assignment pair each booking with a table that fits before guests arrive.",
+      )}
       size="large"
       {...props}
     >
@@ -121,12 +126,16 @@ export function ReservationFeatureCard(props: BentoCardProps) {
 }
 
 export function GuestCrmFeatureCard(props: BentoCardProps) {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <BentoFeatureCard
       icon={ContactIcon}
-      title="Guest CRM"
+      title={tp("Guest CRM")}
       className="md:max-lg:col-start-2 md:max-lg:row-start-2 md:max-lg:self-start"
-      description="Profiles build themselves from every visit, with history, tags, and notes, so you always know your regulars."
+      description={tp(
+        "Profiles build themselves from every visit, with history, tags, and notes, so you always know your regulars.",
+      )}
       descriptionClassName="md:min-h-[4.3rem] lg:min-h-0"
       {...props}
     >
@@ -136,12 +145,16 @@ export function GuestCrmFeatureCard(props: BentoCardProps) {
 }
 
 export function LiveQueueFeatureCard(props: BentoCardProps) {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <BentoFeatureCard
       icon={LeftToRightListNumberIcon}
-      title="Live Queue"
+      title={tp("Live Queue")}
       className="md:max-lg:col-start-1 md:max-lg:row-start-2 md:max-lg:row-span-2 md:max-lg:self-start"
-      description="Track walk-ins in real time, see the recommended table for each waiting party, and notify guests the moment their table is ready."
+      description={tp(
+        "Track walk-ins in real time, see the recommended table for each waiting party, and notify guests the moment their table is ready.",
+      )}
       descriptionClassName="md:min-h-[4.3rem] lg:min-h-0"
       {...props}
     >
@@ -151,12 +164,16 @@ export function LiveQueueFeatureCard(props: BentoCardProps) {
 }
 
 export function CampaignsFeatureCard(props: BentoCardProps) {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <BentoFeatureCard
       icon={SentIcon}
-      title="Guest Campaigns"
+      title={tp("Guest Campaigns")}
       className="md:max-lg:row-start-5"
-      description="Send SeatPing-branded SMS, WhatsApp, and Email campaigns to smart audiences or your saved guest groups."
+      description={tp(
+        "Send SeatPing-branded SMS, WhatsApp, and Email campaigns to smart audiences or your saved guest groups.",
+      )}
       size="large"
       {...props}
     >
@@ -166,12 +183,16 @@ export function CampaignsFeatureCard(props: BentoCardProps) {
 }
 
 export function FloorManagementFeatureCard(props: BentoCardProps) {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <BentoFeatureCard
       icon={LayoutGridIcon}
-      title="Floor Management"
+      title={tp("Floor Management")}
       className="md:max-lg:row-start-1"
-      description="Run your dining room from a live floor plan, with table statuses, queue-to-table matching, and staff overrides in one view."
+      description={tp(
+        "Run your dining room from a live floor plan, with table statuses, queue-to-table matching, and staff overrides in one view.",
+      )}
       size="large"
       {...props}
     >
@@ -181,12 +202,16 @@ export function FloorManagementFeatureCard(props: BentoCardProps) {
 }
 
 export function PerformanceFeatureCard(props: BentoCardProps) {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <BentoFeatureCard
       icon={ChartAnalysisIcon}
-      title="Performance"
+      title={tp("Performance")}
       className="md:max-lg:col-start-2 md:max-lg:row-start-3"
-      description="See wait times, table turn times, utilization, covers, and no-shows for every location."
+      description={tp(
+        "See wait times, table turn times, utilization, covers, and no-shows for every location.",
+      )}
       descriptionClassName="md:min-h-[4.3rem] lg:min-h-0"
       {...props}
     >
@@ -262,7 +287,21 @@ export default function AnimatedBentoFeatureGrid({
   animated = true,
   className,
 }: AnimatedBentoFeatureGridProps) {
+  const { t: tp } = usePublicLanguage();
+
   const { gridRef, reveal } = useBentoReveal(animated);
+  let localizedEyebrow = eyebrow;
+  let localizedHeading = heading;
+  let localizedSubtitle = subtitle;
+  if (typeof eyebrow === "string") {
+    localizedEyebrow = tp(eyebrow);
+  }
+  if (typeof heading === "string") {
+    localizedHeading = tp(heading);
+  }
+  if (typeof subtitle === "string") {
+    localizedSubtitle = tp(subtitle);
+  }
   let bentoAnimatedAttr: string | undefined;
   if (animated) {
     bentoAnimatedAttr = undefined;
@@ -287,11 +326,13 @@ export default function AnimatedBentoFeatureGrid({
         <div className="max-w-3xl">
           {eyebrow && (
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-              {eyebrow}
+              {localizedEyebrow}
             </p>
           )}
-          <h2 className={cn(eyebrow && "mt-3", SECTION_HEADING)}>{heading}</h2>
-          {subtitle && <p className={cn("mt-4 max-w-2xl", SECTION_SUBTITLE)}>{subtitle}</p>}
+          <h2 className={cn(eyebrow && "mt-3", SECTION_HEADING)}>{localizedHeading}</h2>
+          {subtitle && (
+            <p className={cn("mt-4 max-w-2xl", SECTION_SUBTITLE)}>{localizedSubtitle}</p>
+          )}
         </div>
 
         <div

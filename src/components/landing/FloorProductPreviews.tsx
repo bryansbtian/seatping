@@ -1,3 +1,4 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { cn } from "@/lib/utils";
 import { LIVE_STATUSES, statusStyle, type LiveStatus } from "@/lib/floorLive";
 import { type PreviewProps } from "@/components/landing/BentoProductPreviews";
@@ -8,7 +9,7 @@ const PREVIEW_LABEL_CLASS =
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 450;
 
-const ZONE = { x: 16, y: 36, width: 320, height: 153, label: "Window Row" };
+const ZONE = { x: 16, y: 36, width: 320, height: 153, label: "Bar" };
 
 const STAR_PATH =
   "M0,-8 L2.35,-2.47 L7.61,-2.47 L3.35,0.94 L4.7,6.47 L0,3.2 L-4.7,6.47 L-3.35,0.94 L-7.61,-2.47 L-2.35,-2.47 Z";
@@ -172,6 +173,7 @@ function PreviewTableNode({ table }: { table: PreviewTable }) {
 }
 
 function FloorCanvasPreview({ className }: { className?: string }) {
+  const { t: tp } = usePublicLanguage();
   return (
     <div
       className={cn(
@@ -208,7 +210,7 @@ function FloorCanvasPreview({ className }: { className?: string }) {
           fontWeight="500"
           className="fill-slate-500"
         >
-          {ZONE.label}
+          {tp(ZONE.label)}
         </text>
         {PREVIEW_TABLES.map((table) => (
           <PreviewTableNode key={table.name} table={table} />
@@ -219,6 +221,8 @@ function FloorCanvasPreview({ className }: { className?: string }) {
 }
 
 function FloorLegendPreview({ className }: { className?: string }) {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <div
       className={cn(
@@ -241,7 +245,7 @@ function FloorLegendPreview({ className }: { className?: string }) {
         </span>
       ))}
       <span className="col-span-3 text-preview-sm text-slate-500 sm:col-auto sm:ml-auto sm:text-caption">
-        Updated 7:24 PM
+        {tp("Updated 7:24 PM")}
       </span>
     </div>
   );
@@ -323,6 +327,8 @@ function PanelSection({
 }
 
 export function FloorBentoPreview({ className, animated = true }: PreviewProps) {
+  const { t: tp } = usePublicLanguage();
+
   let animatedAttr: string | undefined;
   if (!animated) {
     animatedAttr = "false";
@@ -338,7 +344,7 @@ export function FloorBentoPreview({ className, animated = true }: PreviewProps) 
           <FloorCanvasPreview className="md:h-full" />
         </div>
         <div className="flex w-full shrink-0 flex-col gap-2.5 md:w-60">
-          <PanelSection title="Waiting Parties">
+          <PanelSection title={tp("Waiting Parties")}>
             <PanelRow
               badge="T4"
               badgeTone="bg-emerald-100 text-emerald-800"
@@ -346,7 +352,7 @@ export function FloorBentoPreview({ className, animated = true }: PreviewProps) 
               name="Marcus Bennett"
             />
           </PanelSection>
-          <PanelSection title="Awaiting Arrival" className="border-t border-slate-100 pt-2.5">
+          <PanelSection title={tp("Awaiting Arrival")} className="border-t border-slate-100 pt-2.5">
             <PanelRow
               tone="bg-amber-50"
               badge="Holding T2"
@@ -357,7 +363,7 @@ export function FloorBentoPreview({ className, animated = true }: PreviewProps) 
               trailingTone="bg-amber-100 text-amber-800"
             />
           </PanelSection>
-          <PanelSection title="Reservations" className="border-t border-slate-100 pt-2.5">
+          <PanelSection title={tp("Reservations")} className="border-t border-slate-100 pt-2.5">
             <PanelRow
               badge="T3"
               badgeTone="bg-indigo-100 text-indigo-800"
@@ -380,6 +386,8 @@ const PERFORMANCE_RATES: { label: string; value: string; context: string | null 
 const PERFORMANCE_RATE_VISIBILITY = ["md:max-lg:hidden", "md:max-lg:hidden", ""];
 
 export function PerformanceBentoPreview({ className, animated = true }: PreviewProps) {
+  const { t: tp } = usePublicLanguage();
+
   let animatedAttr: string | undefined;
   if (!animated) {
     animatedAttr = "false";
@@ -390,7 +398,7 @@ export function PerformanceBentoPreview({ className, animated = true }: PreviewP
       className={cn("flex h-full w-full flex-col justify-center gap-2", className)}
     >
       <div className="rounded-xl border border-slate-200 bg-white p-2.5 md:max-lg:hidden">
-        <p className={PREVIEW_LABEL_CLASS}>Covers Seated</p>
+        <p className={PREVIEW_LABEL_CLASS}>{tp("Covers Seated")}</p>
         <div className="mt-1 flex items-baseline gap-2">
           <span className="text-3xl font-semibold leading-none tracking-tight text-slate-900">
             184
@@ -398,16 +406,16 @@ export function PerformanceBentoPreview({ className, animated = true }: PreviewP
           <span className="text-micro font-semibold text-teal-700">+12%</span>
         </div>
         <p className="mt-1 text-preview-sm font-medium uppercase tracking-[0.08em] text-slate-500">
-          3.2 Guests Per Party &middot; 9m Avg Wait
+          {tp("3.2 Guests Per Party · 9m Avg Wait")}
         </p>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-2.5">
-        <p className={PREVIEW_LABEL_CLASS}>Service Rates</p>
+        <p className={PREVIEW_LABEL_CLASS}>{tp("Service Rates")}</p>
         <ul className="mt-2 space-y-2">
           {PERFORMANCE_RATES.map((rate, index) => (
             <li
-              key={rate.label}
+              key={tp(rate.label)}
               className={cn(
                 "flex items-center justify-between gap-3",
                 PERFORMANCE_RATE_VISIBILITY[index],
@@ -415,7 +423,7 @@ export function PerformanceBentoPreview({ className, animated = true }: PreviewP
             >
               <span className="min-w-0">
                 <span className="block truncate text-micro font-medium text-slate-800">
-                  {rate.label}
+                  {tp(rate.label)}
                 </span>
                 {rate.context && (
                   <span className="block truncate text-preview-sm text-slate-500">
@@ -430,8 +438,10 @@ export function PerformanceBentoPreview({ className, animated = true }: PreviewP
 
         <div className="mt-3 border-t border-slate-200 pt-2.5">
           <div className="flex items-baseline justify-between gap-3">
-            <p className="text-micro font-semibold text-slate-800">Reservations vs Walk Ins</p>
-            <span className="text-preview-sm text-slate-500">184 Covers</span>
+            <p className="text-micro font-semibold text-slate-800">
+              {tp("Reservations vs Walk Ins")}
+            </p>
+            <span className="text-preview-sm text-slate-500">{tp("184 Covers")}</span>
           </div>
           <div className="mt-1.5 flex h-2 overflow-hidden rounded-full bg-slate-100">
             <span className="bg-indigo-600" style={{ width: "62%" }} />
@@ -440,11 +450,11 @@ export function PerformanceBentoPreview({ className, animated = true }: PreviewP
           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-preview-sm text-slate-600">
             <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-indigo-600" />
-              Reservations: 114 Covers
+              {tp("Reservations: 114 Covers")}
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-indigo-300" />
-              Walk Ins: 70 Covers
+              {tp("Walk Ins: 70 Covers")}
             </span>
           </div>
         </div>

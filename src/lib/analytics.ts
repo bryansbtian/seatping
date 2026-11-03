@@ -8,7 +8,7 @@ function isEnabled(): boolean {
 
 export function redactAnalyticsPath(path: string): string {
   return String(path ?? "")
-    .replace(/^\/reservations\/manage\/[^/]+/i, "/reservations/manage/[token]")
+    .replace(/^(\/(?:(?:id|en)\/)?reservations\/manage)\/[^/]+/i, "$1/[token]")
     .replace(/[0-9a-f]{32,}/gi, "[redacted]");
 }
 

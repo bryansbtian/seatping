@@ -1,3 +1,6 @@
+import SEO from "@/components/SEO";
+import { PUBLIC_PAGE_COPY } from "@shared/pageMeta";
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,62 +81,72 @@ const FaqSection = ({
   icon: React.ReactNode;
   faqs: Faq[];
   idPrefix: string;
-}) => (
-  <Card className="border rounded-2xl shadow-sm bg-card/80 backdrop-blur-sm">
-    <CardHeader>
-      <CardTitle className="flex items-center gap-3 text-xl sm:text-2xl text-primary">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-          {icon}
-        </span>
-        {title}
-      </CardTitle>
-    </CardHeader>
-    <CardContent className="pb-0">
-      <Accordion type="single" collapsible className="w-full">
-        {faqs.map((faq, i) => (
-          <AccordionItem
-            key={`${idPrefix}-${i}`}
-            value={`${idPrefix}-${i}`}
-            className="last:border-b-0"
-          >
-            <AccordionTrigger className="text-left text-base font-medium hover:no-underline">
-              {faq.question}
-            </AccordionTrigger>
-            <AccordionContent className="text-sm sm:text-base text-muted-foreground">
-              {faq.answer}
-            </AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
-    </CardContent>
-  </Card>
-);
+}) => {
+  const { t: tp } = usePublicLanguage();
+  return (
+    <Card className="border rounded-2xl shadow-sm bg-card/80 backdrop-blur-sm">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-3 text-xl sm:text-2xl text-primary">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            {icon}
+          </span>
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pb-0">
+        <Accordion type="single" collapsible className="w-full">
+          {faqs.map((faq, i) => (
+            <AccordionItem
+              key={`${idPrefix}-${i}`}
+              value={`${idPrefix}-${i}`}
+              className="last:border-b-0"
+            >
+              <AccordionTrigger className="text-left text-base font-medium hover:no-underline">
+                {tp(faq.question)}
+              </AccordionTrigger>
+              <AccordionContent className="text-sm sm:text-base text-muted-foreground">
+                {tp(faq.answer)}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </CardContent>
+    </Card>
+  );
+};
 
 const Help = () => {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <>
+      <SEO
+        title={PUBLIC_PAGE_COPY["/help"].title}
+        description={PUBLIC_PAGE_COPY["/help"].description}
+        canonical="/help"
+      />
       <Header />
 
       <div data-page-background="auth" className="px-4 pt-12 sm:pt-16 md:pt-20">
         <div className="max-w-3xl mx-auto space-y-10">
           <div className="text-center space-y-4">
             <h1 className="text-3xl md:text-5xl font-semibold text-slate-900 leading-tight pb-3 pt-10 sm:pt-12 md:pt-16">
-              Help & FAQ
+              {tp("Help & FAQ")}
             </h1>
             <p className="text-muted-foreground text-lg md:text-xl">
-              Quick answers for diners, queues, reservations, and business tools.
+              {tp("Quick answers for diners, queues, reservations, and business tools.")}
             </p>
           </div>
 
           <div className="space-y-8">
             <FaqSection
-              title="For Customers"
+              title={tp("For Customers")}
               icon={<HugeiconsIcon icon={UsersRoundIcon} className="h-5 w-5" />}
               faqs={CUSTOMER_FAQS}
               idPrefix="customer"
             />
             <FaqSection
-              title="For Businesses"
+              title={tp("For Businesses")}
               icon={<HugeiconsIcon icon={Store01Icon} className="h-5 w-5" />}
               faqs={BUSINESS_FAQS}
               idPrefix="business"
@@ -142,7 +155,7 @@ const Help = () => {
 
           <div className="text-center pt-6 border-t">
             <p className="text-muted-foreground">
-              Still need help? Contact us anytime at{" "}
+              {tp("Still need help? Contact us anytime at")}{" "}
               <a href="mailto:help@seatping.biz" className="underline font-medium">
                 help@seatping.biz
               </a>

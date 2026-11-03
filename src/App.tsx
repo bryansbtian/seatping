@@ -16,6 +16,12 @@ import { queryClient } from "@/lib/queryClient";
 import { useSession } from "@/hooks/useSession";
 import AnalyticsRouteTracker from "@/components/AnalyticsRouteTracker";
 import DemoBookingProvider from "@/components/DemoBookingProvider";
+import PublicLanguageProvider from "@/components/PublicLanguageProvider";
+import {
+  explicitPublicLanguage,
+  localizedPublicPath,
+  publicLanguageForPath,
+} from "@shared/publicLanguage";
 
 import { lazyRoute } from "@/lib/lazyRoute";
 import RouteLoading from "@/components/RouteLoading";
@@ -56,6 +62,8 @@ const SearchResults = lazyRoute(() => import("./pages/SearchResults"));
 const Admin = lazyRoute(() => import("./pages/Admin"));
 
 const reservedRoutePrefixes = [
+  "id",
+  "en",
   "login",
   "signup",
   "profile",
@@ -79,8 +87,17 @@ const reservedRoutePrefixes = [
 
 function LegacyRestaurantRedirect() {
   const { businessUsername = "", locationId = "" } = useParams();
-  const { search } = useLocation();
-  return <Navigate to={`/${businessUsername}/${locationId}${search}`} replace />;
+  const { pathname, search } = useLocation();
+  return (
+    <Navigate
+      to={localizedPublicPath(
+        `/${businessUsername}/${locationId}${search}`,
+        publicLanguageForPath(pathname),
+        explicitPublicLanguage(pathname) === "en",
+      )}
+      replace
+    />
+  );
 }
 
 function RouteContent({ children }: { children: ReactNode }) {
@@ -105,104 +122,123 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <ScrollToTop />
-        <DemoBookingProvider>
-          <AnalyticsRouteTracker />
-          <RouteContent>
-            <Routes>
-              <Route path="/" element={<Index />} />
+        <PublicLanguageProvider>
+          <ScrollToTop />
+          <DemoBookingProvider>
+            <AnalyticsRouteTracker />
+            <RouteContent>
+              <Routes>
+                {["", "/id", "/en"].map((prefix) => (
+                  <Route key={prefix}>
+                    <Route path={`${prefix}/`} element={<Index />} />
 
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
+                    <Route path={`${prefix}/login`} element={<Login />} />
+                    <Route path={`${prefix}/signup`} element={<Signup />} />
 
-              <Route
-                path="/profile"
-                element={
-                  <RequireCustomer>
-                    <Profile />
-                  </RequireCustomer>
-                }
-              />
+                    <Route
+                      path={`${prefix}/profile`}
+                      element={
+                        <RequireCustomer>
+                          <Profile />
+                        </RequireCustomer>
+                      }
+                    />
 
-              <Route
-                path="/business"
-                element={
-                  <BusinessGuestRoute>
-                    <LandingPage />
-                  </BusinessGuestRoute>
-                }
-              />
-              <Route
-                path="/business/login"
-                element={
-                  <BusinessGuestRoute>
-                    <BusinessLogin />
-                  </BusinessGuestRoute>
-                }
-              />
-              <Route
-                path="/business/signup"
-                element={
-                  <BusinessGuestRoute>
-                    <BusinessSignup />
-                  </BusinessGuestRoute>
-                }
-              />
+                    <Route
+                      path={`${prefix}/business`}
+                      element={
+                        <BusinessGuestRoute>
+                          <LandingPage />
+                        </BusinessGuestRoute>
+                      }
+                    />
+                    <Route
+                      path={`${prefix}/business/login`}
+                      element={
+                        <BusinessGuestRoute>
+                          <BusinessLogin />
+                        </BusinessGuestRoute>
+                      }
+                    />
+                    <Route
+                      path={`${prefix}/business/signup`}
+                      element={
+                        <BusinessGuestRoute>
+                          <BusinessSignup />
+                        </BusinessGuestRoute>
+                      }
+                    />
 
-              <Route path="/forgot" element={<ForgotPassword />} />
-              <Route path="/reset" element={<ResetPassword />} />
-              <Route path="/queue/:businessUsername/:locationId" element={<QueueBusiness />} />
-              <Route
-                path="/restaurants/:businessUsername/:locationId"
-                element={<LegacyRestaurantRedirect />}
-              />
-              <Route path="/reservations/manage/:token" element={<ManageReservation />} />
-              <Route path="/search" element={<SearchResults />} />
-              <Route path="/search/:query" element={<SearchResults />} />
-              <Route path="/policy" element={<Policy />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/feedback" element={<Feedback />} />
-              <Route path="/help" element={<Help />} />
-              <Route path="/blog" element={<Blog />} />
-              <Route path="/blog/:slug" element={<BlogArticle />} />
+                    <Route path={`${prefix}/forgot`} element={<ForgotPassword />} />
+                    <Route path={`${prefix}/reset`} element={<ResetPassword />} />
+                    <Route
+                      path={`${prefix}/queue/:businessUsername/:locationId`}
+                      element={<QueueBusiness />}
+                    />
+                    <Route
+                      path={`${prefix}/restaurants/:businessUsername/:locationId`}
+                      element={<LegacyRestaurantRedirect />}
+                    />
+                    <Route
+                      path={`${prefix}/reservations/manage/:token`}
+                      element={<ManageReservation />}
+                    />
+                    <Route path={`${prefix}/search`} element={<SearchResults />} />
+                    <Route path={`${prefix}/search/:query`} element={<SearchResults />} />
+                    <Route path={`${prefix}/policy`} element={<Policy />} />
+                    <Route path={`${prefix}/terms`} element={<Terms />} />
+                    <Route path={`${prefix}/feedback`} element={<Feedback />} />
+                    <Route path={`${prefix}/help`} element={<Help />} />
+                    <Route
+                      path={`${prefix}/:businessUsername/:locationId`}
+                      element={<RestaurantRoute />}
+                    />
+                    {reservedRoutePrefixes.map((reserved) => (
+                      <Route
+                        key={reserved}
+                        path={`${prefix}/${reserved}/*`}
+                        element={<NotFound />}
+                      />
+                    ))}
+                  </Route>
+                ))}
+                <Route path="/blog" element={<Blog />} />
+                <Route path="/blog/:slug" element={<BlogArticle />} />
 
-              <Route
-                element={
-                  <BusinessBootstrap>
-                    <BusinessLayout />
-                  </BusinessBootstrap>
-                }
-              >
-                <Route element={<BusinessPageOutlet />}>
-                  <Route path="/business/overview" element={<BusinessOverview />} />
-                  <Route path="/business/queue" element={<BusinessQueue />} />
-                  <Route path="/business/reservations" element={<BusinessReservations />} />
-                  <Route path="/business/floor" element={<BusinessFloor />} />
-                  <Route path="/business/guests" element={<BusinessGuests />} />
-                  <Route path="/business/reviews" element={<BusinessReviews />} />
-                  <Route path="/business/campaigns" element={<BusinessCampaigns />} />
-                  <Route path="/business/performance" element={<BusinessPerformance />} />
-                  <Route path="/business/settings" element={<BusinessSettings />} />
+                <Route
+                  element={
+                    <BusinessBootstrap>
+                      <BusinessLayout />
+                    </BusinessBootstrap>
+                  }
+                >
+                  <Route element={<BusinessPageOutlet />}>
+                    <Route path="/business/overview" element={<BusinessOverview />} />
+                    <Route path="/business/queue" element={<BusinessQueue />} />
+                    <Route path="/business/reservations" element={<BusinessReservations />} />
+                    <Route path="/business/floor" element={<BusinessFloor />} />
+                    <Route path="/business/guests" element={<BusinessGuests />} />
+                    <Route path="/business/reviews" element={<BusinessReviews />} />
+                    <Route path="/business/campaigns" element={<BusinessCampaigns />} />
+                    <Route path="/business/performance" element={<BusinessPerformance />} />
+                    <Route path="/business/settings" element={<BusinessSettings />} />
+                  </Route>
                 </Route>
-              </Route>
-              <Route path="/admin" element={<Admin />}>
-                <Route path="dashboard" element={<></>} />
-                <Route path="customers" element={<></>} />
-                <Route path="featured" element={<></>} />
-                <Route path="templates" element={<></>} />
-                <Route path="blog" element={<></>} />
-                <Route path="blog/new" element={<></>} />
-                <Route path="blog/:id/edit" element={<></>} />
-              </Route>
+                <Route path="/admin" element={<Admin />}>
+                  <Route path="dashboard" element={<></>} />
+                  <Route path="customers" element={<></>} />
+                  <Route path="featured" element={<></>} />
+                  <Route path="templates" element={<></>} />
+                  <Route path="blog" element={<></>} />
+                  <Route path="blog/new" element={<></>} />
+                  <Route path="blog/:id/edit" element={<></>} />
+                </Route>
 
-              {reservedRoutePrefixes.map((prefix) => (
-                <Route key={prefix} path={`/${prefix}/*`} element={<NotFound />} />
-              ))}
-              <Route path="/:businessUsername/:locationId" element={<RestaurantRoute />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </RouteContent>
-        </DemoBookingProvider>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </RouteContent>
+          </DemoBookingProvider>
+        </PublicLanguageProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
@@ -220,12 +256,22 @@ function BusinessGuestRoute({ children }: { children: React.ReactNode }) {
 }
 
 function RequireCustomer({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
   const session = useSession();
   if (session === undefined) {
     return <RouteLoading />;
   }
   if (!session.customer) {
-    return <Navigate to="/login" replace />;
+    return (
+      <Navigate
+        to={localizedPublicPath(
+          "/login",
+          publicLanguageForPath(pathname),
+          explicitPublicLanguage(pathname) === "en",
+        )}
+        replace
+      />
+    );
   }
   return <>{children}</>;
 }

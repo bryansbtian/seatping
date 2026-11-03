@@ -1,5 +1,6 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "@/lib/publicNavigation";
 import { api } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { useRestaurantProfile } from "@/hooks/useRestaurantProfile";
@@ -92,9 +93,9 @@ function todayDayKey() {
   return map[idx];
 }
 
-function formatDate(iso: string) {
+function formatDate(iso: string, locale?: string) {
   try {
-    return new Date(iso).toLocaleDateString(undefined, {
+    return new Date(iso).toLocaleDateString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -259,6 +260,8 @@ function useIsLgUp() {
 }
 
 export default function RestaurantPage() {
+  const { t: tp } = usePublicLanguage();
+
   const { businessUsername = "", locationId = "" } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -367,7 +370,7 @@ export default function RestaurantPage() {
           });
           if (!cancelled) {
             setSaved(true);
-            toast({ title: "Restaurant saved" });
+            toast({ title: tp("Restaurant saved") });
           }
           return;
         }
@@ -387,7 +390,7 @@ export default function RestaurantPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [accountType, locationId, toast, session?.customerId]);
+  }, [accountType, locationId, toast, session?.customerId, tp]);
 
   const toggleSave = async () => {
     if (accountType !== "customer") {
@@ -408,7 +411,7 @@ export default function RestaurantPage() {
           return;
         }
         setSaved(false);
-        toast({ title: "Restaurant removed from saved" });
+        toast({ title: tp("Restaurant removed from saved") });
       } else {
         await api("/auth/me/saved-locations", {
           method: "POST",
@@ -418,15 +421,15 @@ export default function RestaurantPage() {
           return;
         }
         setSaved(true);
-        toast({ title: "Restaurant saved" });
+        toast({ title: tp("Restaurant saved") });
       }
     } catch (e: any) {
       if (activeSaveScopeRef.current !== requestSaveScope) {
         return;
       }
       toast({
-        title: "Something went wrong",
-        description: e?.message || "Please try again.",
+        title: tp("Something went wrong"),
+        description: tp(e?.message || tp("Please try again.")),
         variant: "destructive",
       });
     } finally {
@@ -444,14 +447,14 @@ export default function RestaurantPage() {
     if (!restaurant) {
       return [] as Array<{ id: string; label: string }>;
     }
-    const list: Array<{ id: string; label: string }> = [{ id: "overview", label: "Overview" }];
+    const list: Array<{ id: string; label: string }> = [{ id: "overview", label: tp("Overview") }];
     if (restaurant.photos.length > 0) {
-      list.push({ id: "photos", label: "Photos" });
+      list.push({ id: "photos", label: tp("Photos") });
     }
     if (restaurant.menu.length > 0 || Boolean(restaurant.menuUrl)) {
-      list.push({ id: "menu", label: "Menu" });
+      list.push({ id: "menu", label: tp("Menu") });
     }
-    list.push({ id: "reviews", label: "Reviews" });
+    list.push({ id: "reviews", label: tp("Reviews") });
     const hasDetails =
       Boolean(restaurant.address) ||
       Boolean(restaurant.phone) ||
@@ -463,10 +466,10 @@ export default function RestaurantPage() {
       Boolean(restaurant.priceRange) ||
       Boolean(restaurant.openingHours);
     if (hasDetails) {
-      list.push({ id: "details", label: "Details" });
+      list.push({ id: "details", label: tp("Details") });
     }
     return list;
-  }, [restaurant]);
+  }, [restaurant, tp]);
 
   const scrollToSection = (id: string) => {
     setActiveSection(id);
@@ -568,9 +571,9 @@ export default function RestaurantPage() {
   if (r.rating != null) {
     let reviewWordLabel: string;
     if (r.reviewCount === 1) {
-      reviewWordLabel = "Review";
+      reviewWordLabel = tp("Review");
     } else {
-      reviewWordLabel = "Reviews";
+      reviewWordLabel = tp("Reviews");
     }
     ratingSummary = (
       <span className="inline-flex items-center gap-1 font-medium text-slate-700">
@@ -582,7 +585,7 @@ export default function RestaurantPage() {
       </span>
     );
   } else {
-    ratingSummary = <span>No Reviews Yet</span>;
+    ratingSummary = <span>{tp("No Reviews Yet")}</span>;
   }
 
   let navStickyClass: string;
@@ -601,14 +604,14 @@ export default function RestaurantPage() {
 
   let photoWordLabel: string;
   if (r.photos.length === 1) {
-    photoWordLabel = "Photo";
+    photoWordLabel = tp("Photo");
   } else {
-    photoWordLabel = "Photos";
+    photoWordLabel = tp("Photos");
   }
 
-  let reviewsHeading = "Reviews";
+  let reviewsHeading = tp("Reviews");
   if (r.reviewCount > 0) {
-    reviewsHeading = "What Diners Are Saying";
+    reviewsHeading = tp("What Diners Are Saying");
   }
 
   let reviewsSummaryBlock: React.ReactNode;
@@ -616,7 +619,7 @@ export default function RestaurantPage() {
     reviewsSummaryBlock = <ReviewsSummary rating={r.rating ?? 0} count={r.reviewCount} />;
   } else {
     reviewsSummaryBlock = (
-      <p className="text-sm text-slate-500">Be the first to share your experience.</p>
+      <p className="text-sm text-slate-500">{tp("Be the first to share your experience.")}</p>
     );
   }
 
@@ -650,7 +653,9 @@ export default function RestaurantPage() {
     <PageShell hideHeader={navTakeover}>
       <SEO
         title={`${r.name} | SeatPing`}
-        description={`Book a table or join the queue at ${r.name}${locationSuffix} with SeatPing.`}
+        description={tp(
+          `Book a table or join the queue at ${r.name}${locationSuffix} with SeatPing.`,
+        )}
         canonical={`/${r.businessUsername}/${r.locationId}`}
       />
       <div className="relative h-56 w-full overflow-hidden bg-slate-100 sm:h-72 md:h-96">
@@ -663,7 +668,7 @@ export default function RestaurantPage() {
             onClick={() => setPhotosOpen(true)}
           >
             <HugeiconsIcon icon={Image01Icon} className="h-4 w-4" />
-            <span>View Photos</span>
+            <span>{tp("View Photos")}</span>
           </Button>
         )}
       </div>
@@ -704,7 +709,7 @@ export default function RestaurantPage() {
               }
               return (
                 <div className="mt-1.5 text-sm">
-                  <span className={status.color}>{status.text}</span>
+                  <span className={status.color}>{tp(status.text)}</span>
                 </div>
               );
             })()}
@@ -756,7 +761,7 @@ export default function RestaurantPage() {
                 {(r.description || r.tagline) && (
                   <div>
                     <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
-                      About {r.name}
+                      {tp("About")} {r.name}
                     </h2>
                     {aboutParagraph}
                   </div>
@@ -765,21 +770,29 @@ export default function RestaurantPage() {
                   {r.cuisineTypes.length > 0 && (
                     <OverviewRow
                       icon={Restaurant02Icon}
-                      label="Cuisine"
+                      label={tp("Cuisine")}
                       value={r.cuisineTypes.join(", ")}
                     />
                   )}
                   {r.priceRange && (
-                    <OverviewRow icon={DollarCircleIcon} label="Price range" value={r.priceRange} />
+                    <OverviewRow
+                      icon={DollarCircleIcon}
+                      label={tp("Price range")}
+                      value={r.priceRange}
+                    />
                   )}
                   {locationText && (
-                    <OverviewRow icon={Location01Icon} label="Location" value={locationText} />
+                    <OverviewRow
+                      icon={Location01Icon}
+                      label={tp("Location")}
+                      value={locationText}
+                    />
                   )}
                   {todayHours && (
                     <OverviewRow
                       icon={Clock01Icon}
-                      label="Today's hours"
-                      value={formatHoursForDay(todayHours)}
+                      label={tp("Today's hours")}
+                      value={tp(formatHoursForDay(todayHours))}
                     />
                   )}
                 </div>
@@ -797,13 +810,17 @@ export default function RestaurantPage() {
               {(r.menu.length > 0 || r.menuUrl) && (
                 <section id="menu" className="scroll-mt-32 space-y-4">
                   <div className="space-y-1">
-                    <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Menu</h2>
-                    <p className="text-sm text-slate-600">Menu from {r.name}.</p>
+                    <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
+                      {tp("Menu")}
+                    </h2>
+                    <p className="text-sm text-slate-600">
+                      {tp("Menu from")} {r.name}.
+                    </p>
                   </div>
                   {r.menuUrl && (
                     <Button asChild variant="outline" size="lg">
                       <a href={normalizeUrl(r.menuUrl)} target="_blank" rel="noopener noreferrer">
-                        View Full Menu
+                        {tp("View Full Menu")}
                       </a>
                     </Button>
                   )}
@@ -858,10 +875,10 @@ export default function RestaurantPage() {
                             void reviewQuery.fetchNextPage();
                           }}
                         >
-                          Load More Reviews
+                          {tp("Load More Reviews")}
                         </Button>
                         <p className="text-xs text-slate-500">
-                          Showing {orderedReviews.length} of {r.reviewCount}
+                          {tp("Showing")} {orderedReviews.length} {tp("of")} {r.reviewCount}
                         </p>
                       </div>
                     )}
@@ -869,21 +886,21 @@ export default function RestaurantPage() {
                 )}
                 {reviewQuery.isError && (
                   <p role="alert" className="text-sm text-red-600">
-                    Please try again to load more reviews.
+                    {tp("Please try again to load more reviews.")}
                   </p>
                 )}
               </section>
 
               <section id="details" className="scroll-mt-32 space-y-6">
-                <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Details</h2>
+                <h2 className="text-lg sm:text-xl font-semibold text-slate-900">{tp("Details")}</h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {r.address && (
-                    <DetailRow icon={Location01Icon} label="Location" value={addressValue} />
+                    <DetailRow icon={Location01Icon} label={tp("Location")} value={addressValue} />
                   )}
                   {r.phone && (
                     <DetailRow
                       icon={Call02Icon}
-                      label="Phone Number"
+                      label={tp("Phone Number")}
                       value={
                         <a
                           href={`tel:${r.phone}`}
@@ -897,17 +914,17 @@ export default function RestaurantPage() {
                   {r.cuisineTypes.length > 0 && (
                     <DetailRow
                       icon={Restaurant02Icon}
-                      label="Cuisines"
+                      label={tp("Cuisines")}
                       value={r.cuisineTypes.join(", ")}
                     />
                   )}
                   {r.priceRange && (
-                    <DetailRow icon={DollarCircleIcon} label="Price" value={r.priceRange} />
+                    <DetailRow icon={DollarCircleIcon} label={tp("Price")} value={r.priceRange} />
                   )}
                   {r.website && (
                     <DetailRow
                       icon={GlobeIcon}
-                      label="Website"
+                      label={tp("Website")}
                       value={
                         <a
                           href={r.website}
@@ -927,21 +944,25 @@ export default function RestaurantPage() {
 
                 {r.openingHours && (
                   <div>
-                    <h3 className="text-base font-semibold text-slate-900">Hours of Operation</h3>
+                    <h3 className="text-base font-semibold text-slate-900">
+                      {tp("Hours of Operation")}
+                    </h3>
                     <div className="mt-3 divide-y divide-slate-100">
                       {DAYS.map((d) => {
                         const day = r.openingHours?.[d] as DayHours | undefined;
                         return (
                           <div key={d} className="flex items-center justify-between py-2 text-sm">
-                            <span className="font-medium text-slate-700">{formatDayLabel(d)}</span>
-                            <span className="text-slate-500">{formatHoursForDay(day)}</span>
+                            <span className="font-medium text-slate-700">
+                              {tp(formatDayLabel(d))}
+                            </span>
+                            <span className="text-slate-500">{tp(formatHoursForDay(day))}</span>
                           </div>
                         );
                       })}
                     </div>
                     {r.openingHours.timezone && (
                       <p className="mt-2 text-xs text-slate-400">
-                        Timezone: {r.openingHours.timezone.replace(/_/g, " ")}
+                        {tp("Timezone:")} {r.openingHours.timezone.replace(/_/g, " ")}
                       </p>
                     )}
                   </div>
@@ -1005,13 +1026,15 @@ function SaveButton({
   onClick: () => void;
   className?: string;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   let label: string;
   let variant: "secondary" | "outline";
   if (saved) {
-    label = "Saved";
+    label = tp("Saved");
     variant = "secondary";
   } else {
-    label = "Save";
+    label = tp("Save");
     variant = "outline";
   }
   return (
@@ -1074,6 +1097,8 @@ function DetailRow({
 }
 
 function PhotosGrid({ photos, onShowAll }: { photos: Photo[]; onShowAll: () => void }) {
+  const { t: tp } = usePublicLanguage();
+
   if (photos.length === 0) {
     return null;
   }
@@ -1092,7 +1117,7 @@ function PhotosGrid({ photos, onShowAll }: { photos: Photo[]; onShowAll: () => v
           )}
           loading="lazy"
           decoding="async"
-          alt={photos[0].altText || "Restaurant photo"}
+          alt={photos[0].altText || tp("Restaurant photo")}
           className="h-72 w-full object-cover transition group-hover:brightness-95 sm:h-96"
         />
       </button>
@@ -1113,7 +1138,7 @@ function PhotosGrid({ photos, onShowAll }: { photos: Photo[]; onShowAll: () => v
               {...getRestaurantImageProps(p.url, [240, 480, 720], "(min-width: 1024px) 25vw, 50vw")}
               loading="lazy"
               decoding="async"
-              alt={p.altText || "Restaurant photo"}
+              alt={p.altText || tp("Restaurant photo")}
               className="h-full w-full object-cover transition group-hover:brightness-95"
             />
           </button>
@@ -1137,7 +1162,7 @@ function PhotosGrid({ photos, onShowAll }: { photos: Photo[]; onShowAll: () => v
           {...getRestaurantImageProps(first.url, [320, 640, 960], "(min-width: 768px) 32vw, 100vw")}
           loading="lazy"
           decoding="async"
-          alt={first.altText || "Restaurant photo"}
+          alt={first.altText || tp("Restaurant photo")}
           className="h-full w-full object-cover transition group-hover:brightness-95"
         />
       </button>
@@ -1148,9 +1173,9 @@ function PhotosGrid({ photos, onShowAll }: { photos: Photo[]; onShowAll: () => v
           const showOverlay = isLast && hidden > 0;
           let tileAriaLabel: string;
           if (showOverlay) {
-            tileAriaLabel = `See all ${hidden + 5} photos`;
+            tileAriaLabel = tp(`See all ${hidden + 5} photos`);
           } else {
-            tileAriaLabel = "View photos";
+            tileAriaLabel = tp("View photos");
           }
           return (
             <button
@@ -1168,12 +1193,14 @@ function PhotosGrid({ photos, onShowAll }: { photos: Photo[]; onShowAll: () => v
                 )}
                 loading="lazy"
                 decoding="async"
-                alt={p.altText || "Restaurant photo"}
+                alt={p.altText || tp("Restaurant photo")}
                 className="h-full w-full object-cover transition group-hover:brightness-95"
               />
               {showOverlay && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/55 text-white transition group-hover:bg-black/65">
-                  <span className="text-lg font-semibold sm:text-xl">+{hidden} More</span>
+                  <span className="text-lg font-semibold sm:text-xl">
+                    +{hidden} {tp("More")}
+                  </span>
                 </div>
               )}
             </button>
@@ -1195,9 +1222,11 @@ function PhotosModal({
   restaurantName: string;
   photos: Photo[];
 }) {
+  const { t: tp } = usePublicLanguage();
+
   let photosContent: React.ReactNode;
   if (photos.length === 0) {
-    photosContent = <p className="py-6 text-sm text-slate-500">No photos yet.</p>;
+    photosContent = <p className="py-6 text-sm text-slate-500">{tp("No photos yet.")}</p>;
   } else {
     photosContent = (
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
@@ -1209,7 +1238,7 @@ function PhotosModal({
             <img
               {...getRestaurantImageProps(p.url, [240, 480, 720], "(min-width: 1024px) 25vw, 50vw")}
               decoding="async"
-              alt={p.altText || "Restaurant photo"}
+              alt={p.altText || tp("Restaurant photo")}
               loading="lazy"
               className="h-full w-full object-cover"
             />
@@ -1222,7 +1251,7 @@ function PhotosModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85vh] w-full max-w-[94vw] flex-col gap-0 overflow-hidden rounded-xl p-0 max-sm:overflow-hidden max-sm:p-0 sm:max-w-[88vw] lg:max-w-[960px]">
         <DialogHeader className="shrink-0 px-4 pb-3 pt-4 sm:px-6 sm:pr-12 sm:pt-6">
-          <DialogTitle>Photos</DialogTitle>
+          <DialogTitle>{tp("Photos")}</DialogTitle>
           <DialogDescription className="break-words">{restaurantName}</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 sm:px-6 sm:pb-6">
@@ -1242,11 +1271,13 @@ function MenuList({
   items: MenuItem[];
   fallbackCurrency: string | null;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   const [expanded, setExpanded] = useState(false);
 
   const groups = new Map<string, MenuItem[]>();
   for (const it of items) {
-    const key = it.category?.trim() || "Menu";
+    const key = it.category?.trim() || tp("Menu");
     if (!groups.has(key)) {
       groups.set(key, []);
     }
@@ -1283,9 +1314,9 @@ function MenuList({
 
   let expandToggleLabel: string;
   if (expanded) {
-    expandToggleLabel = "Show Less";
+    expandToggleLabel = tp("Show Less");
   } else {
-    expandToggleLabel = "View Full Menu";
+    expandToggleLabel = tp("View Full Menu");
   }
 
   return (
@@ -1327,6 +1358,8 @@ function MenuList({
 }
 
 function ReviewsSummary({ rating, count }: { rating: number; count: number }) {
+  const { t: tp } = usePublicLanguage();
+
   let reviewPlural: string;
   if (count === 1) {
     reviewPlural = "";
@@ -1340,7 +1373,8 @@ function ReviewsSummary({ rating, count }: { rating: number; count: number }) {
         <HugeiconsIcon icon={StarIcon} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
       </div>
       <span className="text-sm text-slate-500">
-        {count} Review{reviewPlural}
+        {count} {tp("Review")}
+        {reviewPlural}
       </span>
     </div>
   );
@@ -1357,6 +1391,8 @@ function WriteReviewBlock({
   locationId: string;
   onSubmitted: () => void;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   const { toast } = useToast();
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -1375,9 +1411,9 @@ function WriteReviewBlock({
             to="/login"
             className="font-medium text-slate-900 underline-offset-4 hover:underline"
           >
-            Log In
+            {tp("Log In")}
           </Link>{" "}
-          as a customer to write a review.
+          {tp("as a customer to write a review.")}
         </p>
       </div>
     );
@@ -1387,8 +1423,8 @@ function WriteReviewBlock({
     e.preventDefault();
     if (rating < 1) {
       toast({
-        title: "Pick a rating",
-        description: "Tap 1–5 stars to rate this restaurant.",
+        title: tp("Pick a rating"),
+        description: tp("Tap 1–5 stars to rate this restaurant."),
         variant: "destructive",
       });
       return;
@@ -1404,15 +1440,15 @@ function WriteReviewBlock({
           body: JSON.stringify({ rating, description }),
         },
       );
-      toast({ title: "Review posted", description: "Thanks for sharing!" });
+      toast({ title: tp("Review posted"), description: tp("Thanks for sharing!") });
       setRating(0);
       setHoverRating(0);
       setDescription("");
       onSubmitted();
     } catch (e: any) {
       toast({
-        title: "Failed to post review",
-        description: e?.message || "Please try again.",
+        title: tp("Failed to post review"),
+        description: tp(e?.message || tp("Please try again.")),
         variant: "destructive",
       });
     } finally {
@@ -1426,19 +1462,19 @@ function WriteReviewBlock({
   if (shown) {
     ratingHint = `${shown}/5`;
   } else {
-    ratingHint = "Tap to Rate";
+    ratingHint = tp("Tap to Rate");
   }
 
   let submitLabel: string;
   if (submitting) {
-    submitLabel = "Posting...";
+    submitLabel = tp("Posting...");
   } else {
-    submitLabel = "Post Review";
+    submitLabel = tp("Post Review");
   }
 
   return (
     <form onSubmit={submit} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-      <p className="text-sm font-semibold text-slate-900">Write a Review</p>
+      <p className="text-sm font-semibold text-slate-900">{tp("Write a Review")}</p>
       <div className="flex items-center gap-1" onMouseLeave={() => setHoverRating(0)}>
         {[1, 2, 3, 4, 5].map((n) => {
           let starPlural: string;
@@ -1457,7 +1493,7 @@ function WriteReviewBlock({
             <button
               key={n}
               type="button"
-              aria-label={`${n} star${starPlural}`}
+              aria-label={tp(`${n} star${starPlural}`)}
               onClick={() => setRating(n)}
               onMouseEnter={() => setHoverRating(n)}
               className="rounded p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20"
@@ -1471,7 +1507,7 @@ function WriteReviewBlock({
       <Textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        placeholder="Share what you liked, the vibe, the dishes you tried..."
+        placeholder={tp("Share what you liked, the vibe, the dishes you tried...")}
         rows={3}
       />
       <div className="flex justify-end">
@@ -1494,6 +1530,8 @@ function ReviewCard({
   isOwn?: boolean;
   onEdit?: () => void;
 }) {
+  const { t: tp, locale } = usePublicLanguage();
+
   let ownCardClass: string;
   if (isOwn) {
     ownCardClass = "border-slate-300 bg-slate-50/60";
@@ -1503,7 +1541,7 @@ function ReviewCard({
 
   let headerTrailing: React.ReactNode;
   if (isOwn) {
-    headerTrailing = <Badge variant="neutral">Your Review</Badge>;
+    headerTrailing = <Badge variant="neutral">{tp("Your Review")}</Badge>;
   } else {
     headerTrailing = (
       <div className="flex shrink-0 items-center gap-1.5">
@@ -1515,9 +1553,9 @@ function ReviewCard({
 
   let serviceTypeLabel: string | null | undefined;
   if (review.serviceType === "queue") {
-    serviceTypeLabel = "Walk-in";
+    serviceTypeLabel = tp("Walk-in");
   } else if (review.serviceType === "reservation") {
-    serviceTypeLabel = "Reservation";
+    serviceTypeLabel = tp("Reservation");
   } else {
     serviceTypeLabel = review.serviceType;
   }
@@ -1527,7 +1565,7 @@ function ReviewCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="font-medium text-slate-900 line-clamp-1">
-            {review.customerName || review.customerUsername || "Anonymous"}
+            {review.customerName || review.customerUsername || tp("Anonymous")}
           </p>
           {review.customerName && review.customerUsername && (
             <p className="truncate text-xs text-slate-500">@{review.customerUsername}</p>
@@ -1549,7 +1587,7 @@ function ReviewCard({
               className="ml-auto h-7 gap-1 px-2 text-xs text-slate-600 hover:text-slate-900"
             >
               <HugeiconsIcon icon={Edit03Icon} className="size-4" />
-              Edit
+              {tp("Edit")}
             </Button>
           )}
         </div>
@@ -1558,22 +1596,26 @@ function ReviewCard({
         <p className="mt-2 text-sm text-slate-700 break-words">{review.description}</p>
       )}
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
-        <span>{formatDate(review.createdAt)}</span>
-        {typeof review.partySize === "number" && <span>· Party of {review.partySize}</span>}
+        <span>{formatDate(review.createdAt, locale)}</span>
+        {typeof review.partySize === "number" && (
+          <span>
+            {tp("· Party of")} {review.partySize}
+          </span>
+        )}
         {review.serviceType && <span>· {serviceTypeLabel}</span>}
       </div>
 
       {review.businessReply && (
         <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Response from {restaurantName}
+            {tp("Response from")} {restaurantName}
           </p>
           <p className="mt-1 whitespace-pre-line text-sm text-slate-800 break-words">
             {review.businessReply}
           </p>
           {review.businessReplyCreatedAt && (
             <p className="mt-1 text-xs text-slate-500">
-              Replied {formatDate(review.businessReplyCreatedAt)}
+              {tp("Replied")} {formatDate(review.businessReplyCreatedAt, locale)}
             </p>
           )}
         </div>

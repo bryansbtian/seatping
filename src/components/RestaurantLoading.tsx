@@ -1,9 +1,12 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useLayoutEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function RestaurantLoading() {
+  const { t: tp } = usePublicLanguage();
+
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, []);
@@ -11,7 +14,7 @@ export default function RestaurantLoading() {
   return (
     <div className="min-h-screen bg-background pt-14 sm:pt-16">
       <Header showSearch />
-      <div role="status" aria-label="Loading Restaurant" aria-live="polite" aria-busy="true">
+      <div role="status" aria-label={tp("Loading Restaurant")} aria-live="polite" aria-busy="true">
         <div aria-hidden="true">
           <Skeleton className="h-56 w-full rounded-none sm:h-72 md:h-96" />
           <div className="container mx-auto grid max-w-7xl gap-8 px-4 pt-8 md:pt-10 lg:grid-cols-3">

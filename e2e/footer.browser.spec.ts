@@ -186,8 +186,8 @@ for (const width of [320, 390, 768, 1024, 1440, 1923]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/help", { waitUntil: "domcontentloaded" });
     const footer = page.getByRole("contentinfo");
-    await footer.scrollIntoViewIfNeeded();
     await page.evaluate(() => document.fonts.ready);
+    await footer.scrollIntoViewIfNeeded();
     await expect(footer).toHaveCSS("background-color", "rgb(255, 255, 255)");
     const balancedPadding = await footer
       .getByText(`© ${new Date().getFullYear()} SeatPing.`)
@@ -201,10 +201,13 @@ for (const width of [320, 390, 768, 1024, 1440, 1923]) {
         .getByText(`© ${new Date().getFullYear()} SeatPing.`)
         .boundingBox();
       const legal = await footer.getByRole("navigation", { name: "Legal" }).boundingBox();
+      const language = await footer.getByRole("navigation", { name: "Language" }).boundingBox();
       expect(copyright).not.toBeNull();
       expect(legal).not.toBeNull();
+      expect(language).not.toBeNull();
       expect(Math.abs(copyright!.x + copyright!.width / 2 - width / 2)).toBeLessThanOrEqual(1);
       expect(Math.abs(legal!.x + legal!.width / 2 - width / 2)).toBeLessThanOrEqual(1);
+      expect(Math.abs(language!.x + language!.width / 2 - width / 2)).toBeLessThanOrEqual(1);
       const links = footer.getByRole("navigation", { name: "Resources" }).getByRole("link");
       const first = await links.nth(0).boundingBox();
       const second = await links.nth(1).boundingBox();
@@ -215,7 +218,12 @@ for (const width of [320, 390, 768, 1024, 1440, 1923]) {
       expect(second).not.toBeNull();
       expect(first!.height).toBe(rowHeight);
       expect(Math.abs(second!.y - first!.y - rowHeight)).toBeLessThanOrEqual(1);
-      expect(Math.abs(legal!.y - copyright!.y - rowHeight)).toBeLessThanOrEqual(1);
+      const rowGap = await footer
+        .getByText(`© ${new Date().getFullYear()} SeatPing.`)
+        .evaluate((element) => Number.parseFloat(getComputedStyle(element.parentElement!).rowGap));
+      expect(rowGap).toBe(12);
+      expect(Math.abs(legal!.y - copyright!.y - copyright!.height - rowGap)).toBeLessThanOrEqual(1);
+      expect(Math.abs(language!.y - legal!.y - legal!.height - rowGap)).toBeLessThanOrEqual(1);
     }
 
     const layout = await footer.evaluate((element) => {

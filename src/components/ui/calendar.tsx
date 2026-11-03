@@ -2,6 +2,7 @@ import * as React from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { DayPicker } from "react-day-picker";
+import { usePublicLanguage } from "@/lib/publicLanguage";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/buttonVariants";
@@ -9,8 +10,11 @@ import { buttonVariants } from "@/components/ui/buttonVariants";
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+  const { dateLocale, t } = usePublicLanguage();
   return (
     <DayPicker
+      locale={dateLocale}
+      labels={{ labelPrevious: () => t("Previous Month"), labelNext: () => t("Next Month") }}
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{

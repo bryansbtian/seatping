@@ -1,6 +1,12 @@
-import { Link } from "react-router-dom";
+import { usePublicLanguage } from "@/lib/publicLanguage";
+import { Link } from "@/lib/publicNavigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Linkedin02Icon } from "@hugeicons/core-free-icons";
+import { Link as RouterLink, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { localizedPublicPath, type PublicLanguage } from "@shared/publicLanguage";
+import { rememberPublicLanguage } from "@/lib/publicLanguagePreference";
 
 const footerLink =
   "inline-flex min-h-8 items-center rounded-sm text-slate-600 transition-colors duration-150 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring";
@@ -31,6 +37,13 @@ const footerGroups = [
 ];
 
 const Footer = () => {
+  const { t: tp, lang } = usePublicLanguage();
+  const { pathname, search, hash } = useLocation();
+  const languages: { value: PublicLanguage; label: string }[] = [
+    { value: "en", label: "English" },
+    { value: "id", label: "Bahasa Indonesia" },
+  ];
+
   return (
     <footer className="shrink-0 bg-white pt-12 font-sans text-body text-slate-600 sm:pt-14 md:pt-16 lg:pt-[4.5rem]">
       <div className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-16">
@@ -46,18 +59,18 @@ const Footer = () => {
               SeatPing
             </Link>
             <p className="mt-4 max-w-sm leading-relaxed">
-              Smarter queues. Better guest relationships.
+              {tp("Smarter queues. Better guest relationships.")}
             </p>
           </div>
 
           {footerGroups.map((group) => (
-            <nav key={group.title} aria-label={group.title}>
-              <h2 className="mb-4 text-body font-semibold text-slate-900">{group.title}</h2>
+            <nav key={group.title} aria-label={tp(group.title)}>
+              <h2 className="mb-4 text-body font-semibold text-slate-900">{tp(group.title)}</h2>
               <ul>
                 {group.links.map((link) => (
                   <li key={link.to}>
                     <Link to={link.to} state={{ scrollToTop: true }} className={footerLink}>
-                      {link.label}
+                      {tp(link.label)}
                     </Link>
                   </li>
                 ))}
@@ -65,11 +78,11 @@ const Footer = () => {
             </nav>
           ))}
 
-          <nav aria-label="Connect">
-            <h2 className="mb-4 text-body font-semibold text-slate-900">Connect</h2>
+          <nav aria-label={tp("Connect")}>
+            <h2 className="mb-4 text-body font-semibold text-slate-900">{tp("Connect")}</h2>
             <a
               href="https://www.linkedin.com/company/seatpinghq"
-              aria-label="SeatPing on LinkedIn"
+              aria-label={tp("SeatPing on LinkedIn")}
               target="_blank"
               rel="noopener noreferrer"
               className="-ml-2 inline-flex h-11 w-11 items-center justify-center rounded-control text-slate-600 transition-colors duration-150 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -86,21 +99,63 @@ const Footer = () => {
           </nav>
         </div>
 
-        <div className="flex flex-col items-center border-t border-slate-200 py-6 sm:flex-row sm:justify-between sm:gap-6 sm:py-8">
-          <p className="flex min-h-8 items-center sm:block sm:min-h-0">
+        <div className="grid grid-cols-1 items-center gap-3 border-t border-slate-200 py-6 text-center sm:py-8 lg:grid-cols-[1fr_auto_1fr] lg:gap-6 lg:text-left">
+          <p className="flex min-h-8 items-center justify-center lg:justify-start">
             © {new Date().getFullYear()} SeatPing.
           </p>
           <nav
-            aria-label="Legal"
-            className="flex flex-wrap items-center justify-center gap-x-4 sm:justify-end sm:gap-x-6"
+            aria-label={tp("Legal")}
+            className="flex flex-wrap items-center justify-center gap-x-4 sm:gap-x-6"
           >
             <Link to="/policy" state={{ scrollToTop: true }} className={footerLink}>
-              Privacy Policy
+              {tp("Privacy Policy")}
             </Link>
             <span aria-hidden="true">|</span>
             <Link to="/terms" state={{ scrollToTop: true }} className={footerLink}>
-              Terms of Service
+              {tp("Terms of Service")}
             </Link>
+          </nav>
+          <nav
+            aria-label={tp("Language")}
+            className="flex flex-wrap items-center justify-center gap-x-1 lg:justify-end"
+          >
+            {languages.map((language, index) => {
+              let destination = localizedPublicPath(
+                `${pathname}${search}${hash}`,
+                language.value,
+                true,
+              );
+              if (
+                language.value === "id" &&
+                (pathname === "/blog" || pathname.startsWith("/blog/"))
+              ) {
+                destination = "/id";
+              }
+              return (
+                <span key={language.value} className="inline-flex items-center gap-x-1">
+                  {index > 0 && <span aria-hidden="true">/</span>}
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "px-2 font-normal text-slate-600 hover:bg-transparent hover:text-slate-900",
+                      lang === language.value && "font-medium text-slate-900",
+                    )}
+                  >
+                    <RouterLink
+                      to={destination}
+                      lang={language.value}
+                      hrefLang={language.value}
+                      aria-current={lang === language.value}
+                      onClick={() => rememberPublicLanguage(language.value)}
+                    >
+                      {language.label}
+                    </RouterLink>
+                  </Button>
+                </span>
+              );
+            })}
           </nav>
         </div>
       </div>

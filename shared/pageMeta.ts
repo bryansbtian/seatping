@@ -1,3 +1,11 @@
+import {
+  localizedPublicPath,
+  unlocalizedPath,
+  publicLanguageForPath,
+  isLocalizedPublicPath,
+} from "./publicLanguage.js";
+import { translatePublic } from "./publicTranslations.js";
+
 export const SITE_URL = "https://www.seatping.biz";
 export const PLATFORM_TITLE = "SeatPing | Restaurant Queue, Reservations & Guest Management";
 export const PLATFORM_DESCRIPTION =
@@ -36,6 +44,8 @@ export type PageMeta = {
   author?: string;
   publishedAt?: string;
   updatedAt?: string;
+  language?: string;
+  alternates?: { language: string; url: string }[];
 };
 
 export const PUBLIC_PAGE_COPY: Record<string, { title: string; description: string }> = {
@@ -114,7 +124,7 @@ export function isBusinessPath(pathname: string): boolean {
 }
 
 export function isPrivatePath(pathname: string): boolean {
-  const clean = pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
+  const clean = unlocalizedPath(pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/");
   return (
     /^\/(admin|api|auth|profile|queue|reservations|tickets|login|signup|forgot|reset|search)(\/|$)/.test(
       clean,
@@ -159,7 +169,9 @@ export function platformStructuredData(): Record<string, unknown> {
 }
 
 export function metaForPath(pathname: string): PageMeta {
-  const clean = pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
+  const requestedPath = pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
+  const language = publicLanguageForPath(requestedPath);
+  const clean = unlocalizedPath(requestedPath);
   let copy = PUBLIC_PAGE_COPY[clean];
   if (!copy) {
     copy = { title: "SeatPing", description: PLATFORM_DESCRIPTION };
@@ -178,19 +190,29 @@ export function metaForPath(pathname: string): PageMeta {
   }
   const meta: PageMeta = {
     ...copy,
+    title: translatePublic(language, copy.title),
+    description: translatePublic(language, copy.description),
     image,
-    url: `${SITE_URL}${clean}`,
+    url: `${SITE_URL}${localizedPublicPath(requestedPath, language)}`,
     type: "website",
     robots: "index, follow",
+    language,
   };
   if (isPrivatePath(clean)) {
     meta.robots = "noindex, follow";
     if (clean.startsWith("/reservations/manage/")) {
-      meta.url = `${SITE_URL}/reservations/manage`;
+      meta.url = `${SITE_URL}${localizedPublicPath("/", language).replace(/\/$/, "")}/reservations/manage`;
     }
   }
   if (clean === "/" || clean === "/business") {
     meta.structuredData = platformStructuredData();
+  }
+  if (!isPrivatePath(clean) && isLocalizedPublicPath(requestedPath)) {
+    meta.alternates = [
+      { language: "en", url: `${SITE_URL}${localizedPublicPath(clean, "en")}` },
+      { language: "id", url: `${SITE_URL}${localizedPublicPath(clean, "id")}` },
+      { language: "x-default", url: `${SITE_URL}${localizedPublicPath(clean, "en")}` },
+    ];
   }
   return meta;
 }

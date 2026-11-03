@@ -22,6 +22,59 @@ const client = await serveApp(app);
 beforeEach(() => vi.resetAllMocks());
 
 describe("Public SEO HTML", () => {
+  it.each(["/en", "/en/business", "/en/help", "/en/policy", "/en/terms"])(
+    "serves explicit English %s regardless of country",
+    async (path) => {
+      const response = await client
+        .get(path)
+        .set("x-vercel-ip-country", "ID")
+        .set("Cookie", "seatping.consumer.lang=id");
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('<html lang="en">');
+      const canonical = path.replace(/^\/en/, "") || "/";
+      expect(response.text).toContain(`rel="canonical" href="${SITE_URL}${canonical}"`);
+    },
+  );
+  it.each(["/id", "/id/business", "/id/help", "/id/policy", "/id/terms", "/id/feedback"])(
+    "serves Indonesian metadata and reciprocal language links at %s",
+    async (path) => {
+      const response = await client.get(path);
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('<html lang="id">');
+      expect(response.text).toContain(`rel="canonical" href="${SITE_URL}${path}"`);
+      expect(response.text).toContain(`hreflang="id" href="${SITE_URL}${path}"`);
+      expect(response.text).toContain('hreflang="en"');
+      expect(response.text).toContain('hreflang="x-default"');
+      expect(response.text).toContain('href="/id/business"');
+      expect(response.text).toContain('href="/blog"');
+      expect(metaForPath(path).title).not.toBe(metaForPath(path.replace(/^\/id/, "") || "/").title);
+    },
+  );
+
+  it.each([
+    "/id/admin",
+    "/id/admin/dashboard",
+    "/id/business/settings",
+    "/id/blog",
+    "/id/blog/story",
+    "/id/api/blog",
+  ])("does not expose a localized private area or blog at %s", async (path) => {
+    const response = await client.get(path);
+    expect(response.status).toBe(404);
+    expect(response.text).toContain('<html lang="en">');
+    expect(response.headers["x-robots-tag"]).toBe("noindex, follow");
+    expect(response.text).not.toContain('hreflang="id"');
+    expect(prisma.business.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("keeps localized reservation tokens out of initial HTML", async () => {
+    const response = await client.get("/id/reservations/manage/private-token");
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('<html lang="id">');
+    expect(response.text).not.toContain("private-token");
+    expect(response.headers["x-robots-tag"]).toBe("noindex, follow");
+  });
+
   it("returns unique initial metadata for static public pages on the canonical host", async () => {
     const descriptions = new Set<string>();
     const titles = new Set<string>();

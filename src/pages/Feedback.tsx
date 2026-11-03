@@ -1,5 +1,8 @@
+import SEO from "@/components/SEO";
+import { PUBLIC_PAGE_COPY } from "@shared/pageMeta";
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@/lib/publicNavigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -20,6 +23,8 @@ import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 const MAX_MESSAGE = 1200;
 
 const Feedback = () => {
+  const { t: tp } = usePublicLanguage();
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -75,28 +80,28 @@ const Feedback = () => {
     const next: Record<string, string> = {};
 
     if (!formData.subject.trim()) {
-      next.subject = "Subject is required";
+      next.subject = tp("Subject is required");
     }
     if (!formData.message.trim()) {
-      next.message = "Please describe your feedback";
+      next.message = tp("Please describe your feedback");
     }
     if (formData.message.length > MAX_MESSAGE) {
-      next.message = `Message exceeds ${MAX_MESSAGE} characters`;
+      next.message = tp(`Message exceeds ${MAX_MESSAGE} characters`);
     }
     if (!formData.email.trim()) {
-      next.email = "Email is required";
+      next.email = tp("Email is required");
     }
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-      next.email = "Enter a valid email";
+      next.email = tp("Enter a valid email");
     }
     if (!formData.name.trim()) {
-      next.name = "Your name is required";
+      next.name = tp("Your name is required");
     }
     if (isIssue && !formData.severity) {
-      next.severity = "Pick a severity";
+      next.severity = tp("Pick a severity");
     }
     if (!formData.allowContact) {
-      next.allowContact = "Please allow us to contact you to follow up.";
+      next.allowContact = tp("Please allow us to contact you to follow up.");
     }
 
     setErrors(next);
@@ -121,22 +126,22 @@ const Feedback = () => {
 
       if (response.ok) {
         toast({
-          title: "Thanks for your feedback!",
-          description: "We've received your message and will get back to you if needed.",
+          title: tp("Thanks for your feedback!"),
+          description: tp("We've received your message and will get back to you if needed."),
         });
         navigate("/");
       } else {
         toast({
-          title: "Error",
-          description: data.error || "Failed to submit feedback. Please try again.",
+          title: tp("Error"),
+          description: data.error || tp("Failed to submit feedback. Please try again."),
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error submitting feedback:", error);
       toast({
-        title: "Error",
-        description: "Failed to submit feedback. Please try again.",
+        title: tp("Error"),
+        description: tp("Failed to submit feedback. Please try again."),
         variant: "destructive",
       });
     } finally {
@@ -176,13 +181,18 @@ const Feedback = () => {
   }
   let submitLabel: string;
   if (submitting) {
-    submitLabel = "Sending...";
+    submitLabel = tp("Sending...");
   } else {
-    submitLabel = "Submit Feedback";
+    submitLabel = tp("Submit Feedback");
   }
 
   return (
     <>
+      <SEO
+        title={PUBLIC_PAGE_COPY["/feedback"].title}
+        description={PUBLIC_PAGE_COPY["/feedback"].description}
+        canonical="/feedback"
+      />
       <Header />
 
       <main data-page-background="auth" className="px-4 pt-24 sm:px-6 sm:pt-28 lg:px-10">
@@ -200,14 +210,15 @@ const Feedback = () => {
 
               <div className="relative z-10">
                 <h2 className="text-2xl font-semibold leading-snug sm:text-display-compact">
-                  Help Us Improve SeatPing
+                  {tp("Help Us Improve SeatPing")}
                 </h2>
                 <p className="mt-4 text-base leading-relaxed text-white/80">
-                  Share bugs, feature ideas, or workflow issues so we can make queues, reservations,
-                  and guest communication smoother.
+                  {tp(
+                    "Share bugs, feature ideas, or workflow issues so we can make queues, reservations, and guest communication smoother.",
+                  )}
                 </p>
                 <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-white/60">
-                  Built with feedback from real service businesses
+                  {tp("Built with feedback from real service businesses")}
                 </p>
               </div>
             </div>
@@ -215,26 +226,26 @@ const Feedback = () => {
 
           <div className="mx-auto w-full max-w-2xl lg:mx-0 lg:max-w-none">
             <h1 className="text-3xl sm:text-4xl font-semibold leading-tight text-slate-900">
-              Tell Us What We Can Improve
+              {tp("Tell Us What We Can Improve")}
             </h1>
             <p className="mt-4 text-base sm:text-lg text-slate-600">
-              Send feedback, report issues, or suggest features for SeatPing.
+              {tp("Send feedback, report issues, or suggest features for SeatPing.")}
             </p>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="feedbackType">Feedback Type</Label>
+                  <Label htmlFor="feedbackType">{tp("Feedback Type")}</Label>
                   <Select value={formData.feedbackType} onValueChange={handleTypeChange}>
                     <SelectTrigger id="feedbackType" className="h-11">
-                      <SelectValue placeholder="Choose a type" />
+                      <SelectValue placeholder={tp("Choose a type")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="bug">Bug / Something Broken</SelectItem>
-                      <SelectItem value="ux">UX / Usability Issue</SelectItem>
-                      <SelectItem value="feature">Feature Request</SelectItem>
-                      <SelectItem value="billing">Pricing / Billing</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="bug">{tp("Bug / Something Broken")}</SelectItem>
+                      <SelectItem value="ux">{tp("UX / Usability Issue")}</SelectItem>
+                      <SelectItem value="feature">{tp("Feature Request")}</SelectItem>
+                      <SelectItem value="billing">{tp("Pricing / Billing")}</SelectItem>
+                      <SelectItem value="other">{tp("Other")}</SelectItem>
                     </SelectContent>
                   </Select>
                   {errors.feedbackType && (
@@ -244,15 +255,15 @@ const Feedback = () => {
 
                 {isIssue && (
                   <div className="space-y-2">
-                    <Label htmlFor="severity">Severity</Label>
+                    <Label htmlFor="severity">{tp("Severity")}</Label>
                     <Select value={formData.severity} onValueChange={handleSeverityChange}>
                       <SelectTrigger id="severity" className="h-11">
-                        <SelectValue placeholder="Select severity" />
+                        <SelectValue placeholder={tp("Select severity")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="low">{tp("Low")}</SelectItem>
+                        <SelectItem value="medium">{tp("Medium")}</SelectItem>
+                        <SelectItem value="high">{tp("High")}</SelectItem>
                       </SelectContent>
                     </Select>
                     {errors.severity && (
@@ -263,11 +274,11 @@ const Feedback = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="subject">Subject</Label>
+                <Label htmlFor="subject">{tp("Subject")}</Label>
                 <Input
                   id="subject"
                   name="subject"
-                  placeholder="Short summary of your feedback"
+                  placeholder={tp("Short summary of your feedback")}
                   value={formData.subject}
                   onChange={handleChange}
                   className={`h-11 placeholder:text-sm sm:placeholder:text-base ${
@@ -280,7 +291,7 @@ const Feedback = () => {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="message">Message</Label>
+                  <Label htmlFor="message">{tp("Message")}</Label>
                   <span className={`text-xs ${messageCountClass}`}>
                     {formData.message.length}/{MAX_MESSAGE}
                   </span>
@@ -288,7 +299,9 @@ const Feedback = () => {
                 <Textarea
                   id="message"
                   name="message"
-                  placeholder="Describe the issue, idea, or request. Include steps to reproduce if it's a bug."
+                  placeholder={tp(
+                    "Describe the issue, idea, or request. Include steps to reproduce if it's a bug.",
+                  )}
                   value={formData.message}
                   onChange={handleChange}
                   className={`min-h-[140px] placeholder:text-sm sm:placeholder:text-base ${
@@ -301,7 +314,7 @@ const Feedback = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Your Name</Label>
+                  <Label htmlFor="name">{tp("Your Name")}</Label>
                   <Input
                     id="name"
                     name="name"
@@ -316,7 +329,7 @@ const Feedback = () => {
                   {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{tp("Email")}</Label>
                   <Input
                     id="email"
                     name="email"
@@ -335,7 +348,7 @@ const Feedback = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="businessName">Business (Optional)</Label>
+                  <Label htmlFor="businessName">{tp("Business (Optional)")}</Label>
                   <Input
                     id="businessName"
                     name="businessName"
@@ -346,7 +359,7 @@ const Feedback = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone (Optional)</Label>
+                  <Label htmlFor="phone">{tp("Phone (Optional)")}</Label>
                   <PhoneNumberInput
                     id="phone"
                     name="phone"
@@ -371,7 +384,7 @@ const Feedback = () => {
                     aria-describedby="allowContactHelp"
                   />
                   <span className="text-sm text-muted-foreground">
-                    I'm okay with SeatPing contacting me about this feedback.
+                    {tp("I'm okay with SeatPing contacting me about this feedback.")}
                   </span>
                 </label>
                 {errors.allowContact && (

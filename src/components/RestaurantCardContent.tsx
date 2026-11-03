@@ -1,3 +1,4 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import type { ReactNode } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Location01Icon, StarIcon } from "@hugeicons/core-free-icons";
@@ -24,11 +25,13 @@ export default function RestaurantCardContent({
   stackActionsOnMobile?: boolean;
   children: ReactNode;
 }) {
-  let ratingContent = <span>No Reviews Yet</span>;
+  const { t: tp } = usePublicLanguage();
+
+  let ratingContent = <span>{tp("No Reviews Yet")}</span>;
   if (rating !== null && reviewCount > 0) {
-    let reviewWord = "Reviews";
+    let reviewWord = tp("Reviews");
     if (reviewCount === 1) {
-      reviewWord = "Review";
+      reviewWord = tp("Review");
     }
     ratingContent = (
       <span className="inline-flex items-center gap-1 font-medium text-ink">

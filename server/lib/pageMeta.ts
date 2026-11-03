@@ -30,6 +30,11 @@ export function renderSeoTags(meta: PageMeta): string {
     `<meta name="twitter:image" content="${img}" />`,
     `<link rel="canonical" href="${url}" />`,
   ];
+  for (const alternate of meta.alternates ?? []) {
+    tags.push(
+      `<link rel="alternate" hreflang="${attr(alternate.language)}" href="${attr(alternate.url)}" />`,
+    );
+  }
   if (meta.publishedAt) {
     tags.push(`<meta property="article:published_time" content="${attr(meta.publishedAt)}" />`);
   }
@@ -61,5 +66,9 @@ export function injectSeo(
     /<script\b[^>]*type="application\/ld\+json"[^>]*>[\s\S]*?<\/script>/g,
     "",
   );
-  return withoutStaticSchemas.replace(SEO_BLOCK_RE, () => block);
+  return withoutStaticSchemas
+    .replace(/<html\b[^>]*>/, (tag) =>
+      tag.replace(/\blang="[^"]*"/, `lang="${attr(meta.language || "en")}"`),
+    )
+    .replace(SEO_BLOCK_RE, () => block);
 }
