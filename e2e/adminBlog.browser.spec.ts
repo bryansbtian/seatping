@@ -1,14 +1,95 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { newBlogFields, type BlogPost } from "../shared/blog";
+import * as Y from "yjs";
+import { fromBase64, toBase64 } from "lib0/buffer";
+import {
+  BLOG_PRESENCE_TTL,
+  createBlogDocument,
+  readBlogDocument,
+  type BlogSyncRequest,
+} from "../shared/blogCollaboration";
+import { blogSlug } from "../shared/blog";
 
-async function workspace(page: Page) {
-  const state = { posts: [] as BlogPost[], failSave: false, failUpload: false, saves: 0 };
+function workspaceState() {
+  return {
+    posts: [] as BlogPost[],
+    failSave: false,
+    failUpload: false,
+    saves: 0,
+    documents: new Map<string, Y.Doc>(),
+    peers: new Map<string, Map<number, { awareness: string; lastSeenAt: number }>>(),
+  };
+}
+
+async function workspace(page: Page, state = workspaceState()) {
   await page.route("**/auth/session", (route) =>
     route.fulfill({ json: { customer: null, business: null } }),
   );
   await page.route("**/auth/admin/session", (route) =>
     route.fulfill({ json: { authenticated: true } }),
   );
+  await page.route("**/api/admin/blog-collaboration/**", async (route) => {
+    const request = route.request();
+    const parts = new URL(request.url()).pathname.split("/");
+    const id = parts[4];
+    const index = state.posts.findIndex((post) => post.id === id);
+    const current = state.posts[index];
+    if (request.method() === "DELETE") {
+      state.peers.get(id)?.delete(Number(parts[5]));
+      return route.fulfill({ json: { ok: true } });
+    }
+    if (!current) {
+      return route.fulfill({ status: 404, json: { error: "Post not found" } });
+    }
+    let document = state.documents.get(id);
+    if (!document) {
+      document = createBlogDocument(current);
+      state.documents.set(id, document);
+    }
+    let peers = state.peers.get(id);
+    if (!peers) {
+      peers = new Map();
+      state.peers.set(id, peers);
+    }
+    let vector: Uint8Array | undefined;
+    if (request.method() === "POST") {
+      if (state.failSave) {
+        return route.fulfill({ status: 503, json: { error: "Offline. Please retry." } });
+      }
+      const payload = request.postDataJSON() as BlogSyncRequest;
+      vector = fromBase64(payload.vector);
+      if (payload.update) {
+        Y.applyUpdate(document, fromBase64(payload.update));
+        const fields = readBlogDocument(document);
+        let slug = current.slug;
+        if (!current.publishedAt) {
+          slug = blogSlug(fields.title) || current.slug;
+        }
+        document.getMap("metadata").set("slug", slug);
+        state.posts[index] = {
+          ...current,
+          ...fields,
+          slug,
+          revision: current.revision + 1,
+          updatedAt: new Date().toISOString(),
+        };
+        state.saves += 1;
+      }
+      peers.set(payload.clientId, { awareness: payload.awareness, lastSeenAt: Date.now() });
+    }
+    for (const [clientId, peer] of peers) {
+      if (Date.now() - peer.lastSeenAt > BLOG_PRESENCE_TTL) {
+        peers.delete(clientId);
+      }
+    }
+    return route.fulfill({
+      json: {
+        update: toBase64(Y.encodeStateAsUpdate(document, vector)),
+        post: state.posts[index],
+        peers: [...peers].map(([clientId, peer]) => ({ clientId, awareness: peer.awareness })),
+      },
+    });
+  });
   await page.route(/\/api\/admin\/blog(?:\/|\?|$)/, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -109,6 +190,130 @@ async function workspace(page: Page) {
     return route.fulfill({ json: { post: state.posts[index] } });
   });
   return state;
+}
+
+test("two editors share coffee identities, text, selections, and independent undo", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const state = await workspace(page);
+  const now = new Date().toISOString();
+  state.posts.push({
+    ...newBlogFields(),
+    id: "shared-browser-article",
+    title: "Shared Article",
+    slug: "shared-article",
+    status: "DRAFT",
+    revision: 1,
+    createdAt: now,
+    updatedAt: now,
+    publishedAt: null,
+    content: {
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "Hello world" }] }],
+    },
+  });
+  const context = await browser.newContext({ baseURL });
+  const second = await context.newPage();
+  try {
+    await workspace(second, state);
+    await page.goto("/admin/blog/shared-browser-article/edit");
+    const firstBody = page.getByRole("textbox", { name: "Article Body" });
+    const secondBody = second.getByRole("textbox", { name: "Article Body" });
+    await expect(firstBody).toHaveText("Hello world");
+    await expect(page.getByRole("group", { name: "Editors In This Article" })).toHaveCount(0);
+    await second.goto("/admin/blog/shared-browser-article/edit");
+    await expect(secondBody).toHaveText("Hello world");
+    const ownAvatar = page.getByRole("img", { name: /^Anonymous .*\(You\)$/ });
+    await expect(ownAvatar.locator("svg")).toHaveCount(1);
+    await expect(
+      page.getByRole("group", { name: "Editors In This Article" }).getByRole("img"),
+    ).toHaveCount(2);
+    const firstName = await ownAvatar.getAttribute("data-editor-name");
+    expect(firstName).toBeTruthy();
+    await ownAvatar.hover();
+    await expect(page.getByRole("tooltip")).toContainText(firstName!);
+    await expect
+      .poll(() =>
+        page.getByRole("tooltip").evaluate((element) => {
+          const tooltip = element.parentElement!.getBoundingClientRect();
+          const icon = document.querySelector('[data-editor-name][aria-label$="(You)"]')!;
+          const avatar = icon.getBoundingClientRect();
+          return {
+            centered: Math.abs(tooltip.x + tooltip.width / 2 - avatar.x - avatar.width / 2) < 2,
+            above: tooltip.bottom <= avatar.top,
+            close: avatar.top - tooltip.bottom <= 10,
+          };
+        }),
+      )
+      .toEqual({ centered: true, above: true, close: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await ownAvatar.hover();
+    await expect
+      .poll(() =>
+        page.getByRole("tooltip").evaluate((element) => {
+          const tooltip = element.parentElement!.getBoundingClientRect();
+          const avatar = document
+            .querySelector('[data-editor-name][aria-label$="(You)"]')!
+            .getBoundingClientRect();
+          return (
+            tooltip.bottom <= avatar.top &&
+            avatar.top - tooltip.bottom <= 10 &&
+            tooltip.left >= 0 &&
+            tooltip.right <= window.innerWidth &&
+            tooltip.left <= avatar.x + avatar.width / 2 &&
+            tooltip.right >= avatar.x + avatar.width / 2
+          );
+        }),
+      )
+      .toBe(true);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await ownAvatar.click();
+    await expect(page.getByLabel("Your Editor Name", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Live", { exact: true })).toHaveCount(0);
+    await expect(page.getByText(/^Saved /)).toHaveCount(0);
+    await firstBody.click();
+    await firstBody.press("Home");
+    await firstBody.pressSequentially("First ");
+    await expect.poll(() => editorText(secondBody)).toBe("First Hello world");
+    await secondBody.click();
+    await secondBody.press("End");
+    await secondBody.pressSequentially(" Second");
+    await expect.poll(() => editorText(firstBody)).toBe("First Hello world Second");
+    await firstBody.click();
+    await firstBody.press("ControlOrMeta+z");
+    await expect.poll(() => editorText(secondBody)).toBe("Hello world Second");
+    await firstBody.press("Home");
+    await firstBody.press("Shift+ArrowRight");
+    await firstBody.press("Shift+ArrowRight");
+    await expect(
+      second.locator(`.blog-collaboration-selection[data-collaborator="${firstName}"]`),
+    ).toBeVisible();
+    await expect(
+      second.locator(".collaboration-carets__label", { hasText: firstName! }),
+    ).toBeVisible();
+    await second.getByRole("button", { name: "Back To Posts", exact: true }).click();
+    await expect(second).toHaveURL(/\/admin\/blog$/);
+    await expect(page.getByRole("group", { name: "Editors In This Article" })).toHaveCount(0);
+    await page.reload();
+    await expect.poll(() => editorText(firstBody)).toBe("Hello world Second");
+    await expect(page.getByRole("group", { name: "Editors In This Article" })).toHaveCount(0, {
+      timeout: BLOG_PRESENCE_TTL + 5_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+async function editorText(body: Locator) {
+  return body.evaluate((element) => {
+    const copy = element.cloneNode(true) as HTMLElement;
+    for (const caret of copy.querySelectorAll(".collaboration-carets__caret")) {
+      caret.remove();
+    }
+    return copy.textContent;
+  });
 }
 async function newArticle(page: Page) {
   await page.goto("/admin/blog/new");
@@ -218,10 +423,19 @@ test("authors, saves, previews, reloads formatting, publishes, filters, duplicat
     page.getByRole("group", { name: "Article Tags" }).getByText(longTag, { exact: true }),
   ).toHaveCount(0);
   await expect.poll(() => state.posts[0]?.category).toBe("Operations");
-  expect(state.posts[0]?.tags).toEqual(["queues", "reservations"]);
+  await expect.poll(() => state.posts[0]?.tags).toEqual(["queues", "reservations"]);
   expect(state.posts[0]?.categoryColor).toBe("success");
   expect(state.posts[0]?.author).toBe("Jamie Chen");
-  await expect(page.getByRole("status").filter({ hasText: /^Saved / })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          Object.keys(sessionStorage).filter((key) =>
+            key.startsWith("seatping.blog.shared-recovery."),
+          ).length,
+      ),
+    )
+    .toBe(0);
   await page.getByRole("button", { name: "Preview", exact: true }).click();
   await expect(page.getByRole("heading", { name: "The Guest Experience" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();
@@ -346,7 +560,16 @@ test("canvas header spacing, mobile actions, and author metadata fit each viewpo
   const author = page.getByRole("textbox", { name: "Author", exact: true });
   await author.fill("SeatPing Team");
   await author.blur();
-  await expect(page.getByRole("status").filter({ hasText: /^Saved / })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          Object.keys(sessionStorage).filter((key) =>
+            key.startsWith("seatping.blog.shared-recovery."),
+          ).length,
+      ),
+    )
+    .toBe(0);
   await expect(page.getByRole("toolbar", { name: "Article Formatting", exact: true })).toHaveCount(
     0,
   );
@@ -403,28 +626,22 @@ test("canvas header spacing, mobile actions, and author metadata fit each viewpo
           back.evaluate((element) => {
             const root = element.parentElement!;
             const back = element.getBoundingClientRect();
-            const arrow = element.querySelector("svg")!.getBoundingClientRect();
-            const saved = root.querySelector('[role="status"]')!.getBoundingClientRect();
-            const pill = root
-              .querySelector('[role="status"]')!
-              .parentElement!.lastElementChild!.getBoundingClientRect();
+            const pill = root.children[1].lastElementChild!.getBoundingClientRect();
             const actions = Array.from(root.lastElementChild!.children).map((button) =>
               button.getBoundingClientRect(),
             );
             return {
-              arrowAligned: Math.abs(arrow.x - saved.x) <= 1,
-              statusNextRow: saved.y >= back.bottom,
+              statusNextRow: pill.y >= back.bottom,
               statusEdgesAligned: Math.abs(pill.right - actions.at(-1)!.right) <= 1,
               equalActions: actions.every(
                 (action) => Math.abs(action.width - actions[0].width) <= 1,
               ),
               sameActionRow: actions.every((action) => Math.abs(action.y - actions[0].y) <= 1),
-              actionsNextRow: actions.every((action) => action.y > saved.bottom),
+              actionsNextRow: actions.every((action) => action.y > pill.bottom),
             };
           }),
         )
         .toEqual({
-          arrowAligned: true,
           statusNextRow: true,
           statusEdgesAligned: true,
           equalActions: true,
@@ -457,7 +674,16 @@ test("canvas header spacing, mobile actions, and author metadata fit each viewpo
 test("article editor skeleton fills the remaining page while a post loads", async ({ page }) => {
   await workspace(page);
   await newArticle(page);
-  await expect(page.getByRole("status").filter({ hasText: /^Saved / })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          Object.keys(sessionStorage).filter((key) =>
+            key.startsWith("seatping.blog.shared-recovery."),
+          ).length,
+      ),
+    )
+    .toBe(0);
   let release = () => {};
   const pending = new Promise<void>((resolve) => {
     release = resolve;
@@ -713,7 +939,16 @@ test("preserves safe pasted formatting, image metadata, callouts, and video embe
     .poll(() => JSON.stringify(state.posts[0]?.content))
     .toContain('"caption":"A welcoming restaurant."');
   await expect.poll(() => JSON.stringify(state.posts[0]?.content)).toContain('"type":"callout"');
-  await expect(page.getByRole("status").filter({ hasText: /^Saved / })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          Object.keys(sessionStorage).filter((key) =>
+            key.startsWith("seatping.blog.shared-recovery."),
+          ).length,
+      ),
+    )
+    .toBe(0);
   await page.reload();
   await expect(body.locator("strong")).toHaveText("Bold");
   await expect(body.locator("u")).toHaveText("Underline");

@@ -19,6 +19,7 @@ export default defineConfig({
     },
   },
   test: {
+    maxWorkers: 8,
     projects: [
       {
         resolve: {

@@ -47,7 +47,7 @@ beforeAll(async () => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   const readFile = fs.readFileSync;
   vi.spyOn(fs, "readFileSync").mockImplementation((file, options) => {
-    if (String(file).endsWith("/dist/index.html")) {
+    if (path.normalize(String(file)).endsWith(path.join("dist", "index.html"))) {
       return '<html><head><!-- SEO:START --><!-- SEO:END --></head><body><div id="root"></div></body></html>';
     }
     return readFile(file, options);

@@ -2,9 +2,10 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
+import { PILL_BASE_CLASS } from "@/lib/statusStyles";
 
 const badgeVariants = cva(
-  "inline-flex h-badge shrink-0 items-center gap-1 rounded-badge border border-transparent px-2 text-caption font-medium leading-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  `${PILL_BASE_CLASS} gap-1 border focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2`,
   {
     variants: {
       variant: {
@@ -28,8 +29,21 @@ const badgeVariants = cva(
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
+function Badge({ className, variant, children, ...props }: BadgeProps) {
+  let content = React.Children.toArray(children);
+  if (content.every((child) => typeof child === "string" || typeof child === "number")) {
+    content = [content.join("")];
+  }
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props}>
+      {React.Children.map(content, (child) => {
+        if (typeof child === "string" || typeof child === "number") {
+          return <span className="[text-box:trim-both_cap_alphabetic]">{child}</span>;
+        }
+        return child;
+      })}
+    </div>
+  );
 }
 
 export { Badge };

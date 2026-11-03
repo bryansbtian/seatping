@@ -19,6 +19,7 @@ export default defineConfig(() => ({
     proxy: {
       "/api/cron/ticket-email": { target: apiTarget, changeOrigin: true },
       "/api/admin/blog": { target: apiTarget, changeOrigin: true },
+      "/api/admin/blog-collaboration": { target: apiTarget, changeOrigin: true },
       "/api/blog": { target: apiTarget, changeOrigin: true },
       "/sitemap.xml": { target: apiTarget, changeOrigin: true },
       "/auth": {

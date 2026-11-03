@@ -70,6 +70,8 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@tanstack/react-query": "^5.83.0",
     "@tiptap/core": "^3.32.0",
+    "@tiptap/extension-collaboration": "^3.32.0",
+    "@tiptap/extension-collaboration-caret": "^3.32.0",
     "@tiptap/extension-image": "^3.32.0",
     "@tiptap/extension-list": "^3.32.0",
     "@tiptap/extension-table": "^3.32.0",
@@ -78,6 +80,7 @@
     "@tiptap/pm": "^3.32.0",
     "@tiptap/react": "^3.32.0",
     "@tiptap/starter-kit": "^3.32.0",
+    "@tiptap/y-tiptap": "^3.0.12",
     "@types/nodemailer": "^7.0.1",
     "@types/papaparse": "^5.5.2",
     "@types/qrcode": "^1.5.5",
@@ -102,6 +105,7 @@
     "html-to-text": "^10.0.1",
     "imapflow": "^2.5.8",
     "jsonwebtoken": "^9.0.2",
+    "lib0": "^0.2.119",
     "libphonenumber-js": "^1.13.11",
     "multer": "^2.5.0",
     "next-themes": "^0.3.0",
@@ -123,6 +127,8 @@
     "telnyx": "^3.9.1",
     "typescript": "^5.8.3",
     "vite": "^8.3.5",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.33",
     "zod": "^3.25.76"
   },
   "devDependencies": {

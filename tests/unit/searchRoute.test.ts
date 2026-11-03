@@ -58,19 +58,19 @@ describe("database-backed restaurant search route", () => {
     expect(queryRaw).toHaveBeenCalledOnce();
   });
 
-  it("returns fixed ten-result pagination metadata and global facets for version two", async () => {
+  it("returns fixed twelve-result pagination metadata and global facets for version two", async () => {
     const response = await search("version=2&page=2&limit=1");
     expect(response.body).toEqual({
       query: "",
       results: [{ locationId: "public", openNow: null }],
       total: 21,
       page: 2,
-      limit: 10,
-      hasMore: true,
-      totalPages: 3,
+      limit: 12,
+      hasMore: false,
+      totalPages: 2,
       facets: { cuisines: ["Thai"], locations: ["City"] },
     });
-    expect(queryRaw.mock.calls[0][0].values).toContain(10);
+    expect(queryRaw.mock.calls[0][0].values).toContain(12);
   });
 
   it("retains optional legacy limits", async () => {

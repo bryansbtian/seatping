@@ -2,6 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SEO, { BUSINESS_DESCRIPTION, BUSINESS_IMAGE } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import ListSkeleton from "@/components/ListSkeleton";
@@ -705,7 +711,9 @@ function CampaignsTab({
                 </th>
                 <th className="px-6 font-medium text-center">{t("camp.col.recipients")}</th>
                 <th className="px-6 font-medium">Activity</th>
-                <th className="px-6 font-medium text-center">{t("camp.col.actions")}</th>
+                <th scope="col" className="px-6">
+                  <span className="sr-only">{t("camp.col.actions")}</span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -740,13 +748,6 @@ function CampaignsTab({
         </div>
         <div className="md:hidden divide-y divide-slate-100">
           {campaigns.map((c) => {
-            const canEdit = c.status === "DRAFT" || c.status === "READY";
-            let editableClass: string;
-            if (canEdit) {
-              editableClass = "hover:bg-slate-50 cursor-pointer";
-            } else {
-              editableClass = "";
-            }
             let recipientNoun: string;
             if (c.recipientCount === 1) {
               recipientNoun = "Recipient";
@@ -754,25 +755,27 @@ function CampaignsTab({
               recipientNoun = "Recipients";
             }
             return (
-              <div
-                key={c.id}
-                onClick={() => {
-                  if (canEdit) {
-                    onOpen(c);
-                  }
-                }}
-                className={`w-full text-left p-4 transition-colors ${editableClass}`}
-              >
+              <div key={c.id} className="w-full text-left p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-slate-800 truncate">{c.name}</span>
+                  <span
+                    className="min-w-0 flex-1 truncate text-body font-medium text-ink"
+                    title={c.name}
+                  >
+                    {c.name}
+                  </span>
                   <CampaignStatusBadge status={c.status} />
                 </div>
-                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <div className="mt-2 flex min-w-0 items-center gap-2">
                   <ChannelBadge channel={c.channel} />
-                  <span className="text-xs text-slate-500">
+                  <span className="truncate text-caption text-ink-subtle">
                     {c.recipientCount} {recipientNoun}
                   </span>
-                  <span className="text-xs text-slate-400">· {timingSummary(c)}</span>
+                </div>
+                <p className="mt-1 truncate text-caption text-ink-subtle" title={timingSummary(c)}>
+                  {timingSummary(c)}
+                </p>
+                <div className="mt-3 flex justify-end">
+                  <CampaignActions c={c} onOpen={onOpen} onAction={onAction} />
                 </div>
               </div>
             );
@@ -810,14 +813,16 @@ function CampaignsTab({
 }
 
 function timingSummary(c: Campaign): string {
+  const frequency = c.recurrenceFrequency || "";
+  const frequencyLabel = frequency.charAt(0) + frequency.slice(1).toLowerCase();
   if (c.status === "SCHEDULED") {
     return `Scheduled · ${c.scheduledAtLabel || "--"}`;
   }
   if (c.status === "RECURRING") {
-    return `${(c.recurrenceFrequency || "").toLowerCase()} · next ${c.nextRunAtLabel || "--"}`;
+    return `${frequencyLabel} · Next ${c.nextRunAtLabel || "--"}`;
   }
   if (c.status === "PAUSED") {
-    return `Paused · ${(c.recurrenceFrequency || "").toLowerCase()}`;
+    return `Paused · ${frequencyLabel}`;
   }
   if (c.sentAt) {
     return `Sent on ${fmtDate(c.sentAt)}`;
@@ -834,27 +839,40 @@ function CampaignActions({
   onOpen: (c: Campaign) => void;
   onAction: (c: Campaign, action: "cancel" | "pause" | "resume" | "delete") => void;
 }) {
+  const { t } = useLang();
+  const canEdit = ["DRAFT", "READY", "CANCELLED"].includes(c.status);
+  const canCancel = ["SCHEDULED", "RECURRING", "PAUSED"].includes(c.status);
+  if (!canEdit && !canCancel) {
+    return null;
+  }
   return (
-    <div className="flex items-center justify-center gap-1.5">
-      <Button variant="outline" size="sm" onClick={() => onOpen(c)}>
-        Edit
-      </Button>
-      {c.status === "RECURRING" && (
-        <Button variant="outline" size="sm" onClick={() => onAction(c, "pause")}>
-          Pause
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" aria-label={t("camp.manageCampaign", { name: c.name })}>
+          {t("camp.manage")}
         </Button>
-      )}
-      {c.status === "PAUSED" && (
-        <Button variant="outline" size="sm" onClick={() => onAction(c, "resume")}>
-          Resume
-        </Button>
-      )}
-      {["SCHEDULED", "RECURRING", "PAUSED"].includes(c.status) && (
-        <Button variant="destructiveOutline" size="sm" onClick={() => onAction(c, "cancel")}>
-          Cancel
-        </Button>
-      )}
-    </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {canEdit && (
+          <DropdownMenuItem onSelect={() => onOpen(c)}>{t("camp.edit")}</DropdownMenuItem>
+        )}
+        {c.status === "RECURRING" && (
+          <DropdownMenuItem onSelect={() => onAction(c, "pause")}>
+            {t("camp.pause")}
+          </DropdownMenuItem>
+        )}
+        {c.status === "PAUSED" && (
+          <DropdownMenuItem onSelect={() => onAction(c, "resume")}>
+            {t("camp.resume")}
+          </DropdownMenuItem>
+        )}
+        {canCancel && (
+          <DropdownMenuItem className="text-destructive" onSelect={() => onAction(c, "cancel")}>
+            {t("common.cancel")}
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

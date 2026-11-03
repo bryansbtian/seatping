@@ -15,9 +15,9 @@ import {
 } from "../../src/lib/restaurantDiscovery.js";
 
 describe("restaurant discovery request contract", () => {
-  it("fixes version two at ten and preserves legacy opt-in pagination", () => {
+  it("fixes version two at twelve and preserves legacy opt-in pagination", () => {
     expect(restaurantSearchOptions({ version: "2", limit: "100" })).toMatchObject({
-      limit: 10,
+      limit: 12,
       page: 1,
     });
     expect(restaurantSearchOptions({ limit: "1000", page: "3" })).toMatchObject({

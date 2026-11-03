@@ -110,6 +110,7 @@ export async function disconnectTestPrisma(): Promise<void> {
 const CLEAR_ORDER = [
   "ticketMessage",
   "ticketInboxSync",
+  "blogEditorPresence",
   "blogPost",
   "blogMedia",
   "demoBooking",

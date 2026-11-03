@@ -3,7 +3,8 @@ import { once } from "node:events";
 import { connect } from "node:net";
 import { resolve } from "node:path";
 import { setTimeout } from "node:timers/promises";
-import config from "../playwright.config.ts";
+import { loadTestEnv } from "../tests/helpers/loadTestEnv.ts";
+import { configureE2ePorts } from "./e2e-ports.ts";
 
 const servers = [];
 let testProcess;
@@ -73,6 +74,14 @@ async function stopChild(child) {
 
 async function run() {
   const args = process.argv.slice(2);
+  loadTestEnv();
+  if (!process.env.E2E_BASE_URL && !args.includes("--list")) {
+    await configureE2ePorts(process.env);
+    console.log(
+      `[e2e] API port ${process.env.E2E_API_PORT}, frontend port ${process.env.E2E_FRONTEND_PORT}`,
+    );
+  }
+  const { default: config } = await import("../playwright.config.ts");
   const environment = { ...process.env };
   if (!environment.E2E_BASE_URL && !args.includes("--list")) {
     const definitions = config.webServer ?? [];

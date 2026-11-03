@@ -1,4 +1,4 @@
-export const RESTAURANT_PAGE_SIZE = 10;
+export const RESTAURANT_PAGE_SIZE = 12;
 
 export type SearchResult = {
   locationId: string;

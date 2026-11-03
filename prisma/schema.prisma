@@ -779,22 +779,24 @@ model FloorZone {
 }
 
 model BlogPost {
-  id            String     @id @default(cuid())
-  title         String     @default("")
-  slug          String     @unique
-  excerpt       String     @default("")
-  content       Json
-  coverUrl      String     @default("")
-  coverAlt      String     @default("")
-  author        String     @default("SeatPing Team")
-  category      String     @default("")
-  categoryColor String     @default("info")
-  tags          String[]   @default([])
-  status        BlogStatus @default(DRAFT)
-  revision      Int        @default(1)
-  publishedAt   DateTime?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id                 String               @id @default(cuid())
+  title              String               @default("")
+  slug               String               @unique
+  excerpt            String               @default("")
+  content            Json
+  coverUrl           String               @default("")
+  coverAlt           String               @default("")
+  author             String               @default("SeatPing Team")
+  category           String               @default("")
+  categoryColor      String               @default("info")
+  tags               String[]             @default([])
+  status             BlogStatus           @default(DRAFT)
+  revision           Int                  @default(1)
+  collaborationState Bytes?
+  editors            BlogEditorPresence[]
+  publishedAt        DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
   @@index([status, updatedAt])
   @@map("blog_posts")
@@ -803,6 +805,19 @@ model BlogPost {
 enum BlogStatus {
   DRAFT
   PUBLISHED
+}
+
+model BlogEditorPresence {
+  postId     String
+  clientId   String
+  owner      String
+  state      Bytes
+  lastSeenAt DateTime @default(now())
+  post       BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([postId, clientId])
+  @@index([postId, lastSeenAt])
+  @@map("blog_editor_presence")
 }
 
 model BlogMedia {

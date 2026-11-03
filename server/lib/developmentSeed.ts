@@ -1,13 +1,17 @@
-import { randomUUID } from "node:crypto";
-import bcrypt from "bcrypt";
 import { PrismaClient, type Prisma } from "@prisma/client";
 import { assertLocalDevelopmentDatabase } from "./developmentDatabase.js";
+import { seedOperationalExamples } from "./developmentOperationalSeed.js";
 
 export async function seedDevelopmentData(rawUrl: string): Promise<void> {
   const datasourceUrl = assertLocalDevelopmentDatabase(rawUrl);
+  const password = process.env.ADMIN_PASSWORD_HASH;
+  if (!password || !/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(password)) {
+    throw new Error(
+      "Set ADMIN_PASSWORD_HASH to a valid bcrypt hash in .env. Demo accounts use your local admin password.",
+    );
+  }
   const db = new PrismaClient({ datasourceUrl });
   try {
-    const password = await bcrypt.hash(randomUUID(), 10);
     await db.$transaction(
       async (tx) => {
         for (const [index, name] of ["Harbor Kitchen", "Garden Table"].entries()) {
@@ -15,7 +19,7 @@ export async function seedDevelopmentData(rawUrl: string): Promise<void> {
           const username = `demo-restaurant-${index + 1}`;
           await tx.business.upsert({
             where: { id },
-            update: {},
+            update: { password },
             create: {
               id,
               name,
@@ -181,8 +185,9 @@ export async function seedDevelopmentData(rawUrl: string): Promise<void> {
           },
         });
         await seedAdminExamples(tx, password, new Date());
+        await seedOperationalExamples(tx, password, new Date());
       },
-      { timeout: 30000 },
+      { timeout: 60000 },
     );
   } finally {
     await db.$disconnect();
@@ -236,7 +241,7 @@ async function seedAdminExamples(tx: Prisma.TransactionClient, password: string,
     }
     await tx.business.upsert({
       where: { id: businessId },
-      update: {},
+      update: { password },
       create: {
         id: businessId,
         name,
@@ -274,7 +279,7 @@ async function seedAdminExamples(tx: Prisma.TransactionClient, password: string,
           restaurantProfile: {
             displayName: name,
             shortAddress: displayName,
-            cuisine: cuisines[index % cuisines.length],
+            cuisineTypes: [cuisines[index % cuisines.length]],
             priceRange: "$$",
             description: `A fictional ${cities[index % cities.length]} restaurant for local development.`,
           },

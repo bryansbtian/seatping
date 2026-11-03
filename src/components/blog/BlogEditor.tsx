@@ -24,7 +24,9 @@ import {
   type BlogPost,
 } from "@shared/blog";
 import { blogRequest, uploadBlogMedia } from "@/lib/blogApi";
-import { useBlogAutosave, errorMessage } from "@/hooks/useBlogAutosave";
+import { errorMessage } from "@/hooks/useBlogAutosave";
+import { useBlogCollaboration } from "@/hooks/useBlogCollaboration";
+import BlogCollaborators from "./BlogCollaborators";
 import RichTextEditor from "./RichTextEditor";
 import UploadProgress from "./UploadProgress";
 import CanvasTextarea from "./CanvasTextarea";
@@ -101,7 +103,7 @@ function EditorForm({ initial }: { initial: BlogPost }) {
   const [editorVersion, setEditorVersion] = useState(0);
   const coverInput = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const form = useBlogAutosave(initial, uploading || busy || !validContent);
+  const form = useBlogCollaboration(initial, uploading || busy || !validContent);
   const { fields, post, change } = form;
   const fieldsRef = useRef(fields);
   fieldsRef.current = fields;
@@ -202,21 +204,31 @@ function EditorForm({ initial }: { initial: BlogPost }) {
     actionLabel = "Unpublish";
     targetStatus = "DRAFT";
   }
-  let saveLabel = `Saved ${new Date(post.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-  if (form.dirty) {
-    saveLabel = "Unsaved Changes";
-  }
-  if (form.saving) {
-    saveLabel = "Saving…";
-  }
-  if (form.error) {
-    saveLabel = "Save Failed";
-  }
   let previewLabel = "Preview";
   if (preview) {
     previewLabel = "Continue Editing";
   }
   const disabled = busy || uploading || !validContent || form.saving || Boolean(form.recovery);
+  if (!form.ready) {
+    return (
+      <div className="space-y-4">
+        {form.error && (
+          <div role="alert" className="rounded-control border bg-white p-4 text-body">
+            <p>{form.error}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => form.provider.start()}
+            >
+              Retry Connection
+            </Button>
+          </div>
+        )}
+        <BlogEditorLoading />
+      </div>
+    );
+  }
   return (
     <div className="space-y-5">
       <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
@@ -235,11 +247,11 @@ function EditorForm({ initial }: { initial: BlogPost }) {
           <HugeiconsIcon icon={ArrowLeft02Icon} className="size-4" aria-hidden="true" />
           Back To Posts
         </Button>
-        <div className="flex items-center justify-between gap-2 sm:ml-auto sm:justify-start">
-          <span role="status" className="text-caption text-ink-subtle">
-            {saveLabel}
-          </span>
-          <Badge variant={statusTone}>{statusLabel}</Badge>
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:ml-auto sm:justify-start">
+          <BlogCollaborators user={form.user} peers={form.peers} />
+          <Badge variant={statusTone} className="ml-auto sm:ml-0">
+            {statusLabel}
+          </Badge>
         </div>
         <div className="grid min-w-0 grid-cols-3 gap-2 sm:flex sm:items-center">
           <Button
@@ -277,8 +289,7 @@ function EditorForm({ initial }: { initial: BlogPost }) {
         >
           <p>{error || form.error}</p>
           <p className="mt-1 text-caption">
-            Your edits are kept in this tab. Retry saving when the connection is restored. For a
-            conflict, copy your changes before reloading.
+            Your edits are kept in this tab and will sync when the connection is restored.
           </p>
           <Button
             variant="outline"
@@ -507,6 +518,7 @@ function EditorForm({ initial }: { initial: BlogPost }) {
               </div>
             )}
             <RichTextEditor
+              collaboration={form.provider}
               key={`${editorVersion}-${preview}`}
               content={fields.content}
               readOnly={preview}

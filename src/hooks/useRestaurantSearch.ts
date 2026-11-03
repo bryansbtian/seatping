@@ -2,7 +2,12 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { queryKeys } from "@/lib/queryKeys";
-import { areaLabel, type SearchResponse, type SearchResult } from "@/lib/restaurantDiscovery";
+import {
+  areaLabel,
+  RESTAURANT_PAGE_SIZE,
+  type SearchResponse,
+  type SearchResult,
+} from "@/lib/restaurantDiscovery";
 
 export function useRestaurantSearch(params: string) {
   return useQuery(
@@ -14,7 +19,7 @@ export function useRestaurantSearch(params: string) {
           { signal },
         );
         if (Array.isArray(response)) {
-          if (response.length > 10) {
+          if (response.length > RESTAURANT_PAGE_SIZE) {
             throw new Error("Invalid Paginated Search Response");
           }
           return { results: response, total: response.length };

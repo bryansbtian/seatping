@@ -1,14 +1,14 @@
 import { expect, test } from "./fixtures/seatping.js";
 import { uniqueId } from "./helpers/db.js";
 
-test("database-backed discovery pages ten rows and globally filters featured results with browser history", async ({
+test("database-backed discovery pages twelve rows and globally filters featured results with browser history", async ({
   page,
   db,
 }) => {
   const marker = `Roadmap${uniqueId()}`;
   const business = await db.createBusiness();
   const locations = [];
-  for (let index = 0; index < 23; index++) {
+  for (let index = 0; index < 27; index++) {
     let cuisine = "Common Cuisine";
     if (index >= 11) {
       cuisine = "Rare Cuisine";
@@ -33,31 +33,40 @@ test("database-backed discovery pages ten rows and globally filters featured res
   const api = await page.request.get(`/api/search/restaurants?version=2&query=${marker}`);
   expect(api.status()).toBe(200);
   const data = await api.json();
-  expect(data).toMatchObject({ total: 23, limit: 10, totalPages: 3 });
+  expect(data).toMatchObject({ total: 27, limit: 12, totalPages: 3 });
   expect(data.results.slice(0, 2).map((row: { featured: boolean }) => row.featured)).toEqual([
     true,
     true,
   ]);
   await page.goto(`/search/${marker}?date=2027-10-16&time=19%3A00&partySize=3`);
-  await expect(page.getByRole("article")).toHaveCount(10);
+  await expect(page.getByRole("article")).toHaveCount(12);
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page).toHaveURL(/page=2/);
-  await expect(page.getByText("Page 2 Of 3")).toBeVisible();
-  await expect(page.getByRole("article")).toHaveCount(10);
+  await expect(page.getByRole("button", { name: "Page 2", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(page.getByRole("article")).toHaveCount(12);
   await page.getByRole("button", { name: "Page 3", exact: true }).click();
   await expect(page.getByRole("article")).toHaveCount(3);
   await page.goBack();
-  await expect(page.getByText("Page 2 Of 3")).toBeVisible();
-  await expect(page.getByRole("article")).toHaveCount(10);
+  await expect(page.getByRole("button", { name: "Page 2", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(page.getByRole("article")).toHaveCount(12);
   await page.goForward();
   await expect(page.getByRole("article")).toHaveCount(3);
   await page.getByRole("button", { name: "Cuisine: Cuisine", exact: true }).click();
   await page.getByRole("button", { name: "Rare Cuisine", exact: true }).click();
   await expect(page).not.toHaveURL(/page=3/);
-  await expect(page.getByRole("article")).toHaveCount(10);
-  await expect(page.getByText("Page 1 Of 2")).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(12);
+  await expect(page.getByRole("button", { name: "Page 1", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("article")).toHaveCount(2);
+  await expect(page.getByRole("article")).toHaveCount(4);
   await expect(page).toHaveURL(/partySize=3/);
   await expect(page).toHaveURL(/cuisine=Rare\+Cuisine/);
 });

@@ -6,6 +6,31 @@
   line-height: 1.8;
   overflow-wrap: anywhere;
 }
+.blog-content .collaboration-carets__caret {
+  position: relative;
+  margin-inline: -1px;
+  border-left: 2px solid;
+  pointer-events: none;
+  user-select: none;
+}
+.blog-content .collaboration-carets__label {
+  position: absolute;
+  left: -2px;
+  top: -1.5em;
+  max-width: 160px;
+  overflow: hidden;
+  border-radius: 4px 4px 4px 0;
+  padding: 2px 5px;
+  color: white;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.blog-content .blog-collaboration-selection {
+  border-radius: 2px;
+}
 .blog-content > * + * {
   margin-top: 1.1em;
 }

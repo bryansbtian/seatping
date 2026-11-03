@@ -17,12 +17,12 @@ function searchResponse(restaurants: SearchResult[], requestUrl: string) {
   );
   const page = Math.max(1, Number(params.get("page")) || 1);
   return {
-    results: matching.slice((page - 1) * 10, page * 10),
+    results: matching.slice((page - 1) * 12, page * 12),
     total: matching.length,
     page,
-    limit: 10,
-    totalPages: Math.ceil(matching.length / 10),
-    hasMore: page * 10 < matching.length,
+    limit: 12,
+    totalPages: Math.ceil(matching.length / 12),
+    hasMore: page * 12 < matching.length,
     facets: {
       cuisines: [...new Set(restaurants.flatMap((item) => item.cuisine || []))],
       locations: [...new Set(restaurants.map(areaLabel).filter(Boolean))],
@@ -275,6 +275,63 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/test-restaurant.jpg", (route) => route.fulfill({ status: 404 }));
 });
 
+for (const width of [390, 1440]) {
+  test(`featured placeholders match missing-photo banners at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.route("**/test-restaurant.jpg", (route) =>
+      route.fulfill({
+        contentType: "image/svg+xml",
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900"><rect width="600" height="900" fill="navy"/></svg>',
+      }),
+    );
+    const featured = [
+      { ...restaurant({ name: "Placeholder", bannerImageUrl: "/placeholder.svg" }), id: "one" },
+      { ...restaurant({ name: "Missing Photo", bannerImageUrl: null }), id: "two" },
+      { ...restaurant({ name: "Uploaded Photo" }), id: "three" },
+    ];
+    await page.route("**/api/featured-restaurants", (route) =>
+      route.fulfill({ json: { featured } }),
+    );
+    await page.goto("/#featured");
+    const placeholder = page.getByRole("link", { name: "View Placeholder", exact: true });
+    const missing = page.getByRole("link", { name: "View Missing Photo", exact: true });
+    await expect(placeholder).toBeVisible();
+    await expect(placeholder.locator("img")).toHaveCount(0);
+    for (const name of ["Placeholder", "Missing Photo"]) {
+      await expect(page.getByRole("img", { name: `Photo unavailable for ${name}` })).toHaveCount(1);
+    }
+    expect(await placeholder.locator(":scope > div").first().innerHTML()).toBe(
+      (await missing.locator(":scope > div").first().innerHTML()).replaceAll(
+        "Missing Photo",
+        "Placeholder",
+      ),
+    );
+    const photo = page.getByRole("img", { name: "Uploaded Photo", exact: true });
+    await photo.scrollIntoViewIfNeeded();
+    await expect
+      .poll(() =>
+        photo.evaluate(
+          (element) => element instanceof HTMLImageElement && element.naturalWidth > 0,
+        ),
+      )
+      .toBe(true);
+    const heights: number[] = [];
+    for (const item of featured) {
+      const banner = page
+        .getByRole("link", { name: `View ${item.name}`, exact: true })
+        .locator(":scope > div")
+        .first();
+      const bounds = await banner.boundingBox();
+      expect(bounds).not.toBeNull();
+      if (bounds) {
+        expect(Math.abs(bounds.height - (bounds.width * 3) / 4)).toBeLessThan(1);
+        heights.push(bounds.height);
+      }
+    }
+    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1);
+  });
+}
+
 async function mockRestaurantVisit(page: Page, available = true) {
   await page.route("**/auth/me", (route) => route.fulfill({ json: { user: null } }));
   await page.route("**/api/restaurants/bistro/loc-1/reviews?**", (route) =>
@@ -451,6 +508,7 @@ test("mobile search follows the homepage layout and cards use its photo proporti
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/search");
   await expect(page.getByRole("article")).toHaveCount(3);
+  await page.evaluate(() => document.fonts.ready);
   const discoveryLayout = await mobileSearchLayout(page.getByRole("search"));
   const discoveryButton = await buttonStyle(
     page.getByRole("link", { name: "Book Table at Bistro Downtown" }),
@@ -483,6 +541,7 @@ test("mobile search follows the homepage layout and cards use its photo proporti
     has: page.getByRole("combobox", { name: "Search restaurants, cuisines, or areas" }),
   });
   await expect(homepageForm).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
   const homepageLayout = await mobileSearchLayout(homepageForm);
   expect(discoveryLayout.height).toBe(homepageLayout.height);
   expect(discoveryLayout.radius).toBe(homepageLayout.radius);
