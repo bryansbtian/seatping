@@ -105,6 +105,8 @@ if (ready) {
   `tsconfig.server.json`, or the workflow file, where it is configuration rather than a
   comment. Keep new and edited code free of comments outside the exceptions above.
 
+- Never create a `docs/` folder or new `.md` files. Update existing Markdown files when
+  documentation changes are needed.
 - Never commit changes, create commits, push branches, or modify git history. The user
   handles all git operations manually.
 
