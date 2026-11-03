@@ -21,6 +21,7 @@ export default defineConfig(() => ({
       "/api/admin/blog": { target: apiTarget, changeOrigin: true },
       "/api/admin/blog-collaboration": { target: apiTarget, changeOrigin: true },
       "/api/blog": { target: apiTarget, changeOrigin: true },
+      "/api/language": { target: apiTarget, changeOrigin: true },
       "/sitemap.xml": { target: apiTarget, changeOrigin: true },
       "/auth": {
         target: apiTarget,

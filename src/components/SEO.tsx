@@ -1,4 +1,11 @@
 import { useEffect } from "react";
+import { usePublicLanguage } from "@/lib/publicLanguage";
+import { isPrivatePath } from "@shared/pageMeta";
+import {
+  localizedPublicPath,
+  isLocalizedPublicPath,
+  unlocalizedPath,
+} from "@shared/publicLanguage";
 
 export const SITE_URL = "https://www.seatping.biz";
 
@@ -67,10 +74,15 @@ export default function SEO({
   robots = "index, follow",
   structuredData,
 }: SEOProps) {
+  const { lang, t } = usePublicLanguage();
   useEffect(() => {
-    document.title = title;
-    setMeta("name", "description", description);
-    setMeta("name", "robots", robots);
+    let pageRobots = robots;
+    if (isPrivatePath(window.location.pathname)) {
+      pageRobots = "noindex, follow";
+    }
+    document.title = t(title);
+    setMeta("name", "description", t(description));
+    setMeta("name", "robots", pageRobots);
     let structured = document.getElementById("page-structured-data");
     if (structuredData) {
       if (!structured) {
@@ -84,22 +96,56 @@ export default function SEO({
       structured?.remove();
     }
 
-    setMeta("property", "og:title", ogTitle ?? title);
-    setMeta("property", "og:description", ogDescription ?? description);
+    setMeta("property", "og:title", t(ogTitle ?? title));
+    setMeta("property", "og:description", t(ogDescription ?? description));
     setMeta("property", "og:type", type);
     setMeta("property", "og:image", image);
 
     setMeta("name", "twitter:card", "summary_large_image");
-    setMeta("name", "twitter:title", ogTitle ?? title);
-    setMeta("name", "twitter:description", ogDescription ?? description);
+    setMeta("name", "twitter:title", t(ogTitle ?? title));
+    setMeta("name", "twitter:description", t(ogDescription ?? description));
     setMeta("name", "twitter:image", image);
 
     if (canonical) {
-      const href = absoluteUrl(canonical);
+      let canonicalPath = canonical;
+      if (canonical.startsWith(`${SITE_URL}/`)) {
+        canonicalPath = canonical.slice(SITE_URL.length);
+      }
+      const href = absoluteUrl(localizedPublicPath(canonicalPath, lang));
       setCanonical(href);
       setMeta("property", "og:url", href);
     }
-  }, [title, description, ogTitle, ogDescription, image, canonical, type, robots, structuredData]);
+    document.head
+      .querySelectorAll('link[rel="alternate"][hreflang]')
+      .forEach((link) => link.remove());
+    const pathname = window.location.pathname;
+    if (pageRobots === "index, follow" && isLocalizedPublicPath(pathname)) {
+      const basePath = unlocalizedPath(pathname);
+      for (const language of ["en", "id", "x-default"] as const) {
+        let targetLanguage: "en" | "id" = "en";
+        if (language === "id") {
+          targetLanguage = "id";
+        }
+        const link = document.createElement("link");
+        link.rel = "alternate";
+        link.hreflang = language;
+        link.href = absoluteUrl(localizedPublicPath(basePath, targetLanguage));
+        document.head.appendChild(link);
+      }
+    }
+  }, [
+    title,
+    description,
+    ogTitle,
+    ogDescription,
+    image,
+    canonical,
+    type,
+    robots,
+    structuredData,
+    lang,
+    t,
+  ]);
 
   return null;
 }

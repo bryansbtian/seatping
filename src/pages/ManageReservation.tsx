@@ -1,5 +1,6 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "@/lib/publicNavigation";
 import { api } from "@/lib/api";
 import { SLOT_BUTTON_BASE_CLASS, SLOT_BUTTON_SELECTED_CLASS } from "@/lib/slotButton";
 import NotFound from "@/pages/NotFound";
@@ -51,7 +52,7 @@ function splitDateTime(dt: string): { date: string; time: string } {
   return { date: date || "", time: (rest || "").slice(0, 5) };
 }
 
-function readableDate(date: string): string {
+function readableDate(date: string, locale?: string): string {
   if (!date) {
     return "";
   }
@@ -59,7 +60,7 @@ function readableDate(date: string): string {
   if (Number.isNaN(d.getTime())) {
     return date;
   }
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString(locale, {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -84,6 +85,8 @@ function formatTimeLabel(t: string): string {
 }
 
 export default function ManageReservation() {
+  const { t: tp, locale } = usePublicLanguage();
+
   const { token = "" } = useParams();
   const { toast } = useToast();
 
@@ -118,9 +121,9 @@ export default function ManageReservation() {
         setTime(rt);
         setPartySize(d.reservation.partySize);
       })
-      .catch((e: any) => setError(e?.message || "Reservation not found"))
+      .catch((e: any) => setError(tp(e?.message || "Reservation not found")))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, tp]);
 
   useEffect(() => {
     load();
@@ -182,11 +185,11 @@ export default function ManageReservation() {
       });
       setReservation(d.reservation);
       setEditing(false);
-      toast({ title: "Reservation updated" });
+      toast({ title: tp("Reservation updated") });
     } catch (e: any) {
       toast({
-        title: "Could not update",
-        description: e?.message || "Please try another time.",
+        title: tp("Could not update"),
+        description: tp(e?.message || tp("Please try another time.")),
         variant: "destructive",
       });
     } finally {
@@ -202,11 +205,11 @@ export default function ManageReservation() {
       });
       setReservation(d.reservation);
       setCancelOpen(false);
-      toast({ title: "Reservation cancelled" });
+      toast({ title: tp("Reservation cancelled") });
     } catch (e: any) {
       toast({
-        title: "Could not cancel",
-        description: e?.message || "Please try again.",
+        title: tp("Could not cancel"),
+        description: tp(e?.message || tp("Please try again.")),
         variant: "destructive",
       });
     } finally {
@@ -229,7 +232,7 @@ export default function ManageReservation() {
   if (partySize === "larger") {
     timePickerContent = (
       <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
-        For larger parties, please contact the restaurant directly.
+        {tp("For larger parties, please contact the restaurant directly.")}
       </p>
     );
   } else if (loadingSlots) {
@@ -253,7 +256,7 @@ export default function ManageReservation() {
               onClick={() => setTime(s.time)}
               className={cn(SLOT_BUTTON_BASE_CLASS, slotClass, "px-1")}
             >
-              {s.label}
+              {tp(s.label)}
             </button>
           );
         })}
@@ -265,17 +268,17 @@ export default function ManageReservation() {
   if (isLocked) {
     lockedActions = (
       <p className="pt-1 text-xs text-slate-500 sm:text-sm">
-        This reservation can no longer be changed.
+        {tp("This reservation can no longer be changed.")}
       </p>
     );
   } else {
     lockedActions = (
       <div className="flex flex-col gap-2 pt-1 sm:flex-row">
         <Button className="flex-1" onClick={() => setEditing(true)}>
-          Change
+          {tp("Change")}
         </Button>
         <Button variant="destructiveOutline" className="flex-1" onClick={() => setCancelOpen(true)}>
-          Cancel Reservation
+          {tp("Cancel Reservation")}
         </Button>
       </div>
     );
@@ -286,9 +289,9 @@ export default function ManageReservation() {
     reservationGuestWord = "guest";
   }
 
-  let pageTitle = "Manage Your Reservation";
+  let pageTitle = tp("Manage Your Reservation");
   if (isLocked) {
-    pageTitle = "View Your Reservation";
+    pageTitle = tp("View Your Reservation");
   }
 
   let restaurantSubtitle: string | undefined;
@@ -302,7 +305,7 @@ export default function ManageReservation() {
   if (cancelling) {
     cancelActionContent = <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" />;
   } else {
-    cancelActionContent = "Cancel Reservation";
+    cancelActionContent = tp("Cancel Reservation");
   }
 
   let detailsOrEditor: React.ReactNode = null;
@@ -311,19 +314,32 @@ export default function ManageReservation() {
   } else if (!editing) {
     detailsOrEditor = (
       <div className="space-y-2">
-        <DetailRow icon={CalendarDaysIcon} label="Date" value={readableDate(current!.date)} />
-        <DetailRow icon={Clock01Icon} label="Time" value={formatTimeLabel(current!.time)} />
+        <DetailRow
+          icon={CalendarDaysIcon}
+          label={tp("Date")}
+          value={readableDate(current!.date, locale)}
+        />
+        <DetailRow
+          icon={Clock01Icon}
+          label={tp("Time")}
+          value={tp(formatTimeLabel(current!.time))}
+        />
         <DetailRow
           icon={UsersRoundIcon}
-          label="Number of Guests"
+          label={tp("Number of Guests")}
           value={`${reservation.partySize} ${reservationGuestWord}`}
         />
         {restaurant?.address && (
-          <DetailRow icon={Location01Icon} label="Location" value={restaurant.address} stacked />
+          <DetailRow
+            icon={Location01Icon}
+            label={tp("Location")}
+            value={restaurant.address}
+            stacked
+          />
         )}
         {reservation.notes && (
           <p className="rounded-md bg-slate-50 p-2.5 text-xs text-slate-600">
-            <span className="font-medium">Notes: </span>
+            <span className="font-medium">{tp("Notes:")} </span>
             {reservation.notes}
           </p>
         )}
@@ -336,7 +352,7 @@ export default function ManageReservation() {
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label className="text-xs text-slate-500">Number of Guests</Label>
+            <Label className="text-xs text-slate-500">{tp("Number of Guests")}</Label>
             <PartyField
               value={partySize}
               onChange={setPartySize}
@@ -344,7 +360,7 @@ export default function ManageReservation() {
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-slate-500">Date</Label>
+            <Label className="text-xs text-slate-500">{tp("Date")}</Label>
             <DateField
               value={date}
               onChange={setDate}
@@ -355,7 +371,7 @@ export default function ManageReservation() {
         </div>
 
         <div className="space-y-1">
-          <Label className="text-xs text-slate-500">Time</Label>
+          <Label className="text-xs text-slate-500">{tp("Time")}</Label>
           {timePickerContent}
         </div>
 
@@ -366,7 +382,7 @@ export default function ManageReservation() {
             onClick={saveChanges}
           >
             {saving && <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" />}
-            Save Changes
+            {tp("Save Changes")}
           </Button>
           <Button
             variant="outline"
@@ -378,7 +394,7 @@ export default function ManageReservation() {
               setPartySize(reservation.partySize);
             }}
           >
-            Back
+            {tp("Back")}
           </Button>
         </div>
       </div>
@@ -388,7 +404,7 @@ export default function ManageReservation() {
   let pageContent: React.ReactNode;
   if (loading) {
     pageContent = (
-      <div role="status" aria-label="Loading Reservation">
+      <div role="status" aria-label={tp("Loading Reservation")}>
         <div aria-hidden="true" className="space-y-6">
           <div className="space-y-3">
             <Skeleton className="mx-auto h-7 w-2/3" />
@@ -441,13 +457,13 @@ export default function ManageReservation() {
       <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel This Reservation?</AlertDialogTitle>
+            <AlertDialogTitle>{tp("Cancel This Reservation?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This frees up your table and can't be undone. You'd need to book again.
+              {tp("This frees up your table and can't be undone. You'd need to book again.")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={cancelling}>Keep It</AlertDialogCancel>
+            <AlertDialogCancel disabled={cancelling}>{tp("Keep It")}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               disabled={cancelling}

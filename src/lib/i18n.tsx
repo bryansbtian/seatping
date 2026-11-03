@@ -1452,7 +1452,7 @@ const id: Partial<Record<TKey, string>> = {
   "dash.stat.currentQueue": "Antrean Saat Ini",
   "dash.stat.reservationsToday": "Reservasi Hari Ini",
   "dash.stat.avgQueueWait": "Rata-rata Tunggu Antrean",
-  "dash.stat.avgQueueWaitTime": "Rata-rata Waktu Tunggu Antrean",
+  "dash.stat.avgQueueWaitTime": "Rata-rata Antrean",
   "dash.stat.servedToday": "Dilayani Hari Ini",
   "dash.stat.leftToday": "Pergi Hari Ini",
   "dash.queue.title": "Manajemen Antrean",

@@ -5,6 +5,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FieldTrigger } from "@/components/TimeSelect";
 import { localDateStr } from "@/lib/localDate";
+import { usePublicLanguage } from "@/lib/publicLanguage";
 
 export function DateField({
   value,
@@ -23,6 +24,7 @@ export function DateField({
   placeholder?: string;
   ariaLabel?: string;
 }) {
+  const { t, dateLocale, shortDateFormat } = usePublicLanguage();
   const [open, setOpen] = useState(false);
 
   let selected: Date | undefined;
@@ -38,17 +40,17 @@ export function DateField({
   let label: string;
   if (selected && !Number.isNaN(selected.getTime())) {
     if (isToday(selected)) {
-      label = "Today";
+      label = t("Today");
     } else if (isTomorrow(selected)) {
-      label = "Tomorrow";
+      label = t("Tomorrow");
     } else {
-      label = format(selected, "MMM d");
+      label = format(selected, shortDateFormat, { locale: dateLocale });
     }
   } else {
-    label = placeholder || "Pick A Date";
+    label = placeholder || t("Pick A Date");
   }
 
-  let triggerLabel = `Date: ${label}`;
+  let triggerLabel = `${t("Date")}: ${label}`;
   if (ariaLabel) {
     triggerLabel = `${ariaLabel}: ${label}`;
   }

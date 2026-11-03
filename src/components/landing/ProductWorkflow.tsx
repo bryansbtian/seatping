@@ -1,3 +1,4 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -130,6 +131,7 @@ function useSecondState(sentinelRef: React.RefObject<HTMLElement>): boolean {
 }
 
 function WorkflowStep({ index, active }: { index: number; active: boolean }) {
+  const { t: tp } = usePublicLanguage();
   const step = WORKFLOW_STEPS[index];
   const slot = index % STEPS_PER_STATE;
 
@@ -157,8 +159,8 @@ function WorkflowStep({ index, active }: { index: number; active: boolean }) {
         {stepNumber(index)}
       </span>
       <div className="min-w-0 flex-1 pt-1.5 lg:pt-0">
-        <h3 className={CARD_TITLE}>{step.title}</h3>
-        <p className={cn("mt-1.5 max-w-sm", CARD_DESCRIPTION)}>{step.body}</p>
+        <h3 className={CARD_TITLE}>{tp(step.title)}</h3>
+        <p className={cn("mt-1.5 max-w-sm", CARD_DESCRIPTION)}>{tp(step.body)}</p>
       </div>
     </li>
   );
@@ -275,6 +277,8 @@ function WorkflowArc({ secondState }: { secondState: boolean }) {
 }
 
 export function ProductWorkflowSection() {
+  const { t: tp } = usePublicLanguage();
+
   const sentinelRef = useRef<HTMLSpanElement>(null);
   const secondState = useSecondState(sentinelRef);
 
@@ -292,14 +296,15 @@ export function ProductWorkflowSection() {
             <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.15fr)_14rem_minmax(17rem,1fr)] lg:items-center lg:gap-6 xl:grid-cols-[minmax(26rem,1.2fr)_18rem_minmax(20rem,1fr)] xl:gap-8">
               <div className="max-w-3xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                  How It Works
+                  {tp("How It Works")}
                 </p>
                 <h2 className={cn("mt-3", SECTION_HEADING)}>
-                  From the Front Door to the Right Table, and Back Again
+                  {tp("From the Front Door to the Right Table, and Back Again")}
                 </h2>
                 <p className={cn("mt-4 max-w-2xl", SECTION_SUBTITLE)}>
-                  One connected workflow runs the whole visit, so nothing gets rekeyed between the
-                  queue, the floor, and your guest records.
+                  {tp(
+                    "One connected workflow runs the whole visit, so nothing gets rekeyed between the queue, the floor, and your guest records.",
+                  )}
                 </p>
               </div>
 
@@ -317,7 +322,7 @@ export function ProductWorkflowSection() {
                     if (secondState) {
                       active = !inFirstState;
                     }
-                    return <WorkflowStep key={step.title} index={index} active={active} />;
+                    return <WorkflowStep key={tp(step.title)} index={index} active={active} />;
                   })}
                 </ol>
               </div>

@@ -1,5 +1,6 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@/lib/publicNavigation";
 import { format, isToday, isTomorrow } from "date-fns";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Calendar01Icon, Search01Icon, UsersRoundIcon } from "@hugeicons/core-free-icons";
@@ -59,6 +60,8 @@ function localDateStr(d: Date): string {
 }
 
 const ReservationSearchBar = () => {
+  const { t: tp, dateLocale, shortDateFormat } = usePublicLanguage();
+
   const navigate = useNavigate();
 
   const [date, setDate] = React.useState<Date>(() => new Date());
@@ -95,11 +98,11 @@ const ReservationSearchBar = () => {
 
   let dateLabel: string;
   if (isToday(date)) {
-    dateLabel = "Today";
+    dateLabel = tp("Today");
   } else if (isTomorrow(date)) {
-    dateLabel = "Tomorrow";
+    dateLabel = tp("Tomorrow");
   } else {
-    dateLabel = format(date, "MMM d");
+    dateLabel = format(date, shortDateFormat, { locale: dateLocale });
   }
 
   return (
@@ -114,7 +117,7 @@ const ReservationSearchBar = () => {
               <PopoverTrigger asChild>
                 <FieldTrigger
                   icon={Calendar01Icon}
-                  aria-label={`Date: ${dateLabel}`}
+                  aria-label={tp(`Date: ${dateLabel}`)}
                   className={cn(FLAT_FIELD, "md:w-auto md:min-w-[120px]")}
                 >
                   {dateLabel}
@@ -142,7 +145,7 @@ const ReservationSearchBar = () => {
               value={time}
               onChange={setTime}
               options={TIME_OPTIONS}
-              aria-label={`Time: ${formatTimeLabel(time)}`}
+              aria-label={tp(`Time: ${tp(formatTimeLabel(time))}`)}
               className={cn(FLAT_FIELD, "md:w-auto md:min-w-[132px]")}
             />
           </div>
@@ -153,10 +156,10 @@ const ReservationSearchBar = () => {
             <PopoverTrigger asChild>
               <FieldTrigger
                 icon={UsersRoundIcon}
-                aria-label={`Number of guests: ${peopleLabel(people)}`}
+                aria-label={tp(`Number of guests: ${tp(peopleLabel(people))}`)}
                 className={cn(FLAT_FIELD, "md:w-auto md:min-w-[120px]")}
               >
-                {peopleLabel(people)}
+                {tp(peopleLabel(people))}
               </FieldTrigger>
             </PopoverTrigger>
             <PopoverContent className="w-48 max-h-72 overflow-y-auto p-1" align="start">
@@ -169,7 +172,7 @@ const ReservationSearchBar = () => {
                     setPeopleOpen(false);
                   }}
                 >
-                  {peopleLabel(value)}
+                  {tp(peopleLabel(value))}
                 </OptionRow>
               ))}
             </PopoverContent>
@@ -189,7 +192,7 @@ const ReservationSearchBar = () => {
         <div className="border-t border-slate-200 pt-3 md:border-t-0 md:pt-0 md:contents">
           <Button type="submit" size="lg" className="w-full md:col-span-full xl:col-auto">
             <HugeiconsIcon icon={Search01Icon} className="h-4 w-4" />
-            <span className="font-medium">Search</span>
+            <span className="font-medium">{tp("Search")}</span>
           </Button>
         </div>
       </div>

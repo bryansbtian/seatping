@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { ALL_DAY_TIME_OPTIONS, formatTimeLabel } from "@/components/timeOptions";
+import { usePublicLanguage } from "@/lib/publicLanguage";
 
 export const FLAT_FIELD =
   "border-0 rounded-none shadow-none px-3 text-body max-[360px]:px-2 max-[360px]:text-caption md:border md:border-slate-200 md:rounded-control md:px-4 md:text-body";
@@ -120,6 +121,7 @@ export function TimeSelect({
   >["onCloseAutoFocus"];
   "aria-label"?: string;
 }) {
+  const { t } = usePublicLanguage();
   const [open, setOpen] = React.useState(false);
 
   const content = (
@@ -144,7 +146,7 @@ export function TimeSelect({
             setOpen(false);
           }}
         >
-          {formatTimeLabel(v)}
+          {t(formatTimeLabel(v))}
         </OptionRow>
       ))}
     </PopoverPrimitive.Content>
@@ -172,10 +174,10 @@ export function TimeSelect({
           leadingLabel={label}
           fieldLabel={fieldLabel}
           disabled={disabled}
-          aria-label={ariaLabel ?? `Time: ${formatTimeLabel(value)}`}
+          aria-label={ariaLabel ?? t(`Time: ${formatTimeLabel(value)}`)}
           className={className}
         >
-          {formatTimeLabel(value)}
+          {t(formatTimeLabel(value))}
         </FieldTrigger>
       </PopoverTrigger>
       {popoverContent}

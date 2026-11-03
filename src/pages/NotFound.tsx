@@ -1,10 +1,13 @@
-import { Link, useLocation } from "react-router-dom";
+import { usePublicLanguage } from "@/lib/publicLanguage";
+import { Link, useLocation } from "@/lib/publicNavigation";
 import { useEffect } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft02Icon } from "@hugeicons/core-free-icons";
 import DottedSeatingIllustration from "@/components/DottedSeatingIllustration";
 
 const NotFound = () => {
+  const { t: tp } = usePublicLanguage();
+
   const location = useLocation();
 
   useEffect(() => {
@@ -24,11 +27,12 @@ const NotFound = () => {
       <div className="w-full shrink-0 px-5 pb-10 sm:px-10 sm:pb-14 lg:px-24 lg:pb-16 xl:px-32 xl:pb-20">
         <div className="max-w-xl">
           <h1 className="text-2xl font-bold leading-[1.15] tracking-tight text-slate-900 sm:text-3xl lg:text-4xl xl:text-[2.5rem]">
-            We couldn’t find <span className="sm:block">the page you’re looking for.</span>
+            {tp("We couldn’t find")}{" "}
+            <span className="sm:block">{tp("the page you’re looking for.")}</span>
           </h1>
           <p className="mt-3 text-body leading-relaxed text-slate-600 sm:mt-4 sm:text-base lg:text-lg xl:text-xl">
-            Looks like this seat isn’t on the list.{" "}
-            <span className="sm:block">Try heading back or exploring something new.</span>
+            {tp("Looks like this seat isn’t on the list.")}{" "}
+            <span className="sm:block">{tp("Try heading back or exploring something new.")}</span>
           </p>
           <Link
             to="/"
@@ -38,7 +42,7 @@ const NotFound = () => {
               icon={ArrowLeft02Icon}
               className="h-3.5 w-3.5 transition-transform motion-safe:group-hover:-translate-x-0.5"
             />
-            Back to Home
+            {tp("Back to Home")}
           </Link>
         </div>
       </div>

@@ -1,5 +1,6 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "@/lib/publicNavigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Restaurant02Icon } from "@hugeicons/core-free-icons";
 import RestaurantCardSkeleton from "@/components/restaurant-discovery/RestaurantCardSkeleton";
@@ -24,6 +25,8 @@ const HERO_IMAGE =
   "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=2400&q=80";
 
 const CustomerLanding = () => {
+  const { t: tp } = usePublicLanguage();
+
   const navigate = useNavigate();
   const { hash, key } = useLocation();
 
@@ -90,7 +93,7 @@ const CustomerLanding = () => {
   let featuredContent;
   if (loadingFeatured) {
     featuredContent = (
-      <div role="status" aria-label="Loading Featured Restaurants">
+      <div role="status" aria-label={tp("Loading Featured Restaurants")}>
         <div aria-hidden="true" className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
           <RestaurantCardSkeleton />
           <div className="hidden lg:block">
@@ -105,21 +108,21 @@ const CustomerLanding = () => {
   } else if (featuredError && featured.length === 0) {
     featuredContent = (
       <div role="alert" className="w-full rounded-xl border border-border bg-card p-8 text-center">
-        <h3 className="text-title text-foreground">Unable To Load Featured Restaurants</h3>
+        <h3 className="text-title text-foreground">{tp("Unable To Load Featured Restaurants")}</h3>
         <p className="mt-2 text-body text-ink-subtle">
-          Please try again to load featured restaurants.
+          {tp("Please try again to load featured restaurants.")}
         </p>
         <Button variant="outline" onClick={() => void featuredQuery.refetch()} className="mt-4">
-          Try Again
+          {tp("Try Again")}
         </Button>
       </div>
     );
   } else if (featured.length === 0) {
     featuredContent = (
       <div className="max-w-2xl rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 md:p-12 text-left">
-        <p className="text-lg font-semibold text-slate-900">No featured restaurants yet.</p>
+        <p className="text-lg font-semibold text-slate-900">{tp("No featured restaurants yet.")}</p>
         <p className="mt-2 text-sm text-slate-500">
-          Check back soon for new places to book a table or join a queue.
+          {tp("Check back soon for new places to book a table or join a queue.")}
         </p>
       </div>
     );
@@ -151,7 +154,7 @@ const CustomerLanding = () => {
             cardCursorClass = "cursor-pointer";
             cardClickHandler = () => navigate(detailsHref);
             cardRole = "link";
-            cardAriaLabel = `View ${r.name}`;
+            cardAriaLabel = tp(`View ${r.name}`);
           } else {
             cardCursorClass = "";
             cardClickHandler = undefined;
@@ -177,7 +180,7 @@ const CustomerLanding = () => {
             bannerContent = (
               <div
                 role="img"
-                aria-label={`Photo unavailable for ${r.name}`}
+                aria-label={tp(`Photo unavailable for ${r.name}`)}
                 className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400"
               >
                 <HugeiconsIcon icon={Restaurant02Icon} className="h-8 w-8" />
@@ -191,10 +194,12 @@ const CustomerLanding = () => {
               <Button
                 disabled
                 variant="outline"
-                title="Reservations Unavailable"
+                title={tp("Reservations Unavailable")}
                 className="w-full min-w-0 border-border bg-muted/40 px-3 text-ink disabled:opacity-100"
               >
-                <span className="whitespace-normal leading-none">Reservations Unavailable</span>
+                <span className="whitespace-normal leading-none">
+                  {tp("Reservations Unavailable")}
+                </span>
               </Button>
             );
           } else {
@@ -208,7 +213,7 @@ const CustomerLanding = () => {
                   }
                 }}
               >
-                <span>Book Table</span>
+                <span>{tp("Book Table")}</span>
               </Button>
             );
           }
@@ -240,12 +245,12 @@ const CustomerLanding = () => {
                   {reservationAction}
                   <Button
                     variant="outline"
-                    aria-label={`Join queue at ${r.name}`}
+                    aria-label={tp(`Join queue at ${r.name}`)}
                     className="w-full min-w-0 justify-center whitespace-nowrap px-3"
                     asChild
                   >
                     <Link to={queueHref} onClick={(e) => e.stopPropagation()}>
-                      <span>Join Queue</span>
+                      <span>{tp("Join Queue")}</span>
                     </Link>
                   </Button>
                 </RestaurantCardContent>
@@ -260,7 +265,7 @@ const CustomerLanding = () => {
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title="SeatPing | Find Restaurants, Book Tables, and Join Queues"
+        title={tp("SeatPing | Find Restaurants, Book Tables, and Join Queues")}
         description={CUSTOMER_DESCRIPTION}
         canonical="/"
       />
@@ -271,7 +276,7 @@ const CustomerLanding = () => {
           <img
             {...getRestaurantImageProps(HERO_IMAGE, [640, 960, 1280, 1920, 2400], "100vw")}
             fetchPriority="high"
-            alt="Restaurant interior"
+            alt={tp("Restaurant interior")}
             className="h-full w-full object-cover opacity-90"
             loading="eager"
           />
@@ -281,11 +286,12 @@ const CustomerLanding = () => {
         <div className="relative container mx-auto px-4 pt-36 md:pt-44 pb-32 sm:pb-36 md:pb-44 text-center">
           <div className="max-w-3xl mx-auto space-y-6 animate-fade-in-up">
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium leading-tight text-white">
-              Discover Restaurants and Join the Wait Effortlessly
+              {tp("Discover Restaurants and Join the Wait Effortlessly")}
             </h1>
             <p className="text-base sm:text-lg md:text-xl text-slate-200 leading-relaxed max-w-2xl mx-auto">
-              Find great restaurants, check availability, join the queue, and reserve your spot in
-              one simple place.
+              {tp(
+                "Find great restaurants, check availability, join the queue, and reserve your spot in one simple place.",
+              )}
             </p>
           </div>
         </div>
@@ -303,10 +309,10 @@ const CustomerLanding = () => {
             <div className="mb-8 flex items-end justify-between gap-4">
               <div className="text-left">
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-slate-900">
-                  Featured Restaurants
+                  {tp("Featured Restaurants")}
                 </h2>
                 <p className="mt-2 text-sm sm:text-base text-slate-600 max-w-2xl">
-                  Discover great places to book, queue, and enjoy with SeatPing.
+                  {tp("Discover great places to book, queue, and enjoy with SeatPing.")}
                 </p>
               </div>
               {!loadingFeatured && featured.length > 0 && (

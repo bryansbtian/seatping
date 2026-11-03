@@ -1,3 +1,4 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useLayoutEffect, useRef, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -23,11 +24,14 @@ const PREVIEW_LOCATION = "Downtown";
 const PREVIEW_BUSINESS = "Cafe Milano";
 const PREVIEW_EMAIL = "owner@cafemilano.com";
 
-function en(key: Parameters<typeof translate>[1]) {
-  return translate("en", key);
+function usePreviewTranslation() {
+  const { lang } = usePublicLanguage();
+  return (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) =>
+    translate(lang, key, params);
 }
 
 function SidebarPreview() {
+  const en = usePreviewTranslation();
   return (
     <div className="flex h-full w-56 shrink-0 flex-col bg-sidebar">
       <div className="flex items-center justify-between gap-2 px-3 pb-5 pt-4">
@@ -158,18 +162,19 @@ function SummaryChart() {
 }
 
 function OverviewPagePreview() {
+  const en = usePreviewTranslation();
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-gradient-to-br from-slate-50 to-indigo-100 px-6 py-5">
       <div className="mb-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-2xl font-semibold text-slate-800">
-              {translate("en", "dash.hello", { name: PREVIEW_BUSINESS })}
+              {en("dash.hello", { name: PREVIEW_BUSINESS })}
             </h2>
             <p className="text-base text-slate-600">{en("dash.dailyStat")}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Badge variant="neutral">{PREVIEW_LOCATION}</Badge>
-              <Badge variant="info">{translate("en", "dash.creditsPill", { n: 285 })}</Badge>
+              <Badge variant="info">{en("dash.creditsPill", { n: 285 })}</Badge>
             </div>
           </div>
           <div className="flex items-center gap-2 text-label text-ink-subtle">

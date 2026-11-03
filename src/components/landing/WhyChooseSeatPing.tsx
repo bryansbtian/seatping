@@ -1,3 +1,4 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { cn } from "@/lib/utils";
 import {
   SECTION_PADDING,
@@ -28,54 +29,64 @@ function PhoneFrame({ children }: { children: React.ReactNode }) {
 }
 
 function QueueStatusScreen() {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <div className="space-y-2.5">
       <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-center">
-        <p className="text-sm font-semibold text-slate-900">You are #4 in line</p>
-        <p className="mt-0.5 text-caption text-slate-500">There are 3 parties ahead of you</p>
+        <p className="text-sm font-semibold text-slate-900">{tp("You are #4 in line")}</p>
+        <p className="mt-0.5 text-caption text-slate-500">
+          {tp("There are 3 parties ahead of you")}
+        </p>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl border border-slate-200 bg-white px-2 py-2.5 text-center">
-          <p className="text-caption text-slate-500">Estimated Wait</p>
-          <p className="mt-0.5 text-xs font-semibold text-slate-900">15-25 Minutes</p>
+          <p className="text-caption text-slate-500">{tp("Estimated Wait")}</p>
+          <p className="mt-0.5 text-xs font-semibold text-slate-900">{tp("15-25 Minutes")}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white px-2 py-2.5 text-center">
-          <p className="text-caption text-slate-500">Notifications</p>
+          <p className="text-caption text-slate-500">{tp("Notifications")}</p>
           <p className="mt-0.5 text-xs font-medium text-slate-900">SMS</p>
         </div>
       </div>
       <p className="text-center text-caption leading-snug text-slate-400">
-        Wait time may change based on queue movement and upcoming reservations.
+        {tp("Wait time may change based on queue movement and upcoming reservations.")}
       </p>
     </div>
   );
 }
 
 function MessageThreadScreen() {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <div className="space-y-2.5">
-      <p className="text-center text-caption text-slate-400">Today 7:41 PM</p>
+      <p className="text-center text-caption text-slate-400">{tp("Today 7:41 PM")}</p>
       <p className="max-w-[92%] rounded-2xl rounded-bl-md border border-slate-200 bg-white px-3 py-2 text-caption leading-relaxed text-slate-700">
-        {JOIN_MESSAGE}
+        {tp(JOIN_MESSAGE)}
       </p>
       <p className="text-center text-caption text-slate-400">8:04 PM</p>
       <p className="max-w-[92%] rounded-2xl rounded-bl-md border border-slate-200 bg-white px-3 py-2 text-caption leading-relaxed text-slate-700">
-        {TURN_MESSAGE}
+        {tp(TURN_MESSAGE)}
       </p>
     </div>
   );
 }
 
 function YourTurnScreen() {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <div className="space-y-2.5 text-center">
-      <p className="text-base font-bold text-primary">It&apos;s Your Turn!</p>
+      <p className="text-base font-bold text-primary">{tp("It's Your Turn!")}</p>
       <div className="rounded-2xl border border-primary/10 bg-primary/5 px-3 py-4">
         <p className="text-caption font-semibold uppercase tracking-wide text-slate-500">
-          Please Arrive Within
+          {tp("Please Arrive Within")}
         </p>
         <p className="mt-1 text-4xl font-bold leading-none tabular-nums text-primary">4:32</p>
-        <p className="mt-2 text-caption text-slate-500">Your spot will be held for 5 minutes.</p>
+        <p className="mt-2 text-caption text-slate-500">
+          {tp("Your spot will be held for 5 minutes.")}
+        </p>
       </div>
     </div>
   );
@@ -103,6 +114,8 @@ const MOMENTS: { label: string; title: string; body: string; screen: React.React
 ];
 
 export function WhySeatPingSection() {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <section
       className={cn(
@@ -118,25 +131,28 @@ export function WhySeatPingSection() {
       <div className="relative mx-auto w-full max-w-7xl px-8 scroll-animate lg:px-4">
         <div className="max-w-3xl">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-            Why SeatPing
+            {tp("Why SeatPing")}
           </p>
-          <h2 className={cn("mt-3", SECTION_HEADING)}>Your Guests Never Have to Stand and Wait</h2>
+          <h2 className={cn("mt-3", SECTION_HEADING)}>
+            {tp("Your Guests Never Have to Stand and Wait")}
+          </h2>
           <p className={cn("mt-4 max-w-2xl", SECTION_SUBTITLE)}>
-            The rest of this page is what your team sees. This is what your guest sees: they scan a
-            code at your door, walk away, and come back when their table is ready.
+            {tp(
+              "The rest of this page is what your team sees. This is what your guest sees: they scan a code at your door, walk away, and come back when their table is ready.",
+            )}
           </p>
         </div>
 
         <div className={cn(SECTION_CONTENT_GAP, "grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-6")}>
           {MOMENTS.map((moment) => (
-            <div key={moment.title}>
+            <div key={tp(moment.title)}>
               <PhoneFrame>{moment.screen}</PhoneFrame>
               <div className="mt-5 text-center md:text-left">
                 <p className="text-caption font-semibold uppercase tracking-wide text-slate-900">
-                  {moment.label}
+                  {tp(moment.label)}
                 </p>
-                <h3 className={cn("mt-1.5", CARD_TITLE)}>{moment.title}</h3>
-                <p className={cn("mt-1.5", CARD_DESCRIPTION)}>{moment.body}</p>
+                <h3 className={cn("mt-1.5", CARD_TITLE)}>{tp(moment.title)}</h3>
+                <p className={cn("mt-1.5", CARD_DESCRIPTION)}>{tp(moment.body)}</p>
               </div>
             </div>
           ))}

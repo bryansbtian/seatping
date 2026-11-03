@@ -739,6 +739,7 @@ test("public featured loading placeholders show complete restaurant cards withou
         exact: true,
       });
       await expect(loading).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
       await loading.scrollIntoViewIfNeeded();
       const cards = loading.locator(".overflow-hidden").filter({ visible: true });
       let expectedCards = 3;

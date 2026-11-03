@@ -1,5 +1,6 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "@/lib/publicNavigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,8 @@ import { analytics } from "@/lib/analytics";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 
 const BusinessSignup = () => {
+  const { t: tp } = usePublicLanguage();
+
   const [formData, setFormData] = useState({
     businessName: "",
     businessUsername: "",
@@ -59,35 +62,35 @@ const BusinessSignup = () => {
     };
 
     if (!formData.businessName) {
-      newErrors.businessName = "Business name is required";
+      newErrors.businessName = tp("Business name is required");
     }
     if (!formData.businessUsername) {
-      newErrors.businessUsername = "Business username is required";
+      newErrors.businessUsername = tp("Business username is required");
     } else if (formData.businessUsername.length < 3) {
-      newErrors.businessUsername = "Username must be at least 3 characters";
+      newErrors.businessUsername = tp("Username must be at least 3 characters");
     }
     if (!formData.email) {
-      newErrors.email = "Email is required";
+      newErrors.email = tp("Email is required");
     }
     if (!formData.phone) {
-      newErrors.phone = "Phone number is required";
+      newErrors.phone = tp("Phone number is required");
     } else if (formData.phone.replace(/\D/g, "").length < 6) {
-      newErrors.phone = "Phone must be at least 6 digits";
+      newErrors.phone = tp("Phone must be at least 6 digits");
     }
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = tp("Password is required");
     } else if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 chars";
+      newErrors.password = tp("Password must be at least 8 chars");
     }
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
+      newErrors.confirmPassword = tp("Please confirm your password");
     }
     if (
       formData.password &&
       formData.confirmPassword &&
       formData.password !== formData.confirmPassword
     ) {
-      newErrors.confirmPassword = "Passwords don't match";
+      newErrors.confirmPassword = tp("Passwords don't match");
     }
 
     setErrors(newErrors);
@@ -112,14 +115,14 @@ const BusinessSignup = () => {
       analytics.businessSignupCompleted();
       await resetSessionQueries();
       toast({
-        title: "Account created!",
-        description: `Welcome, ${res.user.name}`,
+        title: tp("Account created!"),
+        description: tp(`Welcome, ${res.user.name}`),
       });
       navigate("/business/overview");
     } catch (err: any) {
       toast({
-        title: "Sign up failed",
-        description: err?.message || "Please try again.",
+        title: tp("Sign up failed"),
+        description: tp(err?.message || tp("Please try again.")),
         variant: "destructive",
       });
     } finally {
@@ -129,15 +132,15 @@ const BusinessSignup = () => {
 
   let submitLabel: string;
   if (loading) {
-    submitLabel = "Creating...";
+    submitLabel = tp("Creating...");
   } else {
-    submitLabel = "Start Free Trial";
+    submitLabel = tp("Start Free Trial");
   }
 
   return (
     <>
       <SEO
-        title="Create a Business Account | SeatPing"
+        title={tp("Create a Business Account | SeatPing")}
         description={BUSINESS_DESCRIPTION}
         image={BUSINESS_IMAGE}
         canonical="/business/signup"
@@ -149,15 +152,17 @@ const BusinessSignup = () => {
       >
         <Card className="w-full max-w-md lg:max-w-2xl shadow-2xl border-0 bg-card/80 backdrop-blur-sm">
           <CardHeader className="space-y-2 px-6 pb-6 pt-8 text-center sm:px-10 sm:pt-10">
-            <CardTitle className="text-3xl text-primary">Create Your Business Account</CardTitle>
+            <CardTitle className="text-3xl text-primary">
+              {tp("Create Your Business Account")}
+            </CardTitle>
             <CardDescription className="text-sm sm:text-base">
-              Join SeatPing and transform your business
+              {tp("Join SeatPing and transform your business")}
             </CardDescription>
           </CardHeader>
           <CardContent className="px-6 pb-8 sm:px-10 sm:pb-10">
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="businessName">Business Name</Label>
+                <Label htmlFor="businessName">{tp("Business Name")}</Label>
                 <Input
                   id="businessName"
                   name="businessName"
@@ -172,7 +177,7 @@ const BusinessSignup = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="businessUsername">Business Username</Label>
+                <Label htmlFor="businessUsername">{tp("Business Username")}</Label>
                 <Input
                   id="businessUsername"
                   name="businessUsername"
@@ -187,7 +192,7 @@ const BusinessSignup = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{tp("Email")}</Label>
                 <Input
                   id="email"
                   name="email"
@@ -201,7 +206,7 @@ const BusinessSignup = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone">{tp("Phone Number")}</Label>
                 <div className="flex gap-2">
                   <CountryCodeSelect
                     className="h-11"
@@ -227,7 +232,7 @@ const BusinessSignup = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{tp("Password")}</Label>
                 <Input
                   id="password"
                   name="password"
@@ -241,7 +246,7 @@ const BusinessSignup = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">{tp("Confirm Password")}</Label>
                 <Input
                   id="confirmPassword"
                   name="confirmPassword"
@@ -263,9 +268,9 @@ const BusinessSignup = () => {
 
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
-                Already have a business account?{" "}
+                {tp("Already have a business account?")}{" "}
                 <Link to="/business/login" className="text-primary hover:underline">
-                  Log In
+                  {tp("Log In")}
                 </Link>
               </p>
             </div>

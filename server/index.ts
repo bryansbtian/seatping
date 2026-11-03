@@ -14,6 +14,7 @@ import { syncTicketInbox } from "./lib/ticketInbox.js";
 import adminBlogRouter from "./routes/adminBlog.js";
 import adminBlogCollaborationRouter from "./routes/adminBlogCollaboration.js";
 import publicBlogRouter from "./routes/publicBlog.js";
+import publicLanguageRouter from "./routes/publicLanguage.js";
 import { createBlogPagesRouter, sitemapRouter } from "./routes/blogPages.js";
 import adminCustomersRouter from "./routes/adminCustomers.js";
 import demoRouter from "./routes/demo.js";
@@ -179,6 +180,7 @@ if (process.env.NODE_ENV === "production") {
 app.use("/api/admin/blog", adminBlogRouter);
 app.use("/api/admin/blog-collaboration", adminBlogCollaborationRouter);
 app.use("/api/blog", publicBlogRouter);
+app.use("/api/language", publicLanguageRouter);
 app.use(sitemapRouter);
 app.use("/admin/customer", adminCustomersRouter);
 app.use("/admin", adminRouter);

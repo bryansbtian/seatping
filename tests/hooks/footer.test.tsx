@@ -1,7 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Footer from "../../src/components/Footer.js";
+import PublicLanguageProvider from "../../src/components/PublicLanguageProvider.js";
+import { PUBLIC_LANGUAGE_STORAGE_KEY } from "../../shared/publicLanguage.js";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -52,7 +54,40 @@ describe("public footer", () => {
       "Resources",
       "Connect",
       "Legal",
+      "Language",
     ]);
+  });
+
+  it("switches the current page language and keeps the query and fragment", () => {
+    render(
+      <MemoryRouter initialEntries={["/search?partySize=4#results"]}>
+        <PublicLanguageProvider>
+          <Footer />
+        </PublicLanguageProvider>
+      </MemoryRouter>,
+    );
+    const indonesian = screen.getByRole("link", { name: "Bahasa Indonesia" });
+    expect(indonesian.getAttribute("href")).toBe("/id/search?partySize=4#results");
+    expect(indonesian.className).toContain("hover:bg-transparent");
+    fireEvent.click(indonesian);
+    expect(document.documentElement.lang).toBe("id");
+    expect(localStorage.getItem(PUBLIC_LANGUAGE_STORAGE_KEY)).toBe("id");
+    expect(screen.getByRole("link", { name: "Kebijakan Privasi" }).getAttribute("href")).toBe(
+      "/id/policy",
+    );
+    expect(screen.getByRole("link", { name: "Blog", exact: true }).getAttribute("href")).toBe(
+      "/blog",
+    );
+    expect(
+      screen.getByRole("link", { name: "Bahasa Indonesia" }).getAttribute("aria-current"),
+    ).toBe("true");
+    expect(screen.getByRole("link", { name: "English" }).getAttribute("href")).toBe(
+      "/en/search?partySize=4#results",
+    );
+    fireEvent.click(screen.getByRole("link", { name: "English" }));
+    expect(document.documentElement.lang).toBe("en");
+    expect(localStorage.getItem(PUBLIC_LANGUAGE_STORAGE_KEY)).toBe("en");
+    expect(localStorage.getItem("seatping.business.lang")).toBeNull();
   });
 
   it("uses the current year after a calendar year change", () => {

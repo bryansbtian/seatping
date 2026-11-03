@@ -1,5 +1,6 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { Fragment, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "@/lib/publicNavigation";
 import Header from "@/components/Header";
 import SEO, { CUSTOMER_DESCRIPTION } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
@@ -109,6 +110,8 @@ type CustomerProfile = {
 };
 
 const Profile = () => {
+  const { t: tp } = usePublicLanguage();
+
   const navigate = useNavigate();
   const { toast } = useToast();
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
@@ -146,11 +149,11 @@ const Profile = () => {
         });
       }
       setProfile(res.user);
-      toast({ title: "Restaurant removed from saved" });
+      toast({ title: tp("Restaurant removed from saved") });
     } catch (err: any) {
       toast({
-        title: "Could not remove",
-        description: err?.message || "Please try again.",
+        title: tp("Could not remove"),
+        description: tp(err?.message || tp("Please try again.")),
         variant: "destructive",
       });
     }
@@ -215,7 +218,7 @@ const Profile = () => {
   let profileContent: React.ReactNode;
   if (loading) {
     profileContent = (
-      <div role="status" aria-label="Loading Profile" className="space-y-8">
+      <div role="status" aria-label={tp("Loading Profile")} className="space-y-8">
         <div
           aria-hidden="true"
           className="flex items-center gap-4 rounded-xl border border-border bg-card p-6"
@@ -239,8 +242,8 @@ const Profile = () => {
         <ProfileHeaderCard profile={profile} onUpdated={setProfile} />
 
         <ActivitySection
-          title="Saved Spots"
-          emptyState="Restaurants you save will appear here."
+          title={tp("Saved Spots")}
+          emptyState={tp("Restaurants you save will appear here.")}
           items={profile.savedRestaurants || []}
           limits={{ mobile: 2, tablet: 2, desktop: 3 }}
           keyOf={(s, i) => s.id || s.locationId || s.businessUsername || String(i)}
@@ -262,8 +265,8 @@ const Profile = () => {
         />
 
         <ActivitySection
-          title="Happening Now"
-          emptyState="No active queue activity right now."
+          title={tp("Happening Now")}
+          emptyState={tp("No active queue activity right now.")}
           items={activeQueue}
           limits={{ mobile: 1, tablet: 2, desktop: 2 }}
           keyOf={(q) => q.id}
@@ -271,8 +274,8 @@ const Profile = () => {
         />
 
         <ActivitySection
-          title="Tables Coming Up"
-          emptyState="Your upcoming reservations will appear here."
+          title={tp("Tables Coming Up")}
+          emptyState={tp("Your upcoming reservations will appear here.")}
           items={upcomingReservations}
           limits={{ mobile: 2, tablet: 2, desktop: 3 }}
           keyOf={(r) => r.id}
@@ -280,12 +283,12 @@ const Profile = () => {
         />
 
         <ActivitySection
-          title="Your Reviews"
+          title={tp("Your Reviews")}
           emptyState={
             <>
-              <p>Your restaurant reviews will appear here.</p>
+              <p>{tp("Your restaurant reviews will appear here.")}</p>
               <p className="mt-1 text-xs">
-                After you leave a review, you can edit or delete it from this section.
+                {tp("After you leave a review, you can edit or delete it from this section.")}
               </p>
             </>
           }
@@ -302,8 +305,8 @@ const Profile = () => {
         />
 
         <ActivitySection
-          title="Your Dining Rewind"
-          emptyState="Your past reservations and queue visits will appear here."
+          title={tp("Your Dining Rewind")}
+          emptyState={tp("Your past reservations and queue visits will appear here.")}
           items={diningHistory}
           limits={{ mobile: 2, tablet: 4, desktop: 4 }}
           keyOf={(item) => item.key}
@@ -337,7 +340,11 @@ const Profile = () => {
 
   return (
     <>
-      <SEO title="My Profile | SeatPing" description={CUSTOMER_DESCRIPTION} canonical="/profile" />
+      <SEO
+        title={tp("My Profile | SeatPing")}
+        description={CUSTOMER_DESCRIPTION}
+        canonical="/profile"
+      />
       <Header />
       <main data-page-background="auth" className="min-h-screen px-4 pb-12 pt-24 sm:pb-16">
         <div className="mx-auto w-full max-w-3xl space-y-5 sm:space-y-6">{profileContent}</div>
@@ -408,6 +415,8 @@ function ProfileHeaderCard({
   profile: CustomerProfile;
   onUpdated: (p: CustomerProfile) => void;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   const [editOpen, setEditOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
   const formattedProfilePhone = formatEnteredPhone(profile.phone);
@@ -438,14 +447,14 @@ function ProfileHeaderCard({
             onClick={() => setEditOpen(true)}
             className="h-9 w-full sm:h-10 sm:w-auto"
           >
-            Edit Profile
+            {tp("Edit Profile")}
           </Button>
           <Button
             variant="outline"
             onClick={() => setPwOpen(true)}
             className="h-9 w-full sm:h-10 sm:w-auto"
           >
-            Change Password
+            {tp("Change Password")}
           </Button>
         </div>
       </CardContent>
@@ -472,6 +481,8 @@ function EditDetailsDialog({
   profile: CustomerProfile;
   onUpdated: (p: CustomerProfile) => void;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   const { toast } = useToast();
   const initialPhone = splitPhone(profile.phone);
   const [name, setName] = useState(profile.name);
@@ -496,8 +507,8 @@ function EditDetailsDialog({
   const save = async () => {
     if (!name.trim() || username.trim().length < 3 || !email.trim()) {
       toast({
-        title: "Check your details",
-        description: "Name, a username (3+ chars), and email are required.",
+        title: tp("Check your details"),
+        description: tp("Name, a username (3+ chars), and email are required."),
         variant: "destructive",
       });
       return;
@@ -523,12 +534,12 @@ function EditDetailsDialog({
         queryClient.invalidateQueries({ queryKey: queryKeys.session }),
         queryClient.invalidateQueries({ queryKey: ["private", "contact"] }),
       ]);
-      toast({ title: "Profile Updated" });
+      toast({ title: tp("Profile Updated") });
       onOpenChange(false);
     } catch (err: any) {
       toast({
-        title: "Update failed",
-        description: err?.message || "Please try again.",
+        title: tp("Update failed"),
+        description: tp(err?.message || tp("Please try again.")),
         variant: "destructive",
       });
     } finally {
@@ -536,25 +547,25 @@ function EditDetailsDialog({
     }
   };
 
-  let saveLabel = "Save Changes";
+  let saveLabel = tp("Save Changes");
   if (saving) {
-    saveLabel = "Saving...";
+    saveLabel = tp("Saving...");
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Details</DialogTitle>
-          <DialogDescription>Update your account information.</DialogDescription>
+          <DialogTitle>{tp("Edit Details")}</DialogTitle>
+          <DialogDescription>{tp("Update your account information.")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="edit-name">Full Name</Label>
+            <Label htmlFor="edit-name">{tp("Full Name")}</Label>
             <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="edit-username">Username</Label>
+            <Label htmlFor="edit-username">{tp("Username")}</Label>
             <Input
               id="edit-username"
               value={username}
@@ -562,7 +573,7 @@ function EditDetailsDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="edit-email">Email</Label>
+            <Label htmlFor="edit-email">{tp("Email")}</Label>
             <Input
               id="edit-email"
               type="email"
@@ -572,7 +583,8 @@ function EditDetailsDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="edit-phone">
-              Phone Number <span className="font-normal text-muted-foreground">(Optional)</span>
+              {tp("Phone Number")}{" "}
+              <span className="font-normal text-muted-foreground">{tp("(Optional)")}</span>
             </Label>
             <div className="flex gap-2">
               <CountryCodeSelect value={countryCode} onChange={setCountryCode} />
@@ -588,7 +600,7 @@ function EditDetailsDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
+            {tp("Cancel")}
           </Button>
           <Button onClick={save} disabled={saving}>
             {saveLabel}
@@ -606,6 +618,8 @@ function ChangePasswordDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   const { toast } = useToast();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -622,19 +636,19 @@ function ChangePasswordDialog({
 
   const save = async () => {
     if (!currentPassword) {
-      toast({ title: "Enter your current password", variant: "destructive" });
+      toast({ title: tp("Enter your current password"), variant: "destructive" });
       return;
     }
     if (newPassword.length < 8) {
       toast({
-        title: "New password too short",
-        description: "Use at least 8 characters.",
+        title: tp("New password too short"),
+        description: tp("Use at least 8 characters."),
         variant: "destructive",
       });
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast({ title: "New passwords don't match", variant: "destructive" });
+      toast({ title: tp("New passwords don't match"), variant: "destructive" });
       return;
     }
     try {
@@ -643,12 +657,12 @@ function ChangePasswordDialog({
         method: "POST",
         body: JSON.stringify({ currentPassword, newPassword }),
       });
-      toast({ title: "Password Updated" });
+      toast({ title: tp("Password Updated") });
       onOpenChange(false);
     } catch (err: any) {
       toast({
-        title: "Could not change password",
-        description: err?.message || "Please try again.",
+        title: tp("Could not change password"),
+        description: tp(err?.message || tp("Please try again.")),
         variant: "destructive",
       });
     } finally {
@@ -656,21 +670,23 @@ function ChangePasswordDialog({
     }
   };
 
-  let updateLabel = "Update Password";
+  let updateLabel = tp("Update Password");
   if (saving) {
-    updateLabel = "Updating...";
+    updateLabel = tp("Updating...");
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Change Password</DialogTitle>
-          <DialogDescription>Enter your current password, then your new one.</DialogDescription>
+          <DialogTitle>{tp("Change Password")}</DialogTitle>
+          <DialogDescription>
+            {tp("Enter your current password, then your new one.")}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="cur-pw">Current Password</Label>
+            <Label htmlFor="cur-pw">{tp("Current Password")}</Label>
             <Input
               id="cur-pw"
               type="password"
@@ -679,7 +695,7 @@ function ChangePasswordDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="new-pw">New Password</Label>
+            <Label htmlFor="new-pw">{tp("New Password")}</Label>
             <Input
               id="new-pw"
               type="password"
@@ -688,7 +704,7 @@ function ChangePasswordDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="new-pw2">New Password Again</Label>
+            <Label htmlFor="new-pw2">{tp("New Password Again")}</Label>
             <Input
               id="new-pw2"
               type="password"
@@ -699,7 +715,7 @@ function ChangePasswordDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
+            {tp("Cancel")}
           </Button>
           <Button onClick={save} disabled={saving}>
             {updateLabel}
@@ -722,11 +738,13 @@ function BusinessThumb({ name }: { name?: string }) {
 }
 
 function ActivityThumb({ imageUrl, name }: { imageUrl?: string | null; name?: string }) {
+  const { t: tp } = usePublicLanguage();
+
   if (imageUrl) {
     return (
       <img
         src={imageUrl}
-        alt={name || "Restaurant"}
+        alt={name || tp("Restaurant")}
         className="h-11 w-11 shrink-0 rounded-lg object-cover sm:h-12 sm:w-12"
       />
     );
@@ -735,6 +753,8 @@ function ActivityThumb({ imageUrl, name }: { imageUrl?: string | null; name?: st
 }
 
 function ReservationCard({ r, typeLabel }: { r: Reservation; typeLabel?: string }) {
+  const { t: tp } = usePublicLanguage();
+
   const displayName = r.restaurantName || r.businessName || r.businessUsername;
   let manageHoverClass = "";
   if (r.manageToken) {
@@ -748,9 +768,9 @@ function ReservationCard({ r, typeLabel }: { r: Reservation; typeLabel?: string 
   if (r.people === 1) {
     guestWord = "guest";
   }
-  let manageLinkLabel = "View Reservation";
+  let manageLinkLabel = tp("View Reservation");
   if (r.status === "confirmed" || !r.status) {
-    manageLinkLabel = "View or Manage";
+    manageLinkLabel = tp("View or Manage");
   }
   const inner = (
     <Card className={"border border-border bg-background" + manageHoverClass}>
@@ -774,7 +794,7 @@ function ReservationCard({ r, typeLabel }: { r: Reservation; typeLabel?: string 
             {typeof r.people === "number" && (
               <span className="text-muted-foreground">
                 {" "}
-                · {r.people} {guestWord}
+                · {r.people} {tp(guestWord)}
               </span>
             )}
           </p>
@@ -797,6 +817,8 @@ function ReservationCard({ r, typeLabel }: { r: Reservation; typeLabel?: string 
 }
 
 function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
+  const { t: tp, locale } = usePublicLanguage();
+
   const displayName = q.restaurantName || q.businessName || q.businessUsername;
   const isActive = q.active || q.status === "waiting";
   let liveHref: string | null = null;
@@ -811,15 +833,15 @@ function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
   const finalTime = q.confirmedAt || q.admittedAt || q.noShowMarkedAt || q.removedAt || q.leftAt;
   let finalTimeLabel: string | null = null;
   if (!isActive && finalTime) {
-    const finalTimeText = new Date(finalTime).toLocaleString();
+    const finalTimeText = new Date(finalTime).toLocaleString(locale);
     if (q.status === "arrived" || q.status === "admitted") {
-      finalTimeLabel = `Served ${finalTimeText}`;
+      finalTimeLabel = tp(`Served ${finalTimeText}`);
     } else if (q.status === "no_show") {
-      finalTimeLabel = `Marked No-Show ${finalTimeText}`;
+      finalTimeLabel = tp(`Marked No-Show ${finalTimeText}`);
     } else if (q.status === "left") {
-      finalTimeLabel = `Left ${finalTimeText}`;
+      finalTimeLabel = tp(`Left ${finalTimeText}`);
     } else {
-      finalTimeLabel = `Removed ${finalTimeText}`;
+      finalTimeLabel = tp(`Removed ${finalTimeText}`);
     }
   }
 
@@ -850,7 +872,11 @@ function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
             <p className="truncate text-xs text-muted-foreground sm:text-sm">{q.locationName}</p>
           )}
           <p className="mt-1 text-xs text-slate-700 sm:text-sm">
-            {q.joinedAt && <>Joined {new Date(q.joinedAt).toLocaleString()}</>}
+            {q.joinedAt && (
+              <>
+                {tp("Joined")} {new Date(q.joinedAt).toLocaleString(locale)}
+              </>
+            )}
             {typeof q.partySize === "number" && q.partySize > 0 && (
               <span className="text-muted-foreground">
                 {" "}
@@ -866,7 +892,7 @@ function QueueCard({ q, typeLabel }: { q: QueueActivity; typeLabel?: string }) {
               to={liveHref}
               className="mt-1 inline-block text-xs font-medium text-indigo-600 hover:underline"
             >
-              View Live Queue →
+              {tp("View Live Queue →")}
             </Link>
           )}
         </div>
@@ -884,6 +910,7 @@ function SavedRestaurantCard({
   onView: () => void;
   onRemove: () => void;
 }) {
+  const { t: tp } = usePublicLanguage();
   const name = s.name || s.businessName || s.businessUsername;
   const locationLabel = s.locationName || [s.area, s.city].filter(Boolean).join(", ");
   let ratingLabel: string | null = null;
@@ -914,7 +941,7 @@ function SavedRestaurantCard({
           onView();
         }
       }}
-      aria-label={`View ${name}`}
+      aria-label={tp(`View ${name}`)}
       className="cursor-pointer border border-border bg-background transition-colors hover:border-slate-300 hover:bg-slate-50"
     >
       <CardContent className="flex gap-2.5 p-3 sm:gap-3 sm:p-4">
@@ -930,7 +957,7 @@ function SavedRestaurantCard({
             e.stopPropagation();
             onRemove();
           }}
-          aria-label={`Remove ${name} from saved`}
+          aria-label={tp(`Remove ${name} from saved`)}
           className="h-8 w-8 shrink-0"
         >
           <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
@@ -981,6 +1008,8 @@ function ActivitySection<T>({
   keyOf: (item: T, index: number) => string;
   renderItem: (item: T) => React.ReactNode;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   const tier = useTier();
   const [expanded, setExpanded] = useState(false);
   const limit = limits[tier];
@@ -992,9 +1021,9 @@ function ActivitySection<T>({
     visible = items.slice(0, limit);
   }
 
-  let toggleLabel = `View All (${items.length})`;
+  let toggleLabel = tp(`View All (${items.length})`);
   if (expanded) {
-    toggleLabel = "View Less";
+    toggleLabel = tp("View Less");
   }
 
   let itemsContent: React.ReactNode;
@@ -1037,9 +1066,10 @@ function ActivitySection<T>({
 }
 
 function StarsDisplay({ rating }: { rating: number }) {
+  const { t: tp } = usePublicLanguage();
   const filled = Math.round(rating);
   return (
-    <div className="flex items-center gap-0.5" aria-label={`${rating} out of 5`}>
+    <div className="flex items-center gap-0.5" aria-label={tp(`${rating} out of 5`)}>
       {[1, 2, 3, 4, 5].map((n) => {
         let starClass = "h-4 w-4 fill-slate-200 text-slate-200";
         if (n <= filled) {
@@ -1051,7 +1081,7 @@ function StarsDisplay({ rating }: { rating: number }) {
   );
 }
 
-function reviewDate(value?: string | null): string {
+function reviewDate(value?: string | null, locale?: string): string {
   if (!value) {
     return "";
   }
@@ -1059,7 +1089,7 @@ function reviewDate(value?: string | null): string {
   if (Number.isNaN(t)) {
     return "";
   }
-  return new Date(t).toLocaleDateString(undefined, {
+  return new Date(t).toLocaleDateString(locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -1075,14 +1105,16 @@ function ProfileReviewCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const posted = reviewDate(review.createdAt);
+  const { t: tp, locale } = usePublicLanguage();
+
+  const posted = reviewDate(review.createdAt, locale);
   let updated = "";
   if (
     review.updatedAt &&
     review.createdAt &&
     Date.parse(review.updatedAt) - Date.parse(review.createdAt) > 60_000
   ) {
-    updated = reviewDate(review.updatedAt);
+    updated = reviewDate(review.updatedAt, locale);
   }
 
   return (
@@ -1091,7 +1123,7 @@ function ProfileReviewCard({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="line-clamp-1 text-sm font-semibold text-slate-900 sm:text-base">
-              {review.restaurantName || "Restaurant"}
+              {review.restaurantName || tp("Restaurant")}
             </p>
             {review.locationName && (
               <p className="line-clamp-1 text-xs text-muted-foreground sm:text-sm">
@@ -1104,7 +1136,7 @@ function ProfileReviewCard({
               variant="ghost"
               size="icon"
               onClick={onEdit}
-              aria-label="Edit review"
+              aria-label={tp("Edit review")}
               className="h-8 w-8 text-muted-foreground hover:text-slate-900"
             >
               <HugeiconsIcon icon={Edit03Icon} className="size-4" />
@@ -1113,7 +1145,7 @@ function ProfileReviewCard({
               variant="destructiveOutline"
               size="icon"
               onClick={onDelete}
-              aria-label="Delete review"
+              aria-label={tp("Delete review")}
               className="h-8 w-8"
             >
               <HugeiconsIcon icon={Delete02Icon} className="h-4 w-4" />
@@ -1129,15 +1161,24 @@ function ProfileReviewCard({
 
         {(posted || updated) && (
           <p className="text-caption text-muted-foreground sm:text-xs">
-            {posted && <>Posted {posted}</>}
-            {updated && <> · Updated {updated}</>}
+            {posted && (
+              <>
+                {tp("Posted")} {posted}
+              </>
+            )}
+            {updated && (
+              <>
+                {" "}
+                {tp("· Updated")} {updated}
+              </>
+            )}
           </p>
         )}
 
         {review.businessReply && (
           <div className="mt-1 rounded-lg bg-slate-50 p-2.5 sm:p-3">
             <p className="text-caption font-semibold text-slate-700 sm:text-xs">
-              Response From The Restaurant
+              {tp("Response From The Restaurant")}
             </p>
             <p className="mt-0.5 text-xs text-slate-600 sm:text-sm">{review.businessReply}</p>
           </div>
@@ -1156,6 +1197,8 @@ function DeleteReviewDialog({
   onOpenChange: (open: boolean) => void;
   onDeleted: (id: string) => void;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   const { toast } = useToast();
   const [deleting, setDeleting] = useState(false);
 
@@ -1168,11 +1211,11 @@ function DeleteReviewDialog({
       await api(`/auth/me/reviews/${review.id}`, { method: "DELETE" });
       onDeleted(review.id);
       await invalidateRestaurantData();
-      toast({ title: "Review deleted" });
+      toast({ title: tp("Review deleted") });
     } catch (err: any) {
       toast({
-        title: "Could not delete review",
-        description: err?.message || "Please try again.",
+        title: tp("Could not delete review"),
+        description: tp(err?.message || tp("Please try again.")),
         variant: "destructive",
       });
     } finally {
@@ -1182,23 +1225,23 @@ function DeleteReviewDialog({
 
   let deleteButtonLabel: string;
   if (deleting) {
-    deleteButtonLabel = "Deleting…";
+    deleteButtonLabel = tp("Deleting…");
   } else {
-    deleteButtonLabel = "Delete Review";
+    deleteButtonLabel = tp("Delete Review");
   }
 
   return (
     <Dialog open={!!review} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-md rounded-xl">
         <DialogHeader>
-          <DialogTitle>Delete This Review?</DialogTitle>
+          <DialogTitle>{tp("Delete This Review?")}</DialogTitle>
           <DialogDescription>
-            This will remove your review from the restaurant page.
+            {tp("This will remove your review from the restaurant page.")}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={deleting}>
-            Cancel
+            {tp("Cancel")}
           </Button>
           <Button variant="destructive" onClick={confirm} disabled={deleting}>
             {deleteButtonLabel}

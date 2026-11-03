@@ -1,5 +1,6 @@
 import { blogDescription, blogListMeta, blogStructuredData } from "../lib/blogSeo.js";
 import { INDEXABLE_STATIC_PATHS } from "../../shared/pageMeta.js";
+import { isLocalizedPublicPath, localizedPublicPath } from "../../shared/publicLanguage.js";
 import { Router } from "express";
 import { blogCoverThumbnail, isBlogCoverVideo } from "../../shared/blogMedia.js";
 import { prisma } from "../lib/prisma.js";
@@ -212,6 +213,9 @@ sitemapRouter.get("/sitemap.xml", async (req, res) => {
     if (pageNumber === 1) {
       for (const path of INDEXABLE_STATIC_PATHS) {
         entries.push(`<url><loc>${SITE_URL}${path}</loc></url>`);
+        if (isLocalizedPublicPath(path)) {
+          entries.push(`<url><loc>${SITE_URL}${localizedPublicPath(path, "id")}</loc></url>`);
+        }
       }
     }
     for (const post of posts) {

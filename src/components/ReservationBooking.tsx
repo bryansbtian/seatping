@@ -1,5 +1,7 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
+import { localizedPublicPath } from "@shared/publicLanguage";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/publicNavigation";
 import { format, isToday, isTomorrow } from "date-fns";
 import { api } from "@/lib/api";
 import { useCustomerContact } from "@/hooks/useSession";
@@ -65,7 +67,7 @@ type Props = {
   autoOpen?: boolean;
 };
 
-function readableDate(date: string): string {
+function readableDate(date: string, locale?: string): string {
   if (!date) {
     return "";
   }
@@ -73,7 +75,7 @@ function readableDate(date: string): string {
   if (Number.isNaN(d.getTime())) {
     return date;
   }
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString(locale, {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -94,6 +96,8 @@ export default function ReservationBooking({
   initialPartySize,
   autoOpen,
 }: Props) {
+  const { t: tp } = usePublicLanguage();
+
   const settings =
     useBookingSettings(businessUsername, locationId, reservationsEnabled).data ?? null;
   let initialPartyValue: number | "larger";
@@ -221,13 +225,13 @@ export default function ReservationBooking({
     if (partySize === "larger") {
       timeContent = (
         <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
-          For larger parties, please contact the restaurant directly.
+          {tp("For larger parties, please contact the restaurant directly.")}
         </p>
       );
     } else if (!date) {
       timeContent = (
         <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
-          Pick a date to see available times.
+          {tp("Pick a date to see available times.")}
         </p>
       );
     } else if (loadingSlots) {
@@ -242,17 +246,17 @@ export default function ReservationBooking({
               const selected = s.time === time;
               let slotTitle: string;
               if (s.available && s.remaining !== null) {
-                slotTitle = `${s.remaining} seats left this hour`;
+                slotTitle = tp(`${s.remaining} seats left this hour`);
               } else if (s.available) {
-                slotTitle = "Available";
+                slotTitle = tp("Available");
               } else if (s.reason === "full") {
-                slotTitle = `${s.label} is fully booked`;
+                slotTitle = tp(`${tp(s.label)} is fully booked`);
               } else if (s.reason === "no_table") {
-                slotTitle = "No table free for this party size";
+                slotTitle = tp("No table free for this party size");
               } else if (s.reason === "too_soon") {
-                slotTitle = "Too close to booking time";
+                slotTitle = tp("Too close to booking time");
               } else {
-                slotTitle = "Unavailable";
+                slotTitle = tp("Unavailable");
               }
               let slotClass: string;
               if (selected) {
@@ -275,14 +279,14 @@ export default function ReservationBooking({
                   title={slotTitle}
                   className={cn(SLOT_BUTTON_BASE_CLASS, slotClass, "px-2")}
                 >
-                  {s.label}
+                  {tp(s.label)}
                 </button>
               );
             })}
           </div>
           {slotsLoaded && !anyAvailable && (
             <p className="text-xs text-amber-600">
-              Try another date or a smaller party to find an available time.
+              {tp("Try another date or a smaller party to find an available time.")}
             </p>
           )}
           {fullNotice &&
@@ -300,13 +304,13 @@ export default function ReservationBooking({
                 .join(", ");
               let nearbyText: string;
               if (nearby) {
-                nearbyText = ` Try ${nearby}.`;
+                nearbyText = tp(` Try ${nearby}.`);
               } else {
-                nearbyText = " Try another nearby time.";
+                nearbyText = tp(" Try another nearby time.");
               }
               return (
                 <p className="text-xs text-amber-600">
-                  {sel.label} is fully booked.
+                  {sel.label} {tp("is fully booked.")}
                   {nearbyText}
                 </p>
               );
@@ -318,11 +322,11 @@ export default function ReservationBooking({
       <>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-2">
           <div className="space-y-1">
-            <Label className="text-xs text-slate-500">Number of Guests</Label>
+            <Label className="text-xs text-slate-500">{tp("Number of Guests")}</Label>
             <PartyField value={partySize} onChange={setPartySize} max={maxParty} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-slate-500">Date</Label>
+            <Label className="text-xs text-slate-500">{tp("Date")}</Label>
             <DateField
               value={date}
               onChange={setDate}
@@ -333,7 +337,7 @@ export default function ReservationBooking({
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs text-slate-500">Time</Label>
+          <Label className="text-xs text-slate-500">{tp("Time")}</Label>
           {timeContent}
         </div>
       </>
@@ -341,8 +345,10 @@ export default function ReservationBooking({
   } else {
     planContent = (
       <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-        <p className="font-medium text-slate-900">Reservations are currently unavailable.</p>
-        <p className="mt-0.5 text-xs">Join the waitlist to save your spot.</p>
+        <p className="font-medium text-slate-900">
+          {tp("Reservations are currently unavailable.")}
+        </p>
+        <p className="mt-0.5 text-xs">{tp("Join the waitlist to save your spot.")}</p>
       </div>
     );
   }
@@ -352,20 +358,20 @@ export default function ReservationBooking({
     if (isClosed) {
       primaryAction = (
         <Button asChild className="w-full" variant="default">
-          <Link to="/search">Explore Other Restaurants</Link>
+          <Link to="/search">{tp("Explore Other Restaurants")}</Link>
         </Button>
       );
     } else {
       primaryAction = (
         <Button className="w-full" disabled={!canBook} onClick={() => setModalOpen(true)}>
-          <span>Book Table</span>
+          <span>{tp("Book Table")}</span>
         </Button>
       );
     }
   } else {
     primaryAction = (
       <Button variant="outline" className="w-full border-slate-200 text-slate-400" disabled>
-        <span>Reservations Unavailable</span>
+        <span>{tp("Reservations Unavailable")}</span>
       </Button>
     );
   }
@@ -390,7 +396,7 @@ export default function ReservationBooking({
 
         <div className="border-t border-slate-100" />
 
-        <p className="text-base font-semibold text-slate-900">Plan Your Visit</p>
+        <p className="text-base font-semibold text-slate-900">{tp("Plan Your Visit")}</p>
 
         {planContent}
 
@@ -399,7 +405,7 @@ export default function ReservationBooking({
           {queueEnabled !== false && (
             <Button variant="outline" asChild className="w-full">
               <Link to={queueHref}>
-                <span>Join Queue</span>
+                <span>{tp("Join Queue")}</span>
               </Link>
             </Button>
           )}
@@ -459,6 +465,8 @@ function BookingModal({
   defaultLastName?: string;
   defaultEmail?: string;
 }) {
+  const { t: tp, locale, lang } = usePublicLanguage();
+
   const { toast } = useToast();
 
   const [partySize, setPartySize] = useState<number | "larger">(initialPartySize);
@@ -538,8 +546,8 @@ function BookingModal({
     } catch (e: any) {
       void invalidateAvailability(businessUsername, locationId);
       toast({
-        title: "Could not book",
-        description: e?.message || "Please try another time.",
+        title: tp("Could not book"),
+        description: tp(e?.message || tp("Please try another time.")),
         variant: "destructive",
       });
     } finally {
@@ -547,15 +555,18 @@ function BookingModal({
     }
   };
 
-  const manageUrl: string | undefined = confirmation?.manageUrl;
   const manageToken: string | undefined = confirmation?.manageToken;
+  let manageUrl: string | undefined;
+  if (manageToken) {
+    manageUrl = `${window.location.origin}${localizedPublicPath(`/reservations/manage/${encodeURIComponent(manageToken)}`, lang)}`;
+  }
   const reservation = confirmation?.reservation;
 
   let modalTimeContent: JSX.Element;
   if (partySize === "larger") {
     modalTimeContent = (
       <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 max-[320px]:p-2.5 text-sm max-sm:text-body text-slate-600">
-        For larger parties, please contact the restaurant directly.
+        {tp("For larger parties, please contact the restaurant directly.")}
       </div>
     );
   } else if (loadingSlots) {
@@ -592,7 +603,7 @@ function BookingModal({
                 "px-1 max-sm:text-label max-sm:font-medium",
               )}
             >
-              {s.label}
+              {tp(s.label)}
             </button>
           );
         })}
@@ -607,26 +618,26 @@ function BookingModal({
         <div className="flex flex-col items-center text-center">
           <HugeiconsIcon icon={CheckmarkCircle02Icon} className="h-12 w-12 text-emerald-500" />
           <DialogTitle className="mt-3 text-lg max-sm:text-title max-sm:font-medium">
-            Reservation Confirmed
+            {tp("Reservation Confirmed")}
           </DialogTitle>
           <DialogDescription className="mt-1">
-            {`You're booked at ${restaurantName}.`}
+            {tp(`You're booked at ${restaurantName}.`)}
           </DialogDescription>
         </div>
 
         <div className="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
-          <Row label="Name" value={`${firstName} ${lastName}`} />
-          <Row label="Date" value={readableDate(date)} />
-          <Row label="Time" value={slots.find((s) => s.time === time)?.label || time} />
-          <Row label="Number of Guests" value={`${partySize}`} />
+          <Row label={tp("Name")} value={`${firstName} ${lastName}`} />
+          <Row label={tp("Date")} value={readableDate(date, locale)} />
+          <Row label={tp("Time")} value={tp(slots.find((s) => s.time === time)?.label || time)} />
+          <Row label={tp("Number of Guests")} value={`${partySize}`} />
         </div>
 
         <div className="rounded-lg border border-slate-200 p-3">
           <p className="text-xs font-medium text-slate-700 max-sm:text-label">
-            Manage Your Reservation
+            {tp("Manage Your Reservation")}
           </p>
           <p className="mt-0.5 text-xs text-slate-500 max-sm:text-body max-sm:font-normal">
-            Use this link to change or cancel, no account needed.
+            {tp("Use this link to change or cancel, no account needed.")}
           </p>
           <div className="mt-2 flex items-center gap-2">
             <Input
@@ -644,7 +655,7 @@ function BookingModal({
                 if (manageUrl) {
                   navigator.clipboard?.writeText(manageUrl);
                 }
-                toast({ title: "Link copied" });
+                toast({ title: tp("Link copied") });
               }}
             >
               <HugeiconsIcon icon={Copy01Icon} className="h-4 w-4" />
@@ -655,11 +666,11 @@ function BookingModal({
         <div className="flex gap-2">
           {manageToken && (
             <Button asChild className="flex-1">
-              <Link to={`/reservations/manage/${manageToken}`}>Manage Reservation</Link>
+              <Link to={`/reservations/manage/${manageToken}`}>{tp("Manage Reservation")}</Link>
             </Button>
           )}
           <Button variant="outline" className="flex-1" onClick={onClose}>
-            Done
+            {tp("Done")}
           </Button>
         </div>
       </div>
@@ -669,7 +680,7 @@ function BookingModal({
       <>
         <DialogHeader>
           <DialogTitle className="text-lg max-sm:text-title max-sm:font-medium">
-            Book a Table
+            {tp("Book a Table")}
           </DialogTitle>
           <DialogDescription className="text-sm max-sm:text-body">
             {restaurantName}
@@ -680,7 +691,7 @@ function BookingModal({
           <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <div className="space-y-1">
               <Label className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium">
-                Number of Guests
+                {tp("Number of Guests")}
               </Label>
               <PartyField
                 value={partySize}
@@ -691,7 +702,7 @@ function BookingModal({
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium">
-                Date
+                {tp("Date")}
               </Label>
               <DateField
                 value={date}
@@ -705,7 +716,7 @@ function BookingModal({
 
           <div className="space-y-1">
             <Label className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium">
-              Time
+              {tp("Time")}
             </Label>
             {modalTimeContent}
           </div>
@@ -717,7 +728,7 @@ function BookingModal({
                 className="w-full h-10 text-sm max-sm:text-label max-sm:font-medium sm:h-11 sm:text-base"
                 variant="default"
               >
-                <Link to="/search">Explore Other Restaurants</Link>
+                <Link to="/search">{tp("Explore Other Restaurants")}</Link>
               </Button>
             </div>
           )}
@@ -732,7 +743,7 @@ function BookingModal({
                     htmlFor="bk-first"
                     className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium"
                   >
-                    First Name
+                    {tp("First Name")}
                   </Label>
                   <Input
                     id="bk-first"
@@ -746,7 +757,7 @@ function BookingModal({
                     htmlFor="bk-last"
                     className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium"
                   >
-                    Last Name
+                    {tp("Last Name")}
                   </Label>
                   <Input
                     id="bk-last"
@@ -762,7 +773,7 @@ function BookingModal({
                   htmlFor="bk-email"
                   className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium"
                 >
-                  Email
+                  {tp("Email")}
                 </Label>
                 <Input
                   id="bk-email"
@@ -773,7 +784,7 @@ function BookingModal({
                   className="max-sm:text-base"
                 />
                 <p className="text-xs text-slate-400 max-sm:text-body max-sm:font-normal">
-                  We'll send your confirmation and manage link here.
+                  {tp("We'll send your confirmation and manage link here.")}
                 </p>
               </div>
 
@@ -782,21 +793,21 @@ function BookingModal({
                   htmlFor="bk-notes"
                   className="text-xs text-slate-500 max-sm:text-label max-sm:font-medium"
                 >
-                  Notes (Optional)
+                  {tp("Notes (Optional)")}
                 </Label>
                 <Textarea
                   id="bk-notes"
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Allergies, special requests, seating preference…"
+                  placeholder={tp("Allergies, special requests, seating preference…")}
                   className="h-20 min-h-20 resize-y max-sm:text-base"
                 />
               </div>
 
               {settings.cancellationPolicy && (
                 <p className="rounded-md bg-slate-50 p-2.5 max-[320px]:p-2 text-xs text-slate-500 max-sm:text-body max-sm:font-normal">
-                  <span className="font-medium text-slate-600">Policy: </span>
+                  <span className="font-medium text-slate-600">{tp("Policy:")} </span>
                   {settings.cancellationPolicy}
                 </p>
               )}
@@ -805,7 +816,7 @@ function BookingModal({
                 {submitting && (
                   <HugeiconsIcon icon={Loading02Icon} className="h-4 w-4 animate-spin" />
                 )}
-                <span>Confirm Reservation</span>
+                <span>{tp("Confirm Reservation")}</span>
               </Button>
             </>
           )}
@@ -835,8 +846,10 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 function AvailabilityEmptyState({ notice }: { notice: AvailabilityNotice | null }) {
-  const message = notice?.message || "No reservation times are available for this date.";
-  const helper = notice?.helper || "Choose another date to view available reservation times.";
+  const { t: tp } = usePublicLanguage();
+
+  const message = notice?.message || tp("No reservation times are available for this date.");
+  const helper = notice?.helper || tp("Choose another date to view available reservation times.");
 
   return (
     <div className="flex gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -844,8 +857,8 @@ function AvailabilityEmptyState({ notice }: { notice: AvailabilityNotice | null 
         <HugeiconsIcon icon={Clock03Icon} className="h-4 w-4" />
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-medium text-slate-900">{message}</p>
-        <p className="mt-0.5 text-xs leading-5 text-slate-500">{helper}</p>
+        <p className="text-sm font-medium text-slate-900">{tp(message)}</p>
+        <p className="mt-0.5 text-xs leading-5 text-slate-500">{tp(helper)}</p>
       </div>
     </div>
   );
@@ -862,17 +875,19 @@ export function PartyField({
   max: number;
   className?: string;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   const [open, setOpen] = useState(false);
 
   let partyLabel: string;
   if (value === "larger") {
-    partyLabel = "Larger Party";
+    partyLabel = tp("Larger Party");
   } else {
     let guestWord: string;
     if (value === 1) {
-      guestWord = "Guest";
+      guestWord = tp("Guest");
     } else {
-      guestWord = "Guests";
+      guestWord = tp("Guests");
     }
     partyLabel = `${value} ${guestWord}`;
   }
@@ -882,7 +897,7 @@ export function PartyField({
       <PopoverTrigger asChild>
         <FieldTrigger
           icon={UsersRoundIcon}
-          aria-label={`Number of guests: ${value}`}
+          aria-label={tp(`Number of guests: ${value}`)}
           className={className}
         >
           {partyLabel}
@@ -892,9 +907,9 @@ export function PartyField({
         {Array.from({ length: Math.min(max, 10) }, (_, i) => i + 1).map((n) => {
           let optionGuestWord: string;
           if (n === 1) {
-            optionGuestWord = "Guest";
+            optionGuestWord = tp("Guest");
           } else {
-            optionGuestWord = "Guests";
+            optionGuestWord = tp("Guests");
           }
           return (
             <OptionRow
@@ -917,7 +932,7 @@ export function PartyField({
               setOpen(false);
             }}
           >
-            Larger Party
+            {tp("Larger Party")}
           </OptionRow>
         )}
       </PopoverContent>

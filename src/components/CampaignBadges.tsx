@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PILL_BASE_CLASS } from "@/lib/statusStyles";
+import { usePublicLanguage } from "@/lib/publicLanguage";
 
 const CAMPAIGN_STATUS: Record<string, { label: string; cls: string }> = {
   DRAFT: { label: "Draft", cls: "bg-slate-100 text-slate-600" },
@@ -25,13 +26,14 @@ const TEMPLATE_STATUS: Record<string, { label: string; cls: string }> = {
 };
 
 export function CampaignStatusBadge({ status, className }: { status: string; className?: string }) {
+  const { t } = usePublicLanguage();
   const s = CAMPAIGN_STATUS[status] || {
     label: status,
     cls: "bg-slate-100 text-slate-600",
   };
   return (
     <Badge variant="outline" className={cn(PILL_BASE_CLASS, s.cls, className)}>
-      {s.label}
+      {t(s.label)}
     </Badge>
   );
 }

@@ -1,5 +1,6 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@/lib/publicNavigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Restaurant02Icon, Location01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 
@@ -41,6 +42,8 @@ export function SearchSuggestInput({
   className,
   inputClassName,
 }: SearchSuggestInputProps) {
+  const { t: tp } = usePublicLanguage();
+
   const navigate = useNavigate();
 
   const [open, setOpen] = React.useState(false);
@@ -112,18 +115,22 @@ export function SearchSuggestInput({
   if (showDropdown) {
     if (loading && suggestions.length === 0) {
       dropdownContent = (
-        <ListSkeleton rows={3} label="Loading Restaurant Suggestions" className="p-3 md:p-3" />
+        <ListSkeleton
+          rows={3}
+          label={tp("Loading Restaurant Suggestions")}
+          className="p-3 md:p-3"
+        />
       );
     } else if (error) {
       dropdownContent = (
         <div className="px-4 py-3 text-sm text-slate-500 dark:text-ink-subtle">
-          Press Search to continue without suggestions.
+          {tp("Press Search to continue without suggestions.")}
         </div>
       );
     } else if (suggestions.length === 0) {
       dropdownContent = (
         <div className="px-4 py-3 text-sm text-slate-500 dark:text-ink-subtle">
-          No matching restaurants found
+          {tp("No matching restaurants found")}
         </div>
       );
     } else {
@@ -212,9 +219,9 @@ export function SearchSuggestInput({
         }}
         onBlur={() => setOpen(false)}
         onKeyDown={onKeyDown}
-        placeholder={placeholder}
+        placeholder={tp(placeholder)}
         className={cn("control-lg w-full pl-9 max-[360px]:pl-8", inputClassName)}
-        aria-label="Search restaurants, cuisines, or areas"
+        aria-label={tp("Search restaurants, cuisines, or areas")}
         role="combobox"
         aria-expanded={showDropdown}
         aria-autocomplete="list"

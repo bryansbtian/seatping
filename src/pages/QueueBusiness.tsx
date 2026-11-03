@@ -1,5 +1,6 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link } from "@/lib/publicNavigation";
 import Header from "@/components/Header";
 import NotFound from "@/pages/NotFound";
 import { Button } from "@/components/ui/button";
@@ -103,6 +104,8 @@ type Step = 2 | 4 | 5 | 6;
 const HOLD_SECONDS = 5 * 60;
 
 export default function QueueBusiness() {
+  const { t: tp } = usePublicLanguage();
+
   const { businessUsername = "", locationId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -192,8 +195,8 @@ export default function QueueBusiness() {
 
         if (list.length === 0) {
           toast({
-            title: "No Locations Found",
-            description: "This business doesn't have any locations set up yet.",
+            title: tp("No Locations Found"),
+            description: tp("This business doesn't have any locations set up yet."),
             variant: "destructive",
           });
           navigate("/");
@@ -256,22 +259,22 @@ export default function QueueBusiness() {
                 setAdmittedAt(response.admittedAt || response.customer?.admittedAt || null);
                 setStep(5);
                 toast({
-                  title: "Welcome Back!",
-                  description: "You've been admitted. Please proceed to your turn.",
+                  title: tp("Welcome Back!"),
+                  description: tp("You've been admitted. Please proceed to your turn."),
                 });
               } else {
                 setStep(4);
                 setPeopleAhead(Math.max(0, (response.position || 1) - 1));
                 toast({
-                  title: "Queue Restored",
-                  description: "Your queue position has been restored.",
+                  title: tp("Queue Restored"),
+                  description: tp("Your queue position has been restored."),
                 });
               }
             } else if (response.removed) {
               localStorage.removeItem(storageKey);
               toast({
-                title: "Queue Session Ended",
-                description: response.message || "Your queue session has ended.",
+                title: tp("Queue Session Ended"),
+                description: tp(response.message || tp("Your queue session has ended.")),
                 variant: "destructive",
               });
             }
@@ -282,8 +285,8 @@ export default function QueueBusiness() {
         }
       } catch (error) {
         toast({
-          title: "Error Loading Business",
-          description: "Failed to load business information. Please try again.",
+          title: tp("Error Loading Business"),
+          description: tp("Failed to load business information. Please try again."),
           variant: "destructive",
         });
         navigate("/");
@@ -291,7 +294,7 @@ export default function QueueBusiness() {
         setLoadingAddresses(false);
       }
     })();
-  }, [businessUsername, locationId, storageKey, navigate, toast, searchParams]);
+  }, [businessUsername, locationId, storageKey, navigate, toast, searchParams, tp]);
 
   useEffect(() => {
     if (step !== 2 || !businessUsername || !locationId) {
@@ -370,26 +373,26 @@ export default function QueueBusiness() {
           localStorage.removeItem(storageKey);
           setStep(6);
           toast({
-            title: "Arrival Confirmed",
-            description: "You're all set. Please follow the host's instructions.",
+            title: tp("Arrival Confirmed"),
+            description: tp("You're all set. Please follow the host's instructions."),
           });
         } else if (response.removed) {
           localStorage.removeItem(storageKey);
           if (response.status === "no_show") {
             toast({
-              title: "Marked as No-Show",
-              description: "The restaurant marked this spot as a no-show.",
+              title: tp("Marked as No-Show"),
+              description: tp("The restaurant marked this spot as a no-show."),
               variant: "destructive",
             });
           } else if (response.status === "left") {
             toast({
-              title: "You Left the Queue",
-              description: "You have left the queue.",
+              title: tp("You Left the Queue"),
+              description: tp("You have left the queue."),
             });
           } else {
             toast({
-              title: "Removed from Queue",
-              description: "You have been removed from the queue by the business.",
+              title: tp("Removed from Queue"),
+              description: tp("You have been removed from the queue by the business."),
               variant: "destructive",
             });
           }
@@ -402,8 +405,8 @@ export default function QueueBusiness() {
             setStep(5);
             if (!response.expired) {
               toast({
-                title: "You've Been Admitted!",
-                description: "The business has called you. Please proceed to your turn.",
+                title: tp("You've Been Admitted!"),
+                description: tp("The business has called you. Please proceed to your turn."),
               });
             }
           }
@@ -428,6 +431,7 @@ export default function QueueBusiness() {
     toast,
     hasLeftQueue,
     navigate,
+    tp,
   ]);
 
   useEffect(() => {
@@ -520,37 +524,37 @@ export default function QueueBusiness() {
     const newErrors: Record<string, string> = {};
 
     if (!selectedLocation) {
-      newErrors.location = "Please select a location";
+      newErrors.location = tp("Please select a location");
     }
     if (!form.firstName.trim()) {
-      newErrors.firstName = "First name is required";
+      newErrors.firstName = tp("First name is required");
     }
     if (!form.lastName.trim()) {
-      newErrors.lastName = "Last name is required";
+      newErrors.lastName = tp("Last name is required");
     }
     const numGuests = parseInt(form.numGuests);
     if (isNaN(numGuests) || numGuests < 1) {
-      newErrors.numGuests = "Number of guests must be at least 1";
+      newErrors.numGuests = tp("Number of guests must be at least 1");
     }
 
     if (!form.notificationMethod) {
-      newErrors.notificationMethod = "Please choose how we should notify you";
+      newErrors.notificationMethod = tp("Please choose how we should notify you");
     } else if (form.notificationMethod === "sms") {
       if (!form.phoneNumber.trim()) {
-        newErrors.phoneNumber = "Phone number is required for SMS notifications";
+        newErrors.phoneNumber = tp("Phone number is required for SMS notifications");
       }
       if (!form.smsConsent) {
-        newErrors.smsConsent = "You must agree to receive transactional text messages";
+        newErrors.smsConsent = tp("You must agree to receive transactional text messages");
       }
     } else if (form.notificationMethod === "whatsapp") {
       if (!form.phoneNumber.trim()) {
-        newErrors.phoneNumber = "Phone number is required for WhatsApp notifications";
+        newErrors.phoneNumber = tp("Phone number is required for WhatsApp notifications");
       }
     } else if (form.notificationMethod === "email") {
       if (!form.email.trim()) {
-        newErrors.email = "Email address is required for email notifications";
+        newErrors.email = tp("Email address is required for email notifications");
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-        newErrors.email = "Please enter a valid email address";
+        newErrors.email = tp("Please enter a valid email address");
       }
     }
 
@@ -590,23 +594,25 @@ export default function QueueBusiness() {
         const formattedPhone =
           formatPhoneParts(form.countryCode, form.phoneNumber) ??
           `${form.countryCode} ${form.phoneNumber}`.trim();
-        let toastDescription: ReactNode = "We'll let you know when it's your turn.";
+        let toastDescription: ReactNode = tp("We'll let you know when it's your turn.");
         if (form.notificationMethod === "sms") {
-          toastDescription = `We'll text you at ${formattedPhone} when it's your turn.`;
+          toastDescription = tp(`We'll text you at ${formattedPhone} when it's your turn.`);
         } else if (form.notificationMethod === "whatsapp") {
-          toastDescription = `We'll message you on WhatsApp at ${formattedPhone} when it's your turn.`;
+          toastDescription = tp(
+            `We'll message you on WhatsApp at ${formattedPhone} when it's your turn.`,
+          );
         } else if (form.notificationMethod === "email") {
           toastDescription = (
             <>
-              We'll email you at{" "}
-              <span className="normal-case lowercase">{form.email.toLowerCase()}</span> when it's
-              your turn.
+              {tp("We'll email you at")}{" "}
+              <span className="normal-case lowercase">{form.email.toLowerCase()}</span>{" "}
+              {tp("when it's your turn.")}
             </>
           );
         }
 
         toast({
-          title: "You're in the Queue!",
+          title: tp("You're in the Queue!"),
           description: toastDescription,
         });
 
@@ -615,8 +621,8 @@ export default function QueueBusiness() {
       }
     } catch (error: any) {
       toast({
-        title: "Failed to Join Queue",
-        description: error.message || "Please try again",
+        title: tp("Failed to Join Queue"),
+        description: tp(error.message || tp("Please try again")),
         variant: "destructive",
       });
     } finally {
@@ -629,7 +635,7 @@ export default function QueueBusiness() {
     localStorage.removeItem(storageKey);
 
     if (!form.joinedAt) {
-      toast({ title: "You Left the Queue" });
+      toast({ title: tp("You Left the Queue") });
       navigate("/");
       return;
     }
@@ -638,15 +644,15 @@ export default function QueueBusiness() {
       const customerId = `${form.firstName}${form.lastName}${form.joinedAt}`;
       await api(`/auth/business/${businessUsername}/queue/${customerId}/leave`, { method: "POST" });
       toast({
-        title: "You Left the Queue",
-        description: "You have been removed from the queue.",
+        title: tp("You Left the Queue"),
+        description: tp("You have been removed from the queue."),
       });
       navigate("/");
     } catch (error: any) {
       console.error("Failed to leave queue:", error);
       toast({
-        title: "Error Leaving Queue",
-        description: error.message || "Please try again",
+        title: tp("Error Leaving Queue"),
+        description: tp(error.message || tp("Please try again")),
         variant: "destructive",
       });
       navigate("/");
@@ -666,9 +672,9 @@ export default function QueueBusiness() {
   if (configuredTodayHours) {
     todayHours = configuredTodayHours;
   } else if (queueClosed) {
-    todayHours = "Closed";
+    todayHours = tp("Closed");
   } else {
-    todayHours = "Hours not available";
+    todayHours = tp("Hours not available");
   }
 
   if (invalidLink) {
@@ -683,7 +689,7 @@ export default function QueueBusiness() {
           <main className="flex flex-1 items-center justify-center px-4 pt-24 pb-10">
             <Card
               role="status"
-              aria-label="Loading Queue"
+              aria-label={tp("Loading Queue")}
               className="w-full max-w-xl border-0 bg-card/80 shadow-2xl backdrop-blur-sm"
             >
               <CardHeader aria-hidden="true" className="items-center space-y-3">
@@ -710,36 +716,42 @@ export default function QueueBusiness() {
   if (step !== 2) {
     cardTitleText = restaurantName;
   } else if (queueUnavailable) {
-    cardTitleText = "Queue Unavailable";
+    cardTitleText = tp("Queue Unavailable");
   } else if (queueClosed) {
-    cardTitleText = "Restaurant Closed";
+    cardTitleText = tp("Restaurant Closed");
   } else {
-    cardTitleText = "Join The Queue";
+    cardTitleText = tp("Join The Queue");
   }
 
   let stepTwoDescription: string;
   if (queueUnavailable) {
-    stepTwoDescription = `${restaurantName} is not currently accepting queue entries at this location.`;
+    stepTwoDescription = tp(
+      `${restaurantName} is not currently accepting queue entries at this location.`,
+    );
   } else if (queueClosed) {
-    stepTwoDescription = `${restaurantName} is currently closed. Please come back during operating hours to join the queue.`;
+    stepTwoDescription = tp(
+      `${restaurantName} is currently closed. Please come back during operating hours to join the queue.`,
+    );
   } else if (selectedLabel) {
-    stepTwoDescription = `You're joining the queue at ${selectedLabel}. We'll notify you when it's your turn.`;
+    stepTwoDescription = tp(
+      `You're joining the queue at ${selectedLabel}. We'll notify you when it's your turn.`,
+    );
   } else {
-    stepTwoDescription = "Enter your details to join the queue.";
+    stepTwoDescription = tp("Enter your details to join the queue.");
   }
 
   let blockedHoursText: string;
   if (queueUnavailable) {
-    blockedHoursText = "Queue unavailable";
+    blockedHoursText = tp("Queue unavailable");
   } else {
     blockedHoursText = todayHours;
   }
 
   let blockedHelpText: string;
   if (queueUnavailable) {
-    blockedHelpText = "Please contact the restaurant for assistance.";
+    blockedHelpText = tp("Please contact the restaurant for assistance.");
   } else {
-    blockedHelpText = "Queue joining will be available again during operating hours.";
+    blockedHelpText = tp("Queue joining will be available again during operating hours.");
   }
 
   let firstNameInputClass = "";
@@ -774,9 +786,9 @@ export default function QueueBusiness() {
 
   let joinButtonLabel: string;
   if (joiningQueue) {
-    joinButtonLabel = "Joining...";
+    joinButtonLabel = tp("Joining...");
   } else {
-    joinButtonLabel = "Join Queue";
+    joinButtonLabel = tp("Join Queue");
   }
 
   let peopleAheadVerb: string;
@@ -790,28 +802,28 @@ export default function QueueBusiness() {
   }
 
   let estimatedWaitContent: ReactNode = (
-    <span role="status" aria-label="Loading Estimated Wait">
+    <span role="status" aria-label={tp("Loading Estimated Wait")}>
       <Skeleton as="span" aria-hidden="true" className="mx-auto block h-6 w-28" />
     </span>
   );
   if (eta) {
-    estimatedWaitContent = eta.displayText;
+    estimatedWaitContent = tp(eta.displayText);
   } else if (!etaLoading && etaError) {
-    estimatedWaitContent = "Updating Soon";
+    estimatedWaitContent = tp("Updating Soon");
   }
 
   let turnContent: ReactNode;
   if (turnExpired) {
     turnContent = (
       <>
-        <h2 className="text-2xl sm:text-3xl font-bold text-destructive">Time's Up</h2>
+        <h2 className="text-2xl sm:text-3xl font-bold text-destructive">{tp("Time's Up")}</h2>
 
         <div className="rounded-2xl border border-destructive/15 bg-destructive/5 px-6 py-6">
           <p className="text-base font-semibold text-foreground">
-            Time's up. Your spot has been released.
+            {tp("Time's up. Your spot has been released.")}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Please speak with the host if you still need assistance.
+            {tp("Please speak with the host if you still need assistance.")}
           </p>
         </div>
       </>
@@ -819,17 +831,17 @@ export default function QueueBusiness() {
   } else {
     turnContent = (
       <>
-        <h2 className="text-2xl sm:text-3xl font-bold text-primary">It's Your Turn!</h2>
+        <h2 className="text-2xl sm:text-3xl font-bold text-primary">{tp("It's Your Turn!")}</h2>
 
         <div className="rounded-2xl border border-primary/10 bg-primary/5 px-6 py-6">
           <p className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Please Arrive Within
+            {tp("Please Arrive Within")}
           </p>
           <div className="mt-2 text-6xl sm:text-7xl font-bold leading-none tabular-nums text-primary">
             {mm}:{ss}
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
-            Your spot will be held for 5 minutes.
+            {tp("Your spot will be held for 5 minutes.")}
           </p>
         </div>
       </>
@@ -847,7 +859,7 @@ export default function QueueBusiness() {
               {step !== 5 && (
                 <CardDescription>
                   {step === 2 && stepTwoDescription}
-                  {step === 4 && "Queue Status"}
+                  {step === 4 && tp("Queue Status")}
                 </CardDescription>
               )}
             </CardHeader>
@@ -868,14 +880,14 @@ export default function QueueBusiness() {
                       </div>
                     </div>
                     <div className="mt-5 border-t border-slate-200 pt-5">
-                      <p className="text-sm font-medium text-slate-900">Today's Hours</p>
+                      <p className="text-sm font-medium text-slate-900">{tp("Today's Hours")}</p>
                       <p className="mt-1 text-base text-slate-500">{blockedHoursText}</p>
                     </div>
                   </div>
                   <div className="space-y-4">
                     <p className="text-center text-sm text-slate-500">{blockedHelpText}</p>
                     <Button asChild className="w-full h-11 text-base" variant="default">
-                      <Link to="/search">Explore Other Restaurants</Link>
+                      <Link to="/search">{tp("Explore Other Restaurants")}</Link>
                     </Button>
                   </div>
                 </div>
@@ -892,7 +904,7 @@ export default function QueueBusiness() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
+                      <Label htmlFor="firstName">{tp("First Name")}</Label>
                       <Input
                         id="firstName"
                         name="firstName"
@@ -906,7 +918,7 @@ export default function QueueBusiness() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
+                      <Label htmlFor="lastName">{tp("Last Name")}</Label>
                       <Input
                         id="lastName"
                         name="lastName"
@@ -922,7 +934,7 @@ export default function QueueBusiness() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="numGuests">Number of Guests</Label>
+                    <Label htmlFor="numGuests">{tp("Number of Guests")}</Label>
                     <Input
                       id="numGuests"
                       name="numGuests"
@@ -938,24 +950,24 @@ export default function QueueBusiness() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>How should we notify you?</Label>
+                    <Label>{tp("How should we notify you?")}</Label>
                     <div className="grid grid-cols-1 gap-3">
                       {(
                         [
                           {
                             key: "sms",
                             title: "SMS",
-                            desc: "Receive Text Message Notifications",
+                            desc: tp("Receive Text Message Notifications"),
                           },
                           {
                             key: "whatsapp",
                             title: "WhatsApp",
-                            desc: "Receive WhatsApp Queue Notifications",
+                            desc: tp("Receive WhatsApp Queue Notifications"),
                           },
                           {
                             key: "email",
-                            title: "Email",
-                            desc: "Receive Email Notifications",
+                            title: tp("Email"),
+                            desc: tp("Receive Email Notifications"),
                           },
                         ] as const
                       ).map((opt) => {
@@ -996,7 +1008,7 @@ export default function QueueBusiness() {
                   {form.notificationMethod === "sms" && (
                     <>
                       <div className="space-y-2">
-                        <Label htmlFor="phoneNumber">Phone Number</Label>
+                        <Label htmlFor="phoneNumber">{tp("Phone Number")}</Label>
                         <div className="flex gap-2">
                           <Popover open={smsCountryOpen} onOpenChange={setSmsCountryOpen}>
                             <PopoverTrigger asChild>
@@ -1025,9 +1037,9 @@ export default function QueueBusiness() {
                                   return 0;
                                 }}
                               >
-                                <CommandInput placeholder="Search country or code..." />
+                                <CommandInput placeholder={tp("Search country or code...")} />
                                 <CommandList>
-                                  <CommandEmpty>No country found.</CommandEmpty>
+                                  <CommandEmpty>{tp("No country found.")}</CommandEmpty>
                                   <CommandGroup>
                                     {SMS_COUNTRIES.map((c) => {
                                       let checkOpacityClass = "opacity-0";
@@ -1037,7 +1049,7 @@ export default function QueueBusiness() {
                                       return (
                                         <CommandItem
                                           key={c.dial}
-                                          value={`${c.name} ${c.dial}`}
+                                          value={`${tp(c.name)} ${c.dial}`}
                                           onSelect={() => {
                                             setForm((p) => ({
                                               ...p,
@@ -1051,7 +1063,7 @@ export default function QueueBusiness() {
                                             className={cn("mr-2 h-4 w-4", checkOpacityClass)}
                                           />
                                           <span className="mr-2">{c.flag}</span>
-                                          <span className="flex-1">{c.name}</span>
+                                          <span className="flex-1">{tp(c.name)}</span>
                                           <span className="text-muted-foreground">{c.dial}</span>
                                         </CommandItem>
                                       );
@@ -1096,17 +1108,16 @@ export default function QueueBusiness() {
                               htmlFor="smsConsent"
                               className="text-sm leading-5 cursor-pointer"
                             >
-                              By checking this box and submitting this form, you consent to receive
-                              transactional text messages for queue notifications from SeatPing.
-                              Reply STOP to opt out. Reply HELP for help. Standard message and data
-                              rates may apply. Message frequency may vary. View our{" "}
-                              <a href="/terms" className="underline text-primary">
-                                Terms and Conditions
-                              </a>
-                              . View our{" "}
-                              <a href="/policy" className="underline text-primary">
-                                Privacy Policy
-                              </a>
+                              {tp(
+                                "By checking this box and submitting this form, you consent to receive transactional text messages for queue notifications from SeatPing. Reply STOP to opt out. Reply HELP for help. Standard message and data rates may apply. Message frequency may vary. View our",
+                              )}{" "}
+                              <Link to="/terms" className="underline text-primary">
+                                {tp("Terms and Conditions")}
+                              </Link>
+                              {tp(". View our")}{" "}
+                              <Link to="/policy" className="underline text-primary">
+                                {tp("Privacy Policy")}
+                              </Link>
                               .
                             </label>
                             {errors.smsConsent && (
@@ -1132,17 +1143,16 @@ export default function QueueBusiness() {
                               htmlFor="smsMarketingConsent"
                               className="text-sm leading-5 cursor-pointer"
                             >
-                              (Optional) By checking this box, you consent to receive text messages
-                              for marketing from SeatPing. Reply STOP to opt out. Reply HELP for
-                              help. Message and data rates may apply. Message frequency may vary.
-                              View our{" "}
-                              <a href="/terms" className="underline text-primary">
-                                Terms and Conditions
-                              </a>
-                              . View our{" "}
-                              <a href="/policy" className="underline text-primary">
-                                Privacy Policy
-                              </a>
+                              {tp(
+                                "(Optional) By checking this box, you consent to receive text messages for marketing from SeatPing. Reply STOP to opt out. Reply HELP for help. Message and data rates may apply. Message frequency may vary. View our",
+                              )}{" "}
+                              <Link to="/terms" className="underline text-primary">
+                                {tp("Terms and Conditions")}
+                              </Link>
+                              {tp(". View our")}{" "}
+                              <Link to="/policy" className="underline text-primary">
+                                {tp("Privacy Policy")}
+                              </Link>
                               .
                             </label>
                           </div>
@@ -1153,7 +1163,7 @@ export default function QueueBusiness() {
 
                   {form.notificationMethod === "whatsapp" && (
                     <div className="space-y-2">
-                      <Label htmlFor="whatsappPhoneNumber">Phone Number</Label>
+                      <Label htmlFor="whatsappPhoneNumber">{tp("Phone Number")}</Label>
                       <div className="flex gap-2">
                         <Popover open={whatsappCountryOpen} onOpenChange={setWhatsappCountryOpen}>
                           <PopoverTrigger asChild>
@@ -1182,9 +1192,9 @@ export default function QueueBusiness() {
                                 return 0;
                               }}
                             >
-                              <CommandInput placeholder="Search country or code..." />
+                              <CommandInput placeholder={tp("Search country or code...")} />
                               <CommandList>
-                                <CommandEmpty>No country found.</CommandEmpty>
+                                <CommandEmpty>{tp("No country found.")}</CommandEmpty>
                                 <CommandGroup>
                                   {WHATSAPP_COUNTRIES.map((c) => {
                                     let checkOpacityClass = "opacity-0";
@@ -1194,7 +1204,7 @@ export default function QueueBusiness() {
                                     return (
                                       <CommandItem
                                         key={c.dial}
-                                        value={`${c.name} ${c.dial}`}
+                                        value={`${tp(c.name)} ${c.dial}`}
                                         onSelect={() => {
                                           setForm((p) => ({
                                             ...p,
@@ -1208,7 +1218,7 @@ export default function QueueBusiness() {
                                           className={cn("mr-2 h-4 w-4", checkOpacityClass)}
                                         />
                                         <span className="mr-2">{c.flag}</span>
-                                        <span className="flex-1">{c.name}</span>
+                                        <span className="flex-1">{tp(c.name)}</span>
                                         <span className="text-muted-foreground">{c.dial}</span>
                                       </CommandItem>
                                     );
@@ -1235,7 +1245,7 @@ export default function QueueBusiness() {
 
                   {form.notificationMethod === "email" && (
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
+                      <Label htmlFor="email">{tp("Email Address")}</Label>
                       <Input
                         id="email"
                         name="email"
@@ -1263,35 +1273,40 @@ export default function QueueBusiness() {
               {step === 4 && (
                 <div className="space-y-5">
                   <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-2">Queue Details</p>
+                    <p className="text-sm text-muted-foreground mb-2">{tp("Queue Details")}</p>
                     <p>
-                      <strong>Restaurant:</strong> {restaurantName}
+                      <strong>{tp("Restaurant:")}</strong> {restaurantName}
                     </p>
                     <p>
-                      <strong>Location:</strong> {selectedLabel}
+                      <strong>{tp("Location:")}</strong> {selectedLabel}
                     </p>
                     <p>
-                      <strong>Name:</strong> {form.firstName} {form.lastName}
+                      <strong>{tp("Name:")}</strong> {form.firstName} {form.lastName}
                     </p>
                     <p>
-                      <strong>Number of Guests:</strong> {parseInt(form.numGuests)}
+                      <strong>{tp("Number of Guests:")}</strong> {parseInt(form.numGuests)}
                     </p>
                   </div>
 
                   <div className="text-center space-y-1">
-                    <div className="text-xl font-semibold">You are #{positionInLine} in line</div>
+                    <div className="text-xl font-semibold">
+                      {tp("You are #")}
+                      {positionInLine} {tp("in line")}
+                    </div>
                     <div className="text-sm text-muted-foreground">
-                      There {peopleAheadVerb} {peopleAhead} {peopleAheadNoun} ahead of you
+                      {tp(
+                        `There ${peopleAheadVerb} ${peopleAhead} ${peopleAheadNoun} ahead of you`,
+                      )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="rounded-lg border p-4 text-center">
-                      <div className="text-sm text-muted-foreground">Estimated Wait</div>
+                      <div className="text-sm text-muted-foreground">{tp("Estimated Wait")}</div>
                       <div className="text-lg font-semibold">{estimatedWaitContent}</div>
                     </div>
                     <div className="rounded-lg border p-4 text-center">
-                      <div className="text-sm text-muted-foreground">Notifications</div>
+                      <div className="text-sm text-muted-foreground">{tp("Notifications")}</div>
                       <div className="text-lg font-medium">
                         {notificationLabel(form.notificationMethod)}
                       </div>
@@ -1299,12 +1314,12 @@ export default function QueueBusiness() {
                   </div>
 
                   <p className="text-center text-xs text-muted-foreground">
-                    Wait time may change based on queue movement and upcoming reservations.
+                    {tp("Wait time may change based on queue movement and upcoming reservations.")}
                   </p>
 
                   <div className="flex gap-2">
                     <Button variant="destructiveOutline" className="flex-1" onClick={leaveQueue}>
-                      Leave Queue
+                      {tp("Leave Queue")}
                     </Button>
                   </div>
                 </div>
@@ -1316,25 +1331,25 @@ export default function QueueBusiness() {
 
                   <div className="rounded-xl bg-muted px-4 py-3 text-left">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Details
+                      {tp("Details")}
                     </p>
                     <dl className="space-y-1.5 text-sm">
                       <div className="flex items-start justify-between gap-3">
-                        <dt className="text-muted-foreground">Restaurant</dt>
+                        <dt className="text-muted-foreground">{tp("Restaurant")}</dt>
                         <dd className="text-right font-medium">{restaurantName}</dd>
                       </div>
                       <div className="flex items-start justify-between gap-3">
-                        <dt className="text-muted-foreground">Location</dt>
+                        <dt className="text-muted-foreground">{tp("Location")}</dt>
                         <dd className="text-right font-medium">{selectedLabel}</dd>
                       </div>
                       <div className="flex items-start justify-between gap-3">
-                        <dt className="text-muted-foreground">Name</dt>
+                        <dt className="text-muted-foreground">{tp("Name")}</dt>
                         <dd className="text-right font-medium">
                           {form.firstName} {form.lastName}
                         </dd>
                       </div>
                       <div className="flex items-start justify-between gap-3">
-                        <dt className="text-muted-foreground">Number of Guests</dt>
+                        <dt className="text-muted-foreground">{tp("Number of Guests")}</dt>
                         <dd className="text-right font-medium">{parseInt(form.numGuests)}</dd>
                       </div>
                     </dl>
@@ -1345,34 +1360,35 @@ export default function QueueBusiness() {
               {step === 6 && (
                 <div className="space-y-5 text-center">
                   <h2 className="text-2xl sm:text-3xl font-bold text-primary">
-                    You're Checked In.
+                    {tp("You're Checked In.")}
                   </h2>
 
                   <div className="rounded-2xl border border-primary/10 bg-primary/5 px-6 py-6">
                     <p className="text-base font-semibold text-foreground">
-                      Arrival Confirmed. You're All Set.
+                      {tp("Arrival Confirmed. You're All Set.")}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      The restaurant has confirmed your arrival. Please follow the host's
-                      instructions.
+                      {tp(
+                        "The restaurant has confirmed your arrival. Please follow the host's instructions.",
+                      )}
                     </p>
                   </div>
 
                   <div className="rounded-xl bg-muted px-4 py-3 text-left">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Details
+                      {tp("Details")}
                     </p>
                     <dl className="space-y-1.5 text-sm">
                       <div className="flex items-start justify-between gap-3">
-                        <dt className="text-muted-foreground">Restaurant</dt>
+                        <dt className="text-muted-foreground">{tp("Restaurant")}</dt>
                         <dd className="text-right font-medium">{restaurantName}</dd>
                       </div>
                       <div className="flex items-start justify-between gap-3">
-                        <dt className="text-muted-foreground">Location</dt>
+                        <dt className="text-muted-foreground">{tp("Location")}</dt>
                         <dd className="text-right font-medium">{selectedLabel}</dd>
                       </div>
                       <div className="flex items-start justify-between gap-3">
-                        <dt className="text-muted-foreground">Name</dt>
+                        <dt className="text-muted-foreground">{tp("Name")}</dt>
                         <dd className="text-right font-medium">
                           {form.firstName} {form.lastName}
                         </dd>

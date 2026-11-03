@@ -1,7 +1,22 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DemoBookingProvider from "../../src/components/DemoBookingProvider.js";
-import { useDemoBooking } from "../../src/lib/demoBooking.js";
+import { DemoBookingContext, useDemoBooking } from "../../src/lib/demoBooking.js";
+import { PublicLanguageContext } from "../../src/lib/publicLanguage.js";
+import {
+  LangContext,
+  translate,
+  translateStatus,
+  type LangContextValue,
+} from "../../src/lib/i18n.js";
 
 function Trigger() {
   const open = useDemoBooking();
@@ -93,6 +108,45 @@ describe("demo booking dialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Book a Demo" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("opens the demo in Indonesian from an Indonesian public page", async () => {
+    render(
+      <PublicLanguageContext.Provider value={{ lang: "id", explicitEnglish: false }}>
+        <DemoBookingProvider>
+          <Trigger />
+        </DemoBookingProvider>
+      </PublicLanguageContext.Provider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Book a Demo" }));
+
+    await screen.findByRole("dialog", { name: "Kenali SeatPing" });
+    expect(screen.queryByRole("dialog", { name: "Discover SeatPing" })).toBeNull();
+  });
+
+  it("keeps the business language and supports opening without a trigger event", () => {
+    const open = vi.fn();
+    const businessLanguage: LangContextValue = {
+      lang: "id",
+      ready: true,
+      t: (key, params) => translate("id", key, params),
+      tStatus: (status) => translateStatus("id", status),
+      setLang: vi.fn().mockResolvedValue(undefined),
+    };
+    const { result } = renderHook(() => useDemoBooking(), {
+      wrapper: ({ children }) => (
+        <LangContext.Provider value={businessLanguage}>
+          <PublicLanguageContext.Provider value={{ lang: "en", explicitEnglish: true }}>
+            <DemoBookingContext.Provider value={open}>{children}</DemoBookingContext.Provider>
+          </PublicLanguageContext.Provider>
+        </LangContext.Provider>
+      ),
+    });
+
+    result.current();
+
+    expect(open).toHaveBeenCalledExactlyOnceWith("id", undefined);
   });
 
   it("shows complete time skeletons until availability resolves and replaces them with the date prompt", async () => {

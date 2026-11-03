@@ -1,3 +1,4 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useState, type FormEvent } from "react";
 import { format, isToday, isTomorrow } from "date-fns";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -57,21 +58,23 @@ export default function RestaurantSearchBar({
   onPeopleChange: (people: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const { t: tp, dateLocale, shortDateFormat, longDateFormat } = usePublicLanguage();
+
   const [dateOpen, setDateOpen] = useState(false);
   const [peopleOpen, setPeopleOpen] = useState(false);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  let mobileDateLabel = format(date, "MMM d");
+  let mobileDateLabel = format(date, shortDateFormat, { locale: dateLocale });
   if (isToday(date)) {
-    mobileDateLabel = "Today";
+    mobileDateLabel = tp("Today");
   } else if (isTomorrow(date)) {
-    mobileDateLabel = "Tomorrow";
+    mobileDateLabel = tp("Tomorrow");
   }
 
   return (
     <form
       onSubmit={onSubmit}
-      aria-label="Search Restaurants"
+      aria-label={tp("Search Restaurants")}
       role="search"
       className="rounded-2xl border border-input bg-background p-3 shadow-sm max-[360px]:p-2 sm:p-6 lg:rounded-xl lg:p-2 lg:shadow-none"
     >
@@ -93,11 +96,13 @@ export default function RestaurantSearchBar({
                 <FieldTrigger
                   icon={Calendar01Icon}
                   fieldLabel="Date"
-                  aria-label={`Date: ${format(date, "MMM d, yyyy")}`}
+                  aria-label={tp(`Date: ${format(date, longDateFormat, { locale: dateLocale })}`)}
                   className={FIELD_CLASS}
                 >
                   <span className="lg:hidden">{mobileDateLabel}</span>
-                  <span className="hidden lg:inline">{format(date, "MMM d, yyyy")}</span>
+                  <span className="hidden lg:inline">
+                    {format(date, longDateFormat, { locale: dateLocale })}
+                  </span>
                 </FieldTrigger>
               </PopoverTrigger>
               <PopoverContent
@@ -139,10 +144,10 @@ export default function RestaurantSearchBar({
               <FieldTrigger
                 icon={UsersRoundIcon}
                 fieldLabel="Party Size"
-                aria-label={`Number of guests: ${peopleLabel(people)}`}
+                aria-label={tp(`Number of guests: ${tp(peopleLabel(people))}`)}
                 className={FIELD_CLASS}
               >
-                {peopleLabel(people)}
+                {tp(peopleLabel(people))}
               </FieldTrigger>
             </PopoverTrigger>
             <PopoverContent
@@ -159,7 +164,7 @@ export default function RestaurantSearchBar({
                     setPeopleOpen(false);
                   }}
                 >
-                  {peopleLabel(value)}
+                  {tp(peopleLabel(value))}
                 </OptionRow>
               ))}
             </PopoverContent>
@@ -172,7 +177,7 @@ export default function RestaurantSearchBar({
             className="w-full lg:px-3 dark:border-primary dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
           >
             <HugeiconsIcon icon={Search01Icon} className="size-4" />
-            Search
+            {tp("Search")}
           </Button>
         </div>
       </div>

@@ -24,6 +24,20 @@ afterEach(() => {
 });
 
 describe("analytics path redaction", () => {
+  it("redacts Indonesian reservation tokens regardless of their encoding", async () => {
+    const gtag = vi.fn();
+    const mod = await loadAnalytics("G-TEST", gtag);
+    const token = "private-token-containing-nonhex-characters";
+    mod.trackPageView(`/id/reservations/manage/${token}`);
+    expect(gtag.mock.calls[0]?.[2]).toEqual({ page_path: "/id/reservations/manage/[token]" });
+  });
+
+  it("redacts tokens from explicit English reservation links", async () => {
+    const mod = await loadAnalytics("G-TEST", vi.fn());
+    expect(mod.redactAnalyticsPath("/en/reservations/manage/private-token")).toBe(
+      "/en/reservations/manage/[token]",
+    );
+  });
   it("never sends a reservation manage token to the tag", async () => {
     const gtag = vi.fn();
     const mod = await loadAnalytics("G-TEST", gtag);

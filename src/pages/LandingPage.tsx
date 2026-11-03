@@ -1,6 +1,7 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useDemoBooking } from "@/lib/demoBooking";
 import { useEffect, useLayoutEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "@/lib/publicNavigation";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -13,6 +14,8 @@ import { ProductWorkflowSection } from "@/components/landing/ProductWorkflow";
 import { SECTION_PADDING, DISPLAY_HEADING, SECTION_SUBTITLE } from "@/components/landing/section";
 
 const LandingPage = () => {
+  const { t: tp } = usePublicLanguage();
+
   const openDemo = useDemoBooking();
   const { key } = useLocation();
 
@@ -41,7 +44,7 @@ const LandingPage = () => {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <SEO
-        title="SeatPing for Business | Floor Management, Queues, and Reservations"
+        title={tp("SeatPing for Business | Floor Management, Queues, and Reservations")}
         description={BUSINESS_DESCRIPTION}
         image={BUSINESS_IMAGE}
         canonical="/business"
@@ -65,11 +68,13 @@ const LandingPage = () => {
         <div className="relative mx-auto w-full max-w-7xl px-8 lg:px-4">
           <div className="mx-auto max-w-3xl text-center animate-fade-in-up">
             <h1 className={DISPLAY_HEADING}>
-              Run Your Front of House <span className="sm:whitespace-nowrap">From One Place</span>
+              {tp("Run Your Front of House")}{" "}
+              <span className="sm:whitespace-nowrap">{tp("From One Place")}</span>
             </h1>
             <p className={cn("mx-auto mt-4 max-w-xl", SECTION_SUBTITLE)}>
-              Match walk-ins and bookings to the right tables, and keep your dining room moving from
-              one live view.
+              {tp(
+                "Match walk-ins and bookings to the right tables, and keep your dining room moving from one live view.",
+              )}
             </p>
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button
@@ -77,7 +82,7 @@ const LandingPage = () => {
                 onClick={openDemo}
                 className="h-11 w-full rounded-xl px-8 text-sm shadow-sm sm:h-12 sm:w-auto"
               >
-                <span className="font-medium">Book a Demo</span>
+                <span className="font-medium">{tp("Book a Demo")}</span>
               </Button>
               <Button
                 size="lg"
@@ -86,7 +91,7 @@ const LandingPage = () => {
                 className="h-11 w-full rounded-xl px-8 text-sm shadow-sm sm:h-12 sm:w-auto"
               >
                 <Link to="/business/signup">
-                  <span className="font-medium">Get Started</span>
+                  <span className="font-medium">{tp("Get Started")}</span>
                 </Link>
               </Button>
             </div>
@@ -127,13 +132,13 @@ const LandingPage = () => {
         />
 
         <div className="container mx-auto max-w-4xl text-center scroll-animate">
-          <h2 className={DISPLAY_HEADING} aria-label="Turn Every Arrival Into Smooth Service">
+          <h2 className={DISPLAY_HEADING} aria-label={tp("Turn Every Arrival Into Smooth Service")}>
             <span aria-hidden className="block">
-              Turn Every Arrival Into
+              {tp("Turn Every Arrival Into")}
             </span>
             <span aria-hidden className="mt-1.5 block">
               <span className="relative inline-block whitespace-nowrap text-slate-400">
-                Front-Door Chaos
+                {tp("Front-Door Chaos")}
                 <svg
                   aria-hidden="true"
                   viewBox="0 0 120 16"
@@ -151,18 +156,19 @@ const LandingPage = () => {
               </span>
             </span>
             <span className="mt-1.5 block font-hand text-hand-accent font-bold leading-none text-indigo-600">
-              Smooth Service
+              {tp("Smooth Service")}
             </span>
           </h2>
 
           <p className={cn("mx-auto mt-4 max-w-2xl", SECTION_SUBTITLE)}>
-            Set up your floor plan, queues, reservations, notifications, and location settings with
-            no extra hardware and no complicated onboarding.
+            {tp(
+              "Set up your floor plan, queues, reservations, notifications, and location settings with no extra hardware and no complicated onboarding.",
+            )}
           </p>
 
           <div className="mt-6 flex justify-center sm:mt-7">
             <Button size="lg" onClick={openDemo} className="rounded-xl px-8 shadow-sm">
-              <span className="font-medium">Book a Demo</span>
+              <span className="font-medium">{tp("Book a Demo")}</span>
             </Button>
           </div>
         </div>

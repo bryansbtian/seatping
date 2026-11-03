@@ -2,6 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
 import ListSkeleton from "@/components/ListSkeleton";
+import { usePublicLanguage } from "@/lib/publicLanguage";
 
 export default function RouteLoading({
   label,
@@ -13,10 +14,11 @@ export default function RouteLoading({
   fill?: boolean;
 }) {
   const { t } = useLang();
+  const { t: publicText } = usePublicLanguage();
   return (
     <div
       role="status"
-      aria-label={label ?? t("common.loadingPage")}
+      aria-label={publicText(label ?? t("common.loadingPage"))}
       aria-live="polite"
       className={cn(
         "mx-auto w-full max-w-7xl px-4 py-8 sm:px-6",

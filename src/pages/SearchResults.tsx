@@ -1,3 +1,4 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import {
   useEffect,
   useMemo,
@@ -6,7 +7,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "@/lib/publicNavigation";
 import { format } from "date-fns";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Search01Icon, SlidersHorizontalIcon } from "@hugeicons/core-free-icons";
@@ -72,6 +73,8 @@ function peopleFromQuery(value: string | null): string {
 }
 
 export default function SearchResults() {
+  const { t: tp } = usePublicLanguage();
+
   const navigate = useNavigate();
   const { query } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -149,18 +152,18 @@ export default function SearchResults() {
     params.set("page", String(nextPage));
     setSearchParams(params);
   };
-  let restaurantWord = "Restaurants";
+  let restaurantWord = tp("Restaurants");
   if (resultCount === 1) {
-    restaurantWord = "Restaurant";
+    restaurantWord = tp("Restaurant");
   }
   let summary = `${resultCount} ${restaurantWord}`;
   if (location) {
     summary += ` In ${location}`;
   } else if (activeQuery) {
-    summary += ` For “${activeQuery}”`;
+    summary += tp(` For “${activeQuery}”`);
   }
   if (error) {
-    summary = "Restaurants";
+    summary = tp("Restaurants");
   }
   let summaryContent: ReactNode = summary;
   if (loading) {
@@ -191,24 +194,26 @@ export default function SearchResults() {
   } else if (error) {
     content = (
       <div role="alert" className="rounded-xl border border-border bg-card p-8 text-center">
-        <h3 className="text-title text-foreground">Unable To Load Restaurants</h3>
-        <p className="mt-2 text-body text-ink-subtle">Please try again to load restaurants.</p>
+        <h3 className="text-title text-foreground">{tp("Unable To Load Restaurants")}</h3>
+        <p className="mt-2 text-body text-ink-subtle">
+          {tp("Please try again to load restaurants.")}
+        </p>
         <Button
           variant="outline"
           onClick={() => void search.refetch()}
           className="mt-4 dark:border-border dark:bg-background dark:text-foreground"
         >
-          Try Again
+          {tp("Try Again")}
         </Button>
       </div>
     );
   } else if (visible.length === 0) {
-    let title = "No Restaurants Found";
-    let hint = "Try searching for another restaurant, cuisine, or area.";
+    let title = tp("No Restaurants Found");
+    let hint = tp("Try searching for another restaurant, cuisine, or area.");
     let icon = Search01Icon;
     if (activeCount > 0) {
-      title = "No Restaurants Match Your Filters";
-      hint = "Clear your filters or try a different search to find a place you'll love.";
+      title = tp("No Restaurants Match Your Filters");
+      hint = tp("Clear your filters or try a different search to find a place you'll love.");
       icon = SlidersHorizontalIcon;
     }
     content = (
@@ -222,7 +227,7 @@ export default function SearchResults() {
             onClick={() => setFilters(EMPTY_FILTERS)}
             className="mt-4 dark:border-border dark:bg-background dark:text-foreground"
           >
-            Clear Filters
+            {tp("Clear Filters")}
           </Button>
         )}
       </div>
@@ -249,7 +254,7 @@ export default function SearchResults() {
       className="discovery-page flex min-h-screen flex-col bg-background text-foreground"
     >
       <SEO
-        title="Search Restaurants | SeatPing"
+        title={tp("Search Restaurants | SeatPing")}
         description={CUSTOMER_DESCRIPTION}
         canonical="/search"
       />
@@ -259,10 +264,10 @@ export default function SearchResults() {
           <div className="mb-6 flex min-w-0 items-end justify-between gap-4">
             <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-                Search Restaurants
+                {tp("Search Restaurants")}
               </h1>
               <p className="mt-2 text-body text-ink-subtle">
-                Find a place you'll love. Book a table or join a virtual queue.
+                {tp("Find a place you'll love. Book a table or join a virtual queue.")}
               </p>
             </div>
             {location && (
@@ -270,7 +275,7 @@ export default function SearchResults() {
                 className="hidden max-w-xs truncate pb-0.5 text-label font-normal text-ink md:block"
                 title={location}
               >
-                Explore {location}
+                {tp("Explore")} {location}
               </span>
             )}
           </div>
@@ -294,7 +299,7 @@ export default function SearchResults() {
             error={error}
             actions={
               <SelectFilter
-                label="Sort By"
+                label={tp("Sort By")}
                 kind="sort"
                 current={sort}
                 options={SORT_OPTIONS.map(({ key, label }) => ({ value: key, label }))}
@@ -330,7 +335,7 @@ export default function SearchResults() {
               page={page}
               totalPages={totalPages}
               onPageChange={changePage}
-              label="Restaurant Pages"
+              label={tp("Restaurant Pages")}
             />
           </div>
         )}
@@ -341,9 +346,11 @@ export default function SearchResults() {
 }
 
 function ResultsSkeleton() {
+  const { t: tp } = usePublicLanguage();
+
   return (
-    <div role="status" aria-label="Loading Restaurants">
-      <span className="sr-only">Loading Restaurants</span>
+    <div role="status" aria-label={tp("Loading Restaurants")}>
+      <span className="sr-only">{tp("Loading Restaurants")}</span>
       <div className={GRID_CLASS}>
         {Array.from({ length: 6 }, (_, index) => (
           <RestaurantCardSkeleton key={index} />

@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PILL_BASE_CLASS } from "@/lib/statusStyles";
 import { useLang } from "@/lib/i18n";
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
 
@@ -28,6 +29,7 @@ export function GuestStatusBadge({
   className?: string;
 }) {
   const { t } = useLang();
+  const { t: publicText } = usePublicLanguage();
   let toneClass: string;
   let label: string;
   if (returning) {
@@ -39,7 +41,7 @@ export function GuestStatusBadge({
   }
   return (
     <Badge variant="outline" className={cn(PILL_BASE_CLASS, toneClass, className)}>
-      {label}
+      {publicText(label)}
     </Badge>
   );
 }

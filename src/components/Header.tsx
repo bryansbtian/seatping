@@ -1,5 +1,7 @@
+import { localizedPublicPath } from "@shared/publicLanguage";
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "@/lib/publicNavigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Menu01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { Input } from "@/components/ui/input";
@@ -16,6 +18,8 @@ const Header = ({
   variant?: HeaderVariant;
   showSearch?: boolean;
 }) => {
+  const { t: tp, lang } = usePublicLanguage();
+
   const [open, setOpen] = useState(false);
   const session = useSession(variant === "customer");
   const [searchQuery, setSearchQuery] = useState("");
@@ -51,7 +55,7 @@ const Header = ({
       credentials: "include",
     }).then(async () => {
       await resetSessionQueries();
-      window.location.href = "/";
+      window.location.href = localizedPublicPath("/", lang);
     });
   };
 
@@ -78,21 +82,21 @@ const Header = ({
             to="/business/login"
             className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
           >
-            Log In
+            {tp("Log In")}
           </Link>
           <Link
             to="/business/signup"
             className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
           >
-            Get Started
+            {tp("Get Started")}
           </Link>
         </div>
         <MobileMenu open={open} setOpen={setOpen}>
           <MobileLink to="/business/login" onClick={() => setOpen(false)}>
-            Log In
+            {tp("Log In")}
           </MobileLink>
           <MobileLink to="/business/signup" onClick={() => setOpen(false)}>
-            Get Started
+            {tp("Get Started")}
           </MobileLink>
         </MobileMenu>
       </>
@@ -105,21 +109,21 @@ const Header = ({
             to="/login"
             className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
           >
-            Log In
+            {tp("Log In")}
           </Link>
           <Link
             to="/signup"
             className="text-slate-900 hover:text-slate-600 transition-colors font-medium"
           >
-            Sign Up
+            {tp("Sign Up")}
           </Link>
         </div>
         <MobileMenu open={open} setOpen={setOpen}>
           <MobileLink to="/login" onClick={() => setOpen(false)}>
-            Log In
+            {tp("Log In")}
           </MobileLink>
           <MobileLink to="/signup" onClick={() => setOpen(false)}>
-            Sign Up
+            {tp("Sign Up")}
           </MobileLink>
         </MobileMenu>
       </>
@@ -147,8 +151,8 @@ const Header = ({
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Restaurants, Cuisines, Or Areas"
-                aria-label="Search restaurants"
+                placeholder={tp("Restaurants, Cuisines, Or Areas")}
+                aria-label={tp("Search restaurants")}
                 className="control-lg border-slate-200 pl-9 pr-24"
               />
               <Button
@@ -156,7 +160,7 @@ const Header = ({
                 size="sm"
                 className="absolute right-1 top-1/2 -translate-y-1/2 px-4"
               >
-                Search
+                {tp("Search")}
               </Button>
             </div>
           </form>
@@ -175,8 +179,10 @@ function CustomerProfile({
   name?: string | null;
   onLogout: (e: React.MouseEvent) => void;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   const [menuOpen, setMenuOpen] = useState(false);
-  const displayName = name?.trim() || "Account";
+  const displayName = name?.trim() || tp("Account");
   const initial = displayName.charAt(0).toUpperCase();
 
   useEffect(() => {
@@ -192,7 +198,7 @@ function CustomerProfile({
       <Button
         type="button"
         variant="ghost"
-        aria-label="Open profile menu"
+        aria-label={tp("Open profile menu")}
         aria-expanded={menuOpen}
         onClick={(e) => {
           e.stopPropagation();
@@ -212,7 +218,7 @@ function CustomerProfile({
           onClick={(e) => e.stopPropagation()}
         >
           <span className="block px-3 py-2 text-xs text-muted-foreground">
-            Signed in as {displayName}
+            {tp("Signed in as")} {displayName}
           </span>
           <Link
             to="/profile"
@@ -220,7 +226,7 @@ function CustomerProfile({
             onClick={() => setMenuOpen(false)}
             className="block w-full px-3 py-2 text-sm text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
           >
-            View Profile
+            {tp("View Profile")}
           </Link>
           <Button
             type="button"
@@ -229,7 +235,7 @@ function CustomerProfile({
             onClick={onLogout}
             className="w-full justify-start"
           >
-            Log Out
+            {tp("Log Out")}
           </Button>
         </div>
       )}
@@ -246,13 +252,15 @@ function MobileMenu({
   setOpen: (v: boolean) => void;
   children: React.ReactNode;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <>
       <Button
         type="button"
         variant="outline"
         size="icon"
-        aria-label="Open menu"
+        aria-label={tp("Open menu")}
         aria-expanded={open}
         onClick={() => setOpen(!open)}
         className="sm:hidden"

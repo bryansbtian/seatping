@@ -1,3 +1,4 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useId, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowDown01Icon, Cancel01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
@@ -42,6 +43,8 @@ export function SelectFilter({
   size?: "default" | "sm";
   kind?: "category" | "sort";
 }) {
+  const { t: tp } = usePublicLanguage();
+
   const [open, setOpen] = useState(false);
   let variant: "default" | "outline" = "outline";
   if (active) {
@@ -50,23 +53,25 @@ export function SelectFilter({
   const selected = options.find((option) => option.value === current)?.label;
   let triggerLabel = label;
   if (selected) {
-    triggerLabel = selected;
+    triggerLabel = tp(selected);
   }
   let trigger = (
     <Button
       type="button"
       variant={variant}
       size={size}
-      aria-label={`${label}: ${triggerLabel}`}
+      aria-label={`${label}: ${tp(triggerLabel)}`}
       className="min-w-0 max-w-full"
     >
-      <span className="truncate">{triggerLabel}</span>
+      <span className="truncate">{tp(triggerLabel)}</span>
       <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5 shrink-0" />
     </Button>
   );
   if (kind === "sort") {
     trigger = (
-      <SortButton size={size} aria-label={`${label}: ${triggerLabel}`} title={triggerLabel} />
+      <SortButton size={size} aria-label={`${label}: ${tp(triggerLabel)}`} title={tp(triggerLabel)}>
+        {tp("Sort")}
+      </SortButton>
     );
   }
   return (
@@ -86,7 +91,7 @@ export function SelectFilter({
               setOpen(false);
             }}
           >
-            Any {label}
+            {tp("Any")} {label}
             {current === null && <HugeiconsIcon icon={Tick02Icon} className="size-4 shrink-0" />}
           </button>
         )}
@@ -101,7 +106,7 @@ export function SelectFilter({
               setOpen(false);
             }}
           >
-            <span className="min-w-0 break-words">{option.label}</span>
+            <span className="min-w-0 break-words">{tp(option.label)}</span>
             {current === option.value && (
               <HugeiconsIcon icon={Tick02Icon} className="size-4 shrink-0" />
             )}
@@ -123,6 +128,8 @@ function MultiSelectFilter({
   options: { value: string; label: string }[];
   onChange: (values: string[]) => void;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   let variant: "default" | "outline" = "outline";
   let triggerLabel = label;
   if (current.length > 0) {
@@ -138,9 +145,9 @@ function MultiSelectFilter({
         <Button
           variant={variant}
           className="min-w-0 max-w-full"
-          aria-label={`${label}: ${triggerLabel}`}
+          aria-label={`${label}: ${tp(triggerLabel)}`}
         >
-          <span className="truncate">{triggerLabel}</span>
+          <span className="truncate">{tp(triggerLabel)}</span>
           <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5 shrink-0" />
         </Button>
       </PopoverTrigger>
@@ -155,7 +162,7 @@ function MultiSelectFilter({
           className="flex min-h-9 w-full items-center justify-between gap-2 rounded-control px-3 py-2 text-left text-label text-ink hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={() => onChange([])}
         >
-          Any {label}
+          {tp("Any")} {label}
           {current.length === 0 && <HugeiconsIcon icon={Tick02Icon} className="size-4" />}
         </button>
         {options.map((option) => (
@@ -172,7 +179,7 @@ function MultiSelectFilter({
               onChange(next);
             }}
           >
-            {option.label}
+            {tp(option.label)}
             {current.includes(option.value) && (
               <HugeiconsIcon icon={Tick02Icon} className="size-4" />
             )}
@@ -235,21 +242,23 @@ export default function RestaurantFilters({
   error: boolean;
   actions?: ReactNode;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   const [open, setOpen] = useState(false);
   const id = useId();
   const count = countActiveFilters(filters);
-  let resultWord = "Restaurants";
+  let resultWord = tp("Restaurants");
   if (resultCount === 1) {
-    resultWord = "Restaurant";
+    resultWord = tp("Restaurant");
   }
-  let showLabel: ReactNode = `Show ${resultCount} ${resultWord}`;
+  let showLabel: ReactNode = tp(`Show ${resultCount} ${resultWord}`);
   if (error) {
-    showLabel = "Results Unavailable";
+    showLabel = tp("Results Unavailable");
   }
   if (loading) {
     showLabel = (
       <>
-        <span className="sr-only">Loading Restaurants</span>
+        <span className="sr-only">{tp("Loading Restaurants")}</span>
         <Skeleton
           as="span"
           aria-hidden="true"
@@ -272,19 +281,19 @@ export default function RestaurantFilters({
       <div className="flex min-w-0 flex-wrap items-center gap-2 py-5">
         <div className="hidden min-w-0 flex-wrap items-center gap-2 md:flex md:flex-1">
           <MultiSelectFilter
-            label="Cuisine"
+            label={tp("Cuisine")}
             current={filters.cuisine}
             options={cuisines.map((value) => ({ value, label: value }))}
             onChange={(cuisine) => setFilters((previous) => ({ ...previous, cuisine }))}
           />
           <MultiSelectFilter
-            label="Price"
+            label={tp("Price")}
             current={filters.price}
             options={PRICE_OPTIONS.map((value) => ({ value, label: value }))}
             onChange={(price) => setFilters((previous) => ({ ...previous, price }))}
           />
           <MultiSelectFilter
-            label="Rating"
+            label={tp("Rating")}
             current={filters.minRating.map(String)}
             options={RATING_OPTIONS.map((value) => ({
               value: String(value),
@@ -298,7 +307,7 @@ export default function RestaurantFilters({
             active={filters.queue}
             onClick={() => setFilters((previous) => ({ ...previous, queue: !previous.queue }))}
           >
-            Queue Available
+            {tp("Queue Available")}
           </ToggleChip>
           <ToggleChip
             active={filters.reservations}
@@ -306,27 +315,27 @@ export default function RestaurantFilters({
               setFilters((previous) => ({ ...previous, reservations: !previous.reservations }))
             }
           >
-            Reservations Available
+            {tp("Reservations Available")}
           </ToggleChip>
           <ToggleChip
             active={filters.openNow}
             onClick={() => setFilters((previous) => ({ ...previous, openNow: !previous.openNow }))}
           >
-            Open Now
+            {tp("Open Now")}
           </ToggleChip>
         </div>
         <div
           role="group"
-          aria-label="Restaurant Controls"
+          aria-label={tp("Restaurant Controls")}
           className="flex w-full shrink-0 items-center gap-2 md:ml-auto md:w-auto"
         >
           <SheetTrigger asChild>
             <FilterButton size="default" className="shrink-0">
-              Filter
+              {tp("Filter")}
               {count > 0 && (
                 <Badge
                   variant="neutral"
-                  aria-label={`${count} active filters`}
+                  aria-label={tp(`${count} active filters`)}
                   className="min-w-5 justify-center px-1"
                 >
                   {count}
@@ -341,13 +350,13 @@ export default function RestaurantFilters({
             active={filters.openNow}
             onClick={() => setFilters((previous) => ({ ...previous, openNow: !previous.openNow }))}
           >
-            Open Now
+            {tp("Open Now")}
           </ToggleChip>
           <ToggleChip
             active={filters.queue}
             onClick={() => setFilters((previous) => ({ ...previous, queue: !previous.queue }))}
           >
-            Queue Available
+            {tp("Queue Available")}
           </ToggleChip>
         </div>
       </div>
@@ -358,11 +367,11 @@ export default function RestaurantFilters({
       >
         <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3">
           <SheetTitle className="flex items-center gap-2">
-            Filter
+            {tp("Filter")}
             {count > 0 && (
               <Badge
                 variant="neutral"
-                aria-label={`${count} active filters`}
+                aria-label={tp(`${count} active filters`)}
                 className="min-w-5 justify-center px-1.5"
               >
                 {count}
@@ -374,17 +383,17 @@ export default function RestaurantFilters({
               variant="ghost"
               size="icon"
               className="control-lg dark:text-foreground dark:hover:bg-muted"
-              aria-label="Close Filters"
+              aria-label={tp("Close Filters")}
             >
               <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
             </Button>
           </SheetClose>
         </div>
         <SheetDescription className="sr-only">
-          Refine restaurants by cuisine, price, rating, and supported services.
+          {tp("Refine restaurants by cuisine, price, rating, and supported services.")}
         </SheetDescription>
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-5">
-          <FilterGroup label="Cuisine">
+          <FilterGroup label={tp("Cuisine")}>
             {cuisines.map((cuisine) => (
               <ToggleChip
                 key={cuisine}
@@ -395,10 +404,10 @@ export default function RestaurantFilters({
               </ToggleChip>
             ))}
             {cuisines.length === 0 && (
-              <p className="text-body text-ink-subtle">No Cuisine Information Available</p>
+              <p className="text-body text-ink-subtle">{tp("No Cuisine Information Available")}</p>
             )}
           </FilterGroup>
-          <FilterGroup label="Price">
+          <FilterGroup label={tp("Price")}>
             {PRICE_OPTIONS.map((price) => (
               <ToggleChip
                 key={price}
@@ -409,7 +418,7 @@ export default function RestaurantFilters({
               </ToggleChip>
             ))}
           </FilterGroup>
-          <FilterGroup label="Minimum Rating">
+          <FilterGroup label={tp("Minimum Rating")}>
             {RATING_OPTIONS.map((rating) => (
               <ToggleChip
                 key={rating}
@@ -429,12 +438,12 @@ export default function RestaurantFilters({
             ))}
           </FilterGroup>
           <fieldset>
-            <legend className="mb-2 text-label text-foreground">Availability</legend>
+            <legend className="mb-2 text-label text-foreground">{tp("Availability")}</legend>
             {(
               [
-                { key: "queue", label: "Queue Available" },
-                { key: "reservations", label: "Reservations Available" },
-                { key: "openNow", label: "Open Now" },
+                { key: "queue", label: tp("Queue Available") },
+                { key: "reservations", label: tp("Reservations Available") },
+                { key: "openNow", label: tp("Open Now") },
               ] as const
             ).map(({ key, label }) => (
               <div key={key} className="flex min-h-11 items-center justify-between gap-3">
@@ -454,8 +463,9 @@ export default function RestaurantFilters({
               </div>
             ))}
             <p className="mt-2 text-caption text-ink-subtle">
-              Reservations Available shows restaurants that offer online booking. Table availability
-              is checked when booking.
+              {tp(
+                "Reservations Available shows restaurants that offer online booking. Table availability is checked when booking.",
+              )}
             </p>
           </fieldset>
         </div>
@@ -467,7 +477,7 @@ export default function RestaurantFilters({
             disabled={count === 0}
             className="shrink-0 px-4 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
           >
-            Clear All
+            {tp("Clear All")}
           </Button>
           <Button
             size="lg"

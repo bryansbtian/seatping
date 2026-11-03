@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { COUNTRY_CODES, DEFAULT_COUNTRY_ISO, type CountryCode } from "@shared/countryCodes";
+import { usePublicLanguage } from "@/lib/publicLanguage";
 
 export function CountryCodeSelect({
   value,
@@ -24,6 +25,7 @@ export function CountryCodeSelect({
   ariaLabel?: string;
   className?: string;
 }) {
+  const { t } = usePublicLanguage();
   const [open, setOpen] = useState(false);
   const [selectedIso, setSelectedIso] = useState<string>(() => {
     const def = COUNTRY_CODES.find((c) => c.iso === DEFAULT_COUNTRY_ISO);
@@ -48,7 +50,7 @@ export function CountryCodeSelect({
           type="button"
           role="combobox"
           aria-expanded={open}
-          aria-label={ariaLabel}
+          aria-label={t(ariaLabel)}
           className={cn(
             "control-md flex w-28 shrink-0 items-center justify-between rounded-control border border-input bg-background px-3 text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring",
             className,
@@ -70,9 +72,9 @@ export function CountryCodeSelect({
             return 0;
           }}
         >
-          <CommandInput placeholder="Search country or code..." />
+          <CommandInput placeholder={t("Search country or code...")} />
           <CommandList>
-            <CommandEmpty>No country found.</CommandEmpty>
+            <CommandEmpty>{t("No country found.")}</CommandEmpty>
             <CommandGroup>
               {COUNTRY_CODES.map((c) => {
                 let checkOpacityClass: string;
@@ -84,7 +86,7 @@ export function CountryCodeSelect({
                 return (
                   <CommandItem
                     key={c.iso}
-                    value={`${c.name} ${c.dial} ${c.iso}`}
+                    value={`${c.name} ${t(c.name)} ${c.dial} ${c.iso}`}
                     onSelect={() => {
                       setSelectedIso(c.iso);
                       onChange(c.dial);
@@ -96,7 +98,7 @@ export function CountryCodeSelect({
                       className={cn("mr-2 h-4 w-4", checkOpacityClass)}
                     />
                     <span className="mr-2">{c.flag}</span>
-                    <span className="flex-1">{c.name}</span>
+                    <span className="flex-1">{t(c.name)}</span>
                     <span className="text-muted-foreground">{c.dial}</span>
                   </CommandItem>
                 );

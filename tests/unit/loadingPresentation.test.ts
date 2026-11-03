@@ -17,7 +17,10 @@ function componentFiles(directory: string): string[] {
 }
 
 function isAccessibleLabel(node: ts.Node): boolean {
-  const parent = node.parent;
+  let parent = node.parent;
+  while (ts.isCallExpression(parent) || ts.isJsxExpression(parent)) {
+    parent = parent.parent;
+  }
   if (ts.isJsxAttribute(parent)) {
     const attribute = parent.name.getText();
     if (attribute === "aria-label") {

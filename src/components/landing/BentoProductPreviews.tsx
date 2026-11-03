@@ -1,3 +1,4 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
   CalendarDaysIcon,
@@ -195,6 +196,7 @@ const RESERVATION_ROWS: {
 ];
 
 function ReservationPreviewRow({ row }: { row: (typeof RESERVATION_ROWS)[number] }) {
+  const { t: tp } = usePublicLanguage();
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -228,7 +230,7 @@ function ReservationPreviewRow({ row }: { row: (typeof RESERVATION_ROWS)[number]
             tabIndex={-1}
             className="h-6 px-2.5 text-micro"
           >
-            {a.label}
+            {tp(a.label)}
           </Button>
         ))}
       </div>
@@ -237,12 +239,14 @@ function ReservationPreviewRow({ row }: { row: (typeof RESERVATION_ROWS)[number]
 }
 
 export function ReservationPreview({ className, animated = true }: PreviewProps) {
+  const { t: tp } = usePublicLanguage();
+
   const tabs = [
-    { label: "Today", count: 4, active: true },
-    { label: "Upcoming", count: 2, active: false },
-    { label: "Past", count: 0, active: false },
-    { label: "Cancelled", count: 0, active: false },
-    { label: "No-Shows", count: 0, active: false },
+    { label: tp("Today"), count: 4, active: true },
+    { label: tp("Upcoming"), count: 2, active: false },
+    { label: tp("Past"), count: 0, active: false },
+    { label: tp("Cancelled"), count: 0, active: false },
+    { label: tp("No-Shows"), count: 0, active: false },
   ];
   return (
     <div
@@ -273,7 +277,7 @@ export function ReservationPreview({ className, animated = true }: PreviewProps)
                     tabStateClass,
                   )}
                 >
-                  {t.label}
+                  {tp(t.label)}
                   {t.count > 0 && (
                     <span
                       className={cn("ml-1.5 rounded-full px-1.5 text-preview-sm", countStateClass)}
@@ -296,13 +300,13 @@ export function ReservationPreview({ className, animated = true }: PreviewProps)
 
         <div className="hidden w-36 shrink-0 flex-col justify-between md:flex">
           <div className="rotate-2">
-            <MetricCardPreview label="Reservations Today" value="12" className="shadow-md" />
+            <MetricCardPreview label={tp("Reservations Today")} value="12" className="shadow-md" />
           </div>
           <div className="-rotate-2">
-            <MetricCardPreview label="Served Today" value="28" className="shadow-md" />
+            <MetricCardPreview label={tp("Served Today")} value="28" className="shadow-md" />
           </div>
           <div className="rotate-2">
-            <MetricCardPreview label="Left Today" value="3" className="shadow-md" />
+            <MetricCardPreview label={tp("Left Today")} value="3" className="shadow-md" />
           </div>
         </div>
       </div>
@@ -343,6 +347,8 @@ const QUEUE_ROWS = [
 const QUEUE_ROW_VISIBILITY = ["", "", "hidden md:max-lg:block"];
 
 export function QueuePreview({ className, animated = true }: PreviewProps) {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <div
       data-bento-animated={bentoAnimatedAttr(animated)}
@@ -354,14 +360,14 @@ export function QueuePreview({ className, animated = true }: PreviewProps) {
       <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
         <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-xs font-medium text-slate-800">
           <HugeiconsIcon icon={LeftToRightListNumberIcon} className="h-3.5 w-3.5 shrink-0" />
-          Queue Management
+          {tp("Queue Management")}
         </span>
         <Badge
           variant="secondary"
           className="shrink-0 bg-indigo-100 px-2 py-0.5 text-preview-sm text-indigo-700 hover:bg-indigo-100"
         >
-          <span className="md:max-lg:hidden">2 customers</span>
-          <span className="hidden md:max-lg:inline">3 customers</span>
+          <span className="md:max-lg:hidden">{tp("2 customers")}</span>
+          <span className="hidden md:max-lg:inline">{tp("3 customers")}</span>
         </Badge>
       </div>
       <div className="flex flex-col gap-2 md:flex-1 md:justify-between lg:flex-none">
@@ -395,7 +401,7 @@ export function QueuePreview({ className, animated = true }: PreviewProps) {
             </div>
             <div className="mt-2 flex gap-1.5">
               <Button size="sm" tabIndex={-1} className="h-6 flex-1 text-micro">
-                Admit
+                {tp("Admit")}
               </Button>
               <Button
                 size="sm"
@@ -403,16 +409,16 @@ export function QueuePreview({ className, animated = true }: PreviewProps) {
                 tabIndex={-1}
                 className="h-6 flex-1 text-micro"
               >
-                Remove
+                {tp("Remove")}
               </Button>
             </div>
           </div>
         ))}
 
         <div className="bento-loop animate-bento-toast rounded-lg border border-slate-200 bg-white p-2.5 shadow-lg">
-          <p className="text-caption font-semibold text-slate-900">Customer Admitted</p>
+          <p className="text-caption font-semibold text-slate-900">{tp("Customer Admitted")}</p>
           <p className="mt-0.5 text-micro text-slate-500">
-            Marcus has been admitted and will proceed to their turn.
+            {tp("Marcus has been admitted and will proceed to their turn.")}
           </p>
         </div>
       </div>
@@ -473,11 +479,13 @@ function GuestProfilePanel({
   profile: (typeof GUEST_PROFILES)[number];
   className?: string;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   let visitWord: string;
   if (profile.visits === 1) {
-    visitWord = "Visit";
+    visitWord = tp("Visit");
   } else {
-    visitWord = "Visits";
+    visitWord = tp("Visits");
   }
   return (
     <div className={cn("rounded-xl border border-slate-200 bg-white p-2.5", className)}>
@@ -498,7 +506,9 @@ function GuestProfilePanel({
             <span>
               <strong className="font-semibold text-slate-800">{profile.visits}</strong> {visitWord}
             </span>
-            <span>Last: {profile.last}</span>
+            <span>
+              {tp("Last:")} {profile.last}
+            </span>
             {profile.upcoming && <span className="text-blue-700">{profile.upcoming}</span>}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1">
@@ -513,6 +523,8 @@ function GuestProfilePanel({
 }
 
 export function GuestProfilePreview({ className, animated = true }: PreviewProps) {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <div
       data-bento-animated={bentoAnimatedAttr(animated)}
@@ -523,7 +535,7 @@ export function GuestProfilePreview({ className, animated = true }: PreviewProps
     >
       <div className="mb-2 flex h-7 w-full items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-micro text-slate-400">
         <HugeiconsIcon icon={Search01Icon} className="h-3 w-3 shrink-0" />
-        <span className="truncate">Search Name, Phone, Email, Or Tag</span>
+        <span className="truncate">{tp("Search Name, Phone, Email, Or Tag")}</span>
       </div>
       <div className="flex flex-col gap-2 md:flex-1 md:justify-between lg:flex-none">
         {GUEST_PROFILES.slice(0, 2).map((profile, index) => (
@@ -588,27 +600,31 @@ function MessagePreviewPanel({
   channel: (typeof CHANNELS)[number];
   subject?: string;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
       {subject && (
         <div className="border-b border-slate-200 bg-slate-100 px-3 py-1.5 text-micro">
-          <span className="text-slate-500">Subject:</span>{" "}
+          <span className="text-slate-500">{tp("Subject:")}</span>{" "}
           <span className="font-medium text-slate-800">{subject}</span>
         </div>
       )}
       <div className="flex-1 space-y-2 p-3 text-caption leading-relaxed text-slate-700">
-        <p>Hi Sofia, it&apos;s been a while! Show this message for 10% off your next visit.</p>
+        <p>{tp("Hi Sofia, it's been a while! Show this message for 10% off your next visit.")}</p>
         <p className="text-slate-500">- Cafe Milano (via SeatPing)</p>
       </div>
       <div className="flex items-center gap-1.5 border-t border-slate-200 bg-slate-50 px-3 py-1.5 text-preview-sm text-slate-500">
-        <HugeiconsIcon icon={channel.icon} className="h-3 w-3 shrink-0" /> SeatPing on behalf of
-        your restaurant
+        <HugeiconsIcon icon={channel.icon} className="h-3 w-3 shrink-0" />{" "}
+        {tp("SeatPing on behalf of your restaurant")}
       </div>
     </div>
   );
 }
 
 export function CampaignPreview({ className, animated = true }: PreviewProps) {
+  const { t: tp } = usePublicLanguage();
+
   return (
     <div
       data-bento-animated={bentoAnimatedAttr(animated)}
@@ -621,47 +637,51 @@ export function CampaignPreview({ className, animated = true }: PreviewProps) {
         <div className="rounded-xl border border-slate-200 bg-white p-2.5">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-xs font-medium text-slate-800">
-              Weekend Brunch Reminder
+              {tp("Weekend Brunch Reminder")}
             </span>
             <CampaignStatusBadge status="SCHEDULED" />
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <ChannelBadge channel="EMAIL" />
-            <span className="text-micro text-slate-500">2 Recipients</span>
+            <span className="text-micro text-slate-500">{tp("2 Recipients")}</span>
           </div>
-          <p className="mt-1 text-micro text-slate-400">· Scheduled · Jun 14, 2026, 2:00 AM</p>
+          <p className="mt-1 text-micro text-slate-400">
+            {tp("· Scheduled · Jun 14, 2026, 2:00 AM")}
+          </p>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-2.5">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="truncate text-xs font-medium text-slate-800">June Win-Back</span>
+            <span className="truncate text-xs font-medium text-slate-800">
+              {tp("June Win-Back")}
+            </span>
             <ChannelBadge channel="SMS" />
             <CampaignStatusBadge status="SENT" />
           </div>
           <p className="mt-0.5 text-micro text-slate-400">
-            Lunch Comeback Offer · Sent on Jun 11, 2026
+            {tp("Lunch Comeback Offer · Sent on Jun 11, 2026")}
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-micro">
             <span className="flex items-center gap-1 text-emerald-700">
-              <HugeiconsIcon icon={CheckmarkCircle02Icon} className="h-3 w-3" /> 189 Sent
+              <HugeiconsIcon icon={CheckmarkCircle02Icon} className="h-3 w-3" /> {tp("189 Sent")}
             </span>
             <span className="flex items-center gap-1 text-red-600">
-              <HugeiconsIcon icon={CancelCircleIcon} className="h-3 w-3" /> 0 Failed
+              <HugeiconsIcon icon={CancelCircleIcon} className="h-3 w-3" /> {tp("0 Failed")}
             </span>
-            <span className="text-slate-500">0 Skipped</span>
+            <span className="text-slate-500">{tp("0 Skipped")}</span>
           </div>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-caption font-medium text-slate-700">
-              Returning Guests
+              {tp("Returning Guests")}
             </span>
             <span className="shrink-0 text-caption font-semibold text-indigo-700">
-              128 Recipients
+              {tp("128 Recipients")}
             </span>
           </div>
-          <p className="mt-0.5 text-micro text-slate-500">134 Matched · 6 Excluded</p>
+          <p className="mt-0.5 text-micro text-slate-500">{tp("134 Matched · 6 Excluded")}</p>
         </div>
 
         <div className="flex gap-1.5">

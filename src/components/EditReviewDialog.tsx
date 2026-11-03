@@ -1,3 +1,4 @@
+import { usePublicLanguage } from "@/lib/publicLanguage";
 import { useEffect, useState } from "react";
 import {
   Dialog,
@@ -24,13 +25,15 @@ export type EditableReview = {
 };
 
 function StarRatingInput({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const { t: tp } = usePublicLanguage();
+
   const [hover, setHover] = useState(0);
   const shown = hover || value;
   let ratingText: string;
   if (shown) {
     ratingText = `${shown}/5`;
   } else {
-    ratingText = "Tap to Rate";
+    ratingText = tp("Tap to Rate");
   }
   return (
     <div className="flex items-center gap-1" onMouseLeave={() => setHover(0)}>
@@ -51,7 +54,7 @@ function StarRatingInput({ value, onChange }: { value: number; onChange: (n: num
           <button
             key={n}
             type="button"
-            aria-label={`${n} star${starPlural}`}
+            aria-label={tp(`${n} star${starPlural}`)}
             onClick={() => onChange(n)}
             onMouseEnter={() => setHover(n)}
             className="rounded p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20"
@@ -74,6 +77,8 @@ export function EditReviewDialog({
   onOpenChange: (open: boolean) => void;
   onSaved: (updated: any) => void;
 }) {
+  const { t: tp } = usePublicLanguage();
+
   const { toast } = useToast();
   const [rating, setRating] = useState(0);
   const [description, setDescription] = useState("");
@@ -91,7 +96,7 @@ export function EditReviewDialog({
       return;
     }
     if (rating < 1) {
-      toast({ title: "Pick a rating", variant: "destructive" });
+      toast({ title: tp("Pick a rating"), variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -102,11 +107,11 @@ export function EditReviewDialog({
       });
       onSaved(res.review);
       await invalidateRestaurantData(res.review?.businessUsername, res.review?.locationId);
-      toast({ title: "Review updated" });
+      toast({ title: tp("Review updated") });
     } catch (err: any) {
       toast({
-        title: "Could not update review",
-        description: err?.message || "Please try again.",
+        title: tp("Could not update review"),
+        description: tp(err?.message || tp("Please try again.")),
         variant: "destructive",
       });
     } finally {
@@ -116,39 +121,39 @@ export function EditReviewDialog({
 
   let saveButtonLabel: string;
   if (saving) {
-    saveButtonLabel = "Saving…";
+    saveButtonLabel = tp("Saving…");
   } else {
-    saveButtonLabel = "Save Changes";
+    saveButtonLabel = tp("Save Changes");
   }
 
   return (
     <Dialog open={!!review} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-md rounded-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Review</DialogTitle>
+          <DialogTitle>{tp("Edit Review")}</DialogTitle>
           <DialogDescription className="line-clamp-1">
-            {review?.restaurantName || "Restaurant"}
+            {review?.restaurantName || tp("Restaurant")}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-1">
           <div className="space-y-1.5">
-            <Label>Rating</Label>
+            <Label>{tp("Rating")}</Label>
             <StarRatingInput value={rating} onChange={setRating} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="review-text">Review</Label>
+            <Label htmlFor="review-text">{tp("Review")}</Label>
             <Textarea
               id="review-text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Share what you liked, the vibe, the dishes you tried..."
+              placeholder={tp("Share what you liked, the vibe, the dishes you tried...")}
               rows={4}
             />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
+            {tp("Cancel")}
           </Button>
           <Button onClick={save} disabled={saving}>
             {saveButtonLabel}
