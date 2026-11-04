@@ -71,6 +71,9 @@ describe("public footer", () => {
     expect(indonesian.className).toContain("hover:bg-transparent");
     fireEvent.click(indonesian);
     expect(document.documentElement.lang).toBe("id");
+    expect(
+      screen.getByText("Smarter queues. Better guest relationships.").getAttribute("lang"),
+    ).toBe("en");
     expect(localStorage.getItem(PUBLIC_LANGUAGE_STORAGE_KEY)).toBe("id");
     expect(screen.getByRole("link", { name: "Kebijakan Privasi" }).getAttribute("href")).toBe(
       "/id/policy",

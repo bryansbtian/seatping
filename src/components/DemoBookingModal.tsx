@@ -180,7 +180,7 @@ export default function DemoBookingModal({
     try {
       const response = await fetch("/api/demo/book", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-seatping-language": lang },
         body: JSON.stringify({ ...form, start: selected, timezone }),
       });
       const result = await response.json();

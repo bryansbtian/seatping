@@ -44,7 +44,7 @@ function QueueStatusScreen() {
           <p className="text-caption text-slate-500">{tp("Estimated Wait")}</p>
           <p className="mt-0.5 text-xs font-semibold text-slate-900">{tp("15-25 Minutes")}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white px-2 py-2.5 text-center">
+        <div className="flex flex-col justify-center rounded-xl border border-slate-200 bg-white px-2 py-2.5 text-center">
           <p className="text-caption text-slate-500">{tp("Notifications")}</p>
           <p className="mt-0.5 text-xs font-medium text-slate-900">SMS</p>
         </div>

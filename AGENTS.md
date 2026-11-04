@@ -342,6 +342,12 @@ result, and never describe work as done while a test it added or touched is fail
 branches. Do not lower these thresholds, exclude application code to raise the number, or
 weaken assertions.
 
+Always finish with green tests and checks. The full coverage report must show at least 80%
+for statements, branches, functions, and lines, both overall and for every reported
+application file. Passing the configured 70% global gate alone is not enough. Add meaningful
+tests for uncovered behavior until every coverage value is green. Preserve the reporter's
+colors and watermarks rather than changing how coverage is classified.
+
 ## Before Finishing
 
 Run the relevant repository checks and fix all failures:

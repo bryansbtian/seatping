@@ -121,6 +121,7 @@ export async function runReservationReminderSweep(): Promise<void> {
     try {
       await enqueueNotification({
         type: "reservation_reminder",
+        reservationDateTime: r.reservationDateTime,
         email: r.email,
         firstName: r.firstName || r.name || "there",
         businessName: restaurantName,

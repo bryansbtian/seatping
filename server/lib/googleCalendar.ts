@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { DEMO_TIMEZONE } from "../../shared/demoBooking.js";
+import type { PublicLanguage } from "../../shared/publicLanguage.js";
+import { emailCopy } from "./emailCopy.js";
 
 export class CalendarUnavailableError extends Error {}
 export class CalendarConflictError extends Error {}
@@ -97,6 +99,7 @@ export async function calendarBusy(
 }
 
 export type CalendarBooking = {
+  language?: PublicLanguage;
   name: string;
   email: string;
   company?: string;
@@ -111,6 +114,7 @@ export async function createDemoEvent(
   end: Date,
   customer: CalendarBooking,
 ) {
+  const t = emailCopy(customer.language);
   const { calendarId } = calendarConfig();
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
   const escape = (text: string) =>
@@ -120,9 +124,17 @@ export async function createDemoEvent(
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       id: eventId,
-      summary: `SeatPing Demo | ${customer.name}`,
+      summary: t("SeatPing Demo | {name}", { name: customer.name }),
       description: escape(
-        `Name: ${customer.name}\nRestaurant Or Company: ${customer.company || "Not Provided"}\nNotes: ${customer.notes || "None"}\nGuest Timezone: ${customer.timezone}`,
+        t(
+          "Name: {name}\nRestaurant Or Company: {company}\nNotes: {notes}\nGuest Timezone: {timezone}",
+          {
+            name: customer.name,
+            company: customer.company || t("Not Provided"),
+            notes: customer.notes || t("None"),
+            timezone: customer.timezone,
+          },
+        ),
       ),
       start: { dateTime: start.toISOString(), timeZone: DEMO_TIMEZONE },
       end: { dateTime: end.toISOString(), timeZone: DEMO_TIMEZONE },

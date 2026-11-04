@@ -3,6 +3,7 @@ import { api } from "../helpers/app.js";
 import { getTestPrisma } from "../helpers/db.js";
 import { uniqueSuffix } from "../helpers/seed.js";
 import { sinks } from "../setup/externalMocks.js";
+import { queueTicketReply, deliverTicketReply } from "../../server/lib/ticketMessages.js";
 
 let ipCounter = 0;
 
@@ -23,6 +24,60 @@ function feedbackPayload(overrides: Record<string, unknown> = {}) {
 }
 
 describe("feedback intake", () => {
+  it.each(["en", "id"])(
+    "preserves the %s sender preference for confirmations and threaded replies",
+    async (language) => {
+      const payload = feedbackPayload();
+      const response = await (
+        await api()
+      )
+        .post("/api/feedback/submit")
+        .set("X-Forwarded-For", freshIp())
+        .set("x-seatping-language", language)
+        .send(payload);
+      expect(response.status).toBe(200);
+      const ticket = await getTestPrisma().ticket.findUniqueOrThrow({
+        where: { ticketNumber: response.body.ticketNumber },
+      });
+      expect(ticket.data).toMatchObject({ language });
+      const confirmation = sinks().email.find((email) => email.to === payload.email);
+      expect(confirmation?.html).toContain(`<html lang="${language}">`);
+      const reply = await queueTicketReply(
+        ticket.ticketNumber,
+        "Original English reply.\n<Keep this>",
+        "Support Agent",
+        `reply-${uniqueSuffix()}`,
+      );
+      if (!reply) {
+        throw new Error("Support reply was not queued");
+      }
+      await deliverTicketReply(reply.id);
+      const sent = sinks().email.at(-1);
+      expect(sent).toMatchObject({
+        to: payload.email,
+        inReplyTo: ticket.emailThreadId,
+        references: [ticket.emailThreadId],
+        messageId: reply.emailMessageId,
+        replyTo: "sender@test.invalid",
+      });
+      expect(sent?.html).toContain(`<html lang="${language}">`);
+      expect(sent?.html).toContain("Original English reply.<br>&lt;Keep this&gt;");
+      let heading = "Response To Your Feedback";
+      let subject = `Re: ${payload.subject} [Ticket #${ticket.ticketNumber}]`;
+      let closing = "The SeatPing Team";
+      if (language === "id") {
+        heading = "Tanggapan atas Masukan Anda";
+        subject = `Re: ${payload.subject} [Tiket #${ticket.ticketNumber}]`;
+        closing = "Tim SeatPing";
+        expect(confirmation?.subject).toBe(`Masukan Diterima: ${ticket.ticketNumber}`);
+        expect(sent?.html).toContain("Balas langsung email ini untuk melanjutkan percakapan.");
+      }
+      expect(sent?.subject).toBe(subject);
+      expect(sent?.html).toContain(heading);
+      expect(sent?.html).toContain(closing);
+    },
+  );
+
   it("creates a feedback ticket and emails both the team and the sender", async () => {
     const payload = feedbackPayload();
 

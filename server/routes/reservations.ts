@@ -37,6 +37,8 @@ import { syncGuestFromReservation, touchGuestByReservationId } from "../lib/gues
 import { withWriteRetry } from "../lib/dbRetry.js";
 import type { Reservation } from "@prisma/client";
 import { ENTITY_ID_RE } from "../lib/entityId.js";
+import { parsePublicLanguage, type PublicLanguage } from "../../shared/publicLanguage.js";
+import { requestEmailLanguage } from "../lib/emailLanguage.js";
 
 const router = Router();
 
@@ -46,7 +48,7 @@ async function resolveLocation(businessUsername: string, locationId: string) {
   }
   const business = await prisma.business.findUnique({
     where: { username: businessUsername },
-    select: { id: true, name: true, username: true, email: true },
+    select: { id: true, name: true, username: true, email: true, language: true },
   });
   if (!business) {
     return null;
@@ -84,7 +86,7 @@ function baseUrl(req: any): string {
 
 async function notifyReservation(
   reservation: any,
-  business: { name: string | null; email?: string | null },
+  business: { name: string | null; email?: string | null; language?: string | null },
   location: {
     address: string;
     displayName?: string | null;
@@ -93,10 +95,14 @@ async function notifyReservation(
   },
   settings: ReservationSettings,
   manageUrl: string,
+  customerLanguage: PublicLanguage,
 ) {
   const { date, time } = splitDateTime(reservation.reservationDateTime);
   await enqueueNotification({
     type: "reservation_created",
+    customerLanguage,
+    businessLanguage: parsePublicLanguage(business.language) ?? "en",
+    reservationDateTime: reservation.reservationDateTime,
     customerEmail: reservation.email || undefined,
     firstName: reservation.firstName,
     lastName: reservation.lastName,
@@ -394,7 +400,14 @@ router.post("/:businessUsername/:locationId", async (req, res) => {
 
     const reservation = reservationRowToLegacy(row, { includeToken: true });
     const manageUrl = `${baseUrl(req)}/reservations/manage/${manageToken}`;
-    await notifyReservation(reservation, business, location, settings, manageUrl);
+    await notifyReservation(
+      reservation,
+      business,
+      location,
+      settings,
+      manageUrl,
+      requestEmailLanguage(req),
+    );
     await syncCustomerReservation(reservation, {
       businessName: business.name,
       locationName: location.displayName || location.name || business.name,

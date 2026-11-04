@@ -6,6 +6,8 @@ import { getLocationTimezone } from "../lib/operatingHours.js";
 import { SUGGESTED_GUEST_TAGS } from "../lib/guests.js";
 import { rawCampaignSend } from "../lib/notifications.js";
 import { sendEmailDetailed, renderEmail, p, esc } from "../lib/email.js";
+import { requestEmailLanguage } from "../lib/emailLanguage.js";
+import { emailCopy } from "../lib/emailCopy.js";
 import {
   AUDIENCE_GROUPS,
   MANUAL_AUDIENCE,
@@ -74,7 +76,7 @@ async function ownedLocation(businessId: string, locationId: string) {
 async function loadBusiness(businessId: string) {
   return prisma.business.findUnique({
     where: { id: businessId },
-    select: { id: true, name: true, username: true, email: true, phone: true },
+    select: { id: true, name: true, username: true, email: true, phone: true, language: true },
   });
 }
 
@@ -946,6 +948,10 @@ router.post("/:id/send-test", async (req, res) => {
     }
 
     const restName = restaurantNameForLocation(location, business.name);
+    let language = requestEmailLanguage(req, business.language);
+    if (overrideEmail && overrideEmail.toLowerCase() !== business.email.toLowerCase()) {
+      language = "en";
+    }
     const message = buildMessage(
       template,
       (campaign.templateValues as Record<string, string>) || {},
@@ -955,6 +961,7 @@ router.post("/:id/send-test", async (req, res) => {
         locationName: locationLabel(location),
         firstName: business.name?.split(" ")[0] || "there",
         guestName: business.name,
+        language,
       },
       channel,
     );
@@ -975,6 +982,7 @@ router.post("/:id/send-test", async (req, res) => {
 
     try {
       await rawCampaignSend({
+        language,
         channel: channel.toLowerCase() as any,
         businessName: business.name,
         replyTo: business.email || undefined,
@@ -1003,6 +1011,8 @@ router.post("/debug/email-test", async (req, res) => {
     return res.status(404).json({ error: "Not found" });
   }
   try {
+    const language = requestEmailLanguage(req);
+    const t = emailCopy(language);
     let emails: string[] = [];
     if (Array.isArray(req.body?.emails)) {
       emails = req.body.emails
@@ -1013,14 +1023,17 @@ router.post("/debug/email-test", async (req, res) => {
     if (!emails.length) {
       return res.status(400).json({ error: "Provide emails: string[]" });
     }
-    const subject = String(req.body?.subject || "SeatPing email delivery test");
+    const subject = String(req.body?.subject || t("SeatPing email delivery test"));
     const bodyText = String(
       req.body?.body ||
-        "This is a SeatPing email delivery test. If you received it, delivery is working for this address.",
+        t(
+          "This is a SeatPing email delivery test. If you received it, delivery is working for this address.",
+        ),
     );
     const html = renderEmail({
-      heading: "Email Delivery Test",
-      preheader: "SeatPing delivery test",
+      language,
+      heading: t("Email Delivery Test"),
+      preheader: t("SeatPing delivery test"),
       bodyHtml: p(esc(bodyText).replace(/\n/g, "<br>")),
     });
 

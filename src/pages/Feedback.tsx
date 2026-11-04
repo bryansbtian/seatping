@@ -23,7 +23,7 @@ import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 const MAX_MESSAGE = 1200;
 
 const Feedback = () => {
-  const { t: tp } = usePublicLanguage();
+  const { t: tp, lang } = usePublicLanguage();
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -118,7 +118,7 @@ const Feedback = () => {
     try {
       const response = await fetch("/api/feedback/submit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-seatping-language": lang },
         body: JSON.stringify(formData),
       });
 

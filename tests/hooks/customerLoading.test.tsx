@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import CustomerLanding from "../../src/pages/CustomerLanding.js";
@@ -7,6 +7,8 @@ import ManageReservation from "../../src/pages/ManageReservation.js";
 import QueueBusiness from "../../src/pages/QueueBusiness.js";
 import { queryClient } from "../../src/lib/queryClient.js";
 import { restaurant } from "../helpers/searchRestaurants.js";
+import PublicLanguageProvider from "../../src/components/PublicLanguageProvider.js";
+import { translatePublic } from "../../shared/publicTranslations.js";
 
 const apiMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/api", () => ({ api: apiMock }));
@@ -45,6 +47,54 @@ beforeEach(() => {
     removeListener: vi.fn(),
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
+  });
+});
+
+describe("queue notification language", () => {
+  it.each(["en", "id"] as const)("submits the %s queue page language", async (language) => {
+    apiMock.mockImplementation(async (path: string) => {
+      if (path.endsWith("/addresses")) {
+        return { addresses: [{ id: "loc-1", businessName: "Bistro", address: "1 Main Street" }] };
+      }
+      return { user: null, success: false };
+    });
+    render(
+      <MemoryRouter initialEntries={[`/${language}/queue/bistro/loc-1`]}>
+        <PublicLanguageProvider>
+          <Routes>
+            <Route
+              path="/:language/queue/:businessUsername/:locationId"
+              element={<QueueBusiness />}
+            />
+          </Routes>
+        </PublicLanguageProvider>
+      </MemoryRouter>,
+    );
+
+    const join = await screen.findByRole("button", {
+      name: translatePublic(language, "Join Queue"),
+      exact: true,
+    });
+    fireEvent.change(screen.getByLabelText(translatePublic(language, "First Name")), {
+      target: { value: "Ada" },
+    });
+    fireEvent.change(screen.getByLabelText(translatePublic(language, "Last Name")), {
+      target: { value: "Lovelace" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Email / }));
+    fireEvent.change(screen.getByLabelText(translatePublic(language, "Email Address")), {
+      target: { value: "ada@test.invalid" },
+    });
+    fireEvent.click(join);
+
+    await waitFor(() => {
+      expect(apiMock).toHaveBeenCalledWith(
+        "/auth/business/bistro/queue",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+    const request = apiMock.mock.calls.find(([, options]) => options?.method === "POST");
+    expect(JSON.parse(request?.[1].body ?? "{}")).toMatchObject({ notificationLanguage: language });
   });
 });
 

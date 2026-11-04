@@ -7,6 +7,38 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/featured-restaurants", (route) => route.fulfill({ json: [] }));
 });
 
+for (const language of [
+  { path: "/en/business", label: "Notifications" },
+  { path: "/id/business", label: "Notifikasi" },
+]) {
+  test(`centers the guest notification content at 320px on ${language.path}`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 642 });
+    await page.goto(language.path, { waitUntil: "domcontentloaded" });
+
+    const label = page.getByText(language.label, { exact: true });
+    await label.scrollIntoViewIfNeeded();
+    await expect(label).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+
+    const card = label.locator("..");
+    await expect(card.getByText("SMS", { exact: true })).toBeVisible();
+    const centerOffset = await card.evaluate((element) => {
+      const label = element.firstElementChild;
+      const channel = element.lastElementChild;
+      if (!label || !channel) {
+        throw new Error("Guest notification preview content is unavailable");
+      }
+      const cardBounds = element.getBoundingClientRect();
+      const labelBounds = label.getBoundingClientRect();
+      const channelBounds = channel.getBoundingClientRect();
+      const cardCenter = cardBounds.y + cardBounds.height / 2;
+      const contentCenter = (labelBounds.y + channelBounds.y + channelBounds.height) / 2;
+      return Math.abs(contentCenter - cardCenter);
+    });
+    expect(centerOffset).toBeLessThanOrEqual(1);
+  });
+}
+
 for (const viewport of [
   { width: 1440, height: 900 },
   { width: 768, height: 1024 },

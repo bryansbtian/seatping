@@ -19,6 +19,9 @@ import { renderCampaignEmailHtml } from "./campaigns.js";
 import type { CampaignEmailParts } from "./campaigns.js";
 import { consumeQuota, peekQuota, DAYS } from "./rateLimit.js";
 import { maskEmail, maskPhone } from "./redact.js";
+import { parsePublicLanguage, type PublicLanguage } from "../../shared/publicLanguage.js";
+import { emailCopy } from "./emailCopy.js";
+import { emailDateLabels } from "./emailLanguage.js";
 
 export type NotificationChannel = "sms" | "whatsapp" | "email";
 
@@ -28,6 +31,7 @@ export type NotificationJob =
   | {
       type: "queue_join";
       channel: NotificationChannel;
+      language?: PublicLanguage;
       firstName: string;
       lastName: string;
       countryCode?: string;
@@ -40,6 +44,7 @@ export type NotificationJob =
   | {
       type: "queue_admitted";
       channel: NotificationChannel;
+      language?: PublicLanguage;
       firstName: string;
       countryCode?: string;
       phoneNumber?: string;
@@ -48,6 +53,9 @@ export type NotificationJob =
     }
   | {
       type: "reservation_created";
+      customerLanguage?: PublicLanguage;
+      businessLanguage?: PublicLanguage;
+      reservationDateTime?: string;
       customerEmail?: string;
       firstName: string;
       lastName: string;
@@ -68,6 +76,8 @@ export type NotificationJob =
     }
   | {
       type: "reservation_needs_review";
+      language?: PublicLanguage;
+      reservationDateTime?: string;
       businessEmail: string;
       locationName: string;
       customerName: string;
@@ -81,6 +91,8 @@ export type NotificationJob =
     }
   | {
       type: "reservation_reminder";
+      language?: PublicLanguage;
+      reservationDateTime?: string;
       email: string;
       firstName: string;
       businessName: string;
@@ -92,6 +104,7 @@ export type NotificationJob =
     }
   | {
       type: "campaign_message";
+      language?: PublicLanguage;
       channel: NotificationChannel;
       campaignId: string;
       recipientId: string;
@@ -264,11 +277,11 @@ export async function processNotification(job: NotificationJob): Promise<void> {
     }
     case "queue_join": {
       if (job.channel === "sms") {
-        await sendSms(
-          job.countryCode,
-          job.phoneNumber,
-          `Hi ${job.firstName}! You've joined the queue at ${job.restaurantName}. You're #${job.position} in line. We'll text you when it's your turn.`,
-        );
+        let text = `Hi ${job.firstName}! You've joined the queue at ${job.restaurantName}. You're #${job.position} in line. We'll text you when it's your turn.`;
+        if (job.language === "id") {
+          text = `Halo ${job.firstName}! Anda telah masuk ke daftar antrean di ${job.restaurantName}. Posisi antrean Anda saat ini adalah nomor #${job.position}. Kami akan mengirimkan pemberitahuan saat giliran Anda tiba.`;
+        }
+        await sendSms(job.countryCode, job.phoneNumber, text);
       } else if (job.channel === "whatsapp") {
         const ok = await sendQueueJoinedWhatsApp({
           countryCode: job.countryCode || "+1",
@@ -276,6 +289,7 @@ export async function processNotification(job: NotificationJob): Promise<void> {
           customerName: job.firstName,
           businessName: job.restaurantName,
           position: job.position,
+          language: job.language,
         });
         if (!ok) {
           throw new Error("WhatsApp queue_join send failed");
@@ -288,6 +302,7 @@ export async function processNotification(job: NotificationJob): Promise<void> {
           job.restaurantName,
           job.address,
           job.position,
+          job.language,
         );
       }
       return;
@@ -295,22 +310,23 @@ export async function processNotification(job: NotificationJob): Promise<void> {
 
     case "queue_admitted": {
       if (job.channel === "sms") {
-        await sendSms(
-          job.countryCode,
-          job.phoneNumber,
-          `Good news! It's your turn at ${job.restaurantName}. Please proceed to the host within the next 5 minutes. Thank you for using SeatPing!`,
-        );
+        let text = `Good news! It's your turn at ${job.restaurantName}. Please proceed to the host within the next 5 minutes. Thank you for using SeatPing!`;
+        if (job.language === "id") {
+          text = `Kabar baik! Sekarang giliran Anda di ${job.restaurantName}. Silakan menuju petugas restoran dalam waktu 5 menit. Terima kasih telah menggunakan SeatPing!`;
+        }
+        await sendSms(job.countryCode, job.phoneNumber, text);
       } else if (job.channel === "whatsapp") {
         const ok = await sendQueueAdmittedWhatsApp({
           countryCode: job.countryCode || "+1",
           phoneNumber: job.phoneNumber || "",
           businessName: job.restaurantName,
+          language: job.language,
         });
         if (!ok) {
           throw new Error("WhatsApp queue_admitted send failed");
         }
       } else if (job.channel === "email" && job.email) {
-        await sendQueueYourTurnEmail(job.email, job.restaurantName);
+        await sendQueueYourTurnEmail(job.email, job.restaurantName, job.language);
       }
       return;
     }
@@ -321,11 +337,11 @@ export async function processNotification(job: NotificationJob): Promise<void> {
           `[NOTIFY] sending needs review email for reservation ${job.reservationId} to ${maskEmail(job.businessEmail)}`,
         );
         const sent = await sendReservationNeedsReviewEmail({
+          language: job.language,
           to: job.businessEmail,
           locationName: job.locationName,
           customerName: job.customerName,
-          dateLabel: job.dateLabel,
-          timeLabel: job.timeLabel,
+          ...emailDateLabels(job, job.language),
           partySize: job.partySize,
           reservationId: job.reservationId,
           reason: job.reason,
@@ -346,13 +362,13 @@ export async function processNotification(job: NotificationJob): Promise<void> {
       if (job.customerEmail) {
         try {
           await sendReservationConfirmationEmail({
+            language: job.customerLanguage,
             email: job.customerEmail,
             firstName: job.firstName,
             lastName: job.lastName,
             businessName: job.businessName,
             address: job.address,
-            dateLabel: job.dateLabel,
-            timeLabel: job.timeLabel,
+            ...emailDateLabels(job, job.customerLanguage),
             partySize: job.partySize,
             manageUrl: job.manageUrl,
             cancellationPolicy: job.cancellationPolicy,
@@ -364,6 +380,7 @@ export async function processNotification(job: NotificationJob): Promise<void> {
       if (job.businessEmail) {
         try {
           await sendNewReservationBusinessEmail({
+            language: job.businessLanguage,
             to: job.businessEmail,
             businessName: job.businessName,
             locationName: job.locationName,
@@ -371,8 +388,7 @@ export async function processNotification(job: NotificationJob): Promise<void> {
             customerEmail: job.customerEmail || "",
             customerPhone: job.customerPhone,
             customerCountryCode: job.customerCountryCode,
-            dateLabel: job.dateLabel,
-            timeLabel: job.timeLabel,
+            ...emailDateLabels(job, job.businessLanguage),
             partySize: job.partySize,
             notes: job.notes,
             dashboardUrl: job.dashboardUrl,
@@ -386,12 +402,12 @@ export async function processNotification(job: NotificationJob): Promise<void> {
 
     case "reservation_reminder": {
       await sendReservationReminderEmail({
+        language: job.language,
         email: job.email,
         firstName: job.firstName,
         businessName: job.businessName,
         address: job.address,
-        dateLabel: job.dateLabel,
-        timeLabel: job.timeLabel,
+        ...emailDateLabels(job, job.language),
         partySize: job.partySize,
         manageUrl: job.manageUrl,
       });
@@ -406,6 +422,7 @@ export async function processNotification(job: NotificationJob): Promise<void> {
 }
 
 export interface CampaignSendContent {
+  language?: PublicLanguage;
   channel: NotificationChannel;
   businessName: string;
   replyTo?: string;
@@ -422,16 +439,26 @@ export interface CampaignSendContent {
 
 export async function rawCampaignSend(content: CampaignSendContent): Promise<string> {
   if (content.channel === "email") {
+    const language =
+      parsePublicLanguage(content.language) ??
+      parsePublicLanguage(content.emailParts?.language) ??
+      "en";
+    const t = emailCopy(language);
     if (!content.email) {
       throw new Error("No email address for recipient");
     }
-    let emailHtml = esc(content.bodyText).replace(/\n/g, "<br>");
+    let emailHtml = `<html lang="${language}"><body>${esc(content.bodyText).replace(/\n/g, "<br>")}</body></html>`;
     if (content.emailParts) {
-      emailHtml = renderCampaignEmailHtml(content.emailParts);
+      emailHtml = renderCampaignEmailHtml({
+        ...content.emailParts,
+        language,
+      });
     }
     const emailPayload: Parameters<typeof sendEmailDetailed>[0] = {
       to: content.email,
-      subject: content.subject || `A message from ${content.businessName}`,
+      subject:
+        content.subject ||
+        t("A message from {businessName}", { businessName: content.businessName }),
       html: emailHtml,
     };
     if (content.replyTo) {

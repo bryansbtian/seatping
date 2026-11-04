@@ -54,6 +54,24 @@ beforeEach(() => {
   locationFindUnique.mockResolvedValue({ name: "Main", displayName: "PIK Avenue" });
 });
 
+describe("missing queue entries", () => {
+  it.each([
+    { action: "admitting", transition: markQueueEntryAdmitted },
+    { action: "confirming arrival for", transition: markQueueEntryArrived },
+    { action: "marking a no-show for", transition: markQueueEntryNoShow },
+  ])("does nothing when $action a deleted entry", async ({ transition }) => {
+    queueFindUnique.mockResolvedValue(null);
+
+    expect(await transition("queue-deleted")).toBe(false);
+
+    expect(queueUpdateMany).not.toHaveBeenCalled();
+    expect(assignmentUpdateMany).not.toHaveBeenCalled();
+    expect(enqueueNotification).not.toHaveBeenCalled();
+    expect(syncCustomerQueue).not.toHaveBeenCalled();
+    expect(touchGuestByQueueEntryId).not.toHaveBeenCalled();
+  });
+});
+
 describe("markQueueEntryAdmitted", () => {
   it("keeps a floor-assigned waiting guest in arrival confirmation", async () => {
     queueFindUnique.mockResolvedValue({
@@ -65,6 +83,7 @@ describe("markQueueEntryAdmitted", () => {
       firstName: "Bryan",
       lastName: "Susanto",
       notificationMethod: "sms",
+      notificationLanguage: "id",
       countryCode: "+1",
       phone: "2065550100",
       email: null,
@@ -85,7 +104,7 @@ describe("markQueueEntryAdmitted", () => {
       expect.objectContaining({ status: "admitted", businessUsername: "bistro" }),
     );
     expect(enqueueNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "queue_admitted", channel: "sms" }),
+      expect.objectContaining({ type: "queue_admitted", channel: "sms", language: "id" }),
     );
     expect(touchGuestByQueueEntryId).toHaveBeenCalledWith("queue-1");
   });
@@ -185,6 +204,23 @@ describe("markQueueEntryArrived", () => {
 });
 
 describe("markQueueEntryNoShow", () => {
+  it("preserves tables and guest history when another request wins the transition", async () => {
+    queueFindUnique.mockResolvedValue({
+      id: "queue-1",
+      status: "ADMITTED",
+      businessId: "business-1",
+      locationId: "location-1",
+    });
+    queueUpdateMany.mockResolvedValue({ count: 0 });
+
+    expect(await markQueueEntryNoShow("queue-1")).toBe(false);
+
+    expect(assignmentUpdateMany).not.toHaveBeenCalled();
+    expect(syncCustomerQueue).not.toHaveBeenCalled();
+    expect(touchGuestByQueueEntryId).not.toHaveBeenCalled();
+    expect(enqueueNotification).not.toHaveBeenCalled();
+  });
+
   it("marks the guest a no-show and releases the table they were holding", async () => {
     queueFindUnique.mockResolvedValue({
       id: "queue-1",

@@ -79,6 +79,88 @@ afterEach(() => {
 });
 
 describe("queue notifications", () => {
+  it.each([
+    { language: "id", join: "Halo Ada!", admitted: "Kabar baik! Sekarang giliran Anda di Bistro." },
+    { language: "en", join: "Hi Ada!", admitted: "Good news! It's your turn at Bistro." },
+    { language: undefined, join: "Hi Ada!", admitted: "Good news! It's your turn at Bistro." },
+  ])(
+    "sends both SMS messages in $language to a +1 number",
+    async ({ language, join, admitted }) => {
+      configureProviders();
+      const { processNotification } = await loadNotifications();
+      await processNotification(
+        queueJoin({ language, countryCode: "+1", phoneNumber: "2065550100" }),
+      );
+      await processNotification({
+        type: "queue_admitted",
+        channel: "sms",
+        language,
+        firstName: "Ada",
+        countryCode: "+1",
+        phoneNumber: "2065550100",
+        restaurantName: "Bistro",
+      } as never);
+
+      expect(sinks().telnyx).toHaveLength(2);
+      expect(sinks().telnyx[0]).toMatchObject({
+        to: "+12065550100",
+        text: expect.stringContaining(join),
+      });
+      expect(sinks().telnyx[1]).toMatchObject({
+        to: "+12065550100",
+        text: expect.stringContaining(admitted),
+      });
+    },
+  );
+
+  it("passes Indonesian to both WhatsApp sends", async () => {
+    configureProviders();
+    const { processNotification } = await loadNotifications();
+    await processNotification(queueJoin({ channel: "whatsapp", language: "id" }));
+    await processNotification({
+      type: "queue_admitted",
+      channel: "whatsapp",
+      language: "id",
+      firstName: "Ada",
+      countryCode: "+62",
+      phoneNumber: "81234567890",
+      restaurantName: "Bistro",
+    });
+
+    expect(sinks().whatsapp).toHaveLength(2);
+    expect(sinks().whatsapp[0]).toMatchObject({
+      template: { name: "queue_joined", language: { code: "id" } },
+    });
+    expect(sinks().whatsapp[1]).toMatchObject({
+      template: { name: "queue_admitted", language: { code: "id" } },
+    });
+  });
+
+  it("localizes both email messages for an Indonesian join", async () => {
+    const { processNotification } = await loadNotifications();
+    await processNotification(
+      queueJoin({ channel: "email", language: "id", email: "guest@test.invalid" }),
+    );
+    await processNotification({
+      type: "queue_admitted",
+      channel: "email",
+      language: "id",
+      firstName: "Ada",
+      email: "guest@test.invalid",
+      restaurantName: "Bistro",
+    });
+
+    expect(sinks().email).toHaveLength(2);
+    expect(sinks().email[0]).toMatchObject({
+      subject: "Anda Sudah Masuk Antrean",
+      html: expect.stringContaining("Halo Ada, Anda sudah masuk daftar antrean"),
+    });
+    expect(sinks().email[1]).toMatchObject({
+      subject: "Meja Anda Sudah Siap",
+      html: expect.stringContaining("Silakan menuju petugas penerima tamu"),
+    });
+  });
+
   it("texts a joining guest their position", async () => {
     configureProviders();
     const { processNotification } = await loadNotifications();
@@ -189,6 +271,87 @@ describe("queue notifications", () => {
 });
 
 describe("reservation notifications", () => {
+  it.each([
+    {
+      customerLanguage: "id",
+      businessLanguage: "en",
+      guestSubject: "Reservasi Dikonfirmasi: Bistro",
+      businessSubject: "New Reservation At Downtown",
+    },
+    {
+      customerLanguage: "en",
+      businessLanguage: "id",
+      guestSubject: "Reservation Confirmed: Bistro",
+      businessSubject: "Reservasi Baru di Downtown",
+    },
+  ] as const)(
+    "separates guest $customerLanguage and business $businessLanguage preferences",
+    async (preferences) => {
+      const { processNotification } = await loadNotifications();
+      await processNotification(
+        reservation({ ...preferences, reservationDateTime: "2026-11-04T19:30" }),
+      );
+      expect(sinks().email[0]).toMatchObject({
+        to: "guest@test.invalid",
+        subject: preferences.guestSubject,
+      });
+      expect(sinks().email[1]).toMatchObject({
+        to: "owner@test.invalid",
+        subject: preferences.businessSubject,
+      });
+      for (const [index, language] of [
+        [0, preferences.customerLanguage],
+        [1, preferences.businessLanguage],
+      ] as const) {
+        expect(sinks().email[index].html).toContain(`<html lang="${language}">`);
+        if (language === "id") {
+          expect(sinks().email[index].html).toContain("Rab, 4 Nov 2026");
+          expect(sinks().email[index].html).toContain("19.30");
+        } else {
+          expect(sinks().email[index].html).toContain("Wed, 12 Aug");
+        }
+      }
+    },
+  );
+
+  it("localizes reminder and table review jobs without changing their recipient", async () => {
+    const { processNotification } = await loadNotifications();
+    await processNotification({
+      type: "reservation_reminder",
+      language: "id",
+      email: "guest@test.invalid",
+      firstName: "Ada",
+      businessName: "Bistro",
+      address: "1 Test Street",
+      dateLabel: "Original Date",
+      timeLabel: "7:30 PM",
+      reservationDateTime: "2026-11-04T19:30",
+      partySize: 2,
+    });
+    await processNotification({
+      type: "reservation_needs_review",
+      language: "id",
+      businessEmail: "owner@test.invalid",
+      locationName: "Bistro",
+      customerName: "Ada",
+      dateLabel: "Original Date",
+      timeLabel: "7:30 PM",
+      reservationDateTime: "2026-11-04T19:30",
+      partySize: 2,
+      reservationId: "res-1",
+      reservationsUrl: "https://test.invalid/business/reservations",
+      floorUrl: "https://test.invalid/business/floor",
+    });
+    expect(sinks().email[0]).toMatchObject({
+      to: "guest@test.invalid",
+      subject: "Waktu Reservasi Anda Sebentar Lagi",
+    });
+    expect(sinks().email[1]).toMatchObject({
+      to: "owner@test.invalid",
+      subject: "Reservasi Memerlukan Meja di Bistro",
+    });
+  });
+
   function reservation(overrides: Record<string, unknown> = {}) {
     return {
       type: "reservation_created",
@@ -254,6 +417,63 @@ describe("reservation notifications", () => {
 });
 
 describe("rawCampaignSend", () => {
+  it.each(["en", "id"] as const)(
+    "preserves authored content and localizes the %s campaign wrapper",
+    async (language) => {
+      const { rawCampaignSend } = await loadNotifications();
+      const bodyText = "Your Table Is Ready\n<script>Keep my original message</script>";
+      await rawCampaignSend({
+        channel: "email",
+        language,
+        businessName: "Bistro",
+        email: "guest@test.invalid",
+        subject: "Keep My Subject",
+        replyTo: "owner@test.invalid",
+        bodyText,
+        emailParts: {
+          heading: "Your Table Is Ready",
+          bodyText,
+          businessName: "Bistro",
+          offer: "Original Offer",
+          ctaText: "Keep My Button",
+          ctaUrl: "https://test.invalid/offer",
+        },
+      });
+      const sent = sinks().email[0];
+      expect(sent).toMatchObject({ subject: "Keep My Subject", replyTo: "owner@test.invalid" });
+      expect(sent.html).toContain(`<html lang="${language}">`);
+      expect(sent.html).toContain(">Your Table Is Ready</h1>");
+      expect(sent.html).toContain(
+        "Your Table Is Ready<br>&lt;script&gt;Keep my original message&lt;/script&gt;",
+      );
+      expect(sent.html).toContain("Original Offer");
+      expect(sent.html).toContain("Keep My Button");
+      expect(sent.html).toContain('href="https://test.invalid/offer"');
+      let footer =
+        "You are receiving this because you visited Bistro. Sent by SeatPing on behalf of Bistro.";
+      if (language === "id") {
+        footer =
+          "Anda menerima email ini karena pernah berkunjung ke Bistro. Dikirim oleh SeatPing atas nama Bistro.";
+      }
+      expect(sent.html).toContain(footer);
+    },
+  );
+
+  it("localizes campaign fallback labels without translating supplied content", async () => {
+    const { rawCampaignSend } = await loadNotifications();
+    await rawCampaignSend({
+      channel: "email",
+      language: "id",
+      businessName: "Bistro",
+      email: "guest@test.invalid",
+      bodyText: "Your Table Is Ready\n<Original>",
+    });
+    expect(sinks().email[0]).toMatchObject({
+      subject: "Pesan dari Bistro",
+      html: '<html lang="id"><body>Your Table Is Ready<br>&lt;Original&gt;</body></html>',
+    });
+  });
+
   it("refuses an email send with no address", async () => {
     const { rawCampaignSend } = await loadNotifications();
 
@@ -279,7 +499,7 @@ describe("rawCampaignSend", () => {
 
     expect(id).toEqual(expect.any(String));
     expect(sinks().email[0].subject).toBe("A message from Bistro");
-    expect(sinks().email[0].html).toBe("Line one<br>Line two");
+    expect(sinks().email[0].html).toBe('<html lang="en"><body>Line one<br>Line two</body></html>');
   });
 
   it("refuses an sms send with no phone number", async () => {

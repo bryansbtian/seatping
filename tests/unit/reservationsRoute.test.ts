@@ -264,6 +264,26 @@ describe("resolving a restaurant", () => {
 });
 
 describe("creating a reservation", () => {
+  it("keeps route and business recipient languages separate", async () => {
+    businessFindUnique.mockResolvedValue({
+      id: "biz-1",
+      name: "Bistro",
+      username: "bistro",
+      email: "owner@test.invalid",
+      language: "en",
+    });
+    const response = await book({}, { "x-seatping-language": "id" });
+    expect(response.status).toBe(200);
+    expect(enqueueNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "reservation_created",
+        customerLanguage: "id",
+        businessLanguage: "en",
+        reservationDateTime: expect.any(String),
+      }),
+    );
+  });
+
   it("stores a booking and notifies both sides", async () => {
     const res = await book();
 

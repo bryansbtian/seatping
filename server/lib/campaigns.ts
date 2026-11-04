@@ -4,6 +4,8 @@ import { p, calloutBox, emailButton, esc, renderEmail } from "./email.js";
 import { normalizeEmail, normalizePhone } from "./guests.js";
 import { findGuestProfileIdsByExactTag } from "./guestTagSearch.js";
 import type { WhatsAppBodyParam } from "./whatsapp.js";
+import type { PublicLanguage } from "../../shared/publicLanguage.js";
+import { emailCopy } from "./emailCopy.js";
 
 export type Channel = "EMAIL" | "WHATSAPP" | "SMS";
 
@@ -133,6 +135,7 @@ export function editableVariables(template: { variables: string[] }): string[] {
 }
 
 export interface RenderContext {
+  language?: PublicLanguage;
   businessName: string;
   businessEmail?: string | null;
   locationName: string;
@@ -168,6 +171,7 @@ export function extractBodyPlaceholders(body: string): string[] {
 }
 
 export interface CampaignEmailParts {
+  language?: PublicLanguage;
   heading: string;
   bodyText: string;
   businessName: string;
@@ -177,6 +181,7 @@ export interface CampaignEmailParts {
 }
 
 export function renderCampaignEmailHtml(parts: CampaignEmailParts): string {
+  const t = emailCopy(parts.language);
   let offerHtml = "";
   if (parts.offer) {
     offerHtml = calloutBox(`<strong>${esc(parts.offer)}</strong>`);
@@ -186,14 +191,17 @@ export function renderCampaignEmailHtml(parts: CampaignEmailParts): string {
     ctaHtml = emailButton(parts.ctaUrl, parts.ctaText);
   }
   return renderEmail({
-    heading: parts.heading,
+    language: parts.language,
+    heading: parts.heading || t("A message"),
     preheader: parts.bodyText.slice(0, 110),
-    tagline: `Sent by SeatPing on behalf of ${parts.businessName}`,
+    tagline: t("Sent by SeatPing on behalf of {businessName}", {
+      businessName: parts.businessName,
+    }),
     bodyHtml: `
       ${p(esc(parts.bodyText).replace(/\n/g, "<br>"))}
       ${offerHtml}
       ${ctaHtml}
-      ${p(`<span style="color:#64748B;font-size:12px;">You are receiving this because you visited ${esc(parts.businessName)}. Sent by SeatPing on behalf of ${esc(parts.businessName)}.</span>`)}
+      ${p(`<span style="color:#64748B;font-size:12px;">${t("You are receiving this because you visited {businessName}. Sent by SeatPing on behalf of {businessName}.", { businessName: esc(parts.businessName) })}</span>`)}
     `,
   });
 }
@@ -231,7 +239,13 @@ export function buildMessage(
   if (template.ctaUrl) {
     ctaUrl = template.ctaUrl.trim();
   }
-  const nameLine = renderString(template.name, values).trim() || "A message";
+  let nameLine = renderString(template.name, values).trim();
+  if (!nameLine) {
+    nameLine = "A message";
+    if (channel === "EMAIL") {
+      nameLine = emailCopy(ctx.language)("A message");
+    }
+  }
 
   if (channel === "EMAIL") {
     const subject = `${ctx.businessName}: ${nameLine}`;
@@ -240,6 +254,7 @@ export function buildMessage(
       ctaLine = `${ctaText}: ${ctaUrl}`;
     }
     const emailParts: CampaignEmailParts = {
+      language: ctx.language,
       heading: nameLine,
       bodyText,
       businessName: ctx.businessName,

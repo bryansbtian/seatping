@@ -15,6 +15,7 @@ import {
 import { getLocationTimezone } from "./operatingHours.js";
 import { businessNotificationEmail, restaurantNameForNotification } from "./business.js";
 import { enqueueNotification } from "./notifications.js";
+import { parsePublicLanguage } from "../../shared/publicLanguage.js";
 
 export async function locationHasFloorInventory(locationId: string): Promise<boolean> {
   const table = await prisma.diningTable.findFirst({
@@ -220,7 +221,7 @@ export async function notifyReservationNeedsReview(reservationId: string): Promi
     prisma.location.findUnique({ where: { id: reservation.locationId } }),
     prisma.business.findUnique({
       where: { id: reservation.businessId },
-      select: { name: true, email: true },
+      select: { name: true, email: true, language: true },
     }),
   ]);
   if (!location) {
@@ -242,6 +243,8 @@ export async function notifyReservationNeedsReview(reservationId: string): Promi
 
   await enqueueNotification({
     type: "reservation_needs_review",
+    language: parsePublicLanguage(business?.language) ?? "en",
+    reservationDateTime: reservation.reservationDateTime,
     businessEmail: recipient,
     locationName: restaurantNameForNotification(
       location,

@@ -93,9 +93,9 @@ export const PUBLIC_INDONESIAN: Record<string, string> = {
   "Remove {name} from saved": "Hapus {name} dari simpanan",
   "View All ({count})": "Lihat Semua ({count})",
   "{rating} out of 5": "{rating} dari 5",
-  "Open · Closes at {time}": "Buka · Tutup pukul {time}",
-  "Closed · Opens at {time}": "Tutup · Buka pukul {time}",
-  "Closed · Opens {day} at {time}": "Tutup · Buka {day} pukul {time}",
+  "Open · Closes at {time}": "Buka · Tutup Pukul {time}",
+  "Closed · Opens at {time}": "Tutup · Buka Pukul {time}",
+  "Closed · Opens {day} at {time}": "Tutup · Buka {day} Pukul {time}",
   "Book a table or join the queue at {name} with SeatPing.":
     "Reservasi meja atau ikut antrean di {name} dengan SeatPing.",
   "See all {count} photos": "Lihat semua {count} foto",
@@ -851,8 +851,6 @@ export const PUBLIC_INDONESIAN: Record<string, string> = {
   "Business Login": "Masuk Bisnis",
   Resources: "Informasi",
   Feedback: "Masukan",
-  "Smarter queues. Better guest relationships.":
-    "Antrean lebih praktis. Hubungan dengan tamu lebih dekat.",
   Connect: "Ikuti Kami",
   "SeatPing on LinkedIn": "SeatPing di LinkedIn",
   Legal: "Informasi Hukum",

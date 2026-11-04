@@ -1,3 +1,20 @@
+import { explicitPublicLanguage, isLocalizedPublicPath } from "@shared/publicLanguage";
+
+function publicRouteLanguageHeaders(): Record<string, string> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+  const pathname = window.location?.pathname;
+  if (!pathname) {
+    return {};
+  }
+  const language = explicitPublicLanguage(pathname);
+  if (language && isLocalizedPublicPath(pathname)) {
+    return { "x-seatping-language": language };
+  }
+  return {};
+}
+
 function extractError(data: any, status: number): string {
   let message = data?.error || `Request Failed: ${status}`;
   if (data?.issues?.fieldErrors) {
@@ -28,7 +45,11 @@ export class ApiError extends Error {
 export async function api(path: string, init: RequestInit = {}) {
   const res = await fetch(path, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init.headers || {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...publicRouteLanguageHeaders(),
+      ...(init.headers || {}),
+    },
     credentials: "include",
   });
   let data: any = null;

@@ -108,6 +108,43 @@ describe("Google Calendar adapter", () => {
     expect(body.description).toContain("&lt;Test&gt;");
   });
 
+  it.each(["en", "id"] as const)(
+    "localizes SeatPing event text in %s and preserves booking values",
+    async (language) => {
+      fetchMock.mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: "abc123",
+            status: "confirmed",
+            hangoutLink: "https://meet.google.com/abc-defg-hij",
+          }),
+        ),
+      );
+      await createDemoEvent("placeholder", "abc123", start, end, {
+        ...customer,
+        language,
+        company: undefined,
+        notes: undefined,
+      });
+      const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+      let summary = "SeatPing Demo | Test Guest";
+      let description =
+        "Name: Test Guest\nRestaurant Or Company: Not Provided\nNotes: None\nGuest Timezone: UTC";
+      if (language === "id") {
+        summary = "Demo SeatPing | Test Guest";
+        description =
+          "Nama: Test Guest\nRestoran atau Perusahaan: Belum Diisi\nCatatan: Tidak Ada\nZona Waktu Tamu: UTC";
+      }
+      expect(body).toMatchObject({
+        summary,
+        description,
+        start: { dateTime: start.toISOString(), timeZone: "America/New_York" },
+        end: { dateTime: end.toISOString(), timeZone: "America/New_York" },
+        attendees: [{ email: customer.email, displayName: customer.name }],
+      });
+    },
+  );
+
   it("polls for asynchronously generated Meet links", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ id: "abc123", status: "confirmed" })),

@@ -169,6 +169,26 @@ afterEach(() => {
 });
 
 describe("admitting a guest", () => {
+  it.each([
+    { stored: "id", expected: "id" },
+    { stored: "en", expected: "en" },
+    { stored: undefined, expected: "en" },
+  ])("uses the stored $expected notification language", async ({ stored, expected }) => {
+    queueEntryFindFirst.mockResolvedValue(
+      entryRow({ notificationMethod: "whatsapp", notificationLanguage: stored }),
+    );
+
+    const res = await app()
+      .post(queuePath(KEY, "admit"))
+      .set("Cookie", businessCookie())
+      .send({ notificationLanguage: "en" });
+
+    expect(res.status).toBe(200);
+    expect(enqueueNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "queue_admitted", language: expected }),
+    );
+  });
+
   it("notifies the guest on their chosen channel", async () => {
     for (const method of ["sms", "whatsapp", "email"]) {
       enqueueNotification.mockClear();

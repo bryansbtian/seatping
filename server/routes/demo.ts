@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { rateLimit, limitGuard, HOURS, MINUTES } from "../lib/rateLimit.js";
+import { requestEmailLanguage } from "../lib/emailLanguage.js";
 import {
   calendarAccessToken,
   calendarBusy,
@@ -123,6 +124,7 @@ router.post(
       }
       insertionStarted = true;
       const event = await createDemoEvent(token, eventId, start, end, {
+        language: requestEmailLanguage(req),
         name: customer.name,
         email: customer.email,
         company: customer.company,
