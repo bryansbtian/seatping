@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import path from "node:path";
+import { availableParallelism } from "node:os";
 
 const DB_PROJECT_SETUP = ["./tests/setup/integration.ts"];
 
@@ -19,7 +20,7 @@ export default defineConfig({
     },
   },
   test: {
-    maxWorkers: 8,
+    maxWorkers: Math.min(8, Math.max(1, availableParallelism() - 1)),
     projects: [
       {
         resolve: {

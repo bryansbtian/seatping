@@ -63,14 +63,14 @@ describe("Public Language Navigation", () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ language: "id" })));
     vi.stubGlobal("fetch", fetcher);
     renderNavigation("/?from=qr#featured");
-    await waitFor(() =>
-      expect(screen.getByTestId("actual").textContent).toBe("/id?from=qr#featured"),
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId("actual").textContent).toBe("/id?from=qr#featured");
+      expect(document.documentElement.lang).toBe("id");
+    });
     expect(fetcher).toHaveBeenCalledWith(
       "/api/language",
       expect.objectContaining({ credentials: "include", signal: expect.any(AbortSignal) }),
     );
-    expect(document.documentElement.lang).toBe("id");
     expect(localStorage.getItem("seatping.consumer.lang")).toBeNull();
   });
 
