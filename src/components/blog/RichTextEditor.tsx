@@ -5,6 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -589,8 +596,8 @@ export default function RichTextEditor({
             }
           }}
         >
-          <DialogContent>
-            <DialogHeader>
+          <DialogContent className="max-h-[85dvh] overflow-y-auto rounded-2xl sm:max-w-2xl">
+            <DialogHeader className="pr-6 text-left">
               <DialogTitle>{dialogTitle}</DialogTitle>
               <DialogDescription>
                 Insert supported content securely. Your current selection will be preserved.
@@ -608,8 +615,8 @@ export default function RichTextEditor({
               </div>
             )}
             {["Image", "Image Settings"].includes(dialog) && (
-              <div className="space-y-3">
-                <div>
+              <div className="space-y-4">
+                <div className="grid gap-2">
                   <Label htmlFor="image-alt">Alt Text</Label>
                   <Input
                     id="image-alt"
@@ -617,7 +624,7 @@ export default function RichTextEditor({
                     onChange={(event) => setAlt(event.target.value)}
                   />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label htmlFor="image-caption">Caption</Label>
                   <Input
                     id="image-caption"
@@ -625,25 +632,25 @@ export default function RichTextEditor({
                     onChange={(event) => setCaption(event.target.value)}
                   />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label htmlFor="image-alignment">Alignment</Label>
-                  <select
-                    id="image-alignment"
-                    className="control-md ml-2 rounded-control border px-2"
-                    value={alignment}
-                    onChange={(event) => setAlignment(event.target.value)}
-                  >
-                    <option value="left">Left</option>
-                    <option value="center">Center</option>
-                    <option value="right">Right</option>
-                  </select>
+                  <Select value={alignment} onValueChange={setAlignment}>
+                    <SelectTrigger id="image-alignment">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="left">Left</SelectItem>
+                      <SelectItem value="center">Center</SelectItem>
+                      <SelectItem value="right">Right</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 {dialog === "Image Settings" && (
-                  <div>
+                  <div className="grid gap-2">
                     <Label htmlFor="image-width">Image Width ({width}px)</Label>
                     <input
                       id="image-width"
-                      className="mt-2 w-full"
+                      className="w-full"
                       type="range"
                       min="160"
                       max="1200"
@@ -689,16 +696,22 @@ export default function RichTextEditor({
                 {error}
               </p>
             )}
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button
                 type="button"
                 variant="outline"
+                className="shrink-0"
                 disabled={progress !== null}
                 onClick={() => setDialog("")}
               >
                 Cancel
               </Button>
-              <Button type="button" disabled={progress !== null} onClick={applyDialog}>
+              <Button
+                type="button"
+                className="shrink-0"
+                disabled={progress !== null}
+                onClick={applyDialog}
+              >
                 Apply
               </Button>
             </DialogFooter>
@@ -722,4 +735,4 @@ function message(error: unknown) {
   return "Media upload failed. Please try again.";
 }
 
-const bubbleOptions = { placement: "top" as const };
+const bubbleOptions = { placement: "top" as const, offset: 20 };

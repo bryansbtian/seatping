@@ -197,6 +197,7 @@ test("two editors share coffee identities, text, selections, and independent und
   browser,
   baseURL,
 }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   const state = await workspace(page);
   const now = new Date().toISOString();
   state.posts.push({
@@ -329,6 +330,196 @@ async function insertBlock(body: Locator, name: string) {
   await body.pressSequentially(`/${name.toLowerCase()}`);
   await body.press("Enter");
 }
+
+for (const format of ["plain", "html"]) {
+  test(`converts pasted ${format} Markdown comparison tables and preserves them after reload`, async ({
+    page,
+  }) => {
+    const state = await workspace(page);
+    const body = await newArticle(page);
+    const lines = [
+      "Here's how the two compare:",
+      "| Feature | Paper Waitlist | QR Code Waitlist With SeatPing |",
+      "|---|---|---|",
+      "| Guest Check-in | Staff-assisted | Self-check-in |",
+      "| Waiting Experience | Near the entrance | Wait anywhere |",
+      "| Waitlist Management | Handwritten & paper-based | Digital dashboard |",
+      "| Guest Notifications | Verbal announcement | Digital & on-the-go notifications |",
+      "| Guest Information | Manual records | Digital guest profiles |",
+      "Choose the approach that fits your restaurant.",
+    ];
+    await body.click();
+    await body.evaluate(
+      (element, { lines, format }) => {
+        const clipboard = new DataTransfer();
+        clipboard.setData("text/plain", lines.join("\n\n"));
+        if (format === "html") {
+          const container = document.createElement("div");
+          for (const line of lines) {
+            const paragraph = document.createElement("p");
+            paragraph.textContent = line;
+            container.append(paragraph);
+          }
+          clipboard.setData("text/html", container.innerHTML);
+        }
+        element.dispatchEvent(
+          new ClipboardEvent("paste", {
+            clipboardData: clipboard,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      },
+      { lines, format },
+    );
+    await expect(body.locator("table")).toHaveCount(1);
+    await expect(body.locator("tr")).toHaveCount(6);
+    await expect(body.locator("th")).toHaveText([
+      "Feature",
+      "Paper Waitlist",
+      "QR Code Waitlist With SeatPing",
+    ]);
+    await expect(body.locator("td")).toHaveCount(15);
+    await expect(body).toContainText("Here's how the two compare:");
+    await expect(body).toContainText("Choose the approach that fits your restaurant.");
+    await expect
+      .poll(() => state.posts[0]?.content.content?.some((node) => node.type === "table"))
+      .toBe(true);
+    await page.reload();
+    await expect(page.getByRole("textbox", { name: "Article Body" }).locator("tr")).toHaveCount(6);
+  });
+}
+
+test("converts existing pipe text into a saved table when reopening an article", async ({
+  page,
+}) => {
+  const state = await workspace(page);
+  const now = new Date().toISOString();
+  state.posts.push({
+    ...newBlogFields(),
+    id: "existing-markdown-table",
+    title: "Restaurant Guide",
+    slug: "restaurant-guide",
+    status: "DRAFT",
+    revision: 1,
+    createdAt: now,
+    updatedAt: now,
+    publishedAt: null,
+    content: {
+      type: "doc",
+      content: [
+        "Before.",
+        "| Feature | SeatPing |",
+        "|---|---|",
+        "| Check-in | Self-check-in |",
+        "After.",
+      ].map((text) => ({ type: "paragraph", content: [{ type: "text", text }] })),
+    },
+  });
+  await page.goto("/admin/blog/existing-markdown-table/edit");
+  const body = page.getByRole("textbox", { name: "Article Body" });
+  await expect(body.locator("table")).toHaveCount(1);
+  await expect(body.locator("td")).toHaveText(["Check-in", "Self-check-in"]);
+  await expect
+    .poll(() => state.posts[0].content.content?.map((node) => node.type))
+    .toEqual(["paragraph", "table", "paragraph"]);
+  await page.reload();
+  await expect(page.getByRole("textbox", { name: "Article Body" }).locator("table")).toHaveCount(1);
+});
+
+test("spaces image settings controls and uses the shared stacked alignment select", async ({
+  page,
+}, testInfo) => {
+  const state = await workspace(page);
+  const now = new Date().toISOString();
+  state.posts.push({
+    ...newBlogFields(),
+    id: "image-settings",
+    title: "Restaurant Guide",
+    slug: "restaurant-guide",
+    status: "DRAFT",
+    revision: 1,
+    createdAt: now,
+    updatedAt: now,
+    publishedAt: null,
+    content: {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "Let guests join your queue." }] },
+        {
+          type: "image",
+          attrs: {
+            src: "https://images.example.test/queue.svg",
+            alt: "Queue Form",
+            width: 420,
+            alignment: "center",
+            caption: "",
+          },
+        },
+        {
+          type: "heading",
+          attrs: { level: 2 },
+          content: [{ type: "text", text: "Manage Waiting Parties" }],
+        },
+      ],
+    },
+  });
+  await page.route("https://images.example.test/queue.svg", (route) =>
+    route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="420" height="260"><rect width="420" height="260" fill="#f1f5f9"/></svg>',
+    }),
+  );
+  await page.goto("/admin/blog/image-settings/edit");
+  const image = page.getByRole("img", { name: "Queue Form" });
+  await image.click();
+  const settings = page.getByRole("button", { name: "Image Settings", exact: true });
+  await expect(settings).toBeVisible();
+  const imageBox = await image.locator("..").boundingBox();
+  const toolbarBox = await settings.locator("..").boundingBox();
+  expect(
+    Math.max(
+      imageBox!.y - toolbarBox!.y - toolbarBox!.height,
+      toolbarBox!.y - imageBox!.y - imageBox!.height,
+    ),
+  ).toBeGreaterThanOrEqual(16);
+  await settings.click();
+  const dialog = page.getByRole("dialog", { name: "Image Settings" });
+  for (const label of ["Alt Text", "Caption", "Alignment"]) {
+    const control = dialog.getByLabel(label, { exact: true });
+    const labelElement = dialog.locator(`label[for="${await control.getAttribute("id")}"]`);
+    await expect
+      .poll(async () => {
+        const labelBox = await labelElement.boundingBox();
+        const controlBox = await control.boundingBox();
+        return Math.round((controlBox!.y - labelBox!.y - labelBox!.height) * 100) / 100;
+      })
+      .toBeGreaterThanOrEqual(8);
+  }
+  const alignment = dialog.getByRole("combobox", { name: "Alignment" });
+  await alignment.click();
+  await page.getByRole("option", { name: "Right", exact: true }).click();
+  await expect(alignment).toHaveText("Right");
+  const apply = dialog.getByRole("button", { name: "Apply", exact: true });
+  const cancel = dialog.getByRole("button", { name: "Cancel", exact: true });
+  const applyBox = await apply.boundingBox();
+  const cancelBox = await cancel.boundingBox();
+  if (testInfo.project.name === "webkit-mobile") {
+    expect(cancelBox!.y - applyBox!.y - applyBox!.height).toBeGreaterThanOrEqual(8);
+    expect(applyBox!.height).toBe(32);
+    expect(cancelBox!.height).toBe(32);
+  }
+  expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await dialog.screenshot({ path: testInfo.outputPath("image-settings.png") });
+  await dialog.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(image.locator("..")).toHaveAttribute("data-alignment", "right");
+  await expect
+    .poll(
+      () =>
+        state.posts[0]?.content.content?.find((node) => node.type === "image")?.attrs?.alignment,
+    )
+    .toBe("right");
+});
 
 test("mobile recovery actions share one row below the recovery message", async ({ page }) => {
   const state = await workspace(page);
@@ -980,32 +1171,33 @@ test("article editor skeleton fills the remaining page while a post loads", asyn
   );
 });
 
-test("converts Markdown shortcuts and supports slash keyboard navigation", async ({ page }) => {
-  await workspace(page);
-  const body = await newArticle(page);
-  const cases = [
-    { typed: "# ", selector: "h1" },
-    { typed: "## ", selector: "h2" },
-    { typed: "### ", selector: "h3" },
-    { typed: "- ", selector: "ul:not([data-type])" },
-    { typed: "1. ", selector: "ol" },
-    { typed: "> ", selector: "blockquote" },
-    { typed: "[ ] ", selector: 'ul[data-type="taskList"]' },
-    { typed: "---", selector: "hr" },
-    { typed: "```", selector: "pre" },
-    { typed: "**bold** ", selector: "strong" },
-    { typed: "*italic* ", selector: "em" },
-    { typed: "~~strike~~ ", selector: "s" },
-  ];
-  for (const item of cases) {
+for (const item of [
+  { typed: "# ", selector: "h1" },
+  { typed: "## ", selector: "h2" },
+  { typed: "### ", selector: "h3" },
+  { typed: "- ", selector: "ul:not([data-type])" },
+  { typed: "1. ", selector: "ol" },
+  { typed: "> ", selector: "blockquote" },
+  { typed: "[ ] ", selector: 'ul[data-type="taskList"]' },
+  { typed: "---", selector: "hr" },
+  { typed: "```", selector: "pre" },
+  { typed: "**bold** ", selector: "strong" },
+  { typed: "*italic* ", selector: "em" },
+  { typed: "~~strike~~ ", selector: "s" },
+]) {
+  test(`converts Markdown shortcut ${item.typed.trim()}`, async ({ page }) => {
+    await workspace(page);
+    const body = await newArticle(page);
     await body.click();
-    await body.press("ControlOrMeta+A");
-    await body.press("Backspace");
     await body.pressSequentially(item.typed);
     await expect(body.locator(item.selector)).toHaveCount(1);
-  }
-  await body.press("ControlOrMeta+A");
-  await body.press("Backspace");
+  });
+}
+
+test("supports slash keyboard navigation", async ({ page }) => {
+  await workspace(page);
+  const body = await newArticle(page);
+  await body.click();
   await body.pressSequentially("/heading");
   await body.press("ArrowDown");
   await body.press("Enter");
@@ -1020,8 +1212,9 @@ test("keeps edits after save errors and shows styled upload progress before fail
   const body = await newArticle(page);
   await body.fill("Keep this article even when offline.");
   await expect(page.getByRole("alert")).toContainText("Offline. Please retry.");
+  await page.getByRole("button", { name: "Retry Save" }).focus();
   state.failSave = false;
-  await page.getByRole("button", { name: "Retry Save" }).click();
+  await page.keyboard.press("Enter");
   await expect.poll(() => state.posts[0]?.title).toBe("The Guest Experience");
   await page.route("**/api/admin/blog/media/sign", (route) =>
     route.fulfill({ json: { upload: { cloudName: "test", kind: "image", public_id: "cover" } } }),

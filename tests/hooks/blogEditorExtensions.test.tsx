@@ -1,7 +1,8 @@
 import { Editor } from "@tiptap/core";
 import Collaboration from "@tiptap/extension-collaboration";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { blogExtensions } from "../../shared/blogEditorExtensions.js";
+import { blogExtensions as browserExtensions } from "../../src/components/blog/extensions.js";
 import { BLOG_ROOTS, createBlogDocument } from "../../shared/blogCollaboration.js";
 import { newBlogFields } from "../../shared/blog.js";
 
@@ -20,6 +21,54 @@ afterEach(() => {
 });
 
 describe("Blog Editor Extensions", () => {
+  it("converts existing Markdown tables when an editable article opens", async () => {
+    const instance = new Editor({
+      extensions: browserExtensions(),
+      content:
+        "<p>Before.</p><p>| Feature | SeatPing |</p><p>|---|---|</p><p>| Check-in | Self-check-in |</p><p>After.</p>",
+    });
+    editors.push(instance);
+    await vi.waitFor(() => expect(instance.isInitialized).toBe(true));
+    expect(instance.getJSON().content?.map((node) => node.type)).toEqual([
+      "paragraph",
+      "table",
+      "paragraph",
+    ]);
+    expect(instance.getHTML()).toContain("<th");
+    expect(instance.getText()).toContain("Self-check-in");
+  });
+
+  it("leaves read-only articles unchanged and converts only after an editable document change", async () => {
+    const instance = new Editor({
+      extensions: browserExtensions(),
+      editable: false,
+      content: "<p>| Feature | SeatPing |</p><p>|---|---|</p><p>| Check-in | Self-check-in |</p>",
+    });
+    editors.push(instance);
+    await vi.waitFor(() => expect(instance.isInitialized).toBe(true));
+    instance.commands.insertContentAt(instance.state.doc.content.size, "<p>After.</p>");
+    expect(instance.getJSON().content?.some((node) => node.type === "table")).toBe(false);
+    instance.setEditable(true);
+    instance.commands.setTextSelection(1);
+    expect(instance.getJSON().content?.some((node) => node.type === "table")).toBe(false);
+    instance.commands.insertContentAt(instance.state.doc.content.size, "<p>Next.</p>");
+    expect(instance.getJSON().content?.map((node) => node.type)).toEqual([
+      "table",
+      "paragraph",
+      "paragraph",
+    ]);
+  });
+
+  it("keeps normal editing and selection updates unchanged", async () => {
+    const instance = new Editor({ extensions: browserExtensions(), content: "<p>Guest Guide</p>" });
+    editors.push(instance);
+    await vi.waitFor(() => expect(instance.isInitialized).toBe(true));
+    instance.commands.setTextSelection(1);
+    instance.commands.insertContent("A ");
+    expect(instance.getJSON().content).toHaveLength(1);
+    expect(instance.getText()).toBe("A Guest Guide");
+  });
+
   it("keeps paragraph splits within the shared document roots accepted by the server", () => {
     const document = createBlogDocument({
       ...newBlogFields(),
