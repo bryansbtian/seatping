@@ -65,6 +65,7 @@ describe("markQueueEntryAdmitted", () => {
       firstName: "Bryan",
       lastName: "Susanto",
       notificationMethod: "sms",
+      notificationLanguage: "id",
       countryCode: "+1",
       phone: "2065550100",
       email: null,
@@ -85,7 +86,7 @@ describe("markQueueEntryAdmitted", () => {
       expect.objectContaining({ status: "admitted", businessUsername: "bistro" }),
     );
     expect(enqueueNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "queue_admitted", channel: "sms" }),
+      expect.objectContaining({ type: "queue_admitted", channel: "sms", language: "id" }),
     );
     expect(touchGuestByQueueEntryId).toHaveBeenCalledWith("queue-1");
   });

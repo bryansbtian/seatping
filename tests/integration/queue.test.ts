@@ -28,6 +28,24 @@ function joinPayload(locationId: string, overrides: Record<string, unknown> = {}
 }
 
 describe("queue join", () => {
+  it.each(["sms", "whatsapp"])("stores Indonesian for a %s queue entry", async (channel) => {
+    const { business, location } = await seedBusinessWithLocation();
+    const res = await (await api()).post(`/auth/business/${business.username}/queue`).send(
+      joinPayload(location.id, {
+        notificationMethod: channel,
+        notificationLanguage: "id",
+        countryCode: "+1",
+        phoneNumber: "2065550100",
+        smsConsent: true,
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const stored = await db.queueEntry.findUnique({ where: { queueToken: res.body.queueToken } });
+    expect(stored?.notificationLanguage).toBe("id");
+    expect(stored?.notificationMethod).toBe(channel);
+  });
+
   it("creates a real WAITING queue entry and returns a token", async () => {
     const { business, location } = await seedBusinessWithLocation();
 
@@ -48,6 +66,7 @@ describe("queue join", () => {
     expect(stored?.locationId).toBe(location.id);
     expect(stored?.businessId).toBe(business.id);
     expect(stored?.guestCount).toBe(2);
+    expect(stored?.notificationLanguage).toBe("en");
     expect(stored?.joinedAt).toBeInstanceOf(Date);
   });
 

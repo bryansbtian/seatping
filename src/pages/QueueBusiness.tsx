@@ -104,7 +104,7 @@ type Step = 2 | 4 | 5 | 6;
 const HOLD_SECONDS = 5 * 60;
 
 export default function QueueBusiness() {
-  const { t: tp } = usePublicLanguage();
+  const { t: tp, lang } = usePublicLanguage();
 
   const { businessUsername = "", locationId } = useParams();
   const navigate = useNavigate();
@@ -577,6 +577,7 @@ export default function QueueBusiness() {
           countryCode: form.countryCode,
           email: form.email,
           notificationMethod: form.notificationMethod,
+          notificationLanguage: lang,
           smsConsent: form.smsConsent,
           smsMarketingConsent: form.smsMarketingConsent,
         }),

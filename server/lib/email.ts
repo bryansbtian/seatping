@@ -1,6 +1,8 @@
 import nodemailer from "nodemailer";
 import { maskEmail, maskEmailList } from "./redact.js";
 import { formatEnteredPhone, formatPhoneParts } from "../../shared/phone.js";
+import { parsePublicLanguage, type PublicLanguage } from "../../shared/publicLanguage.js";
+import { emailCopy, type EmailText } from "./emailCopy.js";
 
 const FROM_ADDRESS = process.env.EMAIL_USER?.trim() || "";
 
@@ -294,8 +296,9 @@ export function emailButtonRow(
     </table>`;
 }
 
-export function fallbackLink(href: string): string {
-  return `<p style="margin: 0 0 8px; color: ${COLORS.muted}; font-size: 13px; line-height: 1.6;">If the button doesn't work, paste this link into your browser:<br><a href="${safeUrl(href)}" style="color: ${COLORS.accent}; word-break: break-all;">${esc(href)}</a></p>`;
+export function fallbackLink(href: string, language: PublicLanguage = "en"): string {
+  const t = emailCopy(language);
+  return `<p style="margin: 0 0 8px; color: ${COLORS.muted}; font-size: 13px; line-height: 1.6;">${t("If the button doesn't work, paste this link into your browser:")}<br><a href="${safeUrl(href)}" style="color: ${COLORS.accent}; word-break: break-all;">${esc(href)}</a></p>`;
 }
 
 export function detailCard(title: string, rows: Array<[string, string]>): string {
@@ -350,20 +353,23 @@ export function renderEmail(opts: {
   bodyHtml: string;
   preheader?: string;
   tagline?: string;
+  language?: PublicLanguage;
 }): string {
+  const language = parsePublicLanguage(opts.language) ?? "en";
+  const t = emailCopy(language);
   const year = new Date().getFullYear();
   let preheader = "";
   if (opts.preheader) {
     preheader = `<span style="display:none !important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden;">${esc(opts.preheader)}</span>`;
   }
-  const tagline = opts.tagline ?? "Queues & Reservations For Hospitality";
+  const tagline = opts.tagline ?? t("Queues & Reservations For Hospitality");
   let supportFooter = "";
   if (SUPPORT_EMAIL) {
     supportFooter = ` · <a href="mailto:${esc(SUPPORT_EMAIL)}" style="color: ${COLORS.muted}; text-decoration: underline; word-break: break-word;">${esc(SUPPORT_EMAIL)}</a>`;
   }
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${language}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -409,12 +415,22 @@ export function renderEmail(opts: {
 
 const FRONTEND = () => process.env.FRONTEND_URL || "https://www.seatping.biz";
 
+function emailGuestCount(partySize: number, language: PublicLanguage): string {
+  let key: EmailText = "{partySize} Guests";
+  if (partySize === 1) {
+    key = "{partySize} Guest";
+  }
+  return emailCopy(language)(key, { partySize: Number(partySize) });
+}
+
 export const sendPasswordResetEmail = async (
   email: string,
   resetToken: string,
   accountType: "customer" | "business" = "customer",
   baseUrl?: string,
+  language: PublicLanguage = "en",
 ): Promise<boolean> => {
+  const t = emailCopy(language);
   const origin = (baseUrl || FRONTEND()).replace(/\/+$/, "");
   let accountTypeParam = "";
   if (accountType === "business") {
@@ -423,19 +439,20 @@ export const sendPasswordResetEmail = async (
   const resetUrl = `${origin}/reset?token=${resetToken}${accountTypeParam}`;
 
   const html = renderEmail({
-    heading: "Reset Your Password",
-    preheader: "Reset Your SeatPing Password",
+    language,
+    heading: t("Reset Your Password"),
+    preheader: t("Reset Your SeatPing Password"),
     bodyHtml: `
-      ${p("We got a request to reset the password on your SeatPing account. Click below to choose a new one.")}
-      ${emailButton(resetUrl, "Reset Password")}
-      ${p(`This link expires in <strong>1 hour</strong>. If you didn't request a reset, you can safely ignore this email. Your password won't change.`)}
-      ${fallbackLink(resetUrl)}
+      ${p(t("We got a request to reset the password on your SeatPing account. Click below to choose a new one."))}
+      ${emailButton(resetUrl, t("Reset Password"))}
+      ${p(t("This link expires in <strong>1 hour</strong>. If you didn't request a reset, you can safely ignore this email. Your password won't change."))}
+      ${fallbackLink(resetUrl, language)}
     `,
   });
 
   return sendEmail({
     to: email,
-    subject: "Reset Your SeatPing Password",
+    subject: t("Reset Your SeatPing Password"),
     html,
     from: FROM_ADDRESS,
   });
@@ -444,56 +461,71 @@ export const sendPasswordResetEmail = async (
 export const sendPasswordChangeConfirmationEmail = async (
   email: string,
   name?: string,
+  language: PublicLanguage = "en",
 ): Promise<boolean> => {
+  const t = emailCopy(language);
   let greeting = "";
   if (name) {
-    greeting = `Hi ${esc(name)}, `;
+    greeting = t("Hi {name}, ", { name: esc(name) });
   }
-  let securityMessage =
-    "<strong>Didn't make this change?</strong> Contact support right away so we can help secure your account.";
+  let securityMessage = t(
+    "<strong>Didn't make this change?</strong> Contact support right away so we can help secure your account.",
+  );
   if (SUPPORT_EMAIL) {
-    securityMessage = `<strong>Didn't make this change?</strong> Reach out to us right away at <a href="mailto:${esc(SUPPORT_EMAIL)}" style="color: ${COLORS.accent}; word-break: break-word;">${esc(SUPPORT_EMAIL)}</a> and we'll help secure your account.`;
+    securityMessage = t(
+      "<strong>Didn't make this change?</strong> Reach out to us right away at {supportLink} and we'll help secure your account.",
+      {
+        supportLink: `<a href="mailto:${esc(SUPPORT_EMAIL)}" style="color: ${COLORS.accent}; word-break: break-word;">${esc(SUPPORT_EMAIL)}</a>`,
+      },
+    );
   }
   const html = renderEmail({
-    heading: "Your Password Was Changed",
-    preheader: "Your SeatPing Password Was Just Updated",
+    language,
+    heading: t("Your Password Was Changed"),
+    preheader: t("Your SeatPing Password Was Just Updated"),
     bodyHtml: `
-      ${p(`${greeting}your SeatPing password was just updated. You can now sign in with your new password.`)}
+      ${p(`${greeting}${t("your SeatPing password was just updated. You can now sign in with your new password.")}`)}
       ${calloutBox(securityMessage)}
     `,
   });
 
   return sendEmail({
     to: email,
-    subject: "Your SeatPing Password Was Changed",
+    subject: t("Your SeatPing Password Was Changed"),
     html,
     from: FROM_ADDRESS,
   });
 };
 
-export const sendCustomerWelcomeEmail = async (email: string, name: string): Promise<boolean> => {
+export const sendCustomerWelcomeEmail = async (
+  email: string,
+  name: string,
+  language: PublicLanguage = "en",
+): Promise<boolean> => {
+  const t = emailCopy(language);
   const homeUrl = FRONTEND();
   const profileUrl = `${FRONTEND()}/profile`;
 
   const html = renderEmail({
-    heading: `Welcome to SeatPing, ${esc(name)}`,
-    preheader: "Join Queues, Book Tables, And Get Live Updates",
+    language,
+    heading: t("Welcome to SeatPing, {name}", { name: esc(name) }),
+    preheader: t("Join Queues, Book Tables, And Get Live Updates"),
     bodyHtml: `
-      ${p("Your account is ready. SeatPing keeps you out of the waiting-room shuffle. Here's what you can do with it:")}
+      ${p(t("Your account is ready. SeatPing keeps you out of the waiting-room shuffle. Here's what you can do with it:"))}
       ${stepList([
-        "Join a restaurant's waitlist from your phone and track your spot in line",
-        "Book and manage reservations without creating an account each time",
-        "Get notified the moment your table is ready",
-        "Keep your upcoming and past bookings in one place",
+        t("Join a restaurant's waitlist from your phone and track your spot in line"),
+        t("Book and manage reservations without creating an account each time"),
+        t("Get notified the moment your table is ready"),
+        t("Keep your upcoming and past bookings in one place"),
       ])}
-      ${emailButton(profileUrl, "View Your Profile")}
-      ${p(`Or head to the <a href="${homeUrl}" style="color: ${COLORS.accent};">SeatPing homepage</a> to find a place to eat.`)}
+      ${emailButton(profileUrl, t("View Your Profile"))}
+      ${p(t('Or head to the <a href="{homeUrl}" style="color: {accent};">SeatPing homepage</a> to find a place to eat.', { homeUrl: safeUrl(homeUrl), accent: COLORS.accent }))}
     `,
   });
 
   return sendEmail({
     to: email,
-    subject: "Welcome To SeatPing",
+    subject: t("Welcome To SeatPing"),
     html,
     from: FROM_ADDRESS,
   });
@@ -506,28 +538,34 @@ export const sendQueueJoinConfirmationEmail = async (
   businessName: string,
   address: string,
   position: number,
+  language: PublicLanguage = "en",
 ): Promise<boolean> => {
+  const t = emailCopy(language);
   const html = renderEmail({
-    heading: "You're in the Queue",
-    preheader: `You're #${Number(position)} In Line At ${businessName}`,
+    language,
+    heading: t("You're in the Queue"),
+    preheader: t("You're #{position} In Line At {businessName}", {
+      position: Number(position),
+      businessName,
+    }),
     bodyHtml: `
-      ${p(`Hi ${esc(firstName)}, you're on the waitlist at <strong>${esc(businessName)}</strong>. We'll let you know when your table is ready.`)}
+      ${p(t("Hi {firstName}, you're on the waitlist at <strong>{businessName}</strong>. We'll let you know when your table is ready.", { firstName: esc(firstName), businessName: esc(businessName) }))}
       ${calloutBox(
-        `<span style="font-size: 15px; font-weight: 700;">You're #${Number(position)} in line</span>`,
+        `<span style="font-size: 15px; font-weight: 700;">${t("You're #{position} in line", { position: Number(position) })}</span>`,
       )}
-      ${detailCard("Queue details", [
-        ["Restaurant", esc(businessName)],
-        ["Location", esc(address)],
-        ["Name", esc(`${firstName} ${lastName}`.trim())],
-        ["Your Spot", `#${Number(position)}`],
+      ${detailCard(t("Queue details"), [
+        [t("Restaurant"), esc(businessName)],
+        [t("Location"), esc(address)],
+        [t("Name"), esc(`${firstName} ${lastName}`.trim())],
+        [t("Your Spot"), `#${Number(position)}`],
       ])}
-      ${p("You can close this email. We'll notify you when it's your turn. Thanks for your patience!")}
+      ${p(t("You can close this email. We'll notify you when it's your turn. Thanks for your patience!"))}
     `,
   });
 
   return sendEmail({
     to: email,
-    subject: `You're In The Queue`,
+    subject: t("You're In The Queue"),
     html,
     from: FROM_ADDRESS,
   });
@@ -536,29 +574,33 @@ export const sendQueueJoinConfirmationEmail = async (
 export const sendQueueYourTurnEmail = async (
   email: string,
   businessName: string,
+  language: PublicLanguage = "en",
 ): Promise<boolean> => {
+  const t = emailCopy(language);
   const html = renderEmail({
-    heading: "Your Table Is Ready",
-    preheader: `Your Table Is Ready At ${businessName}`,
+    language,
+    heading: t("Your Table Is Ready"),
+    preheader: t("Your Table Is Ready At {businessName}", { businessName }),
     bodyHtml: `
       ${calloutBox(
-        `<span style="font-size: 15px; font-weight: 700;">Your table is ready at ${esc(businessName)}</span>`,
+        `<span style="font-size: 15px; font-weight: 700;">${t("Your table is ready at {businessName}", { businessName: esc(businessName) })}</span>`,
         "#15803D",
         "#E7F4EC",
       )}
-      ${p("Please head to the host within the next <strong>5 minutes</strong> to be seated. Thanks for waiting with SeatPing!")}
+      ${p(t("Please head to the host within the next <strong>5 minutes</strong> to be seated. Thanks for waiting with SeatPing!"))}
     `,
   });
 
   return sendEmail({
     to: email,
-    subject: `Your Table Is Ready`,
+    subject: t("Your Table Is Ready"),
     html,
     from: FROM_ADDRESS,
   });
 };
 
 export const sendReservationConfirmationEmail = async (params: {
+  language?: PublicLanguage;
   email: string;
   firstName: string;
   lastName: string;
@@ -570,6 +612,8 @@ export const sendReservationConfirmationEmail = async (params: {
   manageUrl: string;
   cancellationPolicy?: string;
 }): Promise<boolean> => {
+  const language = params.language ?? "en";
+  const t = emailCopy(language);
   const {
     email,
     firstName,
@@ -583,52 +627,54 @@ export const sendReservationConfirmationEmail = async (params: {
     cancellationPolicy,
   } = params;
 
-  let guestWord = "Guests";
-  if (partySize === 1) {
-    guestWord = "Guest";
-  }
   let cancellationPolicyHtml = "";
   if (cancellationPolicy) {
     cancellationPolicyHtml = calloutBox(
-      `<strong>Cancellation Policy:</strong> ${esc(cancellationPolicy)}`,
+      `<strong>${t("Cancellation Policy:")}</strong> ${esc(cancellationPolicy)}`,
       COLORS.muted,
       COLORS.panel,
     );
   }
   const html = renderEmail({
-    heading: "Reservation Confirmed",
-    preheader: `Reservation Confirmed For ${businessName}, ${dateLabel} At ${timeLabel}`,
+    language,
+    heading: t("Reservation Confirmed"),
+    preheader: t("Reservation Confirmed For {businessName}, {dateLabel} At {timeLabel}", {
+      businessName,
+      dateLabel,
+      timeLabel,
+    }),
     bodyHtml: `
-      ${p(`Hi ${esc(firstName)},`)}
+      ${p(t("Hi {firstName},", { firstName: esc(firstName) }))}
       ${calloutBox(
-        `<strong>You're booked. We look forward to seeing you!</strong>`,
+        `<strong>${t("You're booked. We look forward to seeing you!")}</strong>`,
         "#15803D",
         "#E7F4EC",
       )}
-      ${detailCard("Reservation", [
-        ["Restaurant", esc(businessName)],
-        ["Location", esc(address)],
-        ["Name", esc(`${firstName} ${lastName}`.trim())],
-        ["Date", esc(dateLabel)],
-        ["Time", esc(timeLabel)],
-        ["Number of Guests", `${Number(partySize)} ${guestWord}`],
+      ${detailCard(t("Reservation"), [
+        [t("Restaurant"), esc(businessName)],
+        [t("Location"), esc(address)],
+        [t("Name"), esc(`${firstName} ${lastName}`.trim())],
+        [t("Date"), esc(dateLabel)],
+        [t("Time"), esc(timeLabel)],
+        [t("Number of Guests"), emailGuestCount(partySize, language)],
       ])}
-      ${emailButton(manageUrl, "Manage Reservation")}
-      ${p(`Need to change your time, number of guests, or cancel? Use the button above. No login required.`)}
+      ${emailButton(manageUrl, t("Manage Reservation"))}
+      ${p(t("Need to change your time, number of guests, or cancel? Use the button above. No login required."))}
       ${cancellationPolicyHtml}
-      ${fallbackLink(manageUrl)}
+      ${fallbackLink(manageUrl, language)}
     `,
   });
 
   return sendEmail({
     to: email,
-    subject: `Reservation Confirmed: ${businessName}`,
+    subject: t("Reservation Confirmed: {businessName}", { businessName }),
     html,
     from: FROM_ADDRESS,
   });
 };
 
 export const sendReservationReminderEmail = async (params: {
+  language?: PublicLanguage;
   email: string;
   firstName: string;
   businessName: string;
@@ -638,30 +684,29 @@ export const sendReservationReminderEmail = async (params: {
   partySize: number;
   manageUrl?: string;
 }): Promise<boolean> => {
+  const language = params.language ?? "en";
+  const t = emailCopy(language);
   const { email, firstName, businessName, address, dateLabel, timeLabel, partySize, manageUrl } =
     params;
 
-  let guestWord = "Guests";
-  if (partySize === 1) {
-    guestWord = "Guest";
-  }
   let manageButtonHtml = "";
   let manageFallbackHtml = "";
   if (manageUrl) {
-    manageButtonHtml = emailButton(manageUrl, "Manage Reservation");
-    manageFallbackHtml = fallbackLink(manageUrl);
+    manageButtonHtml = emailButton(manageUrl, t("Manage Reservation"));
+    manageFallbackHtml = fallbackLink(manageUrl, language);
   }
   const html = renderEmail({
-    heading: "Your Reservation Is Coming Up",
-    preheader: `Your Reservation At ${businessName} Is In About 2 Hours`,
+    language,
+    heading: t("Your Reservation Is Coming Up"),
+    preheader: t("Your Reservation At {businessName} Is In About 2 Hours", { businessName }),
     bodyHtml: `
-      ${p(`Hi ${esc(firstName)}, a quick reminder that your table at <strong>${esc(businessName)}</strong> is coming up in about 2 hours.`)}
-      ${detailCard("Reservation", [
-        ["Restaurant", esc(businessName)],
-        ["Location", esc(address)],
-        ["Date", esc(dateLabel)],
-        ["Time", esc(timeLabel)],
-        ["Number of Guests", `${Number(partySize)} ${guestWord}`],
+      ${p(t("Hi {firstName}, a quick reminder that your table at <strong>{businessName}</strong> is coming up in about 2 hours.", { firstName: esc(firstName), businessName: esc(businessName) }))}
+      ${detailCard(t("Reservation"), [
+        [t("Restaurant"), esc(businessName)],
+        [t("Location"), esc(address)],
+        [t("Date"), esc(dateLabel)],
+        [t("Time"), esc(timeLabel)],
+        [t("Number of Guests"), emailGuestCount(partySize, language)],
       ])}
       ${manageButtonHtml}
       ${manageFallbackHtml}
@@ -670,7 +715,7 @@ export const sendReservationReminderEmail = async (params: {
 
   return sendEmail({
     to: email,
-    subject: `Your Reservation Is Coming Up`,
+    subject: t("Your Reservation Is Coming Up"),
     html,
     from: FROM_ADDRESS,
   });
@@ -681,42 +726,49 @@ export const sendBusinessOnboardingEmail = async (
   name: string,
   _username: string,
   trialDays?: number,
+  language: PublicLanguage = "en",
 ): Promise<boolean> => {
+  const t = emailCopy(language);
   const dashboardUrl = `${FRONTEND()}/business/overview`;
 
   let trialSentence = "";
   if (trialDays && trialDays > 0) {
-    trialSentence = ` Your ${trialDays}-day trial is active.`;
+    trialSentence = t(" Your {trialDays}-day trial is active.", { trialDays });
   }
-  const intro = `Welcome to SeatPing, ${esc(name)}.${trialSentence} Follow these steps to start accepting queues and reservations.`;
+  const intro = t(
+    "Welcome to SeatPing, {name}.{trialSentence} Follow these steps to start accepting queues and reservations.",
+    { name: esc(name), trialSentence },
+  );
 
   const html = renderEmail({
-    heading: "Set Up Your First Location",
-    preheader: "Get Your First Location Live In Six Steps",
+    language,
+    heading: t("Set Up Your First Location"),
+    preheader: t("Get Your First Location Live In Six Steps"),
     bodyHtml: `
       ${p(intro)}
       ${stepList([
-        "Add or review your business profile",
-        "Add your first location's details",
-        "Set your opening hours",
-        "Configure your reservation settings",
-        "Download and share your location's QR code",
-        "Run a test booking to see the customer flow end to end",
+        t("Add or review your business profile"),
+        t("Add your first location's details"),
+        t("Set your opening hours"),
+        t("Configure your reservation settings"),
+        t("Download and share your location's QR code"),
+        t("Run a test booking to see the customer flow end to end"),
       ])}
-      ${emailButton(dashboardUrl, "Open Your Dashboard")}
-      ${p(`Anything unclear or not working the way you'd expect? Just reply to this email. It comes straight to us.`)}
+      ${emailButton(dashboardUrl, t("Open Your Dashboard"))}
+      ${p(t("Anything unclear or not working the way you'd expect? Just reply to this email. It comes straight to us."))}
     `,
   });
 
   return sendEmail({
     to: email,
-    subject: "Welcome To SeatPing",
+    subject: t("Welcome To SeatPing"),
     html,
     from: FROM_ADDRESS,
   });
 };
 
 export const sendNewReservationBusinessEmail = async (params: {
+  language?: PublicLanguage;
   to: string;
   businessName: string;
   locationName: string;
@@ -730,6 +782,8 @@ export const sendNewReservationBusinessEmail = async (params: {
   notes?: string;
   dashboardUrl: string;
 }): Promise<boolean> => {
+  const language = params.language ?? "en";
+  const t = emailCopy(language);
   const {
     to,
     locationName,
@@ -745,10 +799,10 @@ export const sendNewReservationBusinessEmail = async (params: {
   } = params;
 
   const rows: Array<[string, string]> = [
-    ["Location", esc(locationName)],
-    ["Guest", esc(customerName)],
+    [t("Location"), esc(locationName)],
+    [t("Guest"), esc(customerName)],
     [
-      "Email",
+      t("Email"),
       `<a href="mailto:${esc(customerEmail)}" style="color: ${COLORS.accent};">${esc(customerEmail)}</a>`,
     ],
   ];
@@ -757,40 +811,42 @@ export const sendNewReservationBusinessEmail = async (params: {
     if (customerCountryCode) {
       phoneLabel = formatPhoneParts(customerCountryCode, customerPhone) ?? customerPhone;
     }
-    rows.push(["Phone", esc(phoneLabel)]);
+    rows.push([t("Phone"), esc(phoneLabel)]);
   }
-  rows.push(["Date", esc(dateLabel)]);
-  rows.push(["Time", esc(timeLabel)]);
-  let guestWord = "Guests";
-  if (partySize === 1) {
-    guestWord = "Guest";
-  }
-  rows.push(["Number of Guests", `${Number(partySize)} ${guestWord}`]);
-  rows.push(["Status", "Confirmed"]);
+  rows.push([t("Date"), esc(dateLabel)]);
+  rows.push([t("Time"), esc(timeLabel)]);
+  rows.push([t("Number of Guests"), emailGuestCount(partySize, language)]);
+  rows.push([t("Status"), t("Confirmed")]);
 
   let guestNotesHtml = "";
   if (notes) {
     guestNotesHtml = calloutBox(
-      `<strong>Guest Notes:</strong> ${esc(notes)}`,
+      `<strong>${t("Guest Notes:")}</strong> ${esc(notes)}`,
       COLORS.muted,
       COLORS.panel,
     );
   }
 
   const html = renderEmail({
-    heading: "New Reservation",
-    preheader: `${customerName} · Party Of ${Number(partySize)} · ${dateLabel} At ${timeLabel}`,
+    language,
+    heading: t("New Reservation"),
+    preheader: t("{customerName} · Party Of {partySize} · {dateLabel} At {timeLabel}", {
+      customerName,
+      partySize: Number(partySize),
+      dateLabel,
+      timeLabel,
+    }),
     bodyHtml: `
-      ${p(`A new reservation was just booked at <strong>${esc(locationName)}</strong>.`)}
-      ${detailCard("Reservation", rows)}
+      ${p(t("A new reservation was just booked at <strong>{locationName}</strong>.", { locationName: esc(locationName) }))}
+      ${detailCard(t("Reservation"), rows)}
       ${guestNotesHtml}
-      ${emailButton(dashboardUrl, "View In Dashboard")}
+      ${emailButton(dashboardUrl, t("View In Dashboard"))}
     `,
   });
 
   return sendEmail({
     to,
-    subject: `New Reservation At ${locationName}`,
+    subject: t("New Reservation At {locationName}", { locationName }),
     html,
     from: FROM_ADDRESS,
   });
@@ -800,14 +856,19 @@ export const NEEDS_REVIEW_REASONS: Record<string, string> = {
   NO_TABLE: "No table was free for the whole reservation window.",
 };
 
-export function needsReviewReasonLabel(reason: string | null | undefined): string {
-  if (reason && NEEDS_REVIEW_REASONS[reason]) {
-    return NEEDS_REVIEW_REASONS[reason];
+export function needsReviewReasonLabel(
+  reason: string | null | undefined,
+  language: PublicLanguage = "en",
+): string {
+  const t = emailCopy(language);
+  if (reason && Object.hasOwn(NEEDS_REVIEW_REASONS, reason)) {
+    return t("No table was free for the whole reservation window.");
   }
-  return "Smart Assignment could not find a table for this reservation.";
+  return t("Smart Assignment could not find a table for this reservation.");
 }
 
 export const sendReservationNeedsReviewEmail = async (params: {
+  language?: PublicLanguage;
   to: string;
   locationName: string;
   customerName: string;
@@ -819,6 +880,8 @@ export const sendReservationNeedsReviewEmail = async (params: {
   reservationsUrl: string;
   floorUrl: string;
 }): Promise<boolean> => {
+  const language = params.language ?? "en";
+  const t = emailCopy(language);
   const {
     to,
     locationName,
@@ -832,40 +895,41 @@ export const sendReservationNeedsReviewEmail = async (params: {
     floorUrl,
   } = params;
 
-  let guestWord = "Guests";
-  if (partySize === 1) {
-    guestWord = "Guest";
-  }
-
   const rows: Array<[string, string]> = [
-    ["Location", esc(locationName)],
-    ["Guest", esc(customerName)],
-    ["Date", esc(dateLabel)],
-    ["Time", esc(timeLabel)],
-    ["Number of Guests", `${Number(partySize)} ${guestWord}`],
-    ["Reservation ID", esc(reservationId)],
-    ["Status", "Needs Review"],
+    [t("Location"), esc(locationName)],
+    [t("Guest"), esc(customerName)],
+    [t("Date"), esc(dateLabel)],
+    [t("Time"), esc(timeLabel)],
+    [t("Number of Guests"), emailGuestCount(partySize, language)],
+    [t("Reservation ID"), esc(reservationId)],
+    [t("Status"), t("Needs Review")],
   ];
 
   const html = renderEmail({
-    heading: "Reservation Needs A Table",
-    preheader: `${customerName} · Party Of ${Number(partySize)} · ${dateLabel} at ${timeLabel}`,
+    language,
+    heading: t("Reservation Needs A Table"),
+    preheader: t("{customerName} · Party Of {partySize} · {dateLabel} at {timeLabel}", {
+      customerName,
+      partySize: Number(partySize),
+      dateLabel,
+      timeLabel,
+    }),
     bodyHtml: `
-      ${p(`A reservation at <strong>${esc(locationName)}</strong> was confirmed, but no table could be assigned automatically.`)}
-      ${calloutBox(`<strong>Why:</strong> ${esc(needsReviewReasonLabel(reason))}`)}
-      ${detailCard("Reservation", rows)}
-      ${p("The booking is held for the guest. Assign a table when one frees up, or join tables on the floor plan.")}
+      ${p(t("A reservation at <strong>{locationName}</strong> was confirmed, but no table could be assigned automatically.", { locationName: esc(locationName) }))}
+      ${calloutBox(`<strong>${t("Why:")}</strong> ${esc(needsReviewReasonLabel(reason, language))}`)}
+      ${detailCard(t("Reservation"), rows)}
+      ${p(t("The booking is held for the guest. Assign a table when one frees up, or join tables on the floor plan."))}
       ${emailButtonRow(
-        { href: reservationsUrl, label: "Review Reservation" },
-        { href: floorUrl, label: "Open Floor Management" },
+        { href: reservationsUrl, label: t("Review Reservation") },
+        { href: floorUrl, label: t("Open Floor Management") },
       )}
-      ${fallbackLink(reservationsUrl)}
+      ${fallbackLink(reservationsUrl, language)}
     `,
   });
 
   return sendEmail({
     to,
-    subject: `Reservation Needs A Table At ${locationName}`,
+    subject: t("Reservation Needs A Table At {locationName}", { locationName }),
     html,
     from: FROM_ADDRESS,
   });
@@ -882,46 +946,57 @@ export interface FeedbackData {
   severity?: string;
 }
 
-export const sendFeedbackEmail = async (data: FeedbackData): Promise<boolean> => {
-  const feedbackTypeLabels: Record<string, string> = {
+export const sendFeedbackEmail = async (
+  data: FeedbackData,
+  language: PublicLanguage = "en",
+): Promise<boolean> => {
+  const t = emailCopy(language);
+  const feedbackTypeLabels: Record<string, EmailText> = {
     bug: "Bug / Something Broken",
     ux: "UX / Usability Issue",
     feature: "Feature Request",
     billing: "Pricing / Billing",
     other: "Other",
   };
-  const severityLabels: Record<string, string> = { low: "Low", medium: "Medium", high: "High" };
-
-  const rows: Array<[string, string]> = [
-    ["Type", esc(feedbackTypeLabels[data.feedbackType] || data.feedbackType)],
-  ];
-  if (data.severity) {
-    rows.push(["Severity", esc(severityLabels[data.severity] || data.severity)]);
+  const severityLabels: Record<string, EmailText> = { low: "Low", medium: "Medium", high: "High" };
+  let feedbackTypeLabel = data.feedbackType;
+  if (Object.hasOwn(feedbackTypeLabels, data.feedbackType)) {
+    feedbackTypeLabel = t(feedbackTypeLabels[data.feedbackType]);
   }
-  rows.push(["Name", esc(data.name)]);
+  let severityLabel = data.severity || "";
+  if (data.severity && Object.hasOwn(severityLabels, data.severity)) {
+    severityLabel = t(severityLabels[data.severity]);
+  }
+
+  const rows: Array<[string, string]> = [[t("Type"), esc(feedbackTypeLabel)]];
+  if (data.severity) {
+    rows.push([t("Severity"), esc(severityLabel)]);
+  }
+  rows.push([t("Name"), esc(data.name)]);
   rows.push([
-    "Email",
+    t("Email"),
     `<a href="mailto:${esc(data.email)}" style="color: ${COLORS.accent};">${esc(data.email)}</a>`,
   ]);
   if (data.businessName) {
-    rows.push(["Business", esc(data.businessName)]);
+    rows.push([t("Business"), esc(data.businessName)]);
   }
   if (data.phone) {
-    rows.push(["Phone", esc(formatEnteredPhone(data.phone) ?? data.phone)]);
+    rows.push([t("Phone"), esc(formatEnteredPhone(data.phone) ?? data.phone)]);
   }
 
   const html = renderEmail({
-    heading: data.subject || "New Feedback",
-    preheader: `New Feedback From ${data.name}`,
+    language,
+    heading: data.subject || t("New Feedback"),
+    preheader: t("New Feedback From {name}", { name: data.name }),
     bodyHtml: `
-      ${detailCard("Feedback", rows)}
-      ${calloutBox(`<strong>Message</strong><br>${esc(data.message).replace(/\n/g, "<br>")}`, COLORS.muted, COLORS.panel)}
+      ${detailCard(t("Feedback"), rows)}
+      ${calloutBox(`<strong>${t("Message")}</strong><br>${esc(data.message).replace(/\n/g, "<br>")}`, COLORS.muted, COLORS.panel)}
     `,
   });
 
   return sendEmail({
     to: FROM_ADDRESS,
-    subject: `Feedback [${feedbackTypeLabels[data.feedbackType] || data.feedbackType}]: ${data.subject}`,
+    subject: t("Feedback [{type}]: {subject}", { type: feedbackTypeLabel, subject: data.subject }),
     html,
   });
 };
@@ -932,20 +1007,28 @@ export const sendFeedbackConfirmationEmail = async (
   ticketNumber: string,
   subject: string,
   messageId?: string,
+  language: PublicLanguage = "en",
 ): Promise<boolean> => {
-  let followUp = `Hold onto your ticket ID (<strong>${esc(ticketNumber)}</strong>) if you need to follow up.`;
+  const t = emailCopy(language);
+  let followUp = t(
+    "Hold onto your ticket ID (<strong>{ticketNumber}</strong>) if you need to follow up.",
+    { ticketNumber: esc(ticketNumber) },
+  );
   if (SUPPORT_EMAIL) {
-    followUp += ` You can also reach us anytime at <a href="mailto:${esc(SUPPORT_EMAIL)}" style="color: ${COLORS.accent}; word-break: break-word;">${esc(SUPPORT_EMAIL)}</a>.`;
+    followUp += t(" You can also reach us anytime at {supportLink}.", {
+      supportLink: `<a href="mailto:${esc(SUPPORT_EMAIL)}" style="color: ${COLORS.accent}; word-break: break-word;">${esc(SUPPORT_EMAIL)}</a>`,
+    });
   }
   const html = renderEmail({
-    heading: "Thanks For The Feedback",
-    preheader: `We've Logged Your Feedback: ${ticketNumber}`,
+    language,
+    heading: t("Thanks For The Feedback"),
+    preheader: t("We've Logged Your Feedback: {ticketNumber}", { ticketNumber }),
     bodyHtml: `
-      ${p(`Hi ${esc(userName)}, we've logged your feedback and we'll review it shortly.`)}
-      ${detailCard("Your ticket", [
-        ["Ticket ID", esc(ticketNumber)],
-        ["Subject", esc(subject)],
-        ["Status", "Open"],
+      ${p(t("Hi {userName}, we've logged your feedback and we'll review it shortly.", { userName: esc(userName) }))}
+      ${detailCard(t("Your ticket"), [
+        [t("Ticket ID"), esc(ticketNumber)],
+        [t("Subject"), esc(subject)],
+        [t("Status"), t("Open")],
       ])}
       ${p(followUp)}
     `,
@@ -953,7 +1036,7 @@ export const sendFeedbackConfirmationEmail = async (
 
   return sendEmail({
     to: userEmail,
-    subject: `Feedback Received: ${ticketNumber}`,
+    subject: t("Feedback Received: {ticketNumber}", { ticketNumber }),
     messageId,
     replyTo: FROM_ADDRESS,
     html,

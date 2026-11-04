@@ -113,6 +113,25 @@ describe.each(bookingDates)("demo booking API with PostgreSQL at %s", (now) => {
     expect(rows[0].status).toBe("confirmed");
   });
 
+  it("passes the explicit Indonesian route language to the calendar invitation", async () => {
+    const body = payload();
+    const response = await (
+      await api()
+    )
+      .post("/api/demo/book")
+      .set("X-Forwarded-For", `198.51.100.${counter + 1}`)
+      .set("x-seatping-language", "id")
+      .send(body);
+    expect(response.status).toBe(201);
+    expect(createDemoEvent).toHaveBeenCalledWith(
+      "placeholder",
+      expect.any(String),
+      new Date(start),
+      expect.any(Date),
+      expect.objectContaining({ name: body.name, email: body.email, language: "id" }),
+    );
+  });
+
   it("serializes simultaneous claims across database clients", async () => {
     const [a, b] = await Promise.all([post(payload()), post(payload())]);
     expect([a.status, b.status].sort()).toEqual([201, 409]);

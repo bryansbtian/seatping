@@ -4,12 +4,14 @@ import { ticketEmailMessageId } from "../lib/ticketMessages.js";
 import { prisma } from "../lib/prisma.js";
 import { generateTicketNumber } from "../lib/tickets.js";
 import { limitGuard, clientIp, HOURS } from "../lib/rateLimit.js";
+import { requestEmailLanguage } from "../lib/emailLanguage.js";
 
 const router = express.Router();
 
 router.post("/submit", express.json(), async (req, res) => {
   try {
     const data: FeedbackData = req.body;
+    const language = requestEmailLanguage(req);
 
     const senderEmail = String(data?.email || "")
       .toLowerCase()
@@ -70,7 +72,7 @@ router.post("/submit", express.json(), async (req, res) => {
         senderEmail: data.email,
         senderPhone: data.phone,
         businessName: data.businessName,
-        data: data as any,
+        data: { ...data, language },
         messages: [
           {
             sender: data.name,
@@ -88,6 +90,7 @@ router.post("/submit", express.json(), async (req, res) => {
       ticket.ticketNumber,
       data.subject,
       ticket.emailThreadId || undefined,
+      language,
     );
     if (!confirmationSent) {
       console.error("[feedback] Failed to send confirmation email to user");

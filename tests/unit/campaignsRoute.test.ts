@@ -3,6 +3,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { serveApp } from "../helpers/app.js";
 import { signJwt } from "../../server/lib/auth.js";
+import { sinks } from "../setup/externalMocks.js";
 
 const businessFindUnique = vi.fn();
 const locationFindMany = vi.fn();
@@ -685,6 +686,50 @@ describe("campaign creation and editing", () => {
 });
 
 describe("test sends", () => {
+  it.each(["en", "id"])(
+    "localizes the %s delivery test while preserving authored overrides",
+    async (language) => {
+      const response = await app()
+        .post("/api/campaigns/debug/email-test")
+        .set("Cookie", cookie())
+        .set("x-seatping-language", language)
+        .send({ emails: ["test@test.invalid"] });
+      expect(response.status).toBe(200);
+      const sent = sinks().email.at(-1);
+      expect(sent?.html).toContain(`<html lang="${language}">`);
+      let subject = "SeatPing email delivery test";
+      let heading = "Email Delivery Test";
+      let preheader = "SeatPing delivery test";
+      let body =
+        "This is a SeatPing email delivery test. If you received it, delivery is working for this address.";
+      if (language === "id") {
+        subject = "Uji pengiriman email SeatPing";
+        heading = "Uji Pengiriman Email";
+        preheader = "Uji pengiriman SeatPing";
+        body =
+          "Ini adalah email uji pengiriman SeatPing. Jika Anda menerimanya, berarti pengiriman email ke alamat ini berfungsi.";
+      }
+      expect(sent?.subject).toBe(subject);
+      expect(sent?.html).toContain(`>${heading}</h1>`);
+      expect(sent?.html).toContain(`>${preheader}</span>`);
+      expect(sent?.html).toContain(body);
+      const override = await app()
+        .post("/api/campaigns/debug/email-test")
+        .set("Cookie", cookie())
+        .set("x-seatping-language", language)
+        .send({
+          emails: ["test@test.invalid"],
+          subject: "My English Subject",
+          body: "My English Body\n<Keep it>",
+        });
+      expect(override.status).toBe(200);
+      expect(sinks().email.at(-1)).toMatchObject({
+        subject: "My English Subject",
+        html: expect.stringContaining("My English Body<br>&lt;Keep it&gt;"),
+      });
+    },
+  );
+
   it("reports an unknown business behind the campaign", async () => {
     businessFindUnique.mockResolvedValue(null);
 

@@ -1,5 +1,6 @@
 import { WhatsAppClient } from "@kapso/whatsapp-cloud-api";
 import { maskPhone } from "./redact.js";
+import { parsePublicLanguage, type PublicLanguage } from "../../shared/publicLanguage.js";
 
 const KAPSO_BASE_URL = "https://api.kapso.ai/meta/whatsapp";
 
@@ -26,6 +27,7 @@ export function formatWhatsAppNumber(countryCode: string, phoneNumber: string): 
 }
 
 export interface SendQueueJoinedParams {
+  language?: PublicLanguage;
   countryCode: string;
   phoneNumber: string;
   customerName: string;
@@ -34,6 +36,7 @@ export interface SendQueueJoinedParams {
 }
 
 export interface SendQueueAdmittedParams {
+  language?: PublicLanguage;
   countryCode: string;
   phoneNumber: string;
   businessName: string;
@@ -64,7 +67,7 @@ export async function sendQueueJoinedWhatsApp(params: SendQueueJoinedParams): Pr
       to,
       template: {
         name: "queue_joined",
-        language: { code: "en" },
+        language: { code: parsePublicLanguage(params.language) ?? "en" },
         components: [
           {
             type: "body",
@@ -331,7 +334,7 @@ export async function sendQueueAdmittedWhatsApp(params: SendQueueAdmittedParams)
       to,
       template: {
         name: "queue_admitted",
-        language: { code: "en" },
+        language: { code: parsePublicLanguage(params.language) ?? "en" },
         components: [
           {
             type: "body",

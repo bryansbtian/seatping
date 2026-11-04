@@ -58,6 +58,9 @@ import {
 } from "../lib/operatingHours.js";
 import crypto from "crypto";
 import { ENTITY_ID_RE } from "../lib/entityId.js";
+import { parsePublicLanguage } from "../../shared/publicLanguage.js";
+import { requestEmailLanguage } from "../lib/emailLanguage.js";
+import { emailCopy } from "../lib/emailCopy.js";
 
 const router = Router();
 
@@ -147,7 +150,7 @@ router.post("/signup", async (req, res) => {
       username: user.username,
     });
 
-    sendCustomerWelcomeEmail(user.email, user.name).catch((err) =>
+    sendCustomerWelcomeEmail(user.email, user.name, requestEmailLanguage(req)).catch((err) =>
       console.error("[auth] customer welcome email error:", err),
     );
 
@@ -456,8 +459,8 @@ router.post("/me/change-password", requireCustomer, async (req, res) => {
       data: { password: hash },
     });
 
-    sendPasswordChangeConfirmationEmail(user.email, user.name).catch((e) =>
-      console.error("[auth] pw change email failed:", e),
+    sendPasswordChangeConfirmationEmail(user.email, user.name, requestEmailLanguage(req)).catch(
+      (e) => console.error("[auth] pw change email failed:", e),
     );
 
     return res.json({ success: true, message: "Password updated" });
@@ -953,11 +956,11 @@ router.post("/forgot-password", async (req, res) => {
       accountType = "customer";
     }
 
-    let business: { id: string; email: string } | null = null;
+    let business: { id: string; email: string; language?: string | null } | null = null;
     if (accountType === "business") {
       business = await prisma.business.findUnique({
         where: { email: normalized },
-        select: { id: true, email: true },
+        select: { id: true, email: true, language: true },
       });
     }
     let user: { id: string; email: string } | null = null;
@@ -1019,6 +1022,7 @@ router.post("/forgot-password", async (req, res) => {
       resetToken,
       resetAccountType,
       baseUrl,
+      requestEmailLanguage(req, business?.language),
     );
     if (!emailSent) {
       return res.status(500).json({ error: "Failed to send email" });
@@ -1053,16 +1057,18 @@ router.post("/reset-password", async (req, res) => {
 
     const business = await prisma.business.findFirst({
       where: { resetToken: token, resetTokenExpiry: { gt: new Date() } },
-      select: { id: true, email: true, name: true },
+      select: { id: true, email: true, name: true, language: true },
     });
     if (business) {
       await prisma.business.update({
         where: { id: business.id },
         data: { password: hashedPassword, resetToken: null, resetTokenExpiry: null },
       });
-      sendPasswordChangeConfirmationEmail(business.email, business.name).catch((e) =>
-        console.error("[auth] pw change email failed:", e),
-      );
+      sendPasswordChangeConfirmationEmail(
+        business.email,
+        business.name,
+        requestEmailLanguage(req, business.language),
+      ).catch((e) => console.error("[auth] pw change email failed:", e));
       return res.json({ success: true, message: "Password has been reset successfully" });
     }
 
@@ -1075,8 +1081,8 @@ router.post("/reset-password", async (req, res) => {
         where: { id: user.id },
         data: { password: hashedPassword, resetToken: null, resetTokenExpiry: null },
       });
-      sendPasswordChangeConfirmationEmail(user.email, user.name).catch((e) =>
-        console.error("[auth] pw change email failed:", e),
+      sendPasswordChangeConfirmationEmail(user.email, user.name, requestEmailLanguage(req)).catch(
+        (e) => console.error("[auth] pw change email failed:", e),
       );
       return res.json({ success: true, message: "Password has been reset successfully" });
     }
@@ -1149,6 +1155,7 @@ router.post("/business/signup", async (req, res) => {
         maxLocations: 1,
         baseCredits: DEFAULT_BASE_CREDITS,
         creditsStartedAt: null,
+        language: requestEmailLanguage(req),
       },
     });
 
@@ -1167,6 +1174,7 @@ router.post("/business/signup", async (req, res) => {
       business.name,
       business.username,
       onboardingTrialDays,
+      requestEmailLanguage(req, business.language),
     ).catch((err) => console.error("[auth] business onboarding email error:", err));
 
     const token = signJwt({
@@ -1763,6 +1771,10 @@ router.post("/business/:username/queue", async (req, res) => {
       smsConsent,
       smsMarketingConsent,
     } = req.body || {};
+    let notificationLanguage = parsePublicLanguage(req.body?.notificationLanguage) ?? "en";
+    if (notificationMethod === "email") {
+      notificationLanguage = requestEmailLanguage(req, req.body?.notificationLanguage);
+    }
 
     if (!firstName || !lastName || !numGuests || !notificationMethod) {
       return res.status(400).json({ error: "All fields are required" });
@@ -1934,6 +1946,7 @@ router.post("/business/:username/queue", async (req, res) => {
           lastName: String(lastName),
           guestCount: Number(numGuests) || 0,
           notificationMethod: String(notificationMethod || ""),
+          notificationLanguage,
           phone: phoneNumber || null,
           countryCode: countryCode || "+1",
           email: email || null,
@@ -1989,6 +2002,7 @@ router.post("/business/:username/queue", async (req, res) => {
       await enqueueNotification({
         type: "queue_join",
         channel: notificationMethod,
+        language: notificationLanguage,
         firstName: String(firstName),
         lastName: String(lastName),
         countryCode: countryCode || "+1",
@@ -2396,6 +2410,7 @@ router.post("/business/:username/queue/:customerId/admit", requireBusiness, asyn
       await enqueueNotification({
         type: "queue_admitted",
         channel: entry.notificationMethod,
+        language: parsePublicLanguage(entry.notificationLanguage) ?? "en",
         firstName: entry.firstName,
         countryCode: entry.countryCode || "+1",
         phoneNumber: entry.phone || "",
@@ -2661,20 +2676,22 @@ router.post("/business/:username/queue/:customerId/leave", async (req, res) => {
 
 router.post("/test-email", requireAdmin, async (req, res) => {
   try {
+    const language = requestEmailLanguage(req);
+    const t = emailCopy(language);
     const { email } = req.body || {};
     if (!email || typeof email !== "string") {
       return res.status(400).json({ error: "email is required" });
     }
     const testHtml = `
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
-        <h2>Test Email from SeatPing</h2>
-        <p>This is a test email to verify SMTP configuration.</p>
-        <p>Time: ${new Date().toISOString()}</p>
+      <div lang="${language}" style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2>${t("Test Email from SeatPing")}</h2>
+        <p>${t("This is a test email to verify SMTP configuration.")}</p>
+        <p>${t("Time:")} ${new Date().toISOString()}</p>
       </div>
     `;
     const emailSent = await sendEmail({
       to: email,
-      subject: "SeatPing Email Test",
+      subject: t("SeatPing Email Test"),
       html: testHtml,
     });
     if (emailSent) {

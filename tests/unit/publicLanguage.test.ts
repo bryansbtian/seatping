@@ -123,9 +123,10 @@ describe("Public Indonesian Copy", () => {
     expect(translatePublic("id", "There are 3 parties ahead of you")).toBe(
       "Ada 3 rombongan di depan Anda",
     );
-    expect(translatePublic("id", "Open · Closes at 7:30 PM")).toBe("Buka · Tutup pukul 19.30");
+    expect(translatePublic("id", "Open · Closes at 7:30 PM")).toBe("Buka · Tutup Pukul 19.30");
+    expect(translatePublic("id", "Closed · Opens at 9:15 AM")).toBe("Tutup · Buka Pukul 09.15");
     expect(translatePublic("id", "Closed · Opens Monday at 12:00 AM")).toBe(
-      "Tutup · Buka Senin pukul 00.00",
+      "Tutup · Buka Senin Pukul 00.00",
     );
     expect(translatePublic("id", "12:00 PM")).toBe("12.00");
     expect(translatePublic("id", "9:15 AM")).toBe("09.15");

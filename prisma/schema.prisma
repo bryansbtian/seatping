@@ -231,15 +231,16 @@ model QueueEntry {
   businessId String
   customerId String?
 
-  firstName           String
-  lastName            String
-  guestCount          Int
-  notificationMethod  String
-  phone               String?
-  countryCode         String?
-  email               String?
-  smsConsent          Boolean @default(false)
-  smsMarketingConsent Boolean @default(false)
+  firstName            String
+  lastName             String
+  guestCount           Int
+  notificationMethod   String
+  notificationLanguage String  @default("en")
+  phone                String?
+  countryCode          String?
+  email                String?
+  smsConsent           Boolean @default(false)
+  smsMarketingConsent  Boolean @default(false)
 
   status      QueueStatus @default(WAITING)
   finalStatus String?

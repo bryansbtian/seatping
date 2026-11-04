@@ -79,6 +79,22 @@ describe("readableReservationDate", () => {
 });
 
 describe("notifyReservationNeedsReview", () => {
+  it("uses the business recipient's saved language", async () => {
+    businessFindUnique.mockResolvedValue({
+      name: "Bistro",
+      email: "owner@biz.test",
+      language: "id",
+    });
+    expect(await notifyReservationNeedsReview(RESERVATION)).toBe(true);
+    expect(enqueueNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        language: "id",
+        businessEmail: "owner@biz.test",
+        reservationDateTime: "2026-08-27T18:00",
+      }),
+    );
+  });
+
   it("queues the email with the booking details", async () => {
     expect(await notifyReservationNeedsReview(RESERVATION)).toBe(true);
 

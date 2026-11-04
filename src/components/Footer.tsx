@@ -58,8 +58,8 @@ const Footer = () => {
             >
               SeatPing
             </Link>
-            <p className="mt-4 max-w-sm leading-relaxed">
-              {tp("Smarter queues. Better guest relationships.")}
+            <p lang="en" className="mt-4 max-w-sm leading-relaxed">
+              Smarter queues. Better guest relationships.
             </p>
           </div>
 

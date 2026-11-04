@@ -3,6 +3,8 @@ import { Prisma, type Ticket, type TicketMessage } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import { sendEmailDetailed, renderEmail, p, calloutBox, esc } from "./email.js";
 import type { TicketChatMessage } from "../../shared/tickets.js";
+import { storedEmailLanguage } from "./emailLanguage.js";
+import { emailCopy } from "./emailCopy.js";
 
 export function ticketEmailMessageId(): string {
   let domain = "seatping.biz";
@@ -173,18 +175,24 @@ export async function deliverTicketReply(id: string): Promise<void> {
     return;
   }
   try {
+    const language = storedEmailLanguage(reply.ticket.data);
+    const t = emailCopy(language);
     const sent = await sendEmailDetailed(
       {
         to: reply.ticket.senderEmail,
-        subject: `Re: ${reply.ticket.subject} [Ticket #${reply.ticket.ticketNumber}]`,
+        subject: t("Re: {subject} [Ticket #{ticketNumber}]", {
+          subject: reply.ticket.subject,
+          ticketNumber: reply.ticket.ticketNumber,
+        }),
         replyTo: process.env.EMAIL_USER,
         messageId: reply.emailMessageId || undefined,
         inReplyTo: reply.inReplyTo || undefined,
         references: reply.references,
         html: renderEmail({
-          heading: "Response To Your Feedback",
-          preheader: "Your SeatPing Ticket Has A Reply",
-          bodyHtml: `${p(`Hi ${esc(reply.ticket.senderName)},`)}${calloutBox(esc(reply.message).replace(/\n/g, "<br>"))}${p(`Best regards,<br>${esc(reply.sender)}<br>The SeatPing Team`)}${p("Reply directly to this email to continue the conversation.")}`,
+          language,
+          heading: t("Response To Your Feedback"),
+          preheader: t("Your SeatPing Ticket Has A Reply"),
+          bodyHtml: `${p(t("Hi {senderName},", { senderName: esc(reply.ticket.senderName) }))}${calloutBox(esc(reply.message).replace(/\n/g, "<br>"))}${p(`${t("Best regards,")}<br>${esc(reply.sender)}<br>${t("The SeatPing Team")}`)}${p(t("Reply directly to this email to continue the conversation."))}`,
         }),
       },
       0,

@@ -4,6 +4,7 @@ import { withWriteRetry } from "./dbRetry.js";
 import { touchGuestByQueueEntryId, touchGuestByReservationId } from "./guests.js";
 import { queueEntryToLegacy } from "./liveData.js";
 import { enqueueNotification } from "./notifications.js";
+import { parsePublicLanguage } from "../../shared/publicLanguage.js";
 import { syncCustomerQueue, type CustomerQueueStatus } from "./queueSync.js";
 import {
   ACTIVE_ASSIGNMENT_STATUSES,
@@ -144,6 +145,7 @@ export async function markQueueEntryAdmitted(queueEntryId: string): Promise<bool
     await enqueueNotification({
       type: "queue_admitted",
       channel: entry.notificationMethod,
+      language: parsePublicLanguage(entry.notificationLanguage) ?? "en",
       firstName: entry.firstName,
       countryCode: entry.countryCode || "+1",
       phoneNumber: entry.phone || "",

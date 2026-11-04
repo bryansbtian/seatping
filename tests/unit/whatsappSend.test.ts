@@ -67,6 +67,7 @@ describe("queue templates with the provider configured", () => {
     expect(sent).toBe(true);
     expect(lastSend().to).toBe("6281234567890");
     expect(lastSend().template.name).toBe("queue_joined");
+    expect(lastSend().template.language.code).toBe("en");
     expect(bodyParameters().map((p) => p.text)).toEqual(["Ada", "Bistro", "4"]);
   });
 
@@ -83,6 +84,40 @@ describe("queue templates with the provider configured", () => {
 
     expect(sent).toBe(false);
     expect(sinks().whatsapp).toHaveLength(0);
+  });
+
+  it.each(["en", "id"] as const)("uses %s for both queue WhatsApp templates", async (language) => {
+    const { sendQueueJoinedWhatsApp, sendQueueAdmittedWhatsApp } = await loadWhatsApp();
+
+    expect(
+      await sendQueueJoinedWhatsApp({
+        language,
+        countryCode: "+62",
+        phoneNumber: "81234567890",
+        customerName: "Ada",
+        businessName: "Bistro",
+        position: 4,
+      }),
+    ).toBe(true);
+    expect(lastSend().template).toMatchObject({
+      name: "queue_joined",
+      language: { code: language },
+    });
+    expect(bodyParameters().map((parameter) => parameter.text)).toEqual(["Ada", "Bistro", "4"]);
+
+    expect(
+      await sendQueueAdmittedWhatsApp({
+        language,
+        countryCode: "+62",
+        phoneNumber: "81234567890",
+        businessName: "Bistro",
+      }),
+    ).toBe(true);
+    expect(lastSend().template).toMatchObject({
+      name: "queue_admitted",
+      language: { code: language },
+    });
+    expect(bodyParameters().map((parameter) => parameter.text)).toEqual(["Bistro"]);
   });
 
   it("reports failure when the provider rejects queue_joined", async () => {

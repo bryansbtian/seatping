@@ -460,6 +460,27 @@ describe("editing a location", () => {
 });
 
 describe("admin email diagnostics", () => {
+  it.each(["en", "id"])("localizes the standalone %s SMTP test", async (language) => {
+    const response = await (
+      await api()
+    )
+      .post("/auth/test-email")
+      .set("Cookie", adminCookie())
+      .set("x-seatping-language", language)
+      .send({ email: "ops@test.invalid" });
+    expect(response.status).toBe(200);
+    const sent = sinks().email.at(-1);
+    expect(sent?.html).toContain(`lang="${language}"`);
+    let subject = "SeatPing Email Test";
+    let body = "This is a test email to verify SMTP configuration.";
+    if (language === "id") {
+      subject = "Pengujian Email SeatPing";
+      body = "Ini adalah email uji coba untuk memverifikasi konfigurasi SMTP.";
+    }
+    expect(sent?.subject).toBe(subject);
+    expect(sent?.html).toContain(body);
+  });
+
   it("requires an address", async () => {
     const res = await (await api()).post("/auth/test-email").set("Cookie", adminCookie()).send({});
 

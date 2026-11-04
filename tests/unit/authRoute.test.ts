@@ -339,6 +339,23 @@ describe("customer signup and login", () => {
     password: "TestPassw0rd!",
   };
 
+  it.each(["en", "id"])(
+    "uses %s from the public signup route for the welcome email",
+    async (language) => {
+      const response = await app()
+        .post("/auth/signup")
+        .set("X-Forwarded-For", freshIp())
+        .set("x-seatping-language", language)
+        .send(signup);
+      expect(response.status).toBe(201);
+      expect(sendCustomerWelcomeEmail).toHaveBeenCalledWith(
+        "ada@test.invalid",
+        "Ada Lovelace",
+        language,
+      );
+    },
+  );
+
   it("refuses an email or username already in use", async () => {
     userFindFirst.mockResolvedValue({ id: "cust-existing" });
 
@@ -548,6 +565,28 @@ describe("activity enrichment", () => {
 });
 
 describe("password recovery", () => {
+  it.each([
+    { header: "id", saved: "en", expected: "id" },
+    { header: "en", saved: "id", expected: "en" },
+    { header: undefined, saved: "id", expected: "id" },
+  ])(
+    "uses $expected for recovery with route $header and saved $saved",
+    async ({ header, saved, expected }) => {
+      businessFindUnique.mockResolvedValue({
+        id: "biz-1",
+        email: "owner@test.invalid",
+        language: saved,
+      });
+      const request = app().post("/auth/forgot-password").set("X-Forwarded-For", freshIp());
+      if (header) {
+        request.set("x-seatping-language", header);
+      }
+      const response = await request.send({ email: freshEmail(), type: "business" });
+      expect(response.status).toBe(200);
+      expect(sendPasswordResetEmail.mock.calls[0][4]).toBe(expected);
+    },
+  );
+
   it("requires an email address", async () => {
     const res = await app()
       .post("/auth/forgot-password")
@@ -764,6 +803,17 @@ describe("business signup and login", () => {
     password: "TestPassw0rd!",
   };
 
+  it("saves an Indonesian signup preference and localizes onboarding", async () => {
+    const response = await app()
+      .post("/auth/business/signup")
+      .set("X-Forwarded-For", freshIp())
+      .set("x-seatping-language", "id")
+      .send(signup);
+    expect(response.status).toBe(201);
+    expect(businessCreate.mock.calls[0][0].data.language).toBe("id");
+    expect(sendBusinessOnboardingEmail.mock.calls[0][4]).toBe("id");
+  });
+
   it("refuses an email or username already in use", async () => {
     businessFindFirst.mockResolvedValue({ id: "biz-existing" });
 
@@ -941,6 +991,24 @@ describe("business address directory", () => {
 });
 
 describe("joining a queue", () => {
+  it.each([
+    { requested: "id", expected: "id" },
+    { requested: "en", expected: "en" },
+    { requested: undefined, expected: "en" },
+    { requested: "unsupported", expected: "en" },
+  ])("persists notification language $expected for $requested", async ({ requested, expected }) => {
+    const res = await app()
+      .post("/auth/business/bistro/queue")
+      .set("X-Forwarded-For", freshIp())
+      .send(joinPayload({ notificationLanguage: requested }));
+
+    expect(res.status).toBe(200);
+    expect(queueEntryCreate.mock.calls[0][0].data.notificationLanguage).toBe(expected);
+    expect(enqueueNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "queue_join", language: expected }),
+    );
+  });
+
   it("requires the core fields and a location", async () => {
     const missing = await app()
       .post("/auth/business/bistro/queue")
