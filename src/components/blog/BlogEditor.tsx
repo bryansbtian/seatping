@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { formatBlogDate } from "@shared/blogDate";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft02Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -212,7 +213,7 @@ function EditorForm({ initial }: { initial: BlogPost }) {
   const disabled = busy || uploading || !validContent || form.saving || Boolean(form.recovery);
   if (!form.ready) {
     return (
-      <div className="space-y-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
         {form.error && (
           <div role="alert" className="rounded-control border bg-white p-4 text-body">
             <p>{form.error}</p>
@@ -484,11 +485,7 @@ function EditorForm({ initial }: { initial: BlogPost }) {
                     dateTime={post.publishedAt || post.createdAt}
                     className="shrink-0 text-caption text-ink-subtle"
                   >
-                    {new Date(post.publishedAt || post.createdAt).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
+                    {formatBlogDate(post.publishedAt || post.createdAt, "long")}
                   </time>
                 </div>
               </div>

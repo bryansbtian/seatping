@@ -46,6 +46,24 @@ beforeEach(() => {
 });
 
 describe("Public Blog API And Crawlable Pages", () => {
+  it("keeps crawlable listing and article dates on the same UTC publication day", async () => {
+    const publishedAt = new Date("2026-01-01T20:30:00-05:00");
+    const post = { ...stored(), publishedAt };
+    vi.mocked(prisma.blogPost.findMany).mockResolvedValue([post]);
+    vi.mocked(prisma.blogPost.findFirst).mockResolvedValue(post);
+    const listing = await client.get("/blog");
+    expect(listing.status).toBe(200);
+    expect(listing.text).toContain('<time datetime="2026-01-02T01:30:00.000Z">Jan 2, 2026</time>');
+    const article = await client.get("/blog/guest-guides");
+    expect(article.status).toBe(200);
+    expect(article.text).toContain(
+      '<time datetime="2026-01-02T01:30:00.000Z">January 2, 2026</time>',
+    );
+    expect((await client.get("/api/blog/guest-guides")).body.post.publishedAt).toBe(
+      publishedAt.toISOString(),
+    );
+  });
+
   it("prioritizes the same category and fills related posts from other published categories", async () => {
     vi.mocked(prisma.blogPost.findMany)
       .mockResolvedValueOnce([{ ...stored(), slug: "another-guide" }])

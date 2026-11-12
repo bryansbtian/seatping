@@ -572,6 +572,53 @@ test("mobile recovery actions share one row below the recovery message", async (
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
+test("article fields refit after a font loads without a width change", async ({ page }) => {
+  const state = await workspace(page);
+  const timestamp = new Date().toISOString();
+  state.posts.push({
+    ...newBlogFields(),
+    id: "late-font",
+    slug: "late-font",
+    title: "QR Code Waitlist for Restaurants: How It Works and How to Set It Up",
+    excerpt:
+      "Learn how to set up a QR code waitlist for your restaurant, reduce crowded waiting areas, and let guests join the queue from their phones without downloading an app.",
+    status: "DRAFT",
+    revision: 1,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    publishedAt: null,
+  });
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto("/admin/blog/late-font/edit");
+  const title = page.getByRole("textbox", { name: "Article Title" });
+  await expect(title).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  const width = await title.evaluate((element) => element.clientWidth);
+  await page.evaluate(async () => {
+    const font = new FontFace(
+      "LateArticleFont",
+      'local("Courier New"), local("Liberation Mono"), local("Courier")',
+      { weight: "600" },
+    );
+    document.fonts.add(font);
+    const style = document.createElement("style");
+    style.textContent = 'article header { font-family: "LateArticleFont", monospace; }';
+    document.head.append(style);
+    await document.fonts.load('600 24px "LateArticleFont"');
+    await document.fonts.ready;
+  });
+  expect(await title.evaluate((element) => element.clientWidth)).toBe(width);
+  for (const label of ["Article Title", "Excerpt"]) {
+    await expect
+      .poll(() =>
+        page.getByRole("textbox", { name: label, exact: true }).evaluate((element) => {
+          return element.scrollHeight <= element.clientHeight + 1;
+        }),
+      )
+      .toBe(true);
+  }
+});
+
 test("switching between editing and preview preserves the article layout", async ({ page }) => {
   const state = await workspace(page);
   const timestamp = new Date().toISOString();
@@ -1116,7 +1163,9 @@ test("canvas header spacing, mobile actions, and author metadata fit each viewpo
   }
 });
 
-test("article editor skeleton fills the remaining page while a post loads", async ({ page }) => {
+test("article editor skeleton fills the remaining page through post and collaboration loading", async ({
+  page,
+}, testInfo) => {
   await workspace(page);
   await newArticle(page);
   await expect
@@ -1133,38 +1182,55 @@ test("article editor skeleton fills the remaining page while a post loads", asyn
   const pending = new Promise<void>((resolve) => {
     release = resolve;
   });
+  let releaseCollaboration = () => {};
+  const collaborationPending = new Promise<void>((resolve) => {
+    releaseCollaboration = resolve;
+  });
   await page.route(/\/api\/admin\/blog\/post-1$/, async (route) => {
     await pending;
     await route.fallback();
   });
+  await page.route("**/api/admin/blog-collaboration/**", async (route) => {
+    await collaborationPending;
+    await route.fallback();
+  });
   try {
     await page.reload();
-    for (const width of [320, 390, 1440]) {
-      await page.setViewportSize({ width, height: 1000 });
-      const loading = page.getByRole("status", { name: "Loading Blog Editor", exact: true });
-      await expect(loading).toBeVisible();
-      await expect
-        .poll(() =>
-          loading.evaluate((element) => {
-            const bounds = element.getBoundingClientRect();
-            const list = element.querySelector('[aria-label="Loading Article Content"]')!;
-            const inner = list.firstElementChild!;
-            const innerBounds = inner.getBoundingClientRect();
-            const last = inner.lastElementChild!.getBoundingClientRect();
-            return (
-              Math.abs(window.innerHeight - bounds.bottom - 32) <= 1 &&
-              Math.abs(last.bottom - innerBounds.bottom) <= 1 &&
-              Array.from(inner.children).every((row) => {
-                const box = row.getBoundingClientRect();
-                return box.top >= innerBounds.top && box.bottom <= innerBounds.bottom + 1;
-              })
-            );
-          }),
-        )
-        .toBe(true);
+    for (const phase of ["post", "collaboration"]) {
+      if (phase === "collaboration") {
+        const connection = page.waitForRequest("**/api/admin/blog-collaboration/**");
+        release();
+        await connection;
+      }
+      for (const width of [320, 390, 768, 1440, 1920]) {
+        await page.setViewportSize({ width, height: 1000 });
+        const loading = page.getByRole("status", { name: "Loading Blog Editor", exact: true });
+        await expect(loading).toBeVisible();
+        await expect
+          .poll(() =>
+            loading.evaluate((element) => {
+              const bounds = element.getBoundingClientRect();
+              const list = element.querySelector('[aria-label="Loading Article Content"]')!;
+              const inner = list.firstElementChild!;
+              const innerBounds = inner.getBoundingClientRect();
+              const last = inner.lastElementChild!.getBoundingClientRect();
+              return (
+                Math.abs(window.innerHeight - bounds.bottom - 32) <= 1 &&
+                Math.abs(last.bottom - innerBounds.bottom) <= 1 &&
+                Array.from(inner.children).every((row) => {
+                  const box = row.getBoundingClientRect();
+                  return box.top >= innerBounds.top && box.bottom <= innerBounds.bottom + 1;
+                })
+              );
+            }),
+          )
+          .toBe(true);
+      }
+      await page.screenshot({ path: testInfo.outputPath(`editor-loading-${phase}.png`) });
     }
   } finally {
     release();
+    releaseCollaboration();
   }
   await expect(page.getByRole("textbox", { name: "Article Title" })).toHaveValue(
     "The Guest Experience",

@@ -45,6 +45,7 @@ import BusinessEmptyState from "@/components/BusinessEmptyState";
 import { blogRequest } from "@/lib/blogApi";
 import { errorMessage } from "@/hooks/useBlogAutosave";
 import type { BlogPost } from "@shared/blog";
+import { formatBlogDate } from "@shared/blogDate";
 
 type PostSummary = Omit<BlogPost, "content">;
 type PostList = {
@@ -386,7 +387,7 @@ export default function BlogManagement() {
             >
               <table className="w-full min-w-[52rem] border-collapse text-body">
                 <caption className="sr-only">
-                  Blog articles, authors, publication status, and dates
+                  Blog articles, authors, publication status, and dates in UTC
                 </caption>
                 <thead className="border-b border-border text-left text-label text-ink-subtle">
                   <tr className="h-row">
@@ -400,10 +401,13 @@ export default function BlogManagement() {
                       Status
                     </th>
                     <th scope="col" className="px-4 text-center font-medium">
-                      Created
+                      Created (UTC)
                     </th>
                     <th scope="col" className="px-4 text-center font-medium">
-                      Updated
+                      Updated (UTC)
+                    </th>
+                    <th scope="col" className="px-4 text-center font-medium">
+                      Published (UTC)
                     </th>
                     <th
                       scope="col"
@@ -460,10 +464,18 @@ export default function BlogManagement() {
                           <Badge variant={tone}>{label}</Badge>
                         </td>
                         <td className="whitespace-nowrap px-4 py-2 text-center tabular-nums text-ink-subtle">
-                          {date(post.createdAt)}
+                          {formatBlogDate(post.createdAt)}
                         </td>
                         <td className="whitespace-nowrap px-4 py-2 text-center tabular-nums text-ink-subtle">
-                          {date(post.updatedAt)}
+                          {formatBlogDate(post.updatedAt)}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-2 text-center tabular-nums text-ink-subtle">
+                          {post.publishedAt && (
+                            <time dateTime={post.publishedAt}>
+                              {formatBlogDate(post.publishedAt)}
+                            </time>
+                          )}
+                          {!post.publishedAt && "Not Published"}
                         </td>
                         <td className="bg-white px-4 py-2 text-right group-hover:bg-slate-50 md:sticky md:right-0">
                           <DropdownMenu>
@@ -547,14 +559,6 @@ export default function BlogManagement() {
     </div>
   );
 }
-function date(value: string) {
-  return new Date(value).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 function filterValue(value: string) {
   if (value) {
     return `entry:${value}`;
