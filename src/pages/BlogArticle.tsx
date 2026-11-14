@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import PublicBlogLoading from "@/components/blog/PublicBlogLoading";
 import { PublicBlogError, publicBlogRequest } from "@/lib/publicBlogApi";
 import { readingMinutes } from "@shared/blog";
+import { formatBlogDate } from "@shared/blogDate";
 import {
   blogDescription,
   blogPath,
@@ -149,12 +150,7 @@ export default function BlogArticle() {
                     dateTime={post.publishedAt}
                     className="shrink-0 text-caption text-ink-subtle"
                   >
-                    {new Date(post.publishedAt).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      timeZone: "UTC",
-                    })}
+                    {formatBlogDate(post.publishedAt, "long")}
                   </time>
                 </div>
               </div>

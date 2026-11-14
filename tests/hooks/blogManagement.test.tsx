@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import BlogManagement from "../../src/components/blog/BlogManagement";
+import BlogCard from "../../src/components/blog/BlogCard";
+import { newBlogFields } from "../../shared/blog";
 
 const empty = {
   posts: [],
@@ -24,9 +26,84 @@ function view() {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("Blog Management Counts", () => {
+  it("keeps admin dates and public publication dates in UTC near midnight", async () => {
+    const post = {
+      ...newBlogFields(),
+      id: "article",
+      title: "Restaurant Reservations",
+      slug: "restaurant-reservations",
+      status: "PUBLISHED",
+      revision: 1,
+      createdAt: "2026-11-11T01:30:00.000Z",
+      updatedAt: "2026-11-13T01:30:00.000Z",
+      publishedAt: "2026-11-12T01:30:00.000Z",
+    };
+    const original = Date.prototype.toLocaleDateString;
+    vi.spyOn(Date.prototype, "toLocaleDateString").mockImplementation(function (
+      this: Date,
+      locales,
+      options,
+    ) {
+      return original.call(this, locales, { timeZone: "America/New_York", ...options });
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          ...empty,
+          posts: [post],
+          stats: { total: 1, drafts: 0, published: 1 },
+        }),
+      ),
+    );
+    view();
+    const table = await screen.findByRole("region", { name: "Blog Posts Table" });
+    expect(within(table).getByText("Nov 11, 2026")).toBeTruthy();
+    expect(within(table).getByText("Nov 13, 2026")).toBeTruthy();
+    expect(within(table).getByRole("columnheader", { name: "Published (UTC)" })).toBeTruthy();
+    const adminDate = within(table).getByText("Nov 12, 2026");
+
+    const card = render(
+      <MemoryRouter>
+        <BlogCard post={{ ...post, readingMinutes: 1 }} />
+      </MemoryRouter>,
+    );
+    expect(card.container.querySelector("time")?.textContent).toBe(adminDate.textContent);
+    expect(card.container.querySelector("time")?.dateTime).toBe(post.publishedAt);
+  });
+
+  it("does not substitute a draft creation date for its publication date", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          ...empty,
+          posts: [
+            {
+              ...newBlogFields(),
+              id: "draft",
+              title: "Draft Article",
+              status: "DRAFT",
+              revision: 1,
+              createdAt: "2026-11-11T01:30:00.000Z",
+              updatedAt: "2026-11-11T01:30:00.000Z",
+              publishedAt: null,
+            },
+          ],
+          stats: { total: 1, drafts: 1, published: 0 },
+        }),
+      ),
+    );
+    view();
+    const table = await screen.findByRole("region", { name: "Blog Posts Table" });
+    expect(within(table).getByText("Not Published")).toBeTruthy();
+    expect(table.querySelector("time")).toBeNull();
+  });
+
   it("keeps skeletons until an empty response resolves and then shows three zero counts", async () => {
     let resolve = (_response: Response) => {};
     vi.stubGlobal(

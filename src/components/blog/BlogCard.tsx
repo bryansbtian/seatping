@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { BookOpen01Icon } from "@hugeicons/core-free-icons";
 import { blogCoverThumbnail } from "@shared/blogMedia";
+import { formatBlogDate } from "@shared/blogDate";
 import { blogPath, type PublicBlogSummary } from "@shared/publicBlog";
 
 export default function BlogCard({ post }: { post: PublicBlogSummary }) {
@@ -36,14 +37,7 @@ export default function BlogCard({ post }: { post: PublicBlogSummary }) {
           <div className="mt-auto flex w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pt-6 text-caption text-ink-subtle">
             <span className="max-w-full truncate font-medium text-ink">{post.author}</span>
             <span aria-hidden="true">·</span>
-            <time dateTime={post.publishedAt}>
-              {new Date(post.publishedAt).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-                timeZone: "UTC",
-              })}
-            </time>
+            <time dateTime={post.publishedAt}>{formatBlogDate(post.publishedAt)}</time>
             <span aria-hidden="true">·</span>
             <span className="whitespace-nowrap">{post.readingMinutes} Min Read</span>
           </div>

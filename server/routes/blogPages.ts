@@ -1,4 +1,5 @@
 import { blogDescription, blogListMeta, blogStructuredData } from "../lib/blogSeo.js";
+import { formatBlogDate } from "../../shared/blogDate.js";
 import { INDEXABLE_STATIC_PATHS } from "../../shared/pageMeta.js";
 import { isLocalizedPublicPath, localizedPublicPath } from "../../shared/publicLanguage.js";
 import { Router } from "express";
@@ -77,7 +78,7 @@ export function createBlogPagesRouter(template: () => string): Router {
         if (post.coverUrl) {
           body += `<img src="${escape(blogCoverThumbnail(post.coverUrl))}" alt="${escape(post.coverAlt || post.title)}" width="640" height="400">`;
         }
-        body += `<h2>${escape(post.title)}</h2></a><p>${escape(post.excerpt)}</p><time datetime="${post.publishedAt}">${post.publishedAt.slice(0, 10)}</time></article>`;
+        body += `<h2>${escape(post.title)}</h2></a><p>${escape(post.excerpt)}</p><time datetime="${post.publishedAt}">${formatBlogDate(post.publishedAt)}</time></article>`;
       }
       if (!data.posts.length) {
         body += "<p>No Articles Yet</p>";
@@ -136,7 +137,7 @@ export function createBlogPagesRouter(template: () => string): Router {
         updatedAt: post.updatedAt,
         structuredData: blogStructuredData(post, SITE_URL),
       };
-      let body = `<nav aria-label="Breadcrumb"><a href="/">Home</a> / <a href="/blog">Blog</a> / <span aria-current="page">${escape(post.title)}</span></nav><article><header><a href="/blog">Back To Blogs</a><p>${escape(post.category)}</p><h1>${escape(post.title)}</h1><p>${escape(post.excerpt)}</p><p>${escape(post.author)}</p><time datetime="${post.publishedAt}">${post.publishedAt.slice(0, 10)}</time></header>`;
+      let body = `<nav aria-label="Breadcrumb"><a href="/">Home</a> / <a href="/blog">Blog</a> / <span aria-current="page">${escape(post.title)}</span></nav><article><header><a href="/blog">Back To Blogs</a><p>${escape(post.category)}</p><h1>${escape(post.title)}</h1><p>${escape(post.excerpt)}</p><p>${escape(post.author)}</p><time datetime="${post.publishedAt}">${formatBlogDate(post.publishedAt, "long")}</time></header>`;
       if (post.coverUrl) {
         if (isBlogCoverVideo(post.coverUrl)) {
           body += `<video src="${escape(post.coverUrl)}" poster="${escape(blogCoverThumbnail(post.coverUrl))}" aria-label="${escape(post.coverAlt || "Cover Video")}" controls preload="metadata"></video>`;

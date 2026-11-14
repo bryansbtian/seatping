@@ -46,6 +46,34 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Public Blog", () => {
+  it("uses the same UTC publication day on cards and the article across midnight", async () => {
+    const article = { ...post, publishedAt: "2026-11-11T20:30:00-05:00" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url.endsWith("/related")) {
+          return Promise.resolve(Response.json({ posts: [] }));
+        }
+        if (url.startsWith("/api/blog/better-guests")) {
+          return Promise.resolve(Response.json({ post: article }));
+        }
+        return Promise.resolve(
+          Response.json({
+            posts: [{ ...article, readingMinutes: 1 }],
+            categories: [],
+            page: 1,
+            totalPages: 1,
+          }),
+        );
+      }),
+    );
+    mount();
+    expect(await screen.findByText("Nov 12, 2026")).toBeTruthy();
+    fireEvent.click(screen.getByRole("link", { name: new RegExp(post.title) }));
+    expect(await screen.findByText("November 12, 2026")).toBeTruthy();
+    expect(document.querySelector("time")?.dateTime).toBe(article.publishedAt);
+  });
+
   it("fills the initial request with an accessible skeleton without showing an empty state", () => {
     vi.stubGlobal(
       "fetch",
