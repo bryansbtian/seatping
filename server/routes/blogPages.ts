@@ -30,7 +30,7 @@ function page(template: string, meta: PageMeta, body: string): string {
 const base: PageMeta = {
   title: blogListMeta("", 1).title,
   description: BLOG_DESCRIPTION,
-  image: `${SITE_URL}/display2.jpeg`,
+  image: `${SITE_URL}/og-home-v2.jpeg`,
   url: `${SITE_URL}/blog`,
   type: "website",
 };

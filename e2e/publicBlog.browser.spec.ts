@@ -40,7 +40,7 @@ test.beforeEach(async ({ page }) => {
     route.fulfill({ json: { customer: null, business: null } }),
   );
   await page.route("https://example.com/restaurant.jpg", (route) =>
-    route.fulfill({ path: "public/display2.jpeg", contentType: "image/jpeg" }),
+    route.fulfill({ path: "public/og-home-v2.jpeg", contentType: "image/jpeg" }),
   );
   await page.route("**/api/blog**", (route) => {
     const url = new URL(route.request().url());
@@ -192,7 +192,7 @@ test("video cover cards request a first-frame image and the article offers video
   });
   await page.route(
     "https://res.cloudinary.com/test/video/upload/so_0/v123/dining-room.jpg",
-    (route) => route.fulfill({ path: "public/display2.jpeg", contentType: "image/jpeg" }),
+    (route) => route.fulfill({ path: "public/og-home-v2.jpeg", contentType: "image/jpeg" }),
   );
   await page.goto("/blog");
   await expect(page.locator("main article img")).toHaveAttribute(
