@@ -184,9 +184,9 @@ export function metaForPath(pathname: string): PageMeta {
       copy = { title: "Admin | SeatPing", description: "SeatPing administration." };
     }
   }
-  let image = `${SITE_URL}/display2.jpeg`;
+  let image = `${SITE_URL}/og-home-v2.jpeg`;
   if (isBusinessPath(clean)) {
-    image = `${SITE_URL}/display.jpeg`;
+    image = `${SITE_URL}/og-business-v2.jpeg`;
   }
   const meta: PageMeta = {
     ...copy,

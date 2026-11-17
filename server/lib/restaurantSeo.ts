@@ -39,7 +39,7 @@ export async function restaurantSeo(username: string, locationId: string) {
       meta: {
         title: "Restaurant | SeatPing",
         description: "Restaurant details on SeatPing.",
-        image: `${SITE_URL}/display2.jpeg`,
+        image: `${SITE_URL}/og-home-v2.jpeg`,
         url,
         type: "website",
         robots: "noindex, follow",
@@ -58,7 +58,7 @@ export async function restaurantSeo(username: string, locationId: string) {
   const meta: PageMeta = {
     title: `${name} | SeatPing`,
     description,
-    image: location.bannerImageUrl || `${SITE_URL}/display2.jpeg`,
+    image: location.bannerImageUrl || `${SITE_URL}/og-home-v2.jpeg`,
     url,
     type: "website",
     robots: "index, follow",

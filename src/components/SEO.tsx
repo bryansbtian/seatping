@@ -15,8 +15,8 @@ export const CUSTOMER_DESCRIPTION =
 export const BUSINESS_DESCRIPTION =
   "Restaurant floor management, table management, virtual waitlist, reservations with Smart Table Assignment, Guest CRM, and campaigns from one simple dashboard.";
 
-export const CUSTOMER_IMAGE = `${SITE_URL}/display2.jpeg`;
-export const BUSINESS_IMAGE = `${SITE_URL}/display.jpeg`;
+export const CUSTOMER_IMAGE = `${SITE_URL}/og-home-v2.jpeg`;
+export const BUSINESS_IMAGE = `${SITE_URL}/og-business-v2.jpeg`;
 
 type SEOProps = {
   title: string;
