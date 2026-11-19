@@ -8,7 +8,7 @@ test("a business builds a floor layout and it survives a reload", async ({ page,
   await page.goto("/business/floor");
   await page.getByRole("button", { name: "Edit Layout" }).click();
 
-  await expect(page.getByRole("heading", { name: "Floor" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Floor", exact: true })).toBeVisible();
   await expect(page.getByText("No Floor Plan Yet")).toBeVisible();
 
   await page.getByRole("button", { name: "Create Floor Plan" }).click();
